@@ -1,0 +1,3 @@
+[submodule "codes/ai-memory"]
+	path = codes/ai-memory
+	url = https://github.com/akitaonrails/ai-memory

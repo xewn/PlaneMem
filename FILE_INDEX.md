@@ -1,0 +1,1545 @@
+# FILE_INDEX.md
+
+本文件是 `F:\PlaneMem` 工作区的文件索引。它用于让需求、设计、实现、测试、发布和供应商源码能够按统一路径被定位。
+
+## 维护规则
+
+- 新增、删除、移动或重命名文件时，必须在同一次变更中更新本文件。
+- 更新时重新扫描 `F:\PlaneMem`，保持路径使用 `/` 分隔，并同步文件大小、扩展名和目录统计。
+- 本索引不把自身纳入扫描统计，`.git` 等版本控制内部目录也不纳入项目文件索引。
+- 完成变更后检查本文件的文件总数、目录总数和 `git diff`，确保索引与工作区实际状态一致。
+
+## 生成信息
+
+- 工作区：`F:\PlaneMem`
+- 生成时间：`2026-10-20 18:21:28 +08:00`
+- 文件总数（不含本索引与版本控制内部文件）：`1281`
+- 目录总数（不含版本控制内部目录）：`211`
+- 总字节数（不含本索引与版本控制内部文件）：`31874041`
+
+## 顶层目录统计
+
+| 顶层路径 | 文件数 | 字节数 |
+|---|---:|---:|
+| `(root)` | 2 | 119213 |
+| `codes` | 1209 | 31514258 |
+| `docs` | 70 | 240570 |
+
+## 目录清单
+
+目录路径均相对于 `F:\PlaneMem`，文件数包含该目录及其所有子目录中的文件。
+
+- `codes/` — 1209 files
+- `codes/ai-memory/` — 1209 files
+- `codes/ai-memory/.agents/` — 1 files
+- `codes/ai-memory/.agents/plugins/` — 1 files
+- `codes/ai-memory/.cargo/` — 1 files
+- `codes/ai-memory/.claude-plugin/` — 1 files
+- `codes/ai-memory/.config/` — 1 files
+- `codes/ai-memory/.github/` — 17 files
+- `codes/ai-memory/.github/codeql/` — 3 files
+- `codes/ai-memory/.github/codeql/extensions/` — 3 files
+- `codes/ai-memory/.github/codeql/extensions/ai-memory-models/` — 3 files
+- `codes/ai-memory/.github/codeql/extensions/ai-memory-models/models/` — 2 files
+- `codes/ai-memory/.github/ISSUE_TEMPLATE/` — 2 files
+- `codes/ai-memory/.github/workflows/` — 9 files
+- `codes/ai-memory/bin/` — 6 files
+- `codes/ai-memory/companions/` — 140 files
+- `codes/ai-memory/companions/ai-memory-client/` — 6 files
+- `codes/ai-memory/companions/ai-memory-client/src/` — 2 files
+- `codes/ai-memory/companions/ai-memory-client/tests/` — 1 files
+- `codes/ai-memory/companions/ai-memory-client/tests/suite/` — 1 files
+- `codes/ai-memory/companions/ai-memory-desktop/` — 19 files
+- `codes/ai-memory/companions/ai-memory-desktop/capabilities/` — 1 files
+- `codes/ai-memory/companions/ai-memory-desktop/icons/` — 6 files
+- `codes/ai-memory/companions/ai-memory-desktop/src/` — 2 files
+- `codes/ai-memory/companions/ai-memory-desktop/ui/` — 3 files
+- `codes/ai-memory/companions/ai-memory-importer/` — 12 files
+- `codes/ai-memory/companions/ai-memory-importer/src/` — 9 files
+- `codes/ai-memory/companions/ai-memory-importer/src/agentmemory/` — 6 files
+- `codes/ai-memory/companions/ai-memory-importer/src/agentmemory/export/` — 1 files
+- `codes/ai-memory/companions/ai-memory-macos/` — 25 files
+- `codes/ai-memory/companions/ai-memory-macos/Sources/` — 13 files
+- `codes/ai-memory/companions/ai-memory-macos/Sources/AIMemoryMenu/` — 5 files
+- `codes/ai-memory/companions/ai-memory-macos/Sources/AIMemoryMenuCore/` — 8 files
+- `codes/ai-memory/companions/ai-memory-macos/Tests/` — 7 files
+- `codes/ai-memory/companions/ai-memory-macos/Tests/AIMemoryMenuTests/` — 7 files
+- `codes/ai-memory/companions/ai-memory-macos/Tests/AIMemoryMenuTests/fixtures/` — 1 files
+- `codes/ai-memory/companions/ai-memory-relay/` — 12 files
+- `codes/ai-memory/companions/ai-memory-relay/src/` — 8 files
+- `codes/ai-memory/companions/ai-memory-relay/tests/` — 1 files
+- `codes/ai-memory/companions/ai-memory-ts/` — 52 files
+- `codes/ai-memory/companions/ai-memory-ts/docs/` — 4 files
+- `codes/ai-memory/companions/ai-memory-ts/examples/` — 6 files
+- `codes/ai-memory/companions/ai-memory-ts/schema/` — 1 files
+- `codes/ai-memory/companions/ai-memory-ts/scripts/` — 3 files
+- `codes/ai-memory/companions/ai-memory-ts/src/` — 12 files
+- `codes/ai-memory/companions/ai-memory-ts/test/` — 17 files
+- `codes/ai-memory/companions/ai-memory-ts/test/integration/` — 6 files
+- `codes/ai-memory/companions/ai-memory-ts/test/support/` — 5 files
+- `codes/ai-memory/companions/ai-memory-ts/test/unit/` — 6 files
+- `codes/ai-memory/companions/ai-memory-wikisync/` — 14 files
+- `codes/ai-memory/companions/ai-memory-wikisync/src/` — 10 files
+- `codes/ai-memory/companions/ai-memory-wikisync/tests/` — 1 files
+- `codes/ai-memory/crates/` — 612 files
+- `codes/ai-memory/crates/ai-memory-cli/` — 159 files
+- `codes/ai-memory/crates/ai-memory-cli/src/` — 108 files
+- `codes/ai-memory/crates/ai-memory-cli/src/commands/` — 95 files
+- `codes/ai-memory/crates/ai-memory-cli/src/commands/doctor/` — 1 files
+- `codes/ai-memory/crates/ai-memory-cli/src/commands/status/` — 1 files
+- `codes/ai-memory/crates/ai-memory-cli/templates/` — 7 files
+- `codes/ai-memory/crates/ai-memory-cli/templates/plugin/` — 5 files
+- `codes/ai-memory/crates/ai-memory-cli/tests/` — 43 files
+- `codes/ai-memory/crates/ai-memory-cli/tests/fixtures/` — 2 files
+- `codes/ai-memory/crates/ai-memory-cli/tests/suite/` — 41 files
+- `codes/ai-memory/crates/ai-memory-consolidate/` — 57 files
+- `codes/ai-memory/crates/ai-memory-consolidate/prompts/` — 7 files
+- `codes/ai-memory/crates/ai-memory-consolidate/src/` — 26 files
+- `codes/ai-memory/crates/ai-memory-consolidate/tests/` — 23 files
+- `codes/ai-memory/crates/ai-memory-consolidate/tests/suite/` — 23 files
+- `codes/ai-memory/crates/ai-memory-core/` — 36 files
+- `codes/ai-memory/crates/ai-memory-core/fixtures/` — 2 files
+- `codes/ai-memory/crates/ai-memory-core/src/` — 33 files
+- `codes/ai-memory/crates/ai-memory-core/src/routing_skills/` — 7 files
+- `codes/ai-memory/crates/ai-memory-core/src/routing_skills/ai-memory-durable-pages/` — 1 files
+- `codes/ai-memory/crates/ai-memory-core/src/routing_skills/ai-memory-handoff/` — 1 files
+- `codes/ai-memory/crates/ai-memory-core/src/routing_skills/ai-memory-learning-maintenance/` — 1 files
+- `codes/ai-memory/crates/ai-memory-core/src/routing_skills/ai-memory-messaging/` — 1 files
+- `codes/ai-memory/crates/ai-memory-core/src/routing_skills/ai-memory-retrieval/` — 1 files
+- `codes/ai-memory/crates/ai-memory-core/src/routing_skills/ai-memory-routing-install/` — 1 files
+- `codes/ai-memory/crates/ai-memory-hooks/` — 23 files
+- `codes/ai-memory/crates/ai-memory-hooks/src/` — 15 files
+- `codes/ai-memory/crates/ai-memory-hooks/tests/` — 7 files
+- `codes/ai-memory/crates/ai-memory-hooks/tests/fixtures/` — 1 files
+- `codes/ai-memory/crates/ai-memory-hooks/tests/suite/` — 6 files
+- `codes/ai-memory/crates/ai-memory-llm/` — 43 files
+- `codes/ai-memory/crates/ai-memory-llm/src/` — 28 files
+- `codes/ai-memory/crates/ai-memory-llm/tests/` — 14 files
+- `codes/ai-memory/crates/ai-memory-llm/tests/suite/` — 13 files
+- `codes/ai-memory/crates/ai-memory-llm/tests/support/` — 1 files
+- `codes/ai-memory/crates/ai-memory-mcp/` — 56 files
+- `codes/ai-memory/crates/ai-memory-mcp/prompts/` — 1 files
+- `codes/ai-memory/crates/ai-memory-mcp/src/` — 11 files
+- `codes/ai-memory/crates/ai-memory-mcp/tests/` — 43 files
+- `codes/ai-memory/crates/ai-memory-mcp/tests/suite/` — 43 files
+- `codes/ai-memory/crates/ai-memory-store/` — 143 files
+- `codes/ai-memory/crates/ai-memory-store/migrations/` — 83 files
+- `codes/ai-memory/crates/ai-memory-store/src/` — 24 files
+- `codes/ai-memory/crates/ai-memory-store/src/testdata/` — 1 files
+- `codes/ai-memory/crates/ai-memory-store/tests/` — 35 files
+- `codes/ai-memory/crates/ai-memory-store/tests/suite/` — 35 files
+- `codes/ai-memory/crates/ai-memory-test-support/` — 2 files
+- `codes/ai-memory/crates/ai-memory-test-support/src/` — 1 files
+- `codes/ai-memory/crates/ai-memory-web/` — 62 files
+- `codes/ai-memory/crates/ai-memory-web/src/` — 25 files
+- `codes/ai-memory/crates/ai-memory-web/src/management/` — 4 files
+- `codes/ai-memory/crates/ai-memory-web/src/routes/` — 12 files
+- `codes/ai-memory/crates/ai-memory-web/static/` — 7 files
+- `codes/ai-memory/crates/ai-memory-web/static/management/` — 5 files
+- `codes/ai-memory/crates/ai-memory-web/templates/` — 19 files
+- `codes/ai-memory/crates/ai-memory-web/templates/management/` — 3 files
+- `codes/ai-memory/crates/ai-memory-web/tests/` — 7 files
+- `codes/ai-memory/crates/ai-memory-web/tests/suite/` — 7 files
+- `codes/ai-memory/crates/ai-memory-wiki/` — 23 files
+- `codes/ai-memory/crates/ai-memory-wiki/src/` — 16 files
+- `codes/ai-memory/crates/ai-memory-wiki/src/migrations/` — 3 files
+- `codes/ai-memory/crates/ai-memory-wiki/tests/` — 5 files
+- `codes/ai-memory/crates/ai-memory-wiki/tests/suite/` — 5 files
+- `codes/ai-memory/crates/ai-memory-workstream/` — 8 files
+- `codes/ai-memory/crates/ai-memory-workstream/src/` — 5 files
+- `codes/ai-memory/crates/ai-memory-workstream/tests/` — 2 files
+- `codes/ai-memory/crates/ai-memory-workstream/tests/fixtures/` — 2 files
+- `codes/ai-memory/docker/` — 11 files
+- `codes/ai-memory/docker/multiuser-test/` — 5 files
+- `codes/ai-memory/docs/` — 125 files
+- `codes/ai-memory/docs/benchmarks/` — 10 files
+- `codes/ai-memory/docs/changelog/` — 3 files
+- `codes/ai-memory/docs/desktop/` — 13 files
+- `codes/ai-memory/docs/examples/` — 11 files
+- `codes/ai-memory/docs/examples/auto-improve-eval/` — 4 files
+- `codes/ai-memory/docs/examples/backup/` — 5 files
+- `codes/ai-memory/docs/examples/jev-reranker-adapter/` — 2 files
+- `codes/ai-memory/evals/` — 25 files
+- `codes/ai-memory/evals/fixtures/` — 7 files
+- `codes/ai-memory/evals/src/` — 15 files
+- `codes/ai-memory/evals/src/retrieval/` — 10 files
+- `codes/ai-memory/evals/tests/` — 1 files
+- `codes/ai-memory/hooks/` — 180 files
+- `codes/ai-memory/hooks/antigravity-cli/` — 8 files
+- `codes/ai-memory/hooks/claude-code/` — 18 files
+- `codes/ai-memory/hooks/codex/` — 14 files
+- `codes/ai-memory/hooks/command-code/` — 8 files
+- `codes/ai-memory/hooks/copilot-cli/` — 18 files
+- `codes/ai-memory/hooks/cursor/` — 14 files
+- `codes/ai-memory/hooks/devin/` — 14 files
+- `codes/ai-memory/hooks/gemini-cli/` — 14 files
+- `codes/ai-memory/hooks/grok/` — 18 files
+- `codes/ai-memory/hooks/kimi-code/` — 18 files
+- `codes/ai-memory/hooks/kiro-cli/` — 10 files
+- `codes/ai-memory/hooks/lib/` — 1 files
+- `codes/ai-memory/hooks/opencode/` — 14 files
+- `codes/ai-memory/hooks/pool/` — 10 files
+- `codes/ai-memory/nix/` — 3 files
+- `codes/ai-memory/packaging/` — 11 files
+- `codes/ai-memory/packaging/aur/` — 4 files
+- `codes/ai-memory/packaging/env/` — 1 files
+- `codes/ai-memory/packaging/launchd/` — 1 files
+- `codes/ai-memory/packaging/rpm/` — 1 files
+- `codes/ai-memory/packaging/systemd/` — 2 files
+- `codes/ai-memory/packaging/sysusers/` — 1 files
+- `codes/ai-memory/packaging/tmpfiles/` — 1 files
+- `codes/ai-memory/plugins/` — 27 files
+- `codes/ai-memory/plugins/claude-code/` — 13 files
+- `codes/ai-memory/plugins/claude-code/.claude-plugin/` — 1 files
+- `codes/ai-memory/plugins/claude-code/hooks/` — 1 files
+- `codes/ai-memory/plugins/claude-code/scripts/` — 1 files
+- `codes/ai-memory/plugins/claude-code/skills/` — 7 files
+- `codes/ai-memory/plugins/claude-code/skills/ai-memory-durable-pages/` — 1 files
+- `codes/ai-memory/plugins/claude-code/skills/ai-memory-handoff/` — 1 files
+- `codes/ai-memory/plugins/claude-code/skills/ai-memory-learning-maintenance/` — 1 files
+- `codes/ai-memory/plugins/claude-code/skills/ai-memory-messaging/` — 1 files
+- `codes/ai-memory/plugins/claude-code/skills/ai-memory-retrieval/` — 1 files
+- `codes/ai-memory/plugins/claude-code/skills/ai-memory-routing-install/` — 1 files
+- `codes/ai-memory/plugins/claude-code/skills/status/` — 1 files
+- `codes/ai-memory/plugins/codex/` — 13 files
+- `codes/ai-memory/plugins/codex/.codex-plugin/` — 1 files
+- `codes/ai-memory/plugins/codex/hooks/` — 1 files
+- `codes/ai-memory/plugins/codex/scripts/` — 1 files
+- `codes/ai-memory/plugins/codex/skills/` — 7 files
+- `codes/ai-memory/plugins/codex/skills/ai-memory-durable-pages/` — 1 files
+- `codes/ai-memory/plugins/codex/skills/ai-memory-handoff/` — 1 files
+- `codes/ai-memory/plugins/codex/skills/ai-memory-learning-maintenance/` — 1 files
+- `codes/ai-memory/plugins/codex/skills/ai-memory-messaging/` — 1 files
+- `codes/ai-memory/plugins/codex/skills/ai-memory-retrieval/` — 1 files
+- `codes/ai-memory/plugins/codex/skills/ai-memory-routing-install/` — 1 files
+- `codes/ai-memory/plugins/codex/skills/status/` — 1 files
+- `codes/ai-memory/scripts/` — 12 files
+- `codes/ai-memory/tests/` — 12 files
+- `codes/ai-memory/tests/e2e/` — 5 files
+- `codes/ai-memory/tests/hooks/` — 4 files
+- `codes/plane/` — 0 files
+- `docs/` — 70 files
+- `docs/design/` — 68 files
+- `docs/design/00-baseline/` — 7 files
+- `docs/design/01-contracts/` — 5 files
+- `docs/design/02-subprojects/` — 47 files
+- `docs/design/02-subprojects/P0/` — 1 files
+- `docs/design/02-subprojects/P1/` — 1 files
+- `docs/design/02-subprojects/P2/` — 1 files
+- `docs/design/02-subprojects/P3/` — 1 files
+- `docs/design/02-subprojects/P4/` — 1 files
+- `docs/design/02-subprojects/P5/` — 1 files
+- `docs/design/02-subprojects/P6/` — 1 files
+- `docs/design/02-subprojects/P7/` — 1 files
+- `docs/design/02-subprojects/P8/` — 1 files
+- `docs/design/02-subprojects/tasks/` — 38 files
+- `docs/design/03-integration/` — 3 files
+- `docs/design/04-testing/` — 2 files
+- `docs/design/05-release/` — 2 files
+- `docs/design/vendor/` — 1 files
+- `docs/superpowers/` — 1 files
+- `docs/superpowers/plans/` — 1 files
+- `docs/traceability/` — 1 files
+
+## 索引文件
+
+- [`FILE_INDEX.md`](FILE_INDEX.md) — 本索引文件；文件增删改名后必须同步更新。
+
+## 全量文件清单
+
+路径均相对于 `F:\PlaneMem`，每一项包含文件大小、扩展名和最后修改时间。供应商源码 `codes/ai-memory` 也纳入索引。
+
+### .gitmodules
+
+- [.gitmodules](.gitmodules) — 103 bytes; .gitmodules; 修改于 2026-10-20 17:55:12
+
+### codes — 外部源码与适配参考
+
+- [codes/ai-memory/.agents/plugins/marketplace.json](codes/ai-memory/.agents/plugins/marketplace.json) — 454 bytes; .json; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/.cargo/config.toml](codes/ai-memory/.cargo/config.toml) — 664 bytes; .toml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/.claude-plugin/marketplace.json](codes/ai-memory/.claude-plugin/marketplace.json) — 589 bytes; .json; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/.config/nextest.toml](codes/ai-memory/.config/nextest.toml) — 2304 bytes; .toml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/.dockerignore](codes/ai-memory/.dockerignore) — 600 bytes; .dockerignore; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/.gitattributes](codes/ai-memory/.gitattributes) — 1036 bytes; .gitattributes; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/.github/CODEOWNERS](codes/ai-memory/.github/CODEOWNERS) — 256 bytes; (none); 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/.github/codeql/extensions/ai-memory-models/codeql-pack.yml](codes/ai-memory/.github/codeql/extensions/ai-memory-models/codeql-pack.yml) — 149 bytes; .yml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/.github/codeql/extensions/ai-memory-models/models/log-barriers.model.yml](codes/ai-memory/.github/codeql/extensions/ai-memory-models/models/log-barriers.model.yml) — 1524 bytes; .yml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/.github/codeql/extensions/ai-memory-models/models/transmission-barriers.model.yml](codes/ai-memory/.github/codeql/extensions/ai-memory-models/models/transmission-barriers.model.yml) — 947 bytes; .yml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/.github/dependabot.yml](codes/ai-memory/.github/dependabot.yml) — 154 bytes; .yml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/.github/ISSUE_TEMPLATE/bug.md](codes/ai-memory/.github/ISSUE_TEMPLATE/bug.md) — 574 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/.github/ISSUE_TEMPLATE/feature.md](codes/ai-memory/.github/ISSUE_TEMPLATE/feature.md) — 640 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/.github/pull_request_template.md](codes/ai-memory/.github/pull_request_template.md) — 2252 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/.github/workflows/ci.yml](codes/ai-memory/.github/workflows/ci.yml) — 24583 bytes; .yml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/.github/workflows/desktop.yml](codes/ai-memory/.github/workflows/desktop.yml) — 3765 bytes; .yml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/.github/workflows/macos-app.yml](codes/ai-memory/.github/workflows/macos-app.yml) — 927 bytes; .yml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/.github/workflows/nix.yml](codes/ai-memory/.github/workflows/nix.yml) — 5110 bytes; .yml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/.github/workflows/plugins.yml](codes/ai-memory/.github/workflows/plugins.yml) — 5605 bytes; .yml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/.github/workflows/release.yml](codes/ai-memory/.github/workflows/release.yml) — 32508 bytes; .yml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/.github/workflows/sdk-ts-publish.yml](codes/ai-memory/.github/workflows/sdk-ts-publish.yml) — 3088 bytes; .yml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/.github/workflows/secret-scan.yml](codes/ai-memory/.github/workflows/secret-scan.yml) — 741 bytes; .yml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/.github/workflows/windows.yml](codes/ai-memory/.github/workflows/windows.yml) — 9328 bytes; .yml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/.gitignore](codes/ai-memory/.gitignore) — 1126 bytes; .gitignore; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/.gitleaks.toml](codes/ai-memory/.gitleaks.toml) — 3563 bytes; .toml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/.gitleaksignore](codes/ai-memory/.gitleaksignore) — 2195 bytes; .gitleaksignore; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/.ignore](codes/ai-memory/.ignore) — 38 bytes; .ignore; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/.mailmap](codes/ai-memory/.mailmap) — 160 bytes; .mailmap; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/AGENTS.md](codes/ai-memory/AGENTS.md) — 51050 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/bin/ai-memory](codes/ai-memory/bin/ai-memory) — 47810 bytes; (none); 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/bin/ai-memory.cmd](codes/ai-memory/bin/ai-memory.cmd) — 124 bytes; .cmd; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/bin/ai-memory.ps1](codes/ai-memory/bin/ai-memory.ps1) — 8854 bytes; .ps1; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/bin/deploy](codes/ai-memory/bin/deploy) — 4620 bytes; (none); 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/bin/deploy.env.example](codes/ai-memory/bin/deploy.env.example) — 1483 bytes; .example; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/bin/release](codes/ai-memory/bin/release) — 8550 bytes; (none); 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/Cargo.lock](codes/ai-memory/Cargo.lock) — 136181 bytes; .lock; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/Cargo.toml](codes/ai-memory/Cargo.toml) — 9541 bytes; .toml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/CHANGELOG.md](codes/ai-memory/CHANGELOG.md) — 105993 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/CLAUDE.md](codes/ai-memory/CLAUDE.md) — 721 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-client/Cargo.lock](codes/ai-memory/companions/ai-memory-client/Cargo.lock) — 3969 bytes; .lock; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-client/Cargo.toml](codes/ai-memory/companions/ai-memory-client/Cargo.toml) — 301 bytes; .toml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-client/README.md](codes/ai-memory/companions/ai-memory-client/README.md) — 2352 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-client/src/lib.rs](codes/ai-memory/companions/ai-memory-client/src/lib.rs) — 5612 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-client/src/scrub.rs](codes/ai-memory/companions/ai-memory-client/src/scrub.rs) — 3073 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-client/tests/suite/mod.rs](codes/ai-memory/companions/ai-memory-client/tests/suite/mod.rs) — 13173 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-desktop/.gitignore](codes/ai-memory/companions/ai-memory-desktop/.gitignore) — 34 bytes; .gitignore; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-desktop/build.rs](codes/ai-memory/companions/ai-memory-desktop/build.rs) — 43 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-desktop/capabilities/default.json](codes/ai-memory/companions/ai-memory-desktop/capabilities/default.json) — 271 bytes; .json; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-desktop/Cargo.lock](codes/ai-memory/companions/ai-memory-desktop/Cargo.lock) — 109486 bytes; .lock; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-desktop/Cargo.toml](codes/ai-memory/companions/ai-memory-desktop/Cargo.toml) — 683 bytes; .toml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-desktop/icons/128x128.png](codes/ai-memory/companions/ai-memory-desktop/icons/128x128.png) — 23552 bytes; .png; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-desktop/icons/128x128@2x.png](codes/ai-memory/companions/ai-memory-desktop/icons/128x128@2x.png) — 80319 bytes; .png; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-desktop/icons/32x32.png](codes/ai-memory/companions/ai-memory-desktop/icons/32x32.png) — 2141 bytes; .png; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-desktop/icons/icon.icns](codes/ai-memory/companions/ai-memory-desktop/icons/icon.icns) — 1835192 bytes; .icns; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-desktop/icons/icon.ico](codes/ai-memory/companions/ai-memory-desktop/icons/icon.ico) — 96977 bytes; .ico; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-desktop/icons/icon.png](codes/ai-memory/companions/ai-memory-desktop/icons/icon.png) — 287251 bytes; .png; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-desktop/README.md](codes/ai-memory/companions/ai-memory-desktop/README.md) — 3945 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-desktop/src/lib.rs](codes/ai-memory/companions/ai-memory-desktop/src/lib.rs) — 15541 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-desktop/src/main.rs](codes/ai-memory/companions/ai-memory-desktop/src/main.rs) — 7885 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-desktop/tauri.bundle.json](codes/ai-memory/companions/ai-memory-desktop/tauri.bundle.json) — 120 bytes; .json; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-desktop/tauri.conf.json](codes/ai-memory/companions/ai-memory-desktop/tauri.conf.json) — 899 bytes; .json; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-desktop/ui/app.js](codes/ai-memory/companions/ai-memory-desktop/ui/app.js) — 361 bytes; .js; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-desktop/ui/index.html](codes/ai-memory/companions/ai-memory-desktop/ui/index.html) — 457 bytes; .html; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-desktop/ui/style.css](codes/ai-memory/companions/ai-memory-desktop/ui/style.css) — 599 bytes; .css; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-importer/Cargo.lock](codes/ai-memory/companions/ai-memory-importer/Cargo.lock) — 49353 bytes; .lock; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-importer/Cargo.toml](codes/ai-memory/companions/ai-memory-importer/Cargo.toml) — 925 bytes; .toml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-importer/README.md](codes/ai-memory/companions/ai-memory-importer/README.md) — 15226 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-importer/src/agentmemory/e2e.rs](codes/ai-memory/companions/ai-memory-importer/src/agentmemory/e2e.rs) — 9112 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-importer/src/agentmemory/export.rs](codes/ai-memory/companions/ai-memory-importer/src/agentmemory/export.rs) — 51787 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-importer/src/agentmemory/export/tests.rs](codes/ai-memory/companions/ai-memory-importer/src/agentmemory/export/tests.rs) — 21668 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-importer/src/agentmemory/mock.rs](codes/ai-memory/companions/ai-memory-importer/src/agentmemory/mock.rs) — 9156 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-importer/src/agentmemory/mod.rs](codes/ai-memory/companions/ai-memory-importer/src/agentmemory/mod.rs) — 26658 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-importer/src/agentmemory/vault.rs](codes/ai-memory/companions/ai-memory-importer/src/agentmemory/vault.rs) — 28067 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-importer/src/main.rs](codes/ai-memory/companions/ai-memory-importer/src/main.rs) — 82253 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-importer/src/mcp.rs](codes/ai-memory/companions/ai-memory-importer/src/mcp.rs) — 11856 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-importer/src/test_http.rs](codes/ai-memory/companions/ai-memory-importer/src/test_http.rs) — 1701 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-macos/.gitignore](codes/ai-memory/companions/ai-memory-macos/.gitignore) — 79 bytes; .gitignore; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-macos/build.sh](codes/ai-memory/companions/ai-memory-macos/build.sh) — 1918 bytes; .sh; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-macos/Info.plist](codes/ai-memory/companions/ai-memory-macos/Info.plist) — 1073 bytes; .plist; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-macos/Package.swift](codes/ai-memory/companions/ai-memory-macos/Package.swift) — 759 bytes; .swift; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-macos/README.md](codes/ai-memory/companions/ai-memory-macos/README.md) — 2797 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-macos/Sources/AIMemoryMenu/App.swift](codes/ai-memory/companions/ai-memory-macos/Sources/AIMemoryMenu/App.swift) — 684 bytes; .swift; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-macos/Sources/AIMemoryMenu/AppModel.swift](codes/ai-memory/companions/ai-memory-macos/Sources/AIMemoryMenu/AppModel.swift) — 11454 bytes; .swift; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-macos/Sources/AIMemoryMenu/MenuBarView.swift](codes/ai-memory/companions/ai-memory-macos/Sources/AIMemoryMenu/MenuBarView.swift) — 4740 bytes; .swift; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-macos/Sources/AIMemoryMenu/SettingsView.swift](codes/ai-memory/companions/ai-memory-macos/Sources/AIMemoryMenu/SettingsView.swift) — 4050 bytes; .swift; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-macos/Sources/AIMemoryMenu/StatusOutputView.swift](codes/ai-memory/companions/ai-memory-macos/Sources/AIMemoryMenu/StatusOutputView.swift) — 1265 bytes; .swift; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-macos/Sources/AIMemoryMenuCore/AppSettings.swift](codes/ai-memory/companions/ai-memory-macos/Sources/AIMemoryMenuCore/AppSettings.swift) — 1572 bytes; .swift; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-macos/Sources/AIMemoryMenuCore/BundledRuntime.swift](codes/ai-memory/companions/ai-memory-macos/Sources/AIMemoryMenuCore/BundledRuntime.swift) — 3696 bytes; .swift; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-macos/Sources/AIMemoryMenuCore/HealthClient.swift](codes/ai-memory/companions/ai-memory-macos/Sources/AIMemoryMenuCore/HealthClient.swift) — 2006 bytes; .swift; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-macos/Sources/AIMemoryMenuCore/HealthModels.swift](codes/ai-memory/companions/ai-memory-macos/Sources/AIMemoryMenuCore/HealthModels.swift) — 9037 bytes; .swift; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-macos/Sources/AIMemoryMenuCore/LaunchdController.swift](codes/ai-memory/companions/ai-memory-macos/Sources/AIMemoryMenuCore/LaunchdController.swift) — 4467 bytes; .swift; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-macos/Sources/AIMemoryMenuCore/ProcessRunner.swift](codes/ai-memory/companions/ai-memory-macos/Sources/AIMemoryMenuCore/ProcessRunner.swift) — 2384 bytes; .swift; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-macos/Sources/AIMemoryMenuCore/ServerLog.swift](codes/ai-memory/companions/ai-memory-macos/Sources/AIMemoryMenuCore/ServerLog.swift) — 2397 bytes; .swift; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-macos/Sources/AIMemoryMenuCore/TokenStore.swift](codes/ai-memory/companions/ai-memory-macos/Sources/AIMemoryMenuCore/TokenStore.swift) — 4304 bytes; .swift; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-macos/Tests/AIMemoryMenuTests/AppSettingsTests.swift](codes/ai-memory/companions/ai-memory-macos/Tests/AIMemoryMenuTests/AppSettingsTests.swift) — 931 bytes; .swift; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-macos/Tests/AIMemoryMenuTests/DataDirTokenTests.swift](codes/ai-memory/companions/ai-memory-macos/Tests/AIMemoryMenuTests/DataDirTokenTests.swift) — 1769 bytes; .swift; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-macos/Tests/AIMemoryMenuTests/fixtures/status.json](codes/ai-memory/companions/ai-memory-macos/Tests/AIMemoryMenuTests/fixtures/status.json) — 730 bytes; .json; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-macos/Tests/AIMemoryMenuTests/HealthModelsTests.swift](codes/ai-memory/companions/ai-memory-macos/Tests/AIMemoryMenuTests/HealthModelsTests.swift) — 4497 bytes; .swift; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-macos/Tests/AIMemoryMenuTests/LaunchdControllerTests.swift](codes/ai-memory/companions/ai-memory-macos/Tests/AIMemoryMenuTests/LaunchdControllerTests.swift) — 3276 bytes; .swift; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-macos/Tests/AIMemoryMenuTests/RuntimeAndCliTests.swift](codes/ai-memory/companions/ai-memory-macos/Tests/AIMemoryMenuTests/RuntimeAndCliTests.swift) — 5605 bytes; .swift; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-macos/Tests/AIMemoryMenuTests/ServerLogTests.swift](codes/ai-memory/companions/ai-memory-macos/Tests/AIMemoryMenuTests/ServerLogTests.swift) — 4307 bytes; .swift; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-relay/Cargo.lock](codes/ai-memory/companions/ai-memory-relay/Cargo.lock) — 46505 bytes; .lock; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-relay/Cargo.toml](codes/ai-memory/companions/ai-memory-relay/Cargo.toml) — 1054 bytes; .toml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-relay/README.md](codes/ai-memory/companions/ai-memory-relay/README.md) — 13166 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-relay/src/ack.rs](codes/ai-memory/companions/ai-memory-relay/src/ack.rs) — 5982 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-relay/src/fsguard.rs](codes/ai-memory/companions/ai-memory-relay/src/fsguard.rs) — 10709 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-relay/src/http.rs](codes/ai-memory/companions/ai-memory-relay/src/http.rs) — 7149 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-relay/src/identity.rs](codes/ai-memory/companions/ai-memory-relay/src/identity.rs) — 9467 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-relay/src/lib.rs](codes/ai-memory/companions/ai-memory-relay/src/lib.rs) — 1102 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-relay/src/main.rs](codes/ai-memory/companions/ai-memory-relay/src/main.rs) — 3422 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-relay/src/queue.rs](codes/ai-memory/companions/ai-memory-relay/src/queue.rs) — 34614 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-relay/src/relay.rs](codes/ai-memory/companions/ai-memory-relay/src/relay.rs) — 24821 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-relay/tests/relay.rs](codes/ai-memory/companions/ai-memory-relay/tests/relay.rs) — 95942 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/.gitignore](codes/ai-memory/companions/ai-memory-ts/.gitignore) — 37 bytes; .gitignore; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/CHANGELOG.md](codes/ai-memory/companions/ai-memory-ts/CHANGELOG.md) — 959 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/docs/arguments.md](codes/ai-memory/companions/ai-memory-ts/docs/arguments.md) — 4935 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/docs/compatibility.md](codes/ai-memory/companions/ai-memory-ts/docs/compatibility.md) — 2124 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/docs/concepts.md](codes/ai-memory/companions/ai-memory-ts/docs/concepts.md) — 8346 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/docs/troubleshooting.md](codes/ai-memory/companions/ai-memory-ts/docs/troubleshooting.md) — 6702 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/examples/admin-dry-run.ts](codes/ai-memory/companions/ai-memory-ts/examples/admin-dry-run.ts) — 1183 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/examples/conditional-update.ts](codes/ai-memory/companions/ai-memory-ts/examples/conditional-update.ts) — 1653 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/examples/env.ts](codes/ai-memory/companions/ai-memory-ts/examples/env.ts) — 560 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/examples/handoff.ts](codes/ai-memory/companions/ai-memory-ts/examples/handoff.ts) — 1232 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/examples/incremental-sync.ts](codes/ai-memory/companions/ai-memory-ts/examples/incremental-sync.ts) — 1561 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/examples/quickstart.ts](codes/ai-memory/companions/ai-memory-ts/examples/quickstart.ts) — 1610 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/package-lock.json](codes/ai-memory/companions/ai-memory-ts/package-lock.json) — 11158 bytes; .json; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/package.json](codes/ai-memory/companions/ai-memory-ts/package.json) — 1868 bytes; .json; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/README.md](codes/ai-memory/companions/ai-memory-ts/README.md) — 9667 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/schema/tools.json](codes/ai-memory/companions/ai-memory-ts/schema/tools.json) — 15977 bytes; .json; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/scripts/generate-docs.ts](codes/ai-memory/companions/ai-memory-ts/scripts/generate-docs.ts) — 4898 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/scripts/schema-check.ts](codes/ai-memory/companions/ai-memory-ts/scripts/schema-check.ts) — 1807 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/scripts/schema-update.ts](codes/ai-memory/companions/ai-memory-ts/scripts/schema-update.ts) — 939 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/src/admin.ts](codes/ai-memory/companions/ai-memory-ts/src/admin.ts) — 12876 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/src/api.ts](codes/ai-memory/companions/ai-memory-ts/src/api.ts) — 12587 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/src/capabilities.ts](codes/ai-memory/companions/ai-memory-ts/src/capabilities.ts) — 7949 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/src/client.ts](codes/ai-memory/companions/ai-memory-ts/src/client.ts) — 32737 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/src/core.ts](codes/ai-memory/companions/ai-memory-ts/src/core.ts) — 4295 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/src/coverage.ts](codes/ai-memory/companions/ai-memory-ts/src/coverage.ts) — 5573 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/src/decode.ts](codes/ai-memory/companions/ai-memory-ts/src/decode.ts) — 13539 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/src/errors.ts](codes/ai-memory/companions/ai-memory-ts/src/errors.ts) — 10073 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/src/index.ts](codes/ai-memory/companions/ai-memory-ts/src/index.ts) — 1260 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/src/scope.ts](codes/ai-memory/companions/ai-memory-ts/src/scope.ts) — 2352 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/src/transport.ts](codes/ai-memory/companions/ai-memory-ts/src/transport.ts) — 20025 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/src/types.ts](codes/ai-memory/companions/ai-memory-ts/src/types.ts) — 33312 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/test/integration/admin.test.ts](codes/ai-memory/companions/ai-memory-ts/test/integration/admin.test.ts) — 4407 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/test/integration/drift.test.ts](codes/ai-memory/companions/ai-memory-ts/test/integration/drift.test.ts) — 2769 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/test/integration/examples.test.ts](codes/ai-memory/companions/ai-memory-ts/test/integration/examples.test.ts) — 3750 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/test/integration/handoffs-messages.test.ts](codes/ai-memory/companions/ai-memory-ts/test/integration/handoffs-messages.test.ts) — 6516 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/test/integration/pages.test.ts](codes/ai-memory/companions/ai-memory-ts/test/integration/pages.test.ts) — 8237 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/test/integration/reads.test.ts](codes/ai-memory/companions/ai-memory-ts/test/integration/reads.test.ts) — 8561 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/test/support/fake.ts](codes/ai-memory/companions/ai-memory-ts/test/support/fake.ts) — 6931 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/test/support/payloads.ts](codes/ai-memory/companions/ai-memory-ts/test/support/payloads.ts) — 4641 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/test/support/schema.ts](codes/ai-memory/companions/ai-memory-ts/test/support/schema.ts) — 6028 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/test/support/server.ts](codes/ai-memory/companions/ai-memory-ts/test/support/server.ts) — 8789 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/test/support/tools-list.ts](codes/ai-memory/companions/ai-memory-ts/test/support/tools-list.ts) — 679 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/test/unit/admin.test.ts](codes/ai-memory/companions/ai-memory-ts/test/unit/admin.test.ts) — 5361 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/test/unit/api.test.ts](codes/ai-memory/companions/ai-memory-ts/test/unit/api.test.ts) — 9717 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/test/unit/client.test.ts](codes/ai-memory/companions/ai-memory-ts/test/unit/client.test.ts) — 22720 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/test/unit/scope.test.ts](codes/ai-memory/companions/ai-memory-ts/test/unit/scope.test.ts) — 4781 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/test/unit/security.test.ts](codes/ai-memory/companions/ai-memory-ts/test/unit/security.test.ts) — 11387 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/test/unit/transport.test.ts](codes/ai-memory/companions/ai-memory-ts/test/unit/transport.test.ts) — 14279 bytes; .ts; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/tsconfig.build.json](codes/ai-memory/companions/ai-memory-ts/tsconfig.build.json) — 223 bytes; .json; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/tsconfig.json](codes/ai-memory/companions/ai-memory-ts/tsconfig.json) — 670 bytes; .json; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/tsconfig.test.json](codes/ai-memory/companions/ai-memory-ts/tsconfig.test.json) — 337 bytes; .json; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-ts/typedoc.json](codes/ai-memory/companions/ai-memory-ts/typedoc.json) — 462 bytes; .json; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-wikisync/Cargo.lock](codes/ai-memory/companions/ai-memory-wikisync/Cargo.lock) — 43302 bytes; .lock; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-wikisync/Cargo.toml](codes/ai-memory/companions/ai-memory-wikisync/Cargo.toml) — 695 bytes; .toml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-wikisync/README.md](codes/ai-memory/companions/ai-memory-wikisync/README.md) — 12349 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-wikisync/src/bidi.rs](codes/ai-memory/companions/ai-memory-wikisync/src/bidi.rs) — 47312 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-wikisync/src/client.rs](codes/ai-memory/companions/ai-memory-wikisync/src/client.rs) — 11812 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-wikisync/src/hook.rs](codes/ai-memory/companions/ai-memory-wikisync/src/hook.rs) — 27720 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-wikisync/src/lib.rs](codes/ai-memory/companions/ai-memory-wikisync/src/lib.rs) — 1437 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-wikisync/src/main.rs](codes/ai-memory/companions/ai-memory-wikisync/src/main.rs) — 11153 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-wikisync/src/mcp.rs](codes/ai-memory/companions/ai-memory-wikisync/src/mcp.rs) — 12161 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-wikisync/src/page_file.rs](codes/ai-memory/companions/ai-memory-wikisync/src/page_file.rs) — 10467 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-wikisync/src/paths.rs](codes/ai-memory/companions/ai-memory-wikisync/src/paths.rs) — 14127 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-wikisync/src/state.rs](codes/ai-memory/companions/ai-memory-wikisync/src/state.rs) — 13892 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-wikisync/src/sync.rs](codes/ai-memory/companions/ai-memory-wikisync/src/sync.rs) — 26547 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/companions/ai-memory-wikisync/tests/api_server.rs](codes/ai-memory/companions/ai-memory-wikisync/tests/api_server.rs) — 57693 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/CONTRIBUTING.md](codes/ai-memory/CONTRIBUTING.md) — 9997 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/Cargo.toml](codes/ai-memory/crates/ai-memory-cli/Cargo.toml) — 3771 bytes; .toml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/auth_bearer.rs](codes/ai-memory/crates/ai-memory-cli/src/auth_bearer.rs) — 7189 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/cli.rs](codes/ai-memory/crates/ai-memory-cli/src/cli.rs) — 217444 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/agent_plugins.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/agent_plugins.rs) — 14293 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/agentmemory_residue.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/agentmemory_residue.rs) — 23558 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/api_key.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/api_key.rs) — 5668 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/apply_shared.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/apply_shared.rs) — 21492 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/audit_contamination.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/audit_contamination.rs) — 4031 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/auth_enable.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/auth_enable.rs) — 25288 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/auth.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/auth.rs) — 22337 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/auto_improve_report.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/auto_improve_report.rs) — 8335 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/auto_improve.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/auto_improve.rs) — 7998 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/backfill.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/backfill.rs) — 127735 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/backup_agents.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/backup_agents.rs) — 31665 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/backup.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/backup.rs) — 1762 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/bootstrap.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/bootstrap.rs) — 16389 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/checkpoints.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/checkpoints.rs) — 1268 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/codex_hook_trust.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/codex_hook_trust.rs) — 10779 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/commit.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/commit.rs) — 1403 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/compact.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/compact.rs) — 3124 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/completions.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/completions.rs) — 2457 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/continue_session.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/continue_session.rs) — 13202 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/curator.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/curator.rs) — 4794 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/data_purge.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/data_purge.rs) — 3452 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/delete_page.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/delete_page.rs) — 2100 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/doctor.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/doctor.rs) — 74013 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/doctor/presentation.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/doctor/presentation.rs) — 6481 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/embed.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/embed.rs) — 6930 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/export_okf.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/export_okf.rs) — 1835 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/finalize_session.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/finalize_session.rs) — 21090 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/forget_sweep.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/forget_sweep.rs) — 1263 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/generate_auth_token.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/generate_auth_token.rs) — 1056 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/grant.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/grant.rs) — 5781 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/handoffs.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/handoffs.rs) — 5705 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/hook_capture.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/hook_capture.rs) — 96192 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/hook_drain_process.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/hook_drain_process.rs) — 17216 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/hook_spool.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/hook_spool.rs) — 233600 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/hook.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/hook.rs) — 320383 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/init.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/init.rs) — 23614 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/install_hooks.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/install_hooks.rs) — 655360 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/install_instructions.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/install_instructions.rs) — 39639 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/install_mcp.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/install_mcp.rs) — 227928 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/install_skills.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/install_skills.rs) — 37206 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/lint.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/lint.rs) — 1147 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/list_projects.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/list_projects.rs) — 13390 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/llm_test.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/llm_test.rs) — 6354 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/mcp_bridge.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/mcp_bridge.rs) — 25387 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/message.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/message.rs) — 8986 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/mod.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/mod.rs) — 37554 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/move_project.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/move_project.rs) — 7447 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/move_session.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/move_session.rs) — 12078 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/openclaw_plugin.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/openclaw_plugin.rs) — 47321 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/opencode_dialect.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/opencode_dialect.rs) — 11172 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/path_util.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/path_util.rs) — 7806 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/pending_writes.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/pending_writes.rs) — 5308 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/plugin_origin.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/plugin_origin.rs) — 24277 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/profile.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/profile.rs) — 21273 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/project_init.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/project_init.rs) — 14458 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/project_registry.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/project_registry.rs) — 22134 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/project.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/project.rs) — 2706 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/purge_preview.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/purge_preview.rs) — 4984 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/purge_project.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/purge_project.rs) — 22294 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/purge_session.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/purge_session.rs) — 20061 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/read_page.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/read_page.rs) — 4183 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/reclaim_ledger_versions.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/reclaim_ledger_versions.rs) — 3498 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/recovery.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/recovery.rs) — 94103 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/reindex.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/reindex.rs) — 5391 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/rename_project.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/rename_project.rs) — 3510 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/rename_workstream.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/rename_workstream.rs) — 3381 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/render_plugins.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/render_plugins.rs) — 19461 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/render_shared.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/render_shared.rs) — 310388 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/reorg.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/reorg.rs) — 2518 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/repair_backfill_timestamps.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/repair_backfill_timestamps.rs) — 14976 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/reset.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/reset.rs) — 3310 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/restore_agents.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/restore_agents.rs) — 24312 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/restore_page.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/restore_page.rs) — 2055 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/restore.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/restore.rs) — 32734 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/resume.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/resume.rs) — 27965 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/run_autowire.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/run_autowire.rs) — 82829 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/run.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/run.rs) — 405795 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/search.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/search.rs) — 4702 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/serve.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/serve.rs) — 297336 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/server.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/server.rs) — 11107 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/service_host.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/service_host.rs) — 32206 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/setup_agent.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/setup_agent.rs) — 47290 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/setup_web.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/setup_web.rs) — 29467 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/setup.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/setup.rs) — 68568 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/show.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/show.rs) — 43948 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/status.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/status.rs) — 27690 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/status/presentation.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/status/presentation.rs) — 9610 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/transcript_capture.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/transcript_capture.rs) — 42445 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/uninstall.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/uninstall.rs) — 129951 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/upgrade.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/upgrade.rs) — 67883 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/user_service.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/user_service.rs) — 81745 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/user.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/user.rs) — 11165 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/workstream_search.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/workstream_search.rs) — 1843 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/workstreams.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/workstreams.rs) — 7000 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/commands/write_page.rs](codes/ai-memory/crates/ai-memory-cli/src/commands/write_page.rs) — 3043 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/config.rs](codes/ai-memory/crates/ai-memory-cli/src/config.rs) — 303148 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/http_client.rs](codes/ai-memory/crates/ai-memory-cli/src/http_client.rs) — 47058 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/install_layout.rs](codes/ai-memory/crates/ai-memory-cli/src/install_layout.rs) — 986 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/lib.rs](codes/ai-memory/crates/ai-memory-cli/src/lib.rs) — 10847 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/local_auth.rs](codes/ai-memory/crates/ai-memory-cli/src/local_auth.rs) — 8401 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/logging.rs](codes/ai-memory/crates/ai-memory-cli/src/logging.rs) — 12938 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/main.rs](codes/ai-memory/crates/ai-memory-cli/src/main.rs) — 2495 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/marker.rs](codes/ai-memory/crates/ai-memory-cli/src/marker.rs) — 99266 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/process_guard.rs](codes/ai-memory/crates/ai-memory-cli/src/process_guard.rs) — 3696 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/server_profiles.rs](codes/ai-memory/crates/ai-memory-cli/src/server_profiles.rs) — 34872 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/src/terminal.rs](codes/ai-memory/crates/ai-memory-cli/src/terminal.rs) — 7410 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/templates/config.default.toml](codes/ai-memory/crates/ai-memory-cli/templates/config.default.toml) — 16807 bytes; .toml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/templates/plugin/ai-memory-hook.sh](codes/ai-memory/crates/ai-memory-cli/templates/plugin/ai-memory-hook.sh) — 4250 bytes; .sh; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/templates/plugin/claude-code-README.md](codes/ai-memory/crates/ai-memory-cli/templates/plugin/claude-code-README.md) — 4091 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/templates/plugin/codex-README.md](codes/ai-memory/crates/ai-memory-cli/templates/plugin/codex-README.md) — 2304 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/templates/plugin/README.md](codes/ai-memory/crates/ai-memory-cli/templates/plugin/README.md) — 2342 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/templates/plugin/status-SKILL.md](codes/ai-memory/crates/ai-memory-cli/templates/plugin/status-SKILL.md) — 1493 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/templates/setup_web.html](codes/ai-memory/crates/ai-memory-cli/templates/setup_web.html) — 9893 bytes; .html; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/fixtures/kiro-v3-hook-payloads.json](codes/ai-memory/crates/ai-memory-cli/tests/fixtures/kiro-v3-hook-payloads.json) — 1570 bytes; .json; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/fixtures/opencode2-plugin.mjs](codes/ai-memory/crates/ai-memory-cli/tests/fixtures/opencode2-plugin.mjs) — 9106 bytes; .mjs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/auth_default_e2e.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/auth_default_e2e.rs) — 39502 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/autoscope_env.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/autoscope_env.rs) — 16006 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/backfill_dry_run.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/backfill_dry_run.rs) — 3028 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/backfill_e2e.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/backfill_e2e.rs) — 27172 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/backfill_failures.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/backfill_failures.rs) — 6762 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/backfill_member.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/backfill_member.rs) — 3856 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/backup_agents.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/backup_agents.rs) — 31880 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/backup_download.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/backup_download.rs) — 10710 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/completions.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/completions.rs) — 3377 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/cross_origin_e2e.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/cross_origin_e2e.rs) — 37040 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/doctor_e2e.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/doctor_e2e.rs) — 26675 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/e2e_support.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/e2e_support.rs) — 11444 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/external_capture_powershell.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/external_capture_powershell.rs) — 7449 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/external_capture_ts.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/external_capture_ts.rs) — 12628 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/external_capture.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/external_capture.rs) — 22978 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/hook_drain.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/hook_drain.rs) — 877 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/hook_payload.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/hook_payload.rs) — 21181 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/install_script.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/install_script.rs) — 13239 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/jail_toggles_e2e.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/jail_toggles_e2e.rs) — 35198 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/main.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/main.rs) — 1231 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/marker_scope.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/marker_scope.rs) — 6424 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/mcp_bridge_stdio.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/mcp_bridge_stdio.rs) — 7540 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/message_e2e.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/message_e2e.rs) — 12348 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/opencode_dialect.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/opencode_dialect.rs) — 6164 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/packaging.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/packaging.rs) — 139641 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/plugins.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/plugins.rs) — 29680 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/profile_e2e.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/profile_e2e.rs) — 5717 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/removal.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/removal.rs) — 85154 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/repo_layout.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/repo_layout.rs) — 6657 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/routing_instructions.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/routing_instructions.rs) — 23722 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/routing_skills.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/routing_skills.rs) — 1271 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/run_offline.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/run_offline.rs) — 28426 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/serve_shutdown.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/serve_shutdown.rs) — 16750 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/server_profiles.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/server_profiles.rs) — 17567 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/service_host_windows.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/service_host_windows.rs) — 6165 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/setup_e2e.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/setup_e2e.rs) — 32304 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/shutdown_signals.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/shutdown_signals.rs) — 26591 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/upgrade_e2e.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/upgrade_e2e.rs) — 16379 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/workstream_identity.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/workstream_identity.rs) — 2597 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/workstream_provenance.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/workstream_provenance.rs) — 3289 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-cli/tests/suite/yolo_ai_jail.rs](codes/ai-memory/crates/ai-memory-cli/tests/suite/yolo_ai_jail.rs) — 11477 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/Cargo.toml](codes/ai-memory/crates/ai-memory-consolidate/Cargo.toml) — 1620 bytes; .toml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/prompts/batch_consolidate_system.md](codes/ai-memory/crates/ai-memory-consolidate/prompts/batch_consolidate_system.md) — 5871 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/prompts/bootstrap_system.md](codes/ai-memory/crates/ai-memory-consolidate/prompts/bootstrap_system.md) — 3930 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/prompts/lint_system.md](codes/ai-memory/crates/ai-memory-consolidate/prompts/lint_system.md) — 2980 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/prompts/profile_classify_system.md](codes/ai-memory/crates/ai-memory-consolidate/prompts/profile_classify_system.md) — 1873 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/prompts/profile_merge_system.md](codes/ai-memory/crates/ai-memory-consolidate/prompts/profile_merge_system.md) — 2044 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/prompts/single_consolidate_system.md](codes/ai-memory/crates/ai-memory-consolidate/prompts/single_consolidate_system.md) — 5582 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/prompts/wikilinks_fragment.md](codes/ai-memory/crates/ai-memory-consolidate/prompts/wikilinks_fragment.md) — 1484 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/src/auto_improve_oracle.rs](codes/ai-memory/crates/ai-memory-consolidate/src/auto_improve_oracle.rs) — 8282 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/src/auto_improve_schedule.rs](codes/ai-memory/crates/ai-memory-consolidate/src/auto_improve_schedule.rs) — 68209 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/src/auto_improve_telemetry.rs](codes/ai-memory/crates/ai-memory-consolidate/src/auto_improve_telemetry.rs) — 16191 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/src/auto_improve.rs](codes/ai-memory/crates/ai-memory-consolidate/src/auto_improve.rs) — 180719 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/src/bootstrap.rs](codes/ai-memory/crates/ai-memory-consolidate/src/bootstrap.rs) — 110985 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/src/code_fence.rs](codes/ai-memory/crates/ai-memory-consolidate/src/code_fence.rs) — 4326 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/src/cold_cluster.rs](codes/ai-memory/crates/ai-memory-consolidate/src/cold_cluster.rs) — 11126 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/src/compaction.rs](codes/ai-memory/crates/ai-memory-consolidate/src/compaction.rs) — 7895 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/src/consolidator_frozen_oracle.rs](codes/ai-memory/crates/ai-memory-consolidate/src/consolidator_frozen_oracle.rs) — 48231 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/src/consolidator_oracle.rs](codes/ai-memory/crates/ai-memory-consolidate/src/consolidator_oracle.rs) — 12838 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/src/consolidator.rs](codes/ai-memory/crates/ai-memory-consolidate/src/consolidator.rs) — 260301 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/src/curator.rs](codes/ai-memory/crates/ai-memory-consolidate/src/curator.rs) — 38270 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/src/dream.rs](codes/ai-memory/crates/ai-memory-consolidate/src/dream.rs) — 33650 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/src/embed.rs](codes/ai-memory/crates/ai-memory-consolidate/src/embed.rs) — 10584 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/src/entropy_filter.rs](codes/ai-memory/crates/ai-memory-consolidate/src/entropy_filter.rs) — 10964 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/src/experience.rs](codes/ai-memory/crates/ai-memory-consolidate/src/experience.rs) — 12848 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/src/keep_tokens.rs](codes/ai-memory/crates/ai-memory-consolidate/src/keep_tokens.rs) — 13368 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/src/lib.rs](codes/ai-memory/crates/ai-memory-consolidate/src/lib.rs) — 5447 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/src/link_guard.rs](codes/ai-memory/crates/ai-memory-consolidate/src/link_guard.rs) — 13282 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/src/lint.rs](codes/ai-memory/crates/ai-memory-consolidate/src/lint.rs) — 59659 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/src/path_sanitize.rs](codes/ai-memory/crates/ai-memory-consolidate/src/path_sanitize.rs) — 8252 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/src/profile.rs](codes/ai-memory/crates/ai-memory-consolidate/src/profile.rs) — 113186 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/src/projection.rs](codes/ai-memory/crates/ai-memory-consolidate/src/projection.rs) — 73828 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/src/prompt_template.rs](codes/ai-memory/crates/ai-memory-consolidate/src/prompt_template.rs) — 5624 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/src/sweep.rs](codes/ai-memory/crates/ai-memory-consolidate/src/sweep.rs) — 67909 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/src/types.rs](codes/ai-memory/crates/ai-memory-consolidate/src/types.rs) — 10586 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/tests/suite/abstract_backfill.rs](codes/ai-memory/crates/ai-memory-consolidate/tests/suite/abstract_backfill.rs) — 3576 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/tests/suite/access_breadth_sweep.rs](codes/ai-memory/crates/ai-memory-consolidate/tests/suite/access_breadth_sweep.rs) — 12587 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/tests/suite/aging_lifecycle.rs](codes/ai-memory/crates/ai-memory-consolidate/tests/suite/aging_lifecycle.rs) — 36487 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/tests/suite/bounded_session_load.rs](codes/ai-memory/crates/ai-memory-consolidate/tests/suite/bounded_session_load.rs) — 81793 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/tests/suite/cold_cluster_sweep.rs](codes/ai-memory/crates/ai-memory-consolidate/tests/suite/cold_cluster_sweep.rs) — 11832 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/tests/suite/compaction_sweep.rs](codes/ai-memory/crates/ai-memory-consolidate/tests/suite/compaction_sweep.rs) — 17922 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/tests/suite/contradiction_lint.rs](codes/ai-memory/crates/ai-memory-consolidate/tests/suite/contradiction_lint.rs) — 14854 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/tests/suite/dream_pass.rs](codes/ai-memory/crates/ai-memory-consolidate/tests/suite/dream_pass.rs) — 19154 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/tests/suite/embed_backfill.rs](codes/ai-memory/crates/ai-memory-consolidate/tests/suite/embed_backfill.rs) — 14302 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/tests/suite/embeddings.rs](codes/ai-memory/crates/ai-memory-consolidate/tests/suite/embeddings.rs) — 7017 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/tests/suite/entropy_experience.rs](codes/ai-memory/crates/ai-memory-consolidate/tests/suite/entropy_experience.rs) — 7508 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/tests/suite/eval_results.rs](codes/ai-memory/crates/ai-memory-consolidate/tests/suite/eval_results.rs) — 11408 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/tests/suite/ledger_sweep.rs](codes/ai-memory/crates/ai-memory-consolidate/tests/suite/ledger_sweep.rs) — 19679 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/tests/suite/lifecycle.rs](codes/ai-memory/crates/ai-memory-consolidate/tests/suite/lifecycle.rs) — 39848 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/tests/suite/local_embeddings.rs](codes/ai-memory/crates/ai-memory-consolidate/tests/suite/local_embeddings.rs) — 10543 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/tests/suite/mod.rs](codes/ai-memory/crates/ai-memory-consolidate/tests/suite/mod.rs) — 724 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/tests/suite/multi_machine.rs](codes/ai-memory/crates/ai-memory-consolidate/tests/suite/multi_machine.rs) — 3758 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/tests/suite/observation_retention.rs](codes/ai-memory/crates/ai-memory-consolidate/tests/suite/observation_retention.rs) — 17840 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/tests/suite/profile_harvest.rs](codes/ai-memory/crates/ai-memory-consolidate/tests/suite/profile_harvest.rs) — 45627 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/tests/suite/recall_eval.rs](codes/ai-memory/crates/ai-memory-consolidate/tests/suite/recall_eval.rs) — 23910 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/tests/suite/search_quality.rs](codes/ai-memory/crates/ai-memory-consolidate/tests/suite/search_quality.rs) — 5555 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/tests/suite/typed_edges.rs](codes/ai-memory/crates/ai-memory-consolidate/tests/suite/typed_edges.rs) — 12680 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-consolidate/tests/suite/verbatim_residue_consolidation.rs](codes/ai-memory/crates/ai-memory-consolidate/tests/suite/verbatim_residue_consolidation.rs) — 5277 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/Cargo.toml](codes/ai-memory/crates/ai-memory-core/Cargo.toml) — 894 bytes; .toml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/fixtures/home_route_cases.json](codes/ai-memory/crates/ai-memory-core/fixtures/home_route_cases.json) — 9925 bytes; .json; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/fixtures/remote_identity_cases.json](codes/ai-memory/crates/ai-memory-core/fixtures/remote_identity_cases.json) — 6684 bytes; .json; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/active_project.rs](codes/ai-memory/crates/ai-memory-core/src/active_project.rs) — 74423 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/actor.rs](codes/ai-memory/crates/ai-memory-core/src/actor.rs) — 38871 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/agent_backup.rs](codes/ai-memory/crates/ai-memory-core/src/agent_backup.rs) — 4194 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/compaction_recap.rs](codes/ai-memory/crates/ai-memory-core/src/compaction_recap.rs) — 2053 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/error.rs](codes/ai-memory/crates/ai-memory-core/src/error.rs) — 1771 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/excerpt.rs](codes/ai-memory/crates/ai-memory-core/src/excerpt.rs) — 14013 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/fix_lines.rs](codes/ai-memory/crates/ai-memory-core/src/fix_lines.rs) — 2001 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/handoff.rs](codes/ai-memory/crates/ai-memory-core/src/handoff.rs) — 6478 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/ids.rs](codes/ai-memory/crates/ai-memory-core/src/ids.rs) — 55171 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/ingest_metrics.rs](codes/ai-memory/crates/ai-memory-core/src/ingest_metrics.rs) — 12358 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/latency.rs](codes/ai-memory/crates/ai-memory-core/src/latency.rs) — 7206 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/lib.rs](codes/ai-memory/crates/ai-memory-core/src/lib.rs) — 4920 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/log_ledger.rs](codes/ai-memory/crates/ai-memory-core/src/log_ledger.rs) — 7083 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/message.rs](codes/ai-memory/crates/ai-memory-core/src/message.rs) — 6599 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/observation.rs](codes/ai-memory/crates/ai-memory-core/src/observation.rs) — 7462 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/okf.rs](codes/ai-memory/crates/ai-memory-core/src/okf.rs) — 15813 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/page.rs](codes/ai-memory/crates/ai-memory-core/src/page.rs) — 40329 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/profile.rs](codes/ai-memory/crates/ai-memory-core/src/profile.rs) — 52296 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/repository_identity.rs](codes/ai-memory/crates/ai-memory-core/src/repository_identity.rs) — 49177 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/routing_skills.rs](codes/ai-memory/crates/ai-memory-core/src/routing_skills.rs) — 18509 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/routing_skills/ai-memory-durable-pages/SKILL.md](codes/ai-memory/crates/ai-memory-core/src/routing_skills/ai-memory-durable-pages/SKILL.md) — 8262 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/routing_skills/ai-memory-handoff/SKILL.md](codes/ai-memory/crates/ai-memory-core/src/routing_skills/ai-memory-handoff/SKILL.md) — 5237 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/routing_skills/ai-memory-learning-maintenance/SKILL.md](codes/ai-memory/crates/ai-memory-core/src/routing_skills/ai-memory-learning-maintenance/SKILL.md) — 5460 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/routing_skills/ai-memory-messaging/SKILL.md](codes/ai-memory/crates/ai-memory-core/src/routing_skills/ai-memory-messaging/SKILL.md) — 5215 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/routing_skills/ai-memory-retrieval/SKILL.md](codes/ai-memory/crates/ai-memory-core/src/routing_skills/ai-memory-retrieval/SKILL.md) — 10092 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/routing_skills/ai-memory-routing-install/SKILL.md](codes/ai-memory/crates/ai-memory-core/src/routing_skills/ai-memory-routing-install/SKILL.md) — 4213 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/routing_skills/grok-handoff-rule.md](codes/ai-memory/crates/ai-memory-core/src/routing_skills/grok-handoff-rule.md) — 2832 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/routing_snippet.rs](codes/ai-memory/crates/ai-memory-core/src/routing_snippet.rs) — 23377 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/sanitize.rs](codes/ai-memory/crates/ai-memory-core/src/sanitize.rs) — 56174 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/scaffolding.rs](codes/ai-memory/crates/ai-memory-core/src/scaffolding.rs) — 7701 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/slots.rs](codes/ai-memory/crates/ai-memory-core/src/slots.rs) — 16535 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/user.rs](codes/ai-memory/crates/ai-memory-core/src/user.rs) — 21121 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-core/src/workstream.rs](codes/ai-memory/crates/ai-memory-core/src/workstream.rs) — 28578 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-hooks/Cargo.toml](codes/ai-memory/crates/ai-memory-hooks/Cargo.toml) — 1441 bytes; .toml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-hooks/src/antigravity.rs](codes/ai-memory/crates/ai-memory-hooks/src/antigravity.rs) — 18721 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-hooks/src/assistant_capture.rs](codes/ai-memory/crates/ai-memory-hooks/src/assistant_capture.rs) — 22592 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-hooks/src/brief_tiers.rs](codes/ai-memory/crates/ai-memory-hooks/src/brief_tiers.rs) — 21862 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-hooks/src/capture_policy.rs](codes/ai-memory/crates/ai-memory-hooks/src/capture_policy.rs) — 321512 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-hooks/src/drop_list.rs](codes/ai-memory/crates/ai-memory-hooks/src/drop_list.rs) — 10168 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-hooks/src/grants.rs](codes/ai-memory/crates/ai-memory-hooks/src/grants.rs) — 1669 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-hooks/src/json_repair.rs](codes/ai-memory/crates/ai-memory-hooks/src/json_repair.rs) — 2013 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-hooks/src/lib.rs](codes/ai-memory/crates/ai-memory-hooks/src/lib.rs) — 4363 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-hooks/src/log.rs](codes/ai-memory/crates/ai-memory-hooks/src/log.rs) — 7303 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-hooks/src/payload.rs](codes/ai-memory/crates/ai-memory-hooks/src/payload.rs) — 168071 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-hooks/src/recap.rs](codes/ai-memory/crates/ai-memory-hooks/src/recap.rs) — 43594 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-hooks/src/router.rs](codes/ai-memory/crates/ai-memory-hooks/src/router.rs) — 832174 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-hooks/src/session_end_equivalence.rs](codes/ai-memory/crates/ai-memory-hooks/src/session_end_equivalence.rs) — 61923 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-hooks/src/synth.rs](codes/ai-memory/crates/ai-memory-hooks/src/synth.rs) — 66966 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-hooks/src/workstream.rs](codes/ai-memory/crates/ai-memory-hooks/src/workstream.rs) — 195731 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-hooks/tests/fixtures/capture-policy.json](codes/ai-memory/crates/ai-memory-hooks/tests/fixtures/capture-policy.json) — 68792 bytes; .json; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-hooks/tests/suite/mod.rs](codes/ai-memory/crates/ai-memory-hooks/tests/suite/mod.rs) — 346 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-hooks/tests/suite/powershell_home.rs](codes/ai-memory/crates/ai-memory-hooks/tests/suite/powershell_home.rs) — 4604 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-hooks/tests/suite/powershell_marker_aliases.rs](codes/ai-memory/crates/ai-memory-hooks/tests/suite/powershell_marker_aliases.rs) — 11343 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-hooks/tests/suite/powershell_server_routed.rs](codes/ai-memory/crates/ai-memory-hooks/tests/suite/powershell_server_routed.rs) — 5206 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-hooks/tests/suite/powershell_spool.rs](codes/ai-memory/crates/ai-memory-hooks/tests/suite/powershell_spool.rs) — 12918 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-hooks/tests/suite/powershell_utf8.rs](codes/ai-memory/crates/ai-memory-hooks/tests/suite/powershell_utf8.rs) — 5425 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/Cargo.toml](codes/ai-memory/crates/ai-memory-llm/Cargo.toml) — 1780 bytes; .toml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/src/anthropic.rs](codes/ai-memory/crates/ai-memory-llm/src/anthropic.rs) — 34954 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/src/auth_file.rs](codes/ai-memory/crates/ai-memory-llm/src/auth_file.rs) — 10268 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/src/auth.rs](codes/ai-memory/crates/ai-memory-llm/src/auth.rs) — 22431 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/src/codex_responses.rs](codes/ai-memory/crates/ai-memory-llm/src/codex_responses.rs) — 2228 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/src/codex.rs](codes/ai-memory/crates/ai-memory-llm/src/codex.rs) — 34009 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/src/copilot.rs](codes/ai-memory/crates/ai-memory-llm/src/copilot.rs) — 47713 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/src/cursor_agent.rs](codes/ai-memory/crates/ai-memory-llm/src/cursor_agent.rs) — 14472 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/src/embedding.rs](codes/ai-memory/crates/ai-memory-llm/src/embedding.rs) — 46043 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/src/error.rs](codes/ai-memory/crates/ai-memory-llm/src/error.rs) — 10614 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/src/factory.rs](codes/ai-memory/crates/ai-memory-llm/src/factory.rs) — 35066 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/src/fallback.rs](codes/ai-memory/crates/ai-memory-llm/src/fallback.rs) — 27620 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/src/gemini.rs](codes/ai-memory/crates/ai-memory-llm/src/gemini.rs) — 25269 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/src/google.rs](codes/ai-memory/crates/ai-memory-llm/src/google.rs) — 8958 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/src/health.rs](codes/ai-memory/crates/ai-memory-llm/src/health.rs) — 24879 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/src/lib.rs](codes/ai-memory/crates/ai-memory-llm/src/lib.rs) — 7704 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/src/local.rs](codes/ai-memory/crates/ai-memory-llm/src/local.rs) — 15808 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/src/oidc.rs](codes/ai-memory/crates/ai-memory-llm/src/oidc.rs) — 24329 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/src/openai_compat.rs](codes/ai-memory/crates/ai-memory-llm/src/openai_compat.rs) — 33325 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/src/openai_oauth.rs](codes/ai-memory/crates/ai-memory-llm/src/openai_oauth.rs) — 34306 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/src/openai.rs](codes/ai-memory/crates/ai-memory-llm/src/openai.rs) — 67341 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/src/opencode.rs](codes/ai-memory/crates/ai-memory-llm/src/opencode.rs) — 50275 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/src/provider.rs](codes/ai-memory/crates/ai-memory-llm/src/provider.rs) — 4618 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/src/redirect.rs](codes/ai-memory/crates/ai-memory-llm/src/redirect.rs) — 1571 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/src/reranker.rs](codes/ai-memory/crates/ai-memory-llm/src/reranker.rs) — 24012 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/src/response.rs](codes/ai-memory/crates/ai-memory-llm/src/response.rs) — 5358 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/src/stored_token.rs](codes/ai-memory/crates/ai-memory-llm/src/stored_token.rs) — 9818 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/src/text.rs](codes/ai-memory/crates/ai-memory-llm/src/text.rs) — 2619 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/src/types.rs](codes/ai-memory/crates/ai-memory-llm/src/types.rs) — 22078 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/tests/suite/anthropic_provider.rs](codes/ai-memory/crates/ai-memory-llm/tests/suite/anthropic_provider.rs) — 4559 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/tests/suite/copilot_embedder.rs](codes/ai-memory/crates/ai-memory-llm/tests/suite/copilot_embedder.rs) — 3751 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/tests/suite/copilot_provider.rs](codes/ai-memory/crates/ai-memory-llm/tests/suite/copilot_provider.rs) — 11754 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/tests/suite/cursor_provider.rs](codes/ai-memory/crates/ai-memory-llm/tests/suite/cursor_provider.rs) — 10243 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/tests/suite/embedder_retry_after.rs](codes/ai-memory/crates/ai-memory-llm/tests/suite/embedder_retry_after.rs) — 7135 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/tests/suite/extra_headers_on_the_wire.rs](codes/ai-memory/crates/ai-memory-llm/tests/suite/extra_headers_on_the_wire.rs) — 15941 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/tests/suite/fallback_provider.rs](codes/ai-memory/crates/ai-memory-llm/tests/suite/fallback_provider.rs) — 4528 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/tests/suite/mod.rs](codes/ai-memory/crates/ai-memory-llm/tests/suite/mod.rs) — 538 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/tests/suite/openai_compat_embedder.rs](codes/ai-memory/crates/ai-memory-llm/tests/suite/openai_compat_embedder.rs) — 12546 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/tests/suite/openai_compat_guardrails.rs](codes/ai-memory/crates/ai-memory-llm/tests/suite/openai_compat_guardrails.rs) — 12517 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/tests/suite/openai_compat_retry_after.rs](codes/ai-memory/crates/ai-memory-llm/tests/suite/openai_compat_retry_after.rs) — 4418 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/tests/suite/openai_compat_strict.rs](codes/ai-memory/crates/ai-memory-llm/tests/suite/openai_compat_strict.rs) — 12656 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/tests/suite/redirect_credentials.rs](codes/ai-memory/crates/ai-memory-llm/tests/suite/redirect_credentials.rs) — 9094 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-llm/tests/support/fake_codex.rs](codes/ai-memory/crates/ai-memory-llm/tests/support/fake_codex.rs) — 2707 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/Cargo.toml](codes/ai-memory/crates/ai-memory-mcp/Cargo.toml) — 2129 bytes; .toml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/prompts/explore_system.md](codes/ai-memory/crates/ai-memory-mcp/prompts/explore_system.md) — 2307 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/src/actor.rs](codes/ai-memory/crates/ai-memory-mcp/src/actor.rs) — 8621 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/src/admin_profile.rs](codes/ai-memory/crates/ai-memory-mcp/src/admin_profile.rs) — 17765 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/src/admin.rs](codes/ai-memory/crates/ai-memory-mcp/src/admin.rs) — 635128 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/src/auth.rs](codes/ai-memory/crates/ai-memory-mcp/src/auth.rs) — 100719 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/src/human_auth.rs](codes/ai-memory/crates/ai-memory-mcp/src/human_auth.rs) — 94478 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/src/identity.rs](codes/ai-memory/crates/ai-memory-mcp/src/identity.rs) — 8074 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/src/lib.rs](codes/ai-memory/crates/ai-memory-mcp/src/lib.rs) — 1509 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/src/metrics.rs](codes/ai-memory/crates/ai-memory-mcp/src/metrics.rs) — 7934 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/src/self_service_keys.rs](codes/ai-memory/crates/ai-memory-mcp/src/self_service_keys.rs) — 5352 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/src/server.rs](codes/ai-memory/crates/ai-memory-mcp/src/server.rs) — 881865 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/src/session_management.rs](codes/ai-memory/crates/ai-memory-mcp/src/session_management.rs) — 12416 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/access_reinforcement.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/access_reinforcement.rs) — 10089 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_audit_log.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_audit_log.rs) — 4806 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_backup.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_backup.rs) — 12068 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_bootstrap.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_bootstrap.rs) — 11469 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_metrics.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_metrics.rs) — 13690 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_move_session.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_move_session.rs) — 38387 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_move.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_move.rs) — 112511 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_pending_writes_session.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_pending_writes_session.rs) — 14059 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_phase3.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_phase3.rs) — 33743 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_profile_routes.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_profile_routes.rs) — 10962 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_provider_error_logging.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_provider_error_logging.rs) — 7415 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_purge.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_purge.rs) — 73293 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_read_page.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_read_page.rs) — 14115 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_reclaim_ledger_versions.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_reclaim_ledger_versions.rs) — 7072 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_rename.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_rename.rs) — 22785 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_repair_session_times.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_repair_session_times.rs) — 19643 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_status_search.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_status_search.rs) — 31133 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_write_page.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/admin_write_page.rs) — 27134 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/agent_messages_briefing.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/agent_messages_briefing.rs) — 12606 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/agent_messages_scope.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/agent_messages_scope.rs) — 12692 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/agent_messages_tools.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/agent_messages_tools.rs) — 12018 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/autoscope_multiuser.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/autoscope_multiuser.rs) — 30194 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/common.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/common.rs) — 2227 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/dual_key_scope.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/dual_key_scope.rs) — 18523 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/handoff_admission.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/handoff_admission.rs) — 20150 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/handoff_identity.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/handoff_identity.rs) — 16149 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/management.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/management.rs) — 35230 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/mcp_stateless_http.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/mcp_stateless_http.rs) — 29934 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/mod.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/mod.rs) — 1262 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/query_answer.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/query_answer.rs) — 14221 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/query_observation_stream.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/query_observation_stream.rs) — 11825 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/query_pin_first.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/query_pin_first.rs) — 11045 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/query_reasoning.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/query_reasoning.rs) — 9174 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/query_superseded.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/query_superseded.rs) — 8080 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/read_page_related.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/read_page_related.rs) — 10214 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/recap_identity.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/recap_identity.rs) — 10866 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/restore_page_authz.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/restore_page_authz.rs) — 15043 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/retrieval_via_tools.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/retrieval_via_tools.rs) — 19268 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/self_service_keys.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/self_service_keys.rs) — 13230 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/session_management.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/session_management.rs) — 21311 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/slot_identity.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/slot_identity.rs) — 20027 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/stress_autoscope.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/stress_autoscope.rs) — 55875 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-mcp/tests/suite/web_search_parity.rs](codes/ai-memory/crates/ai-memory-mcp/tests/suite/web_search_parity.rs) — 14632 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/Cargo.toml](codes/ai-memory/crates/ai-memory-store/Cargo.toml) — 1388 bytes; .toml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V01__init.sql](codes/ai-memory/crates/ai-memory-store/migrations/V01__init.sql) — 5185 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V02__handoffs.sql](codes/ai-memory/crates/ai-memory-store/migrations/V02__handoffs.sql) — 1582 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V03__decay.sql](codes/ai-memory/crates/ai-memory-store/migrations/V03__decay.sql) — 1200 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V04__embeddings.sql](codes/ai-memory/crates/ai-memory-store/migrations/V04__embeddings.sql) — 920 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V05__cascade_indexes.sql](codes/ai-memory/crates/ai-memory-store/migrations/V05__cascade_indexes.sql) — 2651 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V06__wiki_migrations.sql](codes/ai-memory/crates/ai-memory-store/migrations/V06__wiki_migrations.sql) — 326 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V07__observations_fts_and_link_index.sql](codes/ai-memory/crates/ai-memory-store/migrations/V07__observations_fts_and_link_index.sql) — 1556 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V08__performance_indexes.sql](codes/ai-memory/crates/ai-memory-store/migrations/V08__performance_indexes.sql) — 1592 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V09__sessions_supported_agent_kinds.sql](codes/ai-memory/crates/ai-memory-store/migrations/V09__sessions_supported_agent_kinds.sql) — 1260 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V10__observation_extension_events.sql](codes/ai-memory/crates/ai-memory-store/migrations/V10__observation_extension_events.sql) — 613 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V11__sessions_antigravity_agent_kind.sql](codes/ai-memory/crates/ai-memory-store/migrations/V11__sessions_antigravity_agent_kind.sql) — 1233 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V12__fts_remove_diacritics.sql](codes/ai-memory/crates/ai-memory-store/migrations/V12__fts_remove_diacritics.sql) — 3170 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V13__cross_project_links.sql](codes/ai-memory/crates/ai-memory-store/migrations/V13__cross_project_links.sql) — 1911 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V14__users.sql](codes/ai-memory/crates/ai-memory-store/migrations/V14__users.sql) — 2474 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V15__pages_author_id.sql](codes/ai-memory/crates/ai-memory-store/migrations/V15__pages_author_id.sql) — 1448 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V16__audit_log_author_id.sql](codes/ai-memory/crates/ai-memory-store/migrations/V16__audit_log_author_id.sql) — 1701 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V17__pages_fts_index_path.sql](codes/ai-memory/crates/ai-memory-store/migrations/V17__pages_fts_index_path.sql) — 2608 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V18__enforce_project_workspace_pairing.sql](codes/ai-memory/crates/ai-memory-store/migrations/V18__enforce_project_workspace_pairing.sql) — 3250 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V19__repair_orphan_observation_attribution.sql](codes/ai-memory/crates/ai-memory-store/migrations/V19__repair_orphan_observation_attribution.sql) — 3995 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V20__sessions_grok_agent_kind.sql](codes/ai-memory/crates/ai-memory-store/migrations/V20__sessions_grok_agent_kind.sql) — 1986 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V21__auto_improve_pending_proposals.sql](codes/ai-memory/crates/ai-memory-store/migrations/V21__auto_improve_pending_proposals.sql) — 4104 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V22__auto_improve_scheduler.sql](codes/ai-memory/crates/ai-memory-store/migrations/V22__auto_improve_scheduler.sql) — 2309 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V23__auto_improve_patch_proposals.sql](codes/ai-memory/crates/ai-memory-store/migrations/V23__auto_improve_patch_proposals.sql) — 458 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V24__auto_improve_rejections.sql](codes/ai-memory/crates/ai-memory-store/migrations/V24__auto_improve_rejections.sql) — 1713 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V25__sessions_pi_agent_kind.sql](codes/ai-memory/crates/ai-memory-store/migrations/V25__sessions_pi_agent_kind.sql) — 2634 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V26__sessions_zero_agent_kind.sql](codes/ai-memory/crates/ai-memory-store/migrations/V26__sessions_zero_agent_kind.sql) — 2786 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V27__repair_nongit_fragment_attribution.sql](codes/ai-memory/crates/ai-memory-store/migrations/V27__repair_nongit_fragment_attribution.sql) — 3318 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V28__sessions_devin_agent_kind.sql](codes/ai-memory/crates/ai-memory-store/migrations/V28__sessions_devin_agent_kind.sql) — 2890 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V29__maintenance_scheduler.sql](codes/ai-memory/crates/ai-memory-store/migrations/V29__maintenance_scheduler.sql) — 198 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V30__sessions_kimi_code_agent_kind.sql](codes/ai-memory/crates/ai-memory-store/migrations/V30__sessions_kimi_code_agent_kind.sql) — 2925 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V31__managed_workstreams.sql](codes/ai-memory/crates/ai-memory-store/migrations/V31__managed_workstreams.sql) — 4779 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V32__sessions_crush_agent_kind.sql](codes/ai-memory/crates/ai-memory-store/migrations/V32__sessions_crush_agent_kind.sql) — 2215 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V33__ingest_keys.sql](codes/ai-memory/crates/ai-memory-store/migrations/V33__ingest_keys.sql) — 713 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V34__session_consolidation_jobs.sql](codes/ai-memory/crates/ai-memory-store/migrations/V34__session_consolidation_jobs.sql) — 1685 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V35__session_end_observation_watermark.sql](codes/ai-memory/crates/ai-memory-store/migrations/V35__session_end_observation_watermark.sql) — 677 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V36__page_expiry.sql](codes/ai-memory/crates/ai-memory-store/migrations/V36__page_expiry.sql) — 482 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V37__page_feedback.sql](codes/ai-memory/crates/ai-memory-store/migrations/V37__page_feedback.sql) — 1947 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V38__entities.sql](codes/ai-memory/crates/ai-memory-store/migrations/V38__entities.sql) — 2622 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V39__handoff_ownership.sql](codes/ai-memory/crates/ai-memory-store/migrations/V39__handoff_ownership.sql) — 1686 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V40__session_owner.sql](codes/ai-memory/crates/ai-memory-store/migrations/V40__session_owner.sql) — 922 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V41__handoffs_listing_index.sql](codes/ai-memory/crates/ai-memory-store/migrations/V41__handoffs_listing_index.sql) — 1033 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V42__auto_improve_proposal_author.sql](codes/ai-memory/crates/ai-memory-store/migrations/V42__auto_improve_proposal_author.sql) — 2208 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V43__page_access_by_actor.sql](codes/ai-memory/crates/ai-memory-store/migrations/V43__page_access_by_actor.sql) — 1250 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V44__sessions_hermes_agent_kind.sql](codes/ai-memory/crates/ai-memory-store/migrations/V44__sessions_hermes_agent_kind.sql) — 3325 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V45__sessions_kiro_cli_agent_kind.sql](codes/ai-memory/crates/ai-memory-store/migrations/V45__sessions_kiro_cli_agent_kind.sql) — 3147 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V46__client_activity.sql](codes/ai-memory/crates/ai-memory-store/migrations/V46__client_activity.sql) — 1419 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V47__sessions_command_code_agent_kind.sql](codes/ai-memory/crates/ai-memory-store/migrations/V47__sessions_command_code_agent_kind.sql) — 3170 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V48__handoff_receiver_index.sql](codes/ai-memory/crates/ai-memory-store/migrations/V48__handoff_receiver_index.sql) — 363 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V49__decay_tombstone_index.sql](codes/ai-memory/crates/ai-memory-store/migrations/V49__decay_tombstone_index.sql) — 495 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V50__sessions_pool_agent_kind.sql](codes/ai-memory/crates/ai-memory-store/migrations/V50__sessions_pool_agent_kind.sql) — 3178 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V51__sessions_zcode_agent_kind.sql](codes/ai-memory/crates/ai-memory-store/migrations/V51__sessions_zcode_agent_kind.sql) — 3174 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V52__purged_sessions_tombstones.sql](codes/ai-memory/crates/ai-memory-store/migrations/V52__purged_sessions_tombstones.sql) — 1309 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V53__page_embed_failures.sql](codes/ai-memory/crates/ai-memory-store/migrations/V53__page_embed_failures.sql) — 1594 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V54__human_auth.sql](codes/ai-memory/crates/ai-memory-store/migrations/V54__human_auth.sql) — 2928 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V55__api_credentials.sql](codes/ai-memory/crates/ai-memory-store/migrations/V55__api_credentials.sql) — 3037 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V56__entity_link_validity.sql](codes/ai-memory/crates/ai-memory-store/migrations/V56__entity_link_validity.sql) — 992 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V57__experience_pass_state.sql](codes/ai-memory/crates/ai-memory-store/migrations/V57__experience_pass_state.sql) — 448 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V58__close_retired_entity_windows.sql](codes/ai-memory/crates/ai-memory-store/migrations/V58__close_retired_entity_windows.sql) — 687 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V59__purged_scopes_tombstones.sql](codes/ai-memory/crates/ai-memory-store/migrations/V59__purged_scopes_tombstones.sql) — 1742 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V60__bootstrap_chunk_progress.sql](codes/ai-memory/crates/ai-memory-store/migrations/V60__bootstrap_chunk_progress.sql) — 845 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V61__page_abstract_embeddings.sql](codes/ai-memory/crates/ai-memory-store/migrations/V61__page_abstract_embeddings.sql) — 967 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V62__page_ingestion_windows.sql](codes/ai-memory/crates/ai-memory-store/migrations/V62__page_ingestion_windows.sql) — 2735 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V63__page_evidence.sql](codes/ai-memory/crates/ai-memory-store/migrations/V63__page_evidence.sql) — 1738 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V64__agent_messages.sql](codes/ai-memory/crates/ai-memory-store/migrations/V64__agent_messages.sql) — 3207 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V65__page_compacted_marker.sql](codes/ai-memory/crates/ai-memory-store/migrations/V65__page_compacted_marker.sql) — 1498 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V66__auto_improve_claim_attempts.sql](codes/ai-memory/crates/ai-memory-store/migrations/V66__auto_improve_claim_attempts.sql) — 1819 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V67__managed_run_session_link.sql](codes/ai-memory/crates/ai-memory-store/migrations/V67__managed_run_session_link.sql) — 741 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V68__project_grants.sql](codes/ai-memory/crates/ai-memory-store/migrations/V68__project_grants.sql) — 2157 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V69__project_created_by.sql](codes/ai-memory/crates/ai-memory-store/migrations/V69__project_created_by.sql) — 806 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V70__project_identity.sql](codes/ai-memory/crates/ai-memory-store/migrations/V70__project_identity.sql) — 2452 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V71__managed_run_owner.sql](codes/ai-memory/crates/ai-memory-store/migrations/V71__managed_run_owner.sql) — 531 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V72__sessions_grizzybot_agent_kind.sql](codes/ai-memory/crates/ai-memory-store/migrations/V72__sessions_grizzybot_agent_kind.sql) — 3212 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V73__sessions_copilot_cli_agent_kind.sql](codes/ai-memory/crates/ai-memory-store/migrations/V73__sessions_copilot_cli_agent_kind.sql) — 3220 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V74__project_profile_flags.sql](codes/ai-memory/crates/ai-memory-store/migrations/V74__project_profile_flags.sql) — 675 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V75__profile_candidates.sql](codes/ai-memory/crates/ai-memory-store/migrations/V75__profile_candidates.sql) — 2990 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V76__project_coordinate_keys.sql](codes/ai-memory/crates/ai-memory-store/migrations/V76__project_coordinate_keys.sql) — 971 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V77__recovery_ingest_keys.sql](codes/ai-memory/crates/ai-memory-store/migrations/V77__recovery_ingest_keys.sql) — 444 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V78__sessions_droid_agent_kind.sql](codes/ai-memory/crates/ai-memory-store/migrations/V78__sessions_droid_agent_kind.sql) — 3450 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V79__drop_legacy_user_token_columns.sql](codes/ai-memory/crates/ai-memory-store/migrations/V79__drop_legacy_user_token_columns.sql) — 4509 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V80__sessions_muse_agent_kind.sql](codes/ai-memory/crates/ai-memory-store/migrations/V80__sessions_muse_agent_kind.sql) — 3441 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V81__sessions_codebuddy_agent_kind.sql](codes/ai-memory/crates/ai-memory-store/migrations/V81__sessions_codebuddy_agent_kind.sql) — 3466 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V82__managed_run_previous_native_session.sql](codes/ai-memory/crates/ai-memory-store/migrations/V82__managed_run_previous_native_session.sql) — 365 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/migrations/V83__sessions_ibm_bob_agent_kind.sql](codes/ai-memory/crates/ai-memory-store/migrations/V83__sessions_ibm_bob_agent_kind.sql) — 3459 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/src/api_credentials.rs](codes/ai-memory/crates/ai-memory-store/src/api_credentials.rs) — 32544 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/src/auto_improve.rs](codes/ai-memory/crates/ai-memory-store/src/auto_improve.rs) — 64918 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/src/belief.rs](codes/ai-memory/crates/ai-memory-store/src/belief.rs) — 11722 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/src/decay.rs](codes/ai-memory/crates/ai-memory-store/src/decay.rs) — 19321 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/src/error.rs](codes/ai-memory/crates/ai-memory-store/src/error.rs) — 13191 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/src/fts_query.rs](codes/ai-memory/crates/ai-memory-store/src/fts_query.rs) — 35276 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/src/grants.rs](codes/ai-memory/crates/ai-memory-store/src/grants.rs) — 42954 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/src/lib.rs](codes/ai-memory/crates/ai-memory-store/src/lib.rs) — 330810 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/src/maintenance.rs](codes/ai-memory/crates/ai-memory-store/src/maintenance.rs) — 1630 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/src/migrations.rs](codes/ai-memory/crates/ai-memory-store/src/migrations.rs) — 71505 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/src/ops.rs](codes/ai-memory/crates/ai-memory-store/src/ops.rs) — 724451 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/src/password.rs](codes/ai-memory/crates/ai-memory-store/src/password.rs) — 5196 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/src/profile.rs](codes/ai-memory/crates/ai-memory-store/src/profile.rs) — 27616 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/src/project_authz.rs](codes/ai-memory/crates/ai-memory-store/src/project_authz.rs) — 26867 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/src/project_coordinates.rs](codes/ai-memory/crates/ai-memory-store/src/project_coordinates.rs) — 16306 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/src/reader.rs](codes/ai-memory/crates/ai-memory-store/src/reader.rs) — 623012 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/src/retrieval_tuning.rs](codes/ai-memory/crates/ai-memory-store/src/retrieval_tuning.rs) — 10689 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/src/scope.rs](codes/ai-memory/crates/ai-memory-store/src/scope.rs) — 107816 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/src/session_consolidation.rs](codes/ai-memory/crates/ai-memory-store/src/session_consolidation.rs) — 34884 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/src/testdata/V62__page_ingestion_windows.pre776.sql](codes/ai-memory/crates/ai-memory-store/src/testdata/V62__page_ingestion_windows.pre776.sql) — 2460 bytes; .sql; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/src/users.rs](codes/ai-memory/crates/ai-memory-store/src/users.rs) — 37770 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/src/web_sessions.rs](codes/ai-memory/crates/ai-memory-store/src/web_sessions.rs) — 8418 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/src/workstream.rs](codes/ai-memory/crates/ai-memory-store/src/workstream.rs) — 73338 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/src/writer.rs](codes/ai-memory/crates/ai-memory-store/src/writer.rs) — 195040 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/access_breadth.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/access_breadth.rs) — 10714 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/access_mode.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/access_mode.rs) — 11860 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/agent_messages.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/agent_messages.rs) — 13457 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/audit_contamination.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/audit_contamination.rs) — 10570 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/audit_log.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/audit_log.rs) — 6119 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/auto_improve_staging.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/auto_improve_staging.rs) — 17932 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/belief_authority.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/belief_authority.rs) — 18817 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/client_activity.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/client_activity.rs) — 4931 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/fts_drift_status.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/fts_drift_status.rs) — 5428 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/fts_stopwords_config.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/fts_stopwords_config.rs) — 11949 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/handoff_ownership.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/handoff_ownership.rs) — 35898 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/identity_resolution.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/identity_resolution.rs) — 53779 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/mod.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/mod.rs) — 1049 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/most_recently_active_scope.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/most_recently_active_scope.rs) — 4136 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/multi_session.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/multi_session.rs) — 150435 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/observation_prune.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/observation_prune.rs) — 12245 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/page_first_created.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/page_first_created.rs) — 3985 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/pinned_pages.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/pinned_pages.rs) — 4200 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/profile.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/profile.rs) — 13413 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/project_authz.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/project_authz.rs) — 18117 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/reclaim_ledger_versions.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/reclaim_ledger_versions.rs) — 16911 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/related_walk.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/related_walk.rs) — 40025 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/retrieval_observation_stream.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/retrieval_observation_stream.rs) — 23303 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/retrieval_superseded.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/retrieval_superseded.rs) — 5332 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/retrieval_tuning_streams.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/retrieval_tuning_streams.rs) — 7239 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/session_ids_touching_scope.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/session_ids_touching_scope.rs) — 3955 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/session_move.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/session_move.rs) — 9717 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/session_observations.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/session_observations.rs) — 25897 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/session_scope_from_observations.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/session_scope_from_observations.rs) — 3856 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/sessions_by_agent.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/sessions_by_agent.rs) — 6630 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/slot_visibility.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/slot_visibility.rs) — 23129 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/stress_writer_throughput.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/stress_writer_throughput.rs) — 5369 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/wal_bounds.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/wal_bounds.rs) — 9868 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/workstream_provenance.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/workstream_provenance.rs) — 22154 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-store/tests/suite/writer_immediate.rs](codes/ai-memory/crates/ai-memory-store/tests/suite/writer_immediate.rs) — 4727 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-test-support/Cargo.toml](codes/ai-memory/crates/ai-memory-test-support/Cargo.toml) — 505 bytes; .toml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-test-support/src/lib.rs](codes/ai-memory/crates/ai-memory-test-support/src/lib.rs) — 3055 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/build.rs](codes/ai-memory/crates/ai-memory-web/build.rs) — 8428 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/Cargo.toml](codes/ai-memory/crates/ai-memory-web/Cargo.toml) — 1218 bytes; .toml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/clippy.toml](codes/ai-memory/crates/ai-memory-web/clippy.toml) — 3163 bytes; .toml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/src/diff.rs](codes/ai-memory/crates/ai-memory-web/src/diff.rs) — 17213 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/src/health.rs](codes/ai-memory/crates/ai-memory-web/src/health.rs) — 21350 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/src/html_auth.rs](codes/ai-memory/crates/ai-memory-web/src/html_auth.rs) — 13872 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/src/lib.rs](codes/ai-memory/crates/ai-memory-web/src/lib.rs) — 4250 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/src/management/backend.rs](codes/ai-memory/crates/ai-memory-web/src/management/backend.rs) — 3582 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/src/management/forms.rs](codes/ai-memory/crates/ai-memory-web/src/management/forms.rs) — 9800 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/src/management/mod.rs](codes/ai-memory/crates/ai-memory-web/src/management/mod.rs) — 6791 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/src/management/views.rs](codes/ai-memory/crates/ai-memory-web/src/management/views.rs) — 11984 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/src/markdown.rs](codes/ai-memory/crates/ai-memory-web/src/markdown.rs) — 59061 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/src/mount.rs](codes/ai-memory/crates/ai-memory-web/src/mount.rs) — 66247 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/src/recall.rs](codes/ai-memory/crates/ai-memory-web/src/recall.rs) — 5139 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/src/routes/api.rs](codes/ai-memory/crates/ai-memory-web/src/routes/api.rs) — 65533 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/src/routes/health.rs](codes/ai-memory/crates/ai-memory-web/src/routes/health.rs) — 12261 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/src/routes/history.rs](codes/ai-memory/crates/ai-memory-web/src/routes/history.rs) — 11580 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/src/routes/index.rs](codes/ai-memory/crates/ai-memory-web/src/routes/index.rs) — 4529 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/src/routes/login.rs](codes/ai-memory/crates/ai-memory-web/src/routes/login.rs) — 1370 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/src/routes/mod.rs](codes/ai-memory/crates/ai-memory-web/src/routes/mod.rs) — 5944 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/src/routes/page.rs](codes/ai-memory/crates/ai-memory-web/src/routes/page.rs) — 10838 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/src/routes/pending.rs](codes/ai-memory/crates/ai-memory-web/src/routes/pending.rs) — 11182 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/src/routes/project.rs](codes/ai-memory/crates/ai-memory-web/src/routes/project.rs) — 12148 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/src/routes/search.rs](codes/ai-memory/crates/ai-memory-web/src/routes/search.rs) — 16807 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/src/routes/session.rs](codes/ai-memory/crates/ai-memory-web/src/routes/session.rs) — 6610 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/src/routes/statics.rs](codes/ai-memory/crates/ai-memory-web/src/routes/statics.rs) — 1455 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/src/state.rs](codes/ai-memory/crates/ai-memory-web/src/state.rs) — 2369 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/src/templates.rs](codes/ai-memory/crates/ai-memory-web/src/templates.rs) — 32650 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/static/input.css](codes/ai-memory/crates/ai-memory-web/static/input.css) — 3223 bytes; .css; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/static/management/bricolage-grotesque-latin-standard-normal.woff2](codes/ai-memory/crates/ai-memory-web/static/management/bricolage-grotesque-latin-standard-normal.woff2) — 131548 bytes; .woff2; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/static/management/commit-mono-latin-400-normal.woff2](codes/ai-memory/crates/ai-memory-web/static/management/commit-mono-latin-400-normal.woff2) — 48128 bytes; .woff2; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/static/management/font-licenses.txt](codes/ai-memory/crates/ai-memory-web/static/management/font-licenses.txt) — 13632 bytes; .txt; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/static/management/instrument-sans-latin-wdth-normal.woff2](codes/ai-memory/crates/ai-memory-web/static/management/instrument-sans-latin-wdth-normal.woff2) — 57332 bytes; .woff2; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/static/management/theme.js](codes/ai-memory/crates/ai-memory-web/static/management/theme.js) — 1718 bytes; .js; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/static/tailwind.css](codes/ai-memory/crates/ai-memory-web/static/tailwind.css) — 31314 bytes; .css; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/tailwind.config.js](codes/ai-memory/crates/ai-memory-web/tailwind.config.js) — 127 bytes; .js; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/templates/_header_search_scoped.html](codes/ai-memory/crates/ai-memory-web/templates/_header_search_scoped.html) — 668 bytes; .html; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/templates/_js_cookie.html](codes/ai-memory/crates/ai-memory-web/templates/_js_cookie.html) — 254 bytes; .html; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/templates/admin_required.html](codes/ai-memory/crates/ai-memory-web/templates/admin_required.html) — 632 bytes; .html; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/templates/base.html](codes/ai-memory/crates/ai-memory-web/templates/base.html) — 4566 bytes; .html; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/templates/change_password.html](codes/ai-memory/crates/ai-memory-web/templates/change_password.html) — 4114 bytes; .html; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/templates/health.html](codes/ai-memory/crates/ai-memory-web/templates/health.html) — 2235 bytes; .html; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/templates/history.html](codes/ai-memory/crates/ai-memory-web/templates/history.html) — 6674 bytes; .html; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/templates/login.html](codes/ai-memory/crates/ai-memory-web/templates/login.html) — 3387 bytes; .html; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/templates/management/base.html](codes/ai-memory/crates/ai-memory-web/templates/management/base.html) — 1759 bytes; .html; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/templates/management/console.html](codes/ai-memory/crates/ai-memory-web/templates/management/console.html) — 9548 bytes; .html; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/templates/management/error.html](codes/ai-memory/crates/ai-memory-web/templates/management/error.html) — 252 bytes; .html; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/templates/namespace.html](codes/ai-memory/crates/ai-memory-web/templates/namespace.html) — 3089 bytes; .html; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/templates/not_found.html](codes/ai-memory/crates/ai-memory-web/templates/not_found.html) — 621 bytes; .html; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/templates/page.html](codes/ai-memory/crates/ai-memory-web/templates/page.html) — 7178 bytes; .html; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/templates/pending.html](codes/ai-memory/crates/ai-memory-web/templates/pending.html) — 11255 bytes; .html; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/templates/project.html](codes/ai-memory/crates/ai-memory-web/templates/project.html) — 9970 bytes; .html; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/templates/projects.html](codes/ai-memory/crates/ai-memory-web/templates/projects.html) — 10130 bytes; .html; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/templates/search.html](codes/ai-memory/crates/ai-memory-web/templates/search.html) — 8408 bytes; .html; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/templates/session.html](codes/ai-memory/crates/ai-memory-web/templates/session.html) — 7469 bytes; .html; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/tests/suite/health.rs](codes/ai-memory/crates/ai-memory-web/tests/suite/health.rs) — 20154 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/tests/suite/history_replay.rs](codes/ai-memory/crates/ai-memory-web/tests/suite/history_replay.rs) — 34479 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/tests/suite/management.rs](codes/ai-memory/crates/ai-memory-web/tests/suite/management.rs) — 2409 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/tests/suite/mod.rs](codes/ai-memory/crates/ai-memory-web/tests/suite/mod.rs) — 350 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/tests/suite/pending.rs](codes/ai-memory/crates/ai-memory-web/tests/suite/pending.rs) — 20478 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/tests/suite/recall_trace.rs](codes/ai-memory/crates/ai-memory-web/tests/suite/recall_trace.rs) — 37408 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-web/tests/suite/routes.rs](codes/ai-memory/crates/ai-memory-web/tests/suite/routes.rs) — 194592 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-wiki/Cargo.toml](codes/ai-memory/crates/ai-memory-wiki/Cargo.toml) — 1453 bytes; .toml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-wiki/clippy.toml](codes/ai-memory/crates/ai-memory-wiki/clippy.toml) — 1154 bytes; .toml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-wiki/src/admission.rs](codes/ai-memory/crates/ai-memory-wiki/src/admission.rs) — 37653 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-wiki/src/atomic.rs](codes/ai-memory/crates/ai-memory-wiki/src/atomic.rs) — 11054 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-wiki/src/backup.rs](codes/ai-memory/crates/ai-memory-wiki/src/backup.rs) — 19648 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-wiki/src/confinement.rs](codes/ai-memory/crates/ai-memory-wiki/src/confinement.rs) — 16975 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-wiki/src/error.rs](codes/ai-memory/crates/ai-memory-wiki/src/error.rs) — 4022 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-wiki/src/frontmatter_yaml.rs](codes/ai-memory/crates/ai-memory-wiki/src/frontmatter_yaml.rs) — 14934 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-wiki/src/git.rs](codes/ai-memory/crates/ai-memory-wiki/src/git.rs) — 104336 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-wiki/src/ledger.rs](codes/ai-memory/crates/ai-memory-wiki/src/ledger.rs) — 6877 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-wiki/src/lib.rs](codes/ai-memory/crates/ai-memory-wiki/src/lib.rs) — 1881 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-wiki/src/markdown.rs](codes/ai-memory/crates/ai-memory-wiki/src/markdown.rs) — 95287 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-wiki/src/migrations/m2026_09_okf_conformance.rs](codes/ai-memory/crates/ai-memory-wiki/src/migrations/m2026_09_okf_conformance.rs) — 44359 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-wiki/src/migrations/mod.rs](codes/ai-memory/crates/ai-memory-wiki/src/migrations/mod.rs) — 4291 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-wiki/src/migrations/runner.rs](codes/ai-memory/crates/ai-memory-wiki/src/migrations/runner.rs) — 10053 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-wiki/src/okf_index.rs](codes/ai-memory/crates/ai-memory-wiki/src/okf_index.rs) — 1521 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-wiki/src/watcher.rs](codes/ai-memory/crates/ai-memory-wiki/src/watcher.rs) — 113687 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-wiki/src/wiki.rs](codes/ai-memory/crates/ai-memory-wiki/src/wiki.rs) — 359308 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-wiki/tests/suite/admission.rs](codes/ai-memory/crates/ai-memory-wiki/tests/suite/admission.rs) — 23551 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-wiki/tests/suite/auto_improve_admission.rs](codes/ai-memory/crates/ai-memory-wiki/tests/suite/auto_improve_admission.rs) — 7948 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-wiki/tests/suite/ledger_files.rs](codes/ai-memory/crates/ai-memory-wiki/tests/suite/ledger_files.rs) — 7951 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-wiki/tests/suite/mod.rs](codes/ai-memory/crates/ai-memory-wiki/tests/suite/mod.rs) — 303 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-wiki/tests/suite/wiki_git_ledgers.rs](codes/ai-memory/crates/ai-memory-wiki/tests/suite/wiki_git_ledgers.rs) — 11536 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-workstream/Cargo.toml](codes/ai-memory/crates/ai-memory-workstream/Cargo.toml) — 773 bytes; .toml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-workstream/src/harness.rs](codes/ai-memory/crates/ai-memory-workstream/src/harness.rs) — 142736 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-workstream/src/jail.rs](codes/ai-memory/crates/ai-memory-workstream/src/jail.rs) — 59625 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-workstream/src/lib.rs](codes/ai-memory/crates/ai-memory-workstream/src/lib.rs) — 1910 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-workstream/src/repository.rs](codes/ai-memory/crates/ai-memory-workstream/src/repository.rs) — 12010 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-workstream/src/transcript.rs](codes/ai-memory/crates/ai-memory-workstream/src/transcript.rs) — 367193 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-workstream/tests/fixtures/kiro-v2-messages.jsonl](codes/ai-memory/crates/ai-memory-workstream/tests/fixtures/kiro-v2-messages.jsonl) — 632 bytes; .jsonl; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/crates/ai-memory-workstream/tests/fixtures/kiro-v3-messages.jsonl](codes/ai-memory/crates/ai-memory-workstream/tests/fixtures/kiro-v3-messages.jsonl) — 1056 bytes; .jsonl; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/DATA_HANDLING.md](codes/ai-memory/DATA_HANDLING.md) — 7535 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/deny.toml](codes/ai-memory/deny.toml) — 1410 bytes; .toml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docker/.env.production.example](codes/ai-memory/docker/.env.production.example) — 5270 bytes; .example; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docker/compose.tls.caddy.yml](codes/ai-memory/docker/compose.tls.caddy.yml) — 5241 bytes; .yml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docker/compose.tls.cloudflared.yml](codes/ai-memory/docker/compose.tls.cloudflared.yml) — 4777 bytes; .yml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docker/docker-compose.prod.yml.example](codes/ai-memory/docker/docker-compose.prod.yml.example) — 1960 bytes; .example; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docker/docker-compose.yml](codes/ai-memory/docker/docker-compose.yml) — 1753 bytes; .yml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docker/Dockerfile](codes/ai-memory/docker/Dockerfile) — 4223 bytes; (none); 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docker/multiuser-test/compose.yml](codes/ai-memory/docker/multiuser-test/compose.yml) — 1450 bytes; .yml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docker/multiuser-test/config.toml](codes/ai-memory/docker/multiuser-test/config.toml) — 813 bytes; .toml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docker/multiuser-test/drive.sh](codes/ai-memory/docker/multiuser-test/drive.sh) — 8232 bytes; .sh; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docker/multiuser-test/nginx.conf](codes/ai-memory/docker/multiuser-test/nginx.conf) — 3048 bytes; .conf; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docker/multiuser-test/README.md](codes/ai-memory/docker/multiuser-test/README.md) — 2534 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/admission-webhooks.md](codes/ai-memory/docs/admission-webhooks.md) — 26856 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/agent-messaging.md](codes/ai-memory/docs/agent-messaging.md) — 18418 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/airgapped-install.md](codes/ai-memory/docs/airgapped-install.md) — 3915 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/architecture-overview.svg](codes/ai-memory/docs/architecture-overview.svg) — 10215 bytes; .svg; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/ARCHITECTURE.md](codes/ai-memory/docs/ARCHITECTURE.md) — 124625 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/auto-improve-eval-gates.md](codes/ai-memory/docs/auto-improve-eval-gates.md) — 5874 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/auto-improvement-loop.md](codes/ai-memory/docs/auto-improvement-loop.md) — 35886 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/auto-scope.md](codes/ai-memory/docs/auto-scope.md) — 18024 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/backup.md](codes/ai-memory/docs/backup.md) — 11940 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/benchmarks/consolidation-literal-fidelity-2026-10-15.md](codes/ai-memory/docs/benchmarks/consolidation-literal-fidelity-2026-10-15.md) — 2987 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/benchmarks/longmemeval-s-2026-09-01-fts.md](codes/ai-memory/docs/benchmarks/longmemeval-s-2026-09-01-fts.md) — 1425 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/benchmarks/longmemeval-s-2026-09-01-local.md](codes/ai-memory/docs/benchmarks/longmemeval-s-2026-09-01-local.md) — 1433 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/benchmarks/longmemeval-s-2026-09-01.md](codes/ai-memory/docs/benchmarks/longmemeval-s-2026-09-01.md) — 1425 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/benchmarks/longmemeval-s-3.0.0-release.md](codes/ai-memory/docs/benchmarks/longmemeval-s-3.0.0-release.md) — 3753 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/benchmarks/longmemeval-s-3.0.1-release.md](codes/ai-memory/docs/benchmarks/longmemeval-s-3.0.1-release.md) — 3771 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/benchmarks/longmemeval-s-3.1.0-release.md](codes/ai-memory/docs/benchmarks/longmemeval-s-3.1.0-release.md) — 3702 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/benchmarks/longmemeval-s-decomposition-2026-10-12.md](codes/ai-memory/docs/benchmarks/longmemeval-s-decomposition-2026-10-12.md) — 20388 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/benchmarks/README.md](codes/ai-memory/docs/benchmarks/README.md) — 9468 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/benchmarks/retrieval-ab-r2.md](codes/ai-memory/docs/benchmarks/retrieval-ab-r2.md) — 6860 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/changelog/0.x.md](codes/ai-memory/docs/changelog/0.x.md) — 56663 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/changelog/1.x.md](codes/ai-memory/docs/changelog/1.x.md) — 232323 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/changelog/2.x.md](codes/ai-memory/docs/changelog/2.x.md) — 321754 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/companion-crates.md](codes/ai-memory/docs/companion-crates.md) — 36682 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/comparison.md](codes/ai-memory/docs/comparison.md) — 36107 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/competitive-parity.md](codes/ai-memory/docs/competitive-parity.md) — 45148 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/cookbook.md](codes/ai-memory/docs/cookbook.md) — 36875 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/cross-project-profile.md](codes/ai-memory/docs/cross-project-profile.md) — 25366 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/deploy.md](codes/ai-memory/docs/deploy.md) — 23524 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/design-backup-agent-assets.md](codes/ai-memory/docs/design-backup-agent-assets.md) — 8021 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/design-boot-backfill.md](codes/ai-memory/docs/design-boot-backfill.md) — 18884 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/design-client-sdk.md](codes/ai-memory/docs/design-client-sdk.md) — 46244 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/design-cross-project-profile.md](codes/ai-memory/docs/design-cross-project-profile.md) — 17624 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/design-decisions.md](codes/ai-memory/docs/design-decisions.md) — 33186 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/design-handoff-offer-not-claim.md](codes/ai-memory/docs/design-handoff-offer-not-claim.md) — 14748 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/design-hindsight-borrowings.md](codes/ai-memory/docs/design-hindsight-borrowings.md) — 20119 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/design-marketplace-plugins.md](codes/ai-memory/docs/design-marketplace-plugins.md) — 65891 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/design-memory-aging.md](codes/ai-memory/docs/design-memory-aging.md) — 31919 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/design-message-decisions.md](codes/ai-memory/docs/design-message-decisions.md) — 27193 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/design-page-ingestion-windows.md](codes/ai-memory/docs/design-page-ingestion-windows.md) — 13789 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/design-per-project-authz.md](codes/ai-memory/docs/design-per-project-authz.md) — 20764 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/design-rules-promotion.md](codes/ai-memory/docs/design-rules-promotion.md) — 11557 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/design-tiered-session-brief.md](codes/ai-memory/docs/design-tiered-session-brief.md) — 62147 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/design-verbatim-residue.md](codes/ai-memory/docs/design-verbatim-residue.md) — 51657 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/design-windows-ci.md](codes/ai-memory/docs/design-windows-ci.md) — 34935 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/design-yolo-safety-ai-jail.md](codes/ai-memory/docs/design-yolo-safety-ai-jail.md) — 24802 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/desktop/antigravity.md](codes/ai-memory/docs/desktop/antigravity.md) — 6021 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/desktop/capture-and-dedup.md](codes/ai-memory/docs/desktop/capture-and-dedup.md) — 8411 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/desktop/chatgpt-desktop.md](codes/ai-memory/docs/desktop/chatgpt-desktop.md) — 4046 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/desktop/claude-desktop.md](codes/ai-memory/docs/desktop/claude-desktop.md) — 9523 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/desktop/codex-desktop.md](codes/ai-memory/docs/desktop/codex-desktop.md) — 6743 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/desktop/cursor.md](codes/ai-memory/docs/desktop/cursor.md) — 7186 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/desktop/desktop-landscape.md](codes/ai-memory/docs/desktop/desktop-landscape.md) — 6530 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/desktop/extensions.md](codes/ai-memory/docs/desktop/extensions.md) — 4834 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/desktop/grok-desktop.md](codes/ai-memory/docs/desktop/grok-desktop.md) — 3879 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/desktop/installer-and-coexistence.md](codes/ai-memory/docs/desktop/installer-and-coexistence.md) — 8783 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/desktop/plan.md](codes/ai-memory/docs/desktop/plan.md) — 7659 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/desktop/verification-2026-10.md](codes/ai-memory/docs/desktop/verification-2026-10.md) — 10960 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/desktop/zed.md](codes/ai-memory/docs/desktop/zed.md) — 4057 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/diagnostics.md](codes/ai-memory/docs/diagnostics.md) — 697 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/examples/auto-improve-eval/README.md](codes/ai-memory/docs/examples/auto-improve-eval/README.md) — 876 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/examples/auto-improve-eval/sample-proposal.json](codes/ai-memory/docs/examples/auto-improve-eval/sample-proposal.json) — 531 bytes; .json; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/examples/auto-improve-eval/score_proposal.py](codes/ai-memory/docs/examples/auto-improve-eval/score_proposal.py) — 2717 bytes; .py; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/examples/auto-improve-eval/score_proposal.sh](codes/ai-memory/docs/examples/auto-improve-eval/score_proposal.sh) — 1243 bytes; .sh; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/examples/backup/.gitignore](codes/ai-memory/docs/examples/backup/.gitignore) — 1037 bytes; .gitignore; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/examples/backup/ai-memory-backup.service](codes/ai-memory/docs/examples/backup/ai-memory-backup.service) — 737 bytes; .service; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/examples/backup/ai-memory-backup.timer](codes/ai-memory/docs/examples/backup/ai-memory-backup.timer) — 173 bytes; .timer; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/examples/backup/ai-memory-snapshot.sh](codes/ai-memory/docs/examples/backup/ai-memory-snapshot.sh) — 4615 bytes; .sh; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/examples/backup/README.md](codes/ai-memory/docs/examples/backup/README.md) — 3437 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/examples/jev-reranker-adapter/jev_rerank_shim_choice.py](codes/ai-memory/docs/examples/jev-reranker-adapter/jev_rerank_shim_choice.py) — 11662 bytes; .py; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/examples/jev-reranker-adapter/test_jev_rerank_shim_choice.py](codes/ai-memory/docs/examples/jev-reranker-adapter/test_jev_rerank_shim_choice.py) — 8270 bytes; .py; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/experience.md](codes/ai-memory/docs/experience.md) — 3171 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/external-lifecycle.md](codes/ai-memory/docs/external-lifecycle.md) — 12168 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/frontend-api.md](codes/ai-memory/docs/frontend-api.md) — 39313 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/https-via-proxy.md](codes/ai-memory/docs/https-via-proxy.md) — 24996 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/install.md](codes/ai-memory/docs/install.md) — 199663 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/issues-agentmemory.md](codes/ai-memory/docs/issues-agentmemory.md) — 10914 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/issues-basic-memory.md](codes/ai-memory/docs/issues-basic-memory.md) — 11118 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/issues-cognee.md](codes/ai-memory/docs/issues-cognee.md) — 15132 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/issues-mempalace.md](codes/ai-memory/docs/issues-mempalace.md) — 17167 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/jev-reranker-adapter.md](codes/ai-memory/docs/jev-reranker-adapter.md) — 10865 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/lifecycle-ops.md](codes/ai-memory/docs/lifecycle-ops.md) — 78077 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/llm-provider-comparison.md](codes/ai-memory/docs/llm-provider-comparison.md) — 36723 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/llm-provider-fallback.md](codes/ai-memory/docs/llm-provider-fallback.md) — 7194 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/llm-providers.md](codes/ai-memory/docs/llm-providers.md) — 31730 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/local-embeddings.md](codes/ai-memory/docs/local-embeddings.md) — 4972 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/logo-dark.png](codes/ai-memory/docs/logo-dark.png) — 1590707 bytes; .png; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/logo-light.png](codes/ai-memory/docs/logo-light.png) — 992380 bytes; .png; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/logo.png](codes/ai-memory/docs/logo.png) — 125960 bytes; .png; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/macos.md](codes/ai-memory/docs/macos.md) — 22784 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/managed-harness-contributions.md](codes/ai-memory/docs/managed-harness-contributions.md) — 9349 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/managed-workstreams.md](codes/ai-memory/docs/managed-workstreams.md) — 83784 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/management-ui.md](codes/ai-memory/docs/management-ui.md) — 6562 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/marker-file.md](codes/ai-memory/docs/marker-file.md) — 74859 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/mcp-install.md](codes/ai-memory/docs/mcp-install.md) — 79474 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/MIGRATION-2.0.md](codes/ai-memory/docs/MIGRATION-2.0.md) — 6861 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/okf.md](codes/ai-memory/docs/okf.md) — 14040 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/prior-art-implementation-findings.md](codes/ai-memory/docs/prior-art-implementation-findings.md) — 20086 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/programmatic-memory.md](codes/ai-memory/docs/programmatic-memory.md) — 9536 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/research-2026-landscape.md](codes/ai-memory/docs/research-2026-landscape.md) — 74747 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/research-agentmemory.md](codes/ai-memory/docs/research-agentmemory.md) — 19011 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/research-basic-memory.md](codes/ai-memory/docs/research-basic-memory.md) — 13150 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/research-codebase-memory-mcp.md](codes/ai-memory/docs/research-codebase-memory-mcp.md) — 11159 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/research-cognee.md](codes/ai-memory/docs/research-cognee.md) — 16632 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/research-ecc.md](codes/ai-memory/docs/research-ecc.md) — 9556 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/research-hindsight.md](codes/ai-memory/docs/research-hindsight.md) — 21113 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/research-karpathy-llm-wiki.md](codes/ai-memory/docs/research-karpathy-llm-wiki.md) — 13036 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/ROADMAP-2.0.md](codes/ai-memory/docs/ROADMAP-2.0.md) — 14203 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/security-boundaries.md](codes/ai-memory/docs/security-boundaries.md) — 255901 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/security.md](codes/ai-memory/docs/security.md) — 11186 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/self-service-keys.md](codes/ai-memory/docs/self-service-keys.md) — 1701 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/session-management.md](codes/ai-memory/docs/session-management.md) — 1746 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/shell-completions.md](codes/ai-memory/docs/shell-completions.md) — 3378 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/sso.md](codes/ai-memory/docs/sso.md) — 3224 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/support-matrix.md](codes/ai-memory/docs/support-matrix.md) — 33179 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/temporal.md](codes/ai-memory/docs/temporal.md) — 7690 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/typed-edges.md](codes/ai-memory/docs/typed-edges.md) — 3604 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/upgrading-to-3.0.md](codes/ai-memory/docs/upgrading-to-3.0.md) — 7762 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/usage.md](codes/ai-memory/docs/usage.md) — 52977 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/use-cases.md](codes/ai-memory/docs/use-cases.md) — 13845 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/users.md](codes/ai-memory/docs/users.md) — 45035 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/vector-backend-policy.md](codes/ai-memory/docs/vector-backend-policy.md) — 3597 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/web-project-view.png](codes/ai-memory/docs/web-project-view.png) — 417501 bytes; .png; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/web-projects-home.png](codes/ai-memory/docs/web-projects-home.png) — 163068 bytes; .png; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/wiki-migrations.md](codes/ai-memory/docs/wiki-migrations.md) — 5383 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/docs/windows.md](codes/ai-memory/docs/windows.md) — 43059 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/evals/Cargo.toml](codes/ai-memory/evals/Cargo.toml) — 742 bytes; .toml; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/evals/fixtures/01-rust-bug-fix.json](codes/ai-memory/evals/fixtures/01-rust-bug-fix.json) — 1835 bytes; .json; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/evals/fixtures/02-architecture-decision.json](codes/ai-memory/evals/fixtures/02-architecture-decision.json) — 1745 bytes; .json; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/evals/fixtures/03-gotcha-with-rule.json](codes/ai-memory/evals/fixtures/03-gotcha-with-rule.json) — 1673 bytes; .json; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/evals/fixtures/04-low-signal-session.json](codes/ai-memory/evals/fixtures/04-low-signal-session.json) — 1025 bytes; .json; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/evals/fixtures/05-multi-topic-session.json](codes/ai-memory/evals/fixtures/05-multi-topic-session.json) — 1788 bytes; .json; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/evals/fixtures/06-pt-br-tail-and-error-forms.json](codes/ai-memory/evals/fixtures/06-pt-br-tail-and-error-forms.json) — 5099 bytes; .json; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/evals/fixtures/07-injection-and-traps.json](codes/ai-memory/evals/fixtures/07-injection-and-traps.json) — 1947 bytes; .json; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/evals/README.md](codes/ai-memory/evals/README.md) — 21185 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/evals/src/ab.rs](codes/ai-memory/evals/src/ab.rs) — 32297 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/evals/src/fidelity.rs](codes/ai-memory/evals/src/fidelity.rs) — 16107 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/evals/src/generate.rs](codes/ai-memory/evals/src/generate.rs) — 18120 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/evals/src/main.rs](codes/ai-memory/evals/src/main.rs) — 2018 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/evals/src/projection.rs](codes/ai-memory/evals/src/projection.rs) — 3882 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/evals/src/retrieval/dataset.rs](codes/ai-memory/evals/src/retrieval/dataset.rs) — 10660 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/evals/src/retrieval/grep.rs](codes/ai-memory/evals/src/retrieval/grep.rs) — 6180 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/evals/src/retrieval/ingest.rs](codes/ai-memory/evals/src/retrieval/ingest.rs) — 21465 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/evals/src/retrieval/mod.rs](codes/ai-memory/evals/src/retrieval/mod.rs) — 34574 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/evals/src/retrieval/qa.rs](codes/ai-memory/evals/src/retrieval/qa.rs) — 20708 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/evals/src/retrieval/query.rs](codes/ai-memory/evals/src/retrieval/query.rs) — 12438 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/evals/src/retrieval/reachability.rs](codes/ai-memory/evals/src/retrieval/reachability.rs) — 29575 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/evals/src/retrieval/report.rs](codes/ai-memory/evals/src/retrieval/report.rs) — 23270 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/evals/src/retrieval/score.rs](codes/ai-memory/evals/src/retrieval/score.rs) — 16627 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/evals/src/retrieval/server.rs](codes/ai-memory/evals/src/retrieval/server.rs) — 8889 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/evals/tests/smoke.rs](codes/ai-memory/evals/tests/smoke.rs) — 4986 bytes; .rs; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/flake.lock](codes/ai-memory/flake.lock) — 2266 bytes; .lock; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/flake.nix](codes/ai-memory/flake.nix) — 19285 bytes; .nix; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/_lib.sh](codes/ai-memory/hooks/_lib.sh) — 56578 bytes; .sh; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/antigravity-cli/post-tool-use.ps1](codes/ai-memory/hooks/antigravity-cli/post-tool-use.ps1) — 154 bytes; .ps1; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/antigravity-cli/post-tool-use.sh](codes/ai-memory/hooks/antigravity-cli/post-tool-use.sh) — 522 bytes; .sh; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/antigravity-cli/pre-tool-use.ps1](codes/ai-memory/hooks/antigravity-cli/pre-tool-use.ps1) — 174 bytes; .ps1; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/antigravity-cli/pre-tool-use.sh](codes/ai-memory/hooks/antigravity-cli/pre-tool-use.sh) — 537 bytes; .sh; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/antigravity-cli/session-start.ps1](codes/ai-memory/hooks/antigravity-cli/session-start.ps1) — 168 bytes; .ps1; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/antigravity-cli/session-start.sh](codes/ai-memory/hooks/antigravity-cli/session-start.sh) — 1632 bytes; .sh; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/antigravity-cli/stop.ps1](codes/ai-memory/hooks/antigravity-cli/stop.ps1) — 158 bytes; .ps1; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/antigravity-cli/stop.sh](codes/ai-memory/hooks/antigravity-cli/stop.sh) — 517 bytes; .sh; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/claude-code/post-tool-use.ps1](codes/ai-memory/hooks/claude-code/post-tool-use.ps1) — 118 bytes; .ps1; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/claude-code/post-tool-use.sh](codes/ai-memory/hooks/claude-code/post-tool-use.sh) — 1228 bytes; .sh; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/claude-code/pre-compact.ps1](codes/ai-memory/hooks/claude-code/pre-compact.ps1) — 116 bytes; .ps1; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/claude-code/pre-compact.sh](codes/ai-memory/hooks/claude-code/pre-compact.sh) — 1205 bytes; .sh; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/claude-code/pre-tool-use.ps1](codes/ai-memory/hooks/claude-code/pre-tool-use.ps1) — 117 bytes; .ps1; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/claude-code/pre-tool-use.sh](codes/ai-memory/hooks/claude-code/pre-tool-use.sh) — 1226 bytes; .sh; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/claude-code/session-end.ps1](codes/ai-memory/hooks/claude-code/session-end.ps1) — 116 bytes; .ps1; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/claude-code/session-end.sh](codes/ai-memory/hooks/claude-code/session-end.sh) — 1205 bytes; .sh; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/claude-code/session-start.ps1](codes/ai-memory/hooks/claude-code/session-start.ps1) — 132 bytes; .ps1; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/claude-code/session-start.sh](codes/ai-memory/hooks/claude-code/session-start.sh) — 2119 bytes; .sh; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/claude-code/stop.ps1](codes/ai-memory/hooks/claude-code/stop.ps1) — 109 bytes; .ps1; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/claude-code/stop.sh](codes/ai-memory/hooks/claude-code/stop.sh) — 1694 bytes; .sh; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/claude-code/subagent-start.ps1](codes/ai-memory/hooks/claude-code/subagent-start.ps1) — 119 bytes; .ps1; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/claude-code/subagent-start.sh](codes/ai-memory/hooks/claude-code/subagent-start.sh) — 635 bytes; .sh; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/claude-code/subagent-stop.ps1](codes/ai-memory/hooks/claude-code/subagent-stop.ps1) — 118 bytes; .ps1; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/claude-code/subagent-stop.sh](codes/ai-memory/hooks/claude-code/subagent-stop.sh) — 564 bytes; .sh; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/claude-code/user-prompt-submit.ps1](codes/ai-memory/hooks/claude-code/user-prompt-submit.ps1) — 116 bytes; .ps1; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/claude-code/user-prompt-submit.sh](codes/ai-memory/hooks/claude-code/user-prompt-submit.sh) — 1221 bytes; .sh; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/codex/post-tool-use.ps1](codes/ai-memory/hooks/codex/post-tool-use.ps1) — 112 bytes; .ps1; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/codex/post-tool-use.sh](codes/ai-memory/hooks/codex/post-tool-use.sh) — 488 bytes; .sh; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/codex/pre-compact.ps1](codes/ai-memory/hooks/codex/pre-compact.ps1) — 110 bytes; .ps1; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/codex/pre-compact.sh](codes/ai-memory/hooks/codex/pre-compact.sh) — 484 bytes; .sh; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/codex/pre-tool-use.ps1](codes/ai-memory/hooks/codex/pre-tool-use.ps1) — 111 bytes; .ps1; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/codex/pre-tool-use.sh](codes/ai-memory/hooks/codex/pre-tool-use.sh) — 486 bytes; .sh; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/codex/session-end.ps1](codes/ai-memory/hooks/codex/session-end.ps1) — 110 bytes; .ps1; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/codex/session-end.sh](codes/ai-memory/hooks/codex/session-end.sh) — 484 bytes; .sh; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/codex/session-start.ps1](codes/ai-memory/hooks/codex/session-start.ps1) — 126 bytes; .ps1; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/codex/session-start.sh](codes/ai-memory/hooks/codex/session-start.sh) — 1098 bytes; .sh; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/codex/stop.ps1](codes/ai-memory/hooks/codex/stop.ps1) — 103 bytes; .ps1; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/codex/stop.sh](codes/ai-memory/hooks/codex/stop.sh) — 470 bytes; .sh; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/codex/user-prompt-submit.ps1](codes/ai-memory/hooks/codex/user-prompt-submit.ps1) — 110 bytes; .ps1; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/codex/user-prompt-submit.sh](codes/ai-memory/hooks/codex/user-prompt-submit.sh) — 484 bytes; .sh; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/command-code/post-tool-use.ps1](codes/ai-memory/hooks/command-code/post-tool-use.ps1) — 119 bytes; .ps1; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/command-code/post-tool-use.sh](codes/ai-memory/hooks/command-code/post-tool-use.sh) — 487 bytes; .sh; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/command-code/pre-tool-use.ps1](codes/ai-memory/hooks/command-code/pre-tool-use.ps1) — 118 bytes; .ps1; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/command-code/pre-tool-use.sh](codes/ai-memory/hooks/command-code/pre-tool-use.sh) — 482 bytes; .sh; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/command-code/session-start.ps1](codes/ai-memory/hooks/command-code/session-start.ps1) — 133 bytes; .ps1; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/hooks/command-code/session-start.sh](codes/ai-memory/hooks/command-code/session-start.sh) — 1142 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/command-code/stop.ps1](codes/ai-memory/hooks/command-code/stop.ps1) — 110 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/command-code/stop.sh](codes/ai-memory/hooks/command-code/stop.sh) — 479 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/copilot-cli/post-tool-use.ps1](codes/ai-memory/hooks/copilot-cli/post-tool-use.ps1) — 118 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/copilot-cli/post-tool-use.sh](codes/ai-memory/hooks/copilot-cli/post-tool-use.sh) — 996 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/copilot-cli/pre-compact.ps1](codes/ai-memory/hooks/copilot-cli/pre-compact.ps1) — 116 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/copilot-cli/pre-compact.sh](codes/ai-memory/hooks/copilot-cli/pre-compact.sh) — 972 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/copilot-cli/pre-tool-use.ps1](codes/ai-memory/hooks/copilot-cli/pre-tool-use.ps1) — 117 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/copilot-cli/pre-tool-use.sh](codes/ai-memory/hooks/copilot-cli/pre-tool-use.sh) — 973 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/copilot-cli/session-end.ps1](codes/ai-memory/hooks/copilot-cli/session-end.ps1) — 116 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/copilot-cli/session-end.sh](codes/ai-memory/hooks/copilot-cli/session-end.sh) — 972 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/copilot-cli/session-start.ps1](codes/ai-memory/hooks/copilot-cli/session-start.ps1) — 162 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/copilot-cli/session-start.sh](codes/ai-memory/hooks/copilot-cli/session-start.sh) — 1905 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/copilot-cli/stop.ps1](codes/ai-memory/hooks/copilot-cli/stop.ps1) — 109 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/copilot-cli/stop.sh](codes/ai-memory/hooks/copilot-cli/stop.sh) — 959 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/copilot-cli/subagent-start.ps1](codes/ai-memory/hooks/copilot-cli/subagent-start.ps1) — 119 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/copilot-cli/subagent-start.sh](codes/ai-memory/hooks/copilot-cli/subagent-start.sh) — 978 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/copilot-cli/subagent-stop.ps1](codes/ai-memory/hooks/copilot-cli/subagent-stop.ps1) — 118 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/copilot-cli/subagent-stop.sh](codes/ai-memory/hooks/copilot-cli/subagent-stop.sh) — 976 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/copilot-cli/user-prompt-submit.ps1](codes/ai-memory/hooks/copilot-cli/user-prompt-submit.ps1) — 116 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/copilot-cli/user-prompt-submit.sh](codes/ai-memory/hooks/copilot-cli/user-prompt-submit.sh) — 978 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/cursor/post-tool-use.ps1](codes/ai-memory/hooks/cursor/post-tool-use.ps1) — 113 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/cursor/post-tool-use.sh](codes/ai-memory/hooks/cursor/post-tool-use.sh) — 490 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/cursor/pre-compact.ps1](codes/ai-memory/hooks/cursor/pre-compact.ps1) — 111 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/cursor/pre-compact.sh](codes/ai-memory/hooks/cursor/pre-compact.sh) — 486 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/cursor/pre-tool-use.ps1](codes/ai-memory/hooks/cursor/pre-tool-use.ps1) — 112 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/cursor/pre-tool-use.sh](codes/ai-memory/hooks/cursor/pre-tool-use.sh) — 488 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/cursor/session-end.ps1](codes/ai-memory/hooks/cursor/session-end.ps1) — 111 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/cursor/session-end.sh](codes/ai-memory/hooks/cursor/session-end.sh) — 486 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/cursor/session-start.ps1](codes/ai-memory/hooks/cursor/session-start.ps1) — 127 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/cursor/session-start.sh](codes/ai-memory/hooks/cursor/session-start.sh) — 1101 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/cursor/stop.ps1](codes/ai-memory/hooks/cursor/stop.ps1) — 104 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/cursor/stop.sh](codes/ai-memory/hooks/cursor/stop.sh) — 472 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/cursor/user-prompt-submit.ps1](codes/ai-memory/hooks/cursor/user-prompt-submit.ps1) — 111 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/cursor/user-prompt-submit.sh](codes/ai-memory/hooks/cursor/user-prompt-submit.sh) — 486 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/devin/post-compaction.ps1](codes/ai-memory/hooks/devin/post-compaction.ps1) — 114 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/devin/post-compaction.sh](codes/ai-memory/hooks/devin/post-compaction.sh) — 576 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/devin/post-tool-use.ps1](codes/ai-memory/hooks/devin/post-tool-use.ps1) — 112 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/devin/post-tool-use.sh](codes/ai-memory/hooks/devin/post-tool-use.sh) — 501 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/devin/pre-tool-use.ps1](codes/ai-memory/hooks/devin/pre-tool-use.ps1) — 111 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/devin/pre-tool-use.sh](codes/ai-memory/hooks/devin/pre-tool-use.sh) — 498 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/devin/session-end.ps1](codes/ai-memory/hooks/devin/session-end.ps1) — 110 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/devin/session-end.sh](codes/ai-memory/hooks/devin/session-end.sh) — 528 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/devin/session-start.ps1](codes/ai-memory/hooks/devin/session-start.ps1) — 126 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/devin/session-start.sh](codes/ai-memory/hooks/devin/session-start.sh) — 1130 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/devin/stop.ps1](codes/ai-memory/hooks/devin/stop.ps1) — 103 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/devin/stop.sh](codes/ai-memory/hooks/devin/stop.sh) — 474 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/devin/user-prompt-submit.ps1](codes/ai-memory/hooks/devin/user-prompt-submit.ps1) — 110 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/devin/user-prompt-submit.sh](codes/ai-memory/hooks/devin/user-prompt-submit.sh) — 495 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/gemini-cli/post-tool-use.ps1](codes/ai-memory/hooks/gemini-cli/post-tool-use.ps1) — 117 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/gemini-cli/post-tool-use.sh](codes/ai-memory/hooks/gemini-cli/post-tool-use.sh) — 498 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/gemini-cli/pre-compact.ps1](codes/ai-memory/hooks/gemini-cli/pre-compact.ps1) — 115 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/gemini-cli/pre-compact.sh](codes/ai-memory/hooks/gemini-cli/pre-compact.sh) — 494 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/gemini-cli/pre-tool-use.ps1](codes/ai-memory/hooks/gemini-cli/pre-tool-use.ps1) — 116 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/gemini-cli/pre-tool-use.sh](codes/ai-memory/hooks/gemini-cli/pre-tool-use.sh) — 496 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/gemini-cli/session-end.ps1](codes/ai-memory/hooks/gemini-cli/session-end.ps1) — 115 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/gemini-cli/session-end.sh](codes/ai-memory/hooks/gemini-cli/session-end.sh) — 494 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/gemini-cli/session-start.ps1](codes/ai-memory/hooks/gemini-cli/session-start.ps1) — 131 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/gemini-cli/session-start.sh](codes/ai-memory/hooks/gemini-cli/session-start.sh) — 1113 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/gemini-cli/stop.ps1](codes/ai-memory/hooks/gemini-cli/stop.ps1) — 108 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/gemini-cli/stop.sh](codes/ai-memory/hooks/gemini-cli/stop.sh) — 480 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/gemini-cli/user-prompt-submit.ps1](codes/ai-memory/hooks/gemini-cli/user-prompt-submit.ps1) — 115 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/gemini-cli/user-prompt-submit.sh](codes/ai-memory/hooks/gemini-cli/user-prompt-submit.sh) — 494 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/grok/post-tool-use.ps1](codes/ai-memory/hooks/grok/post-tool-use.ps1) — 283 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/grok/post-tool-use.sh](codes/ai-memory/hooks/grok/post-tool-use.sh) — 1881 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/grok/pre-compact.ps1](codes/ai-memory/hooks/grok/pre-compact.ps1) — 109 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/grok/pre-compact.sh](codes/ai-memory/hooks/grok/pre-compact.sh) — 438 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/grok/pre-tool-use.ps1](codes/ai-memory/hooks/grok/pre-tool-use.ps1) — 110 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/grok/pre-tool-use.sh](codes/ai-memory/hooks/grok/pre-tool-use.sh) — 440 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/grok/session-end.ps1](codes/ai-memory/hooks/grok/session-end.ps1) — 109 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/grok/session-end.sh](codes/ai-memory/hooks/grok/session-end.sh) — 438 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/grok/session-start.ps1](codes/ai-memory/hooks/grok/session-start.ps1) — 111 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/grok/session-start.sh](codes/ai-memory/hooks/grok/session-start.sh) — 708 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/grok/stop.ps1](codes/ai-memory/hooks/grok/stop.ps1) — 102 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/grok/stop.sh](codes/ai-memory/hooks/grok/stop.sh) — 424 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/grok/subagent-start.ps1](codes/ai-memory/hooks/grok/subagent-start.ps1) — 112 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/grok/subagent-start.sh](codes/ai-memory/hooks/grok/subagent-start.sh) — 631 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/grok/subagent-stop.ps1](codes/ai-memory/hooks/grok/subagent-stop.ps1) — 111 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/grok/subagent-stop.sh](codes/ai-memory/hooks/grok/subagent-stop.sh) — 560 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/grok/user-prompt-submit.ps1](codes/ai-memory/hooks/grok/user-prompt-submit.ps1) — 236 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/grok/user-prompt-submit.sh](codes/ai-memory/hooks/grok/user-prompt-submit.sh) — 692 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/kimi-code/post-tool-use.ps1](codes/ai-memory/hooks/kimi-code/post-tool-use.ps1) — 116 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/kimi-code/post-tool-use.sh](codes/ai-memory/hooks/kimi-code/post-tool-use.sh) — 496 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/kimi-code/pre-compact.ps1](codes/ai-memory/hooks/kimi-code/pre-compact.ps1) — 114 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/kimi-code/pre-compact.sh](codes/ai-memory/hooks/kimi-code/pre-compact.sh) — 492 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/kimi-code/pre-tool-use.ps1](codes/ai-memory/hooks/kimi-code/pre-tool-use.ps1) — 115 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/kimi-code/pre-tool-use.sh](codes/ai-memory/hooks/kimi-code/pre-tool-use.sh) — 494 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/kimi-code/session-end.ps1](codes/ai-memory/hooks/kimi-code/session-end.ps1) — 114 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/kimi-code/session-end.sh](codes/ai-memory/hooks/kimi-code/session-end.sh) — 492 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/kimi-code/session-start.ps1](codes/ai-memory/hooks/kimi-code/session-start.ps1) — 318 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/kimi-code/session-start.sh](codes/ai-memory/hooks/kimi-code/session-start.sh) — 838 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/kimi-code/stop.ps1](codes/ai-memory/hooks/kimi-code/stop.ps1) — 107 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/kimi-code/stop.sh](codes/ai-memory/hooks/kimi-code/stop.sh) — 478 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/kimi-code/subagent-start.ps1](codes/ai-memory/hooks/kimi-code/subagent-start.ps1) — 117 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/kimi-code/subagent-start.sh](codes/ai-memory/hooks/kimi-code/subagent-start.sh) — 617 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/kimi-code/subagent-stop.ps1](codes/ai-memory/hooks/kimi-code/subagent-stop.ps1) — 116 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/kimi-code/subagent-stop.sh](codes/ai-memory/hooks/kimi-code/subagent-stop.sh) — 546 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/kimi-code/user-prompt-submit.ps1](codes/ai-memory/hooks/kimi-code/user-prompt-submit.ps1) — 567 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/kimi-code/user-prompt-submit.sh](codes/ai-memory/hooks/kimi-code/user-prompt-submit.sh) — 3192 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/kiro-cli/post-tool-use.ps1](codes/ai-memory/hooks/kiro-cli/post-tool-use.ps1) — 164 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/kiro-cli/post-tool-use.sh](codes/ai-memory/hooks/kiro-cli/post-tool-use.sh) — 511 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/kiro-cli/pre-tool-use.ps1](codes/ai-memory/hooks/kiro-cli/pre-tool-use.ps1) — 274 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/kiro-cli/pre-tool-use.sh](codes/ai-memory/hooks/kiro-cli/pre-tool-use.sh) — 694 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/kiro-cli/session-start.ps1](codes/ai-memory/hooks/kiro-cli/session-start.ps1) — 431 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/kiro-cli/session-start.sh](codes/ai-memory/hooks/kiro-cli/session-start.sh) — 2175 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/kiro-cli/stop.ps1](codes/ai-memory/hooks/kiro-cli/stop.ps1) — 329 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/kiro-cli/stop.sh](codes/ai-memory/hooks/kiro-cli/stop.sh) — 676 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/kiro-cli/user-prompt-submit.ps1](codes/ai-memory/hooks/kiro-cli/user-prompt-submit.ps1) — 307 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/kiro-cli/user-prompt-submit.sh](codes/ai-memory/hooks/kiro-cli/user-prompt-submit.sh) — 721 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/lib/ai-memory-hook.ps1](codes/ai-memory/hooks/lib/ai-memory-hook.ps1) — 59007 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/opencode/post-tool-use.ps1](codes/ai-memory/hooks/opencode/post-tool-use.ps1) — 116 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/opencode/post-tool-use.sh](codes/ai-memory/hooks/opencode/post-tool-use.sh) — 495 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/opencode/pre-compact.ps1](codes/ai-memory/hooks/opencode/pre-compact.ps1) — 114 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/opencode/pre-compact.sh](codes/ai-memory/hooks/opencode/pre-compact.sh) — 491 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/opencode/pre-tool-use.ps1](codes/ai-memory/hooks/opencode/pre-tool-use.ps1) — 115 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/opencode/pre-tool-use.sh](codes/ai-memory/hooks/opencode/pre-tool-use.sh) — 493 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/opencode/session-end.ps1](codes/ai-memory/hooks/opencode/session-end.ps1) — 114 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/opencode/session-end.sh](codes/ai-memory/hooks/opencode/session-end.sh) — 491 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/opencode/session-start.ps1](codes/ai-memory/hooks/opencode/session-start.ps1) — 130 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/opencode/session-start.sh](codes/ai-memory/hooks/opencode/session-start.sh) — 1109 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/opencode/stop.ps1](codes/ai-memory/hooks/opencode/stop.ps1) — 107 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/opencode/stop.sh](codes/ai-memory/hooks/opencode/stop.sh) — 477 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/opencode/user-prompt-submit.ps1](codes/ai-memory/hooks/opencode/user-prompt-submit.ps1) — 114 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/opencode/user-prompt-submit.sh](codes/ai-memory/hooks/opencode/user-prompt-submit.sh) — 491 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/pool/post-tool-use.ps1](codes/ai-memory/hooks/pool/post-tool-use.ps1) — 111 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/pool/post-tool-use.sh](codes/ai-memory/hooks/pool/post-tool-use.sh) — 507 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/pool/pre-tool-use.ps1](codes/ai-memory/hooks/pool/pre-tool-use.ps1) — 110 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/pool/pre-tool-use.sh](codes/ai-memory/hooks/pool/pre-tool-use.sh) — 505 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/pool/session-start.ps1](codes/ai-memory/hooks/pool/session-start.ps1) — 390 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/pool/session-start.sh](codes/ai-memory/hooks/pool/session-start.sh) — 794 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/pool/stop.ps1](codes/ai-memory/hooks/pool/stop.ps1) — 102 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/pool/stop.sh](codes/ai-memory/hooks/pool/stop.sh) — 489 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/pool/user-prompt-submit.ps1](codes/ai-memory/hooks/pool/user-prompt-submit.ps1) — 109 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/hooks/pool/user-prompt-submit.sh](codes/ai-memory/hooks/pool/user-prompt-submit.sh) — 510 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/INSTALL_FOR_AGENTS.md](codes/ai-memory/INSTALL_FOR_AGENTS.md) — 2718 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/install.ps1](codes/ai-memory/install.ps1) — 7298 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/install.sh](codes/ai-memory/install.sh) — 9265 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/LICENSE](codes/ai-memory/LICENSE) — 1068 bytes; (none); 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/nix/nixos-module.nix](codes/ai-memory/nix/nixos-module.nix) — 11845 bytes; .nix; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/nix/settings-options.nix](codes/ai-memory/nix/settings-options.nix) — 3021 bytes; .nix; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/nix/systemd-sandbox.nix](codes/ai-memory/nix/systemd-sandbox.nix) — 1005 bytes; .nix; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/packaging/aur/ai-memory.install](codes/ai-memory/packaging/aur/ai-memory.install) — 997 bytes; .install; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/packaging/aur/PKGBUILD](codes/ai-memory/packaging/aur/PKGBUILD) — 3180 bytes; (none); 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/packaging/aur/PKGBUILD-bin](codes/ai-memory/packaging/aur/PKGBUILD-bin) — 2514 bytes; (none); 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/packaging/aur/README.md](codes/ai-memory/packaging/aur/README.md) — 3305 bytes; .md; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/packaging/env/ai-memory.env](codes/ai-memory/packaging/env/ai-memory.env) — 610 bytes; .env; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/packaging/launchd/com.github.akitaonrails.ai-memory.plist](codes/ai-memory/packaging/launchd/com.github.akitaonrails.ai-memory.plist) — 1863 bytes; .plist; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/packaging/rpm/ai-memory.spec](codes/ai-memory/packaging/rpm/ai-memory.spec) — 2086 bytes; .spec; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/packaging/systemd/ai-memory-user.service](codes/ai-memory/packaging/systemd/ai-memory-user.service) — 440 bytes; .service; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/packaging/systemd/ai-memory.service](codes/ai-memory/packaging/systemd/ai-memory.service) — 626 bytes; .service; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/packaging/sysusers/ai-memory.conf](codes/ai-memory/packaging/sysusers/ai-memory.conf) — 76 bytes; .conf; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/packaging/tmpfiles/ai-memory.conf](codes/ai-memory/packaging/tmpfiles/ai-memory.conf) — 49 bytes; .conf; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/plugins/claude-code/.claude-plugin/plugin.json](codes/ai-memory/plugins/claude-code/.claude-plugin/plugin.json) — 1575 bytes; .json; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/plugins/claude-code/.mcp.json](codes/ai-memory/plugins/claude-code/.mcp.json) — 206 bytes; .json; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/plugins/claude-code/hooks/hooks.json](codes/ai-memory/plugins/claude-code/hooks/hooks.json) — 2384 bytes; .json; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/plugins/claude-code/LICENSE](codes/ai-memory/plugins/claude-code/LICENSE) — 1068 bytes; (none); 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/plugins/claude-code/README.md](codes/ai-memory/plugins/claude-code/README.md) — 4091 bytes; .md; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/plugins/claude-code/scripts/ai-memory-hook](codes/ai-memory/plugins/claude-code/scripts/ai-memory-hook) — 4250 bytes; (none); 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/plugins/claude-code/skills/ai-memory-durable-pages/SKILL.md](codes/ai-memory/plugins/claude-code/skills/ai-memory-durable-pages/SKILL.md) — 8262 bytes; .md; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/plugins/claude-code/skills/ai-memory-handoff/SKILL.md](codes/ai-memory/plugins/claude-code/skills/ai-memory-handoff/SKILL.md) — 5237 bytes; .md; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/plugins/claude-code/skills/ai-memory-learning-maintenance/SKILL.md](codes/ai-memory/plugins/claude-code/skills/ai-memory-learning-maintenance/SKILL.md) — 5460 bytes; .md; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/plugins/claude-code/skills/ai-memory-messaging/SKILL.md](codes/ai-memory/plugins/claude-code/skills/ai-memory-messaging/SKILL.md) — 5215 bytes; .md; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/plugins/claude-code/skills/ai-memory-retrieval/SKILL.md](codes/ai-memory/plugins/claude-code/skills/ai-memory-retrieval/SKILL.md) — 10092 bytes; .md; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/plugins/claude-code/skills/ai-memory-routing-install/SKILL.md](codes/ai-memory/plugins/claude-code/skills/ai-memory-routing-install/SKILL.md) — 4213 bytes; .md; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/plugins/claude-code/skills/status/SKILL.md](codes/ai-memory/plugins/claude-code/skills/status/SKILL.md) — 1493 bytes; .md; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/plugins/codex/.codex-plugin/plugin.json](codes/ai-memory/plugins/codex/.codex-plugin/plugin.json) — 511 bytes; .json; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/plugins/codex/hooks/hooks.json](codes/ai-memory/plugins/codex/hooks/hooks.json) — 2112 bytes; .json; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/plugins/codex/LICENSE](codes/ai-memory/plugins/codex/LICENSE) — 1068 bytes; (none); 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/plugins/codex/mcp.json](codes/ai-memory/plugins/codex/mcp.json) — 248 bytes; .json; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/plugins/codex/README.md](codes/ai-memory/plugins/codex/README.md) — 2304 bytes; .md; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/plugins/codex/scripts/ai-memory-hook](codes/ai-memory/plugins/codex/scripts/ai-memory-hook) — 4250 bytes; (none); 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/plugins/codex/skills/ai-memory-durable-pages/SKILL.md](codes/ai-memory/plugins/codex/skills/ai-memory-durable-pages/SKILL.md) — 8262 bytes; .md; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/plugins/codex/skills/ai-memory-handoff/SKILL.md](codes/ai-memory/plugins/codex/skills/ai-memory-handoff/SKILL.md) — 5237 bytes; .md; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/plugins/codex/skills/ai-memory-learning-maintenance/SKILL.md](codes/ai-memory/plugins/codex/skills/ai-memory-learning-maintenance/SKILL.md) — 5460 bytes; .md; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/plugins/codex/skills/ai-memory-messaging/SKILL.md](codes/ai-memory/plugins/codex/skills/ai-memory-messaging/SKILL.md) — 5215 bytes; .md; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/plugins/codex/skills/ai-memory-retrieval/SKILL.md](codes/ai-memory/plugins/codex/skills/ai-memory-retrieval/SKILL.md) — 10092 bytes; .md; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/plugins/codex/skills/ai-memory-routing-install/SKILL.md](codes/ai-memory/plugins/codex/skills/ai-memory-routing-install/SKILL.md) — 4213 bytes; .md; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/plugins/codex/skills/status/SKILL.md](codes/ai-memory/plugins/codex/skills/status/SKILL.md) — 1493 bytes; .md; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/plugins/README.md](codes/ai-memory/plugins/README.md) — 2342 bytes; .md; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/README.md](codes/ai-memory/README.md) — 42768 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/rust-toolchain.toml](codes/ai-memory/rust-toolchain.toml) — 88 bytes; .toml; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/scripts/changelog_sections.py](codes/ai-memory/scripts/changelog_sections.py) — 8085 bytes; .py; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/scripts/check-changelog-frozen.sh](codes/ai-memory/scripts/check-changelog-frozen.sh) — 2003 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/scripts/check-changelog-sections.sh](codes/ai-memory/scripts/check-changelog-sections.sh) — 2025 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/scripts/check-migrations-immutable.sh](codes/ai-memory/scripts/check-migrations-immutable.sh) — 708 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/scripts/check-native-packaging.sh](codes/ai-memory/scripts/check-native-packaging.sh) — 19076 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/scripts/check-nix-packaging.sh](codes/ai-memory/scripts/check-nix-packaging.sh) — 1293 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/scripts/install-git-hooks.sh](codes/ai-memory/scripts/install-git-hooks.sh) — 4796 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/scripts/install-hooks.sh](codes/ai-memory/scripts/install-hooks.sh) — 8104 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/scripts/managed-workstream-acceptance.sh](codes/ai-memory/scripts/managed-workstream-acceptance.sh) — 85948 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/scripts/onboarding-acceptance.sh](codes/ai-memory/scripts/onboarding-acceptance.sh) — 9067 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/scripts/test-native-arch-systemd-distrobox.sh](codes/ai-memory/scripts/test-native-arch-systemd-distrobox.sh) — 6865 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/scripts/test-nixos-systemd-container.sh](codes/ai-memory/scripts/test-nixos-systemd-container.sh) — 7806 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/SECURITY.md](codes/ai-memory/SECURITY.md) — 9871 bytes; .md; 修改于 2026-10-20 17:55:11
+- [codes/ai-memory/tests/e2e/claude_plugin_smoke.py](codes/ai-memory/tests/e2e/claude_plugin_smoke.py) — 12544 bytes; .py; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/tests/e2e/codex_plugin_smoke.py](codes/ai-memory/tests/e2e/codex_plugin_smoke.py) — 13603 bytes; .py; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/tests/e2e/external_relay_smoke.py](codes/ai-memory/tests/e2e/external_relay_smoke.py) — 37140 bytes; .py; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/tests/e2e/handoff_smoke.sh](codes/ai-memory/tests/e2e/handoff_smoke.sh) — 15599 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/tests/e2e/test_external_relay_smoke.py](codes/ai-memory/tests/e2e/test_external_relay_smoke.py) — 4154 bytes; .py; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/tests/hooks/test_grok_ps.ps1](codes/ai-memory/tests/hooks/test_grok_ps.ps1) — 1671 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/tests/hooks/test_lib.sh](codes/ai-memory/tests/hooks/test_lib.sh) — 66539 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/tests/hooks/test_plugin_launcher.sh](codes/ai-memory/tests/hooks/test_plugin_launcher.sh) — 11641 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/tests/hooks/test_spool_ps.ps1](codes/ai-memory/tests/hooks/test_spool_ps.ps1) — 3748 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/tests/install_ps1.ps1](codes/ai-memory/tests/install_ps1.ps1) — 5564 bytes; .ps1; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/tests/install_sh.sh](codes/ai-memory/tests/install_sh.sh) — 6392 bytes; .sh; 修改于 2026-10-20 17:55:12
+- [codes/ai-memory/tests/wrapper_upgrade.sh](codes/ai-memory/tests/wrapper_upgrade.sh) — 14626 bytes; .sh; 修改于 2026-10-20 17:55:12
+
+### docs — 项目文档与设计
+
+- [docs/design/00-baseline/01-scope-and-success.md](docs/design/00-baseline/01-scope-and-success.md) — 2091 bytes; .md; 修改于 2026-10-20 18:03:36
+- [docs/design/00-baseline/02-authority-and-planes.md](docs/design/00-baseline/02-authority-and-planes.md) — 2273 bytes; .md; 修改于 2026-10-20 18:02:29
+- [docs/design/00-baseline/03-domain-model.md](docs/design/00-baseline/03-domain-model.md) — 1845 bytes; .md; 修改于 2026-10-20 18:02:29
+- [docs/design/00-baseline/04-client-switch-and-handoff.md](docs/design/00-baseline/04-client-switch-and-handoff.md) — 1802 bytes; .md; 修改于 2026-10-20 18:02:29
+- [docs/design/00-baseline/05-memory-system.md](docs/design/00-baseline/05-memory-system.md) — 3397 bytes; .md; 修改于 2026-10-20 18:02:29
+- [docs/design/00-baseline/06-security-and-governance.md](docs/design/00-baseline/06-security-and-governance.md) — 1463 bytes; .md; 修改于 2026-10-20 18:02:29
+- [docs/design/00-baseline/07-architecture-decisions.md](docs/design/00-baseline/07-architecture-decisions.md) — 1541 bytes; .md; 修改于 2026-10-20 18:02:29
+- [docs/design/01-contracts/canonical-events.md](docs/design/01-contracts/canonical-events.md) — 1676 bytes; .md; 修改于 2026-10-20 18:02:29
+- [docs/design/01-contracts/mcp-interface.md](docs/design/01-contracts/mcp-interface.md) — 1491 bytes; .md; 修改于 2026-10-20 18:02:29
+- [docs/design/01-contracts/README.md](docs/design/01-contracts/README.md) — 547 bytes; .md; 修改于 2026-10-20 18:02:29
+- [docs/design/01-contracts/schema-versioning.md](docs/design/01-contracts/schema-versioning.md) — 812 bytes; .md; 修改于 2026-10-20 18:02:29
+- [docs/design/01-contracts/wcp-api.md](docs/design/01-contracts/wcp-api.md) — 1843 bytes; .md; 修改于 2026-10-20 18:02:29
+- [docs/design/02-subprojects/P0/README.md](docs/design/02-subprojects/P0/README.md) — 2344 bytes; .md; 修改于 2026-10-20 18:10:34
+- [docs/design/02-subprojects/P1/README.md](docs/design/02-subprojects/P1/README.md) — 2293 bytes; .md; 修改于 2026-10-20 18:10:34
+- [docs/design/02-subprojects/P2/README.md](docs/design/02-subprojects/P2/README.md) — 2333 bytes; .md; 修改于 2026-10-20 18:10:34
+- [docs/design/02-subprojects/P3/README.md](docs/design/02-subprojects/P3/README.md) — 2279 bytes; .md; 修改于 2026-10-20 18:10:34
+- [docs/design/02-subprojects/P4/README.md](docs/design/02-subprojects/P4/README.md) — 2191 bytes; .md; 修改于 2026-10-20 18:10:34
+- [docs/design/02-subprojects/P5/README.md](docs/design/02-subprojects/P5/README.md) — 2156 bytes; .md; 修改于 2026-10-20 18:10:34
+- [docs/design/02-subprojects/P6/README.md](docs/design/02-subprojects/P6/README.md) — 2121 bytes; .md; 修改于 2026-10-20 18:10:34
+- [docs/design/02-subprojects/P7/README.md](docs/design/02-subprojects/P7/README.md) — 2157 bytes; .md; 修改于 2026-10-20 18:10:34
+- [docs/design/02-subprojects/P8/README.md](docs/design/02-subprojects/P8/README.md) — 2183 bytes; .md; 修改于 2026-10-20 18:10:34
+- [docs/design/02-subprojects/tasks/README.md](docs/design/02-subprojects/tasks/README.md) — 2727 bytes; .md; 修改于 2026-10-20 18:03:15
+- [docs/design/02-subprojects/tasks/t0.1-monorepo-ci.md](docs/design/02-subprojects/tasks/t0.1-monorepo-ci.md) — 3537 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t0.2-foundation-contracts.md](docs/design/02-subprojects/tasks/t0.2-foundation-contracts.md) — 3580 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t0.3-entity-schemas.md](docs/design/02-subprojects/tasks/t0.3-entity-schemas.md) — 3514 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t0.4-event-schemas.md](docs/design/02-subprojects/tasks/t0.4-event-schemas.md) — 3496 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t0.5-sdk-fixtures.md](docs/design/02-subprojects/tasks/t0.5-sdk-fixtures.md) — 3483 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t0.6-local-infra.md](docs/design/02-subprojects/tasks/t0.6-local-infra.md) — 3531 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t1.1-plane-version-matrix.md](docs/design/02-subprojects/tasks/t1.1-plane-version-matrix.md) — 3452 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t1.2-plane-rest-client.md](docs/design/02-subprojects/tasks/t1.2-plane-rest-client.md) — 3490 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t1.3-webhook-security.md](docs/design/02-subprojects/tasks/t1.3-webhook-security.md) — 3433 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t1.4-webhook-dedup-replay.md](docs/design/02-subprojects/tasks/t1.4-webhook-dedup-replay.md) — 3481 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t1.5-plane-projection.md](docs/design/02-subprojects/tasks/t1.5-plane-projection.md) — 3498 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t2.1-artifact-metadata.md](docs/design/02-subprojects/tasks/t2.1-artifact-metadata.md) — 3510 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t2.2-memory-adapter.md](docs/design/02-subprojects/tasks/t2.2-memory-adapter.md) — 3661 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t2.3-context-layers.md](docs/design/02-subprojects/tasks/t2.3-context-layers.md) — 3497 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t2.4-context-compiler.md](docs/design/02-subprojects/tasks/t2.4-context-compiler.md) — 3549 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t2.5-fts-resources.md](docs/design/02-subprojects/tasks/t2.5-fts-resources.md) — 3495 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t3.1-session-model.md](docs/design/02-subprojects/tasks/t3.1-session-model.md) — 3478 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t3.2-checkpoint-handoff.md](docs/design/02-subprojects/tasks/t3.2-checkpoint-handoff.md) — 3520 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t3.3-sync-cursor-batch.md](docs/design/02-subprojects/tasks/t3.3-sync-cursor-batch.md) — 3402 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t3.4-sqlite-outbox.md](docs/design/02-subprojects/tasks/t3.4-sqlite-outbox.md) — 3430 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t3.5-conflict-service.md](docs/design/02-subprojects/tasks/t3.5-conflict-service.md) — 3437 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t4.1-api-gateway.md](docs/design/02-subprojects/tasks/t4.1-api-gateway.md) — 3441 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t4.2-mcp-gateway.md](docs/design/02-subprojects/tasks/t4.2-mcp-gateway.md) — 3447 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t4.3-workctx-cli.md](docs/design/02-subprojects/tasks/t4.3-workctx-cli.md) — 3414 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t4.4-client-adapters.md](docs/design/02-subprojects/tasks/t4.4-client-adapters.md) — 3501 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t5.1-workbench-query.md](docs/design/02-subprojects/tasks/t5.1-workbench-query.md) — 3412 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t5.2-workbench-handoff-conflict.md](docs/design/02-subprojects/tasks/t5.2-workbench-handoff-conflict.md) — 3426 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t5.3-workbench-admin.md](docs/design/02-subprojects/tasks/t5.3-workbench-admin.md) — 3393 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t6.1-identity-policy.md](docs/design/02-subprojects/tasks/t6.1-identity-policy.md) — 3427 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t6.2-audit-governance.md](docs/design/02-subprojects/tasks/t6.2-audit-governance.md) — 3463 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t6.3-observability.md](docs/design/02-subprojects/tasks/t6.3-observability.md) — 3497 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t7.1-golden-evaluation.md](docs/design/02-subprojects/tasks/t7.1-golden-evaluation.md) — 3380 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t7.2-intelligence-workers.md](docs/design/02-subprojects/tasks/t7.2-intelligence-workers.md) — 3463 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t7.3-search-vector.md](docs/design/02-subprojects/tasks/t7.3-search-vector.md) — 3444 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t8.1-integration-e2e-resilience.md](docs/design/02-subprojects/tasks/t8.1-integration-e2e-resilience.md) — 3563 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t8.2-compose-helm.md](docs/design/02-subprojects/tasks/t8.2-compose-helm.md) — 3430 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/02-subprojects/tasks/t8.3-release-rollback.md](docs/design/02-subprojects/tasks/t8.3-release-rollback.md) — 3560 bytes; .md; 修改于 2026-10-20 18:02:56
+- [docs/design/03-integration/01-task-handoff-contract.md](docs/design/03-integration/01-task-handoff-contract.md) — 1925 bytes; .md; 修改于 2026-10-20 18:02:29
+- [docs/design/03-integration/02-integration-environment.md](docs/design/03-integration/02-integration-environment.md) — 960 bytes; .md; 修改于 2026-10-20 18:02:29
+- [docs/design/03-integration/03-end-to-end-chains.md](docs/design/03-integration/03-end-to-end-chains.md) — 1229 bytes; .md; 修改于 2026-10-20 18:02:29
+- [docs/design/04-testing/02-fault-security-performance.md](docs/design/04-testing/02-fault-security-performance.md) — 958 bytes; .md; 修改于 2026-10-20 18:02:29
+- [docs/design/04-testing/README.md](docs/design/04-testing/README.md) — 1331 bytes; .md; 修改于 2026-10-20 18:02:29
+- [docs/design/05-release/01-release-deployment-rollback.md](docs/design/05-release/01-release-deployment-rollback.md) — 1346 bytes; .md; 修改于 2026-10-20 18:02:29
+- [docs/design/05-release/02-runbook-index.md](docs/design/05-release/02-runbook-index.md) — 675 bytes; .md; 修改于 2026-10-20 18:02:29
+- [docs/design/README.md](docs/design/README.md) — 2515 bytes; .md; 修改于 2026-10-20 18:02:29
+- [docs/design/vendor/ai-memory-adoption.md](docs/design/vendor/ai-memory-adoption.md) — 1558 bytes; .md; 修改于 2026-10-20 18:02:29
+- [docs/superpowers/plans/2026-10-20-plane-work-continuity-platform.md](docs/superpowers/plans/2026-10-20-plane-work-continuity-platform.md) — 49990 bytes; .md; 修改于 2026-10-20 18:12:08
+- [docs/traceability/requirements-matrix.yaml](docs/traceability/requirements-matrix.yaml) — 5783 bytes; .yaml; 修改于 2026-10-20 18:07:47
+
+### ReadMe.md — 根目录说明
+
+- [ReadMe.md](ReadMe.md) — 119110 bytes; .md; 修改于 2026-10-20 17:15:35
+
+

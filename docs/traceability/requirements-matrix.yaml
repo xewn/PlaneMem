@@ -1,0 +1,109 @@
+version: 1
+baseline:
+  source: F:/PlaneMem/ReadMe.md
+  plan: F:/PlaneMem/docs/superpowers/plans/2026-10-20-plane-work-continuity-platform.md
+  status: planned
+  change_rule: "Any requirement, contract, event, state, permission, migration, or feature-flag change updates this file and its tests."
+
+requirements:
+  - id: R-001
+    statement: "AI clients are replaceable; work facts remain in the platform."
+    design: ["authority-boundary", "WCP", "adapter-gateway"]
+    subprojects: ["P0", "P4"]
+    tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    gates: ["merge", "nightly", "production"]
+
+  - id: R-002
+    statement: "Plane is authoritative for projects and work items."
+    design: ["plane-connector", "authority-boundary"]
+    subprojects: ["P1"]
+    tests: ["integration.plane_api", "integration.plane_webhook", "integration.permission_propagation"]
+    gates: ["merge", "nightly", "production"]
+
+  - id: R-003
+    statement: "A permission-filtered, source-traceable ContextPack can resume work."
+    design: ["context-l0-l4", "context-pack"]
+    subprojects: ["P2"]
+    tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    gates: ["merge", "nightly", "release_candidate", "production"]
+
+  - id: R-004
+    statement: "Checkpoint, Handoff, and Resume support cross-client continuation."
+    design: ["session-model", "handoff-flow"]
+    subprojects: ["P3", "P4"]
+    tests: ["integration.checkpoint_handoff", "e2e.codex_to_claude_resume", "resilience.client_restart"]
+    gates: ["nightly", "release_candidate", "production"]
+
+  - id: R-005
+    statement: "Events are append-only, idempotent, replayable, and lossless after durable local write."
+    design: ["canonical-event", "sync-outbox"]
+    subprojects: ["P0", "P1", "P3", "P8"]
+    tests: ["unit.event_dedup", "integration.event_replay", "resilience.network_loss", "resilience.service_restart"]
+    gates: ["pr", "merge", "nightly", "release_candidate"]
+
+  - id: R-006
+    statement: "Concurrent changes produce visible conflicts and never silently overwrite protected fields."
+    design: ["optimistic-concurrency", "conflict-policy"]
+    subprojects: ["P3", "P5"]
+    tests: ["unit.version_conflict", "integration.conflict_resolution", "e2e.conflict_center"]
+    gates: ["merge", "nightly", "production"]
+
+  - id: R-007
+    statement: "Tenant, workspace, project, work-item, client, and tool permissions are enforced and audited."
+    design: ["governance-plane", "tool-capabilities"]
+    subprojects: ["P6"]
+    tests: ["security.tenant_isolation", "security.scope_escalation", "security.denied_no_side_effect", "security.audit_completeness"]
+    gates: ["pr", "merge", "nightly", "release_candidate", "production"]
+
+  - id: R-008
+    statement: "Files, code references, artifacts, versions, hashes, classifications, and sources are recoverable."
+    design: ["artifact-plane", "source-reference"]
+    subprojects: ["P2", "P6", "P8"]
+    tests: ["unit.artifact_hash", "integration.object_storage", "security.sensitive_export", "release.backup_restore"]
+    gates: ["merge", "nightly", "release_candidate"]
+
+  - id: R-009
+    statement: "AI suggestions remain proposed until a permitted human confirmation promotes them."
+    design: ["desired-observed-verified", "ai-proposal-flow"]
+    subprojects: ["P2", "P6", "P7"]
+    tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    gates: ["nightly", "release_candidate", "production"]
+
+  - id: R-010
+    statement: "The platform is reproducibly deployable in private environments and recoverable after failure."
+    design: ["deployment-topology", "release-manifest", "rollback"]
+    subprojects: ["P8"]
+    tests: ["integration.compose_clean_install", "release.helm_install", "release.migration_rollback", "release.backup_restore", "release.sbom"]
+    gates: ["merge", "release_candidate", "production"]
+
+  - id: R-011
+    statement: "Every important operation is observable with trace, metrics, logs, health, readiness, and version."
+    design: ["observability-plane"]
+    subprojects: ["P6", "P8"]
+    tests: ["unit.trace_propagation", "integration.health_readiness", "production.smoke_observability"]
+    gates: ["merge", "release_candidate", "production"]
+
+  - id: R-012
+    statement: "Intelligent retrieval and suggestions are measured against a versioned Golden Context dataset."
+    design: ["golden-context-evaluation", "fts-then-vector"]
+    subprojects: ["P7"]
+    tests: ["evaluation.source_fidelity", "evaluation.next_action", "evaluation.stale_content", "evaluation.prompt_injection"]
+    gates: ["nightly", "release_candidate"]
+
+  - id: R-013
+    statement: "Long-term memory uses ai-memory through a versioned adapter; Markdown is source of truth and SQLite is derived index."
+    design: ["00-baseline/05-memory-system", "vendor/ai-memory-adoption", "T2.2-memory-adapter"]
+    subprojects: ["P2", "P3", "P4", "P8"]
+    tests: ["contract.ai_memory_adapter", "integration.ai_memory_capture_recall", "integration.ai_memory_handoff_claim", "release.ai_memory_backup_restore"]
+    gates: ["merge", "nightly", "release_candidate", "production"]
+
+invariants:
+  - "No service directly reads or writes the Plane database."
+  - "No cross-service database joins."
+  - "Every write carries Idempotency-Key and expected_version or If-Match."
+  - "Every event consumer records processed event IDs and aggregate versions."
+  - "Schema changes use expand, migrate, contract."
+  - "Feature flags remain off in production until the related end-to-end test passes."
+  - "Permission-denied requests leave no side effects."
+
+
