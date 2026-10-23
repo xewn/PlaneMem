@@ -4079,7 +4079,7 @@ TypeScript 类型检查
 契约测试
 Schema 兼容性检查
 数据库迁移检查
-依赖漏洞扫描
+依赖版本记录（漏洞扫描可选，不作为功能门禁）
 ```
 
 ### Merge 阶段
@@ -4600,7 +4600,7 @@ Plane 原始仓库
 - [ ] Produce one release manifest pinning all images, migrations, contract versions, Plane compatibility, and feature flags.
 - [ ] Build Docker Compose package for pilot and Helm chart for production.
 - [ ] Add backup/restore, health checks, migration preflight, rollback, and upgrade documentation.
-- [ ] Generate SBOM, vulnerability report, configuration reference, and operator runbook.
+- [ ] Generate an optional SBOM, configuration reference, and operator runbook. Vulnerability remediation is outside the functional release scope.
 
 ## Dependency graph
 
@@ -4675,7 +4675,7 @@ Canonical event fields:
 1. **PR gate:** formatting, lint, typecheck, unit tests, contract compatibility, migration validation.
 2. **Merge gate:** Docker build, integration tests with PostgreSQL/NATS/Keycloak/object storage/Plane.
 3. **Nightly gate:** full client-switch E2E, duplicate/out-of-order event tests, fault injection, performance, security regression.
-4. **Release candidate gate:** backup/restore, upgrade/rollback, tenant isolation, golden context-pack evaluation, SBOM and vulnerability scan.
+4. **Release candidate gate:** backup/restore, upgrade/rollback, tenant isolation, golden context-pack evaluation, and functional smoke. SBOM and vulnerability reports are informational only.
 5. **Production gate:** smoke test, health checks, event lag, audit write path, context resume, Plane API/webhook health.
 
 Initial SLO targets:

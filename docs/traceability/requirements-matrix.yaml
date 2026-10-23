@@ -73,7 +73,7 @@ requirements:
     statement: "The platform is reproducibly deployable in private environments and recoverable after failure."
     design: ["deployment-topology", "release-manifest", "rollback"]
     subprojects: ["P8"]
-    tests: ["integration.compose_clean_install", "release.helm_install", "release.migration_rollback", "release.backup_restore", "release.sbom"]
+    tests: ["integration.compose_clean_install", "release.helm_install", "release.migration_rollback", "release.backup_restore", "release.sbom", "release.rc_readiness"]
     gates: ["merge", "release_candidate", "production"]
 
   - id: R-011
@@ -105,5 +105,50 @@ invariants:
   - "Schema changes use expand, migrate, contract."
   - "Feature flags remain off in production until the related end-to-end test passes."
   - "Permission-denied requests leave no side effects."
+
+verification_documents:
+  module_suites:
+    P0:
+      document: "docs/design/04-testing/modules/P0-independent-verification.md"
+      tests: ["P0-U01", "P0-U02", "P0-U03", "P0-U04", "P0-C01", "P0-C02", "P0-C03", "P0-I01", "P0-I02", "P0-R01"]
+    P1:
+      document: "docs/design/04-testing/modules/P1-independent-verification.md"
+      tests: ["P1-U01", "P1-C01", "P1-S01", "P1-S02", "P1-I01", "P1-I02", "P1-I03", "P1-I04", "P1-R01"]
+    P2:
+      document: "docs/design/04-testing/modules/P2-independent-verification.md"
+      tests: ["P2-U01", "P2-U02", "P2-C01", "P2-I01", "P2-I02", "P2-I03", "P2-R01"]
+    P3:
+      document: "docs/design/04-testing/modules/P3-independent-verification.md"
+      tests: ["P3-U01", "P3-U02", "P3-I01", "P3-I02", "P3-I03", "P3-I04", "P3-I05", "P3-R01"]
+    P4:
+      document: "docs/design/04-testing/modules/P4-independent-verification.md"
+      tests: ["P4-C01", "P4-C02", "P4-S01", "P4-I01", "P4-I02", "P4-R01"]
+    P5:
+      document: "docs/design/04-testing/modules/P5-independent-verification.md"
+      tests: ["P5-U01", "P5-I01", "P5-I02", "P5-I03", "P5-S01", "P5-A01", "P5-R01"]
+    P6:
+      document: "docs/design/04-testing/modules/P6-independent-verification.md"
+      tests: ["P6-S01", "P6-S02", "P6-S03", "P6-S04", "P6-I01", "P6-I02", "P6-R01"]
+    P7:
+      document: "docs/design/04-testing/modules/P7-independent-verification.md"
+      tests: ["P7-E01", "P7-E02", "P7-E03", "P7-E04", "P7-S01", "P7-I01", "P7-I02", "P7-R01"]
+    P8:
+      document: "docs/design/04-testing/modules/P8-independent-verification.md"
+      tests: ["P8-C01", "P8-C02", "P8-E01", "P8-E02", "P8-R01", "P8-R02"]
+  integration_contracts:
+    interface_document: "docs/design/03-integration/04-module-interface-contracts.md"
+    test_matrix: "docs/design/03-integration/05-module-contract-test-matrix.md"
+    edge_prefix: "IF-Px-Py"
+    required_evidence:
+      - "provider-report.json"
+      - "consumer-report.json"
+      - "schema-diff.json"
+      - "fixture.json"
+      - "trace.jsonl"
+      - "failure-cases.json"
+  standard_commands:
+    module: "pnpm run test:module -- <P> --isolated"
+    contract: "pnpm run test:contract -- <P>"
+    edge: "pnpm run test:contract -- --edge IF-Px-Py"
 
 

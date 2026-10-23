@@ -42,11 +42,25 @@ artifact-service、MemoryService Adapter、Context Compiler、FTS/MCP Resources
 
 ## 进入集成条件
 
-- 本子方案所有任务状态为 verifiederified；
+- 本子方案所有任务状态为 verified；
 - 契约变更已更新 Schema/SDK/Fixtures/追踪矩阵；
 - 独立测试报告已归档；
 - 迁移、配置、密钥、健康检查和回滚说明齐全；
 - 集成负责人已确认输入输出版本。
+
+## 当前实现状态
+
+| 任务 | 实现边界 | 独立验证 | 外部门禁 |
+|---|---|---|---|
+| T2.1 | `apps/artifact-service`、`deploy/migrations/003_artifacts.sql` | Artifact hash、scope、幂等、版本恢复 | PostgreSQL/对象存储 live migration |
+| T2.2 | `apps/context-service/src/memory-adapter`、`packages/domain/src/memory` | sanitize、reference-only、scope、claim-once、revision、provider off | ai-memory HTTP/MCP 固定版本 |
+| T2.3 | `packages/context-compiler/src/layers`、`schemas/context-item.json` | L0-L4 排序、策略、过期、选择原因 | P6 policy SDK 集成 |
+| T2.4 | `packages/context-compiler/src/compile.ts` | budget、关键约束、hash、source refs、三种渲染 | 客户端真实预算矩阵 |
+| T2.5 | `apps/context-service/src/search`、`resources` | scope、fallback、MCP URI、跨项目拒绝 | FTS/SQLite rebuild 和 MCP gateway |
+
+本地门禁通过 `pnpm run test:module -- P2 --isolated`、`pnpm run test:contract -- P2`、
+`pnpm typecheck` 和 `pnpm lint` 执行。ai-memory、PostgreSQL、对象存储和 Docker Compose
+未在当前主机启动时，报告必须标记为外部环境门禁，不能把内存替身测试描述为 live 验证。
 
 ## 退出条件
 
@@ -56,10 +70,14 @@ artifact-service、MemoryService Adapter、Context Compiler、FTS/MCP Resources
 
 ## 任务文档
 
-- [$_](../tasks/t2.1-artifact-metadata.md)
-- [$_](../tasks/t2.2-memory-adapter.md)
-- [$_](../tasks/t2.3-context-layers.md)
-- [$_](../tasks/t2.4-context-compiler.md)
-- [$_](../tasks/t2.5-fts-resources.md)
+- [T2.1 Artifact、文件版本与对象存储](../tasks/t2.1-artifact-metadata.md)
+- [T2.2 ai-memory MemoryService Adapter](../tasks/t2.2-memory-adapter.md)
+- [T2.3 L0-L4 上下文层和 MemoryItem](../tasks/t2.3-context-layers.md)
+- [T2.4 ContextPack 编译器](../tasks/t2.4-context-compiler.md)
+- [T2.5 全文检索与 Context MCP Resource](../tasks/t2.5-fts-resources.md)
 
+## 独立测试与校验规范
 
+- [模块独立测试与校验](../../04-testing/modules/P2-independent-verification.md)
+- [模块接口与协接契约](../../03-integration/04-module-interface-contracts.md#P2)
+- [模块契约测试矩阵](../../03-integration/05-module-contract-test-matrix.md)

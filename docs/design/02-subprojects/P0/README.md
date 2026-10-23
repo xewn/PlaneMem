@@ -42,7 +42,7 @@ schema compatibility、生成 SDK 编译、迁移预检、Compose 健康、错�
 
 ## 进入集成条件
 
-- 本子方案所有任务状态为 verifiederified；
+- 本子方案所有任务状态为 verified；
 - 契约变更已更新 Schema/SDK/Fixtures/追踪矩阵；
 - 独立测试报告已归档；
 - 迁移、配置、密钥、健康检查和回滚说明齐全；
@@ -56,11 +56,15 @@ schema compatibility、生成 SDK 编译、迁移预检、Compose 健康、错�
 
 ## 任务文档
 
-- [$_](../tasks/t0.1-monorepo-ci.md)
-- [$_](../tasks/t0.2-foundation-contracts.md)
-- [$_](../tasks/t0.3-entity-schemas.md)
-- [$_](../tasks/t0.4-event-schemas.md)
-- [$_](../tasks/t0.5-sdk-fixtures.md)
-- [$_](../tasks/t0.6-local-infra.md)
+- [T0.1 Monorepo、包管理与 CI 基线](../tasks/t0.1-monorepo-ci.md)
+- [T0.2 基础类型、错误、分页、幂等与版本契约](../tasks/t0.2-foundation-contracts.md)
+- [T0.3 核心实体 JSON Schema](../tasks/t0.3-entity-schemas.md)
+- [T0.4 Canonical Event 与 AsyncAPI](../tasks/t0.4-event-schemas.md)
+- [T0.5 SDK、Mock Server 与共享 Fixtures](../tasks/t0.5-sdk-fixtures.md)
+- [T0.6 Docker Compose 与迁移基线](../tasks/t0.6-local-infra.md)
 
+## 独立测试与校验规范
 
+- [模块独立测试与校验](../../04-testing/modules/P0-independent-verification.md)
+- [模块接口与协接契约](../../03-integration/04-module-interface-contracts.md#P0)
+- [模块契约测试矩阵](../../03-integration/05-module-contract-test-matrix.md)

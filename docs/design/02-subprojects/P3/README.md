@@ -42,7 +42,7 @@ session-service、sync-service、context-bridge、workctx CLI、Conflict
 
 ## 进入集成条件
 
-- 本子方案所有任务状态为 verifiederified；
+- 本子方案所有任务状态为 verified；
 - 契约变更已更新 Schema/SDK/Fixtures/追踪矩阵；
 - 独立测试报告已归档；
 - 迁移、配置、密钥、健康检查和回滚说明齐全；
@@ -56,10 +56,27 @@ session-service、sync-service、context-bridge、workctx CLI、Conflict
 
 ## 任务文档
 
-- [$_](../tasks/t3.1-session-model.md)
-- [$_](../tasks/t3.2-checkpoint-handoff.md)
-- [$_](../tasks/t3.3-sync-cursor-batch.md)
-- [$_](../tasks/t3.4-sqlite-outbox.md)
-- [$_](../tasks/t3.5-conflict-service.md)
+- [T3.1 Session、AgentRun、ToolCall](../tasks/t3.1-session-model.md)
+- [T3.2 Checkpoint、Handoff、Resume](../tasks/t3.2-checkpoint-handoff.md)
+- [T3.3 SyncCursor 与事件批量同步](../tasks/t3.3-sync-cursor-batch.md)
+- [T3.4 SQLite Local Outbox 与 Context Bridge](../tasks/t3.4-sqlite-outbox.md)
+- [T3.5 ConflictDetected/Resolved](../tasks/t3.5-conflict-service.md)
 
+## 独立测试与校验规范
 
+- [模块独立测试与校验](../../04-testing/modules/P3-independent-verification.md)
+- [模块接口与协接契约](../../03-integration/04-module-interface-contracts.md#P3)
+- [模块契约测试矩阵](../../03-integration/05-module-contract-test-matrix.md)
+
+## 当前实现状态
+
+| 任务 | 实现边界 | 独立验证 | 外部门禁 |
+|---|---|---|---|
+| T3.1 | `apps/session-service/src/session`、`004_sessions.sql` | lifecycle、幂等 start、父子 scope、版本冲突 | PostgreSQL replay |
+| T3.2 | `apps/session-service/src/checkpoint` | checkpoint hash、claim-once、target client、resume | P2 ContextPack/ai-memory live |
+| T3.3 | `apps/sync-service/src/cursor`、`005_sync.sql` | cursor gap、partial batch、duplicate batch、ack monotonic | 多客户端长连接 |
+| T3.4 | `apps/context-bridge/src/outbox`、`006_outbox.sql` | SQLite durable write、断网 retry、drain 幂等、inspect/purge | 真实进程 kill/restart |
+| T3.5 | `apps/sync-service/src/conflict` | detect/list/resolve、protected version、resolution event | P4/P5 conflict UI/API |
+
+自动化入口为 `pnpm run test:module -- P3 --isolated` 和 `pnpm run test:contract -- P3`；
+实现使用 Node 24 `node:sqlite`，独立报告仍必须单独标记真实 PostgreSQL、客户端并发和进程恢复门禁。

@@ -32,6 +32,16 @@ evaluation、intelligence workers、search-service、评测报告
 - 所有敏感内容都必须经过 P6 Policy；
 - 所有跨子方案引用都必须通过公开 API、事件或生成 SDK。
 
+## 当前实现状态（2026-10-21）
+
+| 任务 | 实现边界 | 公共产物 | 自动化验证 | 外部门禁 |
+|---|---|---|---|---|
+| T7.1 | `workers/evaluation` Golden Dataset 与 deterministic `evaluatePack` | `EvaluationReport`、阈值（来源 ≥98%、下一步 ≥95%、过期 ≤2%、未确认 ≤1%） | `P7-E01/T7.1`；P7 contract | 真实模型/Embedding、人工抽样和 Nightly 回归需在集成环境执行 |
+| T7.2 | `workers/intelligence` proposal 生命周期、来源/provenance、注入告警、provider degraded | `Proposal`、`ProposalService`、`ProviderFailure` | `P7-S01/T7.2`、`P7-R01/T7.2`；P7 contract | 真实 provider 限流/超时、P6 policy/audit 端到端需在部署环境验证 |
+| T7.3 | `apps/search-service` FTS 默认检索、scope 过滤、可选 vector flag 和 fallback | `SearchHit`、`SearchResult`、`SearchService`、`deploy/search/feature-flags.yaml` | `P7-I01/T7.3`；P7 contract | PostgreSQL FTS、pgvector、ai-memory recall 与性能基准需在 Docker 环境验证 |
+
+P7 的建议只能保持 `proposed`，必须通过显式人工确认才可进入 `verified`；任何输入内容中的 prompt injection 只生成 provenance warning，不能触发工具调用或改变权限。搜索结果必须保留 revision/source_refs，并在向量关闭或不可用时退回 FTS。
+
 ## 协接要求
 
 向 P5/P8 提供 proposal API、评测报告和 Feature Flag，不直接改 verified。
@@ -42,7 +52,7 @@ evaluation、intelligence workers、search-service、评测报告
 
 ## 进入集成条件
 
-- 本子方案所有任务状态为 verifiederified；
+- 本子方案所有任务状态为 verified；
 - 契约变更已更新 Schema/SDK/Fixtures/追踪矩阵；
 - 独立测试报告已归档；
 - 迁移、配置、密钥、健康检查和回滚说明齐全；
@@ -56,8 +66,12 @@ evaluation、intelligence workers、search-service、评测报告
 
 ## 任务文档
 
-- [$_](../tasks/t7.1-golden-evaluation.md)
-- [$_](../tasks/t7.2-intelligence-workers.md)
-- [$_](../tasks/t7.3-search-vector.md)
+- [T7.1 Golden Context Dataset 与评测](../tasks/t7.1-golden-evaluation.md)
+- [T7.2 智能抽取与建议 Worker](../tasks/t7.2-intelligence-workers.md)
+- [T7.3 FTS、实体、链接与可选向量检索](../tasks/t7.3-search-vector.md)
 
+## 独立测试与校验规范
 
+- [模块独立测试与校验](../../04-testing/modules/P7-independent-verification.md)
+- [模块接口与协接契约](../../03-integration/04-module-interface-contracts.md#P7)
+- [模块契约测试矩阵](../../03-integration/05-module-contract-test-matrix.md)

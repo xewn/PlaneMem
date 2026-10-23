@@ -42,7 +42,7 @@ Plane API integration、HMAC、重复/乱序/延迟、权限传播、回放。�
 
 ## 进入集成条件
 
-- 本子方案所有任务状态为 verifiederified；
+- 本子方案所有任务状态为 verified；
 - 契约变更已更新 Schema/SDK/Fixtures/追踪矩阵；
 - 独立测试报告已归档；
 - 迁移、配置、密钥、健康检查和回滚说明齐全；
@@ -56,10 +56,14 @@ Plane API integration、HMAC、重复/乱序/延迟、权限传播、回放。�
 
 ## 任务文档
 
-- [$_](../tasks/t1.1-plane-version-matrix.md)
-- [$_](../tasks/t1.2-plane-rest-client.md)
-- [$_](../tasks/t1.3-webhook-security.md)
-- [$_](../tasks/t1.4-webhook-dedup-replay.md)
-- [$_](../tasks/t1.5-plane-projection.md)
+- [T1.1 Plane 版本与能力矩阵](../tasks/t1.1-plane-version-matrix.md)
+- [T1.2 Plane REST Client](../tasks/t1.2-plane-rest-client.md)
+- [T1.3 Webhook 验签与入口](../tasks/t1.3-webhook-security.md)
+- [T1.4 Webhook 去重、重试、死信与回放](../tasks/t1.4-webhook-dedup-replay.md)
+- [T1.5 Plane ID 映射与工作图谱投影](../tasks/t1.5-plane-projection.md)
 
+## 独立测试与校验规范
 
+- [模块独立测试与校验](../../04-testing/modules/P1-independent-verification.md)
+- [模块接口与协接契约](../../03-integration/04-module-interface-contracts.md#P1)
+- [模块契约测试矩阵](../../03-integration/05-module-contract-test-matrix.md)

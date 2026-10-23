@@ -11,17 +11,15 @@
 7. MCP `get_work_item_context` 返回带来源结果；
 8. 验证重复 Webhook 不重复。
 
-## Chain B：跨客户端切换
+## Chain B：WaveMate MCP 连续工作
 
-1. Codex adapter 创建 Session；
-2. 写入 prompt、tool、test 事件；
-3. SessionEnd 触发 ai-memory session page/handoff；
-4. WorkMesh 生成 HandoffRef；
-5. Claude Code adapter claim-once；
-6. 编译 Resume Pack；
-7. Claude 更新 WorkItem；
-8. Plane response/webhook 回写 observed/verified；
-9. 新 Checkpoint 进入时间线。
+1. 启动或复用 WaveMate 0.24.1 离线包；
+2. 通过 WaveMate 主机 MCP 管理 API 写入 PlaneMem Streamable HTTP 配置和固定 scope headers；
+3. WaveMate 发送 `server/discover`、`initialize`、`notifications/initialized`，PlaneMem 返回无错误响应；
+4. WaveMate 获取 `tools/list` 和 `resources/list`；
+5. 用户在 WaveMate 中触发 `context_search` 或 `context_index`，验证工具响应、trace、audit 和幂等；
+6. 读取 `resources/read`，确认只返回当前 project scope 的 `wcp://context/` 内容；
+7. 探针结束后恢复 PlaneMem 直连配置并保存版本化报告。
 
 ## Chain C：离线与冲突
 

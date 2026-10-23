@@ -1,3 +1,6 @@
 [submodule "codes/ai-memory"]
 	path = codes/ai-memory
 	url = https://github.com/akitaonrails/ai-memory
+[submodule "codes/plane"]
+	path = codes/plane
+	url = https://github.com/makeplane/plane.git

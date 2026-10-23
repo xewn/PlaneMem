@@ -6,7 +6,7 @@
 
 ## 依赖
 
-P0、P2、P3
+P0、P2、P3、P6
 
 ## 任务
 
@@ -42,7 +42,7 @@ MCP conformance、REST/CLI parity、伪客户端切换、权限和审计。测�
 
 ## 进入集成条件
 
-- 本子方案所有任务状态为 verifiederified；
+- 本子方案所有任务状态为 verified；
 - 契约变更已更新 Schema/SDK/Fixtures/追踪矩阵；
 - 独立测试报告已归档；
 - 迁移、配置、密钥、健康检查和回滚说明齐全；
@@ -56,9 +56,29 @@ MCP conformance、REST/CLI parity、伪客户端切换、权限和审计。测�
 
 ## 任务文档
 
-- [$_](../tasks/t4.1-api-gateway.md)
-- [$_](../tasks/t4.2-mcp-gateway.md)
-- [$_](../tasks/t4.3-workctx-cli.md)
-- [$_](../tasks/t4.4-client-adapters.md)
+- [T4.1 REST API Gateway](../tasks/t4.1-api-gateway.md)
+- [T4.2 MCP Resources、Tools、Prompts](../tasks/t4.2-mcp-gateway.md)
+- [T4.3 workctx CLI](../tasks/t4.3-workctx-cli.md)
+- [T4.4 Codex/Claude Code/DeepSeek/WorkBuddy 适配](../tasks/t4.4-client-adapters.md)
 
+## 独立测试与校验规范
 
+- [模块独立测试与校验](../../04-testing/modules/P4-independent-verification.md)
+- [模块接口与协接契约](../../03-integration/04-module-interface-contracts.md#P4)
+- [模块契约测试矩阵](../../03-integration/05-module-contract-test-matrix.md)
+
+## 当前实现状态
+
+| 任务 | 实现边界 | 独立验证 | 外部门禁 |
+|---|---|---|---|
+| T4.1 | `apps/api-gateway` | REST route、HTTP runtime、policy、trace、错误映射、限流 | identity provider、Audit 和外部依赖联调 |
+| T4.2 | `apps/mcp-gateway`、`apps/api-gateway` HTTP runtime | initialize、tools、resources、prompts、tool error parity；签名 Plane Webhook 和 MCP JSON-RPC | 本地/三节点 transport 探针已通过；生产客户端 transport conformance 仍为外部门禁 |
+| T4.3 | `apps/workctx-cli` | JSON parity、命令参数和 usage error | 安装包和 Windows shell smoke |
+| T4.4 | `integrations/*`、`support-matrix.yaml` | capability negotiation、budget downgrade、doctor/finalize | Codex/Claude live hook E2E |
+
+四个入口共用 `@planemem/api-gateway` 的 `CommandRouter`；实现代码不得在 MCP 或 CLI
+中复制领域规则。T4.1 当前已具备可启动 HTTP runtime；runtime 同时承载签名
+`POST /v1/plane/webhook` 和 `POST /mcp` JSON-RPC。正式传输镜像和三节点 k3s 证据位于
+`artifacts/test-reports/k3s/20261022T0024-transport/`。标准门禁为
+`pnpm run test:module -- P4 --isolated`、
+`pnpm run test:contract -- P4`、`pnpm typecheck` 和 `pnpm lint`。

@@ -379,7 +379,7 @@ MCP 版本可变，WCP 业务契约独立维护；客户端必须声明 `resourc
 
 ### P0：统一契约与开发平台
 
-**依赖：** 无。  
+**依赖：** 无。
 **可并行：** P6、P8 可在 P0 基础契约确定后同步启动。
 
 **工作内容：**
@@ -391,14 +391,14 @@ MCP 版本可变，WCP 业务契约独立维护；客户端必须声明 `resourc
 - 建立 PostgreSQL、Redis、NATS JetStream、Keycloak、对象存储和 Plane 的 Docker Compose；
 - 创建统一示例 Tenant、Workspace、Project、WorkItem 和测试数据。
 
-**交付物：** `packages/contracts`、`packages/events`、`packages/sdk`、Compose 环境、ADR、CI 基线。  
+**交付物：** `packages/contracts`、`packages/events`、`packages/sdk`、Compose 环境、ADR、CI 基线。
 **独立测试：** Schema 正向/反向兼容、错误封套、幂等键和版本规则、迁移校验、空环境启动、生成 SDK 编译。
 
 **通过标准：** 任意团队可以只依赖生成的契约和 Fixtures 开发，不能再定义私有跨服务 payload。
 
 ### P1：Plane 连接器与工作图谱
 
-**依赖：** P0、Plane 部署。  
+**依赖：** P0、Plane 部署。
 **可并行：** P2 可先用 Fixtures 开发，Plane 映射稳定后接入；P6 可并行做权限映射。
 
 **工作内容：**
@@ -411,14 +411,14 @@ MCP 版本可变，WCP 业务契约独立维护；客户端必须声明 `resourc
 - 成功写入只先进入 `observed`，收到有效响应/事件后才确认；
 - 做权限传播和一致性检查。
 
-**交付物：** `apps/plane-connector`、Plane 兼容性矩阵、Webhook 转换器、回放工具、同步投影。  
+**交付物：** `apps/plane-connector`、Plane 兼容性矩阵、Webhook 转换器、回放工具、同步投影。
 **独立测试：** API 集成、签名、重复/乱序/延迟事件、权限传播、事件回放、Connector 与 Plane 版本兼容性。
 
 **通过标准：** Plane 创建/更新项目和 WorkItem 能稳定生成一次且仅一次标准事件，断开后能重试并回放。
 
 ### P2：上下文、文件与 ai-memory 记忆
 
-**依赖：** P0；P1 的映射接口；固定版本的 ai-memory。  
+**依赖：** P0；P1 的映射接口；固定版本的 ai-memory。
 **可并行：** 与 P1 后半段并行，先使用固定 Fixtures。
 
 **工作内容：**
@@ -434,14 +434,14 @@ MCP 版本可变，WCP 业务契约独立维护；客户端必须声明 `resourc
 - 先做 PostgreSQL FTS，pgvector 通过 Feature Flag 延后到 P7；
 - 实现预算截断、过期记忆降权、附件哈希校验。
 
-**交付物：** `apps/context-service`、`apps/artifact-service`、`memory-adapter`、`packages/context-compiler`、对象存储适配器、Golden Fixtures、ai-memory 兼容性矩阵。  
+**交付物：** `apps/context-service`、`apps/artifact-service`、`memory-adapter`、`packages/context-compiler`、对象存储适配器、Golden Fixtures、ai-memory 兼容性矩阵。
 **独立测试：** 相同输入确定性、来源完整、预算截断、过期内容、权限过滤、文件哈希、三种输出格式一致性、ai-memory capture/recall/handoff/claim/restore/backup 回归。
 
 **通过标准：** 给定固定项目、WorkItem、决策、风险、文件和近期活动，能生成稳定且可追溯的 ContextPack。
 
 ### P3：会话、检查点、交接与离线同步
 
-**依赖：** P0、P2 最小 ContextPack 和 ai-memory HandoffRef。  
+**依赖：** P0、P2 最小 ContextPack 和 ai-memory HandoffRef。
 **可并行：** P3 的 Session/Checkpoint 可先与 P2 末期并行；Handoff/Resume 等 P2 ContextPack 接口稳定后接入。
 
 **工作内容：**
@@ -454,14 +454,14 @@ MCP 版本可变，WCP 业务契约独立维护；客户端必须声明 `resourc
 - 对任务状态、负责人、截止时间、计划和审批实现乐观并发；
 - 生成 `ConflictDetected`/`ConflictResolved`，禁止静默覆盖。
 
-**交付物：** `apps/session-service`、`apps/sync-service`、`apps/context-bridge`、`workctx` CLI。  
+**交付物：** `apps/session-service`、`apps/sync-service`、`apps/context-bridge`、`workctx` CLI。
 **独立测试：** 断网恢复、重启恢复、重复上传、游标缺口、并发更新、冲突载荷、持久化后零丢失。
 
 **通过标准：** 客户端 A 能提交 Checkpoint/Handoff，客户端 B 能读取适配后的 Resume Context 并建立父子会话关系。
 
 ### P4：统一 MCP、REST、CLI 和客户端连接器
 
-**依赖：** P0、P2、P3。  
+**依赖：** P0、P2、P3、P6。
 **可并行：** MCP/REST/CLI 表面可并行，但必须共享同一 WCP SDK 和策略路径。
 
 **工作内容：**
@@ -473,14 +473,14 @@ MCP 版本可变，WCP 业务契约独立维护；客户端必须声明 `resourc
 - 所有读写、工具调用、审批、审计必须经过同一权限路径；
 - REST、CLI、MCP 行为和错误码保持一致。
 
-**交付物：** `apps/mcp-gateway`、`apps/api-gateway`、`apps/workctx-cli`、`packages/adapter-sdk`、客户端矩阵。  
+**交付物：** `apps/mcp-gateway`、`apps/api-gateway`、`apps/workctx-cli`、`packages/adapter-sdk`、客户端矩阵。
 **独立测试：** MCP conformance、REST/CLI parity、生成 SDK 契约测试、伪客户端切换、手工 Smoke。
 
 **通过标准：** 不同客户端可使用同一工作项、上下文、交接和冲突接口，客户端差异只体现为适配格式和能力降级。
 
 ### P5：Web 工作台
 
-**依赖：** P1、P2、P3、P6 的查询/授权接口。  
+**依赖：** P1、P2、P3、P4、P6 的查询/授权接口。
 **可并行：** UI 可用 Mock API 先行；接口稳定后接入真实服务。
 
 **工作内容：**
@@ -492,14 +492,14 @@ MCP 版本可变，WCP 业务契约独立维护；客户端必须声明 `resourc
 - 冲突中心双版本比对和解决；
 - Connector、策略、审计、发布健康和系统运行状态管理。
 
-**交付物：** `apps/web-console`、交互规范、用户手册。  
+**交付物：** `apps/web-console`、交互规范、用户手册。
 **独立测试：** Playwright 关键旅程、权限 UI、客户端切换、冲突解决、可访问性 Smoke、空数据和错误态。
 
 **通过标准：** 管理人员能看见项目、任务、上下文、客户端会话、工具调用、审计和当前发布健康。
 
 ### P6：安全、治理和观测
 
-**依赖：** P0。  
+**依赖：** P0。
 **可并行：** 从第一天开始；不等待 P5。
 
 **工作内容：**
@@ -511,14 +511,14 @@ MCP 版本可变，WCP 业务契约独立维护；客户端必须声明 `resourc
 - 数据分类、留存、脱敏、导出和密钥管理；
 - OTel Trace 覆盖客户端、Gateway、Context Compiler、Plane Connector、NATS 和数据库。
 
-**交付物：** `apps/policy-service`、`apps/audit-service`、Keycloak/OPA 配置、指标与 Trace Dashboard。  
+**交付物：** `apps/policy-service`、`apps/audit-service`、Keycloak/OPA 配置、指标与 Trace Dashboard。
 **独立测试：** 租户隔离、过期 Token、越权升级、拒绝调用无副作用、审计完整性、脱敏、提示注入、敏感附件导出。
 
 **通过标准：** 任意请求都能回答“谁、通过哪个客户端、以什么权限、对什么对象、执行了什么、结果如何、来源是什么”。
 
 ### P7：搜索和智能能力
 
-**依赖：** P1、P2、P3、P6；核心闭环稳定后再启动。  
+**依赖：** P1、P2、P3、P6；核心闭环稳定后再启动。
 **可并行：** Golden Dataset 和评测框架可提前准备，模型能力最后接入。
 
 **工作内容：**
@@ -529,14 +529,14 @@ MCP 版本可变，WCP 业务契约独立维护；客户端必须声明 `resourc
 - 所有智能结果进入 `proposed`，由人确认后才进入 `verified`；
 - 建立任务切换、多阶段项目、旧信息失效、冲突和生产审批场景的 Golden Context Pack。
 
-**交付物：** `workers/intelligence`、`apps/search-service`、`workers/evaluation`、评测报告。  
+**交付物：** `workers/intelligence`、`apps/search-service`、`workers/evaluation`、评测报告。
 **独立测试：** 离线评测、提示注入、恶意文档、幻觉进度、回归阈值和人工抽样验收。
 
 **通过标准：** 达到 ContextPack 指标且不把未确认推测标为事实。
 
 ### P8：发布、质量和私有化交付
 
-**依赖：** P0 可启动，贯穿全部项目。  
+**依赖：** P0 可启动，贯穿全部项目。
 **可并行：** 与所有 P 同步建设，不能等到最后补。
 
 **工作内容：**
@@ -548,7 +548,7 @@ MCP 版本可变，WCP 业务契约独立维护；客户端必须声明 `resourc
 - 安全扫描、SBOM、漏洞报告、配置参考和 Operator Runbook；
 - 生产 Smoke、事件延迟、审计写路径、Context Resume 和 Plane API/Webhook 健康检查。
 
-**交付物：** `deploy/compose`、`deploy/helm`、`release-manifest.yaml`、`tests/*`、runbooks、私有化安装包。  
+**交付物：** `deploy/compose`、`deploy/helm`、`release-manifest.yaml`、`tests/*`、runbooks、私有化安装包。
 **独立测试：** 构建、部署、迁移、备份恢复、升级回滚、故障注入、性能、安全和 E2E。
 
 **通过标准：** 任一发布候选可以在干净环境重复部署、验证、恢复和回滚。
@@ -712,6 +712,15 @@ P0 ──► P1 ──► P2 ──► P3 ──► P4
 - **Release Candidate：** 租户隔离、灾备、回滚、SBOM、漏洞报告、全量指标；
 - **Production：** Smoke、健康检查、事件延迟、审计写入、Context Resume、Plane API/Webhook 健康。
 
+### 8.4 文档化执行入口
+
+- P0–P8 的独立 Fixture、测试矩阵、阈值、证据和报告模板分别维护在 `docs/design/04-testing/modules/P*-independent-verification.md`；
+- P0–P8 的公共上下文、错误、版本、直接依赖边和交付包维护在 `docs/design/03-integration/04-module-interface-contracts.md`；
+- 每条 `IF-*` 边的提供方/消费方测试、失败场景和 Gate 维护在 `docs/design/03-integration/05-module-contract-test-matrix.md`；
+- 整体开发波次、37 个子任务、模块责任人、标准命令和模块完成定义维护在 `docs/design/06-planning/00-overall-development-plan.md` 及 `docs/design/06-planning/modules/P*-development-plan.md`；
+- 统一真实形状数据、TEST-001–TEST-018、功能校验、故障校验和证据归档维护在 `docs/design/06-planning/03-test-data-and-functional-validation-plan.md`；
+- 模块入口 README、任务设计、需求追踪和 Release Manifest 必须与上述文档同一提交更新。
+
 ---
 
 ## 9. 集成、部署、上线和回滚
@@ -872,4 +881,3 @@ feature_flags:
 - 每次阶段验收生成测试报告、覆盖率/指标、变更清单、已知问题和下一阶段入口条件。
 - 任何偏离本计划的变更必须通过 ADR，说明原因、影响、兼容策略、测试补充和是否更新需求矩阵。
 - 只有当阶段验收、RC 门禁和生产 Smoke 全部通过，才允许打开对应生产 Feature Flag。
-

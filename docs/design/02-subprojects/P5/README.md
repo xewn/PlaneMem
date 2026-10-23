@@ -6,7 +6,7 @@
 
 ## 依赖
 
-P1、P2、P3、P6 查询/授权接口
+P1、P2、P3、P4、P6 查询/授权接口
 
 ## 任务
 
@@ -42,7 +42,7 @@ web-console、Playwright、工作台规范、用户手册
 
 ## 进入集成条件
 
-- 本子方案所有任务状态为 verifiederified；
+- 本子方案所有任务状态为 verified；
 - 契约变更已更新 Schema/SDK/Fixtures/追踪矩阵；
 - 独立测试报告已归档；
 - 迁移、配置、密钥、健康检查和回滚说明齐全；
@@ -56,8 +56,25 @@ web-console、Playwright、工作台规范、用户手册
 
 ## 任务文档
 
-- [$_](../tasks/t5.1-workbench-query.md)
-- [$_](../tasks/t5.2-workbench-handoff-conflict.md)
-- [$_](../tasks/t5.3-workbench-admin.md)
+- [T5.1 工作台项目/工作项查询](../tasks/t5.1-workbench-query.md)
+- [T5.2 交接、Resume 与冲突中心](../tasks/t5.2-workbench-handoff-conflict.md)
+- [T5.3 工作台管理与运行健康](../tasks/t5.3-workbench-admin.md)
 
+## 独立测试与校验规范
 
+- [模块独立测试与校验](../../04-testing/modules/P5-independent-verification.md)
+- [模块接口与协接契约](../../03-integration/04-module-interface-contracts.md#P5)
+- [模块契约测试矩阵](../../03-integration/05-module-contract-test-matrix.md)
+
+## 当前实现状态
+
+| 任务 | 实现边界 | 独立验证 | 外部门禁 |
+|---|---|---|---|
+| T5.1 | `apps/web-console/src/lib/api.ts`、`app/page.ts` | 工作优先项目查询、来源、empty/denied/error/stale | Playwright 浏览器旅程 |
+| T5.2 | `app/handoffs`、`app/conflicts` | claim/resume 确认、冲突 resolution、trace | Gateway live write |
+| T5.3 | `app/admin` | admin role、健康 degraded、release/audit 展示 | P6/P8 live health/release |
+
+工作台只消费 Gateway 查询和命令结果；`WorkbenchStore`、`HandoffCenter`、`ConflictCenter`
+和 `AdminPanel` 不直接读数据库或复制领域规则。标准门禁为
+`pnpm run test:module -- P5 --isolated`、`pnpm run test:contract -- P5`、
+`pnpm typecheck` 和 `pnpm lint`。

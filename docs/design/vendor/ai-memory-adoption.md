@@ -7,6 +7,17 @@
 - 参考 tag：`v3.1.1`
 - 实现前必须锁定不可变 commit 和镜像 digest；禁止生产使用 `latest`。
 
+## 版本与发布口径
+
+| 口径 | 版本 | 适用范围 | 约束 |
+|---|---|---|---|
+| 上游参考版本 | `v3.1.1` | 能力确认、接口适配和设计评审 | 实现前重新确认 tag、commit、镜像 digest 和兼容性；当前 vendored checkout 可能位于该 tag 之后的提交，不能直接当作生产锁定值 |
+| 最低兼容版本 | `3.0.0` | WorkMesh Adapter 的协议兼容下限 | 只代表客户端/Adapter 支持的最低服务版本，不代表生产应使用的镜像版本 |
+| 当前离线夹具版本 | `3.0.0` | `tools/release-manifest-cli.mjs`、Compose 默认值和离线报告 | 用于可重复的本地测试；升级夹具时必须同步 release manifest、Compose、测试证据和兼容矩阵 |
+| 生产锁定版本 | `v<release>@<immutable-commit>` | RC、预生产和生产 | 必须由发布审批填入具体 tag、commit、镜像 digest；未填写时不得通过发布门禁 |
+
+因此，文档中的 `v3.1.1` 表示上游设计参考版本，部署和离线发布工具中的 `3.0.0` 表示当前兼容下限与夹具版本。两者不能互相替代；任何升级必须同时更新本表、[发布清单](../05-release/01-release-deployment-rollback.md)、Compose/Helm 配置、适配回归和 FILE_INDEX.md。
+
 ## 已确认能力
 
 - 长期记忆源数据是 git-backed Markdown；SQLite 为派生索引；

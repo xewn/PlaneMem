@@ -19,6 +19,10 @@
   "correlation_id": "01J...",
   "causation_id": "01J...",
   "occurred_at": "2026-10-20T08:00:00Z",
+  "trace_id": "trace_01",
+  "source_refs": [
+    {"type": "plane", "id": "issue_01"}
+  ],
   "payload": {},
   "sensitivity": "internal"
 }
@@ -32,6 +36,7 @@ ProjectCreated/Updated、WorkItemCreated/Updated、WorkItemStatusProposed/Confir
 
 - 用 `event_id` 去重；
 - 用 aggregate_version 检查顺序；
+- 必须保留 `trace_id`、tenant/workspace/project scope 和 `source_refs`；
 - 记录 processed_event、处理状态、失败原因和重试次数；
 - 乱序事件进入延迟队列，不能静默丢弃；
 - 修正通过新事件，不修改历史；

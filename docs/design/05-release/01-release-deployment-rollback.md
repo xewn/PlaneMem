@@ -14,18 +14,20 @@ images: {}
 feature_flags: {}
 ```
 
+`v3.1.1` 是上游参考基线；当前 Compose 和离线 release-manifest fixture 使用 `3.0.0` 作为最低兼容/夹具版本。进入 RC、预生产或生产前，必须把 `ai_memory_version` 替换为已经验证的具体 tag、不可变 commit 和镜像 digest，并同步更新 [ai-memory 版本矩阵](../vendor/ai-memory-adoption.md)。
+
 ## 环境
 
 - 开发：Docker Compose；
 - 测试：独立 namespace 和临时集成环境；
-- 生产：Kubernetes/Helm，WorkMesh、Plane、observability、security、storage 分域。
+- 生产/测试：k3s/Helm，WorkMesh、Plane、observability、security、storage 分域。
 
 ## 发布流程
 
 1. PR 门禁；
 2. Merge 集成测试；
 3. Nightly 故障/安全/性能/Golden；
-4. RC 备份恢复、升级回滚、SBOM、漏洞；
+4. RC 备份恢复、升级回滚和功能 Smoke；SBOM/漏洞报告只作可选记录；
 5. 预生产 Smoke；
 6. Feature Flag 灰度；
 7. 生产 Smoke 和指标观察；

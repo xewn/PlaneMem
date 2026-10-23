@@ -38,7 +38,7 @@ Plane 创建 WorkItem
 
 - Web 工作台、冲突中心、SSO、OPA/ABAC、数据分级和 WORM 审计；
 - FTS 之后的 pgvector、智能摘要、决策/风险/下一步抽取；
-- Helm、Kubernetes 高可用、灾备和私有化交付。
+- Helm、k3s 高可用、灾备和私有化交付。
 
 ## 成功标准
 
