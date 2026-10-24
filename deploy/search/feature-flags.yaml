@@ -1,0 +1,6 @@
+search:
+  vector_enabled: false
+  provider: fts
+  fallback: fts
+  proposal_enabled: false
+  evaluation_gate: required

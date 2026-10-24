@@ -1,0 +1,65 @@
+{
+  "status": "passed",
+  "verified_at": "2026-10-22T14:25:00.903Z",
+  "source": "ssh root@192.168.1.231 read-only kubectl verification",
+  "cluster": {
+    "distribution": "k3s",
+    "version": "v1.36.5+k3s1",
+    "nodes": [
+      {
+        "name": "hdserver1",
+        "address": "192.168.1.231",
+        "status": "Ready"
+      },
+      {
+        "name": "hdserver2",
+        "address": "192.168.1.232",
+        "status": "Ready"
+      },
+      {
+        "name": "hdserver3",
+        "address": "192.168.1.233",
+        "status": "Ready"
+      }
+    ]
+  },
+  "deployment": {
+    "namespace": "planemem-test",
+    "name": "planemem",
+    "revision": 22,
+    "ready_replicas": 3,
+    "available_replicas": 3,
+    "image": "docker.io/library/planemem-platform:0.1.0-wavemate@sha256:a2d2d0b50eb5ebdc51083ad331a182dd15f0018343aaf29c3c14898402297261",
+    "rollout": "successfully rolled out"
+  },
+  "pods": [
+    {
+      "name": "planemem-756c46c884-fpwqq",
+      "node": "hdserver2",
+      "ready": true,
+      "status": "Running"
+    },
+    {
+      "name": "planemem-756c46c884-ptwbt",
+      "node": "hdserver1",
+      "ready": true,
+      "status": "Running"
+    },
+    {
+      "name": "planemem-756c46c884-vpqz6",
+      "node": "hdserver3",
+      "ready": true,
+      "status": "Running"
+    }
+  ],
+  "helm": {
+    "kubeconfig": "/etc/rancher/k3s/k3s.yaml",
+    "revision": 22,
+    "status": "deployed",
+    "chart": "planemem-0.1.0",
+    "app_version": "0.1.0",
+    "description": "Upgrade complete",
+    "replica_count": 3,
+    "image_digest": "sha256:a2d2d0b50eb5ebdc51083ad331a182dd15f0018343aaf29c3c14898402297261"
+  }
+}

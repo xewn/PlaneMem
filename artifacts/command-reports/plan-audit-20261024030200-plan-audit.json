@@ -1,0 +1,32 @@
+{
+  "status": "passed",
+  "mode": "offline-fixture",
+  "command": "plan-audit",
+  "run_id": "plan-audit-20261024030200",
+  "trace_id": "trace-plan-audit-20261024030200",
+  "source_refs": [
+    {
+      "type": "design-plan",
+      "id": "docs/design/06-planning"
+    },
+    {
+      "type": "contract-matrix",
+      "id": "docs/design/03-integration/05-module-contract-test-matrix.md"
+    }
+  ],
+  "counts": {
+    "task_files": 37,
+    "expected_task_files": 37,
+    "task_ids_in_module_plans": 37,
+    "task_ids_in_verification_docs": 37,
+    "modules": 9,
+    "contract_edges": 28,
+    "contract_test_files": 8,
+    "required_scripts": 27
+  },
+  "missing": [],
+  "external_gates": [
+    "real Compose/Helm deployment",
+    "live services and production smoke"
+  ]
+}

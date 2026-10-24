@@ -1,0 +1,21 @@
+version: 1
+clients:
+  codex:
+    status: supported
+    mcp: '2024-11-05'
+    hooks: [session_start, session_end]
+  claude-code:
+    status: supported
+    mcp: '2024-11-05'
+    hooks: [session_start, session_end]
+  deepseek:
+    status: degraded
+    mcp: '2024-11-05'
+    hooks: []
+  workbuddy:
+    status: degraded
+    mcp: '2024-11-05'
+    hooks: []
+fallback:
+  unsupported_mcp: cli
+  missing_hooks: explicit_finalize

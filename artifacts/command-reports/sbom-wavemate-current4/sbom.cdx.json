@@ -1,0 +1,200 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:sbom-wavemate-current4",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-10-22T22:11:16.285Z",
+    "tools": [
+      {
+        "vendor": "PlaneMem",
+        "name": "sbom-cli",
+        "version": "0.1.0"
+      }
+    ]
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "@planemem/api-gateway",
+      "version": "0.1.0",
+      "purl": "pkg:npm/@planemem/api-gateway@0.1.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "name": "@planemem/artifact-service",
+      "version": "0.1.0",
+      "purl": "pkg:npm/@planemem/artifact-service@0.1.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "name": "@planemem/audit-service",
+      "version": "0.1.0",
+      "purl": "pkg:npm/@planemem/audit-service@0.1.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "name": "@planemem/auth",
+      "version": "0.1.0",
+      "purl": "pkg:npm/@planemem/auth@0.1.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "name": "@planemem/context-bridge",
+      "version": "0.1.0",
+      "purl": "pkg:npm/@planemem/context-bridge@0.1.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "name": "@planemem/context-compiler",
+      "version": "0.1.0",
+      "purl": "pkg:npm/@planemem/context-compiler@0.1.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "name": "@planemem/context-service",
+      "version": "0.1.0",
+      "purl": "pkg:npm/@planemem/context-service@0.1.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "name": "@planemem/contracts",
+      "version": "0.1.0",
+      "purl": "pkg:npm/@planemem/contracts@0.1.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "name": "@planemem/domain",
+      "version": "0.1.0",
+      "purl": "pkg:npm/@planemem/domain@0.1.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "name": "@planemem/evaluation",
+      "version": "0.1.0",
+      "purl": "pkg:npm/@planemem/evaluation@0.1.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "name": "@planemem/events",
+      "version": "0.1.0",
+      "purl": "pkg:npm/@planemem/events@0.1.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "name": "@planemem/integration-orchestrator",
+      "version": "0.1.0",
+      "purl": "pkg:npm/@planemem/integration-orchestrator@0.1.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "name": "@planemem/intelligence",
+      "version": "0.1.0",
+      "purl": "pkg:npm/@planemem/intelligence@0.1.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "name": "@planemem/mcp-gateway",
+      "version": "0.1.0",
+      "purl": "pkg:npm/@planemem/mcp-gateway@0.1.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "name": "@planemem/observability",
+      "version": "0.1.0",
+      "purl": "pkg:npm/@planemem/observability@0.1.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "name": "@planemem/plane-connector",
+      "version": "0.1.0",
+      "purl": "pkg:npm/@planemem/plane-connector@0.1.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "name": "@planemem/policy-service",
+      "version": "0.1.0",
+      "purl": "pkg:npm/@planemem/policy-service@0.1.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "name": "@planemem/release",
+      "version": "0.1.0",
+      "purl": "pkg:npm/@planemem/release@0.1.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "name": "@planemem/sdk",
+      "version": "0.1.0",
+      "purl": "pkg:npm/@planemem/sdk@0.1.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "name": "@planemem/search-service",
+      "version": "0.1.0",
+      "purl": "pkg:npm/@planemem/search-service@0.1.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "name": "@planemem/session-service",
+      "version": "0.1.0",
+      "purl": "pkg:npm/@planemem/session-service@0.1.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "name": "@planemem/sync-service",
+      "version": "0.1.0",
+      "purl": "pkg:npm/@planemem/sync-service@0.1.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "name": "@planemem/test-fixtures",
+      "version": "0.1.0",
+      "purl": "pkg:npm/@planemem/test-fixtures@0.1.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "name": "@planemem/web-console",
+      "version": "0.1.0",
+      "purl": "pkg:npm/@planemem/web-console@0.1.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "name": "@planemem/work-continuity-platform",
+      "version": "0.1.0",
+      "purl": "pkg:npm/@planemem/work-continuity-platform@0.1.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "name": "@planemem/workctx-cli",
+      "version": "0.1.0",
+      "purl": "pkg:npm/@planemem/workctx-cli@0.1.0",
+      "scope": "required"
+    }
+  ]
+}

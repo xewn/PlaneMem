@@ -1,0 +1,12 @@
+{
+  "status": "passed",
+  "client": "wavemate",
+  "client_version": "0.24.1",
+  "server_name": "planemem",
+  "configured_url": "http://127.0.0.1:3000/mcp",
+  "transport": "streamable-http",
+  "scope": "global",
+  "restart_needed": false,
+  "response_status": 200,
+  "reason": "Manual verification after the pre-fix repeat probe; subsequent current3 run validates automatic restore-verification generation."
+}

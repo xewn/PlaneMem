@@ -1,0 +1,13 @@
+k3s + WaveMate 0.24.1 UI evidence
+run_id: 20261022T2038-wavemate-ui
+status: passed
+cluster: k3s v1.36.5+k3s1, 3 Ready nodes, 3/3 replicas
+platform_probe: 12/12 passed
+wavemate_ui: server/discover=1 initialize=1 initialized=1 tools/list=1 tools/call=1 successful_responses=5 jsonrpc_errors=0
+ui_completion: prompt_visible=true completed_visible=true matched_result=true matched_trace=true
+negative_attempt_preserved: wavemate-ui-negative-attempt.json (upstream overload, no tools/call)
+restore: local Compose URL restored, restartNeeded=false
+remote_status: all nodes Ready, Helm revision 22 deployed, rollout successful
+helm: revision=22 status=deployed kubeconfig=/etc/rancher/k3s/k3s.yaml
+node_recovery: hdserver2 cordon/delete/rollout/uncordon passed; 3 Ready nodes and 3 Running replicas
+post_recovery_platform_probe: 12/12 passed

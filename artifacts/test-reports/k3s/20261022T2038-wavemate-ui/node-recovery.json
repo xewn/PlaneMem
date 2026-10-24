@@ -1,0 +1,33 @@
+{
+  "status": "passed",
+  "scenario": "cordon-delete-rollout-uncordon",
+  "node": "hdserver2",
+  "node_address": "192.168.1.232",
+  "cordon": "passed",
+  "pod_deleted": "planemem-756c46c884-fpwqq",
+  "rollout": "passed",
+  "uncordon": "passed",
+  "nodes_ready": 3,
+  "replicas_ready": 3,
+  "pods": [
+    {
+      "name": "planemem-756c46c884-hlx2h",
+      "node": "hdserver3",
+      "ready": true,
+      "status": "Running"
+    },
+    {
+      "name": "planemem-756c46c884-ptwbt",
+      "node": "hdserver1",
+      "ready": true,
+      "status": "Running"
+    },
+    {
+      "name": "planemem-756c46c884-vpqz6",
+      "node": "hdserver3",
+      "ready": true,
+      "status": "Running"
+    }
+  ],
+  "post_recovery_platform_probe": "artifacts/test-reports/k3s/20261022T2038-wavemate-ui/node-recovery-platform.json"
+}

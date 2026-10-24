@@ -1,0 +1,11 @@
+{
+  "status": "passed",
+  "client": "wavemate",
+  "client_version": "0.24.1",
+  "server_name": "planemem",
+  "configured_url": "http://127.0.0.1:3000/mcp",
+  "transport": "streamable-http",
+  "scope": "global",
+  "restart_needed": false,
+  "reason": "Restore the desktop client to its normal local Compose endpoint after the k3s UI probe."
+}

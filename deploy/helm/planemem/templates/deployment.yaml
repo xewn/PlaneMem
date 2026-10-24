@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: planemem
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: planemem
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: planemem
+    spec:
+      containers:
+        - name: platform
+          image: '{{ .Values.image.repository }}:{{ .Values.image.tag }}@{{ .Values.image.digest }}'
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: PROPOSAL_ENABLED
+              value: '{{ .Values.featureFlags.proposalEnabled }}'
+            - name: VECTOR_ENABLED
+              value: '{{ .Values.featureFlags.vectorEnabled }}'
+          envFrom:
+            - secretRef:
+                name: '{{ .Values.secrets.existingSecret }}'
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 3000
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000

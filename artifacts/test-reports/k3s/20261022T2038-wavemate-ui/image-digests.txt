@@ -1,0 +1,7 @@
+containerd namespace: k8s.io
+reference: docker.io/library/planemem-platform:0.1.0-wavemate
+digest: sha256:a2d2d0b50eb5ebdc51083ad331a182dd15f0018343aaf29c3c14898402297261
+digest alias required by kubelet: docker.io/library/planemem-platform@sha256:a2d2d0b50eb5ebdc51083ad331a182dd15f0018343aaf29c3c14898402297261
+hdserver1 (192.168.1.231): imported, tag and no-tag digest alias present
+hdserver2 (192.168.1.232): imported, tag and no-tag digest alias present
+hdserver3 (192.168.1.233): imported, tag and no-tag digest alias present

@@ -1,0 +1,26 @@
+schema_version: 1
+release_version: 0.1.0-rc.1
+git_sha: PLACEHOLDER_SET_BY_CI
+approval:
+  required: true
+  status: pending
+feature_flags:
+  proposal_enabled: false
+  vector_enabled: false
+external:
+  plane_version: 0.26.0
+  ai_memory_version: 3.0.0
+  compose_version: 3
+artifacts:
+  - name: work-continuity-platform
+    kind: package
+    version: 0.1.0
+    digest: sha256:SET_BY_CI
+  - name: schema-v1
+    kind: schema
+    version: '1'
+    digest: sha256:SET_BY_CI
+  - name: migration-007-audit
+    kind: migration
+    version: '1'
+    digest: sha256:SET_BY_CI

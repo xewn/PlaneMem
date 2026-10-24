@@ -1,0 +1,23 @@
+set dotenv-load := true
+
+compose := "docker compose --env-file .env.example -f docker-compose.yml"
+
+up:
+    {{compose}} up -d
+
+down:
+    {{compose}} down
+
+reset:
+    {{compose}} down -v --remove-orphans
+    {{compose}} up -d
+
+migrate:
+    {{compose}} exec -T postgres psql -U planemem -d planemem -f /docker-entrypoint-initdb.d/001_baseline.sql
+    {{compose}} exec -T postgres psql -U planemem -d planemem -f /docker-entrypoint-initdb.d/002_contracts.sql
+
+seed:
+    {{compose}} exec -T postgres psql -U planemem -d planemem -f /seed/seed.sql
+
+doctor:
+    node health/doctor.mjs

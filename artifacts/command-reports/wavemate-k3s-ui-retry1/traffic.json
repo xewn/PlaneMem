@@ -1,0 +1,157 @@
+[
+  {
+    "phase": "request",
+    "trace_id": "trace-wavemate-k3s-ui-retry1",
+    "method": "POST",
+    "url": "/mcp",
+    "headers": {
+      "host": "127.0.0.1:57474",
+      "connection": "keep-alive",
+      "x-tenant-id": "01HF7YAT000000000000000001",
+      "x-workspace-id": "01HF7YAT000000000000000002",
+      "x-project-id": "01HF7YAT000000000000000003",
+      "x-actor-id": "wavemate-0.24.1",
+      "x-client-id": "wavemate",
+      "x-capability": "context.read context.write",
+      "mcp-protocol-version": "2026-07-28",
+      "mcp-method": "server/discover",
+      "content-type": "application/json",
+      "accept": "application/json, text/event-stream",
+      "accept-language": "*",
+      "sec-fetch-mode": "cors",
+      "user-agent": "node",
+      "accept-encoding": "gzip, deflate",
+      "content-length": "280"
+    },
+    "body": "{\"jsonrpc\":\"2.0\",\"id\":\"server-discover-probe-1\",\"method\":\"server/discover\",\"params\":{\"_meta\":{\"io.modelcontextprotocol/protocolVersion\":\"2026-07-28\",\"io.modelcontextprotocol/clientInfo\":{\"name\":\"dsh-mcp-client\",\"version\":\"0.0.1\"},\"io.modelcontextprotocol/clientCapabilities\":{}}}}"
+  },
+  {
+    "phase": "response",
+    "trace_id": "trace-wavemate-k3s-ui-retry1",
+    "status": 200,
+    "body": "{\"jsonrpc\":\"2.0\",\"id\":\"server-discover-probe-1\",\"result\":{\"schema_version\":1,\"supportedVersions\":[\"2025-11-25\",\"2024-11-11\"],\"capabilities\":{\"tools\":{},\"resources\":{},\"prompts\":{}},\"instructions\":\"PlaneMem authorized context tools and resources.\",\"trace_id\":\"trace_mcp_unknown\"}}"
+  },
+  {
+    "phase": "request",
+    "trace_id": "trace-wavemate-k3s-ui-retry1",
+    "method": "POST",
+    "url": "/mcp",
+    "headers": {
+      "host": "127.0.0.1:57474",
+      "connection": "keep-alive",
+      "x-tenant-id": "01HF7YAT000000000000000001",
+      "x-workspace-id": "01HF7YAT000000000000000002",
+      "x-project-id": "01HF7YAT000000000000000003",
+      "x-actor-id": "wavemate-0.24.1",
+      "x-client-id": "wavemate",
+      "x-capability": "context.read context.write",
+      "content-type": "application/json",
+      "accept": "application/json, text/event-stream",
+      "accept-language": "*",
+      "sec-fetch-mode": "cors",
+      "user-agent": "node",
+      "accept-encoding": "gzip, deflate",
+      "content-length": "163"
+    },
+    "body": "{\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":{},\"clientInfo\":{\"name\":\"dsh-mcp-client\",\"version\":\"0.0.1\"}},\"jsonrpc\":\"2.0\",\"id\":0}"
+  },
+  {
+    "phase": "response",
+    "trace_id": "trace-wavemate-k3s-ui-retry1",
+    "status": 200,
+    "body": "{\"jsonrpc\":\"2.0\",\"id\":0,\"result\":{\"schema_version\":1,\"protocolVersion\":\"2025-11-25\",\"serverInfo\":{\"name\":\"planemem-mcp\",\"version\":\"0.1.0\"},\"capabilities\":{\"tools\":{},\"resources\":{},\"prompts\":{}},\"trace_id\":\"trace_mcp_unknown\"}}"
+  },
+  {
+    "phase": "request",
+    "trace_id": "trace-wavemate-k3s-ui-retry1",
+    "method": "POST",
+    "url": "/mcp",
+    "headers": {
+      "host": "127.0.0.1:57474",
+      "connection": "keep-alive",
+      "x-tenant-id": "01HF7YAT000000000000000001",
+      "x-workspace-id": "01HF7YAT000000000000000002",
+      "x-project-id": "01HF7YAT000000000000000003",
+      "x-actor-id": "wavemate-0.24.1",
+      "x-client-id": "wavemate",
+      "x-capability": "context.read context.write",
+      "mcp-protocol-version": "2025-11-25",
+      "content-type": "application/json",
+      "accept": "application/json, text/event-stream",
+      "accept-language": "*",
+      "sec-fetch-mode": "cors",
+      "user-agent": "node",
+      "accept-encoding": "gzip, deflate",
+      "content-length": "54"
+    },
+    "body": "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}"
+  },
+  {
+    "phase": "response",
+    "trace_id": "trace-wavemate-k3s-ui-retry1",
+    "status": 200,
+    "body": "{\"jsonrpc\":\"2.0\",\"id\":null,\"result\":{},\"trace_id\":\"trace_mcp_unknown\"}"
+  },
+  {
+    "phase": "request",
+    "trace_id": "trace-wavemate-k3s-ui-retry1",
+    "method": "POST",
+    "url": "/mcp",
+    "headers": {
+      "host": "127.0.0.1:57474",
+      "connection": "keep-alive",
+      "x-tenant-id": "01HF7YAT000000000000000001",
+      "x-workspace-id": "01HF7YAT000000000000000002",
+      "x-project-id": "01HF7YAT000000000000000003",
+      "x-actor-id": "wavemate-0.24.1",
+      "x-client-id": "wavemate",
+      "x-capability": "context.read context.write",
+      "mcp-protocol-version": "2025-11-25",
+      "content-type": "application/json",
+      "accept": "application/json, text/event-stream",
+      "accept-language": "*",
+      "sec-fetch-mode": "cors",
+      "user-agent": "node",
+      "accept-encoding": "gzip, deflate",
+      "content-length": "46"
+    },
+    "body": "{\"method\":\"tools/list\",\"jsonrpc\":\"2.0\",\"id\":1}"
+  },
+  {
+    "phase": "response",
+    "trace_id": "trace-wavemate-k3s-ui-retry1",
+    "status": 200,
+    "body": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"schema_version\":1,\"tools\":[{\"name\":\"context_search\",\"description\":\"Search authorized project context\",\"inputSchema\":{\"type\":\"object\",\"required\":[\"query\"],\"properties\":{\"query\":{\"type\":\"string\"}}}},{\"name\":\"context_index\",\"description\":\"Index an authorized context hit\",\"inputSchema\":{\"type\":\"object\",\"required\":[\"id\",\"title\",\"snippet\",\"revision\",\"score\",\"source_refs\"]}}],\"trace_id\":\"trace_mcp_unknown\"}}"
+  },
+  {
+    "phase": "request",
+    "trace_id": "trace-wavemate-k3s-ui-retry1",
+    "method": "POST",
+    "url": "/mcp",
+    "headers": {
+      "host": "127.0.0.1:57474",
+      "connection": "keep-alive",
+      "x-tenant-id": "01HF7YAT000000000000000001",
+      "x-workspace-id": "01HF7YAT000000000000000002",
+      "x-project-id": "01HF7YAT000000000000000003",
+      "x-actor-id": "wavemate-0.24.1",
+      "x-client-id": "wavemate",
+      "x-capability": "context.read context.write",
+      "mcp-protocol-version": "2025-11-25",
+      "content-type": "application/json",
+      "accept": "application/json, text/event-stream",
+      "accept-language": "*",
+      "sec-fetch-mode": "cors",
+      "user-agent": "node",
+      "accept-encoding": "gzip, deflate",
+      "content-length": "130"
+    },
+    "body": "{\"method\":\"tools/call\",\"params\":{\"name\":\"context_search\",\"arguments\":{\"query\":\"Live Plane Webhook Probe\"}},\"jsonrpc\":\"2.0\",\"id\":2}"
+  },
+  {
+    "phase": "response",
+    "trace_id": "trace-wavemate-k3s-ui-retry1",
+    "status": 200,
+    "body": "{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"schema_version\":1,\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schema_version\\\":1,\\\"trace_id\\\":\\\"trace_mcp_unknown\\\",\\\"source_refs\\\":[{\\\"type\\\":\\\"plane\\\",\\\"id\\\":\\\"live-plane-project\\\"}],\\\"data\\\":{\\\"schema_version\\\":1,\\\"query\\\":\\\"Live Plane Webhook Probe\\\",\\\"scope\\\":{\\\"tenant_id\\\":\\\"01HF7YAT000000000000000001\\\",\\\"workspace_id\\\":\\\"01HF7YAT000000000000000002\\\",\\\"project_id\\\":\\\"01HF7YAT000000000000000003\\\"},\\\"trace_id\\\":\\\"trace_mcp_unknown\\\",\\\"hits\\\":[{\\\"schema_version\\\":1,\\\"rank_source\\\":\\\"fts\\\",\\\"tenant_id\\\":\\\"01HF7YAT000000000000000001\\\",\\\"workspace_id\\\":\\\"01HF7YAT000000000000000002\\\",\\\"project_id\\\":\\\"01HF7YAT000000000000000003\\\",\\\"id\\\":\\\"plane:Project:live-plane-project\\\",\\\"title\\\":\\\"Live Plane Webhook Probe\\\",\\\"snippet\\\":\\\"Live Plane Webhook Probe (plane)\\\",\\\"revision\\\":1,\\\"score\\\":1,\\\"source_refs\\\":[{\\\"type\\\":\\\"plane\\\",\\\"id\\\":\\\"live-plane-project\\\"}]}],\\\"degraded\\\":true,\\\"source_refs\\\":[{\\\"type\\\":\\\"plane\\\",\\\"id\\\":\\\"live-plane-project\\\"}]}}\"}],\"trace_id\":\"trace_mcp_unknown\"}}"
+  }
+]

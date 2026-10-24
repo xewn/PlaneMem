@@ -1,0 +1,23 @@
+# Test-only OPA integration overlay. It is intentionally separate from the
+# default local-test topology so production manifests cannot silently inherit
+# the development policy endpoint.
+services:
+  opa:
+    image: openpolicyagent/opa:1.9.0@sha256:bd7e1216865884be8095726fb80282ece2f6b531883bc86f9f8917f2fc52de61
+    command:
+      [
+        'run',
+        '--server',
+        '--addr=0.0.0.0:8181',
+        '--set=decision_logs.console=true',
+        '/policies/policy.rego',
+      ]
+    volumes:
+      - ../opa:/policies:ro
+
+  workctx:
+    depends_on:
+      opa:
+        condition: service_started
+    environment:
+      OPA_URL: http://opa:8181

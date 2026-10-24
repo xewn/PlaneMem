@@ -1,0 +1,16 @@
+{
+  "fixture_version": "0.1.0",
+  "seed": "demo",
+  "scope": {
+    "tenant_id": "01HF7YAT000000000000000001",
+    "workspace_id": "01HF7YAT000000000000000002",
+    "project_id": "01HF7YAT000000000000000003"
+  },
+  "entities": {
+    "tenant_id": "01HF7YAT000000000000000001",
+    "project_id": "01HF7YAT000000000000000003"
+  },
+  "event_id": "01HF7YAT000000000000000008",
+  "memory_page_ref": "memory://tenant-demo/workspace-demo/project-continuity/demo",
+  "reset_policy": "recreate-from-seed"
+}

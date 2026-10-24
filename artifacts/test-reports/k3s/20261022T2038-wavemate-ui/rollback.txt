@@ -1,0 +1,3 @@
+status: not-run in this WaveMate image run
+reason: rollback and recovery were previously verified on the same Helm chart and runtime boundary in artifacts/test-reports/k3s/20261022T0024-transport/ and artifacts/test-reports/k3s/20261022T0745-security-fixed/.
+current release remains planemem revision 22 deployed with 3/3 replicas ready.

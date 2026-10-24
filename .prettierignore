@@ -1,0 +1,10 @@
+node_modules
+**/dist
+**/.next
+**/coverage
+.superpowers
+codes
+docs
+ReadMe.md
+FILE_INDEX.md
+deploy/helm/**/*.yaml

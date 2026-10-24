@@ -1,0 +1,85 @@
+{
+  "status": "passed",
+  "base_url": "http://127.0.0.1:38080",
+  "version": "0.1.0",
+  "scope": {
+    "tenant_id": "01HF7YAT000000000000000001",
+    "workspace_id": "01HF7YAT000000000000000002",
+    "project_id": "01HF7YAT000000000000000003"
+  },
+  "steps": [
+    {
+      "name": "live.health",
+      "status": "passed",
+      "trace_id": "trace-k3s-wavemate-current"
+    },
+    {
+      "name": "live.readiness",
+      "status": "passed",
+      "trace_id": "trace-k3s-wavemate-current"
+    },
+    {
+      "name": "live.version",
+      "status": "passed",
+      "trace_id": "trace-k3s-wavemate-current"
+    },
+    {
+      "name": "live.context.index",
+      "status": "passed",
+      "trace_id": "trace-k3s-wavemate-current"
+    },
+    {
+      "name": "live.context.index.retry",
+      "status": "passed",
+      "trace_id": "trace-k3s-wavemate-current"
+    },
+    {
+      "name": "live.context.search",
+      "status": "passed",
+      "trace_id": "trace-k3s-wavemate-current"
+    },
+    {
+      "name": "live.plane.webhook",
+      "status": "passed",
+      "trace_id": "trace-k3s-wavemate-current"
+    },
+    {
+      "name": "live.plane.webhook.duplicate",
+      "status": "passed",
+      "trace_id": "trace-k3s-wavemate-current"
+    },
+    {
+      "name": "live.mcp.initialize",
+      "status": "passed",
+      "trace_id": "trace-k3s-wavemate-current"
+    },
+    {
+      "name": "live.mcp.tools.list",
+      "status": "passed",
+      "trace_id": "trace-k3s-wavemate-current"
+    },
+    {
+      "name": "live.mcp.tools.call",
+      "status": "passed",
+      "trace_id": "trace-k3s-wavemate-current"
+    },
+    {
+      "name": "live.mcp.resources.read",
+      "status": "passed",
+      "trace_id": "trace-k3s-wavemate-current"
+    }
+  ],
+  "idempotency": {
+    "same_response": true
+  },
+  "transports": {
+    "plane_webhook": "passed",
+    "mcp_http_jsonrpc": "passed"
+  },
+  "source_refs": [
+    {
+      "type": "live-service",
+      "id": "planemem-platform"
+    }
+  ]
+}\n

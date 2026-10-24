@@ -1,0 +1,117 @@
+{
+  "$id": "https://planemem.local/schemas/entities/Conflict.json",
+  "title": "Conflict entity",
+  "schema_version": 1,
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "tenant_id",
+    "workspace_id",
+    "version",
+    "etag",
+    "source_refs",
+    "classification",
+    "created_at",
+    "updated_at",
+    "trace_id",
+    "project_id",
+    "entity_type",
+    "entity_id",
+    "expected_version",
+    "current_version",
+    "status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "tenant_id": {
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "workspace_id": {
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "etag": {
+      "type": "string",
+      "pattern": "^W/\"version-[0-9]+\"$"
+    },
+    "source_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "minLength": 1
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "uri": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": ["type", "id"]
+      }
+    },
+    "classification": {
+      "type": "string",
+      "enum": ["public", "internal", "confidential", "restricted"]
+    },
+    "created_at": {
+      "type": "string",
+      "pattern": "^.+Z$"
+    },
+    "updated_at": {
+      "type": "string",
+      "pattern": "^.+Z$"
+    },
+    "trace_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "project_id": {
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "entity_type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "entity_id": {
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "expected_version": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "current_version": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": ["open", "resolved", "dismissed"]
+    }
+  },
+  "additionalProperties": false
+}

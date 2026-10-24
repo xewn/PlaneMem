@@ -1,0 +1,40 @@
+name: PR
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.19.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm contract-test
+      - run: pnpm run fixture:validate
+      - run: pnpm run plan:audit
+      - run: pnpm run rc:readiness -- --offline
+      - run: pnpm run test:e2e -- --chain plane-to-mcp
+      - run: pnpm run test:e2e -- --chain client-switch
+      - run: pnpm run test:resilience -- --scenario offline-conflict
+      - run: pnpm run test:security -- --module P6
+      - run: pnpm run test:evaluation -- --dataset golden-context
+      - run: pnpm run test:release -- --scenario restore-rollback
+      - run: pnpm run sbom:generate -- --output artifacts/ci/sbom.cdx.json
+      - run: pnpm run release:manifest -- --version ci-${{ github.run_number }} --git-sha ${{ github.sha }} --output artifacts/ci/release-manifest.yaml
+      - run: pnpm run evidence:bundle -- --module P8 --run-id ci-${{ github.run_id }} --output artifacts/ci/evidence
