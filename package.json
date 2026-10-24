@@ -34,6 +34,7 @@
     "rc:readiness": "node tools/rc-readiness.mjs",
     "release:manifest": "node tools/release-manifest-cli.mjs generate",
     "sbom:generate": "node tools/sbom-cli.mjs generate",
+    "deploy:k3s": "node tools/k3s-release.mjs",
     "fixture:validate": "node tools/fixture-cli.mjs validate",
     "fixture:seed": "node tools/fixture-cli.mjs seed",
     "fixture:events": "node tools/fixture-cli.mjs events",

@@ -2,7 +2,9 @@ image:
   repository: ghcr.io/planemem/platform
   tag: 0.1.0
   digest: sha256:SET_BY_CI
-replicaCount: 1
+# The test and production topology has one API replica on each k3s node.
+# Override this explicitly for a smaller development cluster.
+replicaCount: 3
 featureFlags:
   proposalEnabled: false
   vectorEnabled: false
