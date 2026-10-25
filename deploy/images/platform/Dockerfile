@@ -14,9 +14,8 @@ ENV NODE_ENV=production \
     HOST=0.0.0.0 \
     PORT=3000
 
-# The staged runtime is copied from a CI/workspace filesystem that may keep
-# directories mode 0700. Give the unprivileged runtime user ownership so Node
-# can traverse the module tree inside the image.
+# The staged runtime may contain mode-0700 directories from the build workspace.
+# Give the unprivileged runtime user ownership so Node can traverse them.
 COPY --chown=node:node dist ./dist
 COPY --chown=node:node artifacts/runtime/node_modules ./node_modules
 

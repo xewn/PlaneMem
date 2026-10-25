@@ -164,7 +164,7 @@ P3 公开的稳定对象包括 `Session`/`AgentRun`/`ToolCall`、`Checkpoint`、
 - 通过 `SqliteOutbox` 先 durable enqueue，再 drain；发布方必须按 event_id 幂等，失败重试不得丢失或重复业务 effect；
 - 通过 `ConflictService` 解决冲突并消费 `ConflictResolved`，不得以旧版本覆盖 server version。
 
-P3 的 PostgreSQL migration 依次为 `004_sessions`、`005_sync`、`006_outbox`、`010_session_continuity_persistence`；后者使用独立的 `wcp_session_checkpoints` 和 `wcp_session_handoffs` 表，避免与既有 Plane 项目 handoff 表混淆。本地 outbox 使用 Node 24 `node:sqlite` 的同构表结构。跨模块只依赖包 exports 和公开返回类型，禁止读取 session、sync、conflict 或 outbox 私有表。
+P3 的 PostgreSQL migration 依次为 `004_sessions`、`005_sync`、`006_outbox`；本地 outbox 使用 Node 24 `node:sqlite` 的同构表结构。跨模块只依赖包 exports 和公开返回类型，禁止读取 session、sync、conflict 或 outbox 私有表。
 
 ### P4：入口和适配
 

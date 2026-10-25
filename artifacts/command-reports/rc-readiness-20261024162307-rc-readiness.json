@@ -1,0 +1,70 @@
+{
+  "status": "simulated",
+  "mode": "offline-fixture",
+  "command": "rc-readiness",
+  "run_id": "rc-readiness-20261024162307",
+  "trace_id": "trace-rc-readiness-20261024162307",
+  "source_refs": [
+    {
+      "type": "release-design",
+      "id": "docs/design/05-release"
+    },
+    {
+      "type": "plan-audit",
+      "id": "tools/plan-audit.mjs"
+    }
+  ],
+  "local_status": "passed",
+  "local_checks": {
+    "plan_audit": "passed",
+    "compose_doctor": "passed",
+    "compose_health": "passed",
+    "required_files": [
+      {
+        "file": "deploy/compose/docker-compose.yml",
+        "status": "passed"
+      },
+      {
+        "file": "deploy/helm/planemem/Chart.yaml",
+        "status": "passed"
+      },
+      {
+        "file": "deploy/helm/planemem/values.schema.json",
+        "status": "passed"
+      },
+      {
+        "file": "deploy/release-manifest.yaml",
+        "status": "passed"
+      },
+      {
+        "file": "docs/design/05-release/01-release-deployment-rollback.md",
+        "status": "passed"
+      }
+    ]
+  },
+  "external_status": "blocked",
+  "external_gates": [
+    {
+      "gate": "docker-cli",
+      "status": "available"
+    },
+    {
+      "gate": "helm-cli",
+      "status": "available"
+    },
+    {
+      "gate": "kubectl-cli",
+      "status": "available"
+    },
+    {
+      "gate": "live-services",
+      "status": "not-run"
+    }
+  ],
+  "release_blockers": [
+    {
+      "gate": "live-services",
+      "status": "not-run"
+    }
+  ]
+}

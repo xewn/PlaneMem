@@ -4,7 +4,7 @@
 
 ## 计划入口
 
-- [整体开发计划](00-overall-development-plan.md)：波次、38 个子任务、统一 Gate 和整体完成定义。
+- [整体开发计划](00-overall-development-plan.md)：波次、37 个子任务、统一 Gate 和整体完成定义。
 - [统一测试、真实数据模拟与功能校验计划](03-test-data-and-functional-validation-plan.md)：TEST-001–TEST-018。
 - [当前开发与验证状态](04-current-verification-status.md)：记录最新模块测试、契约审计、协接校验和 RC 外部门禁状态。
 - [开发计划完成审计](05-completion-audit.md)：按需求、模块、协接、部署和发布门禁逐项判定当前证据。

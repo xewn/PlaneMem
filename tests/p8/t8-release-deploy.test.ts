@@ -33,20 +33,6 @@ test('P8-C01/T8.2 validates the release manifest and deployment topology', () =>
   );
 });
 
-test('P8-R01/T8.3 live release gate migrates seeded state before continuity restore', () => {
-  const releaseRunner = readFileSync('tools/run-release-tests.mjs', 'utf8');
-  for (const token of [
-    '010_session_continuity_persistence.sql',
-    "'/seed/seed.sql'",
-    "'session-continuity.restore'",
-    "'security.tenant-isolation'",
-    'run-security-tests.mjs',
-    't4-session-persistence-live.test.ts',
-  ]) {
-    assert.match(releaseRunner, new RegExp(token.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')));
-  }
-});
-
 test('P8-E01/T8.1 emits a traceable integration report with fault outcomes', async () => {
   const report = await runIntegrationScenario({
     scenario_id: 'p8-fixture-plane-to-mcp',

@@ -38,6 +38,9 @@ for (const group of packageGroups) {
     if (typeof packageJson.name !== 'string' || !packageJson.name.startsWith('@planemem/')) {
       continue;
     }
+    // Next.js is built and shipped by its own standalone web-console image;
+    // the compiled Node runtime bundle must only contain server packages.
+    if (packageJson.name === '@planemem/web-console') continue;
 
     const compiledSource = path.join(workspaceRoot, 'dist', group, entry.name, 'src');
     const packageDestination = path.join(nodeModulesRoot, ...packageJson.name.split('/'));

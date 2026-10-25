@@ -1,0 +1,51 @@
+{
+  "status": "passed",
+  "mode": "live",
+  "scenario": "process-kill",
+  "run_id": "p8-process-kill-current",
+  "trace_id": "trace-p8-process-kill-current",
+  "source_refs": [
+    {
+      "type": "live-probe",
+      "id": "compose-process-kill-recovery"
+    }
+  ],
+  "steps": [
+    {
+      "name": "process.health.before",
+      "status": "passed",
+      "trace_id": "trace-p8-process-kill-current",
+      "service": "workctx"
+    },
+    {
+      "name": "process.kill",
+      "status": "passed",
+      "trace_id": "trace-p8-process-kill-current",
+      "service": "workctx",
+      "signal": "SIGKILL"
+    },
+    {
+      "name": "process.restore",
+      "status": "passed",
+      "trace_id": "trace-p8-process-kill-current",
+      "service": "workctx"
+    },
+    {
+      "name": "process.health.after",
+      "status": "passed",
+      "trace_id": "trace-p8-process-kill-current",
+      "service": "workctx"
+    },
+    {
+      "name": "runtime.probe",
+      "status": "passed",
+      "trace_id": "trace-p8-process-kill-current",
+      "status_code": 200
+    }
+  ],
+  "measured": true,
+  "recovery_verified": true,
+  "external_gates": [
+    "RC dependency business recovery"
+  ]
+}

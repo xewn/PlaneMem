@@ -23,12 +23,6 @@ services:
       KEYCLOAK_URL: http://keycloak:8080
       OBJECT_STORAGE_URL: http://minio:9000
       AI_MEMORY_URL: http://ai-memory:8787
-      MEMORY_PROVIDER_MODE: ${MEMORY_PROVIDER_MODE:-ai-memory-mcp}
-      MEMORY_ENABLED: ${MEMORY_ENABLED:-true}
-      MEMORY_REQUIRED: ${MEMORY_REQUIRED:-true}
-      AI_MEMORY_TOKEN: ${AI_MEMORY_TOKEN:-}
-      MEMORY_ACTOR_ID: ${MEMORY_ACTOR_ID:-planemem-platform}
-      MEMORY_CLIENT_ID: ${MEMORY_CLIENT_ID:-planemem-platform}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       PROPOSAL_ENABLED: ${PROPOSAL_ENABLED:-false}
       VECTOR_ENABLED: ${VECTOR_ENABLED:-false}
@@ -142,7 +136,6 @@ services:
     environment:
       AI_MEMORY_DATA_DIR: /data
       AI_MEMORY_MODE: ${AI_MEMORY_MODE:-local}
-      AI_MEMORY_AUTH_TOKEN: ${AI_MEMORY_AUTH_TOKEN:-}
     ports:
       - '${AI_MEMORY_PORT:-8787}:8787'
     volumes:

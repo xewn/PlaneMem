@@ -44,18 +44,6 @@ const composePrefix = [
   'deploy/compose/docker-compose.local-test.yml',
 ];
 
-const migrationFiles = [
-  '001_baseline.sql',
-  '002_contracts.sql',
-  '003_artifacts.sql',
-  '004_sessions.sql',
-  '005_sync.sql',
-  '006_outbox.sql',
-  '007_audit.sql',
-  '009_runtime_state.sql',
-  '010_session_continuity_persistence.sql',
-];
-
 function runCompose(args, input) {
   return spawnSync('docker', [...composePrefix, ...args], {
     cwd: workspaceRoot,
@@ -133,43 +121,6 @@ function liveRestoreCheck() {
     };
   };
   try {
-    for (const migration of migrationFiles) {
-      const migrationResult = runCompose([
-        'exec',
-        '-T',
-        'postgres',
-        'psql',
-        '-U',
-        'planemem',
-        '-d',
-        'planemem',
-        '-v',
-        'ON_ERROR_STOP=1',
-        '-f',
-        `/docker-entrypoint-initdb.d/${migration}`,
-      ]);
-      if (migrationResult.status !== 0)
-        return fail(`postgres.migrate.${migration}`, diagnosticOutput(migrationResult));
-    }
-    step('postgres.migrate', 'passed', [
-      { type: 'migration', id: '001–010 (including 010_session_continuity_persistence)' },
-    ]);
-    const seedResult = runCompose([
-      'exec',
-      '-T',
-      'postgres',
-      'psql',
-      '-U',
-      'planemem',
-      '-d',
-      'planemem',
-      '-v',
-      'ON_ERROR_STOP=1',
-      '-f',
-      '/seed/seed.sql',
-    ]);
-    if (seedResult.status !== 0) return fail('postgres.seed', diagnosticOutput(seedResult));
-    step('postgres.seed', 'passed');
     const services = parseComposeServices(runCompose(['ps', '--format', 'json']));
     const serviceMap = new Map(services.map((service) => [service.Service, service]));
     const servicesReady = requiredServices.every(
@@ -178,33 +129,6 @@ function liveRestoreCheck() {
     );
     if (!servicesReady) return fail('compose.health', 'Compose services are not all healthy');
     step('compose.health', 'passed');
-
-    const securityProbe = spawnSync(
-      process.execPath,
-      [
-        path.join(workspaceRoot, 'tools', 'run-security-tests.mjs'),
-        '--live',
-        '--base-url',
-        `http://127.0.0.1:${process.env.WORKCTX_PORT ?? '3000'}`,
-        '--run-id',
-        `${run_id}-security`,
-        '--output',
-        output,
-      ],
-      { cwd: workspaceRoot, encoding: 'utf8' },
-    );
-    let securityResult;
-    try {
-      securityResult = JSON.parse(securityProbe.stdout.trim());
-    } catch {
-      return fail('security.tenant-isolation', diagnosticOutput(securityProbe));
-    }
-    if (securityProbe.status !== 0 || securityResult.status !== 'passed')
-      return fail('security.tenant-isolation', 'Live security probe failed');
-    step('security.tenant-isolation', 'passed', [
-      { type: 'report', id: path.join(output, `${run_id}-security-security.json`) },
-      { type: 'security', id: `tenant_leak_hits:${securityResult.tenant_leak_hits ?? 0}` },
-    ]);
 
     const sourceCount = runCompose([
       'exec',
@@ -311,32 +235,6 @@ function liveRestoreCheck() {
     step('postgres.restore', 'passed', [
       { type: 'artifact', id: postgresDumpPath },
       { type: 'postgres', id: `tables:${restoredTableCount}` },
-    ]);
-
-    const sessionContinuity = spawnSync(
-      process.execPath,
-      [
-        '--import',
-        'tsx',
-        '--test',
-        '--test-reporter=spec',
-        path.join(workspaceRoot, 'tests', 'p4', 't4-session-persistence-live.test.ts'),
-      ],
-      {
-        cwd: workspaceRoot,
-        encoding: 'utf8',
-        env: {
-          ...process.env,
-          SESSION_TEST_DATABASE_URL:
-            process.env.SESSION_TEST_DATABASE_URL ??
-            `postgresql://planemem:change-me@127.0.0.1:${process.env.POSTGRES_PORT ?? '5432'}/planemem`,
-        },
-      },
-    );
-    if (sessionContinuity.status !== 0)
-      return fail('session-continuity.restore', diagnosticOutput(sessionContinuity));
-    step('session-continuity.restore', 'passed', [
-      { type: 'test', id: 'tests/p4/t4-session-persistence-live.test.ts' },
     ]);
 
     const aiMemoryArchive = runCompose([

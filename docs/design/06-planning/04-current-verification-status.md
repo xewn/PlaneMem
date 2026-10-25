@@ -32,11 +32,11 @@
 
 `pnpm run plan:audit` 返回 `passed`，最新结构化证据为 [`final-plan-audit-current26`](../../../artifacts/command-reports/final-plan-audit-current26/)，当前计数为：
 
-- 任务文件 38/38；模块计划中的任务引用 38；独立验证文档中的任务引用 38；
+- 任务文件 37/37；模块计划中的任务引用 37；独立验证文档中的任务引用 37；
 - 模块 9 个；协接边 28 条；标准脚本 27 个（含 Keycloak/审计 live probe、workspace build、ai-memory live probe、SQLite live probe、WaveMate handshake probe 和 WaveMate UI live probe）；镜像漏洞扫描工具保留为可选历史记录；
 - 缺失项为空；生产在线依赖、完整 RC 恢复和生产 Smoke 仍被明确列为外部门禁。
 
-本轮补充 WaveMate 0.24.1 MCP live gate、k3s WebDriver UI `tools/call`、Compose 依赖矩阵、进程重启、网络分区、依赖恢复后业务探针、Keycloak/审计 live probe 和可复放镜像漏洞扫描后，`pnpm run plan:audit` 已重新执行并保持任务 38/38、模块 9 个、协接边 28 条和计划标准脚本 27 个；新增命令已通过对应模块测试，但生产在线服务/生产 Smoke 仍是外部门禁。
+本轮补充 WaveMate 0.24.1 MCP live gate、k3s WebDriver UI `tools/call`、Compose 依赖矩阵、进程重启、网络分区、依赖恢复后业务探针、Keycloak/审计 live probe 和可复放镜像漏洞扫描后，`pnpm run plan:audit` 已重新执行并保持任务 37/37、模块 9 个、协接边 28 条和计划标准脚本 27 个；新增命令已通过对应模块测试，但生产在线服务/生产 Smoke 仍是外部门禁。
 
 协接矩阵、提供方/消费方测试边界和独立验证文档由 `tests/contract/edge-contract-matrix.test.mjs` 自动校验。项目设计文档和根 ReadMe 的 Markdown 相对文件链接检查为 473 条、0 条断链（供应商原始文档不作为项目设计链接门禁）。
 
@@ -124,14 +124,6 @@ search p95 为 41.385ms、失败 0。随后新增并实际执行 [`p8-process-ki
 本轮对 PostgreSQL/RabbitMQ 候选版本完成真实 Compose 回归：[`release-live-dependency-upgrade-current14`](../../../artifacts/command-reports/release-live-dependency-upgrade-current14/) 的跨存储备份恢复、[`resilience-business-dependency-upgrade-current14`](../../../artifacts/command-reports/resilience-business-dependency-upgrade-current14/) 的 4 项恢复后业务 Smoke 和 [`resilience-matrix-dependency-upgrade-current14`](../../../artifacts/command-reports/resilience-matrix-dependency-upgrade-current14/) 的 8 项依赖故障矩阵均为 `passed`。这两项升级已经固化到本地 Compose；后续不再为了漏洞数量升级其他镜像，历史候选记录见 [功能验收范围调整](../05-release/07-functional-acceptance-scope.md)。
 随后在同一当前 Compose runtime 上重新执行了可在本地完成的 RC 前置探针：[`release-live-current12`](../../../artifacts/command-reports/release-live-current12/) 的 `restore-rollback` 真实备份/恢复步骤全部通过，PostgreSQL 恢复前后均为 122 张表、SQLite 恢复前后均为 2 行；[`performance-live-current12`](../../../artifacts/command-reports/performance-live-current12/) 以 50 请求、0 失败完成 HTTP search，p95 为 39.345ms；[`security-live-current12`](../../../artifacts/command-reports/security-live-current12/) 的同 scope、跨 scope、策略拒绝和拒绝副作用均通过；[`resilience-matrix-current12`](../../../artifacts/command-reports/resilience-matrix-current12/) 对 PostgreSQL、Redis、NATS、RabbitMQ、Keycloak、MinIO、ai-memory、OTel 逐一 stop/start 后均恢复健康；[`resilience-business-current12`](../../../artifacts/command-reports/resilience-business-current12/) 在 PostgreSQL、NATS、RabbitMQ、ai-memory 恢复后重新执行 12 步业务探针并全部通过。上述证据只关闭本地 Compose 边界的验证项，不能替代 RC/生产环境的身份、负载曲线、审计留存和审批门禁。
 随后按同一策略扫描本地 Compose/发布拓扑的 10 个依赖镜像，报告 [`p8-vulnerability-scan-command-current16`](../../../artifacts/command-reports/p8-vulnerability-scan-command-current16/) 和 [`remediation.json`](../../../artifacts/command-reports/p8-vulnerability-scan-command-current16/remediation.json) 作为历史记录保留。RabbitMQ 已升级到 4.4.0、PostgreSQL 已升级到 16.15-alpine3.24，二者功能回归均通过；其余漏洞数量不再触发镜像升级、豁免或功能发布阻断。
-
-当前 k3s 真实数据闭环已扩展覆盖项目连续性：在 `planemem-test` 三副本 Deployment 上，P8 回归会创建 Session、AgentRun、Checkpoint 和 Handoff，滚动重启后验证 Context search 恢复、同一 Session 幂等键重放、Handoff claim 和 Resume，并回查对应 PostgreSQL 记录。报告见 [`t8-k3s-real-data-closure-session-current`](../../../artifacts/test-reports/k3s/t8-k3s-real-data-closure-session-current/report.json)。当前镜像为 `0.1.0-session-persistence-cas`，迁移为 `010_session_continuity_persistence`；测试通过不等同于稳定外部入口、生产身份、跨租户和人工验收通过。
-
-本轮真实 Compose 发布恢复门 [`release-live-session-current3`](../../../artifacts/command-reports/release-live-session-current3/) 已通过：运行前显式幂等执行 001–010 migration 和 `seed.sql`，PostgreSQL 备份/恢复前后均为 126 张 public 表，`t4-session-persistence-live` 的 Session/Checkpoint/Handoff 重启回归、ai-memory 归档恢复、对象存储归档恢复和 SQLite outbox exactly-once 恢复均通过。此前已有 volume 缺少 migration 010 的问题已由 release runner 的迁移前置步骤固定，避免把旧库误判为可用环境。
-
-随后 release runner 增加并执行了真实安全步骤 [`release-live-security-current4`](../../../artifacts/command-reports/release-live-security-current4/)：`security.tenant-isolation` 在 Compose health 之后运行，同 scope 有命中，跨 project/tenant 均无泄露，未初始化 workspace 的 `MEMORY_MCP_ERROR` 被识别为 fail-closed，且拒绝无副作用；该步骤与 001–010 migration/seed、126 张 PostgreSQL 表恢复、Session continuity、ai-memory、对象存储和 SQLite exactly-once 同次通过。
-
-随后在当前三节点 k3s 上执行真实安全探针 [`k3s-security-tenant-current2`](../../../artifacts/command-reports/k3s-security-tenant-current2/)：同 scope 查询命中，跨 project 和跨 tenant 查询均无数据泄露；因目标 workspace 尚未初始化，PlaneMem/ai-memory 返回 `503 MEMORY_MCP_ERROR` 并 fail-closed；缺少读取能力返回 403，拒绝请求前后命中数量不变。该报告证明租户/项目边界不会在未初始化外部记忆时泄露数据，但仍不替代 Keycloak Bearer、OPA 生产策略和正式租户初始化验收。
 
 ## 6. 继续执行规则
 

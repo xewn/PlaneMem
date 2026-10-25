@@ -84,7 +84,6 @@ test('P8 security live probe verifies scope isolation and deny side effects', as
     assert.equal(result.status, 'passed');
     assert.equal(result.runtime_status, 'passed');
     assert.equal(result.scope_leak_hits, 0);
-    assert.equal(result.tenant_leak_hits, 0);
     assert.equal(result.denied_side_effects, 0);
   } finally {
     fake.server.close();

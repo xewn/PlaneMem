@@ -165,7 +165,7 @@ const report = {
   ],
   counts: {
     task_files: taskFiles.length,
-    expected_task_files: 38,
+    expected_task_files: 37,
     task_ids_in_module_plans: [...planTaskIds].filter((id) => taskIds.includes(id)).length,
     task_ids_in_verification_docs: [...verificationTaskIds].filter((id) => taskIds.includes(id))
       .length,

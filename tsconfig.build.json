@@ -9,5 +9,5 @@
     "sourceMap": true
   },
   "include": ["apps/**/*.ts", "packages/**/*.ts", "workers/**/*.ts"],
-  "exclude": ["node_modules", "dist", "**/dist"]
+  "exclude": ["node_modules", "dist", "**/dist", "apps/web-console/src", "apps/web-console/.next"]
 }

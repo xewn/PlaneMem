@@ -1,6 +1,6 @@
 # Plane Work Continuity Platform 整体开发计划
 
-> 本文件是 P0–P8 的统一执行计划。它把模块开发、38 个子任务、真实形状数据模拟、功能校验、契约协接、集成、发布和回滚放在同一条可审计链路中。
+> 本文件是 P0–P8 的统一执行计划。它把模块开发、37 个子任务、真实形状数据模拟、功能校验、契约协接、集成、发布和回滚放在同一条可审计链路中。
 
 ## 1. 目标和完成判定
 
@@ -39,9 +39,9 @@ P0–P8 的代码边界、任务设计、模块独立校验、协接契约和发
 | Wave 2：状态连续性 | P3 / T3.1–T3.5 | P3 依赖 P2 ContextPack 契约 | claim-once、outbox、cursor、冲突和恢复全绿 |
 | Wave 3：统一入口 | P4 / T4.1–T4.4 | REST/MCP/CLI 可并行，共享 WCP/Policy | parity、MCP conformance、客户端切换通过 |
 | Wave 4：产品和智能 | P5、P7 | P5 使用 Gateway stub；P7 使用 Golden/模型 stub | UI 关键旅程、Golden 阈值、proposal 审批通过 |
-| Wave 5：统一集成 | P8 / T8.1–T8.4 | 依赖全部上游 immutable artifact | E2E、故障、性能、策略/审计、恢复、回滚和 Smoke 通过 |
+| Wave 5：统一集成 | P8 / T8.1–T8.3 | 依赖全部上游 immutable artifact | E2E、故障、性能、策略/审计、恢复、回滚和 Smoke 通过 |
 
-## 4. 38 个子任务完整计划
+## 4. 37 个子任务完整计划
 
 下表是整体计划的任务基线；每个任务的详细设计和独立测试仍以 `docs/design/02-subprojects/tasks/` 下的文件为准，每个模块的执行顺序以 `modules/P*-development-plan.md` 为准。
 
@@ -84,7 +84,6 @@ P0–P8 的代码边界、任务设计、模块独立校验、协接契约和发
 | P8 | [T8.1 集成、E2E、故障与性能测试编排](modules/P8-development-plan.md) | [任务设计](../02-subprojects/tasks/t8.1-integration-e2e-resilience.md) | 把所有服务和 ai-memory/Plane 组成可重复集成环境并执行全链路与故障测试。 | Plane→Webhook→Event→ContextPack→MCP、Codex→Claude handoff、duplicate/out-of-order、NATS/DB restart、offline、security/perf 测试必须不依赖未完成的下游任务；需要外部能力时使用 packages/test-fixtures 或明确版本的 Compose 服务。 |
 | P8 | [T8.2 Compose、Helm 与部署拓扑](modules/P8-development-plan.md) | [任务设计](../02-subprojects/tasks/t8.2-compose-helm.md) | 交付开发/POC Compose 和指定三节点 k3s 的 Helm 配置。 | clean Compose、Helm lint/template/install/upgrade、restart、scale、secret missing 测试必须不依赖未完成的下游任务；需要外部能力时使用 packages/test-fixtures 或明确版本的 Compose 服务。 |
 | P8 | [T8.3 Release Manifest、备份恢复与回滚](modules/P8-development-plan.md) | [任务设计](../02-subprojects/tasks/t8.3-release-rollback.md) | 把 Plane、ai-memory、WorkMesh、Schema、迁移、Feature Flags 固定成可恢复发布单元。 | backup/restore、upgrade/rollback、schema compatibility、audit/context resume 和功能 Smoke 测试必须不依赖未完成的下游任务；SBOM/漏洞报告只作可选记录。 |
-| P8 | [T8.4 真实数据数据库闭环与运行时恢复](modules/P8-development-plan.md) | [任务设计](../02-subprojects/tasks/t8.4-real-data-closure.md) | 将 Webhook 事件、Projection、Context hit、Audit 持久化到真实 PostgreSQL，并验证 Compose/k3s 重启恢复。 | 首次 accepted、重复 duplicate、四表回查、滚动重启和真实数据库连接 |
 
 ## 5. 跨模块测试和真实数据计划
 
@@ -121,7 +120,7 @@ P0–P8 的代码边界、任务设计、模块独立校验、协接契约和发
 ## 8. 总体完成定义
 
 - [ ] 9 份模块开发计划已评审；
-- [ ] 38 个子任务全部出现在本计划并链接到详细设计；
+- [ ] 37 个子任务全部出现在本计划并链接到详细设计；
 - [ ] 每个子任务有独立测试、真实形状数据、功能校验和交付证据；
 - [ ] P0–P8 模块计划的依赖和整体波次一致；
 - [ ] 需求、设计、任务、测试、协接和发布物可通过编号或路径互相追踪；

@@ -14,12 +14,12 @@
   "dependencies": {
     "@planemem/audit-service": "workspace:*",
     "@planemem/contracts": "workspace:*",
-    "@planemem/context-service": "workspace:*",
     "@planemem/events": "workspace:*",
     "@planemem/plane-connector": "workspace:*",
     "@planemem/policy-service": "workspace:*",
     "@planemem/search-service": "workspace:*",
-    "@planemem/session-service": "workspace:*",
-    "postgres": "3.4.7"
+    "postgres": "3.4.7",
+    "@planemem/context-service": "workspace:*",
+    "@planemem/session-service": "workspace:*"
   }
 }

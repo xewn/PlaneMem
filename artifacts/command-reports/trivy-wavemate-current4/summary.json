@@ -1,0 +1,24 @@
+{
+  "run_id": "trivy-wavemate-current4",
+  "status": "passed",
+  "scanner": "trivy",
+  "scanner_version": "0.58.1",
+  "artifact": "planemem-platform:0.1.0-wavemate",
+  "image_id": "sha256:a2d2d0b50eb5ebdc51083ad331a182dd15f0018343aaf29c3c14898402297261",
+  "policy": {
+    "scanners": [
+      "vuln"
+    ],
+    "severity": [
+      "CRITICAL",
+      "HIGH"
+    ],
+    "ignore_unfixed": true
+  },
+  "result": {
+    "vulnerability_count": 0,
+    "critical": 0,
+    "high": 0
+  },
+  "source": "trivy.json"
+}

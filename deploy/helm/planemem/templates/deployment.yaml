@@ -12,8 +12,6 @@ spec:
       labels:
         app.kubernetes.io/name: planemem
     spec:
-      imagePullSecrets:
-        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
       containers:
         - name: platform
           image: '{{ .Values.image.repository }}:{{ .Values.image.tag }}@{{ .Values.image.digest }}'
@@ -23,18 +21,6 @@ spec:
               value: '{{ .Values.featureFlags.proposalEnabled }}'
             - name: VECTOR_ENABLED
               value: '{{ .Values.featureFlags.vectorEnabled }}'
-            - name: AI_MEMORY_URL
-              value: '{{ .Values.external.aiMemoryUrl }}'
-            - name: MEMORY_PROVIDER_MODE
-              value: '{{ .Values.external.memoryProviderMode }}'
-            - name: MEMORY_ENABLED
-              value: '{{ .Values.external.memoryEnabled }}'
-            - name: MEMORY_REQUIRED
-              value: '{{ .Values.external.memoryRequired }}'
-            - name: MEMORY_ACTOR_ID
-              value: '{{ .Values.external.memoryActorId }}'
-            - name: MEMORY_CLIENT_ID
-              value: '{{ .Values.external.memoryClientId }}'
           envFrom:
             - secretRef:
                 name: '{{ .Values.secrets.existingSecret }}'

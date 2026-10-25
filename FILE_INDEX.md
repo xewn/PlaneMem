@@ -13,26 +13,26 @@
 ## 生成信息
 
 - 工作区：`F:\PlaneMem`
-- 生成时间：`2026-10-26 06:52:27 +08:00`
-- 文件总数（不含本索引与版本控制内部文件）：`6693`
-- 目录总数（不含版本控制内部目录）：`1331`
-- 总字节数（不含本索引与版本控制内部文件）：`165868523`
+- 生成时间：`2026-10-26 07:04:26 +08:00`
+- 文件总数（不含本索引与版本控制内部文件）：`6737`
+- 目录总数（不含版本控制内部目录）：`1344`
+- 总字节数（不含本索引与版本控制内部文件）：`182252026`
 
 ## 顶层目录统计
 
 | 顶层路径 | 文件数 | 字节数 |
 |---|---:|---:|
-| `(root)` | 14 | 147637 |
-| `.github` | 1 | 1369 |
-| `apps` | 68 | 225840 |
-| `assets` | 10 | 75254996 |
+| `(root)` | 14 | 166196 |
+| `.github` | 1 | 4834 |
+| `apps` | 98 | 364171 |
+| `assets` | 12 | 91394621 |
 | `codes` | 6316 | 89014702 |
-| `deploy` | 33 | 40670 |
-| `docs` | 114 | 642063 |
+| `deploy` | 36 | 72903 |
+| `docs` | 118 | 661066 |
 | `integrations` | 6 | 3230 |
 | `packages` | 56 | 97200 |
-| `tests` | 41 | 185197 |
-| `tools` | 27 | 247179 |
+| `tests` | 43 | 190892 |
+| `tools` | 30 | 273771 |
 | `workers` | 7 | 8440 |
 
 ## 目录清单
@@ -41,9 +41,10 @@
 
 - `.github/` — 1 files
 - `.github/workflows/` — 1 files
-- `apps/` — 68 files
-- `apps/api-gateway/` — 7 files
-- `apps/api-gateway/src/` — 6 files
+- `apps/` — 98 files
+- `apps/api-gateway/` — 10 files
+- `apps/api-gateway/src/` — 8 files
+- `apps/api-gateway/src/workbench/` — 1 files
 - `apps/artifact-service/` — 2 files
 - `apps/artifact-service/src/` — 1 files
 - `apps/audit-service/` — 3 files
@@ -78,16 +79,27 @@
 - `apps/sync-service/src/` — 5 files
 - `apps/sync-service/src/conflict/` — 2 files
 - `apps/sync-service/src/cursor/` — 2 files
-- `apps/web-console/` — 7 files
-- `apps/web-console/src/` — 6 files
-- `apps/web-console/src/app/` — 4 files
-- `apps/web-console/src/app/admin/` — 1 files
-- `apps/web-console/src/app/conflicts/` — 1 files
-- `apps/web-console/src/app/handoffs/` — 1 files
-- `apps/web-console/src/lib/` — 1 files
+- `apps/web-console/` — 34 files
+- `apps/web-console/src/` — 28 files
+- `apps/web-console/src/app/` — 18 files
+- `apps/web-console/src/app/admin/` — 2 files
+- `apps/web-console/src/app/audit/` — 1 files
+- `apps/web-console/src/app/auth/` — 3 files
+- `apps/web-console/src/app/auth/callback/` — 1 files
+- `apps/web-console/src/app/auth/login/` — 1 files
+- `apps/web-console/src/app/auth/logout/` — 1 files
+- `apps/web-console/src/app/conflicts/` — 2 files
+- `apps/web-console/src/app/context/` — 1 files
+- `apps/web-console/src/app/handoffs/` — 2 files
+- `apps/web-console/src/app/login/` — 1 files
+- `apps/web-console/src/app/overview/` — 1 files
+- `apps/web-console/src/app/sessions/` — 1 files
+- `apps/web-console/src/app/work-items/` — 1 files
+- `apps/web-console/src/components/` — 4 files
+- `apps/web-console/src/lib/` — 4 files
 - `apps/workctx-cli/` — 3 files
 - `apps/workctx-cli/src/` — 2 files
-- `assets/` — 10 files
+- `assets/` — 12 files
 - `codes/` — 6316 files
 - `codes/ai-memory/` — 1209 files
 - `codes/ai-memory/.agents/` — 1 files
@@ -1277,8 +1289,8 @@
 - `codes/plane/packages/utils/src/work-item-filters/` — 12 files
 - `codes/plane/packages/utils/src/work-item-filters/configs/` — 11 files
 - `codes/plane/packages/utils/src/work-item-filters/configs/filters/` — 10 files
-- `deploy/` — 33 files
-- `deploy/compose/` — 10 files
+- `deploy/` — 36 files
+- `deploy/compose/` — 12 files
 - `deploy/compose/health/` — 2 files
 - `deploy/helm/` — 6 files
 - `deploy/helm/planemem/` — 6 files
@@ -1288,11 +1300,11 @@
 - `deploy/k3s/` — 2 files
 - `deploy/k3s/smoke/` — 2 files
 - `deploy/keycloak/` — 1 files
-- `deploy/migrations/` — 9 files
+- `deploy/migrations/` — 10 files
 - `deploy/observability/` — 1 files
 - `deploy/opa/` — 1 files
 - `deploy/search/` — 1 files
-- `docs/` — 114 files
+- `docs/` — 118 files
 - `docs/design/` — 110 files
 - `docs/design/00-baseline/` — 8 files
 - `docs/design/01-contracts/` — 5 files
@@ -1315,9 +1327,10 @@
 - `docs/design/06-planning/` — 14 files
 - `docs/design/06-planning/modules/` — 9 files
 - `docs/design/vendor/` — 2 files
-- `docs/runbooks/` — 2 files
-- `docs/superpowers/` — 1 files
-- `docs/superpowers/plans/` — 1 files
+- `docs/runbooks/` — 4 files
+- `docs/superpowers/` — 3 files
+- `docs/superpowers/ledgers/` — 1 files
+- `docs/superpowers/plans/` — 2 files
 - `docs/traceability/` — 1 files
 - `integrations/` — 6 files
 - `integrations/claude-code/` — 1 files
@@ -1351,7 +1364,7 @@
 - `packages/test-fixtures/` — 3 files
 - `packages/test-fixtures/fixtures/` — 1 files
 - `packages/test-fixtures/src/` — 1 files
-- `tests/` — 41 files
+- `tests/` — 43 files
 - `tests/contract/` — 9 files
 - `tests/contract/context/` — 1 files
 - `tests/p0/` — 7 files
@@ -1359,11 +1372,11 @@
 - `tests/p2/` — 2 files
 - `tests/p3/` — 3 files
 - `tests/p4/` — 5 files
-- `tests/p5/` — 1 files
+- `tests/p5/` — 3 files
 - `tests/p6/` — 3 files
 - `tests/p7/` — 1 files
 - `tests/p8/` — 9 files
-- `tools/` — 27 files
+- `tools/` — 30 files
 - `workers/` — 7 files
 - `workers/evaluation/` — 4 files
 - `workers/evaluation/datasets/` — 1 files
@@ -1385,11 +1398,11 @@
 
 ### .github
 
-- [.github/workflows/pr.yml](.github/workflows/pr.yml) — 1369 bytes; .yml; 修改于 2026-10-21 08:38:06
+- [.github/workflows/pr.yml](.github/workflows/pr.yml) — 4834 bytes; .yml; 修改于 2026-10-26 07:03:32
 
 ### .gitignore
 
-- [.gitignore](.gitignore) — 227 bytes; .gitignore; 修改于 2026-10-26 06:51:34
+- [.gitignore](.gitignore) — 248 bytes; .gitignore; 修改于 2026-10-26 06:58:09
 
 ### .gitmodules
 
@@ -1397,7 +1410,7 @@
 
 ### .prettierignore
 
-- [.prettierignore](.prettierignore) — 119 bytes; .prettierignore; 修改于 2026-10-25 12:50:14
+- [.prettierignore](.prettierignore) — 136 bytes; .prettierignore; 修改于 2026-10-26 06:58:09
 
 ### .prettierrc.json
 
@@ -1405,13 +1418,16 @@
 
 ### apps
 
-- [apps/api-gateway/package.json](apps/api-gateway/package.json) — 672 bytes; .json; 修改于 2026-10-25 21:33:16
-- [apps/api-gateway/src/http.ts](apps/api-gateway/src/http.ts) — 7729 bytes; .ts; 修改于 2026-10-25 23:45:36
-- [apps/api-gateway/src/index.ts](apps/api-gateway/src/index.ts) — 85 bytes; .ts; 修改于 2026-10-21 12:54:16
+- [apps/api-gateway/package.json](apps/api-gateway/package.json) — 672 bytes; .json; 修改于 2026-10-26 07:03:33
+- [apps/api-gateway/src/http.ts](apps/api-gateway/src/http.ts) — 7729 bytes; .ts; 修改于 2026-10-26 07:03:33
+- [apps/api-gateway/src/index.ts](apps/api-gateway/src/index.ts) — 155 bytes; .ts; 修改于 2026-10-26 07:03:33
+- [apps/api-gateway/src/oidc.ts](apps/api-gateway/src/oidc.ts) — 6439 bytes; .ts; 修改于 2026-10-26 07:03:33
 - [apps/api-gateway/src/router.ts](apps/api-gateway/src/router.ts) — 2590 bytes; .ts; 修改于 2026-10-23 07:32:55
 - [apps/api-gateway/src/runtime-persistence.ts](apps/api-gateway/src/runtime-persistence.ts) — 7767 bytes; .ts; 修改于 2026-10-24 14:28:33
-- [apps/api-gateway/src/server.ts](apps/api-gateway/src/server.ts) — 52424 bytes; .ts; 修改于 2026-10-26 00:58:37
+- [apps/api-gateway/src/server.ts](apps/api-gateway/src/server.ts) — 52424 bytes; .ts; 修改于 2026-10-26 07:03:33
 - [apps/api-gateway/src/session-persistence.ts](apps/api-gateway/src/session-persistence.ts) — 13692 bytes; .ts; 修改于 2026-10-25 22:37:21
+- [apps/api-gateway/src/workbench/repository.ts](apps/api-gateway/src/workbench/repository.ts) — 8960 bytes; .ts; 修改于 2026-10-26 07:03:33
+- [apps/api-gateway/tsconfig.json](apps/api-gateway/tsconfig.json) — 154 bytes; .json; 修改于 2026-10-26 07:03:33
 - [apps/artifact-service/package.json](apps/artifact-service/package.json) — 329 bytes; .json; 修改于 2026-10-21 06:48:32
 - [apps/artifact-service/src/index.ts](apps/artifact-service/src/index.ts) — 6959 bytes; .ts; 修改于 2026-10-21 06:54:07
 - [apps/audit-service/package.json](apps/audit-service/package.json) — 363 bytes; .json; 修改于 2026-10-21 07:08:47
@@ -1423,8 +1439,8 @@
 - [apps/context-bridge/src/outbox/index.ts](apps/context-bridge/src/outbox/index.ts) — 29 bytes; .ts; 修改于 2026-10-21 06:58:13
 - [apps/context-bridge/src/outbox/sqlite.ts](apps/context-bridge/src/outbox/sqlite.ts) — 7123 bytes; .ts; 修改于 2026-10-21 06:58:43
 - [apps/context-service/package.json](apps/context-service/package.json) — 416 bytes; .json; 修改于 2026-10-21 06:48:32
-- [apps/context-service/src/index.ts](apps/context-service/src/index.ts) — 226 bytes; .ts; 修改于 2026-10-25 11:09:27
-- [apps/context-service/src/memory-adapter/adapter.ts](apps/context-service/src/memory-adapter/adapter.ts) — 7432 bytes; .ts; 修改于 2026-10-25 12:55:28
+- [apps/context-service/src/index.ts](apps/context-service/src/index.ts) — 226 bytes; .ts; 修改于 2026-10-26 07:03:33
+- [apps/context-service/src/memory-adapter/adapter.ts](apps/context-service/src/memory-adapter/adapter.ts) — 7432 bytes; .ts; 修改于 2026-10-26 07:03:33
 - [apps/context-service/src/memory-adapter/mcp-provider.ts](apps/context-service/src/memory-adapter/mcp-provider.ts) — 15915 bytes; .ts; 修改于 2026-10-25 12:11:33
 - [apps/context-service/src/memory-adapter/provider-factory.ts](apps/context-service/src/memory-adapter/provider-factory.ts) — 1001 bytes; .ts; 修改于 2026-10-25 11:57:40
 - [apps/context-service/src/resources/service.ts](apps/context-service/src/resources/service.ts) — 61 bytes; .ts; 修改于 2026-10-21 06:43:43
@@ -1443,33 +1459,60 @@
 - [apps/plane-connector/src/dedup/ledger.ts](apps/plane-connector/src/dedup/ledger.ts) — 2907 bytes; .ts; 修改于 2026-10-21 06:39:07
 - [apps/plane-connector/src/index.ts](apps/plane-connector/src/index.ts) — 198 bytes; .ts; 修改于 2026-10-21 06:38:58
 - [apps/plane-connector/src/plane-client/client.ts](apps/plane-connector/src/plane-client/client.ts) — 3806 bytes; .ts; 修改于 2026-10-21 06:39:07
-- [apps/plane-connector/src/project-sync/projection.ts](apps/plane-connector/src/project-sync/projection.ts) — 4227 bytes; .ts; 修改于 2026-10-26 01:02:10
+- [apps/plane-connector/src/project-sync/projection.ts](apps/plane-connector/src/project-sync/projection.ts) — 4227 bytes; .ts; 修改于 2026-10-26 07:03:33
 - [apps/plane-connector/src/webhook/security.ts](apps/plane-connector/src/webhook/security.ts) — 4448 bytes; .ts; 修改于 2026-10-21 06:39:07
 - [apps/policy-service/package.json](apps/policy-service/package.json) — 364 bytes; .json; 修改于 2026-10-21 07:08:47
 - [apps/policy-service/src/index.ts](apps/policy-service/src/index.ts) — 30 bytes; .ts; 修改于 2026-10-21 07:07:40
 - [apps/policy-service/src/service.ts](apps/policy-service/src/service.ts) — 4493 bytes; .ts; 修改于 2026-10-23 07:33:44
 - [apps/search-service/package.json](apps/search-service/package.json) — 214 bytes; .json; 修改于 2026-10-21 07:13:18
 - [apps/search-service/src/index.ts](apps/search-service/src/index.ts) — 30 bytes; .ts; 修改于 2026-10-21 07:12:00
-- [apps/search-service/src/service.ts](apps/search-service/src/service.ts) — 3105 bytes; .ts; 修改于 2026-10-26 00:56:39
+- [apps/search-service/src/service.ts](apps/search-service/src/service.ts) — 3105 bytes; .ts; 修改于 2026-10-26 07:03:33
 - [apps/session-service/package.json](apps/session-service/package.json) — 416 bytes; .json; 修改于 2026-10-21 06:58:42
 - [apps/session-service/src/checkpoint/index.ts](apps/session-service/src/checkpoint/index.ts) — 30 bytes; .ts; 修改于 2026-10-21 06:57:24
-- [apps/session-service/src/checkpoint/service.ts](apps/session-service/src/checkpoint/service.ts) — 12639 bytes; .ts; 修改于 2026-10-25 22:16:04
+- [apps/session-service/src/checkpoint/service.ts](apps/session-service/src/checkpoint/service.ts) — 12639 bytes; .ts; 修改于 2026-10-26 07:03:33
 - [apps/session-service/src/index.ts](apps/session-service/src/index.ts) — 75 bytes; .ts; 修改于 2026-10-21 06:57:24
 - [apps/session-service/src/session/index.ts](apps/session-service/src/session/index.ts) — 30 bytes; .ts; 修改于 2026-10-21 06:57:03
-- [apps/session-service/src/session/service.ts](apps/session-service/src/session/service.ts) — 11280 bytes; .ts; 修改于 2026-10-25 22:15:25
+- [apps/session-service/src/session/service.ts](apps/session-service/src/session/service.ts) — 11280 bytes; .ts; 修改于 2026-10-26 07:03:33
 - [apps/sync-service/package.json](apps/sync-service/package.json) — 364 bytes; .json; 修改于 2026-10-21 06:58:43
 - [apps/sync-service/src/conflict/index.ts](apps/sync-service/src/conflict/index.ts) — 30 bytes; .ts; 修改于 2026-10-21 06:57:49
 - [apps/sync-service/src/conflict/service.ts](apps/sync-service/src/conflict/service.ts) — 5244 bytes; .ts; 修改于 2026-10-21 06:58:43
 - [apps/sync-service/src/cursor/index.ts](apps/sync-service/src/cursor/index.ts) — 30 bytes; .ts; 修改于 2026-10-21 06:57:49
 - [apps/sync-service/src/cursor/service.ts](apps/sync-service/src/cursor/service.ts) — 7809 bytes; .ts; 修改于 2026-10-21 06:58:43
 - [apps/sync-service/src/index.ts](apps/sync-service/src/index.ts) — 72 bytes; .ts; 修改于 2026-10-21 06:57:49
-- [apps/web-console/package.json](apps/web-console/package.json) — 324 bytes; .json; 修改于 2026-10-21 07:05:39
-- [apps/web-console/src/app/admin/model.ts](apps/web-console/src/app/admin/model.ts) — 971 bytes; .ts; 修改于 2026-10-21 07:05:39
-- [apps/web-console/src/app/conflicts/model.ts](apps/web-console/src/app/conflicts/model.ts) — 1389 bytes; .ts; 修改于 2026-10-21 07:05:39
-- [apps/web-console/src/app/handoffs/model.ts](apps/web-console/src/app/handoffs/model.ts) — 2093 bytes; .ts; 修改于 2026-10-21 07:05:39
-- [apps/web-console/src/app/page.ts](apps/web-console/src/app/page.ts) — 2096 bytes; .ts; 修改于 2026-10-21 07:06:00
-- [apps/web-console/src/index.ts](apps/web-console/src/index.ts) — 182 bytes; .ts; 修改于 2026-10-21 07:05:13
+- [apps/web-console/.env.example](apps/web-console/.env.example) — 858 bytes; .example; 修改于 2026-10-26 06:55:58
+- [apps/web-console/.env.hedou-shell.example](apps/web-console/.env.hedou-shell.example) — 536 bytes; .example; 修改于 2026-10-26 06:55:58
+- [apps/web-console/next.config.mjs](apps/web-console/next.config.mjs) — 139 bytes; .mjs; 修改于 2026-10-26 07:03:34
+- [apps/web-console/next-env.d.ts](apps/web-console/next-env.d.ts) — 262 bytes; .ts; 修改于 2026-10-26 07:03:34
+- [apps/web-console/package.json](apps/web-console/package.json) — 556 bytes; .json; 修改于 2026-10-26 07:03:34
+- [apps/web-console/src/app/admin/model.ts](apps/web-console/src/app/admin/model.ts) — 968 bytes; .ts; 修改于 2026-10-26 07:03:34
+- [apps/web-console/src/app/admin/page.tsx](apps/web-console/src/app/admin/page.tsx) — 6716 bytes; .tsx; 修改于 2026-10-26 06:55:58
+- [apps/web-console/src/app/audit/page.tsx](apps/web-console/src/app/audit/page.tsx) — 6518 bytes; .tsx; 修改于 2026-10-26 06:55:58
+- [apps/web-console/src/app/auth/callback/route.ts](apps/web-console/src/app/auth/callback/route.ts) — 2410 bytes; .ts; 修改于 2026-10-26 07:03:34
+- [apps/web-console/src/app/auth/login/route.ts](apps/web-console/src/app/auth/login/route.ts) — 1564 bytes; .ts; 修改于 2026-10-26 07:03:34
+- [apps/web-console/src/app/auth/logout/route.ts](apps/web-console/src/app/auth/logout/route.ts) — 327 bytes; .ts; 修改于 2026-10-26 07:03:34
+- [apps/web-console/src/app/conflicts/model.ts](apps/web-console/src/app/conflicts/model.ts) — 1386 bytes; .ts; 修改于 2026-10-26 07:03:34
+- [apps/web-console/src/app/conflicts/page.tsx](apps/web-console/src/app/conflicts/page.tsx) — 5977 bytes; .tsx; 修改于 2026-10-26 06:55:58
+- [apps/web-console/src/app/context/page.tsx](apps/web-console/src/app/context/page.tsx) — 8012 bytes; .tsx; 修改于 2026-10-26 06:55:58
+- [apps/web-console/src/app/handoffs/model.ts](apps/web-console/src/app/handoffs/model.ts) — 2090 bytes; .ts; 修改于 2026-10-26 07:03:34
+- [apps/web-console/src/app/handoffs/page.tsx](apps/web-console/src/app/handoffs/page.tsx) — 6207 bytes; .tsx; 修改于 2026-10-26 06:55:58
+- [apps/web-console/src/app/layout.tsx](apps/web-console/src/app/layout.tsx) — 697 bytes; .tsx; 修改于 2026-10-26 06:55:58
+- [apps/web-console/src/app/login/page.tsx](apps/web-console/src/app/login/page.tsx) — 834 bytes; .tsx; 修改于 2026-10-26 06:55:58
+- [apps/web-console/src/app/overview/page.tsx](apps/web-console/src/app/overview/page.tsx) — 15744 bytes; .tsx; 修改于 2026-10-26 06:55:58
+- [apps/web-console/src/app/page.ts](apps/web-console/src/app/page.ts) — 109 bytes; .ts; 修改于 2026-10-26 07:03:34
+- [apps/web-console/src/app/page-model.ts](apps/web-console/src/app/page-model.ts) — 1886 bytes; .ts; 修改于 2026-10-26 07:03:34
+- [apps/web-console/src/app/sessions/page.tsx](apps/web-console/src/app/sessions/page.tsx) — 7345 bytes; .tsx; 修改于 2026-10-26 06:55:58
+- [apps/web-console/src/app/work-items/page.tsx](apps/web-console/src/app/work-items/page.tsx) — 6488 bytes; .tsx; 修改于 2026-10-26 06:55:58
+- [apps/web-console/src/components/icons.tsx](apps/web-console/src/components/icons.tsx) — 2174 bytes; .tsx; 修改于 2026-10-26 06:55:58
+- [apps/web-console/src/components/page-state.tsx](apps/web-console/src/components/page-state.tsx) — 1876 bytes; .tsx; 修改于 2026-10-26 06:55:58
+- [apps/web-console/src/components/ui.tsx](apps/web-console/src/components/ui.tsx) — 2081 bytes; .tsx; 修改于 2026-10-26 06:55:58
+- [apps/web-console/src/components/workbench-shell.tsx](apps/web-console/src/components/workbench-shell.tsx) — 3168 bytes; .tsx; 修改于 2026-10-26 06:55:58
+- [apps/web-console/src/index.ts](apps/web-console/src/index.ts) — 173 bytes; .ts; 修改于 2026-10-26 07:03:34
 - [apps/web-console/src/lib/api.ts](apps/web-console/src/lib/api.ts) — 2468 bytes; .ts; 修改于 2026-10-21 07:06:13
+- [apps/web-console/src/lib/auth.ts](apps/web-console/src/lib/auth.ts) — 3891 bytes; .ts; 修改于 2026-10-26 07:03:34
+- [apps/web-console/src/lib/config.ts](apps/web-console/src/lib/config.ts) — 874 bytes; .ts; 修改于 2026-10-26 07:03:34
+- [apps/web-console/src/lib/server-api.ts](apps/web-console/src/lib/server-api.ts) — 2443 bytes; .ts; 修改于 2026-10-26 07:03:34
+- [apps/web-console/src/styles.css](apps/web-console/src/styles.css) — 34924 bytes; .css; 修改于 2026-10-26 06:55:58
+- [apps/web-console/tsconfig.json](apps/web-console/tsconfig.json) — 530 bytes; .json; 修改于 2026-10-26 07:03:34
 - [apps/workctx-cli/package.json](apps/workctx-cli/package.json) — 368 bytes; .json; 修改于 2026-10-21 07:02:12
 - [apps/workctx-cli/src/cli.ts](apps/workctx-cli/src/cli.ts) — 2667 bytes; .ts; 修改于 2026-10-21 07:02:33
 - [apps/workctx-cli/src/index.ts](apps/workctx-cli/src/index.ts) — 26 bytes; .ts; 修改于 2026-10-21 07:01:47
@@ -1480,8 +1523,10 @@
 - [assets/planemem-architecture-4k.png](assets/planemem-architecture-4k.png) — 8942409 bytes; .png; 修改于 2026-10-21 09:13:29
 - [assets/planemem-architecture-chatgpt-images-25-base.png](assets/planemem-architecture-chatgpt-images-25-base.png) — 1894798 bytes; .png; 修改于 2026-10-21 09:04:32
 - [assets/planemem-audit-4k.png](assets/planemem-audit-4k.png) — 8137080 bytes; .png; 修改于 2026-10-23 22:50:29
+- [assets/planemem-conflicts-4k.png](assets/planemem-conflicts-4k.png) — 8205646 bytes; .png; 修改于 2026-10-26 06:55:58
 - [assets/planemem-context-4k.png](assets/planemem-context-4k.png) — 7928217 bytes; .png; 修改于 2026-10-23 22:50:27
 - [assets/planemem-dashboard-overview-4k.png](assets/planemem-dashboard-overview-4k.png) — 7858877 bytes; .png; 修改于 2026-10-23 06:46:55
+- [assets/planemem-handoffs-4k.png](assets/planemem-handoffs-4k.png) — 7933979 bytes; .png; 修改于 2026-10-26 06:55:58
 - [assets/planemem-handoffs-conflicts-4k.png](assets/planemem-handoffs-conflicts-4k.png) — 8379172 bytes; .png; 修改于 2026-10-23 06:46:58
 - [assets/planemem-sessions-4k.png](assets/planemem-sessions-4k.png) — 7374156 bytes; .png; 修改于 2026-10-23 22:50:28
 - [assets/planemem-work-item-detail-4k.png](assets/planemem-work-item-detail-4k.png) — 8227251 bytes; .png; 修改于 2026-10-23 06:46:56
@@ -7808,25 +7853,27 @@
 
 ### deploy
 
-- [deploy/compose/.env.example](deploy/compose/.env.example) — 1066 bytes; .example; 修改于 2026-10-25 12:14:34
-- [deploy/compose/docker-compose.local-test.yml](deploy/compose/docker-compose.local-test.yml) — 3806 bytes; .yml; 修改于 2026-10-25 11:56:21
+- [deploy/compose/.env.example](deploy/compose/.env.example) — 913 bytes; .example; 修改于 2026-10-26 06:57:54
+- [deploy/compose/docker-compose.local-test.yml](deploy/compose/docker-compose.local-test.yml) — 3554 bytes; .yml; 修改于 2026-10-26 07:03:35
 - [deploy/compose/docker-compose.opa-test.yml](deploy/compose/docker-compose.opa-test.yml) — 649 bytes; .yml; 修改于 2026-10-23 07:44:47
-- [deploy/compose/docker-compose.yml](deploy/compose/docker-compose.yml) — 5379 bytes; .yml; 修改于 2026-10-25 12:14:34
-- [deploy/compose/health/doctor.mjs](deploy/compose/health/doctor.mjs) — 1911 bytes; .mjs; 修改于 2026-10-25 22:25:30
+- [deploy/compose/docker-compose.yml](deploy/compose/docker-compose.yml) — 4996 bytes; .yml; 修改于 2026-10-26 07:03:35
+- [deploy/compose/health/doctor.mjs](deploy/compose/health/doctor.mjs) — 1778 bytes; .mjs; 修改于 2026-10-26 07:03:35
 - [deploy/compose/health/healthcheck.mjs](deploy/compose/health/healthcheck.mjs) — 774 bytes; .mjs; 修改于 2026-10-21 00:26:40
-- [deploy/compose/Justfile](deploy/compose/Justfile) — 1368 bytes; (none); 修改于 2026-10-25 22:22:39
-- [deploy/compose/Makefile](deploy/compose/Makefile) — 1685 bytes; (none); 修改于 2026-10-25 22:22:39
+- [deploy/compose/Justfile](deploy/compose/Justfile) — 602 bytes; (none); 修改于 2026-10-26 06:57:54
+- [deploy/compose/Makefile](deploy/compose/Makefile) — 695 bytes; (none); 修改于 2026-10-26 06:57:54
 - [deploy/compose/otel-collector.yaml](deploy/compose/otel-collector.yaml) — 232 bytes; .yaml; 修改于 2026-10-21 00:26:40
-- [deploy/compose/seed.sql](deploy/compose/seed.sql) — 638 bytes; .sql; 修改于 2026-10-21 00:26:40
+- [deploy/compose/realistic-workbench-transition.sql](deploy/compose/realistic-workbench-transition.sql) — 1205 bytes; .sql; 修改于 2026-10-26 06:55:58
+- [deploy/compose/seed.sql](deploy/compose/seed.sql) — 6545 bytes; .sql; 修改于 2026-10-26 06:57:54
+- [deploy/compose/seed-realistic-workbench.sql](deploy/compose/seed-realistic-workbench.sql) — 24447 bytes; .sql; 修改于 2026-10-26 06:55:58
 - [deploy/helm/planemem/ai-memory-runtime.yaml](deploy/helm/planemem/ai-memory-runtime.yaml) — 2442 bytes; .yaml; 修改于 2026-10-25 17:36:02
 - [deploy/helm/planemem/Chart.yaml](deploy/helm/planemem/Chart.yaml) — 128 bytes; .yaml; 修改于 2026-10-21 07:12:51
-- [deploy/helm/planemem/templates/deployment.yaml](deploy/helm/planemem/templates/deployment.yaml) — 1724 bytes; .yaml; 修改于 2026-10-25 17:00:49
-- [deploy/helm/planemem/templates/service.yaml](deploy/helm/planemem/templates/service.yaml) — 203 bytes; .yaml; 修改于 2026-10-25 22:06:16
+- [deploy/helm/planemem/templates/deployment.yaml](deploy/helm/planemem/templates/deployment.yaml) — 1093 bytes; .yaml; 修改于 2026-10-26 06:57:54
+- [deploy/helm/planemem/templates/service.yaml](deploy/helm/planemem/templates/service.yaml) — 186 bytes; .yaml; 修改于 2026-10-26 06:57:54
 - [deploy/helm/planemem/values.schema.json](deploy/helm/planemem/values.schema.json) — 426 bytes; .json; 修改于 2026-10-21 07:12:51
-- [deploy/helm/planemem/values.yaml](deploy/helm/planemem/values.yaml) — 681 bytes; .yaml; 修改于 2026-10-26 01:07:47
-- [deploy/images/platform/Dockerfile](deploy/images/platform/Dockerfile) — 1086 bytes; (none); 修改于 2026-10-24 11:40:53
-- [deploy/k3s/smoke/Dockerfile](deploy/k3s/smoke/Dockerfile) — 113 bytes; (none); 修改于 2026-10-21 09:44:27
-- [deploy/k3s/smoke/nginx.conf](deploy/k3s/smoke/nginx.conf) — 358 bytes; .conf; 修改于 2026-10-21 09:23:37
+- [deploy/helm/planemem/values.yaml](deploy/helm/planemem/values.yaml) — 547 bytes; .yaml; 修改于 2026-10-26 06:57:54
+- [deploy/images/platform/Dockerfile](deploy/images/platform/Dockerfile) — 1065 bytes; (none); 修改于 2026-10-26 06:57:54
+- [deploy/k3s/smoke/Dockerfile](deploy/k3s/smoke/Dockerfile) — 112 bytes; (none); 修改于 2026-10-26 06:52:57
+- [deploy/k3s/smoke/nginx.conf](deploy/k3s/smoke/nginx.conf) — 357 bytes; .conf; 修改于 2026-10-26 06:52:57
 - [deploy/keycloak/realm.json](deploy/keycloak/realm.json) — 307 bytes; .json; 修改于 2026-10-21 07:15:09
 - [deploy/migrations/001_baseline.sql](deploy/migrations/001_baseline.sql) — 1961 bytes; .sql; 修改于 2026-10-21 00:26:40
 - [deploy/migrations/002_contracts.sql](deploy/migrations/002_contracts.sql) — 1119 bytes; .sql; 修改于 2026-10-21 00:26:40
@@ -7835,11 +7882,12 @@
 - [deploy/migrations/005_sync.sql](deploy/migrations/005_sync.sql) — 1419 bytes; .sql; 修改于 2026-10-21 06:58:25
 - [deploy/migrations/006_outbox.sql](deploy/migrations/006_outbox.sql) — 846 bytes; .sql; 修改于 2026-10-21 06:58:31
 - [deploy/migrations/007_audit.sql](deploy/migrations/007_audit.sql) — 1014 bytes; .sql; 修改于 2026-10-21 07:08:20
+- [deploy/migrations/008_workbench_projection.sql](deploy/migrations/008_workbench_projection.sql) — 4381 bytes; .sql; 修改于 2026-10-26 06:55:58
 - [deploy/migrations/009_runtime_state.sql](deploy/migrations/009_runtime_state.sql) — 1462 bytes; .sql; 修改于 2026-10-24 14:20:02
 - [deploy/migrations/010_session_continuity_persistence.sql](deploy/migrations/010_session_continuity_persistence.sql) — 2544 bytes; .sql; 修改于 2026-10-25 22:30:52
 - [deploy/observability/prometheus.yml](deploy/observability/prometheus.yml) — 173 bytes; .yml; 修改于 2026-10-21 07:08:20
 - [deploy/opa/policy.rego](deploy/opa/policy.rego) — 624 bytes; .rego; 修改于 2026-10-23 07:46:40
-- [deploy/release-manifest.yaml](deploy/release-manifest.yaml) — 785 bytes; .yaml; 修改于 2026-10-25 22:19:08
+- [deploy/release-manifest.yaml](deploy/release-manifest.yaml) — 560 bytes; .yaml; 修改于 2026-10-26 07:03:35
 - [deploy/search/feature-flags.yaml](deploy/search/feature-flags.yaml) — 118 bytes; .yaml; 修改于 2026-10-21 07:12:00
 
 ### docs — 项目文档与设计
@@ -7909,7 +7957,7 @@
 - [docs/design/03-integration/01-task-handoff-contract.md](docs/design/03-integration/01-task-handoff-contract.md) — 2421 bytes; .md; 修改于 2026-10-20 21:22:32
 - [docs/design/03-integration/02-integration-environment.md](docs/design/03-integration/02-integration-environment.md) — 960 bytes; .md; 修改于 2026-10-20 18:02:29
 - [docs/design/03-integration/03-end-to-end-chains.md](docs/design/03-integration/03-end-to-end-chains.md) — 1505 bytes; .md; 修改于 2026-10-22 13:22:38
-- [docs/design/03-integration/04-module-interface-contracts.md](docs/design/03-integration/04-module-interface-contracts.md) — 20617 bytes; .md; 修改于 2026-10-25 22:44:04
+- [docs/design/03-integration/04-module-interface-contracts.md](docs/design/03-integration/04-module-interface-contracts.md) — 20683 bytes; .md; 修改于 2026-10-26 06:57:54
 - [docs/design/03-integration/05-module-contract-test-matrix.md](docs/design/03-integration/05-module-contract-test-matrix.md) — 6113 bytes; .md; 修改于 2026-10-23 12:13:12
 - [docs/design/03-integration/06-wavemate-mcp-contract.md](docs/design/03-integration/06-wavemate-mcp-contract.md) — 4414 bytes; .md; 修改于 2026-10-22 20:47:33
 - [docs/design/03-integration/07-runtime-data-persistence.md](docs/design/03-integration/07-runtime-data-persistence.md) — 4218 bytes; .md; 修改于 2026-10-25 22:31:00
@@ -7925,7 +7973,7 @@
 - [docs/design/04-testing/modules/P5-independent-verification.md](docs/design/04-testing/modules/P5-independent-verification.md) — 6552 bytes; .md; 修改于 2026-10-21 07:06:27
 - [docs/design/04-testing/modules/P6-independent-verification.md](docs/design/04-testing/modules/P6-independent-verification.md) — 7584 bytes; .md; 修改于 2026-10-23 08:24:07
 - [docs/design/04-testing/modules/P7-independent-verification.md](docs/design/04-testing/modules/P7-independent-verification.md) — 6737 bytes; .md; 修改于 2026-10-21 07:14:44
-- [docs/design/04-testing/modules/P8-independent-verification.md](docs/design/04-testing/modules/P8-independent-verification.md) — 18529 bytes; .md; 修改于 2026-10-24 14:36:16
+- [docs/design/04-testing/modules/P8-independent-verification.md](docs/design/04-testing/modules/P8-independent-verification.md) — 18451 bytes; .md; 修改于 2026-10-26 07:02:56
 - [docs/design/04-testing/modules/P8-real-data-closure.md](docs/design/04-testing/modules/P8-real-data-closure.md) — 3638 bytes; .md; 修改于 2026-10-24 14:35:22
 - [docs/design/04-testing/modules/README.md](docs/design/04-testing/modules/README.md) — 1367 bytes; .md; 修改于 2026-10-20 22:55:01
 - [docs/design/04-testing/README.md](docs/design/04-testing/README.md) — 3397 bytes; .md; 修改于 2026-10-22 22:36:32
@@ -7933,14 +7981,14 @@
 - [docs/design/05-release/02-runbook-index.md](docs/design/05-release/02-runbook-index.md) — 675 bytes; .md; 修改于 2026-10-20 18:02:29
 - [docs/design/05-release/03-rc-gate-execution.md](docs/design/05-release/03-rc-gate-execution.md) — 9509 bytes; .md; 修改于 2026-10-23 09:56:36
 - [docs/design/05-release/04-k3s-test-deployment.md](docs/design/05-release/04-k3s-test-deployment.md) — 14694 bytes; .md; 修改于 2026-10-23 12:14:04
-- [docs/design/05-release/05-offline-image-build-transfer.md](docs/design/05-release/05-offline-image-build-transfer.md) — 13477 bytes; .md; 修改于 2026-10-24 14:45:19
+- [docs/design/05-release/05-offline-image-build-transfer.md](docs/design/05-release/05-offline-image-build-transfer.md) — 12395 bytes; .md; 修改于 2026-10-26 06:57:54
 - [docs/design/05-release/06-dependency-image-remediation.md](docs/design/05-release/06-dependency-image-remediation.md) — 4601 bytes; .md; 修改于 2026-10-23 09:56:13
 - [docs/design/05-release/07-functional-acceptance-scope.md](docs/design/05-release/07-functional-acceptance-scope.md) — 2781 bytes; .md; 修改于 2026-10-23 09:50:49
 - [docs/design/05-release/README.md](docs/design/05-release/README.md) — 2589 bytes; .md; 修改于 2026-10-23 09:50:49
-- [docs/design/06-planning/00-overall-development-plan.md](docs/design/06-planning/00-overall-development-plan.md) — 24548 bytes; .md; 修改于 2026-10-24 14:40:31
+- [docs/design/06-planning/00-overall-development-plan.md](docs/design/06-planning/00-overall-development-plan.md) — 24296 bytes; .md; 修改于 2026-10-26 06:57:54
 - [docs/design/06-planning/03-test-data-and-functional-validation-plan.md](docs/design/06-planning/03-test-data-and-functional-validation-plan.md) — 7366 bytes; .md; 修改于 2026-10-23 09:58:06
-- [docs/design/06-planning/04-current-verification-status.md](docs/design/06-planning/04-current-verification-status.md) — 25884 bytes; .md; 修改于 2026-10-26 00:11:49
-- [docs/design/06-planning/05-completion-audit.md](docs/design/06-planning/05-completion-audit.md) — 11942 bytes; .md; 修改于 2026-10-24 14:40:31
+- [docs/design/06-planning/04-current-verification-status.md](docs/design/06-planning/04-current-verification-status.md) — 23648 bytes; .md; 修改于 2026-10-26 06:57:54
+- [docs/design/06-planning/05-completion-audit.md](docs/design/06-planning/05-completion-audit.md) — 12001 bytes; .md; 修改于 2026-10-26 06:57:54
 - [docs/design/06-planning/modules/P0-development-plan.md](docs/design/06-planning/modules/P0-development-plan.md) — 12154 bytes; .md; 修改于 2026-10-20 23:02:34
 - [docs/design/06-planning/modules/P1-development-plan.md](docs/design/06-planning/modules/P1-development-plan.md) — 11083 bytes; .md; 修改于 2026-10-20 23:02:34
 - [docs/design/06-planning/modules/P2-development-plan.md](docs/design/06-planning/modules/P2-development-plan.md) — 11010 bytes; .md; 修改于 2026-10-20 23:02:34
@@ -7949,14 +7997,18 @@
 - [docs/design/06-planning/modules/P5-development-plan.md](docs/design/06-planning/modules/P5-development-plan.md) — 9275 bytes; .md; 修改于 2026-10-20 23:02:34
 - [docs/design/06-planning/modules/P6-development-plan.md](docs/design/06-planning/modules/P6-development-plan.md) — 10275 bytes; .md; 修改于 2026-10-23 08:30:56
 - [docs/design/06-planning/modules/P7-development-plan.md](docs/design/06-planning/modules/P7-development-plan.md) — 9609 bytes; .md; 修改于 2026-10-21 07:57:38
-- [docs/design/06-planning/modules/P8-development-plan.md](docs/design/06-planning/modules/P8-development-plan.md) — 12014 bytes; .md; 修改于 2026-10-24 14:37:01
-- [docs/design/06-planning/README.md](docs/design/06-planning/README.md) — 1897 bytes; .md; 修改于 2026-10-24 14:40:31
+- [docs/design/06-planning/modules/P8-development-plan.md](docs/design/06-planning/modules/P8-development-plan.md) — 11974 bytes; .md; 修改于 2026-10-26 07:02:56
+- [docs/design/06-planning/README.md](docs/design/06-planning/README.md) — 1925 bytes; .md; 修改于 2026-10-26 06:57:54
 - [docs/design/README.md](docs/design/README.md) — 2894 bytes; .md; 修改于 2026-10-20 22:43:39
 - [docs/design/vendor/ai-memory-adoption.md](docs/design/vendor/ai-memory-adoption.md) — 2827 bytes; .md; 修改于 2026-10-21 08:58:10
 - [docs/design/vendor/README.md](docs/design/vendor/README.md) — 867 bytes; .md; 修改于 2026-10-21 08:01:46
 - [docs/runbooks/alerts.md](docs/runbooks/alerts.md) — 1027 bytes; .md; 修改于 2026-10-21 07:08:20
-- [docs/runbooks/release.md](docs/runbooks/release.md) — 1032 bytes; .md; 修改于 2026-10-21 07:12:51
+- [docs/runbooks/release.md](docs/runbooks/release.md) — 3213 bytes; .md; 修改于 2026-10-26 06:57:54
+- [docs/runbooks/web-console-auth.md](docs/runbooks/web-console-auth.md) — 4233 bytes; .md; 修改于 2026-10-26 06:55:58
+- [docs/runbooks/web-console-deployment.md](docs/runbooks/web-console-deployment.md) — 6537 bytes; .md; 修改于 2026-10-26 06:55:58
+- [docs/superpowers/ledgers/2026-10-24-plane-workbench-ui-implementation.md](docs/superpowers/ledgers/2026-10-24-plane-workbench-ui-implementation.md) — 6689 bytes; .md; 修改于 2026-10-26 06:55:58
 - [docs/superpowers/plans/2026-10-20-plane-work-continuity-platform.md](docs/superpowers/plans/2026-10-20-plane-work-continuity-platform.md) — 50968 bytes; .md; 修改于 2026-10-20 23:08:46
+- [docs/superpowers/plans/2026-10-24-plane-workbench-ui-implementation.md](docs/superpowers/plans/2026-10-24-plane-workbench-ui-implementation.md) — 2898 bytes; .md; 修改于 2026-10-26 06:55:58
 - [docs/traceability/requirements-matrix.yaml](docs/traceability/requirements-matrix.yaml) — 8114 bytes; .yaml; 修改于 2026-10-25 11:18:29
 
 ### integrations
@@ -7974,7 +8026,7 @@
 
 ### package.json
 
-- [package.json](package.json) — 3461 bytes; .json; 修改于 2026-10-23 07:15:08
+- [package.json](package.json) — 3679 bytes; .json; 修改于 2026-10-26 07:03:35
 
 ### packages
 
@@ -8002,7 +8054,7 @@
 - [packages/contracts/schemas/entities/Tenant.json](packages/contracts/schemas/entities/Tenant.json) — 1974 bytes; .json; 修改于 2026-10-21 00:03:53
 - [packages/contracts/schemas/entities/WorkItem.json](packages/contracts/schemas/entities/WorkItem.json) — 2205 bytes; .json; 修改于 2026-10-21 00:03:53
 - [packages/contracts/src/entities.ts](packages/contracts/src/entities.ts) — 13298 bytes; .ts; 修改于 2026-10-21 00:11:11
-- [packages/contracts/src/errors.ts](packages/contracts/src/errors.ts) — 2351 bytes; .ts; 修改于 2026-10-25 23:43:41
+- [packages/contracts/src/errors.ts](packages/contracts/src/errors.ts) — 2351 bytes; .ts; 修改于 2026-10-26 07:03:33
 - [packages/contracts/src/idempotency.ts](packages/contracts/src/idempotency.ts) — 1628 bytes; .ts; 修改于 2026-10-20 23:50:40
 - [packages/contracts/src/ids.ts](packages/contracts/src/ids.ts) — 1360 bytes; .ts; 修改于 2026-10-20 23:50:40
 - [packages/contracts/src/index.ts](packages/contracts/src/index.ts) — 217 bytes; .ts; 修改于 2026-10-20 23:58:41
@@ -8025,7 +8077,7 @@
 - [packages/release/package.json](packages/release/package.json) — 207 bytes; .json; 修改于 2026-10-21 07:13:18
 - [packages/release/src/backup.ts](packages/release/src/backup.ts) — 1259 bytes; .ts; 修改于 2026-10-21 07:13:18
 - [packages/release/src/index.ts](packages/release/src/index.ts) — 91 bytes; .ts; 修改于 2026-10-21 07:12:40
-- [packages/release/src/manifest.ts](packages/release/src/manifest.ts) — 2264 bytes; .ts; 修改于 2026-10-25 22:20:40
+- [packages/release/src/manifest.ts](packages/release/src/manifest.ts) — 2264 bytes; .ts; 修改于 2026-10-26 07:03:33
 - [packages/release/src/rollback.ts](packages/release/src/rollback.ts) — 737 bytes; .ts; 修改于 2026-10-21 07:13:18
 - [packages/sdk/package.json](packages/sdk/package.json) — 427 bytes; .json; 修改于 2026-10-21 00:18:53
 - [packages/sdk/src/client.ts](packages/sdk/src/client.ts) — 1952 bytes; .ts; 修改于 2026-10-21 00:21:37
@@ -8037,7 +8089,7 @@
 
 ### pnpm-lock.yaml
 
-- [pnpm-lock.yaml](pnpm-lock.yaml) — 21721 bytes; .yaml; 修改于 2026-10-25 21:34:39
+- [pnpm-lock.yaml](pnpm-lock.yaml) — 39924 bytes; .yaml; 修改于 2026-10-26 06:59:13
 
 ### pnpm-workspace.yaml
 
@@ -8051,7 +8103,7 @@
 
 - [tests/contract/context/t2-context-contract.test.mjs](tests/contract/context/t2-context-contract.test.mjs) — 1589 bytes; .mjs; 修改于 2026-10-21 06:53:39
 - [tests/contract/edge-contract-matrix.test.mjs](tests/contract/edge-contract-matrix.test.mjs) — 2101 bytes; .mjs; 修改于 2026-10-21 07:57:16
-- [tests/contract/p3-session-sync-contract.test.mjs](tests/contract/p3-session-sync-contract.test.mjs) — 1450 bytes; .mjs; 修改于 2026-10-25 22:43:37
+- [tests/contract/p3-session-sync-contract.test.mjs](tests/contract/p3-session-sync-contract.test.mjs) — 963 bytes; .mjs; 修改于 2026-10-26 07:03:34
 - [tests/contract/p4-gateway-contract.test.mjs](tests/contract/p4-gateway-contract.test.mjs) — 782 bytes; .mjs; 修改于 2026-10-21 07:03:03
 - [tests/contract/p5-workbench-contract.test.mjs](tests/contract/p5-workbench-contract.test.mjs) — 741 bytes; .mjs; 修改于 2026-10-21 07:05:39
 - [tests/contract/p6-security-contract.test.mjs](tests/contract/p6-security-contract.test.mjs) — 951 bytes; .mjs; 修改于 2026-10-21 07:08:47
@@ -8059,12 +8111,12 @@
 - [tests/contract/p8-release-contract.test.mjs](tests/contract/p8-release-contract.test.mjs) — 847 bytes; .mjs; 修改于 2026-10-22 13:36:32
 - [tests/contract/t0.1-workspace-contract.test.mjs](tests/contract/t0.1-workspace-contract.test.mjs) — 590 bytes; .mjs; 修改于 2026-10-20 23:41:42
 - [tests/p0/t0.1-monorepo.test.mjs](tests/p0/t0.1-monorepo.test.mjs) — 1541 bytes; .mjs; 修改于 2026-10-20 23:53:57
-- [tests/p0/t0.2-foundation-contracts.test.ts](tests/p0/t0.2-foundation-contracts.test.ts) — 4720 bytes; .ts; 修改于 2026-10-25 23:43:56
+- [tests/p0/t0.2-foundation-contracts.test.ts](tests/p0/t0.2-foundation-contracts.test.ts) — 4383 bytes; .ts; 修改于 2026-10-26 07:03:34
 - [tests/p0/t0.3-entity-schemas.test.ts](tests/p0/t0.3-entity-schemas.test.ts) — 3044 bytes; .ts; 修改于 2026-10-21 00:04:40
 - [tests/p0/t0.4-event-schemas.test.ts](tests/p0/t0.4-event-schemas.test.ts) — 3224 bytes; .ts; 修改于 2026-10-21 00:15:31
 - [tests/p0/t0.5-sdk-fixtures.test.ts](tests/p0/t0.5-sdk-fixtures.test.ts) — 2555 bytes; .ts; 修改于 2026-10-21 00:23:18
 - [tests/p0/t0.6-local-infra.test.mjs](tests/p0/t0.6-local-infra.test.mjs) — 2551 bytes; .mjs; 修改于 2026-10-21 00:24:39
-- [tests/p0/t0-tooling.test.mjs](tests/p0/t0-tooling.test.mjs) — 5371 bytes; .mjs; 修改于 2026-10-24 14:39:14
+- [tests/p0/t0-tooling.test.mjs](tests/p0/t0-tooling.test.mjs) — 5371 bytes; .mjs; 修改于 2026-10-26 07:03:34
 - [tests/p1/t1-plane-connector.test.ts](tests/p1/t1-plane-connector.test.ts) — 5820 bytes; .ts; 修改于 2026-10-21 06:40:23
 - [tests/p2/t2-context.test.ts](tests/p2/t2-context.test.ts) — 8389 bytes; .ts; 修改于 2026-10-21 06:53:50
 - [tests/p2/t2-memory-mcp-provider.test.ts](tests/p2/t2-memory-mcp-provider.test.ts) — 7446 bytes; .ts; 修改于 2026-10-25 12:09:52
@@ -8076,7 +8128,9 @@
 - [tests/p4/t4-runtime.test.ts](tests/p4/t4-runtime.test.ts) — 9467 bytes; .ts; 修改于 2026-10-22 13:03:14
 - [tests/p4/t4-session-gateway.test.ts](tests/p4/t4-session-gateway.test.ts) — 4166 bytes; .ts; 修改于 2026-10-25 21:36:33
 - [tests/p4/t4-session-persistence-live.test.ts](tests/p4/t4-session-persistence-live.test.ts) — 3899 bytes; .ts; 修改于 2026-10-25 22:24:02
+- [tests/p5/t5-web-console-contract.test.mjs](tests/p5/t5-web-console-contract.test.mjs) — 1337 bytes; .mjs; 修改于 2026-10-26 07:03:34
 - [tests/p5/t5-workbench.test.ts](tests/p5/t5-workbench.test.ts) — 3348 bytes; .ts; 修改于 2026-10-21 07:05:39
+- [tests/p5/t5-workbench-repository.test.ts](tests/p5/t5-workbench-repository.test.ts) — 4530 bytes; .ts; 修改于 2026-10-26 07:03:34
 - [tests/p6/t6-identity-audit-live.test.mjs](tests/p6/t6-identity-audit-live.test.mjs) — 1726 bytes; .mjs; 修改于 2026-10-23 07:22:54
 - [tests/p6/t6-runtime-audit.test.ts](tests/p6/t6-runtime-audit.test.ts) — 3111 bytes; .ts; 修改于 2026-10-23 08:33:06
 - [tests/p6/t6-security-observability.test.ts](tests/p6/t6-security-observability.test.ts) — 4854 bytes; .ts; 修改于 2026-10-23 07:34:29
@@ -8084,11 +8138,11 @@
 - [tests/p8/t8-image-vulnerability.test.mjs](tests/p8/t8-image-vulnerability.test.mjs) — 4018 bytes; .mjs; 修改于 2026-10-23 09:19:15
 - [tests/p8/t8-k3s-real-data-closure.test.mjs](tests/p8/t8-k3s-real-data-closure.test.mjs) — 13553 bytes; .mjs; 修改于 2026-10-25 23:27:47
 - [tests/p8/t8-k3s-wavemate-evidence.test.mjs](tests/p8/t8-k3s-wavemate-evidence.test.mjs) — 10339 bytes; .mjs; 修改于 2026-10-23 07:08:50
-- [tests/p8/t8-live-gates.test.mjs](tests/p8/t8-live-gates.test.mjs) — 12762 bytes; .mjs; 修改于 2026-10-25 23:58:17
+- [tests/p8/t8-live-gates.test.mjs](tests/p8/t8-live-gates.test.mjs) — 12716 bytes; .mjs; 修改于 2026-10-26 07:03:34
 - [tests/p8/t8-live-platform-probe.test.mjs](tests/p8/t8-live-platform-probe.test.mjs) — 4705 bytes; .mjs; 修改于 2026-10-22 08:14:15
 - [tests/p8/t8-real-data-closure.test.mjs](tests/p8/t8-real-data-closure.test.mjs) — 6492 bytes; .mjs; 修改于 2026-10-24 14:37:58
-- [tests/p8/t8-release-deploy.test.ts](tests/p8/t8-release-deploy.test.ts) — 4757 bytes; .ts; 修改于 2026-10-26 00:08:23
-- [tests/p8/t8-release-tooling.test.mjs](tests/p8/t8-release-tooling.test.mjs) — 6963 bytes; .mjs; 修改于 2026-10-25 12:14:41
+- [tests/p8/t8-release-deploy.test.ts](tests/p8/t8-release-deploy.test.ts) — 4238 bytes; .ts; 修改于 2026-10-26 07:03:34
+- [tests/p8/t8-release-tooling.test.mjs](tests/p8/t8-release-tooling.test.mjs) — 8180 bytes; .mjs; 修改于 2026-10-26 07:03:34
 - [tests/p8/t8-wavemate-live.test.mjs](tests/p8/t8-wavemate-live.test.mjs) — 2484 bytes; .mjs; 修改于 2026-10-22 13:04:46
 
 ### tools — 可重复执行的维护脚本
@@ -8099,10 +8153,11 @@
 - [tools/fixture-cli.mjs](tools/fixture-cli.mjs) — 4057 bytes; .mjs; 修改于 2026-10-21 07:45:05
 - [tools/generate_development_plans.mjs](tools/generate_development_plans.mjs) — 35290 bytes; .mjs; 修改于 2026-10-20 23:40:33
 - [tools/generate_module_verification_docs.mjs](tools/generate_module_verification_docs.mjs) — 30484 bytes; .mjs; 修改于 2026-10-20 23:40:33
+- [tools/k3s-release.mjs](tools/k3s-release.mjs) — 14870 bytes; .mjs; 修改于 2026-10-26 07:03:34
 - [tools/live-platform-probe.mjs](tools/live-platform-probe.mjs) — 9165 bytes; .mjs; 修改于 2026-10-22 08:15:44
-- [tools/plan-audit.mjs](tools/plan-audit.mjs) — 6186 bytes; .mjs; 修改于 2026-10-24 14:40:31
+- [tools/plan-audit.mjs](tools/plan-audit.mjs) — 6186 bytes; .mjs; 修改于 2026-10-26 07:03:34
 - [tools/rc-readiness.mjs](tools/rc-readiness.mjs) — 5409 bytes; .mjs; 修改于 2026-10-22 07:12:56
-- [tools/release-manifest-cli.mjs](tools/release-manifest-cli.mjs) — 2602 bytes; .mjs; 修改于 2026-10-25 22:20:40
+- [tools/release-manifest-cli.mjs](tools/release-manifest-cli.mjs) — 3794 bytes; .mjs; 修改于 2026-10-26 07:03:34
 - [tools/run-ai-memory-live-probe.mjs](tools/run-ai-memory-live-probe.mjs) — 6317 bytes; .mjs; 修改于 2026-10-22 07:59:39
 - [tools/run-evaluation-tests.mjs](tools/run-evaluation-tests.mjs) — 1371 bytes; .mjs; 修改于 2026-10-21 07:28:17
 - [tools/run-functional-tests.mjs](tools/run-functional-tests.mjs) — 11997 bytes; .mjs; 修改于 2026-10-23 06:05:16
@@ -8110,16 +8165,18 @@
 - [tools/run-image-vulnerability-scan.mjs](tools/run-image-vulnerability-scan.mjs) — 6741 bytes; .mjs; 修改于 2026-10-23 09:19:15
 - [tools/run-module-tests.mjs](tools/run-module-tests.mjs) — 2231 bytes; .mjs; 修改于 2026-10-21 07:39:30
 - [tools/run-performance-tests.mjs](tools/run-performance-tests.mjs) — 6187 bytes; .mjs; 修改于 2026-10-22 12:17:52
-- [tools/run-release-tests.mjs](tools/run-release-tests.mjs) — 17180 bytes; .mjs; 修改于 2026-10-26 00:08:23
+- [tools/run-realistic-web-console-smoke.mjs](tools/run-realistic-web-console-smoke.mjs) — 2920 bytes; .mjs; 修改于 2026-10-26 07:03:34
+- [tools/run-realistic-workbench-acceptance.mjs](tools/run-realistic-workbench-acceptance.mjs) — 12045 bytes; .mjs; 修改于 2026-10-26 07:03:34
+- [tools/run-release-tests.mjs](tools/run-release-tests.mjs) — 14128 bytes; .mjs; 修改于 2026-10-26 07:03:34
 - [tools/run-resilience-tests.mjs](tools/run-resilience-tests.mjs) — 25315 bytes; .mjs; 修改于 2026-10-23 07:06:41
-- [tools/run-security-tests.mjs](tools/run-security-tests.mjs) — 8458 bytes; .mjs; 修改于 2026-10-26 00:02:40
+- [tools/run-security-tests.mjs](tools/run-security-tests.mjs) — 6847 bytes; .mjs; 修改于 2026-10-26 07:03:35
 - [tools/run-sqlite-live-probe.mjs](tools/run-sqlite-live-probe.mjs) — 3883 bytes; .mjs; 修改于 2026-10-22 08:27:25
 - [tools/run-wavemate-live-probe.mjs](tools/run-wavemate-live-probe.mjs) — 11008 bytes; .mjs; 修改于 2026-10-22 13:23:17
 - [tools/run-wavemate-ui-live-probe.mjs](tools/run-wavemate-ui-live-probe.mjs) — 15059 bytes; .mjs; 修改于 2026-10-22 23:48:33
 - [tools/sbom-cli.mjs](tools/sbom-cli.mjs) — 2413 bytes; .mjs; 修改于 2026-10-21 07:45:05
-- [tools/stage-runtime.mjs](tools/stage-runtime.mjs) — 4121 bytes; .mjs; 修改于 2026-10-23 07:49:36
+- [tools/stage-runtime.mjs](tools/stage-runtime.mjs) — 4337 bytes; .mjs; 修改于 2026-10-26 07:03:35
 - [tools/transfer-offline-image.ps1](tools/transfer-offline-image.ps1) — 1837 bytes; .ps1; 修改于 2026-10-21 10:48:50
-- [tools/update-file-index.ps1](tools/update-file-index.ps1) — 6205 bytes; .ps1; 修改于 2026-10-26 06:52:23
+- [tools/update-file-index.ps1](tools/update-file-index.ps1) — 6217 bytes; .ps1; 修改于 2026-10-26 07:04:25
 
 ### tsconfig.base.json
 
@@ -8127,11 +8184,11 @@
 
 ### tsconfig.build.json
 
-- [tsconfig.build.json](tsconfig.build.json) — 326 bytes; .json; 修改于 2026-10-21 08:42:01
+- [tsconfig.build.json](tsconfig.build.json) — 376 bytes; .json; 修改于 2026-10-26 07:03:35
 
 ### tsconfig.json
 
-- [tsconfig.json](tsconfig.json) — 169 bytes; .json; 修改于 2026-10-21 07:14:10
+- [tsconfig.json](tsconfig.json) — 219 bytes; .json; 修改于 2026-10-26 07:03:35
 
 ### turbo.json
 

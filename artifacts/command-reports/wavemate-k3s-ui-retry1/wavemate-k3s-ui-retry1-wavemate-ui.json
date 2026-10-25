@@ -1,0 +1,209 @@
+{
+  "status": "passed",
+  "mode": "live",
+  "client": "wavemate",
+  "client_version": "0.24.1",
+  "trace_id": "trace-wavemate-k3s-ui-retry1",
+  "source_refs": [
+    {
+      "type": "client-artifact",
+      "id": "E:\\dsh\\dshdesktopRelease\\artifacts\\wavemate-intranet\\0.24.1"
+    },
+    {
+      "type": "runtime-http",
+      "id": "http://127.0.0.1:38081/mcp"
+    }
+  ],
+  "artifact": {
+    "path": "E:\\dsh\\dshdesktopRelease\\artifacts\\wavemate-intranet\\0.24.1",
+    "executable": "E:\\dsh\\dshdesktopRelease\\artifacts\\wavemate-intranet\\0.24.1\\offline-package\\WaveMate.exe"
+  },
+  "mcp_configuration": {
+    "server_name": "planemem",
+    "transport": "streamable-http",
+    "configured_url": "http://127.0.0.1:38081/mcp",
+    "proxy_url": "http://127.0.0.1:57474/mcp"
+  },
+  "webdriver": {
+    "url": "http://127.0.0.1:4445",
+    "session_id": "f15cb63c-211d-403c-a57b-98c9bfd69fbf"
+  },
+  "traffic": {
+    "requests": 5,
+    "server_discover": 1,
+    "initialize": 1,
+    "initialized_notification": 1,
+    "tools_list": 1,
+    "tools_call": 1,
+    "resources_list": 0,
+    "resources_read": 0,
+    "successful_responses": 5,
+    "failed_responses": 0,
+    "jsonrpc_errors": 0
+  },
+  "captured_entries": [
+    {
+      "phase": "request",
+      "trace_id": "trace-wavemate-k3s-ui-retry1",
+      "method": "POST",
+      "url": "/mcp",
+      "headers": {
+        "host": "127.0.0.1:57474",
+        "connection": "keep-alive",
+        "x-tenant-id": "01HF7YAT000000000000000001",
+        "x-workspace-id": "01HF7YAT000000000000000002",
+        "x-project-id": "01HF7YAT000000000000000003",
+        "x-actor-id": "wavemate-0.24.1",
+        "x-client-id": "wavemate",
+        "x-capability": "context.read context.write",
+        "mcp-protocol-version": "2026-07-28",
+        "mcp-method": "server/discover",
+        "content-type": "application/json",
+        "accept": "application/json, text/event-stream",
+        "accept-language": "*",
+        "sec-fetch-mode": "cors",
+        "user-agent": "node",
+        "accept-encoding": "gzip, deflate",
+        "content-length": "280"
+      },
+      "body": "{\"jsonrpc\":\"2.0\",\"id\":\"server-discover-probe-1\",\"method\":\"server/discover\",\"params\":{\"_meta\":{\"io.modelcontextprotocol/protocolVersion\":\"2026-07-28\",\"io.modelcontextprotocol/clientInfo\":{\"name\":\"dsh-mcp-client\",\"version\":\"0.0.1\"},\"io.modelcontextprotocol/clientCapabilities\":{}}}}"
+    },
+    {
+      "phase": "response",
+      "trace_id": "trace-wavemate-k3s-ui-retry1",
+      "status": 200,
+      "body": "{\"jsonrpc\":\"2.0\",\"id\":\"server-discover-probe-1\",\"result\":{\"schema_version\":1,\"supportedVersions\":[\"2025-11-25\",\"2024-11-11\"],\"capabilities\":{\"tools\":{},\"resources\":{},\"prompts\":{}},\"instructions\":\"PlaneMem authorized context tools and resources.\",\"trace_id\":\"trace_mcp_unknown\"}}"
+    },
+    {
+      "phase": "request",
+      "trace_id": "trace-wavemate-k3s-ui-retry1",
+      "method": "POST",
+      "url": "/mcp",
+      "headers": {
+        "host": "127.0.0.1:57474",
+        "connection": "keep-alive",
+        "x-tenant-id": "01HF7YAT000000000000000001",
+        "x-workspace-id": "01HF7YAT000000000000000002",
+        "x-project-id": "01HF7YAT000000000000000003",
+        "x-actor-id": "wavemate-0.24.1",
+        "x-client-id": "wavemate",
+        "x-capability": "context.read context.write",
+        "content-type": "application/json",
+        "accept": "application/json, text/event-stream",
+        "accept-language": "*",
+        "sec-fetch-mode": "cors",
+        "user-agent": "node",
+        "accept-encoding": "gzip, deflate",
+        "content-length": "163"
+      },
+      "body": "{\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":{},\"clientInfo\":{\"name\":\"dsh-mcp-client\",\"version\":\"0.0.1\"}},\"jsonrpc\":\"2.0\",\"id\":0}"
+    },
+    {
+      "phase": "response",
+      "trace_id": "trace-wavemate-k3s-ui-retry1",
+      "status": 200,
+      "body": "{\"jsonrpc\":\"2.0\",\"id\":0,\"result\":{\"schema_version\":1,\"protocolVersion\":\"2025-11-25\",\"serverInfo\":{\"name\":\"planemem-mcp\",\"version\":\"0.1.0\"},\"capabilities\":{\"tools\":{},\"resources\":{},\"prompts\":{}},\"trace_id\":\"trace_mcp_unknown\"}}"
+    },
+    {
+      "phase": "request",
+      "trace_id": "trace-wavemate-k3s-ui-retry1",
+      "method": "POST",
+      "url": "/mcp",
+      "headers": {
+        "host": "127.0.0.1:57474",
+        "connection": "keep-alive",
+        "x-tenant-id": "01HF7YAT000000000000000001",
+        "x-workspace-id": "01HF7YAT000000000000000002",
+        "x-project-id": "01HF7YAT000000000000000003",
+        "x-actor-id": "wavemate-0.24.1",
+        "x-client-id": "wavemate",
+        "x-capability": "context.read context.write",
+        "mcp-protocol-version": "2025-11-25",
+        "content-type": "application/json",
+        "accept": "application/json, text/event-stream",
+        "accept-language": "*",
+        "sec-fetch-mode": "cors",
+        "user-agent": "node",
+        "accept-encoding": "gzip, deflate",
+        "content-length": "54"
+      },
+      "body": "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}"
+    },
+    {
+      "phase": "response",
+      "trace_id": "trace-wavemate-k3s-ui-retry1",
+      "status": 200,
+      "body": "{\"jsonrpc\":\"2.0\",\"id\":null,\"result\":{},\"trace_id\":\"trace_mcp_unknown\"}"
+    },
+    {
+      "phase": "request",
+      "trace_id": "trace-wavemate-k3s-ui-retry1",
+      "method": "POST",
+      "url": "/mcp",
+      "headers": {
+        "host": "127.0.0.1:57474",
+        "connection": "keep-alive",
+        "x-tenant-id": "01HF7YAT000000000000000001",
+        "x-workspace-id": "01HF7YAT000000000000000002",
+        "x-project-id": "01HF7YAT000000000000000003",
+        "x-actor-id": "wavemate-0.24.1",
+        "x-client-id": "wavemate",
+        "x-capability": "context.read context.write",
+        "mcp-protocol-version": "2025-11-25",
+        "content-type": "application/json",
+        "accept": "application/json, text/event-stream",
+        "accept-language": "*",
+        "sec-fetch-mode": "cors",
+        "user-agent": "node",
+        "accept-encoding": "gzip, deflate",
+        "content-length": "46"
+      },
+      "body": "{\"method\":\"tools/list\",\"jsonrpc\":\"2.0\",\"id\":1}"
+    },
+    {
+      "phase": "response",
+      "trace_id": "trace-wavemate-k3s-ui-retry1",
+      "status": 200,
+      "body": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"schema_version\":1,\"tools\":[{\"name\":\"context_search\",\"description\":\"Search authorized project context\",\"inputSchema\":{\"type\":\"object\",\"required\":[\"query\"],\"properties\":{\"query\":{\"type\":\"string\"}}}},{\"name\":\"context_index\",\"description\":\"Index an authorized context hit\",\"inputSchema\":{\"type\":\"object\",\"required\":[\"id\",\"title\",\"snippet\",\"revision\",\"score\",\"source_refs\"]}}],\"trace_id\":\"trace_mcp_unknown\"}}"
+    },
+    {
+      "phase": "request",
+      "trace_id": "trace-wavemate-k3s-ui-retry1",
+      "method": "POST",
+      "url": "/mcp",
+      "headers": {
+        "host": "127.0.0.1:57474",
+        "connection": "keep-alive",
+        "x-tenant-id": "01HF7YAT000000000000000001",
+        "x-workspace-id": "01HF7YAT000000000000000002",
+        "x-project-id": "01HF7YAT000000000000000003",
+        "x-actor-id": "wavemate-0.24.1",
+        "x-client-id": "wavemate",
+        "x-capability": "context.read context.write",
+        "mcp-protocol-version": "2025-11-25",
+        "content-type": "application/json",
+        "accept": "application/json, text/event-stream",
+        "accept-language": "*",
+        "sec-fetch-mode": "cors",
+        "user-agent": "node",
+        "accept-encoding": "gzip, deflate",
+        "content-length": "130"
+      },
+      "body": "{\"method\":\"tools/call\",\"params\":{\"name\":\"context_search\",\"arguments\":{\"query\":\"Live Plane Webhook Probe\"}},\"jsonrpc\":\"2.0\",\"id\":2}"
+    },
+    {
+      "phase": "response",
+      "trace_id": "trace-wavemate-k3s-ui-retry1",
+      "status": 200,
+      "body": "{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"schema_version\":1,\"content\":[{\"type\":\"text\",\"text\":\"{\\\"schema_version\\\":1,\\\"trace_id\\\":\\\"trace_mcp_unknown\\\",\\\"source_refs\\\":[{\\\"type\\\":\\\"plane\\\",\\\"id\\\":\\\"live-plane-project\\\"}],\\\"data\\\":{\\\"schema_version\\\":1,\\\"query\\\":\\\"Live Plane Webhook Probe\\\",\\\"scope\\\":{\\\"tenant_id\\\":\\\"01HF7YAT000000000000000001\\\",\\\"workspace_id\\\":\\\"01HF7YAT000000000000000002\\\",\\\"project_id\\\":\\\"01HF7YAT000000000000000003\\\"},\\\"trace_id\\\":\\\"trace_mcp_unknown\\\",\\\"hits\\\":[{\\\"schema_version\\\":1,\\\"rank_source\\\":\\\"fts\\\",\\\"tenant_id\\\":\\\"01HF7YAT000000000000000001\\\",\\\"workspace_id\\\":\\\"01HF7YAT000000000000000002\\\",\\\"project_id\\\":\\\"01HF7YAT000000000000000003\\\",\\\"id\\\":\\\"plane:Project:live-plane-project\\\",\\\"title\\\":\\\"Live Plane Webhook Probe\\\",\\\"snippet\\\":\\\"Live Plane Webhook Probe (plane)\\\",\\\"revision\\\":1,\\\"score\\\":1,\\\"source_refs\\\":[{\\\"type\\\":\\\"plane\\\",\\\"id\\\":\\\"live-plane-project\\\"}]}],\\\"degraded\\\":true,\\\"source_refs\\\":[{\\\"type\\\":\\\"plane\\\",\\\"id\\\":\\\"live-plane-project\\\"}]}}\"}],\"trace_id\":\"trace_mcp_unknown\"}}"
+    }
+  ],
+  "ui": {
+    "title": "请使用已配置的 planemem MCP，调 — DeepSeek Harness",
+    "text": "WaveMate\n新会话\nCtrl\n+\nAlt\n+\nN\n自动化任务\n插件扩展\n定时任务\n工作区\n默认工作区\n自我介绍\n2天\n未分组\n请使用已配置的 planemem MCP，调\n刚刚\n搜索 Live Plane Webhook Probe 上下文\n4分钟\n搜索 Live Plane Webhook Probe上下文\n6分钟\n登录 WaveMate\n请使用已配置的 planemem MCP，调\n标准模式\n对话\n轨迹\n请使用已配置的 planemem MCP，调用 context_search 搜索当前项目上下文中“Live Plane Webhook Probe”，只报告搜索结果和 trace_id，不要修改任何数据。\n20:37\n已完成\n已完成，用时 43秒\n\n搜索结果：\n\n标题：Live Plane Webhook Probe\n类型：plane\nID：plane:Project:live-plane-project\n摘要：Live Plane Webhook Probe (plane)\n匹配分数：1\n来源：plane/live-plane-project\n结果状态：degraded: true\n\ntrace_id：trace_mcp_unknown\n\n用量 23.4K tok\n20:38\n发消息或创建任务, / 调用指令, @ 文件或对话\n工作区内修改\nGPT-6 Luna\nDefault\n1 轮 2 步·12 tok/s\n23.4K tok·缓存命中 49%\n5%",
+    "prompt_visible": true,
+    "completed_visible": true,
+    "baseline_text_length": 313
+  },
+  "external_gates": []
+}

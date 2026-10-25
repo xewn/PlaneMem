@@ -32,14 +32,6 @@ WaveMate 0.24.1 WebDriver UI `tools/call` 和完成状态证据见 [`20261022T20
 该离线包已重新传输并导入 `192.168.1.231`、`.232`、`.233`，Helm release `planemem` 在 `planemem-test` revision 24 为 `deployed`，3/3 Pod 分布于三台节点；健康、审计失败 503、metrics 和 digest 证据见 [`20261023T0005-wavemate-audit`](../../../artifacts/test-reports/k3s/20261023T0005-wavemate-audit/)。
 
 该门禁证明正式应用 runtime、离线镜像、三节点 k3s 部署、健康探针、索引/搜索接口和 Helm 回滚恢复链路可用。
-
-### 真实数据库闭环运行时（2026-10-24）
-
-本次功能验收新增 `009_runtime_state` migration，创建 `wcp_projection_states` 和 `wcp_context_hits`，并将 Webhook 事件、投影、Context hit 与审计写入真实 PostgreSQL。runtime 启动前从 `wcp_events` 重放事件、从 `wcp_context_hits` 恢复搜索和 MCP resources；Workctx 重启或 k3s Deployment rolling restart 后，原事件仍返回 `duplicate`，搜索命中保持不变。
-
-最终离线归档为 `registry.hedou.top_5000_planemem_platform_0.1.0-runtime-closure.tar.gz`，归档 SHA256 为 `42d04aa258b7724168c95c42d079cbc785b51c691559bc6406070a332ae1ab01`，镜像 digest 为 `sha256:c18888e471da048e506248b9132d9057afd5da6f4896711eb05ecd87f2c91367`。该归档已在三台节点校验、导入并建立无 tag digest alias，Helm revision 27 为 `deployed`，3 个 Pod 分布在 `hdserver1/2/3`。
-
-真实回查由 `tests/p8/t8-real-data-closure.test.mjs` 和 `tests/p8/t8-k3s-real-data-closure.test.mjs` 完成：Compose 与 k3s 均验证首次请求 `events/projections/hits/audits=1/1/1/1`，重启后重复投递为 `1/1/1/2`，且搜索结果保留 `source_refs`。k3s 的 `DATABASE_URL` 实际指向 `.233` PostgreSQL；密码和连接串不写入报告。
 本机集成验证另外使用 `deploy/compose/docker-compose.local-test.yml`，并已完成 Plane、PostgreSQL、Redis、
 NATS、RabbitMQ、Keycloak、MinIO、OTel Collector、ai-memory 和 Workctx 的健康、迁移、API、对象存储
 及 RabbitMQ 恢复校验。该覆盖文件和 ai-memory 本地镜像只服务于可复现的本机 Compose 测试，不改变 k3s

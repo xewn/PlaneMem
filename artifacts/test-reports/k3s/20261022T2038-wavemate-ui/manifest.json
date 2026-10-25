@@ -1,0 +1,311 @@
+{
+  "status": "passed",
+  "run_id": "20261022T2038-wavemate-ui",
+  "captured_at": "2026-10-22T12:40:44.616Z",
+  "cluster": {
+    "distribution": "k3s",
+    "version": "v1.36.5+k3s1",
+    "namespace": "planemem-test",
+    "nodes": [
+      {
+        "name": "hdserver1",
+        "address": "192.168.1.231",
+        "status": "Ready",
+        "role": "control-plane,etcd"
+      },
+      {
+        "name": "hdserver2",
+        "address": "192.168.1.232",
+        "status": "Ready",
+        "role": "control-plane,etcd"
+      },
+      {
+        "name": "hdserver3",
+        "address": "192.168.1.233",
+        "status": "Ready",
+        "role": "control-plane,etcd"
+      }
+    ]
+  },
+  "offline_image": {
+    "reference": "docker.io/library/planemem-platform:0.1.0-wavemate",
+    "digest": "sha256:a2d2d0b50eb5ebdc51083ad331a182dd15f0018343aaf29c3c14898402297261",
+    "archive": "artifacts/offline-images/wavemate-mcp/planemem-platform_0.1.0-wavemate.tar.gz",
+    "archive_sha256": "5031eb495ed00a32b38bb0fb60eae8912694421062761d813695b9c4d61671ed",
+    "containerd_namespace": "k8s.io",
+    "digest_alias": "docker.io/library/planemem-platform@sha256:a2d2d0b50eb5ebdc51083ad331a182dd15f0018343aaf29c3c14898402297261",
+    "nodes_imported": [
+      "hdserver1",
+      "hdserver2",
+      "hdserver3"
+    ]
+  },
+  "release": {
+    "name": "planemem",
+    "revision": 22,
+    "status": "deployed",
+    "replicas": 3,
+    "image": "docker.io/library/planemem-platform:0.1.0-wavemate@sha256:a2d2d0b50eb5ebdc51083ad331a182dd15f0018343aaf29c3c14898402297261",
+    "pods": [
+      {
+        "name": "planemem-756c46c884-fpwqq",
+        "node": "hdserver2",
+        "phase": "Running",
+        "ready": true
+      },
+      {
+        "name": "planemem-756c46c884-ptwbt",
+        "node": "hdserver1",
+        "phase": "Running",
+        "ready": true
+      },
+      {
+        "name": "planemem-756c46c884-vpqz6",
+        "node": "hdserver3",
+        "phase": "Running",
+        "ready": true
+      }
+    ]
+  },
+  "failure_recovery": {
+    "failed_revision": 21,
+    "failure": "ImagePullBackOff caused by a missing no-tag digest alias; containerd attempted a registry HEAD request and received 403.",
+    "corrective_action": "Imported the archive on every node, tagged docker.io/library/planemem-platform@sha256:<digest> in k8s.io, then repeated Helm upgrade.",
+    "recovered_revision": 22
+  },
+  "evidence_files": [
+    "manifest.json",
+    "test-summary.txt",
+    "transfer-hashes.txt",
+    "image-digests.txt",
+    "helm-rendered.yaml",
+    "rollout.txt",
+    "health.json",
+    "rollback.txt",
+    "wavemate-ui-report.json",
+    "wavemate-ui-traffic.json",
+    "wavemate-ui-restore-verification.json",
+    "wavemate-ui-negative-attempt.json",
+    "remote-status-current.json",
+    "node-recovery.json",
+    "node-recovery-platform.json",
+    "wavemate-ui-current2.json",
+    "wavemate-ui-current2-traffic.json",
+    "wavemate-ui-current2-restore-verification.json",
+    "wavemate-ui-current3-negative.json",
+    "wavemate-ui-current3-restore-verification.json",
+    "wavemate-ui-current4.json",
+    "wavemate-ui-current4-traffic.json",
+    "wavemate-ui-current4-restore-verification.json",
+    "plane-to-mcp-wavemate-current4-functional.json"
+  ],
+  "platform_probe": {
+    "report": "artifacts/command-reports/k3s-live-current/k3s-live-current-platform.json",
+    "status": "passed",
+    "steps": 12,
+    "transports": [
+      "plane_webhook",
+      "mcp_http_jsonrpc"
+    ]
+  },
+  "wavemate_probe": {
+    "artifact": "E:/dsh/dshdesktopRelease/artifacts/wavemate-intranet/0.24.1",
+    "report": "artifacts/command-reports/wavemate-k3s-current/wavemate-k3s-current-wavemate.json",
+    "status": "passed",
+    "traffic": {
+      "requests": 4,
+      "server_discover": 1,
+      "initialize": 1,
+      "initialized_notification": 1,
+      "tools_list": 1,
+      "tools_call": 0,
+      "successful_responses": 4,
+      "failed_responses": 0,
+      "jsonrpc_errors": 0
+    },
+    "remaining_external_gate": "WaveMate interactive prompt/tool call",
+    "post_test_restore": "artifacts/command-reports/wavemate-k3s-current/restore-verification.json"
+  },
+  "wavemate_ui_probe": {
+    "artifact": "E:\\dsh\\dshdesktopRelease\\artifacts\\wavemate-intranet\\0.24.1",
+    "report": "artifacts/command-reports/wavemate-k3s-ui-retry1/wavemate-k3s-ui-retry1-wavemate-ui.json",
+    "status": "passed",
+    "trace_id": "trace-wavemate-k3s-ui-retry1",
+    "source_refs": [
+      {
+        "type": "client-artifact",
+        "id": "E:\\dsh\\dshdesktopRelease\\artifacts\\wavemate-intranet\\0.24.1"
+      },
+      {
+        "type": "runtime-http",
+        "id": "http://127.0.0.1:38081/mcp"
+      }
+    ],
+    "mcp_configuration": {
+      "server_name": "planemem",
+      "transport": "streamable-http",
+      "configured_url": "http://127.0.0.1:38081/mcp",
+      "proxy_url": "http://127.0.0.1:57474/mcp"
+    },
+    "traffic": {
+      "requests": 5,
+      "server_discover": 1,
+      "initialize": 1,
+      "initialized_notification": 1,
+      "tools_list": 1,
+      "tools_call": 1,
+      "resources_list": 0,
+      "resources_read": 0,
+      "successful_responses": 5,
+      "failed_responses": 0,
+      "jsonrpc_errors": 0
+    },
+    "ui": {
+      "title": "请使用已配置的 planemem MCP，调 — DeepSeek Harness",
+      "prompt_visible": true,
+      "completed_visible": true,
+      "matched_result": true,
+      "matched_trace": true
+    },
+    "external_gates": [],
+    "post_test_restore": "artifacts/command-reports/wavemate-k3s-ui-retry1/restore-verification.json",
+    "negative_attempt": "wavemate-ui-negative-attempt.json"
+  },
+  "remote_status": {
+    "report": "artifacts/test-reports/k3s/20261022T2038-wavemate-ui/remote-status-current.json",
+    "status": "passed",
+    "nodes": 3,
+    "ready_replicas": 3,
+    "rollout": "successfully rolled out",
+    "helm": {
+      "revision": 22,
+      "status": "deployed",
+      "kubeconfig": "/etc/rancher/k3s/k3s.yaml"
+    }
+  },
+  "node_recovery": {
+    "status": "passed",
+    "scenario": "cordon-delete-rollout-uncordon",
+    "node": "hdserver2",
+    "pod_deleted": "planemem-756c46c884-fpwqq",
+    "rollout": "passed",
+    "uncordon": "passed",
+    "nodes_ready": 3,
+    "replicas_ready": 3,
+    "platform_probe": "artifacts/test-reports/k3s/20261022T2038-wavemate-ui/node-recovery-platform.json"
+  },
+  "wavemate_ui_repeat_probe": {
+    "status": "passed",
+    "report": "artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-current2.json",
+    "traffic": {
+      "requests": 5,
+      "server_discover": 1,
+      "initialize": 1,
+      "initialized_notification": 1,
+      "tools_list": 1,
+      "tools_call": 1,
+      "resources_list": 0,
+      "resources_read": 0,
+      "successful_responses": 5,
+      "failed_responses": 0,
+      "jsonrpc_errors": 0
+    },
+    "ui": {
+      "title": "请使用已配置的 planemem MCP，调 — DeepSeek Harness",
+      "text": "WaveMate\n新会话\nCtrl\n+\nAlt\n+\nN\n自动化任务\n插件扩展\n定时任务\n工作区\n默认工作区\n自我介绍\n2天\n未分组\n请使用已配置的 planemem MCP，调\n刚刚\n请使用已配置的 planemem MCP，调\n2小时\n搜索 Live Plane Webhook Probe 上下文\n2小时\n搜索 Live Plane Webhook Probe上下文\n2小时\n登录 WaveMate\n请使用已配置的 planemem MCP，调\n标准模式\n对话\n轨迹\n请使用已配置的 planemem MCP，调用 context_search 搜索当前项目上下文中“Live Plane Webhook Probe”，只报告搜索结果和 trace_id，不要修改任何数据。\n23:28\n已完成\n已完成，用时 48秒\n\n搜索结果：\n\n标题：Live Plane Webhook Probe\n摘要：Live Plane Webhook Probe (plane)\nID：plane:Project:live-plane-project\n来源：Plane\n相关性分数：1\nRevision：1\ndegraded：true\n\ntrace_id：trace_mcp_unknown\n\n用量 23.4K tok\n23:29\n发消息或创建任务, / 调用指令, @ 文件或对话\n工作区内修改\nGPT-6 Luna\nDefault\n1 轮 2 步·11 tok/s\n23.4K tok·缓存命中 49%\n5%",
+      "prompt_visible": true,
+      "completed_visible": true,
+      "baseline_text_length": 340,
+      "matched_result": true,
+      "matched_trace": true
+    },
+    "external_gates": [],
+    "post_test_restore": "artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-current2-restore-verification.json",
+    "trace_id": "trace-wavemate-k3s-ui-current2"
+  },
+  "wavemate_ui_negative_repeat": {
+    "status": "blocked",
+    "report": "artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-current3-negative.json",
+    "traffic": {
+      "requests": 4,
+      "server_discover": 1,
+      "initialize": 1,
+      "initialized_notification": 1,
+      "tools_list": 1,
+      "tools_call": 0,
+      "resources_list": 0,
+      "resources_read": 0,
+      "successful_responses": 4,
+      "failed_responses": 0,
+      "jsonrpc_errors": 0
+    },
+    "ui": {
+      "title": "搜索 Live Plane Webhook Probe 上下文 — DeepSeek Harness",
+      "text": "WaveMate\n新会话\nCtrl\n+\nAlt\n+\nN\n自动化任务\n插件扩展\n定时任务\n工作区\n默认工作区\n自我介绍\n2天\n未分组\n搜索 Live Plane Webhook Probe 上下文\n刚刚\n请使用已配置的 planemem MCP，调\n12分钟\n请使用已配置的 planemem MCP，调\n3小时\n搜索 Live Plane Webhook Probe 上下文\n3小时\n搜索 Live Plane Webhook Probe上下文\n3小时\n登录 WaveMate\n搜索 Live Plane Webhook Probe 上下文\n标准模式\n对话\n轨迹\n请使用已配置的 planemem MCP，调用 context_search 搜索当前项目上下文中“Live Plane Webhook Probe”，只报告搜索结果和 trace_id，不要修改任何数据。\n23:41\n处理失败\n处理失败\n本轮运行失败server_error: Our servers are currently overloaded. Please try again later.\nPI_AI_ERROR\n发消息或创建任务, / 调用指令, @ 文件或对话\n工作区内修改\nGPT-6 Luna\nDefault\n1 轮 1 步\n0%",
+      "prompt_visible": true,
+      "completed_visible": false,
+      "baseline_text_length": 368
+    },
+    "external_gates": [
+      "WaveMate interactive prompt/tool call completion"
+    ],
+    "post_test_restore": "artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-current3-restore-verification.json",
+    "trace_id": "trace-wavemate-k3s-ui-current3"
+  },
+  "wavemate_ui_latest_probe": {
+    "status": "passed",
+    "report": "artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-current4.json",
+    "traffic": {
+      "requests": 5,
+      "server_discover": 1,
+      "initialize": 1,
+      "initialized_notification": 1,
+      "tools_list": 1,
+      "tools_call": 1,
+      "resources_list": 0,
+      "resources_read": 0,
+      "successful_responses": 5,
+      "failed_responses": 0,
+      "jsonrpc_errors": 0
+    },
+    "ui": {
+      "title": "搜索 Live Plane Webhook Probe 上下文 — DeepSeek Harness",
+      "text": "WaveMate\n新会话\nCtrl\n+\nAlt\n+\nN\n自动化任务\n插件扩展\n定时任务\n工作区\n默认工作区\n自我介绍\n2天\n未分组\n搜索 Live Plane Webhook Probe 上下文\n刚刚\n搜索 Live Plane Webhook Probe 上下文\n18分钟\n请使用已配置的 planemem MCP，调\n30分钟\n请使用已配置的 planemem MCP，调\n3小时\n搜索 Live Plane Webhook Probe 上下文\n3小时\n展开其余 1 个会话\n登录 WaveMate\n搜索 Live Plane Webhook Probe 上下文\n标准模式\n对话\n轨迹\n请使用已配置的 planemem MCP，调用 context_search 搜索当前项目上下文中“Live Plane Webhook Probe”，只报告搜索结果和 trace_id，不要修改任何数据。\n23:58\n已完成\n已完成，用时 40秒\n\n搜索结果：\n\n标题：Live Plane Webhook Probe\n摘要：Live Plane Webhook Probe (plane)\nID：plane:Project:live-plane-project\n来源：Plane\n评分：1\n版本：1\n\ntrace_id：trace_mcp_unknown\n\n用量 23.4K tok\n23:59\n发消息或创建任务, / 调用指令, @ 文件或对话\n工作区内修改\nGPT-6 Luna\nDefault\n1 轮 2 步·10 tok/s\n23.4K tok·缓存命中 49%\n5%",
+      "prompt_visible": true,
+      "completed_visible": true,
+      "matched_result": true,
+      "matched_trace": true,
+      "baseline_text_length": 405
+    },
+    "external_gates": [],
+    "post_test_restore": "artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-current4-restore-verification.json",
+    "trace_id": "trace-wavemate-k3s-ui-current4"
+  },
+  "wavemate_e2e_gate": {
+    "status": "passed",
+    "report": "artifacts/test-reports/k3s/20261022T2038-wavemate-ui/plane-to-mcp-wavemate-current4-functional.json",
+    "client": "wavemate",
+    "runtime_url": "http://127.0.0.1:38081/mcp",
+    "platform_steps": 12,
+    "wavemate_tools_call": 1,
+    "wavemate_successful_responses": 5,
+    "external_gates": [],
+    "wavemate_checks": {
+      "status": true,
+      "client": true,
+      "version": true,
+      "tools_call": true,
+      "successful_responses": true,
+      "jsonrpc_errors": true,
+      "prompt_visible": true,
+      "completed_visible": true,
+      "matched_result": true,
+      "matched_trace": true,
+      "external_gates": true,
+      "runtime_matches": true,
+      "restore_status": true,
+      "restore_url": true,
+      "restart_needed": true
+    }
+  }
+}

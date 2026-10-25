@@ -1,0 +1,19 @@
+{
+  "run_id": "wavemate-k3s-ui-clean",
+  "status": "blocked",
+  "trace_id": "trace-wavemate-k3s-ui-clean",
+  "traffic": {
+    "requests": 4,
+    "server_discover": 1,
+    "initialize": 1,
+    "initialized_notification": 1,
+    "tools_list": 1,
+    "tools_call": 0,
+    "resources_list": 0,
+    "resources_read": 0,
+    "successful_responses": 4,
+    "failed_responses": 0,
+    "jsonrpc_errors": 0
+  },
+  "error": "处理失败"
+}

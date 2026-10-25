@@ -1,0 +1,32 @@
+{
+  "generated_at": "2026-10-24T03:21:09.763Z",
+  "packages": [
+    "@planemem/api-gateway",
+    "@planemem/artifact-service",
+    "@planemem/audit-service",
+    "@planemem/auth",
+    "@planemem/context-bridge",
+    "@planemem/context-compiler",
+    "@planemem/context-service",
+    "@planemem/contracts",
+    "@planemem/domain",
+    "@planemem/evaluation",
+    "@planemem/events",
+    "@planemem/integration-orchestrator",
+    "@planemem/intelligence",
+    "@planemem/mcp-gateway",
+    "@planemem/observability",
+    "@planemem/plane-connector",
+    "@planemem/policy-service",
+    "@planemem/release",
+    "@planemem/sdk",
+    "@planemem/search-service",
+    "@planemem/session-service",
+    "@planemem/sync-service",
+    "@planemem/test-fixtures",
+    "@planemem/workctx-cli"
+  ],
+  "external_packages": [
+    "postgres"
+  ]
+}

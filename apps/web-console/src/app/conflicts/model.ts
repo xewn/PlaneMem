@@ -1,4 +1,4 @@
-import { WorkbenchApi, type ViewState, type WorkbenchScope } from '../../lib/api.js';
+import { WorkbenchApi, type ViewState, type WorkbenchScope } from '../../lib/api';
 
 export interface ConflictView {
   conflict_id: string;

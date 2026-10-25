@@ -1,0 +1,156 @@
+{
+  "status": "passed",
+  "mode": "live",
+  "scenario": "business-recovery",
+  "run_id": "p8-business-recovery-current2",
+  "trace_id": "trace-p8-business-recovery-current2",
+  "source_refs": [
+    {
+      "type": "live-probe",
+      "id": "compose-business-recovery"
+    }
+  ],
+  "services": [
+    {
+      "service": "postgres",
+      "status": "passed",
+      "steps": [
+        {
+          "name": "health.before",
+          "status": "passed"
+        },
+        {
+          "name": "stop",
+          "status": "passed"
+        },
+        {
+          "name": "restore",
+          "status": "passed"
+        },
+        {
+          "name": "health.after",
+          "status": "passed"
+        },
+        {
+          "name": "business.probe",
+          "status": "passed",
+          "probe_steps": 12
+        }
+      ],
+      "trace_id": "trace-p8-business-recovery-current2",
+      "source_refs": [
+        {
+          "type": "live-probe",
+          "id": "compose-business-recovery"
+        }
+      ]
+    },
+    {
+      "service": "nats",
+      "status": "passed",
+      "steps": [
+        {
+          "name": "health.before",
+          "status": "passed"
+        },
+        {
+          "name": "stop",
+          "status": "passed"
+        },
+        {
+          "name": "restore",
+          "status": "passed"
+        },
+        {
+          "name": "health.after",
+          "status": "passed"
+        },
+        {
+          "name": "business.probe",
+          "status": "passed",
+          "probe_steps": 12
+        }
+      ],
+      "trace_id": "trace-p8-business-recovery-current2",
+      "source_refs": [
+        {
+          "type": "live-probe",
+          "id": "compose-business-recovery"
+        }
+      ]
+    },
+    {
+      "service": "rabbitmq",
+      "status": "passed",
+      "steps": [
+        {
+          "name": "health.before",
+          "status": "passed"
+        },
+        {
+          "name": "stop",
+          "status": "passed"
+        },
+        {
+          "name": "restore",
+          "status": "passed"
+        },
+        {
+          "name": "health.after",
+          "status": "passed"
+        },
+        {
+          "name": "business.probe",
+          "status": "passed",
+          "probe_steps": 12
+        }
+      ],
+      "trace_id": "trace-p8-business-recovery-current2",
+      "source_refs": [
+        {
+          "type": "live-probe",
+          "id": "compose-business-recovery"
+        }
+      ]
+    },
+    {
+      "service": "ai-memory",
+      "status": "passed",
+      "steps": [
+        {
+          "name": "health.before",
+          "status": "passed"
+        },
+        {
+          "name": "stop",
+          "status": "passed"
+        },
+        {
+          "name": "restore",
+          "status": "passed"
+        },
+        {
+          "name": "health.after",
+          "status": "passed"
+        },
+        {
+          "name": "business.probe",
+          "status": "passed",
+          "probe_steps": 12
+        }
+      ],
+      "trace_id": "trace-p8-business-recovery-current2",
+      "source_refs": [
+        {
+          "type": "live-probe",
+          "id": "compose-business-recovery"
+        }
+      ]
+    }
+  ],
+  "recovery_verified": true,
+  "measured": true,
+  "external_gates": [
+    "RC dependency business recovery"
+  ]
+}

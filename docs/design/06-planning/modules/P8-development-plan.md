@@ -11,7 +11,7 @@
 - **模块测试门禁：** [P8 独立测试校验](../../04-testing/modules/P8-independent-verification.md)。
 - **模块协接契约：** [模块接口与协接契约](../../03-integration/04-module-interface-contracts.md#P8)。
 
-当前状态：T8.1–T8.4 已实现并通过 P8 独立测试和契约测试；T8.1 已增加真实执行的
+当前状态：T8.1–T8.3 已实现并通过 P8 独立测试和契约测试；T8.1 已增加真实执行的
 Plane 事件→Projection→ContextPack→MCP Resource、会话连续性 fixture，以及指定 WaveMate 0.24.1
 离线包的 `server/discover`→`initialize`→`notifications/initialized` MCP 握手，分别覆盖重复事件、
 scope fence、claim-once/父子会话关系和 Streamable HTTP 协议兼容。
@@ -30,7 +30,8 @@ scope fence、claim-once/父子会话关系和 Streamable HTTP 协议兼容。
 | [T8.1 集成、E2E、故障与性能测试编排](../../02-subprojects/tasks/t8.1-integration-e2e-resilience.md) | 把所有服务和 ai-memory/Plane 组成可重复集成环境并执行全链路与故障测试。 | - 负责人：发布测试组 - 前置任务：T0.6、T1.5、T2.4、T3.4、T4.4、T6.3 - 所属子方案：根据任务编号归入对应 P0-P8；子方案入口见 ../P*/README.md。 | test environment contract、seed/reset、report format 任务输出必须带版本、trace_id、source_refs、scope 和错误封套。事件输出必须遵守 `docs/design/01-contracts/canonical-events.md`。 | Plane→Webhook→Event→ContextPack→MCP、WaveMate MCP handshake、会话连续性 fixture、duplicate/out-of-order、NATS/DB restart、offline、security/perf 测试必须不依赖未完成的下游任务；需要外部能力时使用 packages/test-fixtures 或明确版本的 Compose 服务。 |
 | [T8.2 Compose、Helm 与部署拓扑](../../02-subprojects/tasks/t8.2-compose-helm.md) | 交付开发/POC Compose 和指定三节点 k3s 的 Helm 配置。 | - 负责人：发布测试组 - 前置任务：T0.6、T4.1、T6.1、T6.3 - 所属子方案：根据任务编号归入对应 P0-P8；子方案入口见 ../P*/README.md。 | values.schema.json、health/readiness、secret refs、resource limits 任务输出必须带版本、trace_id、source_refs、scope 和错误封套。事件输出必须遵守 `docs/design/01-contracts/canonical-events.md`。 | clean Compose、Helm lint/template/install/upgrade、restart、scale、secret missing 测试必须不依赖未完成的下游任务；需要外部能力时使用 packages/test-fixtures 或明确版本的 Compose 服务。 |
 | [T8.3 Release Manifest、备份恢复与回滚](../../02-subprojects/tasks/t8.3-release-rollback.md) | 把 Plane、ai-memory、WorkMesh、Schema、迁移、Feature Flags 固定成可恢复发布单元。 | - 负责人：发布测试组 - 前置任务：T8.1、T8.2、T6.2 - 所属子方案：根据任务编号归入对应 P0-P8；子方案入口见 ../P*/README.md。 | preflight、backup、restore、migrate、rollback、smoke 任务输出必须带版本、trace_id、source_refs、scope 和错误封套。事件输出必须遵守 `docs/design/01-contracts/canonical-events.md`。 | backup/restore、upgrade/rollback、schema compatibility、audit/context resume 和功能 Smoke 测试必须不依赖未完成的下游任务；SBOM/漏洞报告只作可选记录。 |
-| [T8.4 真实数据数据库闭环与运行时恢复](../../02-subprojects/tasks/t8.4-real-data-closure.md) | 将 Webhook 事件、Projection、Context hit、Audit 持久化到真实 PostgreSQL，并在 Compose/k3s 重启后恢复。 | - 负责人：运行时与发布测试组 - 前置任务：T1.5、T2.5、T4.1、T6.2、T8.2 - 所属子方案：P8 | 009_runtime_state、runtime persistence adapter、Compose/k3s real-data tests、镜像和迁移版本必须带 trace、source_refs、scope、digest。 | 首次 accepted、重复 duplicate、Workctx restart、k3s rolling restart、四表回查和真实数据库连接必须独立通过。 |
+
+| [T8.4 真实数据数据库闭环与运行时恢复](../../02-subprojects/tasks/t8.4-real-data-closure.md) | 将 Plane 事件、投影、Context hit、审计和 Session continuity 接入 PostgreSQL 持久化，并验证重启恢复与幂等重放。 | - 负责人：运行时与发布组 - 前置任务：T4.1、T6.2、T8.2、T8.3 | 009/010 migration、runtime/session persistence、恢复报告 | accepted、duplicate、out-of-order、503、重启 hydrate、CAS 冲突和跨 scope 隔离。 |
 
 每个子任务必须按固定顺序执行：确认输入契约 → 编写失败测试 → 验证失败 → 实现最小行为 → 运行独立测试 → 更新 Schema/Fixture/追踪矩阵 → 生成版本化交付包。子任务不得直接调用其他任务内部类、数据库或本地文件。
 

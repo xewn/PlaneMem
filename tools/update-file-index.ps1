@@ -7,7 +7,7 @@ $generatedAt = Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz'
 $files = @(Get-ChildItem -LiteralPath $workspace -Recurse -File -Force | Where-Object {
     $_.FullName -ne $indexPath -and
     $_.FullName -notmatch '(\\|/)\.git(\\|/|$)' -and
-    $_.FullName -notmatch '(\\|/)(node_modules|\.superpowers|dist|coverage|artifacts)(\\|/|$)'
+    $_.FullName -notmatch '(\\|/)(node_modules|\.superpowers|\.next|dist|coverage|artifacts)(\\|/|$)'
 })
 
 $records = @(
@@ -24,7 +24,7 @@ $records = @(
 
 $directories = @(Get-ChildItem -LiteralPath $workspace -Recurse -Directory -Force | Where-Object {
     $_.FullName -notmatch '(\\|/)\.git(\\|/|$)' -and
-    $_.FullName -notmatch '(\\|/)(node_modules|\.superpowers|dist|coverage|artifacts)(\\|/|$)'
+    $_.FullName -notmatch '(\\|/)(node_modules|\.superpowers|\.next|dist|coverage|artifacts)(\\|/|$)'
 })
 
 $fileCountsByDirectory = @{}

@@ -1,0 +1,293 @@
+{
+  "status": "passed",
+  "mode": "live",
+  "scenario": "dependency-matrix",
+  "run_id": "p8-dependency-matrix-current",
+  "trace_id": "trace-p8-dependency-matrix-current",
+  "source_refs": [
+    {
+      "type": "live-probe",
+      "id": "compose-dependency-matrix"
+    }
+  ],
+  "services": [
+    {
+      "service": "postgres",
+      "status": "passed",
+      "steps": [
+        {
+          "name": "health.before",
+          "status": "passed"
+        },
+        {
+          "name": "stop",
+          "status": "passed"
+        },
+        {
+          "name": "runtime.probe",
+          "status": "passed",
+          "status_code": 200
+        },
+        {
+          "name": "restore",
+          "status": "passed"
+        },
+        {
+          "name": "health.after",
+          "status": "passed"
+        }
+      ],
+      "trace_id": "trace-p8-dependency-matrix-current",
+      "source_refs": [
+        {
+          "type": "live-probe",
+          "id": "compose-dependency-matrix"
+        }
+      ]
+    },
+    {
+      "service": "redis",
+      "status": "passed",
+      "steps": [
+        {
+          "name": "health.before",
+          "status": "passed"
+        },
+        {
+          "name": "stop",
+          "status": "passed"
+        },
+        {
+          "name": "runtime.probe",
+          "status": "passed",
+          "status_code": 200
+        },
+        {
+          "name": "restore",
+          "status": "passed"
+        },
+        {
+          "name": "health.after",
+          "status": "passed"
+        }
+      ],
+      "trace_id": "trace-p8-dependency-matrix-current",
+      "source_refs": [
+        {
+          "type": "live-probe",
+          "id": "compose-dependency-matrix"
+        }
+      ]
+    },
+    {
+      "service": "nats",
+      "status": "passed",
+      "steps": [
+        {
+          "name": "health.before",
+          "status": "passed"
+        },
+        {
+          "name": "stop",
+          "status": "passed"
+        },
+        {
+          "name": "runtime.probe",
+          "status": "passed",
+          "status_code": 200
+        },
+        {
+          "name": "restore",
+          "status": "passed"
+        },
+        {
+          "name": "health.after",
+          "status": "passed"
+        }
+      ],
+      "trace_id": "trace-p8-dependency-matrix-current",
+      "source_refs": [
+        {
+          "type": "live-probe",
+          "id": "compose-dependency-matrix"
+        }
+      ]
+    },
+    {
+      "service": "rabbitmq",
+      "status": "passed",
+      "steps": [
+        {
+          "name": "health.before",
+          "status": "passed"
+        },
+        {
+          "name": "stop",
+          "status": "passed"
+        },
+        {
+          "name": "runtime.probe",
+          "status": "passed",
+          "status_code": 200
+        },
+        {
+          "name": "restore",
+          "status": "passed"
+        },
+        {
+          "name": "health.after",
+          "status": "passed"
+        }
+      ],
+      "trace_id": "trace-p8-dependency-matrix-current",
+      "source_refs": [
+        {
+          "type": "live-probe",
+          "id": "compose-dependency-matrix"
+        }
+      ]
+    },
+    {
+      "service": "keycloak",
+      "status": "passed",
+      "steps": [
+        {
+          "name": "health.before",
+          "status": "passed"
+        },
+        {
+          "name": "stop",
+          "status": "passed"
+        },
+        {
+          "name": "runtime.probe",
+          "status": "passed",
+          "status_code": 200
+        },
+        {
+          "name": "restore",
+          "status": "passed"
+        },
+        {
+          "name": "health.after",
+          "status": "passed"
+        }
+      ],
+      "trace_id": "trace-p8-dependency-matrix-current",
+      "source_refs": [
+        {
+          "type": "live-probe",
+          "id": "compose-dependency-matrix"
+        }
+      ]
+    },
+    {
+      "service": "minio",
+      "status": "passed",
+      "steps": [
+        {
+          "name": "health.before",
+          "status": "passed"
+        },
+        {
+          "name": "stop",
+          "status": "passed"
+        },
+        {
+          "name": "runtime.probe",
+          "status": "passed",
+          "status_code": 200
+        },
+        {
+          "name": "restore",
+          "status": "passed"
+        },
+        {
+          "name": "health.after",
+          "status": "passed"
+        }
+      ],
+      "trace_id": "trace-p8-dependency-matrix-current",
+      "source_refs": [
+        {
+          "type": "live-probe",
+          "id": "compose-dependency-matrix"
+        }
+      ]
+    },
+    {
+      "service": "ai-memory",
+      "status": "passed",
+      "steps": [
+        {
+          "name": "health.before",
+          "status": "passed"
+        },
+        {
+          "name": "stop",
+          "status": "passed"
+        },
+        {
+          "name": "runtime.probe",
+          "status": "passed",
+          "status_code": 200
+        },
+        {
+          "name": "restore",
+          "status": "passed"
+        },
+        {
+          "name": "health.after",
+          "status": "passed"
+        }
+      ],
+      "trace_id": "trace-p8-dependency-matrix-current",
+      "source_refs": [
+        {
+          "type": "live-probe",
+          "id": "compose-dependency-matrix"
+        }
+      ]
+    },
+    {
+      "service": "otel-collector",
+      "status": "passed",
+      "steps": [
+        {
+          "name": "health.before",
+          "status": "passed"
+        },
+        {
+          "name": "stop",
+          "status": "passed"
+        },
+        {
+          "name": "runtime.probe",
+          "status": "passed",
+          "status_code": 200
+        },
+        {
+          "name": "restore",
+          "status": "passed"
+        },
+        {
+          "name": "health.after",
+          "status": "passed"
+        }
+      ],
+      "trace_id": "trace-p8-dependency-matrix-current",
+      "source_refs": [
+        {
+          "type": "live-probe",
+          "id": "compose-dependency-matrix"
+        }
+      ]
+    }
+  ],
+  "recovery_verified": true,
+  "measured": true,
+  "external_gates": [
+    "RC dependency business recovery",
+    "process kill/network partition"
+  ]
+}

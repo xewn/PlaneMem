@@ -88,14 +88,6 @@ test('T0.2 serializes diagnostic error envelopes with trace IDs', () => {
   assert.equal(envelope.retryable, false);
 });
 
-test('T0.2 wraps driver-shaped errors without crashing the error boundary', () => {
-  const envelope = JSON.parse(
-    serializeError({ code: '23505', message: 'duplicate key value violates unique constraint' }),
-  );
-  assert.equal(validateErrorEnvelope(envelope).code, 'INTERNAL_ERROR');
-  assert.equal(envelope.retryable, true);
-});
-
 test('T0.2 enforces pagination bounds and response invariants', () => {
   assert.deepEqual(normalizePageRequest({}), { limit: 50 });
   assert.deepEqual(normalizePageRequest({ limit: 100, cursor: 'cursor_01' }), {

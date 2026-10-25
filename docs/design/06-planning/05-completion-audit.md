@@ -16,7 +16,7 @@
 | 要求 | 当前判定 | 证据 | 说明 |
 |---|---|---|---|
 | 需求、架构、领域模型和 ai-memory 适配设计 | passed | `docs/design/00-baseline/`、`docs/design/vendor/ai-memory-adoption.md` | 权威事实、记忆真源和适配边界已落文档。 |
-| 38 个子任务均有独立详细设计 | passed | `docs/design/02-subprojects/tasks/`、`artifacts/command-reports/final-plan-audit-current26/final-plan-audit-current26-plan-audit.json` | 任务文件 38/38，缺失项为空。 |
+| 37 个子任务均有独立详细设计 | passed | `docs/design/02-subprojects/tasks/`、`artifacts/command-reports/final-plan-audit-current26/final-plan-audit-current26-plan-audit.json` | 任务文件 37/37，缺失项为空。 |
 | P0–P8 均有模块开发计划 | passed | `docs/design/06-planning/modules/P*-development-plan.md` | 9 个模块计划均存在，并引用独立测试文档。 |
 | P0–P8 均有独立测试校验文档 | passed | `docs/design/04-testing/modules/P*-independent-verification.md` | 9 个模块测试文档均存在。 |
 | 协接边、提供方/消费方测试可追踪 | passed | `docs/design/03-integration/`、`tests/contract/` | 协接边 28 条，契约测试文件 8 个。 |

@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "status": "passed",
+  "run_id": "realistic-ui-verified",
+  "base_url": "http://127.0.0.1:43124",
+  "scope": {
+    "tenant_id": "01HF7YAT000000000000000001",
+    "workspace_id": "01HF7YAT000000000000000002",
+    "project_id": "01HF7YAT000000000000000003"
+  },
+  "routes": [
+    {
+      "path": "/overview",
+      "status_code": 200,
+      "marker": "Project Overview",
+      "marker_found": true,
+      "bytes": 48215
+    },
+    {
+      "path": "/work-items",
+      "status_code": 200,
+      "marker": "Resolve checkpoint hash mismatch",
+      "marker_found": true,
+      "bytes": 34533
+    },
+    {
+      "path": "/context",
+      "status_code": 200,
+      "marker": "North-star outcome",
+      "marker_found": true,
+      "bytes": 35709
+    },
+    {
+      "path": "/sessions",
+      "status_code": 200,
+      "marker": "github-actions",
+      "marker_found": true,
+      "bytes": 34404
+    },
+    {
+      "path": "/handoffs",
+      "status_code": 200,
+      "marker": "Restore the redaction review",
+      "marker_found": true,
+      "bytes": 29442
+    },
+    {
+      "path": "/conflicts",
+      "status_code": 200,
+      "marker": "real-w-134",
+      "marker_found": true,
+      "bytes": 26632
+    },
+    {
+      "path": "/audit",
+      "status_code": 200,
+      "marker": "work_item.update",
+      "marker_found": true,
+      "bytes": 107690
+    },
+    {
+      "path": "/admin",
+      "status_code": 200,
+      "marker": "PostgreSQL projection",
+      "marker_found": true,
+      "bytes": 28741
+    }
+  ],
+  "source_refs": [
+    {
+      "type": "fixture",
+      "id": "seed-realistic-workbench.sql"
+    },
+    {
+      "type": "live-api",
+      "id": "workbench.query"
+    },
+    {
+      "type": "live-ui",
+      "id": "http://127.0.0.1:43124"
+    }
+  ]
+}

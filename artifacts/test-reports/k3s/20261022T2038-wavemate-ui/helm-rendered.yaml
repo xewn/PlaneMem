@@ -1,0 +1,56 @@
+---
+# Source: planemem/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: planemem
+spec:
+  selector:
+    app.kubernetes.io/name: planemem
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3000
+---
+# Source: planemem/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: planemem
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: planemem
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: planemem
+    spec:
+      containers:
+        - name: platform
+          image: 'docker.io/library/planemem-platform:0.1.0-wavemate@sha256:a2d2d0b50eb5ebdc51083ad331a182dd15f0018343aaf29c3c14898402297261'
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: PROPOSAL_ENABLED
+              value: 'false'
+            - name: VECTOR_ENABLED
+              value: 'false'
+          envFrom:
+            - secretRef:
+                name: 'planemem-smoke-secrets'
+          resources:
+            limits:
+              cpu: 1
+              memory: 1Gi
+            requests:
+              cpu: 100m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 3000
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000

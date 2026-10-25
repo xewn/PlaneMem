@@ -1,5 +1,5 @@
 {
   "extends": "./tsconfig.base.json",
   "include": ["apps/**/*.ts", "packages/**/*.ts", "workers/**/*.ts", "tools/**/*.ts"],
-  "exclude": ["node_modules", "**/dist"]
+  "exclude": ["node_modules", "**/dist", "apps/web-console/src", "apps/web-console/.next"]
 }

@@ -1,0 +1,9 @@
+helm release: planemem
+namespace: planemem-test
+revision: 22
+status: deployed
+deployment: 3 ready / 3 updated / 3 available
+planemem-756c46c884-fpwqq hdserver2 Running ready=true imageID=docker.io/library/planemem-platform:0.1.0-wavemate@sha256:a2d2d0b50eb5ebdc51083ad331a182dd15f0018343aaf29c3c14898402297261
+planemem-756c46c884-ptwbt hdserver1 Running ready=true imageID=docker.io/library/planemem-platform:0.1.0-wavemate@sha256:a2d2d0b50eb5ebdc51083ad331a182dd15f0018343aaf29c3c14898402297261
+planemem-756c46c884-vpqz6 hdserver3 Running ready=true imageID=docker.io/library/planemem-platform:0.1.0-wavemate@sha256:a2d2d0b50eb5ebdc51083ad331a182dd15f0018343aaf29c3c14898402297261
+service endpoints: 10.42.0.55:3000, 10.42.2.16:3000, 10.42.3.23:3000

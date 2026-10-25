@@ -15,7 +15,7 @@
 - [t8.1-integration-e2e-resilience](../../02-subprojects/tasks/t8.1-integration-e2e-resilience.md)
 - [t8.2-compose-helm](../../02-subprojects/tasks/t8.2-compose-helm.md)
 - [t8.3-release-rollback](../../02-subprojects/tasks/t8.3-release-rollback.md)
-- [t8.4-real-data-closure](../../02-subprojects/tasks/t8.4-real-data-closure.md)
+- [T8.4 真实数据数据库闭环与运行时恢复](../../02-subprojects/tasks/t8.4-real-data-closure.md)
 
 ## 2. 独立运行边界
 
@@ -40,8 +40,6 @@ pnpm run test:contract -- P8
 pnpm run test:module -- P8 --isolated --reporter=junit
 pnpm run test:e2e -- --chain plane-to-mcp
 pnpm run test:e2e -- --chain client-switch
-node --import tsx --test tests/p8/t8-real-data-closure.test.mjs
-node --import tsx --test tests/p8/t8-k3s-real-data-closure.test.mjs
 pnpm run test:wavemate-live -- --live --artifact-path E:/dsh/dshdesktopRelease/artifacts/wavemate-intranet/0.24.1 --run-id wavemate-live-current --output artifacts/command-reports/wavemate-live-current
 pnpm run test:wavemate-ui-live -- --live --artifact-path E:/dsh/dshdesktopRelease/artifacts/wavemate-intranet/0.24.1 --wavemate-url http://127.0.0.1:3080 --planemem-url http://127.0.0.1:38081 --webdriver-url http://127.0.0.1:4445 --run-id wavemate-k3s-ui-current --wait-ms 90000 --output artifacts/command-reports/wavemate-k3s-ui-current
 pnpm run test:release -- --scenario restore-rollback
@@ -72,9 +70,8 @@ WaveMate 0.24.1 离线包的真实 MCP 会话和 WebDriver UI `tools/call` 均�
 
 | 测试 | 文件 | 覆盖 |
 |---|---|---|
+| P8-T8.4 | 	ests/p8/t8-real-data-closure.test.mjs, 	ests/p3/t3-session-persistence.test.ts, 	ests/p4/t4-session-persistence-live.test.ts | PostgreSQL runtime/session persistence, restart hydrate, idempotency and CAS conflict semantics |
 | P8-C01/T8.2 | `tests/p8/t8-release-deploy.test.ts` | manifest digest、审批和部署拓扑边界 |
-| T8.4-C01–C04 | `tests/p8/t8-real-data-closure.test.mjs` | Compose 真实 PostgreSQL 事件、投影、Context hit、审计行，以及 Workctx 重启后的搜索恢复和 duplicate |
-| T8.4-K01–K03 | `tests/p8/t8-k3s-real-data-closure.test.mjs` | 三节点 k3s Service、真实 `.233` PostgreSQL、Deployment rolling restart 后的 hydrate、search 和 duplicate |
 | P8-C02/T8.2 | `tests/p8/t8-release-tooling.test.mjs` | Compose doctor/health、无占位符 Release Manifest、CycloneDX SBOM、Helm 模板分隔符 |
 | P8-C03/T8.3 | `tests/p8/t8-release-tooling.test.mjs` | RC readiness 汇总本地门禁和 Docker/Helm/kubectl/live-services 阻断原因 |
 | P8-E01/T8.1 | `tests/p8/t8-release-deploy.test.ts`、`tools/run-functional-tests.mjs --chain plane-to-mcp` | 实际执行 Plane event→Projection→ContextPack→MCP Resource、trace/source_refs、重复事件和 scope fence |

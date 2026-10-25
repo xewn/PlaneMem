@@ -1,5 +1,6 @@
 node_modules
 **/dist
+**/.next
 **/coverage
 .superpowers
 codes
@@ -8,3 +9,4 @@ ReadMe.md
 FILE_INDEX.md
 pnpm-lock.yaml
 deploy/helm/**/*.yaml
+artifacts

@@ -6,16 +6,10 @@
 # directory. Do not promote this override as the production image source.
 services:
   workctx:
-    image: ${WORKCTX_IMAGE:-planemem-platform:0.1.0-wavemate@sha256:0546c722ba6b9d579d9e55b072a4500dd717f46f2e48456d84a102a7b233b9f8}
+    image: planemem-platform:0.1.0-wavemate@sha256:0546c722ba6b9d579d9e55b072a4500dd717f46f2e48456d84a102a7b233b9f8
     environment:
       AI_MEMORY_URL: http://ai-memory:49374
       AI_MEMORY_AUTH_TOKEN: compose-local-test-token
-      MEMORY_PROVIDER_MODE: ai-memory-mcp
-      MEMORY_ENABLED: 'true'
-      MEMORY_REQUIRED: 'true'
-      AI_MEMORY_TOKEN: compose-local-test-token
-      MEMORY_ACTOR_ID: compose-local-test
-      MEMORY_CLIENT_ID: compose-local-test
       PLANE_WEBHOOK_SECRET: compose-local-webhook-secret
     healthcheck:
       test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3000/health/ready || exit 1']

@@ -24,11 +24,3 @@ artifacts:
     kind: migration
     version: '1'
     digest: sha256:SET_BY_CI
-  - name: migration-009-runtime-state
-    kind: migration
-    version: '1'
-    digest: sha256:SET_BY_CI
-  - name: migration-010-session-continuity-persistence
-    kind: migration
-    version: '1'
-    digest: sha256:SET_BY_CI

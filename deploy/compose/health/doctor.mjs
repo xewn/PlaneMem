@@ -11,8 +11,6 @@ const requiredFiles = [
   'otel-collector.yaml',
   path.join('..', 'migrations', '001_baseline.sql'),
   path.join('..', 'migrations', '002_contracts.sql'),
-  path.join('..', 'migrations', '009_runtime_state.sql'),
-  path.join('..', 'migrations', '010_session_continuity_persistence.sql'),
 ];
 
 function report(status, checks, error) {

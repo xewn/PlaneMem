@@ -1,0 +1,445 @@
+{
+  "schema_version": 1,
+  "phase": "baseline",
+  "status": "passed",
+  "run_id": "realistic-baseline-final",
+  "trace_id": "realistic-baseline-final-overview",
+  "base_url": "http://127.0.0.1:33002",
+  "scope": {
+    "tenant_id": "01HF7YAT000000000000000001",
+    "workspace_id": "01HF7YAT000000000000000002",
+    "project_id": "01HF7YAT000000000000000003"
+  },
+  "expected": {
+    "phase": "baseline",
+    "overview": {
+      "active_work_items": 11,
+      "blocked_work_items": 2,
+      "completed_work_items": 3,
+      "active_sessions": 3,
+      "open_conflicts": 3
+    },
+    "work_items": 15,
+    "context": 10,
+    "sessions": 6,
+    "handoffs": 4,
+    "conflicts": {
+      "total": 4,
+      "open": 3,
+      "resolved": 1
+    },
+    "audit_fixture_rows": 14,
+    "admin": {
+      "active_sessions": 3,
+      "open_conflicts": 3
+    }
+  },
+  "observed": {
+    "overview": {
+      "project_id": "01HF7YAT000000000000000003",
+      "project_name": "project-continuity",
+      "external_id": "fixture-demo-project",
+      "active_work_items": 11,
+      "blocked_work_items": 2,
+      "completed_work_items": 3,
+      "active_sessions": 3,
+      "open_conflicts": 3,
+      "last_activity_at": "2026-10-24T03:29:06.812Z"
+    },
+    "work_items": {
+      "total": 15,
+      "by_status": {
+        "in_progress": 3,
+        "todo": 3,
+        "in_review": 3,
+        "blocked": 2,
+        "done": 3,
+        "cancelled": 1
+      }
+    },
+    "context": {
+      "total": 10,
+      "by_layer": {
+        "L0": 2,
+        "L1": 2,
+        "L2": 3,
+        "L3": 2,
+        "L4": 1
+      }
+    },
+    "sessions": [
+      {
+        "client_id": "codex",
+        "status": "running",
+        "run_count": 0,
+        "tool_call_count": 0
+      },
+      {
+        "client_id": "claude-code",
+        "status": "paused",
+        "run_count": 0,
+        "tool_call_count": 0
+      },
+      {
+        "client_id": "github-actions",
+        "status": "running",
+        "run_count": 1,
+        "tool_call_count": 1
+      },
+      {
+        "client_id": "cursor",
+        "status": "running",
+        "run_count": 2,
+        "tool_call_count": 2
+      },
+      {
+        "client_id": "codex",
+        "status": "failed",
+        "run_count": 1,
+        "tool_call_count": 1
+      },
+      {
+        "client_id": "claude-code",
+        "status": "ended",
+        "run_count": 1,
+        "tool_call_count": 1
+      }
+    ],
+    "handoffs": [
+      {
+        "status": "offered",
+        "offered_to": "claude-code"
+      },
+      {
+        "status": "offered",
+        "offered_to": "cursor"
+      },
+      {
+        "status": "accepted",
+        "offered_to": "claude-code"
+      },
+      {
+        "status": "rejected",
+        "offered_to": "codex"
+      }
+    ],
+    "conflicts": {
+      "total": 4,
+      "open": 3
+    },
+    "audit": {
+      "returned": 49,
+      "fixture_rows": 14
+    },
+    "admin": {
+      "release": "0.1.0",
+      "services": [
+        {
+          "name": "postgres",
+          "status": "ok",
+          "version": "16"
+        }
+      ],
+      "audit_count": 50,
+      "active_sessions": 3,
+      "open_conflicts": 3
+    }
+  },
+  "steps": [
+    {
+      "name": "overview.http",
+      "status": "passed",
+      "status_code": 200
+    },
+    {
+      "name": "overview.source_refs",
+      "status": "passed",
+      "source_refs": [
+        {
+          "type": "postgres",
+          "id": "workbench_overview"
+        }
+      ]
+    },
+    {
+      "name": "overview.active_work_items",
+      "status": "passed",
+      "expected": 11,
+      "actual": 11
+    },
+    {
+      "name": "overview.blocked_work_items",
+      "status": "passed",
+      "expected": 2,
+      "actual": 2
+    },
+    {
+      "name": "overview.completed_work_items",
+      "status": "passed",
+      "expected": 3,
+      "actual": 3
+    },
+    {
+      "name": "overview.active_sessions",
+      "status": "passed",
+      "expected": 3,
+      "actual": 3
+    },
+    {
+      "name": "overview.open_conflicts",
+      "status": "passed",
+      "expected": 3,
+      "actual": 3
+    },
+    {
+      "name": "work_items.http",
+      "status": "passed",
+      "status_code": 200
+    },
+    {
+      "name": "work_items.count",
+      "status": "passed",
+      "expected": 15,
+      "actual": 15
+    },
+    {
+      "name": "work_items.realistic_fixture",
+      "status": "passed",
+      "ids": [
+        "W-128",
+        "W-126",
+        "W-127",
+        "W-122",
+        "W-119",
+        "W-134",
+        "W-133",
+        "W-132",
+        "W-131",
+        "W-140",
+        "W-138",
+        "W-137",
+        "W-136",
+        "W-135",
+        "W-139"
+      ]
+    },
+    {
+      "name": "work_items.source_refs",
+      "status": "passed",
+      "rows": 15,
+      "missing": 0
+    },
+    {
+      "name": "context.http",
+      "status": "passed",
+      "status_code": 200
+    },
+    {
+      "name": "context.count",
+      "status": "passed",
+      "expected": 10,
+      "actual": 10
+    },
+    {
+      "name": "context.layers",
+      "status": "passed",
+      "layers": [
+        "L1",
+        "L3",
+        "L2",
+        "L4",
+        "L0"
+      ]
+    },
+    {
+      "name": "context.proposed_and_expired",
+      "status": "passed"
+    },
+    {
+      "name": "context.source_refs",
+      "status": "passed",
+      "rows": 10,
+      "missing": 0
+    },
+    {
+      "name": "sessions.http",
+      "status": "passed",
+      "status_code": 200
+    },
+    {
+      "name": "sessions.count",
+      "status": "passed",
+      "expected": 6,
+      "actual": 6
+    },
+    {
+      "name": "sessions.status_coverage",
+      "status": "passed",
+      "statuses": [
+        "running",
+        "paused",
+        "failed",
+        "ended"
+      ]
+    },
+    {
+      "name": "sessions.telemetry_counts",
+      "status": "passed",
+      "run_counts": [
+        [
+          "codex",
+          0,
+          0
+        ],
+        [
+          "claude-code",
+          0,
+          0
+        ],
+        [
+          "github-actions",
+          1,
+          1
+        ],
+        [
+          "cursor",
+          2,
+          2
+        ],
+        [
+          "codex",
+          1,
+          1
+        ],
+        [
+          "claude-code",
+          1,
+          1
+        ]
+      ]
+    },
+    {
+      "name": "handoffs.http",
+      "status": "passed",
+      "status_code": 200
+    },
+    {
+      "name": "handoffs.count",
+      "status": "passed",
+      "expected": 4,
+      "actual": 4
+    },
+    {
+      "name": "handoffs.status_coverage",
+      "status": "passed",
+      "statuses": [
+        "offered",
+        "accepted",
+        "rejected"
+      ]
+    },
+    {
+      "name": "conflicts.http",
+      "status": "passed",
+      "status_code": 200
+    },
+    {
+      "name": "conflicts.count",
+      "status": "passed",
+      "expected": 4,
+      "actual": 4
+    },
+    {
+      "name": "conflicts.open_count",
+      "status": "passed",
+      "expected": 3,
+      "actual": 3
+    },
+    {
+      "name": "conflicts.resolved_count",
+      "status": "passed",
+      "expected": 1
+    },
+    {
+      "name": "conflicts.source_refs",
+      "status": "passed",
+      "rows": 4,
+      "missing": 0
+    },
+    {
+      "name": "audit.http",
+      "status": "passed",
+      "status_code": 200
+    },
+    {
+      "name": "audit.fixture_rows",
+      "status": "passed",
+      "expected": 14,
+      "actual": 14
+    },
+    {
+      "name": "audit.result_coverage",
+      "status": "passed",
+      "results": [
+        "allowed",
+        "denied",
+        "error"
+      ]
+    },
+    {
+      "name": "audit.fixture.source_refs",
+      "status": "passed",
+      "rows": 14,
+      "missing": 0
+    },
+    {
+      "name": "admin.http",
+      "status": "passed",
+      "status_code": 200
+    },
+    {
+      "name": "admin.active_sessions",
+      "status": "passed",
+      "expected": 3,
+      "actual": 3
+    },
+    {
+      "name": "admin.open_conflicts",
+      "status": "passed",
+      "expected": 3,
+      "actual": 3
+    },
+    {
+      "name": "admin.audit_count",
+      "status": "passed",
+      "minimum": 14,
+      "actual": 50
+    },
+    {
+      "name": "scope_isolation.http",
+      "status": "passed",
+      "work_status": 200,
+      "conflict_status": 200
+    },
+    {
+      "name": "scope_isolation.empty",
+      "status": "passed",
+      "work_items": [],
+      "conflicts": []
+    }
+  ],
+  "source_refs": [
+    {
+      "type": "fixture",
+      "id": "seed-realistic-workbench.sql"
+    },
+    {
+      "type": "postgres",
+      "id": "wcp_*"
+    },
+    {
+      "type": "live-api",
+      "id": "http://127.0.0.1:33002"
+    }
+  ]
+}

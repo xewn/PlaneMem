@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: planemem-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -38,3 +42,84 @@ jobs:
       - run: pnpm run sbom:generate -- --output artifacts/ci/sbom.cdx.json
       - run: pnpm run release:manifest -- --version ci-${{ github.run_number }} --git-sha ${{ github.sha }} --output artifacts/ci/release-manifest.yaml
       - run: pnpm run evidence:bundle -- --module P8 --run-id ci-${{ github.run_id }} --output artifacts/ci/evidence
+
+  release-contract:
+    name: Build and validate immutable release
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.19.0
+          cache: pnpm
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.9.0
+      - uses: docker/setup-buildx-action@v3
+      - run: pnpm install --frozen-lockfile
+      - name: Validate Compose definitions
+        run: |
+          docker compose --env-file deploy/compose/.env.example -f deploy/compose/docker-compose.yml config --quiet
+          docker compose --env-file deploy/compose/.env.example --profile full -f deploy/compose/docker-compose.yml -f deploy/compose/docker-compose.local-test.yml config --quiet
+      - name: Build the runtime image without pushing
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm run build
+          node tools/stage-runtime.mjs --output artifacts/runtime
+          mkdir -p artifacts/ci
+          docker buildx build \
+            --pull=false \
+            --provenance=false \
+            --load \
+            --metadata-file artifacts/ci/image-metadata.json \
+            --tag planemem-platform:ci-${GITHUB_SHA} \
+            --file deploy/images/platform/Dockerfile .
+          digest="$(node -e "const m=require('./artifacts/ci/image-metadata.json'); process.stdout.write(m['containerimage.digest'] || '')")"
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+      - name: Validate Helm and deployment inputs
+        env:
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          set -euo pipefail
+          helm lint deploy/helm/planemem
+          pnpm run deploy:k3s -- validate \
+            --image-repository ghcr.io/planemem/platform \
+            --image-tag ci-${GITHUB_SHA} \
+            --image-digest "$IMAGE_DIGEST" \
+            --namespace planemem-ci \
+            --secret planemem-secrets \
+            --replicas 3 \
+            --output artifacts/ci/k3s-validation.json
+          helm template planemem deploy/helm/planemem \
+            --namespace planemem-ci \
+            --set-string image.repository=ghcr.io/planemem/platform \
+            --set-string image.tag=ci-${GITHUB_SHA} \
+            --set-string image.digest="$IMAGE_DIGEST" \
+            --set-string secrets.existingSecret=planemem-secrets \
+            --set-string replicaCount=3 \
+            > artifacts/ci/helm-rendered.yaml
+      - name: Generate immutable release metadata
+        env:
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          set -euo pipefail
+          pnpm run release:manifest -- \
+            --version ci-${GITHUB_RUN_NUMBER} \
+            --git-sha "$GITHUB_SHA" \
+            --image-repository ghcr.io/planemem/platform \
+            --image-tag ci-${GITHUB_SHA} \
+            --image-digest "$IMAGE_DIGEST" \
+            --output artifacts/ci/release-manifest.yaml
+          pnpm run sbom:generate -- --output artifacts/ci/sbom.cdx.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: planemem-release-${{ github.run_id }}
+          path: artifacts/ci
+          if-no-files-found: error

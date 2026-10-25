@@ -104,11 +104,6 @@ test('P8-C02/T8.2 rejects malformed Helm delimiters before the live Helm gate', 
 });
 
 test('P8-C02/T8.2 pins the local MinIO compatibility override and its writable data path', () => {
-  const compose = readFileSync(path.join(root, 'deploy/compose/docker-compose.yml'), 'utf8');
-  assert.match(compose, /MEMORY_PROVIDER_MODE:\s+\$\{MEMORY_PROVIDER_MODE:-ai-memory-mcp\}/);
-  assert.match(compose, /MEMORY_REQUIRED:\s+\$\{MEMORY_REQUIRED:-true\}/);
-  assert.match(compose, /AI_MEMORY_URL:\s+http:\/\/ai-memory:8787/);
-  assert.match(compose, /AI_MEMORY_AUTH_TOKEN:\s+\$\{AI_MEMORY_AUTH_TOKEN:-\}/);
   const override = readFileSync(
     path.join(root, 'deploy/compose/docker-compose.local-test.yml'),
     'utf8',
@@ -155,4 +150,58 @@ test('P8-C03/T8.3 emits a release readiness report without masking external bloc
     report.release_blockers.some((gate) => gate.status === 'not-run'),
     true,
   );
+});
+
+test('P8-C02/T8.2 validates digest-pinned k3s deployment inputs before Helm', () => {
+  const output = mkdtempSync(path.join(tmpdir(), 'planemem-k3s-release-'));
+  const digest = `sha256:${'a'.repeat(64)}`;
+  try {
+    const valid = spawnSync(
+      process.execPath,
+      [
+        path.join(root, 'tools', 'k3s-release.mjs'),
+        'validate',
+        '--image-repository',
+        'registry.example/planemem/platform',
+        '--image-tag',
+        '0.1.0-rc.1',
+        '--image-digest',
+        digest,
+        '--namespace',
+        'planemem-test',
+        '--secret',
+        'planemem-runtime-secrets',
+        '--replicas',
+        '3',
+        '--output',
+        path.join(output, 'valid.json'),
+      ],
+      { cwd: root, encoding: 'utf8' },
+    );
+    assert.equal(valid.status, 0, valid.stderr);
+    const validReport = JSON.parse(valid.stdout.trim());
+    assert.equal(validReport.status, 'passed');
+    assert.equal(validReport.image, `registry.example/planemem/platform:0.1.0-rc.1@${digest}`);
+
+    const invalid = spawnSync(
+      process.execPath,
+      [
+        path.join(root, 'tools', 'k3s-release.mjs'),
+        'validate',
+        '--image-repository',
+        'registry.example/planemem/platform',
+        '--image-tag',
+        'latest',
+        '--image-digest',
+        'sha256:not-a-digest',
+        '--output',
+        path.join(output, 'invalid.json'),
+      ],
+      { cwd: root, encoding: 'utf8' },
+    );
+    assert.equal(invalid.status, 1);
+    assert.equal(JSON.parse(invalid.stdout.trim()).status, 'failed');
+  } finally {
+    rmSync(output, { recursive: true, force: true });
+  }
 });

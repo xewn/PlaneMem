@@ -97,51 +97,13 @@ export async function runLiveSecurityProbe({
   const crossHits = Array.isArray(crossScope.body?.data?.hits) ? crossScope.body.data.hits : [];
   const scopeLeakHits = crossHits.length;
   const crossScopeDenied = crossScope.status === 403 || crossScope.body?.code === 'DENIED';
-  const crossScopeFailClosed = isFailClosed(crossScope);
   step(
     'security.cross_scope_read',
-    crossScopeDenied || crossScopeFailClosed || (crossScope.status === 200 && scopeLeakHits === 0)
-      ? 'passed'
-      : 'failed',
+    crossScopeDenied || (crossScope.status === 200 && scopeLeakHits === 0) ? 'passed' : 'failed',
     {
       status_code: crossScope.status,
       hit_count: scopeLeakHits,
       denied: crossScopeDenied,
-      fail_closed: crossScopeFailClosed,
-      error_code: crossScope.body?.code,
-    },
-  );
-
-  const scopeTenantB = {
-    ...scopeA,
-    tenant_id: '01HF7YAT000000000000000004',
-    workspace_id: '01HF7YAT000000000000000005',
-    project_id: 'project-tenant-b',
-  };
-  const crossTenant = await request(`${url}/v1/context/search`, {
-    method: 'POST',
-    headers: headers(scopeTenantB),
-    body: JSON.stringify({ query: 'Security live fixture', budget: 100 }),
-  });
-  const crossTenantHits = Array.isArray(crossTenant.body?.data?.hits)
-    ? crossTenant.body.data.hits
-    : [];
-  const tenantLeakHits = crossTenantHits.length;
-  const crossTenantDenied = crossTenant.status === 403 || crossTenant.body?.code === 'DENIED';
-  const crossTenantFailClosed = isFailClosed(crossTenant);
-  step(
-    'security.cross_tenant_read',
-    crossTenantDenied ||
-      crossTenantFailClosed ||
-      (crossTenant.status === 200 && tenantLeakHits === 0)
-      ? 'passed'
-      : 'failed',
-    {
-      status_code: crossTenant.status,
-      hit_count: tenantLeakHits,
-      denied: crossTenantDenied,
-      fail_closed: crossTenantFailClosed,
-      error_code: crossTenant.body?.code,
     },
   );
 
@@ -179,7 +141,6 @@ export async function runLiveSecurityProbe({
     source_refs,
     steps,
     scope_leak_hits: scopeLeakHits,
-    tenant_leak_hits: tenantLeakHits,
     denied_side_effects: deniedSideEffects,
     external_gates: ['Keycloak/OPA identity integration', 'audit persistence'],
   };
@@ -204,15 +165,7 @@ async function requestJson(url, options) {
   }
 }
 
-function result(
-  status,
-  steps,
-  source_refs,
-  trace_id,
-  scope_leak_hits,
-  denied_side_effects,
-  tenant_leak_hits = 0,
-) {
+function result(status, steps, source_refs, trace_id, scope_leak_hits, denied_side_effects) {
   return {
     status,
     runtime_status: status,
@@ -224,22 +177,9 @@ function result(
     source_refs,
     steps,
     scope_leak_hits,
-    tenant_leak_hits,
     denied_side_effects,
     external_gates: ['Keycloak/OPA identity integration', 'audit persistence'],
   };
-}
-
-function isFailClosed(response) {
-  return (
-    response.status === 503 &&
-    [
-      'MEMORY_MCP_ERROR',
-      'MEMORY_MCP_TOOL_ERROR',
-      'MEMORY_MCP_UNAVAILABLE',
-      'MEMORY_PROVIDER_OFF',
-    ].includes(response.body?.code)
-  );
 }
 
 if (

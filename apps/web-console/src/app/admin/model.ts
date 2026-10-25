@@ -1,4 +1,4 @@
-import type { ViewState, WorkbenchScope } from '../../lib/api.js';
+import type { ViewState, WorkbenchScope } from '../../lib/api';
 
 export interface AdminHealth {
   schema_version: 1;

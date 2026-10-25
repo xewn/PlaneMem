@@ -3,7 +3,6 @@ kind: Service
 metadata:
   name: planemem
 spec:
-  sessionAffinity: ClientIP
   selector:
     app.kubernetes.io/name: planemem
   ports:
