@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+.superpowers/
+
+# Generated release evidence, offline image bundles and local browser/k3s data.
+# Curated evidence already tracked in Git remains tracked after this rule.
+artifacts/
+pnpm-debug.log*

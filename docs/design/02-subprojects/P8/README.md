@@ -10,7 +10,7 @@ P0 起，贯穿全部 P
 
 ## 任务
 
-T8.1, T8.2, T8.3。每个任务的独立设计位于 ../tasks/，任务之间只通过 01-contracts 和 03-integration 定义的接口协作。
+T8.1, T8.2, T8.3, T8.4。每个任务的独立设计位于 ../tasks/，任务之间只通过 01-contracts 和 03-integration 定义的接口协作。
 
 ## 输入
 
@@ -70,6 +70,7 @@ P8 将所有版本、digest、migration、Fixture、Plane/ai-memory 版本和 Fe
 - [T8.1 集成、E2E、故障与性能测试编排](../tasks/t8.1-integration-e2e-resilience.md)
 - [T8.2 Compose、Helm 与部署拓扑](../tasks/t8.2-compose-helm.md)
 - [T8.3 Release Manifest、备份恢复与回滚](../tasks/t8.3-release-rollback.md)
+- [T8.4 真实数据数据库闭环与运行时恢复](../tasks/t8.4-real-data-closure.md)
 
 ## 独立测试与校验规范
 

@@ -1,0 +1,100 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ai-memory-data
+  labels:
+    app.kubernetes.io/name: ai-memory
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-memory
+  labels:
+    app.kubernetes.io/name: ai-memory
+spec:
+  selector:
+    app.kubernetes.io/name: ai-memory
+  ports:
+    - name: http
+      port: 49374
+      targetPort: 49374
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-memory
+  labels:
+    app.kubernetes.io/name: ai-memory
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ai-memory
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ai-memory
+    spec:
+      imagePullSecrets:
+        - name: planemem-registry
+      containers:
+        - name: ai-memory
+          image: registry.hedou.top:5000/planemem/ai-memory:3.1.1-local@sha256:ba2f799441acb0c165d042f8655fddc30e2a8f8cceca3c873538247931c784fa
+          imagePullPolicy: IfNotPresent
+          args:
+            - serve
+            - --transport
+            - http
+            - --bind
+            - 0.0.0.0:49374
+            - --enable-web
+          env:
+            - name: AI_MEMORY_DATA_DIR
+              value: /data
+            - name: AI_MEMORY_MODE
+              value: local
+            - name: AI_MEMORY_ALLOWED_HOSTS
+              value: localhost,127.0.0.1,::1,ai-memory,planemem
+            - name: AI_MEMORY_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: planemem-runtime-secrets
+                  key: AI_MEMORY_TOKEN
+          ports:
+            - name: http
+              containerPort: 49374
+          readinessProbe:
+            tcpSocket:
+              port: 49374
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 12
+          livenessProbe:
+            tcpSocket:
+              port: 49374
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1
+              memory: 1Gi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: ai-memory-data

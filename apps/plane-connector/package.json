@@ -1,0 +1,19 @@
+{
+  "name": "@planemem/plane-connector",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --outDir dist",
+    "lint": "prettier --check src",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@planemem/contracts": "workspace:*",
+    "@planemem/events": "workspace:*"
+  }
+}

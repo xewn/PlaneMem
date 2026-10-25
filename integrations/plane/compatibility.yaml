@@ -1,0 +1,20 @@
+schema_version: 1
+plane:
+  version: 0.26.0
+  image: makeplane/plane-backend:v0.26.0
+  digest: sha256:plane-fixture
+connector:
+  version: 0.1.0
+api:
+  version: v1
+webhook:
+  version: v1
+features:
+  projects: true
+  work_items: true
+  attachments: true
+  webhooks: true
+  comments: false
+known_limitations:
+  - capability: comments
+    reason: 'Not part of the first connector contract'

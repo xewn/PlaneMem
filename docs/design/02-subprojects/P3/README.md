@@ -72,8 +72,8 @@ session-service、sync-service、context-bridge、workctx CLI、Conflict
 
 | 任务 | 实现边界 | 独立验证 | 外部门禁 |
 |---|---|---|---|
-| T3.1 | `apps/session-service/src/session`、`004_sessions.sql` | lifecycle、幂等 start、父子 scope、版本冲突 | PostgreSQL replay |
-| T3.2 | `apps/session-service/src/checkpoint` | checkpoint hash、claim-once、target client、resume | P2 ContextPack/ai-memory live |
+| T3.1 | `apps/session-service/src/session`、`004_sessions.sql`、`010_session_continuity_persistence.sql` | lifecycle、幂等 start、父子 scope、版本冲突、重启恢复 | PostgreSQL replay |
+| T3.2 | `apps/session-service/src/checkpoint`、`010_session_continuity_persistence.sql` | checkpoint hash、claim-once、target client、resume、重启恢复 | P2 ContextPack/ai-memory live |
 | T3.3 | `apps/sync-service/src/cursor`、`005_sync.sql` | cursor gap、partial batch、duplicate batch、ack monotonic | 多客户端长连接 |
 | T3.4 | `apps/context-bridge/src/outbox`、`006_outbox.sql` | SQLite durable write、断网 retry、drain 幂等、inspect/purge | 真实进程 kill/restart |
 | T3.5 | `apps/sync-service/src/conflict` | detect/list/resolve、protected version、resolution event | P4/P5 conflict UI/API |

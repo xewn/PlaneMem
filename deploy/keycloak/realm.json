@@ -1,0 +1,13 @@
+{
+  "realm": "planemem",
+  "enabled": true,
+  "roles": { "realm": [{ "name": "admin" }, { "name": "operator" }, { "name": "member" }] },
+  "clients": [
+    {
+      "clientId": "planemem-gateway",
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true
+    }
+  ]
+}

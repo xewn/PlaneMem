@@ -94,7 +94,7 @@ requirements:
     statement: "Long-term memory uses ai-memory through a versioned adapter; Markdown is source of truth and SQLite is derived index."
     design: ["00-baseline/05-memory-system", "vendor/ai-memory-adoption", "T2.2-memory-adapter"]
     subprojects: ["P2", "P3", "P4", "P8"]
-    tests: ["contract.ai_memory_adapter", "integration.ai_memory_capture_recall", "integration.ai_memory_handoff_claim", "release.ai_memory_backup_restore"]
+    tests: ["contract.ai_memory_adapter", "integration.ai_memory_capture_recall", "integration.ai_memory_handoff_claim", "release.ai_memory_backup_restore", "tests/p2/t2-memory-mcp-provider.test.ts"]
     gates: ["merge", "nightly", "release_candidate", "production"]
 
 invariants:

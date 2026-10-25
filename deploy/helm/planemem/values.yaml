@@ -1,0 +1,27 @@
+image:
+  repository: registry.hedou.top:5000/planemem/platform
+  tag: 0.1.0-project-state-context
+  digest: sha256:21fde4e7b0f2d7e1734b6bf38cc81b4bf71cae4c9a075677eb26860a6c20181e
+imagePullSecrets:
+  - name: planemem-registry
+replicaCount: 1
+featureFlags:
+  proposalEnabled: false
+  vectorEnabled: false
+external:
+  planeUrl: https://plane.example.invalid
+  aiMemoryUrl: http://ai-memory:8787
+  memoryProviderMode: ai-memory-mcp
+  memoryEnabled: true
+  memoryRequired: true
+  memoryActorId: planemem-platform
+  memoryClientId: planemem-platform
+secrets:
+  existingSecret: planemem-secrets
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1
+    memory: 1Gi

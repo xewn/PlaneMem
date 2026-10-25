@@ -1,0 +1,9 @@
+node_modules
+.git
+codes
+docs
+tests
+coverage
+artifacts/test-reports
+dist/**/*.map
+dist/**/*.d.ts

@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/context-item.json",
+  "title": "PlaneMem ContextItem",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "layer",
+    "content",
+    "source_refs",
+    "confirmed",
+    "confidence",
+    "priority",
+    "sensitivity",
+    "tenant_id",
+    "workspace_id",
+    "project_id",
+    "trace_id"
+  ],
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "id": { "type": "string", "minLength": 1 },
+    "layer": { "type": "string", "enum": ["L0", "L1", "L2", "L3", "L4"] },
+    "content": { "type": "string" },
+    "source_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "id"],
+        "properties": { "type": { "type": "string" }, "id": { "type": "string" } },
+        "additionalProperties": false
+      }
+    },
+    "confirmed": { "type": "boolean" },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "priority": { "type": "integer" },
+    "sensitivity": {
+      "type": "string",
+      "enum": ["public", "internal", "confidential", "restricted"]
+    },
+    "tenant_id": { "type": "string", "minLength": 1 },
+    "workspace_id": { "type": "string", "minLength": 1 },
+    "project_id": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": "string", "minLength": 1 },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "selection_reason": { "type": "string", "enum": ["ranked-fit", "priority-override"] }
+  },
+  "additionalProperties": true
+}

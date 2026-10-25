@@ -7,33 +7,32 @@
 - 新增、删除、移动或重命名文件时，必须在同一次变更中更新本文件。
 - 从工作区根目录执行 `powershell -ExecutionPolicy Bypass -File tools/update-file-index.ps1` 重新生成索引。
 - 更新时重新扫描 `F:\PlaneMem`，保持路径使用 `/` 分隔，并同步文件大小、扩展名和目录统计。
-- 本索引不把自身纳入扫描统计；`.git`、`node_modules`、`.superpowers`、`dist`、`coverage` 等内部或生成目录不纳入项目文件索引。
+- 本索引不把自身纳入扫描统计；`.git`、`node_modules`、`.superpowers`、`dist`、`coverage`、`artifacts` 等内部或生成目录不纳入项目文件索引。
 - 完成变更后检查本文件的文件总数、目录总数和 `git diff`，确保索引与工作区实际状态一致。
 
 ## 生成信息
 
 - 工作区：`F:\PlaneMem`
-- 生成时间：`2026-10-23 12:24:51 +08:00`
-- 文件总数（不含本索引与版本控制内部文件）：`7844`
-- 目录总数（不含版本控制内部目录）：`1549`
-- 总字节数（不含本索引与版本控制内部文件）：`1832445728`
+- 生成时间：`2026-10-26 06:52:27 +08:00`
+- 文件总数（不含本索引与版本控制内部文件）：`6693`
+- 目录总数（不含版本控制内部目录）：`1331`
+- 总字节数（不含本索引与版本控制内部文件）：`165868523`
 
 ## 顶层目录统计
 
 | 顶层路径 | 文件数 | 字节数 |
 |---|---:|---:|
-| `(root)` | 14 | 148291 |
+| `(root)` | 14 | 147637 |
 | `.github` | 1 | 1369 |
-| `apps` | 64 | 152913 |
-| `artifacts` | 1173 | 1706693261 |
-| `assets` | 5 | 35302507 |
+| `apps` | 68 | 225840 |
+| `assets` | 10 | 75254996 |
 | `codes` | 6316 | 89014702 |
-| `deploy` | 30 | 30018 |
-| `docs` | 111 | 617457 |
+| `deploy` | 33 | 40670 |
+| `docs` | 114 | 642063 |
 | `integrations` | 6 | 3230 |
-| `packages` | 56 | 96955 |
-| `tests` | 34 | 134175 |
-| `tools` | 27 | 242410 |
+| `packages` | 56 | 97200 |
+| `tests` | 41 | 185197 |
+| `tools` | 27 | 247179 |
 | `workers` | 7 | 8440 |
 
 ## 目录清单
@@ -42,9 +41,9 @@
 
 - `.github/` — 1 files
 - `.github/workflows/` — 1 files
-- `apps/` — 64 files
-- `apps/api-gateway/` — 5 files
-- `apps/api-gateway/src/` — 4 files
+- `apps/` — 68 files
+- `apps/api-gateway/` — 7 files
+- `apps/api-gateway/src/` — 6 files
 - `apps/artifact-service/` — 2 files
 - `apps/artifact-service/src/` — 1 files
 - `apps/audit-service/` — 3 files
@@ -52,9 +51,9 @@
 - `apps/context-bridge/` — 5 files
 - `apps/context-bridge/src/` — 4 files
 - `apps/context-bridge/src/outbox/` — 2 files
-- `apps/context-service/` — 5 files
-- `apps/context-service/src/` — 4 files
-- `apps/context-service/src/memory-adapter/` — 1 files
+- `apps/context-service/` — 7 files
+- `apps/context-service/src/` — 6 files
+- `apps/context-service/src/memory-adapter/` — 3 files
 - `apps/context-service/src/resources/` — 1 files
 - `apps/context-service/src/search/` — 1 files
 - `apps/integration-orchestrator/` — 5 files
@@ -88,225 +87,7 @@
 - `apps/web-console/src/lib/` — 1 files
 - `apps/workctx-cli/` — 3 files
 - `apps/workctx-cli/src/` — 2 files
-- `artifacts/` — 1173 files
-- `artifacts/command-reports/` — 898 files
-- `artifacts/command-reports/ai-memory-live-probe-20261021235731/` — 2 files
-- `artifacts/command-reports/ai-memory-live-probe-current/` — 2 files
-- `artifacts/command-reports/ai-memory-live-probe-final/` — 2 files
-- `artifacts/command-reports/container-vulnerability-scan-20261021231800/` — 4 files
-- `artifacts/command-reports/final-client-switch/` — 1 files
-- `artifacts/command-reports/final-client-switch-live/` — 0 files
-- `artifacts/command-reports/final-client-switch-live-current/` — 1 files
-- `artifacts/command-reports/final-client-switch-live-current2/` — 1 files
-- `artifacts/command-reports/final-client-switch-live-probed/` — 1 files
-- `artifacts/command-reports/final-client-switch-live-transport/` — 2 files
-- `artifacts/command-reports/final-client-switch-offline-probed/` — 1 files
-- `artifacts/command-reports/final-evaluation/` — 1 files
-- `artifacts/command-reports/final-live-e2e-client-current/` — 1 files
-- `artifacts/command-reports/final-live-e2e-plane-current/` — 1 files
-- `artifacts/command-reports/final-performance/` — 1 files
-- `artifacts/command-reports/final-performance-devtest/` — 1 files
-- `artifacts/command-reports/final-plan-audit-current10/` — 1 files
-- `artifacts/command-reports/final-plan-audit-current11/` — 1 files
-- `artifacts/command-reports/final-plan-audit-current12/` — 1 files
-- `artifacts/command-reports/final-plan-audit-current16/` — 1 files
-- `artifacts/command-reports/final-plan-audit-current17/` — 1 files
-- `artifacts/command-reports/final-plan-audit-current18/` — 1 files
-- `artifacts/command-reports/final-plan-audit-current19/` — 1 files
-- `artifacts/command-reports/final-plan-audit-current22/` — 1 files
-- `artifacts/command-reports/final-plan-audit-current8/` — 1 files
-- `artifacts/command-reports/final-plan-audit-current9/` — 1 files
-- `artifacts/command-reports/final-plan-audit-devtest/` — 1 files
-- `artifacts/command-reports/final-plan-audit-devtest-25/` — 1 files
-- `artifacts/command-reports/final-plan-audit-final/` — 1 files
-- `artifacts/command-reports/final-plan-audit-identity-audit-current7/` — 1 files
-- `artifacts/command-reports/final-plan-audit-node-recovery/` — 1 files
-- `artifacts/command-reports/final-plan-audit-node-recovery-verify/` — 1 files
-- `artifacts/command-reports/final-plan-audit-wavemate-business-recovery-current6/` — 1 files
-- `artifacts/command-reports/final-plan-audit-wavemate-current4/` — 1 files
-- `artifacts/command-reports/final-plan-audit-wavemate-dependency-matrix-vulnerability-command/` — 1 files
-- `artifacts/command-reports/final-plan-audit-wavemate-dependency-matrix-vulnerability-command2/` — 1 files
-- `artifacts/command-reports/final-plan-audit-wavemate-dependency-matrix-vulnerability-command3/` — 1 files
-- `artifacts/command-reports/final-plan-audit-wavemate-dependency-matrix-vulnerability-command4/` — 1 files
-- `artifacts/command-reports/final-plan-audit-wavemate-e2e/` — 1 files
-- `artifacts/command-reports/final-plan-audit-wavemate-resilience-current5/` — 1 files
-- `artifacts/command-reports/final-plan-audit-wavemate-restore/` — 1 files
-- `artifacts/command-reports/final-plan-audit-wavemate-sbom/` — 1 files
-- `artifacts/command-reports/final-plan-audit-wavemate-sbom-all-images/` — 1 files
-- `artifacts/command-reports/final-plane-to-mcp/` — 1 files
-- `artifacts/command-reports/final-plane-to-mcp-devtest/` — 1 files
-- `artifacts/command-reports/final-plane-to-mcp-live/` — 0 files
-- `artifacts/command-reports/final-plane-to-mcp-live2/` — 1 files
-- `artifacts/command-reports/final-plane-to-mcp-live-current/` — 1 files
-- `artifacts/command-reports/final-plane-to-mcp-live-probed/` — 1 files
-- `artifacts/command-reports/final-plane-to-mcp-live-transport/` — 2 files
-- `artifacts/command-reports/final-plane-to-mcp-offline-probed/` — 1 files
-- `artifacts/command-reports/final-rc-readiness/` — 2 files
-- `artifacts/command-reports/final-rc-readiness-devtest/` — 2 files
-- `artifacts/command-reports/final-rc-readiness-live/` — 2 files
-- `artifacts/command-reports/final-rc-readiness-live-autohelm/` — 2 files
-- `artifacts/command-reports/final-rc-readiness-live-helm/` — 2 files
-- `artifacts/command-reports/final-rc-readiness-post-index/` — 2 files
-- `artifacts/command-reports/final-rc-readiness-security-fixed/` — 2 files
-- `artifacts/command-reports/final-release/` — 1 files
-- `artifacts/command-reports/final-release-live-post-index/` — 4 files
-- `artifacts/command-reports/final-release-restore-autohelm/` — 7 files
-- `artifacts/command-reports/final-release-restore-devtest/` — 7 files
-- `artifacts/command-reports/final-release-restore-devtest-helm/` — 7 files
-- `artifacts/command-reports/final-resilience/` — 1 files
-- `artifacts/command-reports/final-resilience-devtest/` — 1 files
-- `artifacts/command-reports/final-resilience-devtest-dependency/` — 1 files
-- `artifacts/command-reports/final-security/` — 1 files
-- `artifacts/command-reports/final-security-devtest/` — 1 files
-- `artifacts/command-reports/k3s-live-current/` — 1 files
-- `artifacts/command-reports/k3s-live-transport/` — 1 files
-- `artifacts/command-reports/k3s-node-recovery-20261022/` — 1 files
-- `artifacts/command-reports/live-restore-current/` — 2 files
-- `artifacts/command-reports/live-restore-current2/` — 2 files
-- `artifacts/command-reports/live-restore-current3/` — 4 files
-- `artifacts/command-reports/live-restore-current4/` — 4 files
-- `artifacts/command-reports/live-restore-current5/` — 4 files
-- `artifacts/command-reports/live-restore-dryrun/` — 1 files
-- `artifacts/command-reports/live-restore-security-fixed/` — 4 files
-- `artifacts/command-reports/live-restore-security-fixed-helm/` — 4 files
-- `artifacts/command-reports/live-restore-security-fixed-path/` — 4 files
-- `artifacts/command-reports/module-isolated-current10/` — 9 files
-- `artifacts/command-reports/p6-identity-audit-fixture-current/` — 1 files
-- `artifacts/command-reports/p6-identity-audit-live-current/` — 1 files
-- `artifacts/command-reports/p6-identity-audit-live-current2/` — 1 files
-- `artifacts/command-reports/p6-identity-audit-live-current3/` — 1 files
-- `artifacts/command-reports/p6-identity-audit-live-current4/` — 1 files
-- `artifacts/command-reports/p6-identity-audit-live-current5/` — 1 files
-- `artifacts/command-reports/p6-identity-audit-live-current6/` — 1 files
-- `artifacts/command-reports/p6-identity-audit-live-current7/` — 2 files
-- `artifacts/command-reports/p6-identity-audit-live-current8/` — 2 files
-- `artifacts/command-reports/p8-business-recovery-current/` — 1 files
-- `artifacts/command-reports/p8-business-recovery-current2/` — 1 files
-- `artifacts/command-reports/p8-dependency-matrix-current/` — 1 files
-- `artifacts/command-reports/p8-network-partition-current/` — 1 files
-- `artifacts/command-reports/p8-network-partition-current2/` — 1 files
-- `artifacts/command-reports/p8-network-partition-current3/` — 1 files
-- `artifacts/command-reports/p8-network-partition-current4/` — 1 files
-- `artifacts/command-reports/p8-process-kill-current/` — 1 files
-- `artifacts/command-reports/p8-vulnerability-safe-subset/` — 3 files
-- `artifacts/command-reports/p8-vulnerability-safe-subset2/` — 5 files
-- `artifacts/command-reports/p8-vulnerability-scan-command-current/` — 20 files
-- `artifacts/command-reports/p8-vulnerability-scan-command-current12/` — 22 files
-- `artifacts/command-reports/p8-vulnerability-scan-command-current15/` — 21 files
-- `artifacts/command-reports/p8-vulnerability-scan-command-current16/` — 22 files
-- `artifacts/command-reports/p8-vulnerability-scan-command-current2/` — 22 files
-- `artifacts/command-reports/performance-live-current/` — 1 files
-- `artifacts/command-reports/performance-live-current12/` — 1 files
-- `artifacts/command-reports/plan-audit-identity-audit-current/` — 1 files
-- `artifacts/command-reports/plane-to-mcp-functional-current21/` — 1 files
-- `artifacts/command-reports/plane-to-mcp-wavemate-current4/` — 1 files
-- `artifacts/command-reports/plane-to-mcp-wavemate-functional-current20/` — 1 files
-- `artifacts/command-reports/rc-readiness-current10/` — 2 files
-- `artifacts/command-reports/rc-readiness-current11/` — 2 files
-- `artifacts/command-reports/rc-readiness-current12/` — 2 files
-- `artifacts/command-reports/rc-readiness-current16/` — 2 files
-- `artifacts/command-reports/rc-readiness-current17/` — 2 files
-- `artifacts/command-reports/rc-readiness-current18/` — 2 files
-- `artifacts/command-reports/rc-readiness-current22/` — 2 files
-- `artifacts/command-reports/rc-readiness-identity-audit-current/` — 2 files
-- `artifacts/command-reports/release-live-current12/` — 7 files
-- `artifacts/command-reports/release-live-dependency-upgrade-current14/` — 7 files
-- `artifacts/command-reports/release-manifest-current13/` — 1 files
-- `artifacts/command-reports/release-transport-sqlite/` — 7 files
-- `artifacts/command-reports/resilience-business-current12/` — 1 files
-- `artifacts/command-reports/resilience-business-dependency-upgrade-current14/` — 1 files
-- `artifacts/command-reports/resilience-live-dependency/` — 1 files
-- `artifacts/command-reports/resilience-matrix-current12/` — 1 files
-- `artifacts/command-reports/resilience-matrix-dependency-upgrade-current14/` — 1 files
-- `artifacts/command-reports/sbom-wavemate-current4/` — 1 files
-- `artifacts/command-reports/security-audit-20261021231640/` — 2 files
-- `artifacts/command-reports/security-live-current12/` — 1 files
-- `artifacts/command-reports/security-live-opa-current/` — 1 files
-- `artifacts/command-reports/security-live-opa-current2/` — 1 files
-- `artifacts/command-reports/security-live-runtime/` — 1 files
-- `artifacts/command-reports/sqlite-live-final/` — 3 files
-- `artifacts/command-reports/t8-client-switch-fixture/` — 1 files
-- `artifacts/command-reports/t8-live-fixture/` — 1 files
-- `artifacts/command-reports/trivy-images-current4/` — 21 files
-- `artifacts/command-reports/trivy-wavemate-current4/` — 3 files
-- `artifacts/command-reports/vuln-candidate-keycloak-2657/` — 3 files
-- `artifacts/command-reports/vuln-candidate-nats-2151/` — 3 files
-- `artifacts/command-reports/vuln-candidate-otel-138/` — 3 files
-- `artifacts/command-reports/vuln-candidate-plane-0261/` — 3 files
-- `artifacts/command-reports/vuln-candidate-plane-0280/` — 3 files
-- `artifacts/command-reports/vuln-candidate-postgres-1615/` — 3 files
-- `artifacts/command-reports/vuln-candidate-rabbitmq-440/` — 3 files
-- `artifacts/command-reports/vuln-candidate-redis-747/` — 3 files
-- `artifacts/command-reports/wavemate-compose-ui-current20/` — 1 files
-- `artifacts/command-reports/wavemate-compose-ui-current21/` — 1 files
-- `artifacts/command-reports/wavemate-k3s-current/` — 2 files
-- `artifacts/command-reports/wavemate-k3s-ui-clean/` — 2 files
-- `artifacts/command-reports/wavemate-k3s-ui-current/` — 2 files
-- `artifacts/command-reports/wavemate-k3s-ui-current2/` — 3 files
-- `artifacts/command-reports/wavemate-k3s-ui-current3/` — 3 files
-- `artifacts/command-reports/wavemate-k3s-ui-current4/` — 3 files
-- `artifacts/command-reports/wavemate-k3s-ui-final/` — 2 files
-- `artifacts/command-reports/wavemate-k3s-ui-retry1/` — 3 files
-- `artifacts/command-reports/wavemate-live-current/` — 1 files
-- `artifacts/command-reports/wavemate-live-current12/` — 1 files
-- `artifacts/command-reports/wavemate-live-current13/` — 1 files
-- `artifacts/command-reports/wavemate-plan-audit-after-k3s/` — 1 files
-- `artifacts/command-reports/wavemate-plan-audit-final/` — 1 files
-- `artifacts/command-reports/wavemate-plan-audit-ui-final/` — 1 files
-- `artifacts/offline-images/` — 20 files
-- `artifacts/offline-images/security-fixed/` — 4 files
-- `artifacts/offline-images/transport-fixed/` — 2 files
-- `artifacts/offline-images/wavemate-mcp/` — 2 files
-- `artifacts/offline-images/wavemate-mcp-audit/` — 2 files
-- `artifacts/offline-images/wavemate-mcp-audit-fix/` — 2 files
-- `artifacts/offline-images/wavemate-mcp-audit-persist/` — 2 files
-- `artifacts/offline-images/wavemate-mcp-audit-persist-v2/` — 2 files
-- `artifacts/runtime/` — 1 files
-- `artifacts/test-reports/` — 254 files
-- `artifacts/test-reports/compose/` — 69 files
-- `artifacts/test-reports/compose/20261021T1200-compose-local/` — 24 files
-- `artifacts/test-reports/compose/20261021T1245-compose-full/` — 11 files
-- `artifacts/test-reports/compose/20261021T1440-compose-full-plane/` — 25 files
-- `artifacts/test-reports/compose/20261022T0653-current/` — 2 files
-- `artifacts/test-reports/compose/20261022T0728-security-fixed/` — 7 files
-- `artifacts/test-reports/k3s/` — 96 files
-- `artifacts/test-reports/k3s/20261021T0138/` — 5 files
-- `artifacts/test-reports/k3s/20261021T0244/` — 7 files
-- `artifacts/test-reports/k3s/20261021T0925-formal/` — 11 files
-- `artifacts/test-reports/k3s/20261021T0955-formal/` — 12 files
-- `artifacts/test-reports/k3s/20261022T0024-transport/` — 2 files
-- `artifacts/test-reports/k3s/20261022T0650-current/` — 2 files
-- `artifacts/test-reports/k3s/20261022T0656-current-helm/` — 4 files
-- `artifacts/test-reports/k3s/20261022T0710-local-helm/` — 5 files
-- `artifacts/test-reports/k3s/20261022T0745-security-fixed/` — 2 files
-- `artifacts/test-reports/k3s/20261022T1111-wavemate/` — 8 files
-- `artifacts/test-reports/k3s/20261022T2038-wavemate-ui/` — 24 files
-- `artifacts/test-reports/k3s/20261023T0005-wavemate-audit/` — 14 files
-- `artifacts/test-reports/P0/` — 20 files
-- `artifacts/test-reports/P0/20261021T003003/` — 6 files
-- `artifacts/test-reports/P0/20261021T233235/` — 14 files
-- `artifacts/test-reports/P1/` — 4 files
-- `artifacts/test-reports/P1/20261021T064139/` — 4 files
-- `artifacts/test-reports/P2/` — 8 files
-- `artifacts/test-reports/P2/20261021T064954/` — 4 files
-- `artifacts/test-reports/P2/20261021T065440/` — 4 files
-- `artifacts/test-reports/P3/` — 4 files
-- `artifacts/test-reports/P3/20261021T070043/` — 4 files
-- `artifacts/test-reports/P4/` — 4 files
-- `artifacts/test-reports/P4/20261021T070428/` — 4 files
-- `artifacts/test-reports/P5/` — 4 files
-- `artifacts/test-reports/P5/20261021T070701/` — 4 files
-- `artifacts/test-reports/P6/` — 4 files
-- `artifacts/test-reports/P6/20261021T071519/` — 4 files
-- `artifacts/test-reports/P7/` — 4 files
-- `artifacts/test-reports/P7/20261021T071519/` — 4 files
-- `artifacts/test-reports/P8/` — 14 files
-- `artifacts/test-reports/P8/20261021T071519/` — 4 files
-- `artifacts/test-reports/P8/20261021T233235/` — 10 files
-- `artifacts/test-reports/tooling/` — 23 files
-- `artifacts/test-reports/tooling/20261021T073000/` — 15 files
-- `artifacts/test-reports/tooling/final-tooling/` — 6 files
-- `assets/` — 5 files
+- `assets/` — 10 files
 - `codes/` — 6316 files
 - `codes/ai-memory/` — 1209 files
 - `codes/ai-memory/.agents/` — 1 files
@@ -1496,26 +1277,26 @@
 - `codes/plane/packages/utils/src/work-item-filters/` — 12 files
 - `codes/plane/packages/utils/src/work-item-filters/configs/` — 11 files
 - `codes/plane/packages/utils/src/work-item-filters/configs/filters/` — 10 files
-- `deploy/` — 30 files
+- `deploy/` — 33 files
 - `deploy/compose/` — 10 files
 - `deploy/compose/health/` — 2 files
-- `deploy/helm/` — 5 files
-- `deploy/helm/planemem/` — 5 files
+- `deploy/helm/` — 6 files
+- `deploy/helm/planemem/` — 6 files
 - `deploy/helm/planemem/templates/` — 2 files
 - `deploy/images/` — 1 files
 - `deploy/images/platform/` — 1 files
 - `deploy/k3s/` — 2 files
 - `deploy/k3s/smoke/` — 2 files
 - `deploy/keycloak/` — 1 files
-- `deploy/migrations/` — 7 files
+- `deploy/migrations/` — 9 files
 - `deploy/observability/` — 1 files
 - `deploy/opa/` — 1 files
 - `deploy/search/` — 1 files
-- `docs/` — 111 files
-- `docs/design/` — 107 files
+- `docs/` — 114 files
+- `docs/design/` — 110 files
 - `docs/design/00-baseline/` — 8 files
 - `docs/design/01-contracts/` — 5 files
-- `docs/design/02-subprojects/` — 48 files
+- `docs/design/02-subprojects/` — 49 files
 - `docs/design/02-subprojects/P0/` — 1 files
 - `docs/design/02-subprojects/P1/` — 1 files
 - `docs/design/02-subprojects/P2/` — 1 files
@@ -1525,11 +1306,11 @@
 - `docs/design/02-subprojects/P6/` — 1 files
 - `docs/design/02-subprojects/P7/` — 1 files
 - `docs/design/02-subprojects/P8/` — 1 files
-- `docs/design/02-subprojects/tasks/` — 38 files
-- `docs/design/03-integration/` — 7 files
-- `docs/design/04-testing/` — 14 files
+- `docs/design/02-subprojects/tasks/` — 39 files
+- `docs/design/03-integration/` — 8 files
+- `docs/design/04-testing/` — 15 files
 - `docs/design/04-testing/clients/` — 1 files
-- `docs/design/04-testing/modules/` — 10 files
+- `docs/design/04-testing/modules/` — 11 files
 - `docs/design/05-release/` — 8 files
 - `docs/design/06-planning/` — 14 files
 - `docs/design/06-planning/modules/` — 9 files
@@ -1570,18 +1351,18 @@
 - `packages/test-fixtures/` — 3 files
 - `packages/test-fixtures/fixtures/` — 1 files
 - `packages/test-fixtures/src/` — 1 files
-- `tests/` — 34 files
+- `tests/` — 41 files
 - `tests/contract/` — 9 files
 - `tests/contract/context/` — 1 files
 - `tests/p0/` — 7 files
 - `tests/p1/` — 1 files
-- `tests/p2/` — 1 files
-- `tests/p3/` — 2 files
-- `tests/p4/` — 2 files
+- `tests/p2/` — 2 files
+- `tests/p3/` — 3 files
+- `tests/p4/` — 5 files
 - `tests/p5/` — 1 files
 - `tests/p6/` — 3 files
 - `tests/p7/` — 1 files
-- `tests/p8/` — 7 files
+- `tests/p8/` — 9 files
 - `tools/` — 27 files
 - `workers/` — 7 files
 - `workers/evaluation/` — 4 files
@@ -1608,7 +1389,7 @@
 
 ### .gitignore
 
-- [.gitignore](.gitignore) — 60 bytes; .gitignore; 修改于 2026-10-20 23:42:04
+- [.gitignore](.gitignore) — 227 bytes; .gitignore; 修改于 2026-10-26 06:51:34
 
 ### .gitmodules
 
@@ -1616,7 +1397,7 @@
 
 ### .prettierignore
 
-- [.prettierignore](.prettierignore) — 104 bytes; .prettierignore; 修改于 2026-10-21 08:54:05
+- [.prettierignore](.prettierignore) — 119 bytes; .prettierignore; 修改于 2026-10-25 12:50:14
 
 ### .prettierrc.json
 
@@ -1624,11 +1405,13 @@
 
 ### apps
 
-- [apps/api-gateway/package.json](apps/api-gateway/package.json) — 576 bytes; .json; 修改于 2026-10-23 07:39:32
-- [apps/api-gateway/src/http.ts](apps/api-gateway/src/http.ts) — 5563 bytes; .ts; 修改于 2026-10-23 08:13:21
+- [apps/api-gateway/package.json](apps/api-gateway/package.json) — 672 bytes; .json; 修改于 2026-10-25 21:33:16
+- [apps/api-gateway/src/http.ts](apps/api-gateway/src/http.ts) — 7729 bytes; .ts; 修改于 2026-10-25 23:45:36
 - [apps/api-gateway/src/index.ts](apps/api-gateway/src/index.ts) — 85 bytes; .ts; 修改于 2026-10-21 12:54:16
 - [apps/api-gateway/src/router.ts](apps/api-gateway/src/router.ts) — 2590 bytes; .ts; 修改于 2026-10-23 07:32:55
-- [apps/api-gateway/src/server.ts](apps/api-gateway/src/server.ts) — 29268 bytes; .ts; 修改于 2026-10-23 08:13:21
+- [apps/api-gateway/src/runtime-persistence.ts](apps/api-gateway/src/runtime-persistence.ts) — 7767 bytes; .ts; 修改于 2026-10-24 14:28:33
+- [apps/api-gateway/src/server.ts](apps/api-gateway/src/server.ts) — 52424 bytes; .ts; 修改于 2026-10-26 00:58:37
+- [apps/api-gateway/src/session-persistence.ts](apps/api-gateway/src/session-persistence.ts) — 13692 bytes; .ts; 修改于 2026-10-25 22:37:21
 - [apps/artifact-service/package.json](apps/artifact-service/package.json) — 329 bytes; .json; 修改于 2026-10-21 06:48:32
 - [apps/artifact-service/src/index.ts](apps/artifact-service/src/index.ts) — 6959 bytes; .ts; 修改于 2026-10-21 06:54:07
 - [apps/audit-service/package.json](apps/audit-service/package.json) — 363 bytes; .json; 修改于 2026-10-21 07:08:47
@@ -1640,8 +1423,10 @@
 - [apps/context-bridge/src/outbox/index.ts](apps/context-bridge/src/outbox/index.ts) — 29 bytes; .ts; 修改于 2026-10-21 06:58:13
 - [apps/context-bridge/src/outbox/sqlite.ts](apps/context-bridge/src/outbox/sqlite.ts) — 7123 bytes; .ts; 修改于 2026-10-21 06:58:43
 - [apps/context-service/package.json](apps/context-service/package.json) — 416 bytes; .json; 修改于 2026-10-21 06:48:32
-- [apps/context-service/src/index.ts](apps/context-service/src/index.ts) — 122 bytes; .ts; 修改于 2026-10-21 06:43:43
-- [apps/context-service/src/memory-adapter/adapter.ts](apps/context-service/src/memory-adapter/adapter.ts) — 6457 bytes; .ts; 修改于 2026-10-21 06:54:07
+- [apps/context-service/src/index.ts](apps/context-service/src/index.ts) — 226 bytes; .ts; 修改于 2026-10-25 11:09:27
+- [apps/context-service/src/memory-adapter/adapter.ts](apps/context-service/src/memory-adapter/adapter.ts) — 7432 bytes; .ts; 修改于 2026-10-25 12:55:28
+- [apps/context-service/src/memory-adapter/mcp-provider.ts](apps/context-service/src/memory-adapter/mcp-provider.ts) — 15915 bytes; .ts; 修改于 2026-10-25 12:11:33
+- [apps/context-service/src/memory-adapter/provider-factory.ts](apps/context-service/src/memory-adapter/provider-factory.ts) — 1001 bytes; .ts; 修改于 2026-10-25 11:57:40
 - [apps/context-service/src/resources/service.ts](apps/context-service/src/resources/service.ts) — 61 bytes; .ts; 修改于 2026-10-21 06:43:43
 - [apps/context-service/src/search/service.ts](apps/context-service/src/search/service.ts) — 2807 bytes; .ts; 修改于 2026-10-21 06:54:07
 - [apps/integration-orchestrator/package.json](apps/integration-orchestrator/package.json) — 629 bytes; .json; 修改于 2026-10-21 23:21:25
@@ -1658,20 +1443,20 @@
 - [apps/plane-connector/src/dedup/ledger.ts](apps/plane-connector/src/dedup/ledger.ts) — 2907 bytes; .ts; 修改于 2026-10-21 06:39:07
 - [apps/plane-connector/src/index.ts](apps/plane-connector/src/index.ts) — 198 bytes; .ts; 修改于 2026-10-21 06:38:58
 - [apps/plane-connector/src/plane-client/client.ts](apps/plane-connector/src/plane-client/client.ts) — 3806 bytes; .ts; 修改于 2026-10-21 06:39:07
-- [apps/plane-connector/src/project-sync/projection.ts](apps/plane-connector/src/project-sync/projection.ts) — 2316 bytes; .ts; 修改于 2026-10-21 06:39:46
+- [apps/plane-connector/src/project-sync/projection.ts](apps/plane-connector/src/project-sync/projection.ts) — 4227 bytes; .ts; 修改于 2026-10-26 01:02:10
 - [apps/plane-connector/src/webhook/security.ts](apps/plane-connector/src/webhook/security.ts) — 4448 bytes; .ts; 修改于 2026-10-21 06:39:07
 - [apps/policy-service/package.json](apps/policy-service/package.json) — 364 bytes; .json; 修改于 2026-10-21 07:08:47
 - [apps/policy-service/src/index.ts](apps/policy-service/src/index.ts) — 30 bytes; .ts; 修改于 2026-10-21 07:07:40
 - [apps/policy-service/src/service.ts](apps/policy-service/src/service.ts) — 4493 bytes; .ts; 修改于 2026-10-23 07:33:44
 - [apps/search-service/package.json](apps/search-service/package.json) — 214 bytes; .json; 修改于 2026-10-21 07:13:18
 - [apps/search-service/src/index.ts](apps/search-service/src/index.ts) — 30 bytes; .ts; 修改于 2026-10-21 07:12:00
-- [apps/search-service/src/service.ts](apps/search-service/src/service.ts) — 2638 bytes; .ts; 修改于 2026-10-21 07:13:18
+- [apps/search-service/src/service.ts](apps/search-service/src/service.ts) — 3105 bytes; .ts; 修改于 2026-10-26 00:56:39
 - [apps/session-service/package.json](apps/session-service/package.json) — 416 bytes; .json; 修改于 2026-10-21 06:58:42
 - [apps/session-service/src/checkpoint/index.ts](apps/session-service/src/checkpoint/index.ts) — 30 bytes; .ts; 修改于 2026-10-21 06:57:24
-- [apps/session-service/src/checkpoint/service.ts](apps/session-service/src/checkpoint/service.ts) — 10111 bytes; .ts; 修改于 2026-10-21 06:58:43
+- [apps/session-service/src/checkpoint/service.ts](apps/session-service/src/checkpoint/service.ts) — 12639 bytes; .ts; 修改于 2026-10-25 22:16:04
 - [apps/session-service/src/index.ts](apps/session-service/src/index.ts) — 75 bytes; .ts; 修改于 2026-10-21 06:57:24
 - [apps/session-service/src/session/index.ts](apps/session-service/src/session/index.ts) — 30 bytes; .ts; 修改于 2026-10-21 06:57:03
-- [apps/session-service/src/session/service.ts](apps/session-service/src/session/service.ts) — 8131 bytes; .ts; 修改于 2026-10-21 06:59:37
+- [apps/session-service/src/session/service.ts](apps/session-service/src/session/service.ts) — 11280 bytes; .ts; 修改于 2026-10-25 22:15:25
 - [apps/sync-service/package.json](apps/sync-service/package.json) — 364 bytes; .json; 修改于 2026-10-21 06:58:43
 - [apps/sync-service/src/conflict/index.ts](apps/sync-service/src/conflict/index.ts) — 30 bytes; .ts; 修改于 2026-10-21 06:57:49
 - [apps/sync-service/src/conflict/service.ts](apps/sync-service/src/conflict/service.ts) — 5244 bytes; .ts; 修改于 2026-10-21 06:58:43
@@ -1689,1189 +1474,18 @@
 - [apps/workctx-cli/src/cli.ts](apps/workctx-cli/src/cli.ts) — 2667 bytes; .ts; 修改于 2026-10-21 07:02:33
 - [apps/workctx-cli/src/index.ts](apps/workctx-cli/src/index.ts) — 26 bytes; .ts; 修改于 2026-10-21 07:01:47
 
-### artifacts
-
-- [artifacts/command-reports/ai-memory-live-probe-20261021235731/verification.json](artifacts/command-reports/ai-memory-live-probe-20261021235731/verification.json) — 849 bytes; .json; 修改于 2026-10-22 07:58:05
-- [artifacts/command-reports/ai-memory-live-probe-20261021235731/verification.txt](artifacts/command-reports/ai-memory-live-probe-20261021235731/verification.txt) — 314 bytes; .txt; 修改于 2026-10-22 07:58:05
-- [artifacts/command-reports/ai-memory-live-probe-current/ai-memory-live-20261021235946-ai-memory.json](artifacts/command-reports/ai-memory-live-probe-current/ai-memory-live-20261021235946-ai-memory.json) — 1222 bytes; .json; 修改于 2026-10-22 07:59:48
-- [artifacts/command-reports/ai-memory-live-probe-current/ai-memory-live-20261021235946-verification.txt](artifacts/command-reports/ai-memory-live-probe-current/ai-memory-live-20261021235946-verification.txt) — 314 bytes; .txt; 修改于 2026-10-22 07:59:48
-- [artifacts/command-reports/ai-memory-live-probe-final/ai-memory-live-20261022000053-ai-memory.json](artifacts/command-reports/ai-memory-live-probe-final/ai-memory-live-20261022000053-ai-memory.json) — 1222 bytes; .json; 修改于 2026-10-22 08:01:06
-- [artifacts/command-reports/ai-memory-live-probe-final/ai-memory-live-20261022000053-verification.txt](artifacts/command-reports/ai-memory-live-probe-final/ai-memory-live-20261022000053-verification.txt) — 314 bytes; .txt; 修改于 2026-10-22 08:01:06
-- [artifacts/command-reports/container-vulnerability-scan-20261021231800/first-attempt-failure.txt](artifacts/command-reports/container-vulnerability-scan-20261021231800/first-attempt-failure.txt) — 139 bytes; .txt; 修改于 2026-10-22 07:20:11
-- [artifacts/command-reports/container-vulnerability-scan-20261021231800/planemem-platform.tar](artifacts/command-reports/container-vulnerability-scan-20261021231800/planemem-platform.tar) — 62606336 bytes; .tar; 修改于 2026-10-22 07:20:15
-- [artifacts/command-reports/container-vulnerability-scan-20261021231800/planemem-platform-vuln.json](artifacts/command-reports/container-vulnerability-scan-20261021231800/planemem-platform-vuln.json) — 55132 bytes; .json; 修改于 2026-10-22 07:20:30
-- [artifacts/command-reports/container-vulnerability-scan-20261021231800/verification.txt](artifacts/command-reports/container-vulnerability-scan-20261021231800/verification.txt) — 140 bytes; .txt; 修改于 2026-10-22 07:20:38
-- [artifacts/command-reports/evaluation-20261021002029-evaluation.json](artifacts/command-reports/evaluation-20261021002029-evaluation.json) — 743 bytes; .json; 修改于 2026-10-21 08:20:29
-- [artifacts/command-reports/evaluation-20261021234836-evaluation.json](artifacts/command-reports/evaluation-20261021234836-evaluation.json) — 743 bytes; .json; 修改于 2026-10-22 07:48:36
-- [artifacts/command-reports/events.json](artifacts/command-reports/events.json) — 844 bytes; .json; 修改于 2026-10-21 22:54:50
-- [artifacts/command-reports/final-client-switch/functional-20261021224329-functional.json](artifacts/command-reports/final-client-switch/functional-20261021224329-functional.json) — 1936 bytes; .json; 修改于 2026-10-22 06:43:30
-- [artifacts/command-reports/final-client-switch-live-current/functional-20261021231452-functional.json](artifacts/command-reports/final-client-switch-live-current/functional-20261021231452-functional.json) — 445 bytes; .json; 修改于 2026-10-22 07:14:52
-- [artifacts/command-reports/final-client-switch-live-current2/functional-20261021231521-functional.json](artifacts/command-reports/final-client-switch-live-current2/functional-20261021231521-functional.json) — 549 bytes; .json; 修改于 2026-10-22 07:15:21
-- [artifacts/command-reports/final-client-switch-live-probed/functional-20261021235245-functional.json](artifacts/command-reports/final-client-switch-live-probed/functional-20261021235245-functional.json) — 2706 bytes; .json; 修改于 2026-10-22 07:52:45
-- [artifacts/command-reports/final-client-switch-live-transport/functional-20261022001530-functional.json](artifacts/command-reports/final-client-switch-live-transport/functional-20261022001530-functional.json) — 4421 bytes; .json; 修改于 2026-10-22 08:15:30
-- [artifacts/command-reports/final-client-switch-live-transport/functional-transport-client-functional.json](artifacts/command-reports/final-client-switch-live-transport/functional-transport-client-functional.json) — 4412 bytes; .json; 修改于 2026-10-22 08:16:20
-- [artifacts/command-reports/final-client-switch-offline-probed/functional-20261021235456-functional.json](artifacts/command-reports/final-client-switch-offline-probed/functional-20261021235456-functional.json) — 1936 bytes; .json; 修改于 2026-10-22 07:54:56
-- [artifacts/command-reports/final-evaluation/evaluation-20261021224329-evaluation.json](artifacts/command-reports/final-evaluation/evaluation-20261021224329-evaluation.json) — 743 bytes; .json; 修改于 2026-10-22 06:43:29
-- [artifacts/command-reports/final-live-e2e-client-current/final-live-e2e-client-current-functional.json](artifacts/command-reports/final-live-e2e-client-current/final-live-e2e-client-current-functional.json) — 4464 bytes; .json; 修改于 2026-10-22 12:27:08
-- [artifacts/command-reports/final-live-e2e-plane-current/final-live-e2e-plane-current-functional.json](artifacts/command-reports/final-live-e2e-plane-current/final-live-e2e-plane-current-functional.json) — 4438 bytes; .json; 修改于 2026-10-22 12:27:06
-- [artifacts/command-reports/final-performance/performance-20261021224329-performance.json](artifacts/command-reports/final-performance/performance-20261021224329-performance.json) — 612 bytes; .json; 修改于 2026-10-22 06:43:29
-- [artifacts/command-reports/final-performance-devtest/final-performance-devtest-performance.json](artifacts/command-reports/final-performance-devtest/final-performance-devtest-performance.json) — 657 bytes; .json; 修改于 2026-10-22 22:18:26
-- [artifacts/command-reports/final-plan-audit-current10/final-plan-audit-current10-plan-audit.json](artifacts/command-reports/final-plan-audit-current10/final-plan-audit-current10-plan-audit.json) — 768 bytes; .json; 修改于 2026-10-23 07:53:05
-- [artifacts/command-reports/final-plan-audit-current11/final-plan-audit-current11-plan-audit.json](artifacts/command-reports/final-plan-audit-current11/final-plan-audit-current11-plan-audit.json) — 768 bytes; .json; 修改于 2026-10-23 08:25:46
-- [artifacts/command-reports/final-plan-audit-current12/final-plan-audit-current12-plan-audit.json](artifacts/command-reports/final-plan-audit-current12/final-plan-audit-current12-plan-audit.json) — 768 bytes; .json; 修改于 2026-10-23 08:43:24
-- [artifacts/command-reports/final-plan-audit-current16/final-plan-audit-current16-plan-audit.json](artifacts/command-reports/final-plan-audit-current16/final-plan-audit-current16-plan-audit.json) — 768 bytes; .json; 修改于 2026-10-23 09:20:39
-- [artifacts/command-reports/final-plan-audit-current17/final-plan-audit-current17-plan-audit.json](artifacts/command-reports/final-plan-audit-current17/final-plan-audit-current17-plan-audit.json) — 768 bytes; .json; 修改于 2026-10-23 09:27:19
-- [artifacts/command-reports/final-plan-audit-current18/final-plan-audit-current18-plan-audit.json](artifacts/command-reports/final-plan-audit-current18/final-plan-audit-current18-plan-audit.json) — 768 bytes; .json; 修改于 2026-10-23 11:05:53
-- [artifacts/command-reports/final-plan-audit-current19/final-plan-audit-current19-plan-audit.json](artifacts/command-reports/final-plan-audit-current19/final-plan-audit-current19-plan-audit.json) — 768 bytes; .json; 修改于 2026-10-23 12:15:08
-- [artifacts/command-reports/final-plan-audit-current22/final-plan-audit-current22-plan-audit.json](artifacts/command-reports/final-plan-audit-current22/final-plan-audit-current22-plan-audit.json) — 768 bytes; .json; 修改于 2026-10-23 12:23:54
-- [artifacts/command-reports/final-plan-audit-current8/final-plan-audit-current8-plan-audit.json](artifacts/command-reports/final-plan-audit-current8/final-plan-audit-current8-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 07:24:20
-- [artifacts/command-reports/final-plan-audit-current9/final-plan-audit-current9-plan-audit.json](artifacts/command-reports/final-plan-audit-current9/final-plan-audit-current9-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 07:27:59
-- [artifacts/command-reports/final-plan-audit-devtest/final-plan-audit-devtest-plan-audit.json](artifacts/command-reports/final-plan-audit-devtest/final-plan-audit-devtest-plan-audit.json) — 764 bytes; .json; 修改于 2026-10-22 22:19:46
-- [artifacts/command-reports/final-plan-audit-devtest-25/final-plan-audit-devtest-25-plan-audit.json](artifacts/command-reports/final-plan-audit-devtest-25/final-plan-audit-devtest-25-plan-audit.json) — 770 bytes; .json; 修改于 2026-10-22 22:29:46
-- [artifacts/command-reports/final-plan-audit-final/final-plan-audit-final-plan-audit.json](artifacts/command-reports/final-plan-audit-final/final-plan-audit-final-plan-audit.json) — 760 bytes; .json; 修改于 2026-10-22 23:16:10
-- [artifacts/command-reports/final-plan-audit-identity-audit-current7/final-plan-audit-identity-audit-current7-plan-audit.json](artifacts/command-reports/final-plan-audit-identity-audit-current7/final-plan-audit-identity-audit-current7-plan-audit.json) — 796 bytes; .json; 修改于 2026-10-23 07:19:49
-- [artifacts/command-reports/final-plan-audit-node-recovery/final-plan-audit-node-recovery-plan-audit.json](artifacts/command-reports/final-plan-audit-node-recovery/final-plan-audit-node-recovery-plan-audit.json) — 776 bytes; .json; 修改于 2026-10-22 23:07:11
-- [artifacts/command-reports/final-plan-audit-node-recovery-verify/final-plan-audit-node-recovery-verify-plan-audit.json](artifacts/command-reports/final-plan-audit-node-recovery-verify/final-plan-audit-node-recovery-verify-plan-audit.json) — 790 bytes; .json; 修改于 2026-10-22 23:13:43
-- [artifacts/command-reports/final-plan-audit-wavemate-business-recovery-current6/final-plan-audit-wavemate-business-recovery-current6-plan-audit.json](artifacts/command-reports/final-plan-audit-wavemate-business-recovery-current6/final-plan-audit-wavemate-business-recovery-current6-plan-audit.json) — 820 bytes; .json; 修改于 2026-10-23 07:11:10
-- [artifacts/command-reports/final-plan-audit-wavemate-current4/final-plan-audit-wavemate-current4-plan-audit.json](artifacts/command-reports/final-plan-audit-wavemate-current4/final-plan-audit-wavemate-current4-plan-audit.json) — 784 bytes; .json; 修改于 2026-10-23 06:02:15
-- [artifacts/command-reports/final-plan-audit-wavemate-dependency-matrix-vulnerability-command/final-plan-audit-wavemate-dependency-matrix-vulnerability-command-plan-audit.json](artifacts/command-reports/final-plan-audit-wavemate-dependency-matrix-vulnerability-command/final-plan-audit-wavemate-dependency-matrix-vulnerability-command-plan-audit.json) — 846 bytes; .json; 修改于 2026-10-23 06:43:56
-- [artifacts/command-reports/final-plan-audit-wavemate-dependency-matrix-vulnerability-command2/final-plan-audit-wavemate-dependency-matrix-vulnerability-command2-plan-audit.json](artifacts/command-reports/final-plan-audit-wavemate-dependency-matrix-vulnerability-command2/final-plan-audit-wavemate-dependency-matrix-vulnerability-command2-plan-audit.json) — 848 bytes; .json; 修改于 2026-10-23 06:44:25
-- [artifacts/command-reports/final-plan-audit-wavemate-dependency-matrix-vulnerability-command3/final-plan-audit-wavemate-dependency-matrix-vulnerability-command3-plan-audit.json](artifacts/command-reports/final-plan-audit-wavemate-dependency-matrix-vulnerability-command3/final-plan-audit-wavemate-dependency-matrix-vulnerability-command3-plan-audit.json) — 848 bytes; .json; 修改于 2026-10-23 06:48:40
-- [artifacts/command-reports/final-plan-audit-wavemate-dependency-matrix-vulnerability-command4/final-plan-audit-wavemate-dependency-matrix-vulnerability-command4-plan-audit.json](artifacts/command-reports/final-plan-audit-wavemate-dependency-matrix-vulnerability-command4/final-plan-audit-wavemate-dependency-matrix-vulnerability-command4-plan-audit.json) — 848 bytes; .json; 修改于 2026-10-23 06:51:49
-- [artifacts/command-reports/final-plan-audit-wavemate-e2e/final-plan-audit-wavemate-e2e-plan-audit.json](artifacts/command-reports/final-plan-audit-wavemate-e2e/final-plan-audit-wavemate-e2e-plan-audit.json) — 774 bytes; .json; 修改于 2026-10-23 06:08:20
-- [artifacts/command-reports/final-plan-audit-wavemate-resilience-current5/final-plan-audit-wavemate-resilience-current5-plan-audit.json](artifacts/command-reports/final-plan-audit-wavemate-resilience-current5/final-plan-audit-wavemate-resilience-current5-plan-audit.json) — 806 bytes; .json; 修改于 2026-10-23 07:01:52
-- [artifacts/command-reports/final-plan-audit-wavemate-restore/final-plan-audit-wavemate-restore-plan-audit.json](artifacts/command-reports/final-plan-audit-wavemate-restore/final-plan-audit-wavemate-restore-plan-audit.json) — 782 bytes; .json; 修改于 2026-10-22 23:53:58
-- [artifacts/command-reports/final-plan-audit-wavemate-sbom/final-plan-audit-wavemate-sbom-plan-audit.json](artifacts/command-reports/final-plan-audit-wavemate-sbom/final-plan-audit-wavemate-sbom-plan-audit.json) — 776 bytes; .json; 修改于 2026-10-23 06:18:06
-- [artifacts/command-reports/final-plan-audit-wavemate-sbom-all-images/final-plan-audit-wavemate-sbom-all-images-plan-audit.json](artifacts/command-reports/final-plan-audit-wavemate-sbom-all-images/final-plan-audit-wavemate-sbom-all-images-plan-audit.json) — 798 bytes; .json; 修改于 2026-10-23 06:30:01
-- [artifacts/command-reports/final-plane-to-mcp/functional-20261021224329-functional.json](artifacts/command-reports/final-plane-to-mcp/functional-20261021224329-functional.json) — 1619 bytes; .json; 修改于 2026-10-22 06:43:30
-- [artifacts/command-reports/final-plane-to-mcp-devtest/final-plane-to-mcp-devtest-functional.json](artifacts/command-reports/final-plane-to-mcp-devtest/final-plane-to-mcp-devtest-functional.json) — 1625 bytes; .json; 修改于 2026-10-22 22:12:15
-- [artifacts/command-reports/final-plane-to-mcp-live2/functional-20261021225322-functional.json](artifacts/command-reports/final-plane-to-mcp-live2/functional-20261021225322-functional.json) — 445 bytes; .json; 修改于 2026-10-22 06:53:23
-- [artifacts/command-reports/final-plane-to-mcp-live-current/functional-20261021231521-functional.json](artifacts/command-reports/final-plane-to-mcp-live-current/functional-20261021231521-functional.json) — 549 bytes; .json; 修改于 2026-10-22 07:15:21
-- [artifacts/command-reports/final-plane-to-mcp-live-probed/functional-20261021235245-functional.json](artifacts/command-reports/final-plane-to-mcp-live-probed/functional-20261021235245-functional.json) — 2706 bytes; .json; 修改于 2026-10-22 07:52:45
-- [artifacts/command-reports/final-plane-to-mcp-live-transport/functional-20261022001530-functional.json](artifacts/command-reports/final-plane-to-mcp-live-transport/functional-20261022001530-functional.json) — 2992 bytes; .json; 修改于 2026-10-22 08:15:30
-- [artifacts/command-reports/final-plane-to-mcp-live-transport/functional-transport-plane-functional.json](artifacts/command-reports/final-plane-to-mcp-live-transport/functional-transport-plane-functional.json) — 4386 bytes; .json; 修改于 2026-10-22 08:16:12
-- [artifacts/command-reports/final-plane-to-mcp-offline-probed/functional-20261021235456-functional.json](artifacts/command-reports/final-plane-to-mcp-offline-probed/functional-20261021235456-functional.json) — 1619 bytes; .json; 修改于 2026-10-22 07:54:56
-- [artifacts/command-reports/final-rc-readiness/plan-audit-20261021225125-plan-audit.json](artifacts/command-reports/final-rc-readiness/plan-audit-20261021225125-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 06:51:25
-- [artifacts/command-reports/final-rc-readiness/rc-readiness-20261021225125-rc-readiness.json](artifacts/command-reports/final-rc-readiness/rc-readiness-20261021225125-rc-readiness.json) — 1536 bytes; .json; 修改于 2026-10-22 06:51:25
-- [artifacts/command-reports/final-rc-readiness-devtest/final-rc-readiness-devtest-rc-readiness.json](artifacts/command-reports/final-rc-readiness-devtest/final-rc-readiness-devtest-rc-readiness.json) — 1472 bytes; .json; 修改于 2026-10-22 22:17:58
-- [artifacts/command-reports/final-rc-readiness-devtest/plan-audit-20261022141757-plan-audit.json](artifacts/command-reports/final-rc-readiness-devtest/plan-audit-20261022141757-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 22:17:57
-- [artifacts/command-reports/final-rc-readiness-live/plan-audit-20261021225156-plan-audit.json](artifacts/command-reports/final-rc-readiness-live/plan-audit-20261021225156-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 06:51:56
-- [artifacts/command-reports/final-rc-readiness-live/rc-readiness-20261021225156-rc-readiness.json](artifacts/command-reports/final-rc-readiness-live/rc-readiness-20261021225156-rc-readiness.json) — 1456 bytes; .json; 修改于 2026-10-22 06:51:56
-- [artifacts/command-reports/final-rc-readiness-live-autohelm/plan-audit-20261021231303-plan-audit.json](artifacts/command-reports/final-rc-readiness-live-autohelm/plan-audit-20261021231303-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 07:13:03
-- [artifacts/command-reports/final-rc-readiness-live-autohelm/rc-readiness-20261021231303-rc-readiness.json](artifacts/command-reports/final-rc-readiness-live-autohelm/rc-readiness-20261021231303-rc-readiness.json) — 1388 bytes; .json; 修改于 2026-10-22 07:13:04
-- [artifacts/command-reports/final-rc-readiness-live-helm/plan-audit-20261021230851-plan-audit.json](artifacts/command-reports/final-rc-readiness-live-helm/plan-audit-20261021230851-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 07:08:51
-- [artifacts/command-reports/final-rc-readiness-live-helm/rc-readiness-20261021230851-rc-readiness.json](artifacts/command-reports/final-rc-readiness-live-helm/rc-readiness-20261021230851-rc-readiness.json) — 1388 bytes; .json; 修改于 2026-10-22 07:08:52
-- [artifacts/command-reports/final-rc-readiness-post-index/plan-audit-20261022000310-plan-audit.json](artifacts/command-reports/final-rc-readiness-post-index/plan-audit-20261022000310-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 08:03:10
-- [artifacts/command-reports/final-rc-readiness-post-index/rc-readiness-20261022000310-rc-readiness.json](artifacts/command-reports/final-rc-readiness-post-index/rc-readiness-20261022000310-rc-readiness.json) — 1388 bytes; .json; 修改于 2026-10-22 08:03:11
-- [artifacts/command-reports/final-rc-readiness-security-fixed/plan-audit-20261021234626-plan-audit.json](artifacts/command-reports/final-rc-readiness-security-fixed/plan-audit-20261021234626-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 07:46:26
-- [artifacts/command-reports/final-rc-readiness-security-fixed/rc-readiness-20261021234626-rc-readiness.json](artifacts/command-reports/final-rc-readiness-security-fixed/rc-readiness-20261021234626-rc-readiness.json) — 1388 bytes; .json; 修改于 2026-10-22 07:46:27
-- [artifacts/command-reports/final-release/release-20261021224329-release.json](artifacts/command-reports/final-release/release-20261021224329-release.json) — 578 bytes; .json; 修改于 2026-10-22 06:43:29
-- [artifacts/command-reports/final-release-live-post-index/release-20261022000310-ai-memory.tar.gz](artifacts/command-reports/final-release-live-post-index/release-20261022000310-ai-memory.tar.gz) — 83452421 bytes; .gz; 修改于 2026-10-22 08:03:31
-- [artifacts/command-reports/final-release-live-post-index/release-20261022000310-object-storage.tar.gz](artifacts/command-reports/final-release-live-post-index/release-20261022000310-object-storage.tar.gz) — 7572 bytes; .gz; 修改于 2026-10-22 08:03:32
-- [artifacts/command-reports/final-release-live-post-index/release-20261022000310-postgres.sql](artifacts/command-reports/final-release-live-post-index/release-20261022000310-postgres.sql) — 457134 bytes; .sql; 修改于 2026-10-22 08:03:12
-- [artifacts/command-reports/final-release-live-post-index/release-20261022000310-release.json](artifacts/command-reports/final-release-live-post-index/release-20261022000310-release.json) — 3670 bytes; .json; 修改于 2026-10-22 08:03:34
-- [artifacts/command-reports/final-release-restore-autohelm/final-release-restore-autohelm-ai-memory.tar.gz](artifacts/command-reports/final-release-restore-autohelm/final-release-restore-autohelm-ai-memory.tar.gz) — 83477786 bytes; .gz; 修改于 2026-10-22 22:16:15
-- [artifacts/command-reports/final-release-restore-autohelm/final-release-restore-autohelm-object-storage.tar.gz](artifacts/command-reports/final-release-restore-autohelm/final-release-restore-autohelm-object-storage.tar.gz) — 5402 bytes; .gz; 修改于 2026-10-22 22:16:16
-- [artifacts/command-reports/final-release-restore-autohelm/final-release-restore-autohelm-postgres.sql](artifacts/command-reports/final-release-restore-autohelm/final-release-restore-autohelm-postgres.sql) — 457134 bytes; .sql; 修改于 2026-10-22 22:15:55
-- [artifacts/command-reports/final-release-restore-autohelm/final-release-restore-autohelm-release.json](artifacts/command-reports/final-release-restore-autohelm/final-release-restore-autohelm-release.json) — 4853 bytes; .json; 修改于 2026-10-22 22:16:18
-- [artifacts/command-reports/final-release-restore-autohelm/final-release-restore-autohelm-sqlite-outbox.sqlite](artifacts/command-reports/final-release-restore-autohelm/final-release-restore-autohelm-sqlite-outbox.sqlite) — 16384 bytes; .sqlite; 修改于 2026-10-22 22:16:16
-- [artifacts/command-reports/final-release-restore-autohelm/final-release-restore-autohelm-sqlite-sqlite.json](artifacts/command-reports/final-release-restore-autohelm/final-release-restore-autohelm-sqlite-sqlite.json) — 870 bytes; .json; 修改于 2026-10-22 22:16:16
-- [artifacts/command-reports/final-release-restore-autohelm/final-release-restore-autohelm-sqlite-verification.json](artifacts/command-reports/final-release-restore-autohelm/final-release-restore-autohelm-sqlite-verification.json) — 870 bytes; .json; 修改于 2026-10-22 22:16:16
-- [artifacts/command-reports/final-release-restore-devtest/final-release-restore-devtest-ai-memory.tar.gz](artifacts/command-reports/final-release-restore-devtest/final-release-restore-devtest-ai-memory.tar.gz) — 83477621 bytes; .gz; 修改于 2026-10-22 22:12:38
-- [artifacts/command-reports/final-release-restore-devtest/final-release-restore-devtest-object-storage.tar.gz](artifacts/command-reports/final-release-restore-devtest/final-release-restore-devtest-object-storage.tar.gz) — 7600 bytes; .gz; 修改于 2026-10-22 22:12:39
-- [artifacts/command-reports/final-release-restore-devtest/final-release-restore-devtest-postgres.sql](artifacts/command-reports/final-release-restore-devtest/final-release-restore-devtest-postgres.sql) — 457134 bytes; .sql; 修改于 2026-10-22 22:12:17
-- [artifacts/command-reports/final-release-restore-devtest/final-release-restore-devtest-release.json](artifacts/command-reports/final-release-restore-devtest/final-release-restore-devtest-release.json) — 4842 bytes; .json; 修改于 2026-10-22 22:12:42
-- [artifacts/command-reports/final-release-restore-devtest/final-release-restore-devtest-sqlite-outbox.sqlite](artifacts/command-reports/final-release-restore-devtest/final-release-restore-devtest-sqlite-outbox.sqlite) — 16384 bytes; .sqlite; 修改于 2026-10-22 22:12:40
-- [artifacts/command-reports/final-release-restore-devtest/final-release-restore-devtest-sqlite-sqlite.json](artifacts/command-reports/final-release-restore-devtest/final-release-restore-devtest-sqlite-sqlite.json) — 866 bytes; .json; 修改于 2026-10-22 22:12:40
-- [artifacts/command-reports/final-release-restore-devtest/final-release-restore-devtest-sqlite-verification.json](artifacts/command-reports/final-release-restore-devtest/final-release-restore-devtest-sqlite-verification.json) — 866 bytes; .json; 修改于 2026-10-22 22:12:40
-- [artifacts/command-reports/final-release-restore-devtest-helm/final-release-restore-devtest-helm-ai-memory.tar.gz](artifacts/command-reports/final-release-restore-devtest-helm/final-release-restore-devtest-helm-ai-memory.tar.gz) — 83477684 bytes; .gz; 修改于 2026-10-22 22:13:52
-- [artifacts/command-reports/final-release-restore-devtest-helm/final-release-restore-devtest-helm-object-storage.tar.gz](artifacts/command-reports/final-release-restore-devtest-helm/final-release-restore-devtest-helm-object-storage.tar.gz) — 8655 bytes; .gz; 修改于 2026-10-22 22:13:53
-- [artifacts/command-reports/final-release-restore-devtest-helm/final-release-restore-devtest-helm-postgres.sql](artifacts/command-reports/final-release-restore-devtest-helm/final-release-restore-devtest-helm-postgres.sql) — 457134 bytes; .sql; 修改于 2026-10-22 22:13:32
-- [artifacts/command-reports/final-release-restore-devtest-helm/final-release-restore-devtest-helm-release.json](artifacts/command-reports/final-release-restore-devtest-helm/final-release-restore-devtest-helm-release.json) — 4965 bytes; .json; 修改于 2026-10-22 22:13:56
-- [artifacts/command-reports/final-release-restore-devtest-helm/final-release-restore-devtest-helm-sqlite-outbox.sqlite](artifacts/command-reports/final-release-restore-devtest-helm/final-release-restore-devtest-helm-sqlite-outbox.sqlite) — 16384 bytes; .sqlite; 修改于 2026-10-22 22:13:55
-- [artifacts/command-reports/final-release-restore-devtest-helm/final-release-restore-devtest-helm-sqlite-sqlite.json](artifacts/command-reports/final-release-restore-devtest-helm/final-release-restore-devtest-helm-sqlite-sqlite.json) — 886 bytes; .json; 修改于 2026-10-22 22:13:55
-- [artifacts/command-reports/final-release-restore-devtest-helm/final-release-restore-devtest-helm-sqlite-verification.json](artifacts/command-reports/final-release-restore-devtest-helm/final-release-restore-devtest-helm-sqlite-verification.json) — 886 bytes; .json; 修改于 2026-10-22 22:13:55
-- [artifacts/command-reports/final-resilience/resilience-20261021224329-resilience.json](artifacts/command-reports/final-resilience/resilience-20261021224329-resilience.json) — 1413 bytes; .json; 修改于 2026-10-22 06:43:29
-- [artifacts/command-reports/final-resilience-devtest/final-resilience-devtest-resilience.json](artifacts/command-reports/final-resilience-devtest/final-resilience-devtest-resilience.json) — 345 bytes; .json; 修改于 2026-10-22 22:18:23
-- [artifacts/command-reports/final-resilience-devtest-dependency/final-resilience-devtest-dependency-resilience.json](artifacts/command-reports/final-resilience-devtest-dependency/final-resilience-devtest-dependency-resilience.json) — 1331 bytes; .json; 修改于 2026-10-22 22:19:17
-- [artifacts/command-reports/final-security/security-20261021224329-security.json](artifacts/command-reports/final-security/security-20261021224329-security.json) — 523 bytes; .json; 修改于 2026-10-22 06:43:29
-- [artifacts/command-reports/final-security-devtest/final-security-devtest-security.json](artifacts/command-reports/final-security-devtest/final-security-devtest-security.json) — 1464 bytes; .json; 修改于 2026-10-22 22:18:24
-- [artifacts/command-reports/final-verify-client-functional.json](artifacts/command-reports/final-verify-client-functional.json) — 4204 bytes; .json; 修改于 2026-10-22 08:53:47
-- [artifacts/command-reports/final-verify-plane-functional.json](artifacts/command-reports/final-verify-plane-functional.json) — 4178 bytes; .json; 修改于 2026-10-22 08:53:47
-- [artifacts/command-reports/fixture-validation.json](artifacts/command-reports/fixture-validation.json) — 365 bytes; .json; 修改于 2026-10-21 22:54:50
-- [artifacts/command-reports/functional-20261021002030-functional.json](artifacts/command-reports/functional-20261021002030-functional.json) — 1236 bytes; .json; 修改于 2026-10-21 08:20:30
-- [artifacts/command-reports/functional-20261021234836-functional.json](artifacts/command-reports/functional-20261021234836-functional.json) — 1619 bytes; .json; 修改于 2026-10-22 07:48:36
-- [artifacts/command-reports/functional-20261023041653-functional.json](artifacts/command-reports/functional-20261023041653-functional.json) — 1619 bytes; .json; 修改于 2026-10-23 12:16:53
-- [artifacts/command-reports/k3s-live-current/k3s-live-current-platform.json](artifacts/command-reports/k3s-live-current/k3s-live-current-platform.json) — 1974 bytes; .json; 修改于 2026-10-22 19:18:20
-- [artifacts/command-reports/k3s-live-transport/k3s-transport-plane-functional.json](artifacts/command-reports/k3s-live-transport/k3s-transport-plane-functional.json) — 4205 bytes; .json; 修改于 2026-10-22 08:25:22
-- [artifacts/command-reports/k3s-node-recovery-20261022/k3s-node-recovery-20261022-platform.json](artifacts/command-reports/k3s-node-recovery-20261022/k3s-node-recovery-20261022-platform.json) — 2105 bytes; .json; 修改于 2026-10-22 22:56:49
-- [artifacts/command-reports/live-restore-current/release-20261021230131-postgres.sql](artifacts/command-reports/live-restore-current/release-20261021230131-postgres.sql) — 457134 bytes; .sql; 修改于 2026-10-22 07:01:33
-- [artifacts/command-reports/live-restore-current/release-20261021230131-release.json](artifacts/command-reports/live-restore-current/release-20261021230131-release.json) — 1180 bytes; .json; 修改于 2026-10-22 07:01:34
-- [artifacts/command-reports/live-restore-current2/release-20261021230220-postgres.sql](artifacts/command-reports/live-restore-current2/release-20261021230220-postgres.sql) — 457134 bytes; .sql; 修改于 2026-10-22 07:02:22
-- [artifacts/command-reports/live-restore-current2/release-20261021230220-release.json](artifacts/command-reports/live-restore-current2/release-20261021230220-release.json) — 2640092 bytes; .json; 修改于 2026-10-22 07:02:35
-- [artifacts/command-reports/live-restore-current3/release-20261021230401-ai-memory.tar.gz](artifacts/command-reports/live-restore-current3/release-20261021230401-ai-memory.tar.gz) — 83425215 bytes; .gz; 修改于 2026-10-22 07:04:22
-- [artifacts/command-reports/live-restore-current3/release-20261021230401-object-storage.tar.gz](artifacts/command-reports/live-restore-current3/release-20261021230401-object-storage.tar.gz) — 7438 bytes; .gz; 修改于 2026-10-22 07:04:23
-- [artifacts/command-reports/live-restore-current3/release-20261021230401-postgres.sql](artifacts/command-reports/live-restore-current3/release-20261021230401-postgres.sql) — 457134 bytes; .sql; 修改于 2026-10-22 07:04:03
-- [artifacts/command-reports/live-restore-current3/release-20261021230401-release.json](artifacts/command-reports/live-restore-current3/release-20261021230401-release.json) — 2932 bytes; .json; 修改于 2026-10-22 07:04:24
-- [artifacts/command-reports/live-restore-current4/release-20261021230446-ai-memory.tar.gz](artifacts/command-reports/live-restore-current4/release-20261021230446-ai-memory.tar.gz) — 83425250 bytes; .gz; 修改于 2026-10-22 07:05:08
-- [artifacts/command-reports/live-restore-current4/release-20261021230446-object-storage.tar.gz](artifacts/command-reports/live-restore-current4/release-20261021230446-object-storage.tar.gz) — 8456 bytes; .gz; 修改于 2026-10-22 07:05:08
-- [artifacts/command-reports/live-restore-current4/release-20261021230446-postgres.sql](artifacts/command-reports/live-restore-current4/release-20261021230446-postgres.sql) — 457134 bytes; .sql; 修改于 2026-10-22 07:04:48
-- [artifacts/command-reports/live-restore-current4/release-20261021230446-release.json](artifacts/command-reports/live-restore-current4/release-20261021230446-release.json) — 3622 bytes; .json; 修改于 2026-10-22 07:05:10
-- [artifacts/command-reports/live-restore-current5/release-20261021231004-ai-memory.tar.gz](artifacts/command-reports/live-restore-current5/release-20261021231004-ai-memory.tar.gz) — 83425517 bytes; .gz; 修改于 2026-10-22 07:10:25
-- [artifacts/command-reports/live-restore-current5/release-20261021231004-object-storage.tar.gz](artifacts/command-reports/live-restore-current5/release-20261021231004-object-storage.tar.gz) — 9697 bytes; .gz; 修改于 2026-10-22 07:10:26
-- [artifacts/command-reports/live-restore-current5/release-20261021231004-postgres.sql](artifacts/command-reports/live-restore-current5/release-20261021231004-postgres.sql) — 457134 bytes; .sql; 修改于 2026-10-22 07:10:06
-- [artifacts/command-reports/live-restore-current5/release-20261021231004-release.json](artifacts/command-reports/live-restore-current5/release-20261021231004-release.json) — 3605 bytes; .json; 修改于 2026-10-22 07:10:28
-- [artifacts/command-reports/live-restore-dryrun/release-20261021230122-release.json](artifacts/command-reports/live-restore-dryrun/release-20261021230122-release.json) — 578 bytes; .json; 修改于 2026-10-22 07:01:22
-- [artifacts/command-reports/live-restore-security-fixed/release-20261021234430-ai-memory.tar.gz](artifacts/command-reports/live-restore-security-fixed/release-20261021234430-ai-memory.tar.gz) — 83427919 bytes; .gz; 修改于 2026-10-22 07:44:51
-- [artifacts/command-reports/live-restore-security-fixed/release-20261021234430-object-storage.tar.gz](artifacts/command-reports/live-restore-security-fixed/release-20261021234430-object-storage.tar.gz) — 8613 bytes; .gz; 修改于 2026-10-22 07:44:52
-- [artifacts/command-reports/live-restore-security-fixed/release-20261021234430-postgres.sql](artifacts/command-reports/live-restore-security-fixed/release-20261021234430-postgres.sql) — 457134 bytes; .sql; 修改于 2026-10-22 07:44:32
-- [artifacts/command-reports/live-restore-security-fixed/release-20261021234430-release.json](artifacts/command-reports/live-restore-security-fixed/release-20261021234430-release.json) — 3658 bytes; .json; 修改于 2026-10-22 07:44:53
-- [artifacts/command-reports/live-restore-security-fixed-helm/release-20261021234519-ai-memory.tar.gz](artifacts/command-reports/live-restore-security-fixed-helm/release-20261021234519-ai-memory.tar.gz) — 83427956 bytes; .gz; 修改于 2026-10-22 07:45:40
-- [artifacts/command-reports/live-restore-security-fixed-helm/release-20261021234519-object-storage.tar.gz](artifacts/command-reports/live-restore-security-fixed-helm/release-20261021234519-object-storage.tar.gz) — 9807 bytes; .gz; 修改于 2026-10-22 07:45:40
-- [artifacts/command-reports/live-restore-security-fixed-helm/release-20261021234519-postgres.sql](artifacts/command-reports/live-restore-security-fixed-helm/release-20261021234519-postgres.sql) — 457134 bytes; .sql; 修改于 2026-10-22 07:45:21
-- [artifacts/command-reports/live-restore-security-fixed-helm/release-20261021234519-release.json](artifacts/command-reports/live-restore-security-fixed-helm/release-20261021234519-release.json) — 3688 bytes; .json; 修改于 2026-10-22 07:45:42
-- [artifacts/command-reports/live-restore-security-fixed-path/release-20261021234550-ai-memory.tar.gz](artifacts/command-reports/live-restore-security-fixed-path/release-20261021234550-ai-memory.tar.gz) — 83427928 bytes; .gz; 修改于 2026-10-22 07:46:11
-- [artifacts/command-reports/live-restore-security-fixed-path/release-20261021234550-object-storage.tar.gz](artifacts/command-reports/live-restore-security-fixed-path/release-20261021234550-object-storage.tar.gz) — 9804 bytes; .gz; 修改于 2026-10-22 07:46:12
-- [artifacts/command-reports/live-restore-security-fixed-path/release-20261021234550-postgres.sql](artifacts/command-reports/live-restore-security-fixed-path/release-20261021234550-postgres.sql) — 457134 bytes; .sql; 修改于 2026-10-22 07:45:52
-- [artifacts/command-reports/live-restore-security-fixed-path/release-20261021234550-release.json](artifacts/command-reports/live-restore-security-fixed-path/release-20261021234550-release.json) — 3671 bytes; .json; 修改于 2026-10-22 07:46:13
-- [artifacts/command-reports/module-isolated-current10/P0.txt](artifacts/command-reports/module-isolated-current10/P0.txt) — 1783 bytes; .txt; 修改于 2026-10-23 08:25:24
-- [artifacts/command-reports/module-isolated-current10/P1.txt](artifacts/command-reports/module-isolated-current10/P1.txt) — 614 bytes; .txt; 修改于 2026-10-23 08:25:25
-- [artifacts/command-reports/module-isolated-current10/P2.txt](artifacts/command-reports/module-isolated-current10/P2.txt) — 837 bytes; .txt; 修改于 2026-10-23 08:25:26
-- [artifacts/command-reports/module-isolated-current10/P3.txt](artifacts/command-reports/module-isolated-current10/P3.txt) — 732 bytes; .txt; 修改于 2026-10-23 08:25:28
-- [artifacts/command-reports/module-isolated-current10/P4.txt](artifacts/command-reports/module-isolated-current10/P4.txt) — 1111 bytes; .txt; 修改于 2026-10-23 08:25:30
-- [artifacts/command-reports/module-isolated-current10/P5.txt](artifacts/command-reports/module-isolated-current10/P5.txt) — 530 bytes; .txt; 修改于 2026-10-23 08:25:31
-- [artifacts/command-reports/module-isolated-current10/P6.txt](artifacts/command-reports/module-isolated-current10/P6.txt) — 796 bytes; .txt; 修改于 2026-10-23 08:25:33
-- [artifacts/command-reports/module-isolated-current10/P7.txt](artifacts/command-reports/module-isolated-current10/P7.txt) — 531 bytes; .txt; 修改于 2026-10-23 08:25:34
-- [artifacts/command-reports/module-isolated-current10/P8.txt](artifacts/command-reports/module-isolated-current10/P8.txt) — 2376 bytes; .txt; 修改于 2026-10-23 08:25:38
-- [artifacts/command-reports/p6-identity-audit-fixture-current/p6-identity-audit-fixture-current-identity-audit.json](artifacts/command-reports/p6-identity-audit-fixture-current/p6-identity-audit-fixture-current-identity-audit.json) — 337 bytes; .json; 修改于 2026-10-23 07:21:25
-- [artifacts/command-reports/p6-identity-audit-live-current/p6-identity-audit-live-current-identity-audit.json](artifacts/command-reports/p6-identity-audit-live-current/p6-identity-audit-live-current-identity-audit.json) — 858 bytes; .json; 修改于 2026-10-23 07:15:38
-- [artifacts/command-reports/p6-identity-audit-live-current2/p6-identity-audit-live-current2-identity-audit.json](artifacts/command-reports/p6-identity-audit-live-current2/p6-identity-audit-live-current2-identity-audit.json) — 1617 bytes; .json; 修改于 2026-10-23 07:16:08
-- [artifacts/command-reports/p6-identity-audit-live-current3/p6-identity-audit-live-current3-identity-audit.json](artifacts/command-reports/p6-identity-audit-live-current3/p6-identity-audit-live-current3-identity-audit.json) — 1783 bytes; .json; 修改于 2026-10-23 07:22:27
-- [artifacts/command-reports/p6-identity-audit-live-current4/p6-identity-audit-live-current4-identity-audit.json](artifacts/command-reports/p6-identity-audit-live-current4/p6-identity-audit-live-current4-identity-audit.json) — 2212 bytes; .json; 修改于 2026-10-23 07:38:31
-- [artifacts/command-reports/p6-identity-audit-live-current5/p6-identity-audit-live-current5-identity-audit.json](artifacts/command-reports/p6-identity-audit-live-current5/p6-identity-audit-live-current5-identity-audit.json) — 2526 bytes; .json; 修改于 2026-10-23 07:42:37
-- [artifacts/command-reports/p6-identity-audit-live-current6/p6-identity-audit-live-current6-identity-audit.json](artifacts/command-reports/p6-identity-audit-live-current6/p6-identity-audit-live-current6-identity-audit.json) — 2526 bytes; .json; 修改于 2026-10-23 07:44:29
-- [artifacts/command-reports/p6-identity-audit-live-current7/opa-decision-log.txt](artifacts/command-reports/p6-identity-audit-live-current7/opa-decision-log.txt) — 6576 bytes; .txt; 修改于 2026-10-23 07:46:25
-- [artifacts/command-reports/p6-identity-audit-live-current7/p6-identity-audit-live-current7-identity-audit.json](artifacts/command-reports/p6-identity-audit-live-current7/p6-identity-audit-live-current7-identity-audit.json) — 2526 bytes; .json; 修改于 2026-10-23 07:45:15
-- [artifacts/command-reports/p6-identity-audit-live-current8/opa-decision-log.txt](artifacts/command-reports/p6-identity-audit-live-current8/opa-decision-log.txt) — 9380 bytes; .txt; 修改于 2026-10-23 08:27:02
-- [artifacts/command-reports/p6-identity-audit-live-current8/p6-identity-audit-live-current8-identity-audit.json](artifacts/command-reports/p6-identity-audit-live-current8/p6-identity-audit-live-current8-identity-audit.json) — 2526 bytes; .json; 修改于 2026-10-23 08:26:40
-- [artifacts/command-reports/p8-business-recovery-current/p8-business-recovery-current-resilience.json](artifacts/command-reports/p8-business-recovery-current/p8-business-recovery-current-resilience.json) — 1127 bytes; .json; 修改于 2026-10-23 07:07:15
-- [artifacts/command-reports/p8-business-recovery-current2/p8-business-recovery-current2-resilience.json](artifacts/command-reports/p8-business-recovery-current2/p8-business-recovery-current2-resilience.json) — 3275 bytes; .json; 修改于 2026-10-23 07:08:03
-- [artifacts/command-reports/p8-dependency-matrix-current/p8-dependency-matrix-current-resilience.json](artifacts/command-reports/p8-dependency-matrix-current/p8-dependency-matrix-current-resilience.json) — 6167 bytes; .json; 修改于 2026-10-23 06:37:01
-- [artifacts/command-reports/p8-network-partition-current/p8-network-partition-current-resilience.json](artifacts/command-reports/p8-network-partition-current/p8-network-partition-current-resilience.json) — 1750 bytes; .json; 修改于 2026-10-23 06:56:00
-- [artifacts/command-reports/p8-network-partition-current2/p8-network-partition-current2-resilience.json](artifacts/command-reports/p8-network-partition-current2/p8-network-partition-current2-resilience.json) — 1922 bytes; .json; 修改于 2026-10-23 06:56:52
-- [artifacts/command-reports/p8-network-partition-current3/p8-network-partition-current3-resilience.json](artifacts/command-reports/p8-network-partition-current3/p8-network-partition-current3-resilience.json) — 1922 bytes; .json; 修改于 2026-10-23 06:57:32
-- [artifacts/command-reports/p8-network-partition-current4/p8-network-partition-current4-resilience.json](artifacts/command-reports/p8-network-partition-current4/p8-network-partition-current4-resilience.json) — 1807 bytes; .json; 修改于 2026-10-23 06:58:32
-- [artifacts/command-reports/p8-process-kill-current/p8-process-kill-current-resilience.json](artifacts/command-reports/p8-process-kill-current/p8-process-kill-current-resilience.json) — 1179 bytes; .json; 修改于 2026-10-23 06:55:46
-- [artifacts/command-reports/p8-vulnerability-safe-subset/planemem-platform_0.1.0-wavemate.json](artifacts/command-reports/p8-vulnerability-safe-subset/planemem-platform_0.1.0-wavemate.json) — 10972 bytes; .json; 修改于 2026-10-23 06:45:51
-- [artifacts/command-reports/p8-vulnerability-safe-subset/planemem-platform_0.1.0-wavemate.log](artifacts/command-reports/p8-vulnerability-safe-subset/planemem-platform_0.1.0-wavemate.log) — 0 bytes; .log; 修改于 2026-10-23 06:45:51
-- [artifacts/command-reports/p8-vulnerability-safe-subset/summary.json](artifacts/command-reports/p8-vulnerability-safe-subset/summary.json) — 529 bytes; .json; 修改于 2026-10-23 06:45:51
-- [artifacts/command-reports/p8-vulnerability-safe-subset2/planemem_ai-memory_3.1.1-local.json](artifacts/command-reports/p8-vulnerability-safe-subset2/planemem_ai-memory_3.1.1-local.json) — 5621 bytes; .json; 修改于 2026-10-23 06:46:05
-- [artifacts/command-reports/p8-vulnerability-safe-subset2/planemem_ai-memory_3.1.1-local.log](artifacts/command-reports/p8-vulnerability-safe-subset2/planemem_ai-memory_3.1.1-local.log) — 0 bytes; .log; 修改于 2026-10-23 06:46:05
-- [artifacts/command-reports/p8-vulnerability-safe-subset2/planemem-platform_0.1.0-wavemate.json](artifacts/command-reports/p8-vulnerability-safe-subset2/planemem-platform_0.1.0-wavemate.json) — 10972 bytes; .json; 修改于 2026-10-23 06:46:04
-- [artifacts/command-reports/p8-vulnerability-safe-subset2/planemem-platform_0.1.0-wavemate.log](artifacts/command-reports/p8-vulnerability-safe-subset2/planemem-platform_0.1.0-wavemate.log) — 0 bytes; .log; 修改于 2026-10-23 06:46:04
-- [artifacts/command-reports/p8-vulnerability-safe-subset2/summary.json](artifacts/command-reports/p8-vulnerability-safe-subset2/summary.json) — 757 bytes; .json; 修改于 2026-10-23 06:46:05
-- [artifacts/command-reports/p8-vulnerability-scan-command-current/bitnamilegacy_minio_2025.7.23-debian-12-r5.log](artifacts/command-reports/p8-vulnerability-scan-command-current/bitnamilegacy_minio_2025.7.23-debian-12-r5.log) — 0 bytes; .log; 修改于 2026-10-23 06:40:42
-- [artifacts/command-reports/p8-vulnerability-scan-command-current/makeplane_plane-backend_v0.26.0.json](artifacts/command-reports/p8-vulnerability-scan-command-current/makeplane_plane-backend_v0.26.0.json) — 372629 bytes; .json; 修改于 2026-10-23 06:40:39
-- [artifacts/command-reports/p8-vulnerability-scan-command-current/makeplane_plane-backend_v0.26.0.log](artifacts/command-reports/p8-vulnerability-scan-command-current/makeplane_plane-backend_v0.26.0.log) — 0 bytes; .log; 修改于 2026-10-23 06:40:39
-- [artifacts/command-reports/p8-vulnerability-scan-command-current/nats_2.10.22-alpine.json](artifacts/command-reports/p8-vulnerability-scan-command-current/nats_2.10.22-alpine.json) — 372625 bytes; .json; 修改于 2026-10-23 06:40:48
-- [artifacts/command-reports/p8-vulnerability-scan-command-current/nats_2.10.22-alpine.log](artifacts/command-reports/p8-vulnerability-scan-command-current/nats_2.10.22-alpine.log) — 0 bytes; .log; 修改于 2026-10-23 06:40:48
-- [artifacts/command-reports/p8-vulnerability-scan-command-current/otel_opentelemetry-collector-contrib_0.107.0.json](artifacts/command-reports/p8-vulnerability-scan-command-current/otel_opentelemetry-collector-contrib_0.107.0.json) — 493673 bytes; .json; 修改于 2026-10-23 06:41:06
-- [artifacts/command-reports/p8-vulnerability-scan-command-current/otel_opentelemetry-collector-contrib_0.107.0.log](artifacts/command-reports/p8-vulnerability-scan-command-current/otel_opentelemetry-collector-contrib_0.107.0.log) — 0 bytes; .log; 修改于 2026-10-23 06:41:06
-- [artifacts/command-reports/p8-vulnerability-scan-command-current/planemem_ai-memory_3.1.1-local.json](artifacts/command-reports/p8-vulnerability-scan-command-current/planemem_ai-memory_3.1.1-local.json) — 5622 bytes; .json; 修改于 2026-10-23 06:40:43
-- [artifacts/command-reports/p8-vulnerability-scan-command-current/planemem_ai-memory_3.1.1-local.log](artifacts/command-reports/p8-vulnerability-scan-command-current/planemem_ai-memory_3.1.1-local.log) — 0 bytes; .log; 修改于 2026-10-23 06:40:43
-- [artifacts/command-reports/p8-vulnerability-scan-command-current/planemem-platform_0.1.0-wavemate.json](artifacts/command-reports/p8-vulnerability-scan-command-current/planemem-platform_0.1.0-wavemate.json) — 10972 bytes; .json; 修改于 2026-10-23 06:40:37
-- [artifacts/command-reports/p8-vulnerability-scan-command-current/planemem-platform_0.1.0-wavemate.log](artifacts/command-reports/p8-vulnerability-scan-command-current/planemem-platform_0.1.0-wavemate.log) — 0 bytes; .log; 修改于 2026-10-23 06:40:37
-- [artifacts/command-reports/p8-vulnerability-scan-command-current/postgres_16.4-alpine.json](artifacts/command-reports/p8-vulnerability-scan-command-current/postgres_16.4-alpine.json) — 528241 bytes; .json; 修改于 2026-10-23 06:40:45
-- [artifacts/command-reports/p8-vulnerability-scan-command-current/postgres_16.4-alpine.log](artifacts/command-reports/p8-vulnerability-scan-command-current/postgres_16.4-alpine.log) — 0 bytes; .log; 修改于 2026-10-23 06:40:45
-- [artifacts/command-reports/p8-vulnerability-scan-command-current/quay.io_keycloak_keycloak_26.0.5.json](artifacts/command-reports/p8-vulnerability-scan-command-current/quay.io_keycloak_keycloak_26.0.5.json) — 418633 bytes; .json; 修改于 2026-10-23 06:41:05
-- [artifacts/command-reports/p8-vulnerability-scan-command-current/quay.io_keycloak_keycloak_26.0.5.log](artifacts/command-reports/p8-vulnerability-scan-command-current/quay.io_keycloak_keycloak_26.0.5.log) — 0 bytes; .log; 修改于 2026-10-23 06:41:05
-- [artifacts/command-reports/p8-vulnerability-scan-command-current/rabbitmq_3.13-management-alpine.json](artifacts/command-reports/p8-vulnerability-scan-command-current/rabbitmq_3.13-management-alpine.json) — 353149 bytes; .json; 修改于 2026-10-23 06:40:41
-- [artifacts/command-reports/p8-vulnerability-scan-command-current/rabbitmq_3.13-management-alpine.log](artifacts/command-reports/p8-vulnerability-scan-command-current/rabbitmq_3.13-management-alpine.log) — 0 bytes; .log; 修改于 2026-10-23 06:40:41
-- [artifacts/command-reports/p8-vulnerability-scan-command-current/redis_7.4.1-alpine.json](artifacts/command-reports/p8-vulnerability-scan-command-current/redis_7.4.1-alpine.json) — 496285 bytes; .json; 修改于 2026-10-23 06:40:47
-- [artifacts/command-reports/p8-vulnerability-scan-command-current/redis_7.4.1-alpine.log](artifacts/command-reports/p8-vulnerability-scan-command-current/redis_7.4.1-alpine.log) — 0 bytes; .log; 修改于 2026-10-23 06:40:47
-- [artifacts/command-reports/p8-vulnerability-scan-command-current/summary.json](artifacts/command-reports/p8-vulnerability-scan-command-current/summary.json) — 2577 bytes; .json; 修改于 2026-10-23 06:41:06
-- [artifacts/command-reports/p8-vulnerability-scan-command-current12/bitnamilegacy_minio_2025.7.23-debian-12-r5.json](artifacts/command-reports/p8-vulnerability-scan-command-current12/bitnamilegacy_minio_2025.7.23-debian-12-r5.json) — 1584034 bytes; .json; 修改于 2026-10-23 08:47:30
-- [artifacts/command-reports/p8-vulnerability-scan-command-current12/bitnamilegacy_minio_2025.7.23-debian-12-r5.log](artifacts/command-reports/p8-vulnerability-scan-command-current12/bitnamilegacy_minio_2025.7.23-debian-12-r5.log) — 0 bytes; .log; 修改于 2026-10-23 08:47:30
-- [artifacts/command-reports/p8-vulnerability-scan-command-current12/makeplane_plane-backend_v0.26.0.json](artifacts/command-reports/p8-vulnerability-scan-command-current12/makeplane_plane-backend_v0.26.0.json) — 372629 bytes; .json; 修改于 2026-10-23 08:47:27
-- [artifacts/command-reports/p8-vulnerability-scan-command-current12/makeplane_plane-backend_v0.26.0.log](artifacts/command-reports/p8-vulnerability-scan-command-current12/makeplane_plane-backend_v0.26.0.log) — 0 bytes; .log; 修改于 2026-10-23 08:47:27
-- [artifacts/command-reports/p8-vulnerability-scan-command-current12/nats_2.10.22-alpine.json](artifacts/command-reports/p8-vulnerability-scan-command-current12/nats_2.10.22-alpine.json) — 372625 bytes; .json; 修改于 2026-10-23 08:47:35
-- [artifacts/command-reports/p8-vulnerability-scan-command-current12/nats_2.10.22-alpine.log](artifacts/command-reports/p8-vulnerability-scan-command-current12/nats_2.10.22-alpine.log) — 0 bytes; .log; 修改于 2026-10-23 08:47:35
-- [artifacts/command-reports/p8-vulnerability-scan-command-current12/otel_opentelemetry-collector-contrib_0.107.0.json](artifacts/command-reports/p8-vulnerability-scan-command-current12/otel_opentelemetry-collector-contrib_0.107.0.json) — 493674 bytes; .json; 修改于 2026-10-23 08:47:53
-- [artifacts/command-reports/p8-vulnerability-scan-command-current12/otel_opentelemetry-collector-contrib_0.107.0.log](artifacts/command-reports/p8-vulnerability-scan-command-current12/otel_opentelemetry-collector-contrib_0.107.0.log) — 0 bytes; .log; 修改于 2026-10-23 08:47:53
-- [artifacts/command-reports/p8-vulnerability-scan-command-current12/planemem_ai-memory_3.1.1-local.json](artifacts/command-reports/p8-vulnerability-scan-command-current12/planemem_ai-memory_3.1.1-local.json) — 5622 bytes; .json; 修改于 2026-10-23 08:47:31
-- [artifacts/command-reports/p8-vulnerability-scan-command-current12/planemem_ai-memory_3.1.1-local.log](artifacts/command-reports/p8-vulnerability-scan-command-current12/planemem_ai-memory_3.1.1-local.log) — 0 bytes; .log; 修改于 2026-10-23 08:47:31
-- [artifacts/command-reports/p8-vulnerability-scan-command-current12/planemem-platform_0.1.0-wavemate.json](artifacts/command-reports/p8-vulnerability-scan-command-current12/planemem-platform_0.1.0-wavemate.json) — 11025 bytes; .json; 修改于 2026-10-23 08:47:26
-- [artifacts/command-reports/p8-vulnerability-scan-command-current12/planemem-platform_0.1.0-wavemate.log](artifacts/command-reports/p8-vulnerability-scan-command-current12/planemem-platform_0.1.0-wavemate.log) — 0 bytes; .log; 修改于 2026-10-23 08:47:26
-- [artifacts/command-reports/p8-vulnerability-scan-command-current12/postgres_16.4-alpine.json](artifacts/command-reports/p8-vulnerability-scan-command-current12/postgres_16.4-alpine.json) — 528241 bytes; .json; 修改于 2026-10-23 08:47:33
-- [artifacts/command-reports/p8-vulnerability-scan-command-current12/postgres_16.4-alpine.log](artifacts/command-reports/p8-vulnerability-scan-command-current12/postgres_16.4-alpine.log) — 0 bytes; .log; 修改于 2026-10-23 08:47:33
-- [artifacts/command-reports/p8-vulnerability-scan-command-current12/quay.io_keycloak_keycloak_26.0.5.json](artifacts/command-reports/p8-vulnerability-scan-command-current12/quay.io_keycloak_keycloak_26.0.5.json) — 418633 bytes; .json; 修改于 2026-10-23 08:47:51
-- [artifacts/command-reports/p8-vulnerability-scan-command-current12/quay.io_keycloak_keycloak_26.0.5.log](artifacts/command-reports/p8-vulnerability-scan-command-current12/quay.io_keycloak_keycloak_26.0.5.log) — 0 bytes; .log; 修改于 2026-10-23 08:47:51
-- [artifacts/command-reports/p8-vulnerability-scan-command-current12/rabbitmq_3.13-management-alpine.json](artifacts/command-reports/p8-vulnerability-scan-command-current12/rabbitmq_3.13-management-alpine.json) — 353147 bytes; .json; 修改于 2026-10-23 08:47:28
-- [artifacts/command-reports/p8-vulnerability-scan-command-current12/rabbitmq_3.13-management-alpine.log](artifacts/command-reports/p8-vulnerability-scan-command-current12/rabbitmq_3.13-management-alpine.log) — 0 bytes; .log; 修改于 2026-10-23 08:47:28
-- [artifacts/command-reports/p8-vulnerability-scan-command-current12/redis_7.4.1-alpine.json](artifacts/command-reports/p8-vulnerability-scan-command-current12/redis_7.4.1-alpine.json) — 496285 bytes; .json; 修改于 2026-10-23 08:47:34
-- [artifacts/command-reports/p8-vulnerability-scan-command-current12/redis_7.4.1-alpine.log](artifacts/command-reports/p8-vulnerability-scan-command-current12/redis_7.4.1-alpine.log) — 0 bytes; .log; 修改于 2026-10-23 08:47:34
-- [artifacts/command-reports/p8-vulnerability-scan-command-current12/remediation.json](artifacts/command-reports/p8-vulnerability-scan-command-current12/remediation.json) — 31763 bytes; .json; 修改于 2026-10-23 08:48:12
-- [artifacts/command-reports/p8-vulnerability-scan-command-current12/summary.json](artifacts/command-reports/p8-vulnerability-scan-command-current12/summary.json) — 2601 bytes; .json; 修改于 2026-10-23 08:47:53
-- [artifacts/command-reports/p8-vulnerability-scan-command-current15/bitnamilegacy_minio_2025.7.23-debian-12-r5.json](artifacts/command-reports/p8-vulnerability-scan-command-current15/bitnamilegacy_minio_2025.7.23-debian-12-r5.json) — 1584034 bytes; .json; 修改于 2026-10-23 09:12:28
-- [artifacts/command-reports/p8-vulnerability-scan-command-current15/bitnamilegacy_minio_2025.7.23-debian-12-r5.log](artifacts/command-reports/p8-vulnerability-scan-command-current15/bitnamilegacy_minio_2025.7.23-debian-12-r5.log) — 0 bytes; .log; 修改于 2026-10-23 09:12:28
-- [artifacts/command-reports/p8-vulnerability-scan-command-current15/makeplane_plane-backend_v0.26.0.json](artifacts/command-reports/p8-vulnerability-scan-command-current15/makeplane_plane-backend_v0.26.0.json) — 372629 bytes; .json; 修改于 2026-10-23 09:12:24
-- [artifacts/command-reports/p8-vulnerability-scan-command-current15/makeplane_plane-backend_v0.26.0.log](artifacts/command-reports/p8-vulnerability-scan-command-current15/makeplane_plane-backend_v0.26.0.log) — 0 bytes; .log; 修改于 2026-10-23 09:12:24
-- [artifacts/command-reports/p8-vulnerability-scan-command-current15/nats_2.10.22-alpine.json](artifacts/command-reports/p8-vulnerability-scan-command-current15/nats_2.10.22-alpine.json) — 372625 bytes; .json; 修改于 2026-10-23 09:12:34
-- [artifacts/command-reports/p8-vulnerability-scan-command-current15/nats_2.10.22-alpine.log](artifacts/command-reports/p8-vulnerability-scan-command-current15/nats_2.10.22-alpine.log) — 0 bytes; .log; 修改于 2026-10-23 09:12:34
-- [artifacts/command-reports/p8-vulnerability-scan-command-current15/otel_opentelemetry-collector-contrib_0.107.0.json](artifacts/command-reports/p8-vulnerability-scan-command-current15/otel_opentelemetry-collector-contrib_0.107.0.json) — 493674 bytes; .json; 修改于 2026-10-23 09:12:53
-- [artifacts/command-reports/p8-vulnerability-scan-command-current15/otel_opentelemetry-collector-contrib_0.107.0.log](artifacts/command-reports/p8-vulnerability-scan-command-current15/otel_opentelemetry-collector-contrib_0.107.0.log) — 0 bytes; .log; 修改于 2026-10-23 09:12:53
-- [artifacts/command-reports/p8-vulnerability-scan-command-current15/planemem_ai-memory_3.1.1-local.json](artifacts/command-reports/p8-vulnerability-scan-command-current15/planemem_ai-memory_3.1.1-local.json) — 5621 bytes; .json; 修改于 2026-10-23 09:12:30
-- [artifacts/command-reports/p8-vulnerability-scan-command-current15/planemem_ai-memory_3.1.1-local.log](artifacts/command-reports/p8-vulnerability-scan-command-current15/planemem_ai-memory_3.1.1-local.log) — 0 bytes; .log; 修改于 2026-10-23 09:12:30
-- [artifacts/command-reports/p8-vulnerability-scan-command-current15/planemem-platform_0.1.0-wavemate.json](artifacts/command-reports/p8-vulnerability-scan-command-current15/planemem-platform_0.1.0-wavemate.json) — 11025 bytes; .json; 修改于 2026-10-23 09:12:23
-- [artifacts/command-reports/p8-vulnerability-scan-command-current15/planemem-platform_0.1.0-wavemate.log](artifacts/command-reports/p8-vulnerability-scan-command-current15/planemem-platform_0.1.0-wavemate.log) — 0 bytes; .log; 修改于 2026-10-23 09:12:23
-- [artifacts/command-reports/p8-vulnerability-scan-command-current15/postgres_16.15-alpine3.24.json](artifacts/command-reports/p8-vulnerability-scan-command-current15/postgres_16.15-alpine3.24.json) — 217174 bytes; .json; 修改于 2026-10-23 09:12:31
-- [artifacts/command-reports/p8-vulnerability-scan-command-current15/postgres_16.15-alpine3.24.log](artifacts/command-reports/p8-vulnerability-scan-command-current15/postgres_16.15-alpine3.24.log) — 0 bytes; .log; 修改于 2026-10-23 09:12:31
-- [artifacts/command-reports/p8-vulnerability-scan-command-current15/quay.io_keycloak_keycloak_26.0.5.json](artifacts/command-reports/p8-vulnerability-scan-command-current15/quay.io_keycloak_keycloak_26.0.5.json) — 418633 bytes; .json; 修改于 2026-10-23 09:12:52
-- [artifacts/command-reports/p8-vulnerability-scan-command-current15/quay.io_keycloak_keycloak_26.0.5.log](artifacts/command-reports/p8-vulnerability-scan-command-current15/quay.io_keycloak_keycloak_26.0.5.log) — 0 bytes; .log; 修改于 2026-10-23 09:12:52
-- [artifacts/command-reports/p8-vulnerability-scan-command-current15/rabbitmq_4.4.0-management-alpine.json](artifacts/command-reports/p8-vulnerability-scan-command-current15/rabbitmq_4.4.0-management-alpine.json) — 13455 bytes; .json; 修改于 2026-10-23 09:12:26
-- [artifacts/command-reports/p8-vulnerability-scan-command-current15/rabbitmq_4.4.0-management-alpine.log](artifacts/command-reports/p8-vulnerability-scan-command-current15/rabbitmq_4.4.0-management-alpine.log) — 0 bytes; .log; 修改于 2026-10-23 09:12:26
-- [artifacts/command-reports/p8-vulnerability-scan-command-current15/redis_7.4.1-alpine.json](artifacts/command-reports/p8-vulnerability-scan-command-current15/redis_7.4.1-alpine.json) — 496284 bytes; .json; 修改于 2026-10-23 09:12:33
-- [artifacts/command-reports/p8-vulnerability-scan-command-current15/redis_7.4.1-alpine.log](artifacts/command-reports/p8-vulnerability-scan-command-current15/redis_7.4.1-alpine.log) — 0 bytes; .log; 修改于 2026-10-23 09:12:33
-- [artifacts/command-reports/p8-vulnerability-scan-command-current15/summary.json](artifacts/command-reports/p8-vulnerability-scan-command-current15/summary.json) — 2605 bytes; .json; 修改于 2026-10-23 09:12:53
-- [artifacts/command-reports/p8-vulnerability-scan-command-current16/bitnamilegacy_minio_2025.7.23-debian-12-r5.json](artifacts/command-reports/p8-vulnerability-scan-command-current16/bitnamilegacy_minio_2025.7.23-debian-12-r5.json) — 1584034 bytes; .json; 修改于 2026-10-23 09:14:50
-- [artifacts/command-reports/p8-vulnerability-scan-command-current16/bitnamilegacy_minio_2025.7.23-debian-12-r5.log](artifacts/command-reports/p8-vulnerability-scan-command-current16/bitnamilegacy_minio_2025.7.23-debian-12-r5.log) — 0 bytes; .log; 修改于 2026-10-23 09:14:50
-- [artifacts/command-reports/p8-vulnerability-scan-command-current16/makeplane_plane-backend_v0.26.0.json](artifacts/command-reports/p8-vulnerability-scan-command-current16/makeplane_plane-backend_v0.26.0.json) — 372629 bytes; .json; 修改于 2026-10-23 09:14:47
-- [artifacts/command-reports/p8-vulnerability-scan-command-current16/makeplane_plane-backend_v0.26.0.log](artifacts/command-reports/p8-vulnerability-scan-command-current16/makeplane_plane-backend_v0.26.0.log) — 0 bytes; .log; 修改于 2026-10-23 09:14:47
-- [artifacts/command-reports/p8-vulnerability-scan-command-current16/nats_2.10.22-alpine.json](artifacts/command-reports/p8-vulnerability-scan-command-current16/nats_2.10.22-alpine.json) — 372625 bytes; .json; 修改于 2026-10-23 09:14:56
-- [artifacts/command-reports/p8-vulnerability-scan-command-current16/nats_2.10.22-alpine.log](artifacts/command-reports/p8-vulnerability-scan-command-current16/nats_2.10.22-alpine.log) — 0 bytes; .log; 修改于 2026-10-23 09:14:56
-- [artifacts/command-reports/p8-vulnerability-scan-command-current16/otel_opentelemetry-collector-contrib_0.107.0.json](artifacts/command-reports/p8-vulnerability-scan-command-current16/otel_opentelemetry-collector-contrib_0.107.0.json) — 493674 bytes; .json; 修改于 2026-10-23 09:15:14
-- [artifacts/command-reports/p8-vulnerability-scan-command-current16/otel_opentelemetry-collector-contrib_0.107.0.log](artifacts/command-reports/p8-vulnerability-scan-command-current16/otel_opentelemetry-collector-contrib_0.107.0.log) — 0 bytes; .log; 修改于 2026-10-23 09:15:14
-- [artifacts/command-reports/p8-vulnerability-scan-command-current16/planemem_ai-memory_3.1.1-local.json](artifacts/command-reports/p8-vulnerability-scan-command-current16/planemem_ai-memory_3.1.1-local.json) — 5622 bytes; .json; 修改于 2026-10-23 09:14:52
-- [artifacts/command-reports/p8-vulnerability-scan-command-current16/planemem_ai-memory_3.1.1-local.log](artifacts/command-reports/p8-vulnerability-scan-command-current16/planemem_ai-memory_3.1.1-local.log) — 0 bytes; .log; 修改于 2026-10-23 09:14:52
-- [artifacts/command-reports/p8-vulnerability-scan-command-current16/planemem-platform_0.1.0-wavemate.json](artifacts/command-reports/p8-vulnerability-scan-command-current16/planemem-platform_0.1.0-wavemate.json) — 11025 bytes; .json; 修改于 2026-10-23 09:14:45
-- [artifacts/command-reports/p8-vulnerability-scan-command-current16/planemem-platform_0.1.0-wavemate.log](artifacts/command-reports/p8-vulnerability-scan-command-current16/planemem-platform_0.1.0-wavemate.log) — 0 bytes; .log; 修改于 2026-10-23 09:14:45
-- [artifacts/command-reports/p8-vulnerability-scan-command-current16/postgres_16.15-alpine3.24.json](artifacts/command-reports/p8-vulnerability-scan-command-current16/postgres_16.15-alpine3.24.json) — 217175 bytes; .json; 修改于 2026-10-23 09:14:53
-- [artifacts/command-reports/p8-vulnerability-scan-command-current16/postgres_16.15-alpine3.24.log](artifacts/command-reports/p8-vulnerability-scan-command-current16/postgres_16.15-alpine3.24.log) — 0 bytes; .log; 修改于 2026-10-23 09:14:53
-- [artifacts/command-reports/p8-vulnerability-scan-command-current16/quay.io_keycloak_keycloak_26.0.5.json](artifacts/command-reports/p8-vulnerability-scan-command-current16/quay.io_keycloak_keycloak_26.0.5.json) — 418633 bytes; .json; 修改于 2026-10-23 09:15:13
-- [artifacts/command-reports/p8-vulnerability-scan-command-current16/quay.io_keycloak_keycloak_26.0.5.log](artifacts/command-reports/p8-vulnerability-scan-command-current16/quay.io_keycloak_keycloak_26.0.5.log) — 0 bytes; .log; 修改于 2026-10-23 09:15:13
-- [artifacts/command-reports/p8-vulnerability-scan-command-current16/rabbitmq_4.4.0-management-alpine.json](artifacts/command-reports/p8-vulnerability-scan-command-current16/rabbitmq_4.4.0-management-alpine.json) — 13455 bytes; .json; 修改于 2026-10-23 09:14:48
-- [artifacts/command-reports/p8-vulnerability-scan-command-current16/rabbitmq_4.4.0-management-alpine.log](artifacts/command-reports/p8-vulnerability-scan-command-current16/rabbitmq_4.4.0-management-alpine.log) — 0 bytes; .log; 修改于 2026-10-23 09:14:48
-- [artifacts/command-reports/p8-vulnerability-scan-command-current16/redis_7.4.1-alpine.json](artifacts/command-reports/p8-vulnerability-scan-command-current16/redis_7.4.1-alpine.json) — 496285 bytes; .json; 修改于 2026-10-23 09:14:55
-- [artifacts/command-reports/p8-vulnerability-scan-command-current16/redis_7.4.1-alpine.log](artifacts/command-reports/p8-vulnerability-scan-command-current16/redis_7.4.1-alpine.log) — 0 bytes; .log; 修改于 2026-10-23 09:14:55
-- [artifacts/command-reports/p8-vulnerability-scan-command-current16/remediation.json](artifacts/command-reports/p8-vulnerability-scan-command-current16/remediation.json) — 26340 bytes; .json; 修改于 2026-10-23 09:15:14
-- [artifacts/command-reports/p8-vulnerability-scan-command-current16/summary.json](artifacts/command-reports/p8-vulnerability-scan-command-current16/summary.json) — 2605 bytes; .json; 修改于 2026-10-23 09:15:14
-- [artifacts/command-reports/p8-vulnerability-scan-command-current2/bitnamilegacy_minio_2025.7.23-debian-12-r5.json](artifacts/command-reports/p8-vulnerability-scan-command-current2/bitnamilegacy_minio_2025.7.23-debian-12-r5.json) — 1584034 bytes; .json; 修改于 2026-10-23 06:41:50
-- [artifacts/command-reports/p8-vulnerability-scan-command-current2/bitnamilegacy_minio_2025.7.23-debian-12-r5.log](artifacts/command-reports/p8-vulnerability-scan-command-current2/bitnamilegacy_minio_2025.7.23-debian-12-r5.log) — 0 bytes; .log; 修改于 2026-10-23 06:41:50
-- [artifacts/command-reports/p8-vulnerability-scan-command-current2/makeplane_plane-backend_v0.26.0.json](artifacts/command-reports/p8-vulnerability-scan-command-current2/makeplane_plane-backend_v0.26.0.json) — 372629 bytes; .json; 修改于 2026-10-23 06:41:47
-- [artifacts/command-reports/p8-vulnerability-scan-command-current2/makeplane_plane-backend_v0.26.0.log](artifacts/command-reports/p8-vulnerability-scan-command-current2/makeplane_plane-backend_v0.26.0.log) — 0 bytes; .log; 修改于 2026-10-23 06:41:47
-- [artifacts/command-reports/p8-vulnerability-scan-command-current2/nats_2.10.22-alpine.json](artifacts/command-reports/p8-vulnerability-scan-command-current2/nats_2.10.22-alpine.json) — 372625 bytes; .json; 修改于 2026-10-23 06:41:55
-- [artifacts/command-reports/p8-vulnerability-scan-command-current2/nats_2.10.22-alpine.log](artifacts/command-reports/p8-vulnerability-scan-command-current2/nats_2.10.22-alpine.log) — 0 bytes; .log; 修改于 2026-10-23 06:41:55
-- [artifacts/command-reports/p8-vulnerability-scan-command-current2/otel_opentelemetry-collector-contrib_0.107.0.json](artifacts/command-reports/p8-vulnerability-scan-command-current2/otel_opentelemetry-collector-contrib_0.107.0.json) — 493674 bytes; .json; 修改于 2026-10-23 06:42:15
-- [artifacts/command-reports/p8-vulnerability-scan-command-current2/otel_opentelemetry-collector-contrib_0.107.0.log](artifacts/command-reports/p8-vulnerability-scan-command-current2/otel_opentelemetry-collector-contrib_0.107.0.log) — 0 bytes; .log; 修改于 2026-10-23 06:42:15
-- [artifacts/command-reports/p8-vulnerability-scan-command-current2/planemem_ai-memory_3.1.1-local.json](artifacts/command-reports/p8-vulnerability-scan-command-current2/planemem_ai-memory_3.1.1-local.json) — 5622 bytes; .json; 修改于 2026-10-23 06:41:51
-- [artifacts/command-reports/p8-vulnerability-scan-command-current2/planemem_ai-memory_3.1.1-local.log](artifacts/command-reports/p8-vulnerability-scan-command-current2/planemem_ai-memory_3.1.1-local.log) — 0 bytes; .log; 修改于 2026-10-23 06:41:51
-- [artifacts/command-reports/p8-vulnerability-scan-command-current2/planemem-platform_0.1.0-wavemate.json](artifacts/command-reports/p8-vulnerability-scan-command-current2/planemem-platform_0.1.0-wavemate.json) — 10972 bytes; .json; 修改于 2026-10-23 06:41:45
-- [artifacts/command-reports/p8-vulnerability-scan-command-current2/planemem-platform_0.1.0-wavemate.log](artifacts/command-reports/p8-vulnerability-scan-command-current2/planemem-platform_0.1.0-wavemate.log) — 0 bytes; .log; 修改于 2026-10-23 06:41:45
-- [artifacts/command-reports/p8-vulnerability-scan-command-current2/postgres_16.4-alpine.json](artifacts/command-reports/p8-vulnerability-scan-command-current2/postgres_16.4-alpine.json) — 528241 bytes; .json; 修改于 2026-10-23 06:41:52
-- [artifacts/command-reports/p8-vulnerability-scan-command-current2/postgres_16.4-alpine.log](artifacts/command-reports/p8-vulnerability-scan-command-current2/postgres_16.4-alpine.log) — 0 bytes; .log; 修改于 2026-10-23 06:41:52
-- [artifacts/command-reports/p8-vulnerability-scan-command-current2/quay.io_keycloak_keycloak_26.0.5.json](artifacts/command-reports/p8-vulnerability-scan-command-current2/quay.io_keycloak_keycloak_26.0.5.json) — 418633 bytes; .json; 修改于 2026-10-23 06:42:13
-- [artifacts/command-reports/p8-vulnerability-scan-command-current2/quay.io_keycloak_keycloak_26.0.5.log](artifacts/command-reports/p8-vulnerability-scan-command-current2/quay.io_keycloak_keycloak_26.0.5.log) — 0 bytes; .log; 修改于 2026-10-23 06:42:13
-- [artifacts/command-reports/p8-vulnerability-scan-command-current2/rabbitmq_3.13-management-alpine.json](artifacts/command-reports/p8-vulnerability-scan-command-current2/rabbitmq_3.13-management-alpine.json) — 353148 bytes; .json; 修改于 2026-10-23 06:41:48
-- [artifacts/command-reports/p8-vulnerability-scan-command-current2/rabbitmq_3.13-management-alpine.log](artifacts/command-reports/p8-vulnerability-scan-command-current2/rabbitmq_3.13-management-alpine.log) — 0 bytes; .log; 修改于 2026-10-23 06:41:48
-- [artifacts/command-reports/p8-vulnerability-scan-command-current2/redis_7.4.1-alpine.json](artifacts/command-reports/p8-vulnerability-scan-command-current2/redis_7.4.1-alpine.json) — 496285 bytes; .json; 修改于 2026-10-23 06:41:54
-- [artifacts/command-reports/p8-vulnerability-scan-command-current2/redis_7.4.1-alpine.log](artifacts/command-reports/p8-vulnerability-scan-command-current2/redis_7.4.1-alpine.log) — 0 bytes; .log; 修改于 2026-10-23 06:41:54
-- [artifacts/command-reports/p8-vulnerability-scan-command-current2/remediation.json](artifacts/command-reports/p8-vulnerability-scan-command-current2/remediation.json) — 30627 bytes; .json; 修改于 2026-10-23 06:47:06
-- [artifacts/command-reports/p8-vulnerability-scan-command-current2/summary.json](artifacts/command-reports/p8-vulnerability-scan-command-current2/summary.json) — 2600 bytes; .json; 修改于 2026-10-23 06:42:15
-- [artifacts/command-reports/performance-20261021002032-performance.json](artifacts/command-reports/performance-20261021002032-performance.json) — 612 bytes; .json; 修改于 2026-10-21 08:20:32
-- [artifacts/command-reports/performance-20261021234836-performance.json](artifacts/command-reports/performance-20261021234836-performance.json) — 612 bytes; .json; 修改于 2026-10-22 07:48:36
-- [artifacts/command-reports/performance-live-current/performance-live-current-performance.json](artifacts/command-reports/performance-live-current/performance-live-current-performance.json) — 657 bytes; .json; 修改于 2026-10-22 09:15:28
-- [artifacts/command-reports/performance-live-current12/performance-live-current12-performance.json](artifacts/command-reports/performance-live-current12/performance-live-current12-performance.json) — 659 bytes; .json; 修改于 2026-10-23 08:38:10
-- [artifacts/command-reports/plan-audit-20261020234903-plan-audit.json](artifacts/command-reports/plan-audit-20261020234903-plan-audit.json) — 689 bytes; .json; 修改于 2026-10-21 07:49:03
-- [artifacts/command-reports/plan-audit-20261020234955-plan-audit.json](artifacts/command-reports/plan-audit-20261020234955-plan-audit.json) — 689 bytes; .json; 修改于 2026-10-21 07:49:55
-- [artifacts/command-reports/plan-audit-20261020235037-plan-audit.json](artifacts/command-reports/plan-audit-20261020235037-plan-audit.json) — 689 bytes; .json; 修改于 2026-10-21 07:50:37
-- [artifacts/command-reports/plan-audit-20261020235328-plan-audit.json](artifacts/command-reports/plan-audit-20261020235328-plan-audit.json) — 1050 bytes; .json; 修改于 2026-10-21 07:53:28
-- [artifacts/command-reports/plan-audit-20261020235402-plan-audit.json](artifacts/command-reports/plan-audit-20261020235402-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 07:54:02
-- [artifacts/command-reports/plan-audit-20261020235437-plan-audit.json](artifacts/command-reports/plan-audit-20261020235437-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 07:54:37
-- [artifacts/command-reports/plan-audit-20261020235756-plan-audit.json](artifacts/command-reports/plan-audit-20261020235756-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 07:57:56
-- [artifacts/command-reports/plan-audit-20261020235841-plan-audit.json](artifacts/command-reports/plan-audit-20261020235841-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 07:58:41
-- [artifacts/command-reports/plan-audit-20261021000157-plan-audit.json](artifacts/command-reports/plan-audit-20261021000157-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:01:57
-- [artifacts/command-reports/plan-audit-20261021000550-plan-audit.json](artifacts/command-reports/plan-audit-20261021000550-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:05:50
-- [artifacts/command-reports/plan-audit-20261021000551-plan-audit.json](artifacts/command-reports/plan-audit-20261021000551-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:05:51
-- [artifacts/command-reports/plan-audit-20261021000615-plan-audit.json](artifacts/command-reports/plan-audit-20261021000615-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:06:15
-- [artifacts/command-reports/plan-audit-20261021000618-plan-audit.json](artifacts/command-reports/plan-audit-20261021000618-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:06:18
-- [artifacts/command-reports/plan-audit-20261021000620-plan-audit.json](artifacts/command-reports/plan-audit-20261021000620-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:06:20
-- [artifacts/command-reports/plan-audit-20261021000729-plan-audit.json](artifacts/command-reports/plan-audit-20261021000729-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:07:29
-- [artifacts/command-reports/plan-audit-20261021000731-plan-audit.json](artifacts/command-reports/plan-audit-20261021000731-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:07:31
-- [artifacts/command-reports/plan-audit-20261021000732-plan-audit.json](artifacts/command-reports/plan-audit-20261021000732-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:07:32
-- [artifacts/command-reports/plan-audit-20261021000958-plan-audit.json](artifacts/command-reports/plan-audit-20261021000958-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:09:58
-- [artifacts/command-reports/plan-audit-20261021001336-plan-audit.json](artifacts/command-reports/plan-audit-20261021001336-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:13:36
-- [artifacts/command-reports/plan-audit-20261021001339-plan-audit.json](artifacts/command-reports/plan-audit-20261021001339-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:13:39
-- [artifacts/command-reports/plan-audit-20261021001707-plan-audit.json](artifacts/command-reports/plan-audit-20261021001707-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:17:07
-- [artifacts/command-reports/plan-audit-20261021001711-plan-audit.json](artifacts/command-reports/plan-audit-20261021001711-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:17:11
-- [artifacts/command-reports/plan-audit-20261021002029-plan-audit.json](artifacts/command-reports/plan-audit-20261021002029-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:20:29
-- [artifacts/command-reports/plan-audit-20261021002032-plan-audit.json](artifacts/command-reports/plan-audit-20261021002032-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:20:32
-- [artifacts/command-reports/plan-audit-20261021002037-plan-audit.json](artifacts/command-reports/plan-audit-20261021002037-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:20:37
-- [artifacts/command-reports/plan-audit-20261021002038-plan-audit.json](artifacts/command-reports/plan-audit-20261021002038-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:20:38
-- [artifacts/command-reports/plan-audit-20261021002144-plan-audit.json](artifacts/command-reports/plan-audit-20261021002144-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:21:44
-- [artifacts/command-reports/plan-audit-20261021002226-plan-audit.json](artifacts/command-reports/plan-audit-20261021002226-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:22:26
-- [artifacts/command-reports/plan-audit-20261021002302-plan-audit.json](artifacts/command-reports/plan-audit-20261021002302-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:23:02
-- [artifacts/command-reports/plan-audit-20261021002309-plan-audit.json](artifacts/command-reports/plan-audit-20261021002309-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:23:09
-- [artifacts/command-reports/plan-audit-20261021002717-plan-audit.json](artifacts/command-reports/plan-audit-20261021002717-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:27:17
-- [artifacts/command-reports/plan-audit-20261021002724-plan-audit.json](artifacts/command-reports/plan-audit-20261021002724-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:27:24
-- [artifacts/command-reports/plan-audit-20261021003229-plan-audit.json](artifacts/command-reports/plan-audit-20261021003229-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:32:29
-- [artifacts/command-reports/plan-audit-20261021003509-plan-audit.json](artifacts/command-reports/plan-audit-20261021003509-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:35:09
-- [artifacts/command-reports/plan-audit-20261021003855-plan-audit.json](artifacts/command-reports/plan-audit-20261021003855-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:38:55
-- [artifacts/command-reports/plan-audit-20261021003900-plan-audit.json](artifacts/command-reports/plan-audit-20261021003900-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:39:00
-- [artifacts/command-reports/plan-audit-20261021004320-plan-audit.json](artifacts/command-reports/plan-audit-20261021004320-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:43:20
-- [artifacts/command-reports/plan-audit-20261021004327-plan-audit.json](artifacts/command-reports/plan-audit-20261021004327-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:43:27
-- [artifacts/command-reports/plan-audit-20261021004328-plan-audit.json](artifacts/command-reports/plan-audit-20261021004328-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:43:28
-- [artifacts/command-reports/plan-audit-20261021004454-plan-audit.json](artifacts/command-reports/plan-audit-20261021004454-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:44:54
-- [artifacts/command-reports/plan-audit-20261021004823-plan-audit.json](artifacts/command-reports/plan-audit-20261021004823-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:48:23
-- [artifacts/command-reports/plan-audit-20261021004925-plan-audit.json](artifacts/command-reports/plan-audit-20261021004925-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:49:25
-- [artifacts/command-reports/plan-audit-20261021004931-plan-audit.json](artifacts/command-reports/plan-audit-20261021004931-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:49:31
-- [artifacts/command-reports/plan-audit-20261021005242-plan-audit.json](artifacts/command-reports/plan-audit-20261021005242-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:52:42
-- [artifacts/command-reports/plan-audit-20261021005345-plan-audit.json](artifacts/command-reports/plan-audit-20261021005345-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:53:45
-- [artifacts/command-reports/plan-audit-20261021005346-plan-audit.json](artifacts/command-reports/plan-audit-20261021005346-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:53:46
-- [artifacts/command-reports/plan-audit-20261021005347-plan-audit.json](artifacts/command-reports/plan-audit-20261021005347-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:53:47
-- [artifacts/command-reports/plan-audit-20261021005520-plan-audit.json](artifacts/command-reports/plan-audit-20261021005520-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:55:20
-- [artifacts/command-reports/plan-audit-20261021005524-plan-audit.json](artifacts/command-reports/plan-audit-20261021005524-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:55:24
-- [artifacts/command-reports/plan-audit-20261021005526-plan-audit.json](artifacts/command-reports/plan-audit-20261021005526-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:55:26
-- [artifacts/command-reports/plan-audit-20261021005824-plan-audit.json](artifacts/command-reports/plan-audit-20261021005824-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:58:24
-- [artifacts/command-reports/plan-audit-20261021005829-plan-audit.json](artifacts/command-reports/plan-audit-20261021005829-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:58:29
-- [artifacts/command-reports/plan-audit-20261021005831-plan-audit.json](artifacts/command-reports/plan-audit-20261021005831-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:58:31
-- [artifacts/command-reports/plan-audit-20261021005832-plan-audit.json](artifacts/command-reports/plan-audit-20261021005832-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:58:32
-- [artifacts/command-reports/plan-audit-20261021010054-plan-audit.json](artifacts/command-reports/plan-audit-20261021010054-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 09:00:54
-- [artifacts/command-reports/plan-audit-20261021014346-plan-audit.json](artifacts/command-reports/plan-audit-20261021014346-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 09:43:46
-- [artifacts/command-reports/plan-audit-20261021021514-plan-audit.json](artifacts/command-reports/plan-audit-20261021021514-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 10:15:14
-- [artifacts/command-reports/plan-audit-20261021021736-plan-audit.json](artifacts/command-reports/plan-audit-20261021021736-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 10:17:36
-- [artifacts/command-reports/plan-audit-20261021021740-plan-audit.json](artifacts/command-reports/plan-audit-20261021021740-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 10:17:40
-- [artifacts/command-reports/plan-audit-20261021033505-plan-audit.json](artifacts/command-reports/plan-audit-20261021033505-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 11:35:05
-- [artifacts/command-reports/plan-audit-20261021033509-plan-audit.json](artifacts/command-reports/plan-audit-20261021033509-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 11:35:09
-- [artifacts/command-reports/plan-audit-20261021045559-plan-audit.json](artifacts/command-reports/plan-audit-20261021045559-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 12:55:59
-- [artifacts/command-reports/plan-audit-20261021045604-plan-audit.json](artifacts/command-reports/plan-audit-20261021045604-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 12:56:04
-- [artifacts/command-reports/plan-audit-20261021045605-plan-audit.json](artifacts/command-reports/plan-audit-20261021045605-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 12:56:05
-- [artifacts/command-reports/plan-audit-20261021092516-plan-audit.json](artifacts/command-reports/plan-audit-20261021092516-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 17:25:16
-- [artifacts/command-reports/plan-audit-20261021093511-plan-audit.json](artifacts/command-reports/plan-audit-20261021093511-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 17:35:11
-- [artifacts/command-reports/plan-audit-20261021094704-plan-audit.json](artifacts/command-reports/plan-audit-20261021094704-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 17:47:04
-- [artifacts/command-reports/plan-audit-20261021094709-plan-audit.json](artifacts/command-reports/plan-audit-20261021094709-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 17:47:10
-- [artifacts/command-reports/plan-audit-20261021095427-plan-audit.json](artifacts/command-reports/plan-audit-20261021095427-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 17:54:27
-- [artifacts/command-reports/plan-audit-20261021095615-plan-audit.json](artifacts/command-reports/plan-audit-20261021095615-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 17:56:15
-- [artifacts/command-reports/plan-audit-20261021103513-plan-audit.json](artifacts/command-reports/plan-audit-20261021103513-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 18:35:13
-- [artifacts/command-reports/plan-audit-20261021103518-plan-audit.json](artifacts/command-reports/plan-audit-20261021103518-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 18:35:18
-- [artifacts/command-reports/plan-audit-20261021103519-plan-audit.json](artifacts/command-reports/plan-audit-20261021103519-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 18:35:19
-- [artifacts/command-reports/plan-audit-20261021111830-plan-audit.json](artifacts/command-reports/plan-audit-20261021111830-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 19:18:30
-- [artifacts/command-reports/plan-audit-20261021111834-plan-audit.json](artifacts/command-reports/plan-audit-20261021111834-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 19:18:34
-- [artifacts/command-reports/plan-audit-20261021111840-plan-audit.json](artifacts/command-reports/plan-audit-20261021111840-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 19:18:40
-- [artifacts/command-reports/plan-audit-20261021112414-plan-audit.json](artifacts/command-reports/plan-audit-20261021112414-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 19:24:14
-- [artifacts/command-reports/plan-audit-20261021112728-plan-audit.json](artifacts/command-reports/plan-audit-20261021112728-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 19:27:28
-- [artifacts/command-reports/plan-audit-20261021113037-plan-audit.json](artifacts/command-reports/plan-audit-20261021113037-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 19:30:37
-- [artifacts/command-reports/plan-audit-20261021113313-plan-audit.json](artifacts/command-reports/plan-audit-20261021113313-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 19:33:13
-- [artifacts/command-reports/plan-audit-20261021113318-plan-audit.json](artifacts/command-reports/plan-audit-20261021113318-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 19:33:18
-- [artifacts/command-reports/plan-audit-20261021114957-plan-audit.json](artifacts/command-reports/plan-audit-20261021114957-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 19:49:57
-- [artifacts/command-reports/plan-audit-20261021115032-plan-audit.json](artifacts/command-reports/plan-audit-20261021115032-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 19:50:32
-- [artifacts/command-reports/plan-audit-20261021115545-plan-audit.json](artifacts/command-reports/plan-audit-20261021115545-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 19:55:45
-- [artifacts/command-reports/plan-audit-20261021115613-plan-audit.json](artifacts/command-reports/plan-audit-20261021115613-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 19:56:13
-- [artifacts/command-reports/plan-audit-20261021122729-plan-audit.json](artifacts/command-reports/plan-audit-20261021122729-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 20:27:29
-- [artifacts/command-reports/plan-audit-20261021122805-plan-audit.json](artifacts/command-reports/plan-audit-20261021122805-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 20:28:05
-- [artifacts/command-reports/plan-audit-20261021123033-plan-audit.json](artifacts/command-reports/plan-audit-20261021123033-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 20:30:33
-- [artifacts/command-reports/plan-audit-20261021123139-plan-audit.json](artifacts/command-reports/plan-audit-20261021123139-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 20:31:39
-- [artifacts/command-reports/plan-audit-20261021123718-plan-audit.json](artifacts/command-reports/plan-audit-20261021123718-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 20:37:18
-- [artifacts/command-reports/plan-audit-20261021123744-plan-audit.json](artifacts/command-reports/plan-audit-20261021123744-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 20:37:44
-- [artifacts/command-reports/plan-audit-20261021123951-plan-audit.json](artifacts/command-reports/plan-audit-20261021123951-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 20:39:51
-- [artifacts/command-reports/plan-audit-20261021124111-plan-audit.json](artifacts/command-reports/plan-audit-20261021124111-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 20:41:11
-- [artifacts/command-reports/plan-audit-20261021124142-plan-audit.json](artifacts/command-reports/plan-audit-20261021124142-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 20:41:42
-- [artifacts/command-reports/plan-audit-20261021125038-plan-audit.json](artifacts/command-reports/plan-audit-20261021125038-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 20:50:38
-- [artifacts/command-reports/plan-audit-20261021125200-plan-audit.json](artifacts/command-reports/plan-audit-20261021125200-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 20:52:00
-- [artifacts/command-reports/plan-audit-20261021125256-plan-audit.json](artifacts/command-reports/plan-audit-20261021125256-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 20:52:56
-- [artifacts/command-reports/plan-audit-20261021130705-plan-audit.json](artifacts/command-reports/plan-audit-20261021130705-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 21:07:05
-- [artifacts/command-reports/plan-audit-20261021130912-plan-audit.json](artifacts/command-reports/plan-audit-20261021130912-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 21:09:12
-- [artifacts/command-reports/plan-audit-20261021143048-plan-audit.json](artifacts/command-reports/plan-audit-20261021143048-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 22:30:48
-- [artifacts/command-reports/plan-audit-20261021143118-plan-audit.json](artifacts/command-reports/plan-audit-20261021143118-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 22:31:18
-- [artifacts/command-reports/plan-audit-20261021143305-plan-audit.json](artifacts/command-reports/plan-audit-20261021143305-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 22:33:05
-- [artifacts/command-reports/plan-audit-20261021143339-plan-audit.json](artifacts/command-reports/plan-audit-20261021143339-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 22:33:39
-- [artifacts/command-reports/plan-audit-20261021143628-plan-audit.json](artifacts/command-reports/plan-audit-20261021143628-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 22:36:28
-- [artifacts/command-reports/plan-audit-20261021143657-plan-audit.json](artifacts/command-reports/plan-audit-20261021143657-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 22:36:58
-- [artifacts/command-reports/plan-audit-20261021145215-plan-audit.json](artifacts/command-reports/plan-audit-20261021145215-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 22:52:15
-- [artifacts/command-reports/plan-audit-20261021145217-plan-audit.json](artifacts/command-reports/plan-audit-20261021145217-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 22:52:17
-- [artifacts/command-reports/plan-audit-20261021145251-plan-audit.json](artifacts/command-reports/plan-audit-20261021145251-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 22:52:51
-- [artifacts/command-reports/plan-audit-20261021145333-plan-audit.json](artifacts/command-reports/plan-audit-20261021145333-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 22:53:33
-- [artifacts/command-reports/plan-audit-20261021145450-plan-audit.json](artifacts/command-reports/plan-audit-20261021145450-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 22:54:50
-- [artifacts/command-reports/plan-audit-20261021145652-plan-audit.json](artifacts/command-reports/plan-audit-20261021145652-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 22:56:52
-- [artifacts/command-reports/plan-audit-20261021145741-plan-audit.json](artifacts/command-reports/plan-audit-20261021145741-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 22:57:41
-- [artifacts/command-reports/plan-audit-20261021145742-plan-audit.json](artifacts/command-reports/plan-audit-20261021145742-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 22:57:42
-- [artifacts/command-reports/plan-audit-20261021145926-plan-audit.json](artifacts/command-reports/plan-audit-20261021145926-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 22:59:26
-- [artifacts/command-reports/plan-audit-20261021150047-plan-audit.json](artifacts/command-reports/plan-audit-20261021150047-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 23:00:47
-- [artifacts/command-reports/plan-audit-20261021151027-plan-audit.json](artifacts/command-reports/plan-audit-20261021151027-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 23:10:27
-- [artifacts/command-reports/plan-audit-20261021151403-plan-audit.json](artifacts/command-reports/plan-audit-20261021151403-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 23:14:03
-- [artifacts/command-reports/plan-audit-20261021224254-plan-audit.json](artifacts/command-reports/plan-audit-20261021224254-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 06:42:54
-- [artifacts/command-reports/plan-audit-20261021224256-plan-audit.json](artifacts/command-reports/plan-audit-20261021224256-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 06:42:56
-- [artifacts/command-reports/plan-audit-20261021224257-plan-audit.json](artifacts/command-reports/plan-audit-20261021224257-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 06:42:57
-- [artifacts/command-reports/plan-audit-20261021224316-plan-audit.json](artifacts/command-reports/plan-audit-20261021224316-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 06:43:16
-- [artifacts/command-reports/plan-audit-20261021224424-plan-audit.json](artifacts/command-reports/plan-audit-20261021224424-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 06:44:24
-- [artifacts/command-reports/plan-audit-20261021224450-plan-audit.json](artifacts/command-reports/plan-audit-20261021224450-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 06:44:50
-- [artifacts/command-reports/plan-audit-20261021224515-plan-audit.json](artifacts/command-reports/plan-audit-20261021224515-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 06:45:15
-- [artifacts/command-reports/plan-audit-20261021224824-plan-audit.json](artifacts/command-reports/plan-audit-20261021224824-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 06:48:24
-- [artifacts/command-reports/plan-audit-20261021224825-plan-audit.json](artifacts/command-reports/plan-audit-20261021224825-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 06:48:25
-- [artifacts/command-reports/plan-audit-20261021225113-plan-audit.json](artifacts/command-reports/plan-audit-20261021225113-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 06:51:13
-- [artifacts/command-reports/plan-audit-20261021225219-plan-audit.json](artifacts/command-reports/plan-audit-20261021225219-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 06:52:20
-- [artifacts/command-reports/plan-audit-20261021225220-plan-audit.json](artifacts/command-reports/plan-audit-20261021225220-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 06:52:20
-- [artifacts/command-reports/plan-audit-20261021225238-plan-audit.json](artifacts/command-reports/plan-audit-20261021225238-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 06:52:38
-- [artifacts/command-reports/plan-audit-20261021225415-plan-audit.json](artifacts/command-reports/plan-audit-20261021225415-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 06:54:15
-- [artifacts/command-reports/plan-audit-20261021230123-plan-audit.json](artifacts/command-reports/plan-audit-20261021230123-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 07:01:23
-- [artifacts/command-reports/plan-audit-20261021230614-plan-audit.json](artifacts/command-reports/plan-audit-20261021230614-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 07:06:14
-- [artifacts/command-reports/plan-audit-20261021230615-plan-audit.json](artifacts/command-reports/plan-audit-20261021230615-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 07:06:15
-- [artifacts/command-reports/plan-audit-20261021230624-plan-audit.json](artifacts/command-reports/plan-audit-20261021230624-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 07:06:24
-- [artifacts/command-reports/plan-audit-20261021231055-plan-audit.json](artifacts/command-reports/plan-audit-20261021231055-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 07:10:55
-- [artifacts/command-reports/plan-audit-20261021231321-plan-audit.json](artifacts/command-reports/plan-audit-20261021231321-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 07:13:21
-- [artifacts/command-reports/plan-audit-20261021231322-plan-audit.json](artifacts/command-reports/plan-audit-20261021231322-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 07:13:22
-- [artifacts/command-reports/plan-audit-20261021231346-plan-audit.json](artifacts/command-reports/plan-audit-20261021231346-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 07:13:46
-- [artifacts/command-reports/plan-audit-20261021231558-plan-audit.json](artifacts/command-reports/plan-audit-20261021231558-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 07:15:58
-- [artifacts/command-reports/plan-audit-20261021231559-plan-audit.json](artifacts/command-reports/plan-audit-20261021231559-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 07:15:59
-- [artifacts/command-reports/plan-audit-20261021232327-plan-audit.json](artifacts/command-reports/plan-audit-20261021232327-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 07:23:27
-- [artifacts/command-reports/plan-audit-20261021232343-plan-audit.json](artifacts/command-reports/plan-audit-20261021232343-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 07:23:43
-- [artifacts/command-reports/plan-audit-20261021234340-plan-audit.json](artifacts/command-reports/plan-audit-20261021234340-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 07:43:40
-- [artifacts/command-reports/plan-audit-20261021234341-plan-audit.json](artifacts/command-reports/plan-audit-20261021234341-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 07:43:41
-- [artifacts/command-reports/plan-audit-20261021234347-plan-audit.json](artifacts/command-reports/plan-audit-20261021234347-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 07:43:47
-- [artifacts/command-reports/plan-audit-20261021234431-plan-audit.json](artifacts/command-reports/plan-audit-20261021234431-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 07:44:31
-- [artifacts/command-reports/plan-audit-20261021234754-plan-audit.json](artifacts/command-reports/plan-audit-20261021234754-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 07:47:54
-- [artifacts/command-reports/plan-audit-20261021234932-plan-audit.json](artifacts/command-reports/plan-audit-20261021234932-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 07:49:32
-- [artifacts/command-reports/plan-audit-20261021234948-plan-audit.json](artifacts/command-reports/plan-audit-20261021234948-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 07:49:48
-- [artifacts/command-reports/plan-audit-20261021234949-plan-audit.json](artifacts/command-reports/plan-audit-20261021234949-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 07:49:49
-- [artifacts/command-reports/plan-audit-20261021235259-plan-audit.json](artifacts/command-reports/plan-audit-20261021235259-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 07:52:59
-- [artifacts/command-reports/plan-audit-20261021235354-plan-audit.json](artifacts/command-reports/plan-audit-20261021235354-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 07:53:54
-- [artifacts/command-reports/plan-audit-20261021235357-plan-audit.json](artifacts/command-reports/plan-audit-20261021235357-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 07:53:57
-- [artifacts/command-reports/plan-audit-20261021235415-plan-audit.json](artifacts/command-reports/plan-audit-20261021235415-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 07:54:15
-- [artifacts/command-reports/plan-audit-20261021235503-plan-audit.json](artifacts/command-reports/plan-audit-20261021235503-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 07:55:03
-- [artifacts/command-reports/plan-audit-20261022000022-plan-audit.json](artifacts/command-reports/plan-audit-20261022000022-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 08:00:22
-- [artifacts/command-reports/plan-audit-20261022000102-plan-audit.json](artifacts/command-reports/plan-audit-20261022000102-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 08:01:02
-- [artifacts/command-reports/plan-audit-20261022000103-plan-audit.json](artifacts/command-reports/plan-audit-20261022000103-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 08:01:03
-- [artifacts/command-reports/plan-audit-20261022000501-plan-audit.json](artifacts/command-reports/plan-audit-20261022000501-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 08:05:01
-- [artifacts/command-reports/plan-audit-20261022000511-plan-audit.json](artifacts/command-reports/plan-audit-20261022000511-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 08:05:11
-- [artifacts/command-reports/plan-audit-20261022001408-plan-audit.json](artifacts/command-reports/plan-audit-20261022001408-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 08:14:08
-- [artifacts/command-reports/plan-audit-20261022001424-plan-audit.json](artifacts/command-reports/plan-audit-20261022001424-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 08:14:24
-- [artifacts/command-reports/plan-audit-20261022003854-plan-audit.json](artifacts/command-reports/plan-audit-20261022003854-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 08:38:54
-- [artifacts/command-reports/plan-audit-20261022003902-plan-audit.json](artifacts/command-reports/plan-audit-20261022003902-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 08:39:02
-- [artifacts/command-reports/plan-audit-20261022003903-plan-audit.json](artifacts/command-reports/plan-audit-20261022003903-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 08:39:03
-- [artifacts/command-reports/plan-audit-20261022003913-plan-audit.json](artifacts/command-reports/plan-audit-20261022003913-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 08:39:13
-- [artifacts/command-reports/plan-audit-20261022003942-plan-audit.json](artifacts/command-reports/plan-audit-20261022003942-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 08:39:42
-- [artifacts/command-reports/plan-audit-20261022003943-plan-audit.json](artifacts/command-reports/plan-audit-20261022003943-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 08:39:43
-- [artifacts/command-reports/plan-audit-20261022004106-plan-audit.json](artifacts/command-reports/plan-audit-20261022004106-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 08:41:06
-- [artifacts/command-reports/plan-audit-20261022004111-plan-audit.json](artifacts/command-reports/plan-audit-20261022004111-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 08:41:11
-- [artifacts/command-reports/plan-audit-20261022005216-plan-audit.json](artifacts/command-reports/plan-audit-20261022005216-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 08:52:16
-- [artifacts/command-reports/plan-audit-20261022005224-plan-audit.json](artifacts/command-reports/plan-audit-20261022005224-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 08:52:24
-- [artifacts/command-reports/plan-audit-20261022005227-plan-audit.json](artifacts/command-reports/plan-audit-20261022005227-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 08:52:27
-- [artifacts/command-reports/plan-audit-20261022005824-plan-audit.json](artifacts/command-reports/plan-audit-20261022005824-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 08:58:24
-- [artifacts/command-reports/plan-audit-20261022005828-plan-audit.json](artifacts/command-reports/plan-audit-20261022005828-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 08:58:28
-- [artifacts/command-reports/plan-audit-20261022041655-plan-audit.json](artifacts/command-reports/plan-audit-20261022041655-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 12:16:55
-- [artifacts/command-reports/plan-audit-20261022041701-plan-audit.json](artifacts/command-reports/plan-audit-20261022041701-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 12:17:01
-- [artifacts/command-reports/plan-audit-20261022041714-plan-audit.json](artifacts/command-reports/plan-audit-20261022041714-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 12:17:14
-- [artifacts/command-reports/plan-audit-20261022041809-plan-audit.json](artifacts/command-reports/plan-audit-20261022041809-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 12:18:09
-- [artifacts/command-reports/plan-audit-20261022042858-plan-audit.json](artifacts/command-reports/plan-audit-20261022042858-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 12:28:58
-- [artifacts/command-reports/plan-audit-20261022042957-plan-audit.json](artifacts/command-reports/plan-audit-20261022042957-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 12:29:57
-- [artifacts/command-reports/plan-audit-20261022053547-plan-audit.json](artifacts/command-reports/plan-audit-20261022053547-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 13:35:47
-- [artifacts/command-reports/plan-audit-20261022053650-plan-audit.json](artifacts/command-reports/plan-audit-20261022053650-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 13:36:50
-- [artifacts/command-reports/plan-audit-20261022053709-plan-audit.json](artifacts/command-reports/plan-audit-20261022053709-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 13:37:09
-- [artifacts/command-reports/plan-audit-20261022053920-plan-audit.json](artifacts/command-reports/plan-audit-20261022053920-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 13:39:20
-- [artifacts/command-reports/plan-audit-20261022113218-plan-audit.json](artifacts/command-reports/plan-audit-20261022113218-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 19:32:18
-- [artifacts/command-reports/plan-audit-20261022113544-plan-audit.json](artifacts/command-reports/plan-audit-20261022113544-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 19:35:44
-- [artifacts/command-reports/plan-audit-20261022113604-plan-audit.json](artifacts/command-reports/plan-audit-20261022113604-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 19:36:04
-- [artifacts/command-reports/plan-audit-20261022113934-plan-audit.json](artifacts/command-reports/plan-audit-20261022113934-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 19:39:34
-- [artifacts/command-reports/plan-audit-20261022114612-plan-audit.json](artifacts/command-reports/plan-audit-20261022114612-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 19:46:12
-- [artifacts/command-reports/plan-audit-20261022114639-plan-audit.json](artifacts/command-reports/plan-audit-20261022114639-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 19:46:39
-- [artifacts/command-reports/plan-audit-20261022114702-plan-audit.json](artifacts/command-reports/plan-audit-20261022114702-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 19:47:02
-- [artifacts/command-reports/plan-audit-20261022124812-plan-audit.json](artifacts/command-reports/plan-audit-20261022124812-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 20:48:12
-- [artifacts/command-reports/plan-audit-20261022124814-plan-audit.json](artifacts/command-reports/plan-audit-20261022124814-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 20:48:14
-- [artifacts/command-reports/plan-audit-20261022124900-plan-audit.json](artifacts/command-reports/plan-audit-20261022124900-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 20:49:00
-- [artifacts/command-reports/plan-audit-20261022141029-plan-audit.json](artifacts/command-reports/plan-audit-20261022141029-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 22:10:29
-- [artifacts/command-reports/plan-audit-20261022141150-plan-audit.json](artifacts/command-reports/plan-audit-20261022141150-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 22:11:51
-- [artifacts/command-reports/plan-audit-20261022141948-plan-audit.json](artifacts/command-reports/plan-audit-20261022141948-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 22:19:48
-- [artifacts/command-reports/plan-audit-20261022142107-plan-audit.json](artifacts/command-reports/plan-audit-20261022142107-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 22:21:07
-- [artifacts/command-reports/plan-audit-20261022142109-plan-audit.json](artifacts/command-reports/plan-audit-20261022142109-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 22:21:09
-- [artifacts/command-reports/plan-audit-20261022142553-plan-audit.json](artifacts/command-reports/plan-audit-20261022142553-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 22:25:53
-- [artifacts/command-reports/plan-audit-20261022143035-plan-audit.json](artifacts/command-reports/plan-audit-20261022143035-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 22:30:35
-- [artifacts/command-reports/plan-audit-20261022143036-plan-audit.json](artifacts/command-reports/plan-audit-20261022143036-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 22:30:36
-- [artifacts/command-reports/plan-audit-20261022143500-plan-audit.json](artifacts/command-reports/plan-audit-20261022143500-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 22:35:00
-- [artifacts/command-reports/plan-audit-20261022145832-plan-audit.json](artifacts/command-reports/plan-audit-20261022145832-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 22:58:32
-- [artifacts/command-reports/plan-audit-20261022150713-plan-audit.json](artifacts/command-reports/plan-audit-20261022150713-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 23:07:13
-- [artifacts/command-reports/plan-audit-20261022151117-plan-audit.json](artifacts/command-reports/plan-audit-20261022151117-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 23:11:17
-- [artifacts/command-reports/plan-audit-20261022151142-plan-audit.json](artifacts/command-reports/plan-audit-20261022151142-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 23:11:42
-- [artifacts/command-reports/plan-audit-20261022151345-plan-audit.json](artifacts/command-reports/plan-audit-20261022151345-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 23:13:45
-- [artifacts/command-reports/plan-audit-20261022153438-plan-audit.json](artifacts/command-reports/plan-audit-20261022153438-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 23:34:38
-- [artifacts/command-reports/plan-audit-20261022154741-plan-audit.json](artifacts/command-reports/plan-audit-20261022154741-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 23:47:41
-- [artifacts/command-reports/plan-audit-20261022154914-plan-audit.json](artifacts/command-reports/plan-audit-20261022154914-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 23:49:14
-- [artifacts/command-reports/plan-audit-20261022155258-plan-audit.json](artifacts/command-reports/plan-audit-20261022155258-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 23:52:58
-- [artifacts/command-reports/plan-audit-20261022155320-plan-audit.json](artifacts/command-reports/plan-audit-20261022155320-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 23:53:20
-- [artifacts/command-reports/plan-audit-20261022220009-plan-audit.json](artifacts/command-reports/plan-audit-20261022220009-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 06:00:09
-- [artifacts/command-reports/plan-audit-20261022220132-plan-audit.json](artifacts/command-reports/plan-audit-20261022220132-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 06:01:32
-- [artifacts/command-reports/plan-audit-20261022220150-plan-audit.json](artifacts/command-reports/plan-audit-20261022220150-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 06:01:50
-- [artifacts/command-reports/plan-audit-20261022220742-plan-audit.json](artifacts/command-reports/plan-audit-20261022220742-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 06:07:42
-- [artifacts/command-reports/plan-audit-20261022220843-plan-audit.json](artifacts/command-reports/plan-audit-20261022220843-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 06:08:43
-- [artifacts/command-reports/plan-audit-20261022220916-plan-audit.json](artifacts/command-reports/plan-audit-20261022220916-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 06:09:16
-- [artifacts/command-reports/plan-audit-20261022221857-plan-audit.json](artifacts/command-reports/plan-audit-20261022221857-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 06:18:57
-- [artifacts/command-reports/plan-audit-20261022221911-plan-audit.json](artifacts/command-reports/plan-audit-20261022221911-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 06:19:11
-- [artifacts/command-reports/plan-audit-20261022223044-plan-audit.json](artifacts/command-reports/plan-audit-20261022223044-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 06:30:44
-- [artifacts/command-reports/plan-audit-20261022223839-plan-audit.json](artifacts/command-reports/plan-audit-20261022223839-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 06:38:39
-- [artifacts/command-reports/plan-audit-20261022224257-plan-audit.json](artifacts/command-reports/plan-audit-20261022224257-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 06:42:57
-- [artifacts/command-reports/plan-audit-20261022224321-plan-audit.json](artifacts/command-reports/plan-audit-20261022224321-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 06:43:21
-- [artifacts/command-reports/plan-audit-20261022224334-plan-audit.json](artifacts/command-reports/plan-audit-20261022224334-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 06:43:34
-- [artifacts/command-reports/plan-audit-20261022224812-plan-audit.json](artifacts/command-reports/plan-audit-20261022224812-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 06:48:12
-- [artifacts/command-reports/plan-audit-20261022224831-plan-audit.json](artifacts/command-reports/plan-audit-20261022224831-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 06:48:31
-- [artifacts/command-reports/plan-audit-20261022230058-plan-audit.json](artifacts/command-reports/plan-audit-20261022230058-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 07:00:58
-- [artifacts/command-reports/plan-audit-20261022230105-plan-audit.json](artifacts/command-reports/plan-audit-20261022230105-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 07:01:05
-- [artifacts/command-reports/plan-audit-20261022230112-plan-audit.json](artifacts/command-reports/plan-audit-20261022230112-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 07:01:12
-- [artifacts/command-reports/plan-audit-20261022231009-plan-audit.json](artifacts/command-reports/plan-audit-20261022231009-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 07:10:09
-- [artifacts/command-reports/plan-audit-20261022231016-plan-audit.json](artifacts/command-reports/plan-audit-20261022231016-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 07:10:16
-- [artifacts/command-reports/plan-audit-20261022231023-plan-audit.json](artifacts/command-reports/plan-audit-20261022231023-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 07:10:23
-- [artifacts/command-reports/plan-audit-20261022231810-plan-audit.json](artifacts/command-reports/plan-audit-20261022231810-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 07:18:10
-- [artifacts/command-reports/plan-audit-20261022231819-plan-audit.json](artifacts/command-reports/plan-audit-20261022231819-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 07:18:19
-- [artifacts/command-reports/plan-audit-20261022231903-plan-audit.json](artifacts/command-reports/plan-audit-20261022231903-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 07:19:03
-- [artifacts/command-reports/plan-audit-20261022232342-plan-audit.json](artifacts/command-reports/plan-audit-20261022232342-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 07:23:42
-- [artifacts/command-reports/plan-audit-20261022232351-plan-audit.json](artifacts/command-reports/plan-audit-20261022232351-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 07:23:51
-- [artifacts/command-reports/plan-audit-20261022232715-plan-audit.json](artifacts/command-reports/plan-audit-20261022232715-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 07:27:15
-- [artifacts/command-reports/plan-audit-20261022232723-plan-audit.json](artifacts/command-reports/plan-audit-20261022232723-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 07:27:23
-- [artifacts/command-reports/plan-audit-20261022233500-plan-audit.json](artifacts/command-reports/plan-audit-20261022233500-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 07:35:00
-- [artifacts/command-reports/plan-audit-20261022235010-plan-audit.json](artifacts/command-reports/plan-audit-20261022235010-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 07:50:10
-- [artifacts/command-reports/plan-audit-20261022235018-plan-audit.json](artifacts/command-reports/plan-audit-20261022235018-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 07:50:18
-- [artifacts/command-reports/plan-audit-20261022235051-plan-audit.json](artifacts/command-reports/plan-audit-20261022235051-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 07:50:51
-- [artifacts/command-reports/plan-audit-20261022235403-plan-audit.json](artifacts/command-reports/plan-audit-20261022235403-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 07:54:03
-- [artifacts/command-reports/plan-audit-20261022235413-plan-audit.json](artifacts/command-reports/plan-audit-20261022235413-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 07:54:13
-- [artifacts/command-reports/plan-audit-20261023001401-plan-audit.json](artifacts/command-reports/plan-audit-20261023001401-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 08:14:01
-- [artifacts/command-reports/plan-audit-20261023001403-plan-audit.json](artifacts/command-reports/plan-audit-20261023001403-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 08:14:03
-- [artifacts/command-reports/plan-audit-20261023002537-plan-audit.json](artifacts/command-reports/plan-audit-20261023002537-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 08:25:37
-- [artifacts/command-reports/plan-audit-20261023003339-plan-audit.json](artifacts/command-reports/plan-audit-20261023003339-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 08:33:39
-- [artifacts/command-reports/plan-audit-20261023004510-plan-audit.json](artifacts/command-reports/plan-audit-20261023004510-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 08:45:10
-- [artifacts/command-reports/plan-audit-20261023004511-plan-audit.json](artifacts/command-reports/plan-audit-20261023004511-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 08:45:11
-- [artifacts/command-reports/plan-audit-20261023011631-plan-audit.json](artifacts/command-reports/plan-audit-20261023011631-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 09:16:31
-- [artifacts/command-reports/plan-audit-20261023011858-plan-audit.json](artifacts/command-reports/plan-audit-20261023011858-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 09:18:58
-- [artifacts/command-reports/plan-audit-20261023013022-plan-audit.json](artifacts/command-reports/plan-audit-20261023013022-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 09:30:23
-- [artifacts/command-reports/plan-audit-20261023030556-plan-audit.json](artifacts/command-reports/plan-audit-20261023030556-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 11:05:56
-- [artifacts/command-reports/plan-audit-identity-audit-current/plan-audit-identity-audit-current-plan-audit.json](artifacts/command-reports/plan-audit-identity-audit-current/plan-audit-identity-audit-current-plan-audit.json) — 782 bytes; .json; 修改于 2026-10-23 07:17:53
-- [artifacts/command-reports/plane-to-mcp-functional-current21/plane-to-mcp-functional-current21-functional.json](artifacts/command-reports/plane-to-mcp-functional-current21/plane-to-mcp-functional-current21-functional.json) — 4568 bytes; .json; 修改于 2026-10-23 12:20:35
-- [artifacts/command-reports/plane-to-mcp-wavemate-current4/plane-to-mcp-wavemate-current4-functional.json](artifacts/command-reports/plane-to-mcp-wavemate-current4/plane-to-mcp-wavemate-current4-functional.json) — 17881 bytes; .json; 修改于 2026-10-23 06:06:52
-- [artifacts/command-reports/plane-to-mcp-wavemate-functional-current20/plane-to-mcp-wavemate-functional-current20-functional.json](artifacts/command-reports/plane-to-mcp-wavemate-functional-current20/plane-to-mcp-wavemate-functional-current20-functional.json) — 17805 bytes; .json; 修改于 2026-10-23 12:17:09
-- [artifacts/command-reports/rc-readiness-20261021000550-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021000550-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:05:51
-- [artifacts/command-reports/rc-readiness-20261021000551-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021000551-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:05:51
-- [artifacts/command-reports/rc-readiness-20261021000615-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021000615-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:06:16
-- [artifacts/command-reports/rc-readiness-20261021000618-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021000618-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:06:19
-- [artifacts/command-reports/rc-readiness-20261021000620-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021000620-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:06:20
-- [artifacts/command-reports/rc-readiness-20261021000731-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021000731-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:07:31
-- [artifacts/command-reports/rc-readiness-20261021000732-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021000732-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:07:32
-- [artifacts/command-reports/rc-readiness-20261021000958-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021000958-rc-readiness.json) — 1667 bytes; .json; 修改于 2026-10-21 08:09:58
-- [artifacts/command-reports/rc-readiness-20261021001339-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021001339-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:13:39
-- [artifacts/command-reports/rc-readiness-20261021001707-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021001707-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:17:08
-- [artifacts/command-reports/rc-readiness-20261021001711-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021001711-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:17:11
-- [artifacts/command-reports/rc-readiness-20261021002031-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021002031-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:20:34
-- [artifacts/command-reports/rc-readiness-20261021002036-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021002036-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:20:38
-- [artifacts/command-reports/rc-readiness-20261021002038-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021002038-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:20:38
-- [artifacts/command-reports/rc-readiness-20261021002144-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021002144-rc-readiness.json) — 1667 bytes; .json; 修改于 2026-10-21 08:21:44
-- [artifacts/command-reports/rc-readiness-20261021002226-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021002226-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:22:26
-- [artifacts/command-reports/rc-readiness-20261021002308-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021002308-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:23:09
-- [artifacts/command-reports/rc-readiness-20261021002724-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021002724-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:27:25
-- [artifacts/command-reports/rc-readiness-20261021003900-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021003900-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:39:00
-- [artifacts/command-reports/rc-readiness-20261021004320-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021004320-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:43:20
-- [artifacts/command-reports/rc-readiness-20261021004327-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021004327-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:43:27
-- [artifacts/command-reports/rc-readiness-20261021004328-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021004328-rc-readiness.json) — 1667 bytes; .json; 修改于 2026-10-21 08:43:28
-- [artifacts/command-reports/rc-readiness-20261021004823-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021004823-rc-readiness.json) — 1667 bytes; .json; 修改于 2026-10-21 08:48:23
-- [artifacts/command-reports/rc-readiness-20261021004931-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021004931-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:49:32
-- [artifacts/command-reports/rc-readiness-20261021005242-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021005242-rc-readiness.json) — 1667 bytes; .json; 修改于 2026-10-21 08:52:42
-- [artifacts/command-reports/rc-readiness-20261021005344-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021005344-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:53:45
-- [artifacts/command-reports/rc-readiness-20261021005346-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021005346-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:53:47
-- [artifacts/command-reports/rc-readiness-20261021005347-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021005347-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:53:48
-- [artifacts/command-reports/rc-readiness-20261021005524-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021005524-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:55:25
-- [artifacts/command-reports/rc-readiness-20261021005525-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021005525-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:55:27
-- [artifacts/command-reports/rc-readiness-20261021005526-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021005526-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:55:27
-- [artifacts/command-reports/rc-readiness-20261021005829-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021005829-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:58:30
-- [artifacts/command-reports/rc-readiness-20261021005830-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021005830-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:58:32
-- [artifacts/command-reports/rc-readiness-20261021005831-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021005831-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:58:32
-- [artifacts/command-reports/rc-readiness-20261021010054-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021010054-rc-readiness.json) — 1667 bytes; .json; 修改于 2026-10-21 09:00:54
-- [artifacts/command-reports/rc-readiness-20261021021514-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021021514-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 10:15:14
-- [artifacts/command-reports/rc-readiness-20261021021740-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021021740-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 10:17:40
-- [artifacts/command-reports/rc-readiness-20261021033508-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021033508-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 11:35:09
-- [artifacts/command-reports/rc-readiness-20261021045604-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021045604-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 12:56:05
-- [artifacts/command-reports/rc-readiness-20261021092516-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021092516-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 17:25:17
-- [artifacts/command-reports/rc-readiness-20261021093511-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021093511-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 17:35:11
-- [artifacts/command-reports/rc-readiness-20261021094704-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021094704-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 17:47:05
-- [artifacts/command-reports/rc-readiness-20261021094709-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021094709-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 17:47:10
-- [artifacts/command-reports/rc-readiness-20261021095427-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021095427-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 17:54:27
-- [artifacts/command-reports/rc-readiness-20261021103513-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021103513-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 18:35:13
-- [artifacts/command-reports/rc-readiness-20261021103518-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021103518-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 18:35:18
-- [artifacts/command-reports/rc-readiness-20261021111830-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021111830-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 19:18:30
-- [artifacts/command-reports/rc-readiness-20261021111834-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021111834-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 19:18:35
-- [artifacts/command-reports/rc-readiness-20261021112728-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021112728-rc-readiness.json) — 1602 bytes; .json; 修改于 2026-10-21 19:27:28
-- [artifacts/command-reports/rc-readiness-20261021113037-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021113037-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 19:30:38
-- [artifacts/command-reports/rc-readiness-20261021113313-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021113313-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 19:33:14
-- [artifacts/command-reports/rc-readiness-20261021113318-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021113318-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 19:33:18
-- [artifacts/command-reports/rc-readiness-20261021114957-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021114957-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 19:49:58
-- [artifacts/command-reports/rc-readiness-20261021115032-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021115032-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 19:50:32
-- [artifacts/command-reports/rc-readiness-20261021115545-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021115545-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 19:55:45
-- [artifacts/command-reports/rc-readiness-20261021115613-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021115613-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 19:56:14
-- [artifacts/command-reports/rc-readiness-20261021122729-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021122729-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 20:27:30
-- [artifacts/command-reports/rc-readiness-20261021122805-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021122805-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 20:28:05
-- [artifacts/command-reports/rc-readiness-20261021123033-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021123033-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 20:30:33
-- [artifacts/command-reports/rc-readiness-20261021123139-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021123139-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 20:31:40
-- [artifacts/command-reports/rc-readiness-20261021123718-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021123718-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 20:37:19
-- [artifacts/command-reports/rc-readiness-20261021123744-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021123744-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 20:37:44
-- [artifacts/command-reports/rc-readiness-20261021123951-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021123951-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 20:39:51
-- [artifacts/command-reports/rc-readiness-20261021124111-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021124111-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 20:41:11
-- [artifacts/command-reports/rc-readiness-20261021124142-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021124142-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 20:41:42
-- [artifacts/command-reports/rc-readiness-20261021125038-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021125038-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 20:50:38
-- [artifacts/command-reports/rc-readiness-20261021125200-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021125200-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 20:52:01
-- [artifacts/command-reports/rc-readiness-20261021125256-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021125256-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 20:52:57
-- [artifacts/command-reports/rc-readiness-20261021130705-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021130705-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 21:07:05
-- [artifacts/command-reports/rc-readiness-20261021130912-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021130912-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 21:09:12
-- [artifacts/command-reports/rc-readiness-20261021143048-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021143048-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 22:30:49
-- [artifacts/command-reports/rc-readiness-20261021143118-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021143118-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 22:31:19
-- [artifacts/command-reports/rc-readiness-20261021143305-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021143305-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 22:33:06
-- [artifacts/command-reports/rc-readiness-20261021143339-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021143339-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 22:33:39
-- [artifacts/command-reports/rc-readiness-20261021143628-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021143628-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 22:36:29
-- [artifacts/command-reports/rc-readiness-20261021143657-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021143657-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 22:36:58
-- [artifacts/command-reports/rc-readiness-20261021145217-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021145217-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 22:52:17
-- [artifacts/command-reports/rc-readiness-20261021145251-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021145251-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 22:52:52
-- [artifacts/command-reports/rc-readiness-20261021145333-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021145333-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 22:53:33
-- [artifacts/command-reports/rc-readiness-20261021145449-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021145449-rc-readiness.json) — 1602 bytes; .json; 修改于 2026-10-21 22:54:50
-- [artifacts/command-reports/rc-readiness-20261021145742-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021145742-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 22:57:43
-- [artifacts/command-reports/rc-readiness-20261021145926-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021145926-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 22:59:26
-- [artifacts/command-reports/rc-readiness-20261021151027-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021151027-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 23:10:27
-- [artifacts/command-reports/rc-readiness-20261021151403-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021151403-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-21 23:14:03
-- [artifacts/command-reports/rc-readiness-20261021224254-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021224254-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-22 06:42:58
-- [artifacts/command-reports/rc-readiness-20261021224256-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021224256-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-22 06:42:58
-- [artifacts/command-reports/rc-readiness-20261021224257-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021224257-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-22 06:42:58
-- [artifacts/command-reports/rc-readiness-20261021224450-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021224450-rc-readiness.json) — 1603 bytes; .json; 修改于 2026-10-22 06:44:50
-- [artifacts/command-reports/rc-readiness-20261021224824-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021224824-rc-readiness.json) — 1537 bytes; .json; 修改于 2026-10-22 06:48:24
-- [artifacts/command-reports/rc-readiness-20261021224825-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021224825-rc-readiness.json) — 1537 bytes; .json; 修改于 2026-10-22 06:48:25
-- [artifacts/command-reports/rc-readiness-20261021225113-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021225113-rc-readiness.json) — 1537 bytes; .json; 修改于 2026-10-22 06:51:15
-- [artifacts/command-reports/rc-readiness-20261021225219-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021225219-rc-readiness.json) — 1537 bytes; .json; 修改于 2026-10-22 06:52:20
-- [artifacts/command-reports/rc-readiness-20261021225220-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021225220-rc-readiness.json) — 1537 bytes; .json; 修改于 2026-10-22 06:52:22
-- [artifacts/command-reports/rc-readiness-20261021230123-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021230123-rc-readiness.json) — 1537 bytes; .json; 修改于 2026-10-22 07:01:24
-- [artifacts/command-reports/rc-readiness-20261021230614-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021230614-rc-readiness.json) — 1537 bytes; .json; 修改于 2026-10-22 07:06:16
-- [artifacts/command-reports/rc-readiness-20261021231055-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021231055-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 07:10:55
-- [artifacts/command-reports/rc-readiness-20261021231321-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021231321-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 07:13:24
-- [artifacts/command-reports/rc-readiness-20261021231322-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021231322-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 07:13:24
-- [artifacts/command-reports/rc-readiness-20261021231557-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021231557-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 07:16:00
-- [artifacts/command-reports/rc-readiness-20261021231559-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021231559-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 07:16:00
-- [artifacts/command-reports/rc-readiness-20261021232327-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021232327-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 07:23:27
-- [artifacts/command-reports/rc-readiness-20261021232343-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021232343-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 07:23:44
-- [artifacts/command-reports/rc-readiness-20261021234340-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021234340-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 07:43:42
-- [artifacts/command-reports/rc-readiness-20261021234431-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021234431-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 07:44:32
-- [artifacts/command-reports/rc-readiness-20261021234932-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021234932-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 07:49:32
-- [artifacts/command-reports/rc-readiness-20261021234948-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021234948-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 07:49:50
-- [artifacts/command-reports/rc-readiness-20261021234949-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021234949-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 07:49:50
-- [artifacts/command-reports/rc-readiness-20261021235259-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021235259-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 07:53:00
-- [artifacts/command-reports/rc-readiness-20261021235354-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021235354-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 07:53:57
-- [artifacts/command-reports/rc-readiness-20261021235357-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021235357-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 07:53:57
-- [artifacts/command-reports/rc-readiness-20261021235414-rc-readiness.json](artifacts/command-reports/rc-readiness-20261021235414-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 07:54:15
-- [artifacts/command-reports/rc-readiness-20261022000102-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022000102-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 08:01:04
-- [artifacts/command-reports/rc-readiness-20261022000103-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022000103-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 08:01:04
-- [artifacts/command-reports/rc-readiness-20261022000501-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022000501-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 08:05:02
-- [artifacts/command-reports/rc-readiness-20261022000511-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022000511-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 08:05:11
-- [artifacts/command-reports/rc-readiness-20261022001408-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022001408-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 08:14:09
-- [artifacts/command-reports/rc-readiness-20261022001424-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022001424-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 08:14:25
-- [artifacts/command-reports/rc-readiness-20261022003902-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022003902-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 08:39:03
-- [artifacts/command-reports/rc-readiness-20261022003903-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022003903-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 08:39:04
-- [artifacts/command-reports/rc-readiness-20261022003913-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022003913-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 08:39:13
-- [artifacts/command-reports/rc-readiness-20261022003941-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022003941-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 08:39:43
-- [artifacts/command-reports/rc-readiness-20261022003943-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022003943-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 08:39:43
-- [artifacts/command-reports/rc-readiness-20261022004111-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022004111-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 08:41:12
-- [artifacts/command-reports/rc-readiness-20261022005216-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022005216-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 08:52:17
-- [artifacts/command-reports/rc-readiness-20261022005224-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022005224-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 08:52:25
-- [artifacts/command-reports/rc-readiness-20261022005828-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022005828-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 08:58:29
-- [artifacts/command-reports/rc-readiness-20261022041655-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022041655-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 12:16:56
-- [artifacts/command-reports/rc-readiness-20261022041701-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022041701-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 12:17:01
-- [artifacts/command-reports/rc-readiness-20261022041714-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022041714-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 12:17:15
-- [artifacts/command-reports/rc-readiness-20261022042858-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022042858-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 12:28:59
-- [artifacts/command-reports/rc-readiness-20261022053547-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022053547-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 13:35:48
-- [artifacts/command-reports/rc-readiness-20261022053649-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022053649-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 13:36:50
-- [artifacts/command-reports/rc-readiness-20261022053708-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022053708-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 13:37:09
-- [artifacts/command-reports/rc-readiness-20261022053920-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022053920-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 13:39:21
-- [artifacts/command-reports/rc-readiness-20261022113218-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022113218-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 19:32:19
-- [artifacts/command-reports/rc-readiness-20261022113544-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022113544-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 19:35:45
-- [artifacts/command-reports/rc-readiness-20261022113604-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022113604-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 19:36:04
-- [artifacts/command-reports/rc-readiness-20261022113934-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022113934-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 19:39:34
-- [artifacts/command-reports/rc-readiness-20261022114612-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022114612-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 19:46:13
-- [artifacts/command-reports/rc-readiness-20261022114639-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022114639-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 19:46:40
-- [artifacts/command-reports/rc-readiness-20261022114702-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022114702-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 19:47:03
-- [artifacts/command-reports/rc-readiness-20261022124812-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022124812-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 20:48:16
-- [artifacts/command-reports/rc-readiness-20261022124813-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022124813-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 20:48:17
-- [artifacts/command-reports/rc-readiness-20261022124900-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022124900-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 20:49:02
-- [artifacts/command-reports/rc-readiness-20261022141029-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022141029-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 22:10:30
-- [artifacts/command-reports/rc-readiness-20261022141150-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022141150-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 22:11:52
-- [artifacts/command-reports/rc-readiness-20261022141948-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022141948-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 22:19:48
-- [artifacts/command-reports/rc-readiness-20261022142107-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022142107-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 22:21:10
-- [artifacts/command-reports/rc-readiness-20261022142108-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022142108-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 22:21:10
-- [artifacts/command-reports/rc-readiness-20261022142553-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022142553-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 22:25:54
-- [artifacts/command-reports/rc-readiness-20261022143035-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022143035-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 22:30:37
-- [artifacts/command-reports/rc-readiness-20261022143500-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022143500-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 22:35:01
-- [artifacts/command-reports/rc-readiness-20261022145832-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022145832-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 22:58:32
-- [artifacts/command-reports/rc-readiness-20261022150713-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022150713-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 23:07:13
-- [artifacts/command-reports/rc-readiness-20261022151117-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022151117-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 23:11:17
-- [artifacts/command-reports/rc-readiness-20261022151142-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022151142-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 23:11:43
-- [artifacts/command-reports/rc-readiness-20261022151345-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022151345-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 23:13:46
-- [artifacts/command-reports/rc-readiness-20261022153438-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022153438-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 23:34:39
-- [artifacts/command-reports/rc-readiness-20261022154741-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022154741-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 23:47:41
-- [artifacts/command-reports/rc-readiness-20261022154914-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022154914-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 23:49:14
-- [artifacts/command-reports/rc-readiness-20261022155258-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022155258-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 23:52:59
-- [artifacts/command-reports/rc-readiness-20261022155320-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022155320-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-22 23:53:21
-- [artifacts/command-reports/rc-readiness-20261022220009-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022220009-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 06:00:10
-- [artifacts/command-reports/rc-readiness-20261022220132-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022220132-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 06:01:33
-- [artifacts/command-reports/rc-readiness-20261022220150-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022220150-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 06:01:50
-- [artifacts/command-reports/rc-readiness-20261022220742-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022220742-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 06:07:43
-- [artifacts/command-reports/rc-readiness-20261022220843-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022220843-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 06:08:44
-- [artifacts/command-reports/rc-readiness-20261022220916-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022220916-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 06:09:17
-- [artifacts/command-reports/rc-readiness-20261022221857-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022221857-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 06:18:59
-- [artifacts/command-reports/rc-readiness-20261022221911-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022221911-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 06:19:12
-- [artifacts/command-reports/rc-readiness-20261022223044-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022223044-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 06:30:46
-- [artifacts/command-reports/rc-readiness-20261022223839-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022223839-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 06:38:40
-- [artifacts/command-reports/rc-readiness-20261022224257-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022224257-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 06:42:58
-- [artifacts/command-reports/rc-readiness-20261022224321-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022224321-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 06:43:22
-- [artifacts/command-reports/rc-readiness-20261022224334-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022224334-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 06:43:34
-- [artifacts/command-reports/rc-readiness-20261022224812-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022224812-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 06:48:13
-- [artifacts/command-reports/rc-readiness-20261022224830-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022224830-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 06:48:31
-- [artifacts/command-reports/rc-readiness-20261022230058-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022230058-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 07:00:59
-- [artifacts/command-reports/rc-readiness-20261022230105-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022230105-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 07:01:05
-- [artifacts/command-reports/rc-readiness-20261022230112-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022230112-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 07:01:13
-- [artifacts/command-reports/rc-readiness-20261022231009-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022231009-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 07:10:10
-- [artifacts/command-reports/rc-readiness-20261022231016-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022231016-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 07:10:17
-- [artifacts/command-reports/rc-readiness-20261022231023-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022231023-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 07:10:24
-- [artifacts/command-reports/rc-readiness-20261022231810-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022231810-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 07:18:11
-- [artifacts/command-reports/rc-readiness-20261022231819-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022231819-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 07:18:19
-- [artifacts/command-reports/rc-readiness-20261022231903-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022231903-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 07:19:04
-- [artifacts/command-reports/rc-readiness-20261022232342-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022232342-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 07:23:43
-- [artifacts/command-reports/rc-readiness-20261022232350-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022232350-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 07:23:51
-- [artifacts/command-reports/rc-readiness-20261022232715-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022232715-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 07:27:15
-- [artifacts/command-reports/rc-readiness-20261022232723-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022232723-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 07:27:23
-- [artifacts/command-reports/rc-readiness-20261022233500-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022233500-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 07:35:00
-- [artifacts/command-reports/rc-readiness-20261022235010-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022235010-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 07:50:11
-- [artifacts/command-reports/rc-readiness-20261022235018-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022235018-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 07:50:19
-- [artifacts/command-reports/rc-readiness-20261022235051-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022235051-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 07:50:52
-- [artifacts/command-reports/rc-readiness-20261022235403-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022235403-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 07:54:04
-- [artifacts/command-reports/rc-readiness-20261022235413-rc-readiness.json](artifacts/command-reports/rc-readiness-20261022235413-rc-readiness.json) — 1388 bytes; .json; 修改于 2026-10-23 07:54:14
-- [artifacts/command-reports/rc-readiness-20261023001401-rc-readiness.json](artifacts/command-reports/rc-readiness-20261023001401-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 08:14:03
-- [artifacts/command-reports/rc-readiness-20261023001403-rc-readiness.json](artifacts/command-reports/rc-readiness-20261023001403-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 08:14:04
-- [artifacts/command-reports/rc-readiness-20261023002537-rc-readiness.json](artifacts/command-reports/rc-readiness-20261023002537-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 08:25:38
-- [artifacts/command-reports/rc-readiness-20261023003339-rc-readiness.json](artifacts/command-reports/rc-readiness-20261023003339-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 08:33:41
-- [artifacts/command-reports/rc-readiness-20261023004509-rc-readiness.json](artifacts/command-reports/rc-readiness-20261023004509-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 08:45:11
-- [artifacts/command-reports/rc-readiness-20261023004511-rc-readiness.json](artifacts/command-reports/rc-readiness-20261023004511-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 08:45:12
-- [artifacts/command-reports/rc-readiness-20261023011631-rc-readiness.json](artifacts/command-reports/rc-readiness-20261023011631-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 09:16:32
-- [artifacts/command-reports/rc-readiness-20261023011858-rc-readiness.json](artifacts/command-reports/rc-readiness-20261023011858-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 09:19:00
-- [artifacts/command-reports/rc-readiness-20261023013022-rc-readiness.json](artifacts/command-reports/rc-readiness-20261023013022-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 09:30:24
-- [artifacts/command-reports/rc-readiness-20261023030556-rc-readiness.json](artifacts/command-reports/rc-readiness-20261023030556-rc-readiness.json) — 1474 bytes; .json; 修改于 2026-10-23 11:05:56
-- [artifacts/command-reports/rc-readiness-current10/plan-audit-20261022235500-plan-audit.json](artifacts/command-reports/rc-readiness-current10/plan-audit-20261022235500-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 07:55:00
-- [artifacts/command-reports/rc-readiness-current10/rc-readiness-current10-rc-readiness.json](artifacts/command-reports/rc-readiness-current10/rc-readiness-current10-rc-readiness.json) — 1378 bytes; .json; 修改于 2026-10-23 07:55:01
-- [artifacts/command-reports/rc-readiness-current11/plan-audit-20261023002922-plan-audit.json](artifacts/command-reports/rc-readiness-current11/plan-audit-20261023002922-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 08:29:22
-- [artifacts/command-reports/rc-readiness-current11/rc-readiness-current11-rc-readiness.json](artifacts/command-reports/rc-readiness-current11/rc-readiness-current11-rc-readiness.json) — 1378 bytes; .json; 修改于 2026-10-23 08:29:23
-- [artifacts/command-reports/rc-readiness-current12/plan-audit-20261023004330-plan-audit.json](artifacts/command-reports/rc-readiness-current12/plan-audit-20261023004330-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 08:43:30
-- [artifacts/command-reports/rc-readiness-current12/rc-readiness-current12-rc-readiness.json](artifacts/command-reports/rc-readiness-current12/rc-readiness-current12-rc-readiness.json) — 1378 bytes; .json; 修改于 2026-10-23 08:43:31
-- [artifacts/command-reports/rc-readiness-current16/plan-audit-20261023012054-plan-audit.json](artifacts/command-reports/rc-readiness-current16/plan-audit-20261023012054-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 09:20:54
-- [artifacts/command-reports/rc-readiness-current16/rc-readiness-current16-rc-readiness.json](artifacts/command-reports/rc-readiness-current16/rc-readiness-current16-rc-readiness.json) — 1378 bytes; .json; 修改于 2026-10-23 09:20:55
-- [artifacts/command-reports/rc-readiness-current17/plan-audit-20261023012719-plan-audit.json](artifacts/command-reports/rc-readiness-current17/plan-audit-20261023012719-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 09:27:19
-- [artifacts/command-reports/rc-readiness-current17/rc-readiness-current17-rc-readiness.json](artifacts/command-reports/rc-readiness-current17/rc-readiness-current17-rc-readiness.json) — 1378 bytes; .json; 修改于 2026-10-23 09:27:21
-- [artifacts/command-reports/rc-readiness-current18/plan-audit-20261023030553-plan-audit.json](artifacts/command-reports/rc-readiness-current18/plan-audit-20261023030553-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 11:05:53
-- [artifacts/command-reports/rc-readiness-current18/rc-readiness-current18-rc-readiness.json](artifacts/command-reports/rc-readiness-current18/rc-readiness-current18-rc-readiness.json) — 1378 bytes; .json; 修改于 2026-10-23 11:05:56
-- [artifacts/command-reports/rc-readiness-current22/plan-audit-20261023042354-plan-audit.json](artifacts/command-reports/rc-readiness-current22/plan-audit-20261023042354-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 12:23:54
-- [artifacts/command-reports/rc-readiness-current22/rc-readiness-current22-rc-readiness.json](artifacts/command-reports/rc-readiness-current22/rc-readiness-current22-rc-readiness.json) — 1378 bytes; .json; 修改于 2026-10-23 12:23:55
-- [artifacts/command-reports/rc-readiness-identity-audit-current/plan-audit-20261022231920-plan-audit.json](artifacts/command-reports/rc-readiness-identity-audit-current/plan-audit-20261022231920-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-23 07:19:20
-- [artifacts/command-reports/rc-readiness-identity-audit-current/rc-readiness-identity-audit-current-rc-readiness.json](artifacts/command-reports/rc-readiness-identity-audit-current/rc-readiness-identity-audit-current-rc-readiness.json) — 1404 bytes; .json; 修改于 2026-10-23 07:19:21
-- [artifacts/command-reports/release-20261020233235-release.json](artifacts/command-reports/release-20261020233235-release.json) — 578 bytes; .json; 修改于 2026-10-21 07:32:35
-- [artifacts/command-reports/release-20261021002032-release.json](artifacts/command-reports/release-20261021002032-release.json) — 578 bytes; .json; 修改于 2026-10-21 08:20:34
-- [artifacts/command-reports/release-live-current12/release-live-current12-ai-memory.tar.gz](artifacts/command-reports/release-live-current12/release-live-current12-ai-memory.tar.gz) — 83509904 bytes; .gz; 修改于 2026-10-23 08:37:41
-- [artifacts/command-reports/release-live-current12/release-live-current12-object-storage.tar.gz](artifacts/command-reports/release-live-current12/release-live-current12-object-storage.tar.gz) — 6399 bytes; .gz; 修改于 2026-10-23 08:37:42
-- [artifacts/command-reports/release-live-current12/release-live-current12-postgres.sql](artifacts/command-reports/release-live-current12/release-live-current12-postgres.sql) — 466682 bytes; .sql; 修改于 2026-10-23 08:37:21
-- [artifacts/command-reports/release-live-current12/release-live-current12-release.json](artifacts/command-reports/release-live-current12/release-live-current12-release.json) — 4629 bytes; .json; 修改于 2026-10-23 08:37:45
-- [artifacts/command-reports/release-live-current12/release-live-current12-sqlite-outbox.sqlite](artifacts/command-reports/release-live-current12/release-live-current12-sqlite-outbox.sqlite) — 16384 bytes; .sqlite; 修改于 2026-10-23 08:37:43
-- [artifacts/command-reports/release-live-current12/release-live-current12-sqlite-sqlite.json](artifacts/command-reports/release-live-current12/release-live-current12-sqlite-sqlite.json) — 838 bytes; .json; 修改于 2026-10-23 08:37:43
-- [artifacts/command-reports/release-live-current12/release-live-current12-sqlite-verification.json](artifacts/command-reports/release-live-current12/release-live-current12-sqlite-verification.json) — 838 bytes; .json; 修改于 2026-10-23 08:37:43
-- [artifacts/command-reports/release-live-dependency-upgrade-current14/release-live-dependency-upgrade-current14-ai-memory.tar.gz](artifacts/command-reports/release-live-dependency-upgrade-current14/release-live-dependency-upgrade-current14-ai-memory.tar.gz) — 83510786 bytes; .gz; 修改于 2026-10-23 09:09:05
-- [artifacts/command-reports/release-live-dependency-upgrade-current14/release-live-dependency-upgrade-current14-object-storage.tar.gz](artifacts/command-reports/release-live-dependency-upgrade-current14/release-live-dependency-upgrade-current14-object-storage.tar.gz) — 9607 bytes; .gz; 修改于 2026-10-23 09:09:05
-- [artifacts/command-reports/release-live-dependency-upgrade-current14/release-live-dependency-upgrade-current14-postgres.sql](artifacts/command-reports/release-live-dependency-upgrade-current14/release-live-dependency-upgrade-current14-postgres.sql) — 488085 bytes; .sql; 修改于 2026-10-23 09:08:44
-- [artifacts/command-reports/release-live-dependency-upgrade-current14/release-live-dependency-upgrade-current14-release.json](artifacts/command-reports/release-live-dependency-upgrade-current14/release-live-dependency-upgrade-current14-release.json) — 5161 bytes; .json; 修改于 2026-10-23 09:09:09
-- [artifacts/command-reports/release-live-dependency-upgrade-current14/release-live-dependency-upgrade-current14-sqlite-outbox.sqlite](artifacts/command-reports/release-live-dependency-upgrade-current14/release-live-dependency-upgrade-current14-sqlite-outbox.sqlite) — 16384 bytes; .sqlite; 修改于 2026-10-23 09:09:07
-- [artifacts/command-reports/release-live-dependency-upgrade-current14/release-live-dependency-upgrade-current14-sqlite-sqlite.json](artifacts/command-reports/release-live-dependency-upgrade-current14/release-live-dependency-upgrade-current14-sqlite-sqlite.json) — 914 bytes; .json; 修改于 2026-10-23 09:09:07
-- [artifacts/command-reports/release-live-dependency-upgrade-current14/release-live-dependency-upgrade-current14-sqlite-verification.json](artifacts/command-reports/release-live-dependency-upgrade-current14/release-live-dependency-upgrade-current14-sqlite-verification.json) — 914 bytes; .json; 修改于 2026-10-23 09:09:07
-- [artifacts/command-reports/release-manifest-current13/release-manifest.yaml](artifacts/command-reports/release-manifest-current13/release-manifest.yaml) — 1173 bytes; .yaml; 修改于 2026-10-23 08:56:17
-- [artifacts/command-reports/release-transport-sqlite/release-transport-sqlite-ai-memory.tar.gz](artifacts/command-reports/release-transport-sqlite/release-transport-sqlite-ai-memory.tar.gz) — 83453950 bytes; .gz; 修改于 2026-10-22 08:28:53
-- [artifacts/command-reports/release-transport-sqlite/release-transport-sqlite-object-storage.tar.gz](artifacts/command-reports/release-transport-sqlite/release-transport-sqlite-object-storage.tar.gz) — 7496 bytes; .gz; 修改于 2026-10-22 08:28:54
-- [artifacts/command-reports/release-transport-sqlite/release-transport-sqlite-postgres.sql](artifacts/command-reports/release-transport-sqlite/release-transport-sqlite-postgres.sql) — 457134 bytes; .sql; 修改于 2026-10-22 08:28:33
-- [artifacts/command-reports/release-transport-sqlite/release-transport-sqlite-release.json](artifacts/command-reports/release-transport-sqlite/release-transport-sqlite-release.json) — 4702 bytes; .json; 修改于 2026-10-22 08:28:56
-- [artifacts/command-reports/release-transport-sqlite/release-transport-sqlite-sqlite-outbox.sqlite](artifacts/command-reports/release-transport-sqlite/release-transport-sqlite-sqlite-outbox.sqlite) — 16384 bytes; .sqlite; 修改于 2026-10-22 08:28:55
-- [artifacts/command-reports/release-transport-sqlite/release-transport-sqlite-sqlite-sqlite.json](artifacts/command-reports/release-transport-sqlite/release-transport-sqlite-sqlite-sqlite.json) — 846 bytes; .json; 修改于 2026-10-22 08:28:55
-- [artifacts/command-reports/release-transport-sqlite/release-transport-sqlite-sqlite-verification.json](artifacts/command-reports/release-transport-sqlite/release-transport-sqlite-sqlite-verification.json) — 846 bytes; .json; 修改于 2026-10-22 08:28:55
-- [artifacts/command-reports/resilience-20261021002032-resilience.json](artifacts/command-reports/resilience-20261021002032-resilience.json) — 1413 bytes; .json; 修改于 2026-10-21 08:20:32
-- [artifacts/command-reports/resilience-20261021234836-resilience.json](artifacts/command-reports/resilience-20261021234836-resilience.json) — 1413 bytes; .json; 修改于 2026-10-22 07:48:36
-- [artifacts/command-reports/resilience-business-current12/resilience-business-current12-resilience.json](artifacts/command-reports/resilience-business-current12/resilience-business-current12-resilience.json) — 3275 bytes; .json; 修改于 2026-10-23 08:40:44
-- [artifacts/command-reports/resilience-business-dependency-upgrade-current14/resilience-business-dependency-upgrade-current14-resilience.json](artifacts/command-reports/resilience-business-dependency-upgrade-current14/resilience-business-dependency-upgrade-current14-resilience.json) — 3389 bytes; .json; 修改于 2026-10-23 09:09:59
-- [artifacts/command-reports/resilience-live-dependency/resilience-live-dependency-resilience.json](artifacts/command-reports/resilience-live-dependency/resilience-live-dependency-resilience.json) — 1268 bytes; .json; 修改于 2026-10-22 09:16:13
-- [artifacts/command-reports/resilience-matrix-current12/resilience-matrix-current12-resilience.json](artifacts/command-reports/resilience-matrix-current12/resilience-matrix-current12-resilience.json) — 6119 bytes; .json; 修改于 2026-10-23 08:39:53
-- [artifacts/command-reports/resilience-matrix-dependency-upgrade-current14/resilience-matrix-dependency-upgrade-current14-resilience.json](artifacts/command-reports/resilience-matrix-dependency-upgrade-current14/resilience-matrix-dependency-upgrade-current14-resilience.json) — 6309 bytes; .json; 修改于 2026-10-23 09:11:38
-- [artifacts/command-reports/sbom-wavemate-current4/sbom.cdx.json](artifacts/command-reports/sbom-wavemate-current4/sbom.cdx.json) — 5132 bytes; .json; 修改于 2026-10-23 06:11:16
-- [artifacts/command-reports/security-20261021002029-security.json](artifacts/command-reports/security-20261021002029-security.json) — 523 bytes; .json; 修改于 2026-10-21 08:20:29
-- [artifacts/command-reports/security-20261021234836-security.json](artifacts/command-reports/security-20261021234836-security.json) — 523 bytes; .json; 修改于 2026-10-22 07:48:36
-- [artifacts/command-reports/security-audit-20261021231640/pnpm-audit-prod.json](artifacts/command-reports/security-audit-20261021231640/pnpm-audit-prod.json) — 290 bytes; .json; 修改于 2026-10-22 07:16:57
-- [artifacts/command-reports/security-audit-20261021231640/verification.txt](artifacts/command-reports/security-audit-20261021231640/verification.txt) — 59 bytes; .txt; 修改于 2026-10-22 07:16:57
-- [artifacts/command-reports/security-live-current12/security-live-current12-security.json](artifacts/command-reports/security-live-current12/security-live-current12-security.json) — 1495 bytes; .json; 修改于 2026-10-23 08:38:22
-- [artifacts/command-reports/security-live-opa-current/security-live-opa-current-security.json](artifacts/command-reports/security-live-opa-current/security-live-opa-current-security.json) — 1511 bytes; .json; 修改于 2026-10-23 07:46:07
-- [artifacts/command-reports/security-live-opa-current2/security-live-opa-current2-security.json](artifacts/command-reports/security-live-opa-current2/security-live-opa-current2-security.json) — 1519 bytes; .json; 修改于 2026-10-23 08:26:55
-- [artifacts/command-reports/security-live-runtime/security-live-runtime-security.json](artifacts/command-reports/security-live-runtime/security-live-runtime-security.json) — 1456 bytes; .json; 修改于 2026-10-22 09:15:28
-- [artifacts/command-reports/seed.json](artifacts/command-reports/seed.json) — 502 bytes; .json; 修改于 2026-10-21 22:54:50
-- [artifacts/command-reports/sqlite-live-final/sqlite-live-final-outbox.sqlite](artifacts/command-reports/sqlite-live-final/sqlite-live-final-outbox.sqlite) — 16384 bytes; .sqlite; 修改于 2026-10-22 08:28:15
-- [artifacts/command-reports/sqlite-live-final/sqlite-live-final-sqlite.json](artifacts/command-reports/sqlite-live-final/sqlite-live-final-sqlite.json) — 797 bytes; .json; 修改于 2026-10-22 08:28:15
-- [artifacts/command-reports/sqlite-live-final/sqlite-live-final-verification.json](artifacts/command-reports/sqlite-live-final/sqlite-live-final-verification.json) — 797 bytes; .json; 修改于 2026-10-22 08:28:15
-- [artifacts/command-reports/t8-client-switch-fixture/functional-20261021224130-functional.json](artifacts/command-reports/t8-client-switch-fixture/functional-20261021224130-functional.json) — 1936 bytes; .json; 修改于 2026-10-22 06:41:31
-- [artifacts/command-reports/t8-live-fixture/functional-20261021151811-functional.json](artifacts/command-reports/t8-live-fixture/functional-20261021151811-functional.json) — 1619 bytes; .json; 修改于 2026-10-21 23:18:11
-- [artifacts/command-reports/trivy-images-current4/bitnamilegacy_minio_2025.7.23-debian-12-r5.json](artifacts/command-reports/trivy-images-current4/bitnamilegacy_minio_2025.7.23-debian-12-r5.json) — 1584479 bytes; .json; 修改于 2026-10-23 06:22:45
-- [artifacts/command-reports/trivy-images-current4/bitnamilegacy_minio_2025.7.23-debian-12-r5.log](artifacts/command-reports/trivy-images-current4/bitnamilegacy_minio_2025.7.23-debian-12-r5.log) — 0 bytes; .log; 修改于 2026-10-23 06:22:34
-- [artifacts/command-reports/trivy-images-current4/makeplane_plane-backend_v0.26.0.json](artifacts/command-reports/trivy-images-current4/makeplane_plane-backend_v0.26.0.json) — 373009 bytes; .json; 修改于 2026-10-23 06:22:26
-- [artifacts/command-reports/trivy-images-current4/makeplane_plane-backend_v0.26.0.log](artifacts/command-reports/trivy-images-current4/makeplane_plane-backend_v0.26.0.log) — 0 bytes; .log; 修改于 2026-10-23 06:22:13
-- [artifacts/command-reports/trivy-images-current4/nats_2.10.22-alpine.json](artifacts/command-reports/trivy-images-current4/nats_2.10.22-alpine.json) — 372740 bytes; .json; 修改于 2026-10-23 06:23:13
-- [artifacts/command-reports/trivy-images-current4/nats_2.10.22-alpine.log](artifacts/command-reports/trivy-images-current4/nats_2.10.22-alpine.log) — 0 bytes; .log; 修改于 2026-10-23 06:23:11
-- [artifacts/command-reports/trivy-images-current4/otel_opentelemetry-collector-contrib_0.107.0.json](artifacts/command-reports/trivy-images-current4/otel_opentelemetry-collector-contrib_0.107.0.json) — 493683 bytes; .json; 修改于 2026-10-23 06:28:35
-- [artifacts/command-reports/trivy-images-current4/otel_opentelemetry-collector-contrib_0.107.0.log](artifacts/command-reports/trivy-images-current4/otel_opentelemetry-collector-contrib_0.107.0.log) — 0 bytes; .log; 修改于 2026-10-23 06:28:26
-- [artifacts/command-reports/trivy-images-current4/planemem_ai-memory_3.1.1-local.json](artifacts/command-reports/trivy-images-current4/planemem_ai-memory_3.1.1-local.json) — 5672 bytes; .json; 修改于 2026-10-23 06:22:52
-- [artifacts/command-reports/trivy-images-current4/planemem_ai-memory_3.1.1-local.log](artifacts/command-reports/trivy-images-current4/planemem_ai-memory_3.1.1-local.log) — 0 bytes; .log; 修改于 2026-10-23 06:22:45
-- [artifacts/command-reports/trivy-images-current4/planemem-platform_0.1.0-wavemate.json](artifacts/command-reports/trivy-images-current4/planemem-platform_0.1.0-wavemate.json) — 11562 bytes; .json; 修改于 2026-10-23 06:22:13
-- [artifacts/command-reports/trivy-images-current4/planemem-platform_0.1.0-wavemate.log](artifacts/command-reports/trivy-images-current4/planemem-platform_0.1.0-wavemate.log) — 0 bytes; .log; 修改于 2026-10-23 06:21:35
-- [artifacts/command-reports/trivy-images-current4/postgres_16.4-alpine.json](artifacts/command-reports/trivy-images-current4/postgres_16.4-alpine.json) — 528446 bytes; .json; 修改于 2026-10-23 06:23:06
-- [artifacts/command-reports/trivy-images-current4/postgres_16.4-alpine.log](artifacts/command-reports/trivy-images-current4/postgres_16.4-alpine.log) — 0 bytes; .log; 修改于 2026-10-23 06:22:52
-- [artifacts/command-reports/trivy-images-current4/quay.io_keycloak_keycloak_26.0.5.json](artifacts/command-reports/trivy-images-current4/quay.io_keycloak_keycloak_26.0.5.json) — 418873 bytes; .json; 修改于 2026-10-23 06:28:26
-- [artifacts/command-reports/trivy-images-current4/quay.io_keycloak_keycloak_26.0.5.log](artifacts/command-reports/trivy-images-current4/quay.io_keycloak_keycloak_26.0.5.log) — 0 bytes; .log; 修改于 2026-10-23 06:23:13
-- [artifacts/command-reports/trivy-images-current4/rabbitmq_3.13-management-alpine.json](artifacts/command-reports/trivy-images-current4/rabbitmq_3.13-management-alpine.json) — 353509 bytes; .json; 修改于 2026-10-23 06:22:34
-- [artifacts/command-reports/trivy-images-current4/rabbitmq_3.13-management-alpine.log](artifacts/command-reports/trivy-images-current4/rabbitmq_3.13-management-alpine.log) — 0 bytes; .log; 修改于 2026-10-23 06:22:26
-- [artifacts/command-reports/trivy-images-current4/redis_7.4.1-alpine.json](artifacts/command-reports/trivy-images-current4/redis_7.4.1-alpine.json) — 496470 bytes; .json; 修改于 2026-10-23 06:23:11
-- [artifacts/command-reports/trivy-images-current4/redis_7.4.1-alpine.log](artifacts/command-reports/trivy-images-current4/redis_7.4.1-alpine.log) — 0 bytes; .log; 修改于 2026-10-23 06:23:06
-- [artifacts/command-reports/trivy-images-current4/summary.json](artifacts/command-reports/trivy-images-current4/summary.json) — 3112 bytes; .json; 修改于 2026-10-23 06:28:44
-- [artifacts/command-reports/trivy-wavemate-current4/summary.json](artifacts/command-reports/trivy-wavemate-current4/summary.json) — 504 bytes; .json; 修改于 2026-10-23 06:17:03
-- [artifacts/command-reports/trivy-wavemate-current4/trivy.json](artifacts/command-reports/trivy-wavemate-current4/trivy.json) — 11562 bytes; .json; 修改于 2026-10-23 06:16:08
-- [artifacts/command-reports/trivy-wavemate-current4/trivy.log](artifacts/command-reports/trivy-wavemate-current4/trivy.log) — 26792 bytes; .log; 修改于 2026-10-23 06:16:08
-- [artifacts/command-reports/vuln-candidate-keycloak-2657/quay.io_keycloak_keycloak_26.5.7.json](artifacts/command-reports/vuln-candidate-keycloak-2657/quay.io_keycloak_keycloak_26.5.7.json) — 322493 bytes; .json; 修改于 2026-10-23 09:02:32
-- [artifacts/command-reports/vuln-candidate-keycloak-2657/quay.io_keycloak_keycloak_26.5.7.log](artifacts/command-reports/vuln-candidate-keycloak-2657/quay.io_keycloak_keycloak_26.5.7.log) — 0 bytes; .log; 修改于 2026-10-23 09:02:32
-- [artifacts/command-reports/vuln-candidate-keycloak-2657/summary.json](artifacts/command-reports/vuln-candidate-keycloak-2657/summary.json) — 532 bytes; .json; 修改于 2026-10-23 09:02:32
-- [artifacts/command-reports/vuln-candidate-nats-2151/nats_2.15.1-alpine3.22.json](artifacts/command-reports/vuln-candidate-nats-2151/nats_2.15.1-alpine3.22.json) — 10342 bytes; .json; 修改于 2026-10-23 08:59:47
-- [artifacts/command-reports/vuln-candidate-nats-2151/nats_2.15.1-alpine3.22.log](artifacts/command-reports/vuln-candidate-nats-2151/nats_2.15.1-alpine3.22.log) — 0 bytes; .log; 修改于 2026-10-23 08:59:47
-- [artifacts/command-reports/vuln-candidate-nats-2151/summary.json](artifacts/command-reports/vuln-candidate-nats-2151/summary.json) — 516 bytes; .json; 修改于 2026-10-23 08:59:47
-- [artifacts/command-reports/vuln-candidate-otel-138/otel_opentelemetry-collector-contrib_0.138.0.json](artifacts/command-reports/vuln-candidate-otel-138/otel_opentelemetry-collector-contrib_0.138.0.json) — 447240 bytes; .json; 修改于 2026-10-23 09:03:37
-- [artifacts/command-reports/vuln-candidate-otel-138/otel_opentelemetry-collector-contrib_0.138.0.log](artifacts/command-reports/vuln-candidate-otel-138/otel_opentelemetry-collector-contrib_0.138.0.log) — 0 bytes; .log; 修改于 2026-10-23 09:03:37
-- [artifacts/command-reports/vuln-candidate-otel-138/summary.json](artifacts/command-reports/vuln-candidate-otel-138/summary.json) — 539 bytes; .json; 修改于 2026-10-23 09:03:37
-- [artifacts/command-reports/vuln-candidate-plane-0261/makeplane_plane-backend_v0.26.1.json](artifacts/command-reports/vuln-candidate-plane-0261/makeplane_plane-backend_v0.26.1.json) — 342739 bytes; .json; 修改于 2026-10-23 09:06:24
-- [artifacts/command-reports/vuln-candidate-plane-0261/makeplane_plane-backend_v0.26.1.log](artifacts/command-reports/vuln-candidate-plane-0261/makeplane_plane-backend_v0.26.1.log) — 0 bytes; .log; 修改于 2026-10-23 09:06:24
-- [artifacts/command-reports/vuln-candidate-plane-0261/summary.json](artifacts/command-reports/vuln-candidate-plane-0261/summary.json) — 528 bytes; .json; 修改于 2026-10-23 09:06:24
-- [artifacts/command-reports/vuln-candidate-plane-0280/makeplane_plane-backend_v0.28.0.json](artifacts/command-reports/vuln-candidate-plane-0280/makeplane_plane-backend_v0.28.0.json) — 551226 bytes; .json; 修改于 2026-10-23 09:04:52
-- [artifacts/command-reports/vuln-candidate-plane-0280/makeplane_plane-backend_v0.28.0.log](artifacts/command-reports/vuln-candidate-plane-0280/makeplane_plane-backend_v0.28.0.log) — 0 bytes; .log; 修改于 2026-10-23 09:04:52
-- [artifacts/command-reports/vuln-candidate-plane-0280/summary.json](artifacts/command-reports/vuln-candidate-plane-0280/summary.json) — 530 bytes; .json; 修改于 2026-10-23 09:04:52
-- [artifacts/command-reports/vuln-candidate-postgres-1615/postgres_16.15-alpine3.24.json](artifacts/command-reports/vuln-candidate-postgres-1615/postgres_16.15-alpine3.24.json) — 217175 bytes; .json; 修改于 2026-10-23 08:57:57
-- [artifacts/command-reports/vuln-candidate-postgres-1615/postgres_16.15-alpine3.24.log](artifacts/command-reports/vuln-candidate-postgres-1615/postgres_16.15-alpine3.24.log) — 0 bytes; .log; 修改于 2026-10-23 08:57:57
-- [artifacts/command-reports/vuln-candidate-postgres-1615/summary.json](artifacts/command-reports/vuln-candidate-postgres-1615/summary.json) — 525 bytes; .json; 修改于 2026-10-23 08:57:57
-- [artifacts/command-reports/vuln-candidate-rabbitmq-440/rabbitmq_4.4.0-management-alpine.json](artifacts/command-reports/vuln-candidate-rabbitmq-440/rabbitmq_4.4.0-management-alpine.json) — 13455 bytes; .json; 修改于 2026-10-23 08:59:13
-- [artifacts/command-reports/vuln-candidate-rabbitmq-440/rabbitmq_4.4.0-management-alpine.log](artifacts/command-reports/vuln-candidate-rabbitmq-440/rabbitmq_4.4.0-management-alpine.log) — 0 bytes; .log; 修改于 2026-10-23 08:59:13
-- [artifacts/command-reports/vuln-candidate-rabbitmq-440/summary.json](artifacts/command-reports/vuln-candidate-rabbitmq-440/summary.json) — 528 bytes; .json; 修改于 2026-10-23 08:59:13
-- [artifacts/command-reports/vuln-candidate-redis-747/redis_7.4.7-alpine.json](artifacts/command-reports/vuln-candidate-redis-747/redis_7.4.7-alpine.json) — 478575 bytes; .json; 修改于 2026-10-23 09:01:07
-- [artifacts/command-reports/vuln-candidate-redis-747/redis_7.4.7-alpine.log](artifacts/command-reports/vuln-candidate-redis-747/redis_7.4.7-alpine.log) — 0 bytes; .log; 修改于 2026-10-23 09:01:07
-- [artifacts/command-reports/vuln-candidate-redis-747/summary.json](artifacts/command-reports/vuln-candidate-redis-747/summary.json) — 514 bytes; .json; 修改于 2026-10-23 09:01:07
-- [artifacts/command-reports/wavemate-compose-ui-current20/wavemate-compose-ui-current20-wavemate-ui.json](artifacts/command-reports/wavemate-compose-ui-current20/wavemate-compose-ui-current20-wavemate-ui.json) — 456 bytes; .json; 修改于 2026-10-23 12:17:55
-- [artifacts/command-reports/wavemate-compose-ui-current21/wavemate-compose-ui-current21-wavemate-ui.json](artifacts/command-reports/wavemate-compose-ui-current21/wavemate-compose-ui-current21-wavemate-ui.json) — 466 bytes; .json; 修改于 2026-10-23 12:19:34
-- [artifacts/command-reports/wavemate-k3s-current/restore-verification.json](artifacts/command-reports/wavemate-k3s-current/restore-verification.json) — 286 bytes; .json; 修改于 2026-10-22 19:40:46
-- [artifacts/command-reports/wavemate-k3s-current/wavemate-k3s-current-wavemate.json](artifacts/command-reports/wavemate-k3s-current/wavemate-k3s-current-wavemate.json) — 6948 bytes; .json; 修改于 2026-10-22 19:22:21
-- [artifacts/command-reports/wavemate-k3s-ui-clean/traffic.json](artifacts/command-reports/wavemate-k3s-ui-clean/traffic.json) — 5488 bytes; .json; 修改于 2026-10-22 20:36:50
-- [artifacts/command-reports/wavemate-k3s-ui-clean/wavemate-k3s-ui-clean-wavemate-ui.json](artifacts/command-reports/wavemate-k3s-ui-clean/wavemate-k3s-ui-clean-wavemate-ui.json) — 8026 bytes; .json; 修改于 2026-10-22 20:36:50
-- [artifacts/command-reports/wavemate-k3s-ui-current/traffic.json](artifacts/command-reports/wavemate-k3s-ui-current/traffic.json) — 7828 bytes; .json; 修改于 2026-10-22 20:28:44
-- [artifacts/command-reports/wavemate-k3s-ui-current/wavemate-k3s-ui-current-wavemate-ui.json](artifacts/command-reports/wavemate-k3s-ui-current/wavemate-k3s-ui-current-wavemate-ui.json) — 10827 bytes; .json; 修改于 2026-10-22 20:28:44
-- [artifacts/command-reports/wavemate-k3s-ui-current2/manual-restore-verification.json](artifacts/command-reports/wavemate-k3s-ui-current2/manual-restore-verification.json) — 421 bytes; .json; 修改于 2026-10-22 23:46:07
-- [artifacts/command-reports/wavemate-k3s-ui-current2/traffic.json](artifacts/command-reports/wavemate-k3s-ui-current2/traffic.json) — 7838 bytes; .json; 修改于 2026-10-22 23:29:46
-- [artifacts/command-reports/wavemate-k3s-ui-current2/wavemate-k3s-ui-current2-wavemate-ui.json](artifacts/command-reports/wavemate-k3s-ui-current2/wavemate-k3s-ui-current2-wavemate-ui.json) — 10686 bytes; .json; 修改于 2026-10-22 23:29:46
-- [artifacts/command-reports/wavemate-k3s-ui-current3/restore-verification.json](artifacts/command-reports/wavemate-k3s-ui-current3/restore-verification.json) — 351 bytes; .json; 修改于 2026-10-22 23:44:01
-- [artifacts/command-reports/wavemate-k3s-ui-current3/traffic.json](artifacts/command-reports/wavemate-k3s-ui-current3/traffic.json) — 5512 bytes; .json; 修改于 2026-10-22 23:44:01
-- [artifacts/command-reports/wavemate-k3s-ui-current3/wavemate-k3s-ui-current3-wavemate-ui.json](artifacts/command-reports/wavemate-k3s-ui-current3/wavemate-k3s-ui-current3-wavemate-ui.json) — 8256 bytes; .json; 修改于 2026-10-22 23:44:01
-- [artifacts/command-reports/wavemate-k3s-ui-current4/restore-verification.json](artifacts/command-reports/wavemate-k3s-ui-current4/restore-verification.json) — 351 bytes; .json; 修改于 2026-10-22 23:59:02
-- [artifacts/command-reports/wavemate-k3s-ui-current4/traffic.json](artifacts/command-reports/wavemate-k3s-ui-current4/traffic.json) — 7838 bytes; .json; 修改于 2026-10-22 23:59:02
-- [artifacts/command-reports/wavemate-k3s-ui-current4/wavemate-k3s-ui-current4-wavemate-ui.json](artifacts/command-reports/wavemate-k3s-ui-current4/wavemate-k3s-ui-current4-wavemate-ui.json) — 10844 bytes; .json; 修改于 2026-10-22 23:59:02
-- [artifacts/command-reports/wavemate-k3s-ui-final/traffic.json](artifacts/command-reports/wavemate-k3s-ui-final/traffic.json) — 7808 bytes; .json; 修改于 2026-10-22 20:31:59
-- [artifacts/command-reports/wavemate-k3s-ui-final/wavemate-k3s-ui-final-wavemate-ui.json](artifacts/command-reports/wavemate-k3s-ui-final/wavemate-k3s-ui-final-wavemate-ui.json) — 11365 bytes; .json; 修改于 2026-10-22 20:31:59
-- [artifacts/command-reports/wavemate-k3s-ui-retry1/restore-verification.json](artifacts/command-reports/wavemate-k3s-ui-retry1/restore-verification.json) — 342 bytes; .json; 修改于 2026-10-22 20:40:44
-- [artifacts/command-reports/wavemate-k3s-ui-retry1/traffic.json](artifacts/command-reports/wavemate-k3s-ui-retry1/traffic.json) — 7818 bytes; .json; 修改于 2026-10-22 20:38:13
-- [artifacts/command-reports/wavemate-k3s-ui-retry1/wavemate-k3s-ui-retry1-wavemate-ui.json](artifacts/command-reports/wavemate-k3s-ui-retry1/wavemate-k3s-ui-retry1-wavemate-ui.json) — 10645 bytes; .json; 修改于 2026-10-22 20:38:13
-- [artifacts/command-reports/wavemate-live-current/wavemate-live-current-wavemate.json](artifacts/command-reports/wavemate-live-current/wavemate-live-current-wavemate.json) — 6955 bytes; .json; 修改于 2026-10-22 13:35:15
-- [artifacts/command-reports/wavemate-live-current12/wavemate-live-current12-wavemate.json](artifacts/command-reports/wavemate-live-current12/wavemate-live-current12-wavemate.json) — 503 bytes; .json; 修改于 2026-10-23 08:50:36
-- [artifacts/command-reports/wavemate-live-current13/wavemate-live-current13-wavemate.json](artifacts/command-reports/wavemate-live-current13/wavemate-live-current13-wavemate.json) — 6973 bytes; .json; 修改于 2026-10-23 08:51:52
-- [artifacts/command-reports/wavemate-plan-audit-after-k3s/wavemate-plan-audit-after-k3s-plan-audit.json](artifacts/command-reports/wavemate-plan-audit-after-k3s/wavemate-plan-audit-after-k3s-plan-audit.json) — 774 bytes; .json; 修改于 2026-10-22 19:37:41
-- [artifacts/command-reports/wavemate-plan-audit-final/wavemate-plan-audit-final-plan-audit.json](artifacts/command-reports/wavemate-plan-audit-final/wavemate-plan-audit-final-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-22 19:47:19
-- [artifacts/command-reports/wavemate-plan-audit-plan-audit.json](artifacts/command-reports/wavemate-plan-audit-plan-audit.json) — 754 bytes; .json; 修改于 2026-10-22 13:23:31
-- [artifacts/command-reports/wavemate-plan-audit-ui-final/wavemate-plan-audit-ui-final-plan-audit.json](artifacts/command-reports/wavemate-plan-audit-ui-final/wavemate-plan-audit-ui-final-plan-audit.json) — 772 bytes; .json; 修改于 2026-10-22 20:49:19
-- [artifacts/offline-images/docker.io_library_planemem-k3s-smoke_0.1.0.manifest.json](artifacts/offline-images/docker.io_library_planemem-k3s-smoke_0.1.0.manifest.json) — 693 bytes; .json; 修改于 2026-10-21 12:43:58
-- [artifacts/offline-images/docker.io_library_planemem-k3s-smoke_0.1.0.tar.gz](artifacts/offline-images/docker.io_library_planemem-k3s-smoke_0.1.0.tar.gz) — 20929444 bytes; .gz; 修改于 2026-10-21 12:43:58
-- [artifacts/offline-images/docker.io_library_planemem-platform_0.1.0.manifest.json](artifacts/offline-images/docker.io_library_planemem-platform_0.1.0.manifest.json) — 706 bytes; .json; 修改于 2026-10-21 19:09:35
-- [artifacts/offline-images/docker.io_library_planemem-platform_0.1.0.tar.gz](artifacts/offline-images/docker.io_library_planemem-platform_0.1.0.tar.gz) — 62306653 bytes; .gz; 修改于 2026-10-21 19:09:35
-- [artifacts/offline-images/security-fixed/docker.io_library_planemem-platform_0.1.0.manifest.json](artifacts/offline-images/security-fixed/docker.io_library_planemem-platform_0.1.0.manifest.json) — 706 bytes; .json; 修改于 2026-10-22 07:24:33
-- [artifacts/offline-images/security-fixed/docker.io_library_planemem-platform_0.1.0.tar.gz](artifacts/offline-images/security-fixed/docker.io_library_planemem-platform_0.1.0.tar.gz) — 62417255 bytes; .gz; 修改于 2026-10-22 07:24:33
-- [artifacts/offline-images/security-fixed/trivy-vuln.json](artifacts/offline-images/security-fixed/trivy-vuln.json) — 11655 bytes; .json; 修改于 2026-10-22 07:25:16
-- [artifacts/offline-images/security-fixed/vulnerability-verification.txt](artifacts/offline-images/security-fixed/vulnerability-verification.txt) — 356 bytes; .txt; 修改于 2026-10-22 07:25:38
-- [artifacts/offline-images/transport-fixed/planemem-platform_0.1.0-transport.manifest.json](artifacts/offline-images/transport-fixed/planemem-platform_0.1.0-transport.manifest.json) — 672 bytes; .json; 修改于 2026-10-22 08:14:57
-- [artifacts/offline-images/transport-fixed/planemem-platform_0.1.0-transport.tar.gz](artifacts/offline-images/transport-fixed/planemem-platform_0.1.0-transport.tar.gz) — 62423926 bytes; .gz; 修改于 2026-10-22 08:14:57
-- [artifacts/offline-images/wavemate-mcp/planemem-platform_0.1.0-wavemate.manifest.json](artifacts/offline-images/wavemate-mcp/planemem-platform_0.1.0-wavemate.manifest.json) — 670 bytes; .json; 修改于 2026-10-22 13:27:47
-- [artifacts/offline-images/wavemate-mcp/planemem-platform_0.1.0-wavemate.tar.gz](artifacts/offline-images/wavemate-mcp/planemem-platform_0.1.0-wavemate.tar.gz) — 62423568 bytes; .gz; 修改于 2026-10-22 13:27:47
-- [artifacts/offline-images/wavemate-mcp-audit/planemem-platform_0.1.0-wavemate.manifest.json](artifacts/offline-images/wavemate-mcp-audit/planemem-platform_0.1.0-wavemate.manifest.json) — 670 bytes; .json; 修改于 2026-10-23 07:37:49
-- [artifacts/offline-images/wavemate-mcp-audit/planemem-platform_0.1.0-wavemate.tar.gz](artifacts/offline-images/wavemate-mcp-audit/planemem-platform_0.1.0-wavemate.tar.gz) — 62426885 bytes; .gz; 修改于 2026-10-23 07:37:49
-- [artifacts/offline-images/wavemate-mcp-audit-fix/planemem-platform_0.1.0-wavemate-audit-fix.manifest.json](artifacts/offline-images/wavemate-mcp-audit-fix/planemem-platform_0.1.0-wavemate-audit-fix.manifest.json) — 690 bytes; .json; 修改于 2026-10-23 08:14:40
-- [artifacts/offline-images/wavemate-mcp-audit-fix/planemem-platform_0.1.0-wavemate-audit-fix.tar.gz](artifacts/offline-images/wavemate-mcp-audit-fix/planemem-platform_0.1.0-wavemate-audit-fix.tar.gz) — 62509684 bytes; .gz; 修改于 2026-10-23 08:14:40
-- [artifacts/offline-images/wavemate-mcp-audit-persist/planemem-platform_0.1.0-wavemate.manifest.json](artifacts/offline-images/wavemate-mcp-audit-persist/planemem-platform_0.1.0-wavemate.manifest.json) — 670 bytes; .json; 修改于 2026-10-23 07:42:08
-- [artifacts/offline-images/wavemate-mcp-audit-persist/planemem-platform_0.1.0-wavemate.tar.gz](artifacts/offline-images/wavemate-mcp-audit-persist/planemem-platform_0.1.0-wavemate.tar.gz) — 62508500 bytes; .gz; 修改于 2026-10-23 07:42:08
-- [artifacts/offline-images/wavemate-mcp-audit-persist-v2/planemem-platform_0.1.0-wavemate.manifest.json](artifacts/offline-images/wavemate-mcp-audit-persist-v2/planemem-platform_0.1.0-wavemate.manifest.json) — 670 bytes; .json; 修改于 2026-10-23 08:15:13
-- [artifacts/offline-images/wavemate-mcp-audit-persist-v2/planemem-platform_0.1.0-wavemate.tar.gz](artifacts/offline-images/wavemate-mcp-audit-persist-v2/planemem-platform_0.1.0-wavemate.tar.gz) — 62509674 bytes; .gz; 修改于 2026-10-23 08:15:13
-- [artifacts/runtime/runtime-manifest.json](artifacts/runtime/runtime-manifest.json) — 859 bytes; .json; 修改于 2026-10-23 08:15:04
-- [artifacts/test-reports/compose/20261021T1200-compose-local/compose-ps.txt](artifacts/test-reports/compose/20261021T1200-compose-local/compose-ps.txt) — 2075 bytes; .txt; 修改于 2026-10-21 19:57:53
-- [artifacts/test-reports/compose/20261021T1200-compose-local/fault-nats-down-status.txt](artifacts/test-reports/compose/20261021T1200-compose-local/fault-nats-down-status.txt) — 67 bytes; .txt; 修改于 2026-10-21 20:02:05
-- [artifacts/test-reports/compose/20261021T1200-compose-local/fault-nats-health-after-recovery.txt](artifacts/test-reports/compose/20261021T1200-compose-local/fault-nats-health-after-recovery.txt) — 17 bytes; .txt; 修改于 2026-10-21 20:02:32
-- [artifacts/test-reports/compose/20261021T1200-compose-local/fault-nats-recovered-status.txt](artifacts/test-reports/compose/20261021T1200-compose-local/fault-nats-recovered-status.txt) — 345 bytes; .txt; 修改于 2026-10-21 20:02:32
-- [artifacts/test-reports/compose/20261021T1200-compose-local/fault-nats-recovery.txt](artifacts/test-reports/compose/20261021T1200-compose-local/fault-nats-recovery.txt) — 9 bytes; .txt; 修改于 2026-10-21 20:02:31
-- [artifacts/test-reports/compose/20261021T1200-compose-local/image-inspect.jsonl](artifacts/test-reports/compose/20261021T1200-compose-local/image-inspect.jsonl) — 17096 bytes; .jsonl; 修改于 2026-10-21 19:57:54
-- [artifacts/test-reports/compose/20261021T1200-compose-local/keycloak-health.txt](artifacts/test-reports/compose/20261021T1200-compose-local/keycloak-health.txt) — 66 bytes; .txt; 修改于 2026-10-21 19:57:57
-- [artifacts/test-reports/compose/20261021T1200-compose-local/minio-health.txt](artifacts/test-reports/compose/20261021T1200-compose-local/minio-health.txt) — 5 bytes; .txt; 修改于 2026-10-21 19:57:57
-- [artifacts/test-reports/compose/20261021T1200-compose-local/nats-health.txt](artifacts/test-reports/compose/20261021T1200-compose-local/nats-health.txt) — 15 bytes; .txt; 修改于 2026-10-21 19:57:56
-- [artifacts/test-reports/compose/20261021T1200-compose-local/otel-4318.txt](artifacts/test-reports/compose/20261021T1200-compose-local/otel-4318.txt) — 6 bytes; .txt; 修改于 2026-10-21 19:57:58
-- [artifacts/test-reports/compose/20261021T1200-compose-local/postgres-table-count.txt](artifacts/test-reports/compose/20261021T1200-compose-local/postgres-table-count.txt) — 3 bytes; .txt; 修改于 2026-10-21 19:57:55
-- [artifacts/test-reports/compose/20261021T1200-compose-local/postgres-tables.txt](artifacts/test-reports/compose/20261021T1200-compose-local/postgres-tables.txt) — 234 bytes; .txt; 修改于 2026-10-21 19:57:55
-- [artifacts/test-reports/compose/20261021T1200-compose-local/redis-ping.txt](artifacts/test-reports/compose/20261021T1200-compose-local/redis-ping.txt) — 5 bytes; .txt; 修改于 2026-10-21 19:57:56
-- [artifacts/test-reports/compose/20261021T1200-compose-local/runtime-container.log](artifacts/test-reports/compose/20261021T1200-compose-local/runtime-container.log) — 0 bytes; .log; 修改于 2026-10-21 20:00:42
-- [artifacts/test-reports/compose/20261021T1200-compose-local/runtime-container-id.txt](artifacts/test-reports/compose/20261021T1200-compose-local/runtime-container-id.txt) — 66 bytes; .txt; 修改于 2026-10-21 20:00:38
-- [artifacts/test-reports/compose/20261021T1200-compose-local/runtime-container-remove.txt](artifacts/test-reports/compose/20261021T1200-compose-local/runtime-container-remove.txt) — 23 bytes; .txt; 修改于 2026-10-21 20:00:43
-- [artifacts/test-reports/compose/20261021T1200-compose-local/runtime-health.json](artifacts/test-reports/compose/20261021T1200-compose-local/runtime-health.json) — 65 bytes; .json; 修改于 2026-10-21 19:59:45
-- [artifacts/test-reports/compose/20261021T1200-compose-local/runtime-idem-1.json](artifacts/test-reports/compose/20261021T1200-compose-local/runtime-idem-1.json) — 68 bytes; .json; 修改于 2026-10-21 19:59:45
-- [artifacts/test-reports/compose/20261021T1200-compose-local/runtime-idem-replay.json](artifacts/test-reports/compose/20261021T1200-compose-local/runtime-idem-replay.json) — 409 bytes; .json; 修改于 2026-10-21 20:00:42
-- [artifacts/test-reports/compose/20261021T1200-compose-local/runtime-image-inspect.json](artifacts/test-reports/compose/20261021T1200-compose-local/runtime-image-inspect.json) — 1835 bytes; .json; 修改于 2026-10-21 19:59:45
-- [artifacts/test-reports/compose/20261021T1200-compose-local/runtime-index-1.json](artifacts/test-reports/compose/20261021T1200-compose-local/runtime-index-1.json) — 409 bytes; .json; 修改于 2026-10-21 20:00:42
-- [artifacts/test-reports/compose/20261021T1200-compose-local/runtime-ready.json](artifacts/test-reports/compose/20261021T1200-compose-local/runtime-ready.json) — 81 bytes; .json; 修改于 2026-10-21 19:59:45
-- [artifacts/test-reports/compose/20261021T1200-compose-local/runtime-search.json](artifacts/test-reports/compose/20261021T1200-compose-local/runtime-search.json) — 657 bytes; .json; 修改于 2026-10-21 20:00:42
-- [artifacts/test-reports/compose/20261021T1200-compose-local/runtime-version.json](artifacts/test-reports/compose/20261021T1200-compose-local/runtime-version.json) — 21 bytes; .json; 修改于 2026-10-21 19:59:45
-- [artifacts/test-reports/compose/20261021T1245-compose-full/ai-memory-status.txt](artifacts/test-reports/compose/20261021T1245-compose-full/ai-memory-status.txt) — 983 bytes; .txt; 修改于 2026-10-21 20:44:48
-- [artifacts/test-reports/compose/20261021T1245-compose-full/ai-memory-web.html](artifacts/test-reports/compose/20261021T1245-compose-full/ai-memory-web.html) — 7862 bytes; .html; 修改于 2026-10-21 20:44:48
-- [artifacts/test-reports/compose/20261021T1245-compose-full/compose-ps.txt](artifacts/test-reports/compose/20261021T1245-compose-full/compose-ps.txt) — 2549 bytes; .txt; 修改于 2026-10-21 20:44:46
-- [artifacts/test-reports/compose/20261021T1245-compose-full/compose-rendered.yaml](artifacts/test-reports/compose/20261021T1245-compose-full/compose-rendered.yaml) — 7395 bytes; .yaml; 修改于 2026-10-21 20:44:47
-- [artifacts/test-reports/compose/20261021T1245-compose-full/image-digests.txt](artifacts/test-reports/compose/20261021T1245-compose-full/image-digests.txt) — 1576 bytes; .txt; 修改于 2026-10-21 20:44:47
-- [artifacts/test-reports/compose/20261021T1245-compose-full/runtime-health.json](artifacts/test-reports/compose/20261021T1245-compose-full/runtime-health.json) — 65 bytes; .json; 修改于 2026-10-21 20:44:48
-- [artifacts/test-reports/compose/20261021T1245-compose-full/runtime-idem-replay.json](artifacts/test-reports/compose/20261021T1245-compose-full/runtime-idem-replay.json) — 426 bytes; .json; 修改于 2026-10-21 20:44:48
-- [artifacts/test-reports/compose/20261021T1245-compose-full/runtime-index.json](artifacts/test-reports/compose/20261021T1245-compose-full/runtime-index.json) — 426 bytes; .json; 修改于 2026-10-21 20:44:48
-- [artifacts/test-reports/compose/20261021T1245-compose-full/runtime-ready.json](artifacts/test-reports/compose/20261021T1245-compose-full/runtime-ready.json) — 81 bytes; .json; 修改于 2026-10-21 20:44:48
-- [artifacts/test-reports/compose/20261021T1245-compose-full/runtime-search.json](artifacts/test-reports/compose/20261021T1245-compose-full/runtime-search.json) — 689 bytes; .json; 修改于 2026-10-21 20:44:48
-- [artifacts/test-reports/compose/20261021T1245-compose-full/runtime-version.json](artifacts/test-reports/compose/20261021T1245-compose-full/runtime-version.json) — 21 bytes; .json; 修改于 2026-10-21 20:44:48
-- [artifacts/test-reports/compose/20261021T1440-compose-full-plane/ai-memory-status.txt](artifacts/test-reports/compose/20261021T1440-compose-full-plane/ai-memory-status.txt) — 983 bytes; .txt; 修改于 2026-10-21 22:39:03
-- [artifacts/test-reports/compose/20261021T1440-compose-full-plane/ai-memory-web.html](artifacts/test-reports/compose/20261021T1440-compose-full-plane/ai-memory-web.html) — 7862 bytes; .html; 修改于 2026-10-21 22:39:04
-- [artifacts/test-reports/compose/20261021T1440-compose-full-plane/compose-ps.txt](artifacts/test-reports/compose/20261021T1440-compose-full-plane/compose-ps.txt) — 3226 bytes; .txt; 修改于 2026-10-21 22:38:58
-- [artifacts/test-reports/compose/20261021T1440-compose-full-plane/compose-rendered.yaml](artifacts/test-reports/compose/20261021T1440-compose-full-plane/compose-rendered.yaml) — 8418 bytes; .yaml; 修改于 2026-10-21 22:38:59
-- [artifacts/test-reports/compose/20261021T1440-compose-full-plane/evidence-manifest.json](artifacts/test-reports/compose/20261021T1440-compose-full-plane/evidence-manifest.json) — 3947 bytes; .json; 修改于 2026-10-21 22:40:58
-- [artifacts/test-reports/compose/20261021T1440-compose-full-plane/fault-rabbitmq-down.txt](artifacts/test-reports/compose/20261021T1440-compose-full-plane/fault-rabbitmq-down.txt) — 468 bytes; .txt; 修改于 2026-10-21 22:39:52
-- [artifacts/test-reports/compose/20261021T1440-compose-full-plane/fault-rabbitmq-health-after-recovery.txt](artifacts/test-reports/compose/20261021T1440-compose-full-plane/fault-rabbitmq-health-after-recovery.txt) — 16 bytes; .txt; 修改于 2026-10-21 22:40:15
-- [artifacts/test-reports/compose/20261021T1440-compose-full-plane/fault-rabbitmq-recovered.txt](artifacts/test-reports/compose/20261021T1440-compose-full-plane/fault-rabbitmq-recovered.txt) — 762 bytes; .txt; 修改于 2026-10-21 22:40:13
-- [artifacts/test-reports/compose/20261021T1440-compose-full-plane/fault-rabbitmq-recovery.txt](artifacts/test-reports/compose/20261021T1440-compose-full-plane/fault-rabbitmq-recovery.txt) — 9 bytes; .txt; 修改于 2026-10-21 22:40:13
-- [artifacts/test-reports/compose/20261021T1440-compose-full-plane/fault-rabbitmq-start.txt](artifacts/test-reports/compose/20261021T1440-compose-full-plane/fault-rabbitmq-start.txt) — 0 bytes; .txt; 修改于 2026-10-21 22:39:52
-- [artifacts/test-reports/compose/20261021T1440-compose-full-plane/fault-rabbitmq-stop.txt](artifacts/test-reports/compose/20261021T1440-compose-full-plane/fault-rabbitmq-stop.txt) — 0 bytes; .txt; 修改于 2026-10-21 22:39:45
-- [artifacts/test-reports/compose/20261021T1440-compose-full-plane/image-digests.txt](artifacts/test-reports/compose/20261021T1440-compose-full-plane/image-digests.txt) — 1973 bytes; .txt; 修改于 2026-10-21 22:38:59
-- [artifacts/test-reports/compose/20261021T1440-compose-full-plane/minio-uploads.txt](artifacts/test-reports/compose/20261021T1440-compose-full-plane/minio-uploads.txt) — 0 bytes; .txt; 修改于 2026-10-21 22:39:04
-- [artifacts/test-reports/compose/20261021T1440-compose-full-plane/nats-health.txt](artifacts/test-reports/compose/20261021T1440-compose-full-plane/nats-health.txt) — 15 bytes; .txt; 修改于 2026-10-21 22:39:01
-- [artifacts/test-reports/compose/20261021T1440-compose-full-plane/plane-root-status.txt](artifacts/test-reports/compose/20261021T1440-compose-full-plane/plane-root-status.txt) — 5 bytes; .txt; 修改于 2026-10-21 22:39:04
-- [artifacts/test-reports/compose/20261021T1440-compose-full-plane/postgres-table-count.txt](artifacts/test-reports/compose/20261021T1440-compose-full-plane/postgres-table-count.txt) — 4 bytes; .txt; 修改于 2026-10-21 22:39:00
-- [artifacts/test-reports/compose/20261021T1440-compose-full-plane/postgres-tables.txt](artifacts/test-reports/compose/20261021T1440-compose-full-plane/postgres-tables.txt) — 2032 bytes; .txt; 修改于 2026-10-21 22:39:01
-- [artifacts/test-reports/compose/20261021T1440-compose-full-plane/rabbitmq-health.txt](artifacts/test-reports/compose/20261021T1440-compose-full-plane/rabbitmq-health.txt) — 15 bytes; .txt; 修改于 2026-10-21 22:39:03
-- [artifacts/test-reports/compose/20261021T1440-compose-full-plane/redis-ping.txt](artifacts/test-reports/compose/20261021T1440-compose-full-plane/redis-ping.txt) — 5 bytes; .txt; 修改于 2026-10-21 22:39:01
-- [artifacts/test-reports/compose/20261021T1440-compose-full-plane/test-summary.json](artifacts/test-reports/compose/20261021T1440-compose-full-plane/test-summary.json) — 1067 bytes; .json; 修改于 2026-10-21 22:40:58
-- [artifacts/test-reports/compose/20261021T1440-compose-full-plane/workctx-idem-replay.json](artifacts/test-reports/compose/20261021T1440-compose-full-plane/workctx-idem-replay.json) — 465 bytes; .json; 修改于 2026-10-21 22:39:04
-- [artifacts/test-reports/compose/20261021T1440-compose-full-plane/workctx-index.json](artifacts/test-reports/compose/20261021T1440-compose-full-plane/workctx-index.json) — 465 bytes; .json; 修改于 2026-10-21 22:39:04
-- [artifacts/test-reports/compose/20261021T1440-compose-full-plane/workctx-ready.json](artifacts/test-reports/compose/20261021T1440-compose-full-plane/workctx-ready.json) — 81 bytes; .json; 修改于 2026-10-21 22:39:04
-- [artifacts/test-reports/compose/20261021T1440-compose-full-plane/workctx-search.json](artifacts/test-reports/compose/20261021T1440-compose-full-plane/workctx-search.json) — 736 bytes; .json; 修改于 2026-10-21 22:39:04
-- [artifacts/test-reports/compose/20261021T1440-compose-full-plane/workctx-version.json](artifacts/test-reports/compose/20261021T1440-compose-full-plane/workctx-version.json) — 21 bytes; .json; 修改于 2026-10-21 22:39:04
-- [artifacts/test-reports/compose/20261022T0653-current/compose-config.status](artifacts/test-reports/compose/20261022T0653-current/compose-config.status) — 8 bytes; .status; 修改于 2026-10-22 06:53:47
-- [artifacts/test-reports/compose/20261022T0653-current/compose-ps.jsonl](artifacts/test-reports/compose/20261022T0653-current/compose-ps.jsonl) — 18585 bytes; .jsonl; 修改于 2026-10-22 06:53:48
-- [artifacts/test-reports/compose/20261022T0728-security-fixed/compose-config.yaml](artifacts/test-reports/compose/20261022T0728-security-fixed/compose-config.yaml) — 5120 bytes; .yaml; 修改于 2026-10-22 07:27:06
-- [artifacts/test-reports/compose/20261022T0728-security-fixed/compose-ps.jsonl](artifacts/test-reports/compose/20261022T0728-security-fixed/compose-ps.jsonl) — 18589 bytes; .jsonl; 修改于 2026-10-22 07:27:06
-- [artifacts/test-reports/compose/20261022T0728-security-fixed/health.json](artifacts/test-reports/compose/20261022T0728-security-fixed/health.json) — 65 bytes; .json; 修改于 2026-10-22 07:27:07
-- [artifacts/test-reports/compose/20261022T0728-security-fixed/health-ready.json](artifacts/test-reports/compose/20261022T0728-security-fixed/health-ready.json) — 81 bytes; .json; 修改于 2026-10-22 07:27:07
-- [artifacts/test-reports/compose/20261022T0728-security-fixed/verification.txt](artifacts/test-reports/compose/20261022T0728-security-fixed/verification.txt) — 194 bytes; .txt; 修改于 2026-10-22 07:27:07
-- [artifacts/test-reports/compose/20261022T0728-security-fixed/version.json](artifacts/test-reports/compose/20261022T0728-security-fixed/version.json) — 21 bytes; .json; 修改于 2026-10-22 07:27:07
-- [artifacts/test-reports/compose/20261022T0728-security-fixed/workctx-inspect.json](artifacts/test-reports/compose/20261022T0728-security-fixed/workctx-inspect.json) — 6450 bytes; .json; 修改于 2026-10-22 07:27:06
-- [artifacts/test-reports/k3s/20261021T0138/evidence-manifest.json](artifacts/test-reports/k3s/20261021T0138/evidence-manifest.json) — 686 bytes; .json; 修改于 2026-10-21 09:40:30
-- [artifacts/test-reports/k3s/20261021T0138/helm-rendered.yaml](artifacts/test-reports/k3s/20261021T0138/helm-rendered.yaml) — 1293 bytes; .yaml; 修改于 2026-10-21 09:40:05
-- [artifacts/test-reports/k3s/20261021T0138/summary.txt](artifacts/test-reports/k3s/20261021T0138/summary.txt) — 2818 bytes; .txt; 修改于 2026-10-21 09:39:49
-- [artifacts/test-reports/k3s/20261021T0138/test-summary.txt](artifacts/test-reports/k3s/20261021T0138/test-summary.txt) — 910 bytes; .txt; 修改于 2026-10-21 09:40:30
-- [artifacts/test-reports/k3s/20261021T0138/values-used.yaml](artifacts/test-reports/k3s/20261021T0138/values-used.yaml) — 272 bytes; .yaml; 修改于 2026-10-21 09:40:30
-- [artifacts/test-reports/k3s/20261021T0244/deployment-health.txt](artifacts/test-reports/k3s/20261021T0244/deployment-health.txt) — 2641 bytes; .txt; 修改于 2026-10-21 11:33:56
-- [artifacts/test-reports/k3s/20261021T0244/evidence-manifest.json](artifacts/test-reports/k3s/20261021T0244/evidence-manifest.json) — 1368 bytes; .json; 修改于 2026-10-21 12:44:22
-- [artifacts/test-reports/k3s/20261021T0244/local-archive-hash.json](artifacts/test-reports/k3s/20261021T0244/local-archive-hash.json) — 215 bytes; .json; 修改于 2026-10-21 11:28:28
-- [artifacts/test-reports/k3s/20261021T0244/offline-image-manifest.json](artifacts/test-reports/k3s/20261021T0244/offline-image-manifest.json) — 693 bytes; .json; 修改于 2026-10-21 12:43:58
-- [artifacts/test-reports/k3s/20261021T0244/rollback.txt](artifacts/test-reports/k3s/20261021T0244/rollback.txt) — 2228 bytes; .txt; 修改于 2026-10-21 11:33:36
-- [artifacts/test-reports/k3s/20261021T0244/test-summary.txt](artifacts/test-reports/k3s/20261021T0244/test-summary.txt) — 1311 bytes; .txt; 修改于 2026-10-21 11:34:12
-- [artifacts/test-reports/k3s/20261021T0244/transfer-and-containerd.txt](artifacts/test-reports/k3s/20261021T0244/transfer-and-containerd.txt) — 4050 bytes; .txt; 修改于 2026-10-21 11:28:46
-- [artifacts/test-reports/k3s/20261021T0925-formal/deployment-health.txt](artifacts/test-reports/k3s/20261021T0925-formal/deployment-health.txt) — 723 bytes; .txt; 修改于 2026-10-21 17:27:08
-- [artifacts/test-reports/k3s/20261021T0925-formal/evidence-manifest.json](artifacts/test-reports/k3s/20261021T0925-formal/evidence-manifest.json) — 1548 bytes; .json; 修改于 2026-10-21 17:27:51
-- [artifacts/test-reports/k3s/20261021T0925-formal/helm-rendered.yaml](artifacts/test-reports/k3s/20261021T0925-formal/helm-rendered.yaml) — 1388 bytes; .yaml; 修改于 2026-10-21 17:27:29
-- [artifacts/test-reports/k3s/20261021T0925-formal/local-archive-hash.json](artifacts/test-reports/k3s/20261021T0925-formal/local-archive-hash.json) — 152 bytes; .json; 修改于 2026-10-21 17:26:48
-- [artifacts/test-reports/k3s/20261021T0925-formal/node-recovery.txt](artifacts/test-reports/k3s/20261021T0925-formal/node-recovery.txt) — 1352 bytes; .txt; 修改于 2026-10-21 17:27:32
-- [artifacts/test-reports/k3s/20261021T0925-formal/offline-image-manifest.json](artifacts/test-reports/k3s/20261021T0925-formal/offline-image-manifest.json) — 706 bytes; .json; 修改于 2026-10-21 13:07:08
-- [artifacts/test-reports/k3s/20261021T0925-formal/rollback.txt](artifacts/test-reports/k3s/20261021T0925-formal/rollback.txt) — 1496 bytes; .txt; 修改于 2026-10-21 17:27:07
-- [artifacts/test-reports/k3s/20261021T0925-formal/rollout.txt](artifacts/test-reports/k3s/20261021T0925-formal/rollout.txt) — 1054 bytes; .txt; 修改于 2026-10-21 17:27:07
-- [artifacts/test-reports/k3s/20261021T0925-formal/runtime-api.txt](artifacts/test-reports/k3s/20261021T0925-formal/runtime-api.txt) — 1588 bytes; .txt; 修改于 2026-10-21 17:27:31
-- [artifacts/test-reports/k3s/20261021T0925-formal/test-summary.json](artifacts/test-reports/k3s/20261021T0925-formal/test-summary.json) — 880 bytes; .json; 修改于 2026-10-21 17:27:51
-- [artifacts/test-reports/k3s/20261021T0925-formal/transfer-and-containerd.txt](artifacts/test-reports/k3s/20261021T0925-formal/transfer-and-containerd.txt) — 2706 bytes; .txt; 修改于 2026-10-21 17:27:11
-- [artifacts/test-reports/k3s/20261021T0955-formal/deployment-health.txt](artifacts/test-reports/k3s/20261021T0955-formal/deployment-health.txt) — 718 bytes; .txt; 修改于 2026-10-21 19:16:55
-- [artifacts/test-reports/k3s/20261021T0955-formal/evidence-manifest.json](artifacts/test-reports/k3s/20261021T0955-formal/evidence-manifest.json) — 1683 bytes; .json; 修改于 2026-10-21 19:21:12
-- [artifacts/test-reports/k3s/20261021T0955-formal/helm-rendered.yaml](artifacts/test-reports/k3s/20261021T0955-formal/helm-rendered.yaml) — 1388 bytes; .yaml; 修改于 2026-10-21 19:16:56
-- [artifacts/test-reports/k3s/20261021T0955-formal/local-archive-hash.json](artifacts/test-reports/k3s/20261021T0955-formal/local-archive-hash.json) — 152 bytes; .json; 修改于 2026-10-21 19:16:53
-- [artifacts/test-reports/k3s/20261021T0955-formal/local-runtime.txt](artifacts/test-reports/k3s/20261021T0955-formal/local-runtime.txt) — 408 bytes; .txt; 修改于 2026-10-21 19:21:12
-- [artifacts/test-reports/k3s/20261021T0955-formal/node-recovery.txt](artifacts/test-reports/k3s/20261021T0955-formal/node-recovery.txt) — 1451 bytes; .txt; 修改于 2026-10-21 19:16:16
-- [artifacts/test-reports/k3s/20261021T0955-formal/offline-image-manifest.json](artifacts/test-reports/k3s/20261021T0955-formal/offline-image-manifest.json) — 706 bytes; .json; 修改于 2026-10-21 19:09:35
-- [artifacts/test-reports/k3s/20261021T0955-formal/rollback.txt](artifacts/test-reports/k3s/20261021T0955-formal/rollback.txt) — 990 bytes; .txt; 修改于 2026-10-21 19:16:55
-- [artifacts/test-reports/k3s/20261021T0955-formal/rollout.txt](artifacts/test-reports/k3s/20261021T0955-formal/rollout.txt) — 1042 bytes; .txt; 修改于 2026-10-21 19:16:54
-- [artifacts/test-reports/k3s/20261021T0955-formal/runtime-api.txt](artifacts/test-reports/k3s/20261021T0955-formal/runtime-api.txt) — 1780 bytes; .txt; 修改于 2026-10-21 19:16:59
-- [artifacts/test-reports/k3s/20261021T0955-formal/test-summary.json](artifacts/test-reports/k3s/20261021T0955-formal/test-summary.json) — 908 bytes; .json; 修改于 2026-10-21 19:17:24
-- [artifacts/test-reports/k3s/20261021T0955-formal/transfer-and-containerd.txt](artifacts/test-reports/k3s/20261021T0955-formal/transfer-and-containerd.txt) — 2706 bytes; .txt; 修改于 2026-10-21 19:16:58
-- [artifacts/test-reports/k3s/20261022T0024-transport/verification.json](artifacts/test-reports/k3s/20261022T0024-transport/verification.json) — 859 bytes; .json; 修改于 2026-10-22 08:26:21
-- [artifacts/test-reports/k3s/20261022T0024-transport/verification.txt](artifacts/test-reports/k3s/20261022T0024-transport/verification.txt) — 800 bytes; .txt; 修改于 2026-10-22 08:26:21
-- [artifacts/test-reports/k3s/20261022T0650-current/current-check.json](artifacts/test-reports/k3s/20261022T0650-current/current-check.json) — 861 bytes; .json; 修改于 2026-10-22 06:50:24
-- [artifacts/test-reports/k3s/20261022T0650-current/current-check.txt](artifacts/test-reports/k3s/20261022T0650-current/current-check.txt) — 955 bytes; .txt; 修改于 2026-10-22 06:50:24
-- [artifacts/test-reports/k3s/20261022T0656-current-helm/planemem-chart-current-dry-run.txt](artifacts/test-reports/k3s/20261022T0656-current-helm/planemem-chart-current-dry-run.txt) — 114 bytes; .txt; 修改于 2026-10-22 06:57:24
-- [artifacts/test-reports/k3s/20261022T0656-current-helm/planemem-chart-current-rendered.yaml](artifacts/test-reports/k3s/20261022T0656-current-helm/planemem-chart-current-rendered.yaml) — 1326 bytes; .yaml; 修改于 2026-10-22 06:57:09
-- [artifacts/test-reports/k3s/20261022T0656-current-helm/verification.json](artifacts/test-reports/k3s/20261022T0656-current-helm/verification.json) — 717 bytes; .json; 修改于 2026-10-22 06:57:33
-- [artifacts/test-reports/k3s/20261022T0656-current-helm/verification.txt](artifacts/test-reports/k3s/20261022T0656-current-helm/verification.txt) — 629 bytes; .txt; 修改于 2026-10-22 06:57:33
-- [artifacts/test-reports/k3s/20261022T0710-local-helm/helm-lint.txt](artifacts/test-reports/k3s/20261022T0710-local-helm/helm-lint.txt) — 114 bytes; .txt; 修改于 2026-10-22 07:09:11
-- [artifacts/test-reports/k3s/20261022T0710-local-helm/helm-version.txt](artifacts/test-reports/k3s/20261022T0710-local-helm/helm-version.txt) — 17 bytes; .txt; 修改于 2026-10-22 07:09:11
-- [artifacts/test-reports/k3s/20261022T0710-local-helm/rendered.yaml](artifacts/test-reports/k3s/20261022T0710-local-helm/rendered.yaml) — 1372 bytes; .yaml; 修改于 2026-10-22 07:09:12
-- [artifacts/test-reports/k3s/20261022T0710-local-helm/verification.txt](artifacts/test-reports/k3s/20261022T0710-local-helm/verification.txt) — 82 bytes; .txt; 修改于 2026-10-22 07:09:12
-- [artifacts/test-reports/k3s/20261022T0710-local-helm/verification-summary.txt](artifacts/test-reports/k3s/20261022T0710-local-helm/verification-summary.txt) — 134 bytes; .txt; 修改于 2026-10-22 07:09:12
-- [artifacts/test-reports/k3s/20261022T0745-security-fixed/verification.json](artifacts/test-reports/k3s/20261022T0745-security-fixed/verification.json) — 711 bytes; .json; 修改于 2026-10-22 07:41:28
-- [artifacts/test-reports/k3s/20261022T0745-security-fixed/verification.txt](artifacts/test-reports/k3s/20261022T0745-security-fixed/verification.txt) — 800 bytes; .txt; 修改于 2026-10-22 07:41:28
-- [artifacts/test-reports/k3s/20261022T1111-wavemate/health.json](artifacts/test-reports/k3s/20261022T1111-wavemate/health.json) — 1974 bytes; .json; 修改于 2026-10-22 19:18:20
-- [artifacts/test-reports/k3s/20261022T1111-wavemate/helm-rendered.yaml](artifacts/test-reports/k3s/20261022T1111-wavemate/helm-rendered.yaml) — 1341 bytes; .yaml; 修改于 2026-10-22 19:44:22
-- [artifacts/test-reports/k3s/20261022T1111-wavemate/image-digests.txt](artifacts/test-reports/k3s/20261022T1111-wavemate/image-digests.txt) — 532 bytes; .txt; 修改于 2026-10-22 19:45:02
-- [artifacts/test-reports/k3s/20261022T1111-wavemate/manifest.json](artifacts/test-reports/k3s/20261022T1111-wavemate/manifest.json) — 3224 bytes; .json; 修改于 2026-10-22 19:45:38
-- [artifacts/test-reports/k3s/20261022T1111-wavemate/rollback.txt](artifacts/test-reports/k3s/20261022T1111-wavemate/rollback.txt) — 338 bytes; .txt; 修改于 2026-10-22 19:45:02
-- [artifacts/test-reports/k3s/20261022T1111-wavemate/rollout.txt](artifacts/test-reports/k3s/20261022T1111-wavemate/rollout.txt) — 751 bytes; .txt; 修改于 2026-10-22 19:45:02
-- [artifacts/test-reports/k3s/20261022T1111-wavemate/test-summary.txt](artifacts/test-reports/k3s/20261022T1111-wavemate/test-summary.txt) — 1643 bytes; .txt; 修改于 2026-10-22 19:30:01
-- [artifacts/test-reports/k3s/20261022T1111-wavemate/transfer-hashes.txt](artifacts/test-reports/k3s/20261022T1111-wavemate/transfer-hashes.txt) — 433 bytes; .txt; 修改于 2026-10-22 19:45:02
-- [artifacts/test-reports/k3s/20261022T2038-wavemate-ui/health.json](artifacts/test-reports/k3s/20261022T2038-wavemate-ui/health.json) — 1974 bytes; .json; 修改于 2026-10-22 19:18:20
-- [artifacts/test-reports/k3s/20261022T2038-wavemate-ui/helm-rendered.yaml](artifacts/test-reports/k3s/20261022T2038-wavemate-ui/helm-rendered.yaml) — 1341 bytes; .yaml; 修改于 2026-10-22 19:44:22
-- [artifacts/test-reports/k3s/20261022T2038-wavemate-ui/image-digests.txt](artifacts/test-reports/k3s/20261022T2038-wavemate-ui/image-digests.txt) — 532 bytes; .txt; 修改于 2026-10-22 19:45:02
-- [artifacts/test-reports/k3s/20261022T2038-wavemate-ui/manifest.json](artifacts/test-reports/k3s/20261022T2038-wavemate-ui/manifest.json) — 13228 bytes; .json; 修改于 2026-10-23 06:07:23
-- [artifacts/test-reports/k3s/20261022T2038-wavemate-ui/node-recovery.json](artifacts/test-reports/k3s/20261022T2038-wavemate-ui/node-recovery.json) — 813 bytes; .json; 修改于 2026-10-22 22:57:45
-- [artifacts/test-reports/k3s/20261022T2038-wavemate-ui/node-recovery-platform.json](artifacts/test-reports/k3s/20261022T2038-wavemate-ui/node-recovery-platform.json) — 2105 bytes; .json; 修改于 2026-10-22 22:56:49
-- [artifacts/test-reports/k3s/20261022T2038-wavemate-ui/plane-to-mcp-wavemate-current4-functional.json](artifacts/test-reports/k3s/20261022T2038-wavemate-ui/plane-to-mcp-wavemate-current4-functional.json) — 17881 bytes; .json; 修改于 2026-10-23 06:06:52
-- [artifacts/test-reports/k3s/20261022T2038-wavemate-ui/remote-status-current.json](artifacts/test-reports/k3s/20261022T2038-wavemate-ui/remote-status-current.json) — 1628 bytes; .json; 修改于 2026-10-22 22:34:19
-- [artifacts/test-reports/k3s/20261022T2038-wavemate-ui/rollback.txt](artifacts/test-reports/k3s/20261022T2038-wavemate-ui/rollback.txt) — 338 bytes; .txt; 修改于 2026-10-22 19:45:02
-- [artifacts/test-reports/k3s/20261022T2038-wavemate-ui/rollout.txt](artifacts/test-reports/k3s/20261022T2038-wavemate-ui/rollout.txt) — 751 bytes; .txt; 修改于 2026-10-22 19:45:02
-- [artifacts/test-reports/k3s/20261022T2038-wavemate-ui/test-summary.txt](artifacts/test-reports/k3s/20261022T2038-wavemate-ui/test-summary.txt) — 835 bytes; .txt; 修改于 2026-10-22 22:57:45
-- [artifacts/test-reports/k3s/20261022T2038-wavemate-ui/transfer-hashes.txt](artifacts/test-reports/k3s/20261022T2038-wavemate-ui/transfer-hashes.txt) — 433 bytes; .txt; 修改于 2026-10-22 19:45:02
-- [artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-current2.json](artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-current2.json) — 10686 bytes; .json; 修改于 2026-10-22 23:29:46
-- [artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-current2-restore-verification.json](artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-current2-restore-verification.json) — 421 bytes; .json; 修改于 2026-10-22 23:46:07
-- [artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-current2-traffic.json](artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-current2-traffic.json) — 7838 bytes; .json; 修改于 2026-10-22 23:29:46
-- [artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-current3-negative.json](artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-current3-negative.json) — 8256 bytes; .json; 修改于 2026-10-22 23:44:01
-- [artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-current3-restore-verification.json](artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-current3-restore-verification.json) — 351 bytes; .json; 修改于 2026-10-22 23:44:01
-- [artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-current4.json](artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-current4.json) — 10844 bytes; .json; 修改于 2026-10-22 23:59:02
-- [artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-current4-restore-verification.json](artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-current4-restore-verification.json) — 351 bytes; .json; 修改于 2026-10-22 23:59:02
-- [artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-current4-traffic.json](artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-current4-traffic.json) — 7838 bytes; .json; 修改于 2026-10-22 23:59:02
-- [artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-negative-attempt.json](artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-negative-attempt.json) — 430 bytes; .json; 修改于 2026-10-22 20:40:44
-- [artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-report.json](artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-report.json) — 10645 bytes; .json; 修改于 2026-10-22 20:38:13
-- [artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-restore-verification.json](artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-restore-verification.json) — 342 bytes; .json; 修改于 2026-10-22 20:40:44
-- [artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-traffic.json](artifacts/test-reports/k3s/20261022T2038-wavemate-ui/wavemate-ui-traffic.json) — 7818 bytes; .json; 修改于 2026-10-22 20:38:13
-- [artifacts/test-reports/k3s/20261023T0005-wavemate-audit/api-verification.txt](artifacts/test-reports/k3s/20261023T0005-wavemate-audit/api-verification.txt) — 287 bytes; .txt; 修改于 2026-10-23 08:07:32
-- [artifacts/test-reports/k3s/20261023T0005-wavemate-audit/api-verification-current.txt](artifacts/test-reports/k3s/20261023T0005-wavemate-audit/api-verification-current.txt) — 115 bytes; .txt; 修改于 2026-10-23 08:08:16
-- [artifacts/test-reports/k3s/20261023T0005-wavemate-audit/evidence-manifest.json](artifacts/test-reports/k3s/20261023T0005-wavemate-audit/evidence-manifest.json) — 1246 bytes; .json; 修改于 2026-10-23 08:24:55
-- [artifacts/test-reports/k3s/20261023T0005-wavemate-audit/health-probe-current.txt](artifacts/test-reports/k3s/20261023T0005-wavemate-audit/health-probe-current.txt) — 234 bytes; .txt; 修改于 2026-10-23 08:09:26
-- [artifacts/test-reports/k3s/20261023T0005-wavemate-audit/index-debug-current.txt](artifacts/test-reports/k3s/20261023T0005-wavemate-audit/index-debug-current.txt) — 148 bytes; .txt; 修改于 2026-10-23 08:10:44
-- [artifacts/test-reports/k3s/20261023T0005-wavemate-audit/k3s-api-probe.sh](artifacts/test-reports/k3s/20261023T0005-wavemate-audit/k3s-api-probe.sh) — 1634 bytes; .sh; 修改于 2026-10-23 08:07:55
-- [artifacts/test-reports/k3s/20261023T0005-wavemate-audit/k3s-final-verification.sh](artifacts/test-reports/k3s/20261023T0005-wavemate-audit/k3s-final-verification.sh) — 1503 bytes; .sh; 修改于 2026-10-23 08:21:41
-- [artifacts/test-reports/k3s/20261023T0005-wavemate-audit/k3s-final-verification.txt](artifacts/test-reports/k3s/20261023T0005-wavemate-audit/k3s-final-verification.txt) — 2710 bytes; .txt; 修改于 2026-10-23 08:22:01
-- [artifacts/test-reports/k3s/20261023T0005-wavemate-audit/k3s-health-probe.sh](artifacts/test-reports/k3s/20261023T0005-wavemate-audit/k3s-health-probe.sh) — 566 bytes; .sh; 修改于 2026-10-23 08:09:06
-- [artifacts/test-reports/k3s/20261023T0005-wavemate-audit/k3s-index-debug.sh](artifacts/test-reports/k3s/20261023T0005-wavemate-audit/k3s-index-debug.sh) — 985 bytes; .sh; 修改于 2026-10-23 08:10:23
-- [artifacts/test-reports/k3s/20261023T0005-wavemate-audit/pod-diagnostics-after-index.txt](artifacts/test-reports/k3s/20261023T0005-wavemate-audit/pod-diagnostics-after-index.txt) — 4831 bytes; .txt; 修改于 2026-10-23 08:11:05
-- [artifacts/test-reports/k3s/20261023T0005-wavemate-audit/pod-logs-after-api.txt](artifacts/test-reports/k3s/20261023T0005-wavemate-audit/pod-logs-after-api.txt) — 0 bytes; .txt; 修改于 2026-10-23 08:08:30
-- [artifacts/test-reports/k3s/20261023T0005-wavemate-audit/remote-verification.txt](artifacts/test-reports/k3s/20261023T0005-wavemate-audit/remote-verification.txt) — 2569 bytes; .txt; 修改于 2026-10-23 08:06:19
-- [artifacts/test-reports/k3s/20261023T0005-wavemate-audit/test-summary.txt](artifacts/test-reports/k3s/20261023T0005-wavemate-audit/test-summary.txt) — 964 bytes; .txt; 修改于 2026-10-23 08:24:55
-- [artifacts/test-reports/P0/20261021T003003/environment.json](artifacts/test-reports/P0/20261021T003003/environment.json) — 119 bytes; .json; 修改于 2026-10-21 00:30:04
-- [artifacts/test-reports/P0/20261021T003003/health.json](artifacts/test-reports/P0/20261021T003003/health.json) — 459 bytes; .json; 修改于 2026-10-21 00:30:04
-- [artifacts/test-reports/P0/20261021T003003/module-verification.yaml](artifacts/test-reports/P0/20261021T003003/module-verification.yaml) — 897 bytes; .yaml; 修改于 2026-10-21 00:30:04
-- [artifacts/test-reports/P0/20261021T003003/seed.json](artifacts/test-reports/P0/20261021T003003/seed.json) — 496 bytes; .json; 修改于 2026-10-21 00:23:09
-- [artifacts/test-reports/P0/20261021T003003/test-summary.txt](artifacts/test-reports/P0/20261021T003003/test-summary.txt) — 232 bytes; .txt; 修改于 2026-10-21 00:30:04
-- [artifacts/test-reports/P0/20261021T003003/trace.jsonl](artifacts/test-reports/P0/20261021T003003/trace.jsonl) — 269 bytes; .jsonl; 修改于 2026-10-21 00:30:29
-- [artifacts/test-reports/P0/20261021T233235/environment.json](artifacts/test-reports/P0/20261021T233235/environment.json) — 298 bytes; .json; 修改于 2026-10-21 08:13:58
-- [artifacts/test-reports/P0/20261021T233235/evidence-manifest.json](artifacts/test-reports/P0/20261021T233235/evidence-manifest.json) — 993 bytes; .json; 修改于 2026-10-21 08:13:58
-- [artifacts/test-reports/P0/20261021T233235/failure-cases.json](artifacts/test-reports/P0/20261021T233235/failure-cases.json) — 142 bytes; .json; 修改于 2026-10-21 08:13:58
-- [artifacts/test-reports/P0/20261021T233235/health.json](artifacts/test-reports/P0/20261021T233235/health.json) — 156 bytes; .json; 修改于 2026-10-21 08:13:58
-- [artifacts/test-reports/P0/20261021T233235/module-verification.yaml](artifacts/test-reports/P0/20261021T233235/module-verification.yaml) — 894 bytes; .yaml; 修改于 2026-10-21 08:54:56
-- [artifacts/test-reports/P0/20261021T233235/plan-audit-20261020235020-plan-audit.json](artifacts/test-reports/P0/20261021T233235/plan-audit-20261020235020-plan-audit.json) — 689 bytes; .json; 修改于 2026-10-21 07:50:20
-- [artifacts/test-reports/P0/20261021T233235/plan-audit-20261020235418-plan-audit.json](artifacts/test-reports/P0/20261021T233235/plan-audit-20261020235418-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 07:54:18
-- [artifacts/test-reports/P0/20261021T233235/plan-audit-20261020235813-plan-audit.json](artifacts/test-reports/P0/20261021T233235/plan-audit-20261020235813-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 07:58:13
-- [artifacts/test-reports/P0/20261021T233235/plan-audit-20261021000228-plan-audit.json](artifacts/test-reports/P0/20261021T233235/plan-audit-20261021000228-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:02:28
-- [artifacts/test-reports/P0/20261021T233235/plan-audit-20261021000630-plan-audit.json](artifacts/test-reports/P0/20261021T233235/plan-audit-20261021000630-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:06:30
-- [artifacts/test-reports/P0/20261021T233235/plan-audit-20261021001357-plan-audit.json](artifacts/test-reports/P0/20261021T233235/plan-audit-20261021001357-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:13:57
-- [artifacts/test-reports/P0/20261021T233235/seed.json](artifacts/test-reports/P0/20261021T233235/seed.json) — 197 bytes; .json; 修改于 2026-10-21 08:13:58
-- [artifacts/test-reports/P0/20261021T233235/test-summary.txt](artifacts/test-reports/P0/20261021T233235/test-summary.txt) — 429 bytes; .txt; 修改于 2026-10-21 08:54:56
-- [artifacts/test-reports/P0/20261021T233235/trace.jsonl](artifacts/test-reports/P0/20261021T233235/trace.jsonl) — 370 bytes; .jsonl; 修改于 2026-10-21 08:13:58
-- [artifacts/test-reports/P1/20261021T064139/environment.json](artifacts/test-reports/P1/20261021T064139/environment.json) — 121 bytes; .json; 修改于 2026-10-21 06:41:40
-- [artifacts/test-reports/P1/20261021T064139/module-verification.yaml](artifacts/test-reports/P1/20261021T064139/module-verification.yaml) — 708 bytes; .yaml; 修改于 2026-10-21 06:41:39
-- [artifacts/test-reports/P1/20261021T064139/test-summary.txt](artifacts/test-reports/P1/20261021T064139/test-summary.txt) — 273 bytes; .txt; 修改于 2026-10-21 06:41:40
-- [artifacts/test-reports/P1/20261021T064139/trace.jsonl](artifacts/test-reports/P1/20261021T064139/trace.jsonl) — 261 bytes; .jsonl; 修改于 2026-10-21 06:41:40
-- [artifacts/test-reports/P2/20261021T064954/environment.json](artifacts/test-reports/P2/20261021T064954/environment.json) — 543 bytes; .json; 修改于 2026-10-21 06:49:55
-- [artifacts/test-reports/P2/20261021T064954/module-verification.yaml](artifacts/test-reports/P2/20261021T064954/module-verification.yaml) — 1033 bytes; .yaml; 修改于 2026-10-21 06:49:55
-- [artifacts/test-reports/P2/20261021T064954/test-summary.txt](artifacts/test-reports/P2/20261021T064954/test-summary.txt) — 444 bytes; .txt; 修改于 2026-10-21 06:49:55
-- [artifacts/test-reports/P2/20261021T064954/trace.jsonl](artifacts/test-reports/P2/20261021T064954/trace.jsonl) — 411 bytes; .jsonl; 修改于 2026-10-21 06:49:55
-- [artifacts/test-reports/P2/20261021T065440/environment.json](artifacts/test-reports/P2/20261021T065440/environment.json) — 543 bytes; .json; 修改于 2026-10-21 06:54:41
-- [artifacts/test-reports/P2/20261021T065440/module-verification.yaml](artifacts/test-reports/P2/20261021T065440/module-verification.yaml) — 1074 bytes; .yaml; 修改于 2026-10-21 06:54:41
-- [artifacts/test-reports/P2/20261021T065440/test-summary.txt](artifacts/test-reports/P2/20261021T065440/test-summary.txt) — 444 bytes; .txt; 修改于 2026-10-21 06:54:41
-- [artifacts/test-reports/P2/20261021T065440/trace.jsonl](artifacts/test-reports/P2/20261021T065440/trace.jsonl) — 411 bytes; .jsonl; 修改于 2026-10-21 06:54:41
-- [artifacts/test-reports/P3/20261021T070043/environment.json](artifacts/test-reports/P3/20261021T070043/environment.json) — 490 bytes; .json; 修改于 2026-10-21 07:00:44
-- [artifacts/test-reports/P3/20261021T070043/module-verification.yaml](artifacts/test-reports/P3/20261021T070043/module-verification.yaml) — 1062 bytes; .yaml; 修改于 2026-10-21 07:00:44
-- [artifacts/test-reports/P3/20261021T070043/test-summary.txt](artifacts/test-reports/P3/20261021T070043/test-summary.txt) — 498 bytes; .txt; 修改于 2026-10-21 07:00:44
-- [artifacts/test-reports/P3/20261021T070043/trace.jsonl](artifacts/test-reports/P3/20261021T070043/trace.jsonl) — 408 bytes; .jsonl; 修改于 2026-10-21 07:00:44
-- [artifacts/test-reports/P4/20261021T070428/environment.json](artifacts/test-reports/P4/20261021T070428/environment.json) — 409 bytes; .json; 修改于 2026-10-21 07:04:29
-- [artifacts/test-reports/P4/20261021T070428/module-verification.yaml](artifacts/test-reports/P4/20261021T070428/module-verification.yaml) — 917 bytes; .yaml; 修改于 2026-10-21 07:04:29
-- [artifacts/test-reports/P4/20261021T070428/test-summary.txt](artifacts/test-reports/P4/20261021T070428/test-summary.txt) — 551 bytes; .txt; 修改于 2026-10-21 07:04:29
-- [artifacts/test-reports/P4/20261021T070428/trace.jsonl](artifacts/test-reports/P4/20261021T070428/trace.jsonl) — 400 bytes; .jsonl; 修改于 2026-10-21 07:04:29
-- [artifacts/test-reports/P5/20261021T070701/environment.json](artifacts/test-reports/P5/20261021T070701/environment.json) — 298 bytes; .json; 修改于 2026-10-21 07:07:02
-- [artifacts/test-reports/P5/20261021T070701/module-verification.yaml](artifacts/test-reports/P5/20261021T070701/module-verification.yaml) — 794 bytes; .yaml; 修改于 2026-10-21 07:07:02
-- [artifacts/test-reports/P5/20261021T070701/test-summary.txt](artifacts/test-reports/P5/20261021T070701/test-summary.txt) — 605 bytes; .txt; 修改于 2026-10-21 07:07:02
-- [artifacts/test-reports/P5/20261021T070701/trace.jsonl](artifacts/test-reports/P5/20261021T070701/trace.jsonl) — 408 bytes; .jsonl; 修改于 2026-10-21 07:07:02
-- [artifacts/test-reports/P6/20261021T071519/environment.json](artifacts/test-reports/P6/20261021T071519/environment.json) — 255 bytes; .json; 修改于 2026-10-21 07:15:51
-- [artifacts/test-reports/P6/20261021T071519/module-verification.yaml](artifacts/test-reports/P6/20261021T071519/module-verification.yaml) — 744 bytes; .yaml; 修改于 2026-10-21 07:15:51
-- [artifacts/test-reports/P6/20261021T071519/test-summary.txt](artifacts/test-reports/P6/20261021T071519/test-summary.txt) — 290 bytes; .txt; 修改于 2026-10-21 07:15:51
-- [artifacts/test-reports/P6/20261021T071519/trace.jsonl](artifacts/test-reports/P6/20261021T071519/trace.jsonl) — 456 bytes; .jsonl; 修改于 2026-10-21 07:15:51
-- [artifacts/test-reports/P7/20261021T071519/environment.json](artifacts/test-reports/P7/20261021T071519/environment.json) — 259 bytes; .json; 修改于 2026-10-21 07:15:51
-- [artifacts/test-reports/P7/20261021T071519/module-verification.yaml](artifacts/test-reports/P7/20261021T071519/module-verification.yaml) — 769 bytes; .yaml; 修改于 2026-10-21 07:15:51
-- [artifacts/test-reports/P7/20261021T071519/test-summary.txt](artifacts/test-reports/P7/20261021T071519/test-summary.txt) — 294 bytes; .txt; 修改于 2026-10-21 07:15:51
-- [artifacts/test-reports/P7/20261021T071519/trace.jsonl](artifacts/test-reports/P7/20261021T071519/trace.jsonl) — 460 bytes; .jsonl; 修改于 2026-10-21 07:15:51
-- [artifacts/test-reports/P8/20261021T071519/environment.json](artifacts/test-reports/P8/20261021T071519/environment.json) — 264 bytes; .json; 修改于 2026-10-21 07:15:51
-- [artifacts/test-reports/P8/20261021T071519/module-verification.yaml](artifacts/test-reports/P8/20261021T071519/module-verification.yaml) — 780 bytes; .yaml; 修改于 2026-10-21 07:15:51
-- [artifacts/test-reports/P8/20261021T071519/test-summary.txt](artifacts/test-reports/P8/20261021T071519/test-summary.txt) — 299 bytes; .txt; 修改于 2026-10-21 07:15:51
-- [artifacts/test-reports/P8/20261021T071519/trace.jsonl](artifacts/test-reports/P8/20261021T071519/trace.jsonl) — 465 bytes; .jsonl; 修改于 2026-10-21 07:15:51
-- [artifacts/test-reports/P8/20261021T233235/environment.json](artifacts/test-reports/P8/20261021T233235/environment.json) — 298 bytes; .json; 修改于 2026-10-21 08:06:32
-- [artifacts/test-reports/P8/20261021T233235/evidence-manifest.json](artifacts/test-reports/P8/20261021T233235/evidence-manifest.json) — 660 bytes; .json; 修改于 2026-10-21 08:06:32
-- [artifacts/test-reports/P8/20261021T233235/failure-cases.json](artifacts/test-reports/P8/20261021T233235/failure-cases.json) — 142 bytes; .json; 修改于 2026-10-21 08:06:32
-- [artifacts/test-reports/P8/20261021T233235/health.json](artifacts/test-reports/P8/20261021T233235/health.json) — 156 bytes; .json; 修改于 2026-10-21 08:06:32
-- [artifacts/test-reports/P8/20261021T233235/module-verification.yaml](artifacts/test-reports/P8/20261021T233235/module-verification.yaml) — 888 bytes; .yaml; 修改于 2026-10-21 08:54:56
-- [artifacts/test-reports/P8/20261021T233235/plan-audit-20261021000630-plan-audit.json](artifacts/test-reports/P8/20261021T233235/plan-audit-20261021000630-plan-audit.json) — 766 bytes; .json; 修改于 2026-10-21 08:06:30
-- [artifacts/test-reports/P8/20261021T233235/rc-readiness-20261021000630-rc-readiness.json](artifacts/test-reports/P8/20261021T233235/rc-readiness-20261021000630-rc-readiness.json) — 1668 bytes; .json; 修改于 2026-10-21 08:06:31
-- [artifacts/test-reports/P8/20261021T233235/seed.json](artifacts/test-reports/P8/20261021T233235/seed.json) — 197 bytes; .json; 修改于 2026-10-21 08:06:32
-- [artifacts/test-reports/P8/20261021T233235/test-summary.txt](artifacts/test-reports/P8/20261021T233235/test-summary.txt) — 451 bytes; .txt; 修改于 2026-10-21 08:54:56
-- [artifacts/test-reports/P8/20261021T233235/trace.jsonl](artifacts/test-reports/P8/20261021T233235/trace.jsonl) — 198 bytes; .jsonl; 修改于 2026-10-21 08:06:32
-- [artifacts/test-reports/tooling/20261021T073000/backup.json](artifacts/test-reports/tooling/20261021T073000/backup.json) — 496 bytes; .json; 修改于 2026-10-21 07:25:15
-- [artifacts/test-reports/tooling/20261021T073000/evaluation-20261020232516-evaluation.json](artifacts/test-reports/tooling/20261021T073000/evaluation-20261020232516-evaluation.json) — 597 bytes; .json; 修改于 2026-10-21 07:25:16
-- [artifacts/test-reports/tooling/20261021T073000/events.json](artifacts/test-reports/tooling/20261021T073000/events.json) — 668 bytes; .json; 修改于 2026-10-21 07:25:14
-- [artifacts/test-reports/tooling/20261021T073000/evidence-manifest.json](artifacts/test-reports/tooling/20261021T073000/evidence-manifest.json) — 1129 bytes; .json; 修改于 2026-10-21 07:25:57
-- [artifacts/test-reports/tooling/20261021T073000/fixture-validation.json](artifacts/test-reports/tooling/20261021T073000/fixture-validation.json) — 199 bytes; .json; 修改于 2026-10-21 07:25:14
-- [artifacts/test-reports/tooling/20261021T073000/functional-20261020232515-functional.json](artifacts/test-reports/tooling/20261021T073000/functional-20261020232515-functional.json) — 1237 bytes; .json; 修改于 2026-10-21 07:25:15
-- [artifacts/test-reports/tooling/20261021T073000/functional-20261020232516-functional.json](artifacts/test-reports/tooling/20261021T073000/functional-20261020232516-functional.json) — 1236 bytes; .json; 修改于 2026-10-21 07:25:16
-- [artifacts/test-reports/tooling/20261021T073000/performance-20261020232516-performance.json](artifacts/test-reports/tooling/20261021T073000/performance-20261020232516-performance.json) — 467 bytes; .json; 修改于 2026-10-21 07:25:16
-- [artifacts/test-reports/tooling/20261021T073000/release-20261020232516-release.json](artifacts/test-reports/tooling/20261021T073000/release-20261020232516-release.json) — 406 bytes; .json; 修改于 2026-10-21 07:25:16
-- [artifacts/test-reports/tooling/20261021T073000/release-20261020233006-release.json](artifacts/test-reports/tooling/20261021T073000/release-20261020233006-release.json) — 578 bytes; .json; 修改于 2026-10-21 07:30:06
-- [artifacts/test-reports/tooling/20261021T073000/release-manifest.yaml](artifacts/test-reports/tooling/20261021T073000/release-manifest.yaml) — 1144 bytes; .yaml; 修改于 2026-10-21 07:30:08
-- [artifacts/test-reports/tooling/20261021T073000/resilience-20261020232515-resilience.json](artifacts/test-reports/tooling/20261021T073000/resilience-20261020232515-resilience.json) — 1264 bytes; .json; 修改于 2026-10-21 07:25:15
-- [artifacts/test-reports/tooling/20261021T073000/sbom.cdx.json](artifacts/test-reports/tooling/20261021T073000/sbom.cdx.json) — 5129 bytes; .json; 修改于 2026-10-21 07:30:07
-- [artifacts/test-reports/tooling/20261021T073000/security-20261020232515-security.json](artifacts/test-reports/tooling/20261021T073000/security-20261020232515-security.json) — 389 bytes; .json; 修改于 2026-10-21 07:25:15
-- [artifacts/test-reports/tooling/20261021T073000/seed.json](artifacts/test-reports/tooling/20261021T073000/seed.json) — 340 bytes; .json; 修改于 2026-10-21 07:25:15
-- [artifacts/test-reports/tooling/final-release-manifest.yaml](artifacts/test-reports/tooling/final-release-manifest.yaml) — 1140 bytes; .yaml; 修改于 2026-10-21 07:45:17
-- [artifacts/test-reports/tooling/final-sbom.cdx.json](artifacts/test-reports/tooling/final-sbom.cdx.json) — 5129 bytes; .json; 修改于 2026-10-21 07:45:17
-- [artifacts/test-reports/tooling/final-tooling/environment.json](artifacts/test-reports/tooling/final-tooling/environment.json) — 294 bytes; .json; 修改于 2026-10-21 07:32:35
-- [artifacts/test-reports/tooling/final-tooling/evidence-manifest.json](artifacts/test-reports/tooling/final-tooling/evidence-manifest.json) — 666 bytes; .json; 修改于 2026-10-21 07:32:35
-- [artifacts/test-reports/tooling/final-tooling/failure-cases.json](artifacts/test-reports/tooling/final-tooling/failure-cases.json) — 140 bytes; .json; 修改于 2026-10-21 07:32:35
-- [artifacts/test-reports/tooling/final-tooling/health.json](artifacts/test-reports/tooling/final-tooling/health.json) — 154 bytes; .json; 修改于 2026-10-21 07:32:35
-- [artifacts/test-reports/tooling/final-tooling/seed.json](artifacts/test-reports/tooling/final-tooling/seed.json) — 195 bytes; .json; 修改于 2026-10-21 07:32:35
-- [artifacts/test-reports/tooling/final-tooling/trace.jsonl](artifacts/test-reports/tooling/final-tooling/trace.jsonl) — 105 bytes; .jsonl; 修改于 2026-10-21 07:32:35
-
 ### assets
 
+- [assets/planemem-admin-4k.png](assets/planemem-admin-4k.png) — 7590272 bytes; .png; 修改于 2026-10-23 22:50:30
 - [assets/planemem-architecture-4k.png](assets/planemem-architecture-4k.png) — 8942409 bytes; .png; 修改于 2026-10-21 09:13:29
 - [assets/planemem-architecture-chatgpt-images-25-base.png](assets/planemem-architecture-chatgpt-images-25-base.png) — 1894798 bytes; .png; 修改于 2026-10-21 09:04:32
+- [assets/planemem-audit-4k.png](assets/planemem-audit-4k.png) — 8137080 bytes; .png; 修改于 2026-10-23 22:50:29
+- [assets/planemem-context-4k.png](assets/planemem-context-4k.png) — 7928217 bytes; .png; 修改于 2026-10-23 22:50:27
 - [assets/planemem-dashboard-overview-4k.png](assets/planemem-dashboard-overview-4k.png) — 7858877 bytes; .png; 修改于 2026-10-23 06:46:55
 - [assets/planemem-handoffs-conflicts-4k.png](assets/planemem-handoffs-conflicts-4k.png) — 8379172 bytes; .png; 修改于 2026-10-23 06:46:58
+- [assets/planemem-sessions-4k.png](assets/planemem-sessions-4k.png) — 7374156 bytes; .png; 修改于 2026-10-23 22:50:28
 - [assets/planemem-work-item-detail-4k.png](assets/planemem-work-item-detail-4k.png) — 8227251 bytes; .png; 修改于 2026-10-23 06:46:56
+- [assets/planemem-work-items-4k.png](assets/planemem-work-items-4k.png) — 8922764 bytes; .png; 修改于 2026-10-23 22:50:26
 
 ### codes — 外部源码与适配参考
 
@@ -9194,22 +7808,23 @@
 
 ### deploy
 
-- [deploy/compose/.env.example](deploy/compose/.env.example) — 882 bytes; .example; 修改于 2026-10-21 07:16:22
-- [deploy/compose/docker-compose.local-test.yml](deploy/compose/docker-compose.local-test.yml) — 3554 bytes; .yml; 修改于 2026-10-23 09:07:04
+- [deploy/compose/.env.example](deploy/compose/.env.example) — 1066 bytes; .example; 修改于 2026-10-25 12:14:34
+- [deploy/compose/docker-compose.local-test.yml](deploy/compose/docker-compose.local-test.yml) — 3806 bytes; .yml; 修改于 2026-10-25 11:56:21
 - [deploy/compose/docker-compose.opa-test.yml](deploy/compose/docker-compose.opa-test.yml) — 649 bytes; .yml; 修改于 2026-10-23 07:44:47
-- [deploy/compose/docker-compose.yml](deploy/compose/docker-compose.yml) — 4996 bytes; .yml; 修改于 2026-10-23 09:07:04
-- [deploy/compose/health/doctor.mjs](deploy/compose/health/doctor.mjs) — 1778 bytes; .mjs; 修改于 2026-10-21 00:26:40
+- [deploy/compose/docker-compose.yml](deploy/compose/docker-compose.yml) — 5379 bytes; .yml; 修改于 2026-10-25 12:14:34
+- [deploy/compose/health/doctor.mjs](deploy/compose/health/doctor.mjs) — 1911 bytes; .mjs; 修改于 2026-10-25 22:25:30
 - [deploy/compose/health/healthcheck.mjs](deploy/compose/health/healthcheck.mjs) — 774 bytes; .mjs; 修改于 2026-10-21 00:26:40
-- [deploy/compose/Justfile](deploy/compose/Justfile) — 579 bytes; (none); 修改于 2026-10-21 00:26:40
-- [deploy/compose/Makefile](deploy/compose/Makefile) — 672 bytes; (none); 修改于 2026-10-21 00:26:40
+- [deploy/compose/Justfile](deploy/compose/Justfile) — 1368 bytes; (none); 修改于 2026-10-25 22:22:39
+- [deploy/compose/Makefile](deploy/compose/Makefile) — 1685 bytes; (none); 修改于 2026-10-25 22:22:39
 - [deploy/compose/otel-collector.yaml](deploy/compose/otel-collector.yaml) — 232 bytes; .yaml; 修改于 2026-10-21 00:26:40
 - [deploy/compose/seed.sql](deploy/compose/seed.sql) — 638 bytes; .sql; 修改于 2026-10-21 00:26:40
+- [deploy/helm/planemem/ai-memory-runtime.yaml](deploy/helm/planemem/ai-memory-runtime.yaml) — 2442 bytes; .yaml; 修改于 2026-10-25 17:36:02
 - [deploy/helm/planemem/Chart.yaml](deploy/helm/planemem/Chart.yaml) — 128 bytes; .yaml; 修改于 2026-10-21 07:12:51
-- [deploy/helm/planemem/templates/deployment.yaml](deploy/helm/planemem/templates/deployment.yaml) — 1057 bytes; .yaml; 修改于 2026-10-21 13:03:27
-- [deploy/helm/planemem/templates/service.yaml](deploy/helm/planemem/templates/service.yaml) — 175 bytes; .yaml; 修改于 2026-10-21 07:12:51
+- [deploy/helm/planemem/templates/deployment.yaml](deploy/helm/planemem/templates/deployment.yaml) — 1724 bytes; .yaml; 修改于 2026-10-25 17:00:49
+- [deploy/helm/planemem/templates/service.yaml](deploy/helm/planemem/templates/service.yaml) — 203 bytes; .yaml; 修改于 2026-10-25 22:06:16
 - [deploy/helm/planemem/values.schema.json](deploy/helm/planemem/values.schema.json) — 426 bytes; .json; 修改于 2026-10-21 07:12:51
-- [deploy/helm/planemem/values.yaml](deploy/helm/planemem/values.yaml) — 390 bytes; .yaml; 修改于 2026-10-21 07:12:51
-- [deploy/images/platform/Dockerfile](deploy/images/platform/Dockerfile) — 847 bytes; (none); 修改于 2026-10-22 07:49:25
+- [deploy/helm/planemem/values.yaml](deploy/helm/planemem/values.yaml) — 681 bytes; .yaml; 修改于 2026-10-26 01:07:47
+- [deploy/images/platform/Dockerfile](deploy/images/platform/Dockerfile) — 1086 bytes; (none); 修改于 2026-10-24 11:40:53
 - [deploy/k3s/smoke/Dockerfile](deploy/k3s/smoke/Dockerfile) — 113 bytes; (none); 修改于 2026-10-21 09:44:27
 - [deploy/k3s/smoke/nginx.conf](deploy/k3s/smoke/nginx.conf) — 358 bytes; .conf; 修改于 2026-10-21 09:23:37
 - [deploy/keycloak/realm.json](deploy/keycloak/realm.json) — 307 bytes; .json; 修改于 2026-10-21 07:15:09
@@ -9220,9 +7835,11 @@
 - [deploy/migrations/005_sync.sql](deploy/migrations/005_sync.sql) — 1419 bytes; .sql; 修改于 2026-10-21 06:58:25
 - [deploy/migrations/006_outbox.sql](deploy/migrations/006_outbox.sql) — 846 bytes; .sql; 修改于 2026-10-21 06:58:31
 - [deploy/migrations/007_audit.sql](deploy/migrations/007_audit.sql) — 1014 bytes; .sql; 修改于 2026-10-21 07:08:20
+- [deploy/migrations/009_runtime_state.sql](deploy/migrations/009_runtime_state.sql) — 1462 bytes; .sql; 修改于 2026-10-24 14:20:02
+- [deploy/migrations/010_session_continuity_persistence.sql](deploy/migrations/010_session_continuity_persistence.sql) — 2544 bytes; .sql; 修改于 2026-10-25 22:30:52
 - [deploy/observability/prometheus.yml](deploy/observability/prometheus.yml) — 173 bytes; .yml; 修改于 2026-10-21 07:08:20
 - [deploy/opa/policy.rego](deploy/opa/policy.rego) — 624 bytes; .rego; 修改于 2026-10-23 07:46:40
-- [deploy/release-manifest.yaml](deploy/release-manifest.yaml) — 560 bytes; .yaml; 修改于 2026-10-21 07:12:51
+- [deploy/release-manifest.yaml](deploy/release-manifest.yaml) — 785 bytes; .yaml; 修改于 2026-10-25 22:19:08
 - [deploy/search/feature-flags.yaml](deploy/search/feature-flags.yaml) — 118 bytes; .yaml; 修改于 2026-10-21 07:12:00
 
 ### docs — 项目文档与设计
@@ -9239,16 +7856,16 @@
 - [docs/design/01-contracts/mcp-interface.md](docs/design/01-contracts/mcp-interface.md) — 1491 bytes; .md; 修改于 2026-10-20 18:02:29
 - [docs/design/01-contracts/README.md](docs/design/01-contracts/README.md) — 547 bytes; .md; 修改于 2026-10-20 18:02:29
 - [docs/design/01-contracts/schema-versioning.md](docs/design/01-contracts/schema-versioning.md) — 812 bytes; .md; 修改于 2026-10-20 18:02:29
-- [docs/design/01-contracts/wcp-api.md](docs/design/01-contracts/wcp-api.md) — 1843 bytes; .md; 修改于 2026-10-20 18:02:29
+- [docs/design/01-contracts/wcp-api.md](docs/design/01-contracts/wcp-api.md) — 3629 bytes; .md; 修改于 2026-10-26 01:03:07
 - [docs/design/02-subprojects/P0/README.md](docs/design/02-subprojects/P0/README.md) — 2858 bytes; .md; 修改于 2026-10-20 23:05:32
 - [docs/design/02-subprojects/P1/README.md](docs/design/02-subprojects/P1/README.md) — 2743 bytes; .md; 修改于 2026-10-20 23:05:32
 - [docs/design/02-subprojects/P2/README.md](docs/design/02-subprojects/P2/README.md) — 4022 bytes; .md; 修改于 2026-10-21 06:49:12
-- [docs/design/02-subprojects/P3/README.md](docs/design/02-subprojects/P3/README.md) — 3793 bytes; .md; 修改于 2026-10-21 07:00:15
+- [docs/design/02-subprojects/P3/README.md](docs/design/02-subprojects/P3/README.md) — 3909 bytes; .md; 修改于 2026-10-25 22:44:04
 - [docs/design/02-subprojects/P4/README.md](docs/design/02-subprojects/P4/README.md) — 3866 bytes; .md; 修改于 2026-10-22 08:36:29
 - [docs/design/02-subprojects/P5/README.md](docs/design/02-subprojects/P5/README.md) — 3333 bytes; .md; 修改于 2026-10-21 07:06:27
 - [docs/design/02-subprojects/P6/README.md](docs/design/02-subprojects/P6/README.md) — 4636 bytes; .md; 修改于 2026-10-23 08:30:08
 - [docs/design/02-subprojects/P7/README.md](docs/design/02-subprojects/P7/README.md) — 3901 bytes; .md; 修改于 2026-10-21 07:14:44
-- [docs/design/02-subprojects/P8/README.md](docs/design/02-subprojects/P8/README.md) — 6023 bytes; .md; 修改于 2026-10-23 12:14:04
+- [docs/design/02-subprojects/P8/README.md](docs/design/02-subprojects/P8/README.md) — 6121 bytes; .md; 修改于 2026-10-24 14:34:34
 - [docs/design/02-subprojects/README.md](docs/design/02-subprojects/README.md) — 1264 bytes; .md; 修改于 2026-10-21 08:01:46
 - [docs/design/02-subprojects/tasks/README.md](docs/design/02-subprojects/tasks/README.md) — 2726 bytes; .md; 修改于 2026-10-20 23:05:32
 - [docs/design/02-subprojects/tasks/t0.1-monorepo-ci.md](docs/design/02-subprojects/tasks/t0.1-monorepo-ci.md) — 3546 bytes; .md; 修改于 2026-10-21 08:38:06
@@ -9263,7 +7880,7 @@
 - [docs/design/02-subprojects/tasks/t1.4-webhook-dedup-replay.md](docs/design/02-subprojects/tasks/t1.4-webhook-dedup-replay.md) — 3478 bytes; .md; 修改于 2026-10-20 23:05:32
 - [docs/design/02-subprojects/tasks/t1.5-plane-projection.md](docs/design/02-subprojects/tasks/t1.5-plane-projection.md) — 3495 bytes; .md; 修改于 2026-10-20 23:05:32
 - [docs/design/02-subprojects/tasks/t2.1-artifact-metadata.md](docs/design/02-subprojects/tasks/t2.1-artifact-metadata.md) — 3507 bytes; .md; 修改于 2026-10-20 23:05:32
-- [docs/design/02-subprojects/tasks/t2.2-memory-adapter.md](docs/design/02-subprojects/tasks/t2.2-memory-adapter.md) — 3658 bytes; .md; 修改于 2026-10-20 23:05:32
+- [docs/design/02-subprojects/tasks/t2.2-memory-adapter.md](docs/design/02-subprojects/tasks/t2.2-memory-adapter.md) — 5265 bytes; .md; 修改于 2026-10-25 12:51:15
 - [docs/design/02-subprojects/tasks/t2.3-context-layers.md](docs/design/02-subprojects/tasks/t2.3-context-layers.md) — 3494 bytes; .md; 修改于 2026-10-20 23:05:32
 - [docs/design/02-subprojects/tasks/t2.4-context-compiler.md](docs/design/02-subprojects/tasks/t2.4-context-compiler.md) — 3546 bytes; .md; 修改于 2026-10-20 23:05:32
 - [docs/design/02-subprojects/tasks/t2.5-fts-resources.md](docs/design/02-subprojects/tasks/t2.5-fts-resources.md) — 3492 bytes; .md; 修改于 2026-10-20 23:05:32
@@ -9272,7 +7889,7 @@
 - [docs/design/02-subprojects/tasks/t3.3-sync-cursor-batch.md](docs/design/02-subprojects/tasks/t3.3-sync-cursor-batch.md) — 3399 bytes; .md; 修改于 2026-10-20 23:05:32
 - [docs/design/02-subprojects/tasks/t3.4-sqlite-outbox.md](docs/design/02-subprojects/tasks/t3.4-sqlite-outbox.md) — 3427 bytes; .md; 修改于 2026-10-20 23:05:32
 - [docs/design/02-subprojects/tasks/t3.5-conflict-service.md](docs/design/02-subprojects/tasks/t3.5-conflict-service.md) — 3434 bytes; .md; 修改于 2026-10-20 23:05:32
-- [docs/design/02-subprojects/tasks/t4.1-api-gateway.md](docs/design/02-subprojects/tasks/t4.1-api-gateway.md) — 4255 bytes; .md; 修改于 2026-10-22 08:38:28
+- [docs/design/02-subprojects/tasks/t4.1-api-gateway.md](docs/design/02-subprojects/tasks/t4.1-api-gateway.md) — 5029 bytes; .md; 修改于 2026-10-25 12:51:15
 - [docs/design/02-subprojects/tasks/t4.2-mcp-gateway.md](docs/design/02-subprojects/tasks/t4.2-mcp-gateway.md) — 3444 bytes; .md; 修改于 2026-10-20 23:05:32
 - [docs/design/02-subprojects/tasks/t4.3-workctx-cli.md](docs/design/02-subprojects/tasks/t4.3-workctx-cli.md) — 3411 bytes; .md; 修改于 2026-10-20 23:05:32
 - [docs/design/02-subprojects/tasks/t4.4-client-adapters.md](docs/design/02-subprojects/tasks/t4.4-client-adapters.md) — 3498 bytes; .md; 修改于 2026-10-20 23:05:32
@@ -9288,12 +7905,14 @@
 - [docs/design/02-subprojects/tasks/t8.1-integration-e2e-resilience.md](docs/design/02-subprojects/tasks/t8.1-integration-e2e-resilience.md) — 5830 bytes; .md; 修改于 2026-10-23 07:10:00
 - [docs/design/02-subprojects/tasks/t8.2-compose-helm.md](docs/design/02-subprojects/tasks/t8.2-compose-helm.md) — 5755 bytes; .md; 修改于 2026-10-23 12:14:04
 - [docs/design/02-subprojects/tasks/t8.3-release-rollback.md](docs/design/02-subprojects/tasks/t8.3-release-rollback.md) — 5207 bytes; .md; 修改于 2026-10-23 12:14:04
+- [docs/design/02-subprojects/tasks/t8.4-real-data-closure.md](docs/design/02-subprojects/tasks/t8.4-real-data-closure.md) — 7029 bytes; .md; 修改于 2026-10-26 00:11:49
 - [docs/design/03-integration/01-task-handoff-contract.md](docs/design/03-integration/01-task-handoff-contract.md) — 2421 bytes; .md; 修改于 2026-10-20 21:22:32
 - [docs/design/03-integration/02-integration-environment.md](docs/design/03-integration/02-integration-environment.md) — 960 bytes; .md; 修改于 2026-10-20 18:02:29
 - [docs/design/03-integration/03-end-to-end-chains.md](docs/design/03-integration/03-end-to-end-chains.md) — 1505 bytes; .md; 修改于 2026-10-22 13:22:38
-- [docs/design/03-integration/04-module-interface-contracts.md](docs/design/03-integration/04-module-interface-contracts.md) — 20448 bytes; .md; 修改于 2026-10-23 12:13:12
+- [docs/design/03-integration/04-module-interface-contracts.md](docs/design/03-integration/04-module-interface-contracts.md) — 20617 bytes; .md; 修改于 2026-10-25 22:44:04
 - [docs/design/03-integration/05-module-contract-test-matrix.md](docs/design/03-integration/05-module-contract-test-matrix.md) — 6113 bytes; .md; 修改于 2026-10-23 12:13:12
 - [docs/design/03-integration/06-wavemate-mcp-contract.md](docs/design/03-integration/06-wavemate-mcp-contract.md) — 4414 bytes; .md; 修改于 2026-10-22 20:47:33
+- [docs/design/03-integration/07-runtime-data-persistence.md](docs/design/03-integration/07-runtime-data-persistence.md) — 4218 bytes; .md; 修改于 2026-10-25 22:31:00
 - [docs/design/03-integration/README.md](docs/design/03-integration/README.md) — 1610 bytes; .md; 修改于 2026-10-22 13:14:12
 - [docs/design/04-testing/02-fault-security-performance.md](docs/design/04-testing/02-fault-security-performance.md) — 958 bytes; .md; 修改于 2026-10-20 18:02:29
 - [docs/design/04-testing/clients/01-wavemate-0.24.1-live-verification.md](docs/design/04-testing/clients/01-wavemate-0.24.1-live-verification.md) — 5728 bytes; .md; 修改于 2026-10-23 06:01:15
@@ -9306,21 +7925,22 @@
 - [docs/design/04-testing/modules/P5-independent-verification.md](docs/design/04-testing/modules/P5-independent-verification.md) — 6552 bytes; .md; 修改于 2026-10-21 07:06:27
 - [docs/design/04-testing/modules/P6-independent-verification.md](docs/design/04-testing/modules/P6-independent-verification.md) — 7584 bytes; .md; 修改于 2026-10-23 08:24:07
 - [docs/design/04-testing/modules/P7-independent-verification.md](docs/design/04-testing/modules/P7-independent-verification.md) — 6737 bytes; .md; 修改于 2026-10-21 07:14:44
-- [docs/design/04-testing/modules/P8-independent-verification.md](docs/design/04-testing/modules/P8-independent-verification.md) — 17945 bytes; .md; 修改于 2026-10-23 09:57:42
+- [docs/design/04-testing/modules/P8-independent-verification.md](docs/design/04-testing/modules/P8-independent-verification.md) — 18529 bytes; .md; 修改于 2026-10-24 14:36:16
+- [docs/design/04-testing/modules/P8-real-data-closure.md](docs/design/04-testing/modules/P8-real-data-closure.md) — 3638 bytes; .md; 修改于 2026-10-24 14:35:22
 - [docs/design/04-testing/modules/README.md](docs/design/04-testing/modules/README.md) — 1367 bytes; .md; 修改于 2026-10-20 22:55:01
 - [docs/design/04-testing/README.md](docs/design/04-testing/README.md) — 3397 bytes; .md; 修改于 2026-10-22 22:36:32
 - [docs/design/05-release/01-release-deployment-rollback.md](docs/design/05-release/01-release-deployment-rollback.md) — 1734 bytes; .md; 修改于 2026-10-23 12:14:04
 - [docs/design/05-release/02-runbook-index.md](docs/design/05-release/02-runbook-index.md) — 675 bytes; .md; 修改于 2026-10-20 18:02:29
 - [docs/design/05-release/03-rc-gate-execution.md](docs/design/05-release/03-rc-gate-execution.md) — 9509 bytes; .md; 修改于 2026-10-23 09:56:36
 - [docs/design/05-release/04-k3s-test-deployment.md](docs/design/05-release/04-k3s-test-deployment.md) — 14694 bytes; .md; 修改于 2026-10-23 12:14:04
-- [docs/design/05-release/05-offline-image-build-transfer.md](docs/design/05-release/05-offline-image-build-transfer.md) — 12220 bytes; .md; 修改于 2026-10-23 12:14:04
+- [docs/design/05-release/05-offline-image-build-transfer.md](docs/design/05-release/05-offline-image-build-transfer.md) — 13477 bytes; .md; 修改于 2026-10-24 14:45:19
 - [docs/design/05-release/06-dependency-image-remediation.md](docs/design/05-release/06-dependency-image-remediation.md) — 4601 bytes; .md; 修改于 2026-10-23 09:56:13
 - [docs/design/05-release/07-functional-acceptance-scope.md](docs/design/05-release/07-functional-acceptance-scope.md) — 2781 bytes; .md; 修改于 2026-10-23 09:50:49
 - [docs/design/05-release/README.md](docs/design/05-release/README.md) — 2589 bytes; .md; 修改于 2026-10-23 09:50:49
-- [docs/design/06-planning/00-overall-development-plan.md](docs/design/06-planning/00-overall-development-plan.md) — 24169 bytes; .md; 修改于 2026-10-23 12:14:18
+- [docs/design/06-planning/00-overall-development-plan.md](docs/design/06-planning/00-overall-development-plan.md) — 24548 bytes; .md; 修改于 2026-10-24 14:40:31
 - [docs/design/06-planning/03-test-data-and-functional-validation-plan.md](docs/design/06-planning/03-test-data-and-functional-validation-plan.md) — 7366 bytes; .md; 修改于 2026-10-23 09:58:06
-- [docs/design/06-planning/04-current-verification-status.md](docs/design/06-planning/04-current-verification-status.md) — 23274 bytes; .md; 修改于 2026-10-23 12:24:42
-- [docs/design/06-planning/05-completion-audit.md](docs/design/06-planning/05-completion-audit.md) — 12288 bytes; .md; 修改于 2026-10-23 12:24:42
+- [docs/design/06-planning/04-current-verification-status.md](docs/design/06-planning/04-current-verification-status.md) — 25884 bytes; .md; 修改于 2026-10-26 00:11:49
+- [docs/design/06-planning/05-completion-audit.md](docs/design/06-planning/05-completion-audit.md) — 11942 bytes; .md; 修改于 2026-10-24 14:40:31
 - [docs/design/06-planning/modules/P0-development-plan.md](docs/design/06-planning/modules/P0-development-plan.md) — 12154 bytes; .md; 修改于 2026-10-20 23:02:34
 - [docs/design/06-planning/modules/P1-development-plan.md](docs/design/06-planning/modules/P1-development-plan.md) — 11083 bytes; .md; 修改于 2026-10-20 23:02:34
 - [docs/design/06-planning/modules/P2-development-plan.md](docs/design/06-planning/modules/P2-development-plan.md) — 11010 bytes; .md; 修改于 2026-10-20 23:02:34
@@ -9329,15 +7949,15 @@
 - [docs/design/06-planning/modules/P5-development-plan.md](docs/design/06-planning/modules/P5-development-plan.md) — 9275 bytes; .md; 修改于 2026-10-20 23:02:34
 - [docs/design/06-planning/modules/P6-development-plan.md](docs/design/06-planning/modules/P6-development-plan.md) — 10275 bytes; .md; 修改于 2026-10-23 08:30:56
 - [docs/design/06-planning/modules/P7-development-plan.md](docs/design/06-planning/modules/P7-development-plan.md) — 9609 bytes; .md; 修改于 2026-10-21 07:57:38
-- [docs/design/06-planning/modules/P8-development-plan.md](docs/design/06-planning/modules/P8-development-plan.md) — 11370 bytes; .md; 修改于 2026-10-23 12:14:33
-- [docs/design/06-planning/README.md](docs/design/06-planning/README.md) — 1897 bytes; .md; 修改于 2026-10-22 07:00:13
+- [docs/design/06-planning/modules/P8-development-plan.md](docs/design/06-planning/modules/P8-development-plan.md) — 12014 bytes; .md; 修改于 2026-10-24 14:37:01
+- [docs/design/06-planning/README.md](docs/design/06-planning/README.md) — 1897 bytes; .md; 修改于 2026-10-24 14:40:31
 - [docs/design/README.md](docs/design/README.md) — 2894 bytes; .md; 修改于 2026-10-20 22:43:39
 - [docs/design/vendor/ai-memory-adoption.md](docs/design/vendor/ai-memory-adoption.md) — 2827 bytes; .md; 修改于 2026-10-21 08:58:10
 - [docs/design/vendor/README.md](docs/design/vendor/README.md) — 867 bytes; .md; 修改于 2026-10-21 08:01:46
 - [docs/runbooks/alerts.md](docs/runbooks/alerts.md) — 1027 bytes; .md; 修改于 2026-10-21 07:08:20
 - [docs/runbooks/release.md](docs/runbooks/release.md) — 1032 bytes; .md; 修改于 2026-10-21 07:12:51
 - [docs/superpowers/plans/2026-10-20-plane-work-continuity-platform.md](docs/superpowers/plans/2026-10-20-plane-work-continuity-platform.md) — 50968 bytes; .md; 修改于 2026-10-20 23:08:46
-- [docs/traceability/requirements-matrix.yaml](docs/traceability/requirements-matrix.yaml) — 8071 bytes; .yaml; 修改于 2026-10-21 08:07:17
+- [docs/traceability/requirements-matrix.yaml](docs/traceability/requirements-matrix.yaml) — 8114 bytes; .yaml; 修改于 2026-10-25 11:18:29
 
 ### integrations
 
@@ -9382,7 +8002,7 @@
 - [packages/contracts/schemas/entities/Tenant.json](packages/contracts/schemas/entities/Tenant.json) — 1974 bytes; .json; 修改于 2026-10-21 00:03:53
 - [packages/contracts/schemas/entities/WorkItem.json](packages/contracts/schemas/entities/WorkItem.json) — 2205 bytes; .json; 修改于 2026-10-21 00:03:53
 - [packages/contracts/src/entities.ts](packages/contracts/src/entities.ts) — 13298 bytes; .ts; 修改于 2026-10-21 00:11:11
-- [packages/contracts/src/errors.ts](packages/contracts/src/errors.ts) — 2188 bytes; .ts; 修改于 2026-10-20 23:50:40
+- [packages/contracts/src/errors.ts](packages/contracts/src/errors.ts) — 2351 bytes; .ts; 修改于 2026-10-25 23:43:41
 - [packages/contracts/src/idempotency.ts](packages/contracts/src/idempotency.ts) — 1628 bytes; .ts; 修改于 2026-10-20 23:50:40
 - [packages/contracts/src/ids.ts](packages/contracts/src/ids.ts) — 1360 bytes; .ts; 修改于 2026-10-20 23:50:40
 - [packages/contracts/src/index.ts](packages/contracts/src/index.ts) — 217 bytes; .ts; 修改于 2026-10-20 23:58:41
@@ -9405,7 +8025,7 @@
 - [packages/release/package.json](packages/release/package.json) — 207 bytes; .json; 修改于 2026-10-21 07:13:18
 - [packages/release/src/backup.ts](packages/release/src/backup.ts) — 1259 bytes; .ts; 修改于 2026-10-21 07:13:18
 - [packages/release/src/index.ts](packages/release/src/index.ts) — 91 bytes; .ts; 修改于 2026-10-21 07:12:40
-- [packages/release/src/manifest.ts](packages/release/src/manifest.ts) — 2182 bytes; .ts; 修改于 2026-10-21 07:13:18
+- [packages/release/src/manifest.ts](packages/release/src/manifest.ts) — 2264 bytes; .ts; 修改于 2026-10-25 22:20:40
 - [packages/release/src/rollback.ts](packages/release/src/rollback.ts) — 737 bytes; .ts; 修改于 2026-10-21 07:13:18
 - [packages/sdk/package.json](packages/sdk/package.json) — 427 bytes; .json; 修改于 2026-10-21 00:18:53
 - [packages/sdk/src/client.ts](packages/sdk/src/client.ts) — 1952 bytes; .ts; 修改于 2026-10-21 00:21:37
@@ -9417,7 +8037,7 @@
 
 ### pnpm-lock.yaml
 
-- [pnpm-lock.yaml](pnpm-lock.yaml) — 22557 bytes; .yaml; 修改于 2026-10-23 07:49:36
+- [pnpm-lock.yaml](pnpm-lock.yaml) — 21721 bytes; .yaml; 修改于 2026-10-25 21:34:39
 
 ### pnpm-workspace.yaml
 
@@ -9431,7 +8051,7 @@
 
 - [tests/contract/context/t2-context-contract.test.mjs](tests/contract/context/t2-context-contract.test.mjs) — 1589 bytes; .mjs; 修改于 2026-10-21 06:53:39
 - [tests/contract/edge-contract-matrix.test.mjs](tests/contract/edge-contract-matrix.test.mjs) — 2101 bytes; .mjs; 修改于 2026-10-21 07:57:16
-- [tests/contract/p3-session-sync-contract.test.mjs](tests/contract/p3-session-sync-contract.test.mjs) — 963 bytes; .mjs; 修改于 2026-10-21 06:59:18
+- [tests/contract/p3-session-sync-contract.test.mjs](tests/contract/p3-session-sync-contract.test.mjs) — 1450 bytes; .mjs; 修改于 2026-10-25 22:43:37
 - [tests/contract/p4-gateway-contract.test.mjs](tests/contract/p4-gateway-contract.test.mjs) — 782 bytes; .mjs; 修改于 2026-10-21 07:03:03
 - [tests/contract/p5-workbench-contract.test.mjs](tests/contract/p5-workbench-contract.test.mjs) — 741 bytes; .mjs; 修改于 2026-10-21 07:05:39
 - [tests/contract/p6-security-contract.test.mjs](tests/contract/p6-security-contract.test.mjs) — 951 bytes; .mjs; 修改于 2026-10-21 07:08:47
@@ -9439,29 +8059,36 @@
 - [tests/contract/p8-release-contract.test.mjs](tests/contract/p8-release-contract.test.mjs) — 847 bytes; .mjs; 修改于 2026-10-22 13:36:32
 - [tests/contract/t0.1-workspace-contract.test.mjs](tests/contract/t0.1-workspace-contract.test.mjs) — 590 bytes; .mjs; 修改于 2026-10-20 23:41:42
 - [tests/p0/t0.1-monorepo.test.mjs](tests/p0/t0.1-monorepo.test.mjs) — 1541 bytes; .mjs; 修改于 2026-10-20 23:53:57
-- [tests/p0/t0.2-foundation-contracts.test.ts](tests/p0/t0.2-foundation-contracts.test.ts) — 4383 bytes; .ts; 修改于 2026-10-20 23:52:27
+- [tests/p0/t0.2-foundation-contracts.test.ts](tests/p0/t0.2-foundation-contracts.test.ts) — 4720 bytes; .ts; 修改于 2026-10-25 23:43:56
 - [tests/p0/t0.3-entity-schemas.test.ts](tests/p0/t0.3-entity-schemas.test.ts) — 3044 bytes; .ts; 修改于 2026-10-21 00:04:40
 - [tests/p0/t0.4-event-schemas.test.ts](tests/p0/t0.4-event-schemas.test.ts) — 3224 bytes; .ts; 修改于 2026-10-21 00:15:31
 - [tests/p0/t0.5-sdk-fixtures.test.ts](tests/p0/t0.5-sdk-fixtures.test.ts) — 2555 bytes; .ts; 修改于 2026-10-21 00:23:18
 - [tests/p0/t0.6-local-infra.test.mjs](tests/p0/t0.6-local-infra.test.mjs) — 2551 bytes; .mjs; 修改于 2026-10-21 00:24:39
-- [tests/p0/t0-tooling.test.mjs](tests/p0/t0-tooling.test.mjs) — 5371 bytes; .mjs; 修改于 2026-10-21 23:33:23
+- [tests/p0/t0-tooling.test.mjs](tests/p0/t0-tooling.test.mjs) — 5371 bytes; .mjs; 修改于 2026-10-24 14:39:14
 - [tests/p1/t1-plane-connector.test.ts](tests/p1/t1-plane-connector.test.ts) — 5820 bytes; .ts; 修改于 2026-10-21 06:40:23
 - [tests/p2/t2-context.test.ts](tests/p2/t2-context.test.ts) — 8389 bytes; .ts; 修改于 2026-10-21 06:53:50
+- [tests/p2/t2-memory-mcp-provider.test.ts](tests/p2/t2-memory-mcp-provider.test.ts) — 7446 bytes; .ts; 修改于 2026-10-25 12:09:52
+- [tests/p3/t3-session-persistence.test.ts](tests/p3/t3-session-persistence.test.ts) — 4912 bytes; .ts; 修改于 2026-10-25 22:26:58
 - [tests/p3/t3-session-sync.test.ts](tests/p3/t3-session-sync.test.ts) — 9320 bytes; .ts; 修改于 2026-10-21 06:59:18
 - [tests/p3/t3-sqlite-live-probe.test.mjs](tests/p3/t3-sqlite-live-probe.test.mjs) — 1161 bytes; .mjs; 修改于 2026-10-22 08:28:07
 - [tests/p4/t4-gateways.test.ts](tests/p4/t4-gateways.test.ts) — 6548 bytes; .ts; 修改于 2026-10-21 19:05:41
+- [tests/p4/t4-memory-gateway.test.ts](tests/p4/t4-memory-gateway.test.ts) — 8752 bytes; .ts; 修改于 2026-10-26 00:59:58
 - [tests/p4/t4-runtime.test.ts](tests/p4/t4-runtime.test.ts) — 9467 bytes; .ts; 修改于 2026-10-22 13:03:14
+- [tests/p4/t4-session-gateway.test.ts](tests/p4/t4-session-gateway.test.ts) — 4166 bytes; .ts; 修改于 2026-10-25 21:36:33
+- [tests/p4/t4-session-persistence-live.test.ts](tests/p4/t4-session-persistence-live.test.ts) — 3899 bytes; .ts; 修改于 2026-10-25 22:24:02
 - [tests/p5/t5-workbench.test.ts](tests/p5/t5-workbench.test.ts) — 3348 bytes; .ts; 修改于 2026-10-21 07:05:39
 - [tests/p6/t6-identity-audit-live.test.mjs](tests/p6/t6-identity-audit-live.test.mjs) — 1726 bytes; .mjs; 修改于 2026-10-23 07:22:54
 - [tests/p6/t6-runtime-audit.test.ts](tests/p6/t6-runtime-audit.test.ts) — 3111 bytes; .ts; 修改于 2026-10-23 08:33:06
 - [tests/p6/t6-security-observability.test.ts](tests/p6/t6-security-observability.test.ts) — 4854 bytes; .ts; 修改于 2026-10-23 07:34:29
 - [tests/p7/t7-intelligence-search.test.ts](tests/p7/t7-intelligence-search.test.ts) — 3445 bytes; .ts; 修改于 2026-10-21 07:14:07
 - [tests/p8/t8-image-vulnerability.test.mjs](tests/p8/t8-image-vulnerability.test.mjs) — 4018 bytes; .mjs; 修改于 2026-10-23 09:19:15
+- [tests/p8/t8-k3s-real-data-closure.test.mjs](tests/p8/t8-k3s-real-data-closure.test.mjs) — 13553 bytes; .mjs; 修改于 2026-10-25 23:27:47
 - [tests/p8/t8-k3s-wavemate-evidence.test.mjs](tests/p8/t8-k3s-wavemate-evidence.test.mjs) — 10339 bytes; .mjs; 修改于 2026-10-23 07:08:50
-- [tests/p8/t8-live-gates.test.mjs](tests/p8/t8-live-gates.test.mjs) — 12716 bytes; .mjs; 修改于 2026-10-23 07:06:59
+- [tests/p8/t8-live-gates.test.mjs](tests/p8/t8-live-gates.test.mjs) — 12762 bytes; .mjs; 修改于 2026-10-25 23:58:17
 - [tests/p8/t8-live-platform-probe.test.mjs](tests/p8/t8-live-platform-probe.test.mjs) — 4705 bytes; .mjs; 修改于 2026-10-22 08:14:15
-- [tests/p8/t8-release-deploy.test.ts](tests/p8/t8-release-deploy.test.ts) — 4238 bytes; .ts; 修改于 2026-10-21 23:20:14
-- [tests/p8/t8-release-tooling.test.mjs](tests/p8/t8-release-tooling.test.mjs) — 6550 bytes; .mjs; 修改于 2026-10-22 13:36:32
+- [tests/p8/t8-real-data-closure.test.mjs](tests/p8/t8-real-data-closure.test.mjs) — 6492 bytes; .mjs; 修改于 2026-10-24 14:37:58
+- [tests/p8/t8-release-deploy.test.ts](tests/p8/t8-release-deploy.test.ts) — 4757 bytes; .ts; 修改于 2026-10-26 00:08:23
+- [tests/p8/t8-release-tooling.test.mjs](tests/p8/t8-release-tooling.test.mjs) — 6963 bytes; .mjs; 修改于 2026-10-25 12:14:41
 - [tests/p8/t8-wavemate-live.test.mjs](tests/p8/t8-wavemate-live.test.mjs) — 2484 bytes; .mjs; 修改于 2026-10-22 13:04:46
 
 ### tools — 可重复执行的维护脚本
@@ -9473,9 +8100,9 @@
 - [tools/generate_development_plans.mjs](tools/generate_development_plans.mjs) — 35290 bytes; .mjs; 修改于 2026-10-20 23:40:33
 - [tools/generate_module_verification_docs.mjs](tools/generate_module_verification_docs.mjs) — 30484 bytes; .mjs; 修改于 2026-10-20 23:40:33
 - [tools/live-platform-probe.mjs](tools/live-platform-probe.mjs) — 9165 bytes; .mjs; 修改于 2026-10-22 08:15:44
-- [tools/plan-audit.mjs](tools/plan-audit.mjs) — 6186 bytes; .mjs; 修改于 2026-10-23 07:15:08
+- [tools/plan-audit.mjs](tools/plan-audit.mjs) — 6186 bytes; .mjs; 修改于 2026-10-24 14:40:31
 - [tools/rc-readiness.mjs](tools/rc-readiness.mjs) — 5409 bytes; .mjs; 修改于 2026-10-22 07:12:56
-- [tools/release-manifest-cli.mjs](tools/release-manifest-cli.mjs) — 2530 bytes; .mjs; 修改于 2026-10-21 07:45:05
+- [tools/release-manifest-cli.mjs](tools/release-manifest-cli.mjs) — 2602 bytes; .mjs; 修改于 2026-10-25 22:20:40
 - [tools/run-ai-memory-live-probe.mjs](tools/run-ai-memory-live-probe.mjs) — 6317 bytes; .mjs; 修改于 2026-10-22 07:59:39
 - [tools/run-evaluation-tests.mjs](tools/run-evaluation-tests.mjs) — 1371 bytes; .mjs; 修改于 2026-10-21 07:28:17
 - [tools/run-functional-tests.mjs](tools/run-functional-tests.mjs) — 11997 bytes; .mjs; 修改于 2026-10-23 06:05:16
@@ -9483,16 +8110,16 @@
 - [tools/run-image-vulnerability-scan.mjs](tools/run-image-vulnerability-scan.mjs) — 6741 bytes; .mjs; 修改于 2026-10-23 09:19:15
 - [tools/run-module-tests.mjs](tools/run-module-tests.mjs) — 2231 bytes; .mjs; 修改于 2026-10-21 07:39:30
 - [tools/run-performance-tests.mjs](tools/run-performance-tests.mjs) — 6187 bytes; .mjs; 修改于 2026-10-22 12:17:52
-- [tools/run-release-tests.mjs](tools/run-release-tests.mjs) — 14128 bytes; .mjs; 修改于 2026-10-22 22:15:35
+- [tools/run-release-tests.mjs](tools/run-release-tests.mjs) — 17180 bytes; .mjs; 修改于 2026-10-26 00:08:23
 - [tools/run-resilience-tests.mjs](tools/run-resilience-tests.mjs) — 25315 bytes; .mjs; 修改于 2026-10-23 07:06:41
-- [tools/run-security-tests.mjs](tools/run-security-tests.mjs) — 6847 bytes; .mjs; 修改于 2026-10-23 07:49:36
+- [tools/run-security-tests.mjs](tools/run-security-tests.mjs) — 8458 bytes; .mjs; 修改于 2026-10-26 00:02:40
 - [tools/run-sqlite-live-probe.mjs](tools/run-sqlite-live-probe.mjs) — 3883 bytes; .mjs; 修改于 2026-10-22 08:27:25
 - [tools/run-wavemate-live-probe.mjs](tools/run-wavemate-live-probe.mjs) — 11008 bytes; .mjs; 修改于 2026-10-22 13:23:17
 - [tools/run-wavemate-ui-live-probe.mjs](tools/run-wavemate-ui-live-probe.mjs) — 15059 bytes; .mjs; 修改于 2026-10-22 23:48:33
 - [tools/sbom-cli.mjs](tools/sbom-cli.mjs) — 2413 bytes; .mjs; 修改于 2026-10-21 07:45:05
 - [tools/stage-runtime.mjs](tools/stage-runtime.mjs) — 4121 bytes; .mjs; 修改于 2026-10-23 07:49:36
 - [tools/transfer-offline-image.ps1](tools/transfer-offline-image.ps1) — 1837 bytes; .ps1; 修改于 2026-10-21 10:48:50
-- [tools/update-file-index.ps1](tools/update-file-index.ps1) — 6171 bytes; .ps1; 修改于 2026-10-21 22:51:24
+- [tools/update-file-index.ps1](tools/update-file-index.ps1) — 6205 bytes; .ps1; 修改于 2026-10-26 06:52:23
 
 ### tsconfig.base.json
 

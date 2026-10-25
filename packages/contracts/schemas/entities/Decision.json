@@ -1,0 +1,107 @@
+{
+  "$id": "https://planemem.local/schemas/entities/Decision.json",
+  "title": "Decision entity",
+  "schema_version": 1,
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "tenant_id",
+    "workspace_id",
+    "version",
+    "etag",
+    "source_refs",
+    "classification",
+    "created_at",
+    "updated_at",
+    "trace_id",
+    "project_id",
+    "title",
+    "decision",
+    "status"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "tenant_id": {
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "workspace_id": {
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "etag": {
+      "type": "string",
+      "pattern": "^W/\"version-[0-9]+\"$"
+    },
+    "source_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "minLength": 1
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "uri": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": ["type", "id"]
+      }
+    },
+    "classification": {
+      "type": "string",
+      "enum": ["public", "internal", "confidential", "restricted"]
+    },
+    "created_at": {
+      "type": "string",
+      "pattern": "^.+Z$"
+    },
+    "updated_at": {
+      "type": "string",
+      "pattern": "^.+Z$"
+    },
+    "trace_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "project_id": {
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "decision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["proposed", "accepted", "superseded"]
+    }
+  },
+  "additionalProperties": false
+}

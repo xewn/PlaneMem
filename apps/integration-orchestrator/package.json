@@ -1,0 +1,21 @@
+{
+  "name": "@planemem/integration-orchestrator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@planemem/api-gateway": "workspace:*",
+    "@planemem/context-compiler": "workspace:*",
+    "@planemem/context-service": "workspace:*",
+    "@planemem/contracts": "workspace:*",
+    "@planemem/events": "workspace:*",
+    "@planemem/mcp-gateway": "workspace:*",
+    "@planemem/observability": "workspace:*",
+    "@planemem/plane-connector": "workspace:*",
+    "@planemem/session-service": "workspace:*",
+    "@planemem/domain": "workspace:*"
+  }
+}

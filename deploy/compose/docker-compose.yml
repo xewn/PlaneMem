@@ -1,0 +1,175 @@
+name: planemem
+
+services:
+  workctx:
+    image: ${WORKCTX_IMAGE:-ghcr.io/planemem/platform:0.1.0}
+    profiles: ['full']
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      ai-memory:
+        condition: service_healthy
+      otel-collector:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-planemem}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-planemem}
+      NATS_URL: nats://nats:4222
+      KEYCLOAK_URL: http://keycloak:8080
+      OBJECT_STORAGE_URL: http://minio:9000
+      AI_MEMORY_URL: http://ai-memory:8787
+      MEMORY_PROVIDER_MODE: ${MEMORY_PROVIDER_MODE:-ai-memory-mcp}
+      MEMORY_ENABLED: ${MEMORY_ENABLED:-true}
+      MEMORY_REQUIRED: ${MEMORY_REQUIRED:-true}
+      AI_MEMORY_TOKEN: ${AI_MEMORY_TOKEN:-}
+      MEMORY_ACTOR_ID: ${MEMORY_ACTOR_ID:-planemem-platform}
+      MEMORY_CLIENT_ID: ${MEMORY_CLIENT_ID:-planemem-platform}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      PROPOSAL_ENABLED: ${PROPOSAL_ENABLED:-false}
+      VECTOR_ENABLED: ${VECTOR_ENABLED:-false}
+    ports:
+      - '${WORKCTX_PORT:-3000}:3000'
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3000/health/ready || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  plane:
+    image: ${PLANE_IMAGE:-makeplane/plane-backend:v0.26.0}
+    profiles: ['full']
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://planemem:${POSTGRES_PASSWORD:-change-me}@postgres:5432/planemem
+      REDIS_URL: redis://redis:6379/0
+      WCP_SCHEMA_VERSION: '1'
+    ports:
+      - '${PLANE_PORT:-8080}:8000'
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:8000/health || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:16.15-alpine3.24}
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-planemem}
+      POSTGRES_USER: ${POSTGRES_USER:-planemem}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - planemem-postgres:/var/lib/postgresql/data
+      - ../migrations:/docker-entrypoint-initdb.d:ro
+      - ./seed.sql:/seed/seed.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-planemem} -d ${POSTGRES_DB:-planemem}']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: ${REDIS_IMAGE:-redis:7.4.1-alpine}
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - planemem-redis:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  nats:
+    image: ${NATS_IMAGE:-nats:2.10.22-alpine}
+    command: ['-js', '--store_dir', '/data']
+    ports:
+      - '${NATS_PORT:-4222}:4222'
+      - '${NATS_MONITOR_PORT:-8222}:8222'
+    volumes:
+      - planemem-nats:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:8222/healthz || exit 1']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  keycloak:
+    image: ${KEYCLOAK_IMAGE:-quay.io/keycloak/keycloak:26.0.5}
+    command: ['start-dev', '--http-port=8080']
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-change-me}
+    ports:
+      - '${KEYCLOAK_PORT:-8081}:8080'
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://localhost:8080/health/ready || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 18
+
+  minio:
+    image: ${MINIO_IMAGE:-minio/minio:RELEASE.2024-10-13T13-34-11Z}
+    command: ['server', '/data', '--console-address', ':9001']
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-change-me}
+    ports:
+      - '${MINIO_PORT:-9000}:9000'
+      - '${MINIO_CONSOLE_PORT:-9001}:9001'
+    volumes:
+      - planemem-minio:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  ai-memory:
+    image: ${AI_MEMORY_IMAGE:-ghcr.io/akitaonrails/ai-memory:3.0.0}
+    profiles: ['full']
+    environment:
+      AI_MEMORY_DATA_DIR: /data
+      AI_MEMORY_MODE: ${AI_MEMORY_MODE:-local}
+      AI_MEMORY_AUTH_TOKEN: ${AI_MEMORY_AUTH_TOKEN:-}
+    ports:
+      - '${AI_MEMORY_PORT:-8787}:8787'
+    volumes:
+      - planemem-ai-memory:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:8787/health || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  otel-collector:
+    image: ${OTEL_IMAGE:-otel/opentelemetry-collector-contrib:0.107.0}
+    command: ['--config=/etc/otelcol/config.yaml']
+    ports:
+      - '${OTEL_GRPC_PORT:-4317}:4317'
+      - '${OTEL_HTTP_PORT:-4318}:4318'
+    volumes:
+      - ./otel-collector.yaml:/etc/otelcol/config.yaml:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:13133/ || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  planemem-postgres:
+  planemem-redis:
+  planemem-nats:
+  planemem-minio:
+  planemem-ai-memory:

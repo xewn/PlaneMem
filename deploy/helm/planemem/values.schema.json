@@ -1,0 +1,11 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["image", "secrets", "featureFlags"],
+  "properties": {
+    "image": { "type": "object", "required": ["repository", "tag", "digest"] },
+    "secrets": { "type": "object", "required": ["existingSecret"] },
+    "featureFlags": { "type": "object", "required": ["proposalEnabled", "vectorEnabled"] }
+  },
+  "additionalProperties": true
+}

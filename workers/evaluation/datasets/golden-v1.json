@@ -1,0 +1,16 @@
+{
+  "dataset_id": "golden-p7",
+  "dataset_version": "1.0.0",
+  "cases": [
+    {
+      "case_id": "p7-case-001",
+      "scope": {
+        "tenant_id": "tenant-p7",
+        "workspace_id": "workspace-p7",
+        "project_id": "project-p7"
+      },
+      "expected_source_refs": ["plane:task-1", "memory:page-1"],
+      "expected_next_actions": ["review"]
+    }
+  ]
+}

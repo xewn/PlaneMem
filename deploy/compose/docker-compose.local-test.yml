@@ -1,0 +1,108 @@
+# Local integration-test override.
+#
+# The base release file keeps the production MinIO image configurable. Docker
+# Hub no longer serves the historical tag used by the original fixture, so the
+# local gate uses this pinned compatibility image and its writable Bitnami data
+# directory. Do not promote this override as the production image source.
+services:
+  workctx:
+    image: ${WORKCTX_IMAGE:-planemem-platform:0.1.0-wavemate@sha256:0546c722ba6b9d579d9e55b072a4500dd717f46f2e48456d84a102a7b233b9f8}
+    environment:
+      AI_MEMORY_URL: http://ai-memory:49374
+      AI_MEMORY_AUTH_TOKEN: compose-local-test-token
+      MEMORY_PROVIDER_MODE: ai-memory-mcp
+      MEMORY_ENABLED: 'true'
+      MEMORY_REQUIRED: 'true'
+      AI_MEMORY_TOKEN: compose-local-test-token
+      MEMORY_ACTOR_ID: compose-local-test
+      MEMORY_CLIENT_ID: compose-local-test
+      PLANE_WEBHOOK_SECRET: compose-local-webhook-secret
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3000/health/ready || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  plane:
+    image: makeplane/plane-backend:v0.26.0@sha256:5de2f696f8f5d0294bc4a266f5d63b593358644ee7540eaa686669c3e0a424d2
+    command: ['/code/bin/docker-entrypoint-api.sh']
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      SECRET_KEY: compose-local-test-secret
+      DATABASE_URL: postgresql://planemem:change-me@postgres:5432/planemem
+      REDIS_URL: redis://redis:6379/0
+      AMQP_URL: amqp://planemem:change-me@rabbitmq:5672/
+      GUNICORN_WORKERS: '1'
+      USE_MINIO: '1'
+      MINIO_ENDPOINT_URL: http://minio:9000
+      AWS_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: minio
+      AWS_SECRET_ACCESS_KEY: change-me
+      AWS_S3_BUCKET_NAME: uploads
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:8000/ || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 18
+
+  rabbitmq:
+    image: rabbitmq:4.4.0-management-alpine@sha256:0452ee3fd3b9a74160b251e693338616b464f22df4d4ba43304c101bebdca292
+    environment:
+      RABBITMQ_DEFAULT_USER: planemem
+      RABBITMQ_DEFAULT_PASS: change-me
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 18
+
+  minio:
+    image: bitnamilegacy/minio:2025.7.23-debian-12-r5@sha256:6dabb4a2088c9a79908de3bc05f4586c23ad2182c8908e7e3acbf61c1467fb20
+    command: ['server', '/bitnami/minio/data', '--console-address', ':9001']
+    volumes:
+      - planemem-minio:/bitnami/minio/data
+    healthcheck:
+      test: ['CMD', '/opt/bitnami/minio-client/bin/mc', 'ready', 'local']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  nats:
+    command: ['-js', '--store_dir', '/data', '--http_port', '8222']
+
+  keycloak:
+    environment:
+      KC_HEALTH_ENABLED: 'true'
+    healthcheck:
+      test: ['CMD-SHELL', "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/8080'"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+
+  otel-collector:
+    healthcheck:
+      test: ['CMD', '/otelcol-contrib', 'validate', '--config=/etc/otelcol/config.yaml']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  ai-memory:
+    image: planemem/ai-memory:3.1.1-local@sha256:ba2f799441acb0c165d042f8655fddc30e2a8f8cceca3c873538247931c784fa
+    command: ['serve', '--transport', 'http', '--bind', '0.0.0.0:49374', '--enable-web']
+    environment:
+      AI_MEMORY_DATA_DIR: /data
+      AI_MEMORY_MODE: local
+      AI_MEMORY_AUTH_TOKEN: compose-local-test-token
+      AI_MEMORY_ALLOWED_HOSTS: localhost,127.0.0.1,ai-memory,workctx
+    expose:
+      - '49374'
+    ports: !reset []
+    healthcheck:
+      test: ['CMD', '/usr/local/bin/ai-memory', 'status']
+      interval: 10s
+      timeout: 5s
+      retries: 12

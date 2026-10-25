@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/event-types.json",
+  "title": "PlaneMem canonical event types",
+  "type": "object",
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "event_types": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "ProjectCreated",
+          "ProjectUpdated",
+          "WorkItemCreated",
+          "WorkItemUpdated",
+          "WorkItemStatusProposed",
+          "WorkItemStatusConfirmed",
+          "PlanCreated",
+          "PlanRevisionCreated",
+          "DecisionRecorded",
+          "RiskRaised",
+          "RiskResolved",
+          "ArtifactCreated",
+          "ArtifactUpdated",
+          "SessionStarted",
+          "SessionEnded",
+          "AgentRunStarted",
+          "AgentRunCompleted",
+          "ToolCallStarted",
+          "ToolCallCompleted",
+          "CheckpointCreated",
+          "HandoffCreated",
+          "HandoffAccepted",
+          "ContextPackIssued",
+          "ConflictDetected",
+          "ConflictResolved",
+          "ClientConnected",
+          "ClientDisconnected",
+          "PolicyDenied",
+          "ApprovalRequested",
+          "ApprovalCompleted"
+        ]
+      },
+      "uniqueItems": true
+    }
+  },
+  "required": ["schema_version", "event_types"],
+  "additionalProperties": false
+}

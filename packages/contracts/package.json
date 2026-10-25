@@ -1,0 +1,16 @@
+{
+  "scripts": {
+    "test": "node --test",
+    "build": "tsc --outDir dist",
+    "typecheck": "tsc --noEmit",
+    "lint": "prettier --check src",
+    "contract-test": "node --test"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "type": "module",
+  "name": "@planemem/contracts",
+  "version": "0.1.0",
+  "private": true
+}
