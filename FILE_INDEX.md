@@ -13,16 +13,16 @@
 ## 生成信息
 
 - 工作区：`F:\PlaneMem`
-- 生成时间：`2026-10-26 07:04:26 +08:00`
-- 文件总数（不含本索引与版本控制内部文件）：`6737`
+- 生成时间：`2026-10-26 09:16:47 +08:00`
+- 文件总数（不含本索引与版本控制内部文件）：`6738`
 - 目录总数（不含版本控制内部目录）：`1344`
-- 总字节数（不含本索引与版本控制内部文件）：`182252026`
+- 总字节数（不含本索引与版本控制内部文件）：`182267168`
 
 ## 顶层目录统计
 
 | 顶层路径 | 文件数 | 字节数 |
 |---|---:|---:|
-| `(root)` | 14 | 166196 |
+| `(root)` | 15 | 181338 |
 | `.github` | 1 | 4834 |
 | `apps` | 98 | 364171 |
 | `assets` | 12 | 91394621 |
@@ -8097,7 +8097,7 @@
 
 ### ReadMe.md — 根目录说明
 
-- [ReadMe.md](ReadMe.md) — 119348 bytes; .md; 修改于 2026-10-23 12:13:12
+- [ReadMe.md](ReadMe.md) — 119489 bytes; .md; 修改于 2026-10-26 08:04:09
 
 ### tests
 
@@ -8144,6 +8144,10 @@
 - [tests/p8/t8-release-deploy.test.ts](tests/p8/t8-release-deploy.test.ts) — 4238 bytes; .ts; 修改于 2026-10-26 07:03:34
 - [tests/p8/t8-release-tooling.test.mjs](tests/p8/t8-release-tooling.test.mjs) — 8180 bytes; .mjs; 修改于 2026-10-26 07:03:34
 - [tests/p8/t8-wavemate-live.test.mjs](tests/p8/t8-wavemate-live.test.mjs) — 2484 bytes; .mjs; 修改于 2026-10-22 13:04:46
+
+### TODO.md
+
+- [TODO.md](TODO.md) — 15001 bytes; .md; 修改于 2026-10-26 08:04:01
 
 ### tools — 可重复执行的维护脚本
 
