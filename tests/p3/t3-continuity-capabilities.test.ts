@@ -47,3 +47,33 @@ test('capabilities require actual receipt schema availability on each request', 
   assert.equal(checks, 3);
   assert.equal((await continuityCapabilityReport(config)).durable_operation_proof, false);
 });
+
+test('memory capability requires its durable preparation store and actual MCP tools independently', async () => {
+  const transactions: OperationTransactions = {
+    run: async () => {
+      throw new Error('read only');
+    },
+    isReady: async () => true,
+  };
+  let ready = false;
+  const memory = { isReady: async () => ready };
+  assert.equal((await continuityCapabilityReport(config, transactions, memory)).actions.length, 5);
+  ready = true;
+  const enabled = await continuityCapabilityReport(config, transactions, memory);
+  assert.deepEqual(enabled.actions.slice(-3), [
+    'evidence.write',
+    'handoff.create',
+    'handoff.claim',
+  ]);
+  ready = false;
+  assert.equal((await continuityCapabilityReport(config, transactions, memory)).actions.length, 5);
+});
+
+test('memory continuity routes consume the context capability selected by their action', () => {
+  for (const action of ['evidence.write', 'handoff.create', 'handoff.claim'])
+    assert.equal(operationPolicyAction('session.continuity.execute', { action }), 'context.write');
+  assert.equal(
+    operationPolicyAction('session.continuity.execute', { action: 'session.start' }),
+    'session.write',
+  );
+});

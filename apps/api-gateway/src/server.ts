@@ -7,6 +7,7 @@ import { validateEvent, type CanonicalEvent } from '@planemem/events';
 import { PolicyService } from '@planemem/policy-service';
 import {
   createMemoryService,
+  AiMemoryMcpProvider,
   type AiMemoryMcpProviderOptions,
   type MemoryProviderMode,
   type MemoryScope,
@@ -34,9 +35,12 @@ import {
 import { PostgresSessionStore } from './session-persistence.js';
 import { createSessionCommands, sessionOperations } from './session-commands.js';
 import { PostgresOperationTransactions } from './continuity-persistence.js';
+import { PostgresPreparedMemoryStore } from './memory-continuity-persistence.js';
+import { MemoryContinuityOperations } from './memory-continuity.js';
 import {
   ContinuityOperations,
   continuityCapabilityReport,
+  memoryContinuityActions,
   type ContinuityRequest,
 } from './continuity-operations.js';
 
@@ -58,6 +62,8 @@ export interface PlatformServerOptions {
   memory_required?: boolean;
   ai_memory_server_url?: string;
   ai_memory_token?: string;
+  /** Proxy credential for the original-operation protocol's actor and client binding. */
+  ai_memory_proxy_token?: string;
   memory_actor_id?: string;
   memory_client_id?: string;
   continuity_endpoint_ref?: string;
@@ -168,7 +174,7 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
           request.context.token_expires_at ?? new Date(Date.now() + 5 * 60_000).toISOString(),
         trace_id: request.context.trace_id,
       };
-      const action = operationPolicyAction(request.operation);
+      const action = operationPolicyAction(request.operation, request.input);
       const decision = await policy.authorizeWithOpa({
         action,
         resource: {
@@ -477,21 +483,51 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
     /^[a-f0-9]{64}$/.test(continuityConfiguration.configuration_digest)
       ? new ContinuityOperations(transactionRunner, continuityConfiguration)
       : undefined;
+  const memoryProxyToken = options.ai_memory_proxy_token ?? process.env.AI_MEMORY_ACTOR_PROXY_TOKEN;
+  const memoryConnection =
+    memoryMode === 'ai-memory-mcp' ? configuredMemoryConnection(options) : undefined;
+  const memoryContinuity =
+    auditDb &&
+    continuityOperations &&
+    memoryConnection &&
+    memoryProxyToken &&
+    (options.memory_enabled ?? process.env.MEMORY_ENABLED !== 'false') &&
+    !options.memory_service
+      ? new MemoryContinuityOperations(
+          new PostgresPreparedMemoryStore(auditDb),
+          continuityConfiguration,
+          memoryConnection.serverUrl,
+          (caller) =>
+            new AiMemoryMcpProvider({
+              ...memoryConnection,
+              token: memoryProxyToken,
+              actor_id: caller.actor_id,
+              client_id: caller.client_id,
+            }).originalOperations(),
+        )
+      : undefined;
   router.register('session.continuity.capabilities', async (request) => ({
     schema_version: 1,
     trace_id: request.context.trace_id,
     source_refs: [],
-    data: await continuityCapabilityReport(continuityConfiguration, transactionRunner),
+    data: await continuityCapabilityReport(
+      continuityConfiguration,
+      transactionRunner,
+      memoryContinuity ? { isReady: () => memoryContinuity.isReady(request.context) } : undefined,
+    ),
   }));
   for (const operation of ['execute', 'query', 'close'] as const)
     router.register(`session.continuity.${operation}`, async (request) => {
-      if (!continuityOperations)
+      const handler = memoryContinuityActions.includes(request.input.action as never)
+        ? memoryContinuity
+        : continuityOperations;
+      if (!handler)
         throw new ContractError(
           'OPERATION_UNAVAILABLE',
           'Durable operation service is not configured',
           { trace_id: request.context.trace_id, retryable: false },
         );
-      const proof = await continuityOperations[operation](
+      const proof = await handler[operation](
         request.input as unknown as ContinuityRequest,
         request.context,
       );
@@ -606,14 +642,17 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
   };
 }
 
-export function operationPolicyAction(operation: string): string {
+export function operationPolicyAction(operation: string, input?: Record<string, unknown>): string {
   return operation === 'session.continuity.capabilities'
     ? 'context.read'
-    : operation.startsWith('session.')
-      ? 'session.write'
-      : operation === 'context.index' || operation.startsWith('context.handoff')
-        ? 'context.write'
-        : 'context.read';
+    : operation.startsWith('session.continuity.') &&
+        memoryContinuityActions.includes(input?.action as never)
+      ? 'context.write'
+      : operation.startsWith('session.')
+        ? 'session.write'
+        : operation === 'context.index' || operation.startsWith('context.handoff')
+          ? 'context.write'
+          : 'context.read';
 }
 
 export function httpOperationTrace(headers: IncomingMessage['headers']): string {
@@ -647,17 +686,21 @@ function createConfiguredMemory(
     enabled: options.memory_enabled ?? process.env.MEMORY_ENABLED !== 'false',
   };
   if (mode === 'ai-memory-mcp') {
-    const aiMemory: AiMemoryMcpProviderOptions = {
-      serverUrl: options.ai_memory_server_url ?? process.env.AI_MEMORY_URL ?? '',
-      actor_id: options.memory_actor_id ?? process.env.MEMORY_ACTOR_ID ?? 'planemem-api-gateway',
-      client_id: options.memory_client_id ?? process.env.MEMORY_CLIENT_ID ?? 'planemem-api-gateway',
-    };
-    const token =
-      options.ai_memory_token ?? process.env.AI_MEMORY_TOKEN ?? process.env.AI_MEMORY_AUTH_TOKEN;
-    if (token) aiMemory.token = token;
-    configuration.ai_memory = aiMemory;
+    configuration.ai_memory = configuredMemoryConnection(options);
   }
   return createMemoryService(configuration);
+}
+
+function configuredMemoryConnection(options: PlatformServerOptions): AiMemoryMcpProviderOptions {
+  const aiMemory: AiMemoryMcpProviderOptions = {
+    serverUrl: options.ai_memory_server_url ?? process.env.AI_MEMORY_URL ?? '',
+    actor_id: options.memory_actor_id ?? process.env.MEMORY_ACTOR_ID ?? 'planemem-api-gateway',
+    client_id: options.memory_client_id ?? process.env.MEMORY_CLIENT_ID ?? 'planemem-api-gateway',
+  };
+  const token =
+    options.ai_memory_token ?? process.env.AI_MEMORY_TOKEN ?? process.env.AI_MEMORY_AUTH_TOKEN;
+  if (token) aiMemory.token = token;
+  return aiMemory;
 }
 
 function toMemoryScope(context: RequestContext): MemoryScope {

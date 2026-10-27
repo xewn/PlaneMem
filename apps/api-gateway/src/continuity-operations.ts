@@ -10,6 +10,11 @@ export const continuityActions = [
   'session.checkpoint',
   'session.end',
 ] as const;
+export const memoryContinuityActions = [
+  'evidence.write',
+  'handoff.create',
+  'handoff.claim',
+] as const;
 export interface ContinuityConfiguration {
   endpoint_ref: string;
   configuration_digest: string;
@@ -61,8 +66,12 @@ export interface OperationTransactions {
 export async function continuityCapabilityReport(
   configuration: ContinuityConfiguration,
   transactions?: OperationTransactions,
+  memory?: { isReady(): Promise<boolean> },
 ) {
   let ready = false;
+  let memoryReady = false;
+  const configured =
+    !!configuration.endpoint_ref && /^[a-f0-9]{64}$/.test(configuration.configuration_digest);
   if (
     configuration.endpoint_ref &&
     /^[a-f0-9]{64}$/.test(configuration.configuration_digest) &&
@@ -74,11 +83,18 @@ export async function continuityCapabilityReport(
       ready = false;
     }
   }
+  if (configured && memory) {
+    try {
+      memoryReady = await memory.isReady();
+    } catch {
+      memoryReady = false;
+    }
+  }
   return {
     protocol_version: continuityProtocol,
     ...configuration,
-    durable_operation_proof: ready,
-    actions: ready ? [...continuityActions] : [],
+    durable_operation_proof: ready || memoryReady,
+    actions: [...(ready ? continuityActions : []), ...(memoryReady ? memoryContinuityActions : [])],
     observed_at: new Date().toISOString(),
   };
 }

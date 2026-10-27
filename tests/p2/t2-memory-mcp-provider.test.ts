@@ -93,7 +93,8 @@ test('T2.2 ai-memory MCP provider forwards scope, sanitizes capture, and preserv
   assert.ok(captureCall);
   assert.equal(captureCall.headers.get('authorization'), 'Bearer test-token');
   assert.equal(captureCall.headers.get('x-trace-id'), 'trace-capture');
-  assert.equal(captureCall.headers.get('x-memory-actor-id'), 'actor-a');
+  assert.equal(captureCall.headers.get('x-memory-actor-user'), 'actor-a');
+  assert.equal(captureCall.headers.get('x-memory-actor-client'), 'context-service');
 
   const hits = await provider.recall({ ...scope, query: 'decision', trace_id: 'trace-recall' });
   assert.equal(hits.length, 1);
@@ -121,6 +122,18 @@ test('T2.2 ai-memory MCP provider forwards scope, sanitizes capture, and preserv
   const service = new MemoryServiceAdapter(provider);
   const handoff = await service.create_handoff(consolidated.page_ref, scope, 'trace-handoff');
   assert.equal((await service.claim_handoff(handoff.handoff_ref, 'client-a')).status, 'claimed');
+  const claimCall = calls.find(
+    (call) => (call.body.params as { name?: string } | undefined)?.name === 'memory_handoff_accept',
+  );
+  assert.equal(claimCall?.headers.get('x-memory-actor-user'), 'actor-a');
+  assert.equal(claimCall?.headers.get('x-memory-actor-client'), 'client-a');
+  const afterClaim = await provider.recall({
+    ...scope,
+    query: 'decision',
+    trace_id: 'trace-after',
+  });
+  assert.equal(afterClaim.length, 1);
+  assert.equal(calls.at(-1)?.headers.get('x-memory-actor-client'), 'context-service');
 });
 
 test('T2.2 ai-memory MCP provider fails closed on JSON-RPC tool errors', async () => {

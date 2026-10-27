@@ -1,5 +1,6 @@
 import { ContractError } from '@planemem/contracts';
 import type { MemoryHit, MemoryProvider, MemoryRef, MemoryScope } from '@planemem/domain';
+import { AiMemoryOriginalOperations } from './original-operations.js';
 
 export interface AiMemoryMcpProviderOptions {
   serverUrl: string;
@@ -45,6 +46,36 @@ export class AiMemoryMcpProvider implements MemoryProvider {
     if (!options.serverUrl.trim()) throw new Error('ai-memory serverUrl is required');
     this.fetch_impl = options.fetch_impl ?? fetch;
     this.timeout_ms = options.timeout_ms ?? 10_000;
+  }
+
+  originalOperations(): AiMemoryOriginalOperations {
+    return new AiMemoryOriginalOperations(
+      {
+        call: (name, args, trace) => this.callTool(name, args, trace),
+        projects: async (workspace, trace) => {
+          const response = await this.fetch_impl(
+            `${this.options.serverUrl.replace(/\/$/, '')}/api/v1/projects?workspace=${encodeURIComponent(workspace)}`,
+            { headers: this.headers(trace), signal: AbortSignal.timeout(this.timeout_ms) },
+          );
+          if (!response.ok)
+            throw new ContractError('MEMORY_SCOPE_UNAVAILABLE', 'Project API is unavailable', {
+              trace_id: trace,
+              retryable: false,
+            });
+          return response.json();
+        },
+        tools: async (trace) => {
+          await this.ensureInitialized(trace);
+          const result = await this.postRpc(
+            { jsonrpc: '2.0', id: ++this.request_id, method: 'tools/list' },
+            trace,
+          );
+          if (result.error) throw new Error('Original operation tool discovery failed');
+          return result.result;
+        },
+      },
+      this.options,
+    );
   }
 
   async capture(input: MemoryScope & { content: string; trace_id: string }): Promise<MemoryRef> {
@@ -194,7 +225,7 @@ export class AiMemoryMcpProvider implements MemoryProvider {
 
   async claim_handoff(
     handoff_ref: string,
-    _client_id: string,
+    client_id: string,
   ): Promise<{ schema_version: 1; status: 'claimed' | 'already_claimed'; page_ref: string }> {
     const match = /^ai-memory-handoff:\/\/([^/]+)\/([^/]+)\/([^?]+)\?page_ref=(.+)$/.exec(
       handoff_ref,
@@ -209,7 +240,13 @@ export class AiMemoryMcpProvider implements MemoryProvider {
     const project = decodeURIComponent(match[2]!);
     const handoff_id = decodeURIComponent(match[3]!);
     const page_ref = decodeURIComponent(match[4]!);
-    const result = await this.callTool<unknown>(
+    // A claim belongs to its accepting client, not the gateway's default client.
+    // Keep initialization/session state separate so concurrent calls cannot swap identities.
+    const claimant =
+      client_id === this.options.client_id
+        ? this
+        : new AiMemoryMcpProvider({ ...this.options, client_id });
+    const result = await claimant.callTool<unknown>(
       'memory_handoff_accept',
       {
         workspace,
@@ -357,12 +394,9 @@ export class AiMemoryMcpProvider implements MemoryProvider {
       const response = await this.fetch_impl(`${this.options.serverUrl.replace(/\/$/, '')}/mcp`, {
         method: 'POST',
         headers: {
+          ...this.headers(trace_id),
           accept: 'application/json, text/event-stream',
           'content-type': 'application/json',
-          ...(this.options.token ? { authorization: `Bearer ${this.options.token}` } : {}),
-          ...(this.options.actor_id ? { 'x-memory-actor-id': this.options.actor_id } : {}),
-          ...(this.options.client_id ? { 'x-memory-client-id': this.options.client_id } : {}),
-          'x-trace-id': trace_id,
           ...(this.session_id ? { 'mcp-session-id': this.session_id } : {}),
         },
         body: JSON.stringify(body),
@@ -396,6 +430,15 @@ export class AiMemoryMcpProvider implements MemoryProvider {
     } finally {
       clearTimeout(timeout);
     }
+  }
+
+  private headers(trace_id: string): Record<string, string> {
+    return {
+      ...(this.options.token ? { authorization: `Bearer ${this.options.token}` } : {}),
+      ...(this.options.actor_id ? { 'x-memory-actor-user': this.options.actor_id } : {}),
+      ...(this.options.client_id ? { 'x-memory-actor-client': this.options.client_id } : {}),
+      'x-trace-id': trace_id,
+    };
   }
 }
 
