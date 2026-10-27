@@ -209,7 +209,7 @@ export class AiMemoryMcpProvider implements MemoryProvider {
     const project = decodeURIComponent(match[2]!);
     const handoff_id = decodeURIComponent(match[3]!);
     const page_ref = decodeURIComponent(match[4]!);
-    const result = await this.callTool<{ status?: string }>(
+    const result = await this.callTool<unknown>(
       'memory_handoff_accept',
       {
         workspace,
@@ -218,9 +218,27 @@ export class AiMemoryMcpProvider implements MemoryProvider {
       },
       'trace_handoff_claim',
     );
+    // The pinned MCP protocol returns none_pending/consumed_by_hook with no
+    // handoff. Neither proves that this client claimed the requested object.
+    if (
+      !isRecord(result) ||
+      result.status !== 'claimed' ||
+      !isRecord(result.handoff) ||
+      result.handoff.id !== handoff_id
+    ) {
+      throw new ContractError(
+        'MEMORY_HANDOFF_UNCONFIRMED',
+        'The requested handoff claim was not confirmed',
+        {
+          handoff_ref,
+          trace_id: 'trace_handoff_claim',
+          retryable: false,
+        },
+      );
+    }
     return {
       schema_version: 1,
-      status: result.status === 'claimed' ? 'claimed' : 'already_claimed',
+      status: 'claimed',
       page_ref,
     };
   }

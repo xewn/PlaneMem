@@ -166,12 +166,14 @@ export class ApiGateway {
                   serialized.code === 'MEMORY_MCP_ERROR' ||
                   serialized.code === 'MEMORY_MCP_TOOL_ERROR' ||
                   serialized.code === 'MEMORY_MCP_UNAVAILABLE' ||
+                  serialized.code === 'MEMORY_HANDOFF_UNCONFIRMED' ||
                   serialized.code === 'AUDIT_PERSISTENCE_UNAVAILABLE' ||
                   serialized.code === 'CONTEXT_PERSISTENCE_UNAVAILABLE' ||
                   serialized.code === 'RUNTIME_PERSISTENCE_UNAVAILABLE'
                 ? 503
                 : serialized.code.includes('CONFLICT') ||
                     serialized.code === 'MEMORY_MCP_PRECONDITION_FAILED' ||
+                    serialized.code === 'HANDOFF_ALREADY_CLAIMED' ||
                     serialized.code === 'IDEMPOTENCY_KEY_REUSED'
                   ? 409
                   : 400;

@@ -117,7 +117,7 @@ test('P2-C01/T2.2 uses ai-memory through a reference-only adapter with claim-onc
   const handoff = await adapter.create_handoff(captured.page_ref, scope, 'trace_handoff_01');
   assert.equal((await adapter.claim_handoff(handoff.handoff_ref, 'client-a')).status, 'claimed');
   assert.equal(
-    (await adapter.claim_handoff(handoff.handoff_ref, 'client-b')).status,
+    (await adapter.claim_handoff(handoff.handoff_ref, 'client-a')).status,
     'already_claimed',
   );
   assert.equal(

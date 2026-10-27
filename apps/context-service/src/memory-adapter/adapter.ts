@@ -178,6 +178,11 @@ export class MemoryServiceAdapter {
         trace_id: 'trace_handoff_unknown',
         retryable: false,
       });
+    if (handoff.claimed_by && handoff.claimed_by !== client_id)
+      throw new ContractError('HANDOFF_ALREADY_CLAIMED', 'Handoff belongs to another claimant', {
+        trace_id: 'trace_handoff_claim',
+        retryable: false,
+      });
     if (handoff.claimed_by)
       return { schema_version: 1, status: 'already_claimed', page_ref: handoff.page_ref };
     handoff.claimed_by = client_id;

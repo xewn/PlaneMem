@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { ContractError } from '@planemem/contracts';
+import { ApiGateway } from '../../apps/api-gateway/src/http.js';
+import { CommandRouter } from '../../apps/api-gateway/src/router.js';
 import {
   AiMemoryMcpProvider,
   MemoryServiceAdapter,
@@ -54,7 +57,8 @@ test('T2.2 ai-memory MCP provider forwards scope, sanitizes capture, and preserv
       return page ? rpc(page) : rpcError(-32602, 'not found');
     }
     if (params.name === 'memory_handoff_begin') return rpc({ handoff_id: 'handoff-1' });
-    if (params.name === 'memory_handoff_accept') return rpc({ status: 'claimed' });
+    if (params.name === 'memory_handoff_accept')
+      return rpc({ status: 'claimed', handoff: { id: 'handoff-1' } });
     return rpcError(-32601, 'unknown tool');
   };
 
@@ -166,6 +170,104 @@ test('T2.2 ai-memory MCP provider can recover after an initialization outage', a
   const recovered = await provider.recall({ ...input, trace_id: 'trace-restart-2' });
   assert.deepEqual(recovered, []);
   assert.equal(initializeAttempts, 2);
+});
+
+test('T2.2 absent or hook-consumed handoffs are not evidence that this call claimed them', async () => {
+  for (const status of ['none_pending', 'consumed_by_hook', 'already_claimed', 'unknown']) {
+    const provider = new AiMemoryMcpProvider({
+      serverUrl: 'http://memory.test',
+      fetch_impl: async (_url, init) => {
+        const request = JSON.parse(String(init?.body));
+        return request.method === 'initialize' ? rpc({}) : rpc({ status, handoff: null });
+      },
+    });
+    await assert.rejects(
+      () =>
+        provider.claim_handoff(
+          'ai-memory-handoff://workspace/project/handoff-1?page_ref=page-original',
+          'client-a',
+        ),
+      (error: unknown) =>
+        error instanceof ContractError && error.envelope.code === 'MEMORY_HANDOFF_UNCONFIRMED',
+      status,
+    );
+  }
+});
+
+test('T2.2 a claimed response must identify the exact requested handoff', async () => {
+  for (const handoff of [undefined, null, { id: 'another-handoff' }]) {
+    const provider = new AiMemoryMcpProvider({
+      serverUrl: 'http://memory.test',
+      fetch_impl: async (_url, init) => {
+        const request = JSON.parse(String(init?.body));
+        return request.method === 'initialize' ? rpc({}) : rpc({ status: 'claimed', handoff });
+      },
+    });
+    await assert.rejects(
+      () =>
+        provider.claim_handoff(
+          'ai-memory-handoff://workspace/project/handoff-1?page_ref=page-original',
+          'client-a',
+        ),
+      (error: unknown) =>
+        error instanceof ContractError && error.envelope.code === 'MEMORY_HANDOFF_UNCONFIRMED',
+    );
+  }
+});
+
+test('T2.2 in-memory test provider cannot report a different client as the original claimant', async () => {
+  const service = createMemoryService({ mode: 'in-memory' });
+  const scope = { tenant_id: 't' as never, workspace_id: 'w' as never, project_id: 'p' as never };
+  const page = await service.capture({
+    ...scope,
+    content: 'original context',
+    trace_id: 'trace_claim_owner',
+  });
+  const handoff = await service.create_handoff(page.page_ref, scope, 'trace_handoff_owner');
+  assert.equal((await service.claim_handoff(handoff.handoff_ref, 'client-a')).status, 'claimed');
+  assert.equal(
+    (await service.claim_handoff(handoff.handoff_ref, 'client-a')).status,
+    'already_claimed',
+  );
+  await assert.rejects(
+    () => service.claim_handoff(handoff.handoff_ref, 'client-b'),
+    (error: unknown) =>
+      error instanceof ContractError && error.envelope.code === 'HANDOFF_ALREADY_CLAIMED',
+  );
+});
+
+test('T2.2 gateway distinguishes claim conflicts from an unconfirmed external outcome', async () => {
+  for (const [code, expected] of [
+    ['HANDOFF_ALREADY_CLAIMED', 409],
+    ['MEMORY_HANDOFF_UNCONFIRMED', 503],
+  ] as const) {
+    const router = new CommandRouter();
+    router.register('claim', () => {
+      throw new ContractError(code, 'Claim not established', {
+        trace_id: 'trace_claim',
+        retryable: false,
+      });
+    });
+    const gateway = new ApiGateway(router);
+    gateway.route('POST', '/claim', 'claim');
+    const response = await gateway.handle({
+      method: 'POST',
+      path: '/claim',
+      headers: {},
+      context: {
+        schema_version: 1,
+        tenant_id: 't',
+        workspace_id: 'w',
+        project_id: 'p',
+        actor_id: 'a',
+        client_id: 'c',
+        trace_id: 'trace_claim',
+        capability: ['context.write'],
+      },
+    });
+    assert.equal(response.status, expected);
+    assert.equal((response.body as { retryable: boolean }).retryable, false);
+  }
 });
 
 test('T2.2 provider factory requires explicit ai-memory configuration', () => {
