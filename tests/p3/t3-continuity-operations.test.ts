@@ -50,6 +50,9 @@ function request(
 
 // Explicit in-memory transaction fixture: exercises orchestration and rollback, not PostgreSQL durability.
 class Transactions implements OperationTransactions {
+  async isReady(): Promise<boolean> {
+    return true;
+  }
   canonicalizeOnRead = false;
   state = {
     sessions: [] as any[],

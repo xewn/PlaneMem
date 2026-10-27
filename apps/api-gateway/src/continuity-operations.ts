@@ -54,7 +54,33 @@ export interface OperationTransaction {
 }
 /** run commits effect and receipt atomically; a failed/uncertain commit is never converted to NoEffect. */
 export interface OperationTransactions {
+  isReady(): Promise<boolean>;
   run<T>(work: (transaction: OperationTransaction) => Promise<T>): Promise<T>;
+}
+
+export async function continuityCapabilityReport(
+  configuration: ContinuityConfiguration,
+  transactions?: OperationTransactions,
+) {
+  let ready = false;
+  if (
+    configuration.endpoint_ref &&
+    /^[a-f0-9]{64}$/.test(configuration.configuration_digest) &&
+    transactions
+  ) {
+    try {
+      ready = await transactions.isReady();
+    } catch {
+      ready = false;
+    }
+  }
+  return {
+    protocol_version: continuityProtocol,
+    ...configuration,
+    durable_operation_proof: ready,
+    actions: ready ? [...continuityActions] : [],
+    observed_at: new Date().toISOString(),
+  };
 }
 
 export class ContinuityOperations {

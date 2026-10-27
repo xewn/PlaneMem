@@ -36,8 +36,7 @@ import { createSessionCommands, sessionOperations } from './session-commands.js'
 import { PostgresOperationTransactions } from './continuity-persistence.js';
 import {
   ContinuityOperations,
-  continuityProtocol,
-  continuityActions,
+  continuityCapabilityReport,
   type ContinuityRequest,
 } from './continuity-operations.js';
 
@@ -169,11 +168,7 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
           request.context.token_expires_at ?? new Date(Date.now() + 5 * 60_000).toISOString(),
         trace_id: request.context.trace_id,
       };
-      const action = request.operation.startsWith('session.')
-        ? 'session.write'
-        : request.operation === 'context.index' || request.operation.startsWith('context.handoff')
-          ? 'context.write'
-          : 'context.read';
+      const action = operationPolicyAction(request.operation);
       const decision = await policy.authorizeWithOpa({
         action,
         resource: {
@@ -482,17 +477,11 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
     /^[a-f0-9]{64}$/.test(continuityConfiguration.configuration_digest)
       ? new ContinuityOperations(transactionRunner, continuityConfiguration)
       : undefined;
-  router.register('session.continuity.capabilities', (request) => ({
+  router.register('session.continuity.capabilities', async (request) => ({
     schema_version: 1,
     trace_id: request.context.trace_id,
     source_refs: [],
-    data: {
-      protocol_version: continuityProtocol,
-      ...continuityConfiguration,
-      durable_operation_proof: !!continuityOperations,
-      actions: continuityOperations ? [...continuityActions] : [],
-      observed_at: new Date().toISOString(),
-    },
+    data: await continuityCapabilityReport(continuityConfiguration, transactionRunner),
   }));
   for (const operation of ['execute', 'query', 'close'] as const)
     router.register(`session.continuity.${operation}`, async (request) => {
@@ -617,6 +606,22 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
   };
 }
 
+export function operationPolicyAction(operation: string): string {
+  return operation === 'session.continuity.capabilities'
+    ? 'context.read'
+    : operation.startsWith('session.')
+      ? 'session.write'
+      : operation === 'context.index' || operation.startsWith('context.handoff')
+        ? 'context.write'
+        : 'context.read';
+}
+
+export function httpOperationTrace(headers: IncomingMessage['headers']): string {
+  // Explicit operation correlation survives HttpClient/OpenTelemetry transport tracing.
+  const value = headers['x-trace-id'] ?? headers.traceparent;
+  return (Array.isArray(value) ? value[0] : value) ?? 'trace_http_unknown';
+}
+
 function toRouterDecision(
   decision: PolicyDecision,
 ): { allowed: true } | { allowed: false; reason: string } {
@@ -719,8 +724,7 @@ async function handleRequest(
     return;
   }
 
-  const traceId =
-    header(request, 'traceparent') ?? header(request, 'x-trace-id') ?? 'trace_http_unknown';
+  const traceId = httpOperationTrace(request.headers);
   let body: RuntimeBody = {};
   if (request.method === 'POST') {
     try {

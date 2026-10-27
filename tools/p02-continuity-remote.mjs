@@ -106,7 +106,9 @@ try {
   await sql`INSERT INTO wcp_projects(id,tenant_id,workspace_id,name,external_id,classification) VALUES ('p02-p','p02-t','p02-w','P02 fixture','p02-external','internal')`;
   let first = await start(5080),
     second = await start(5082);
-  const capabilities = await call(5080, '/v1/continuity/capabilities');
+  const capabilities = await call(5080, '/v1/continuity/capabilities', undefined, 200, {
+    'x-capability': 'context.read',
+  });
   assert.equal(capabilities.durable_operation_proof, true);
   assert.deepEqual(capabilities.actions, [
     'session.start',

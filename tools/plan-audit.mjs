@@ -54,7 +54,7 @@ const packageManifest = JSON.parse(readFileSync(path.join(workspaceRoot, 'packag
 const packageScripts = packageManifest.scripts ?? {};
 const missing = [];
 for (const file of [
-  path.join(workspaceRoot, 'ReadMe.md'),
+  path.join(workspaceRoot, 'README.md'),
   path.join(workspaceRoot, 'FILE_INDEX.md'),
   path.join(workspaceRoot, 'docs', 'traceability', 'requirements-matrix.yaml'),
   path.join(workspaceRoot, 'docs', 'design', '00-baseline', 'README.md'),

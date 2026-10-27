@@ -15,6 +15,18 @@ import { createSessionCommands } from './session-commands.js';
 export class PostgresOperationTransactions implements OperationTransactions {
   constructor(private readonly db: ReturnType<typeof postgres>) {}
 
+  async isReady(): Promise<boolean> {
+    try {
+      await this
+        .db`SELECT operation_key, dispatch_attempt, fingerprint, record FROM wcp_continuity_operations LIMIT 0`;
+      await this
+        .db`SELECT command_key, fingerprint, result FROM wcp_legacy_session_commands LIMIT 0`;
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async run<T>(work: (transaction: OperationTransaction) => Promise<T>): Promise<T> {
     let result!: T;
     await this.db.begin(async (sql) => {

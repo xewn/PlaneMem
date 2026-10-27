@@ -54,7 +54,9 @@ test('T4 session gateway exposes PlaneMem continuity lifecycle without duplicati
     );
     assert.equal(replayed.response.status, 200);
     assert.equal(replayed.body.data.session_id, sessionId);
-    assert.equal(replayed.body.trace_id, started.body.trace_id);
+    // Without PostgreSQL this legacy route only has session-domain idempotency;
+    // its transport envelope follows this request, not the removed HTTP cache.
+    assert.equal(replayed.body.trace_id, 'trace-session-replay');
 
     const run = await post(baseUrl, `/v1/sessions/${sessionId}/runs`, {
       model: 'factory-role-model',

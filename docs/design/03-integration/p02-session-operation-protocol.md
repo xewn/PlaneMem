@@ -4,7 +4,7 @@
 
 ## 入口与作用域
 
-`GET /v1/continuity/capabilities` 返回协议、固定 `endpoint_ref` / `configuration_digest`、可用动作和观察时间。必须配置 PostgreSQL、迁移 011 和两项固定服务配置。没有配置时 `durable_operation_proof=false`、动作列表为空。当前实现仅支持 `session.start`、`session.run`、`session.tool-call`、`session.checkpoint`、`session.end`。`evidence.write` / `handoff.create` / `handoff.claim` 尚未启用；WCP 会话交接与 ai-memory 页面交接保持不同合同。
+`GET /v1/continuity/capabilities` 返回协议、固定 `endpoint_ref` / `configuration_digest`、可用动作和观察时间。必须配置 PostgreSQL、迁移 011 和两项固定服务配置。每次查询实际检查两张原回执表的所需列；无配置、数据库不可用或缺表/列时 `durable_operation_proof=false`、动作列表为空。能力发现使用context.read。当前实现仅支持 `session.start`、`session.run`、`session.tool-call`、`session.checkpoint`、`session.end`。`evidence.write` / `handoff.create` / `handoff.claim` 尚未启用；WCP 会话交接与 ai-memory 页面交接保持不同合同。
 
 `POST /v1/continuity/execute`、`query`、`close` 使用相同请求：
 
@@ -16,6 +16,8 @@
 请求和载荷上限 128 KiB。payload 仅接受该动作声明字段，不能覆盖 actor/client 或 HTTP 层控制字段。session.end 的 approval_ref 仅作为原意图证据保存；独立工厂审核仍由 P02 的设备权威端口验证。
 
 查询和重放始终执行当前路由策略。HTTP 进程 Map 不再缓存这些路由的成功或空查询，避免旧 Unknown 遮挡后来提交的事实。
+
+HTTP入口优先使用显式X-Trace-Id作为操作关联号，再回退traceparent。这样.NET/OpenTelemetry自动生成的每次传输traceparent不会替换固定原意图trace。此行为由离线反例和远端实际P02客户端验证。
 
 ## 原结果与关闭规则
 
@@ -34,3 +36,7 @@
 ## 验证边界
 
 离线事务 fixture 只验证编排规则；真实 PostgreSQL 双进程、故障注入、响应丢失及进程重启由 `tools/p02-continuity-remote.mjs` 在远端 k3s 验收，禁止本机运行。其 scope、身份和审核引用是明确测试夹具，不证明正式工厂身份/审批。same-Pod 数据卷与进程恢复不证明节点或 PVC 容灾。没有模型推理调用。
+
+`tools/p02-client-fixture.mjs`提供第二类远端验收：实际P02 ABP客户端调用此公开协议，控制端仅用于夹具故障、只读观察和进程重启，不生成业务回执。p02-client-r2在232通过8项检查，包括缺表能力、外部成功本地回滚、实际超时和双方重启。ai-memory三动作及全部岗位接线仍未完成。
+
+完整模块运行器在232/modules-r2执行136项，133通过、0失败、3项显式opt-in live gate跳过。modules-r1的125通过/5失败/3跳过保留；修正Linux下README大小写、测试镜像的web-console/工作区依赖，以及移除HTTP缓存后旧会话测试的请求trace断言。模块回归不替代实际ai-memory或节点容灾验收。
