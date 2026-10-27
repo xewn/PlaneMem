@@ -86,7 +86,8 @@ export class SessionService {
     for (const row of snapshot.sessions) {
       const session = cloneSession(row.session);
       this.sessions.set(String(session.session_id), session);
-      if (row.idempotency_key !== undefined) this.idempotency.set(row.idempotency_key, session);
+      if (row.idempotency_key !== undefined)
+        this.idempotency.set(sessionKey(session, row.idempotency_key), session);
     }
     for (const run of snapshot.runs) this.runs.set(String(run.run_id), cloneAgentRun(run));
     for (const toolCall of snapshot.tool_calls)
@@ -114,7 +115,7 @@ export class SessionService {
   }
 
   startSession(input: StartSessionInput): Session {
-    const previous = this.idempotency.get(input.idempotency_key);
+    const previous = this.idempotency.get(sessionKey(input, input.idempotency_key));
     if (previous !== undefined) return { ...previous, source_refs: [...previous.source_refs] };
     if (input.parent_session_id !== undefined) this.getSession(input.parent_session_id, input);
     const session: Session = {
@@ -135,12 +136,12 @@ export class SessionService {
       source_refs: [{ type: 'session', id: input.client_id }],
     };
     this.sessions.set(String(session.session_id), session);
-    this.idempotency.set(input.idempotency_key, session);
+    this.idempotency.set(sessionKey(input, input.idempotency_key), session);
     return { ...session, source_refs: [...session.source_refs] };
   }
 
   async startSessionAsync(input: StartSessionInput): Promise<Session> {
-    const previous = this.idempotency.get(input.idempotency_key);
+    const previous = this.idempotency.get(sessionKey(input, input.idempotency_key));
     if (previous !== undefined) return cloneSession(previous);
     const session = this.startSession(input);
     await this.store?.saveSession(session, input.idempotency_key);
@@ -249,6 +250,7 @@ export class SessionService {
     },
   ): Session {
     const session = this.getStoredSession(input.session_id, input);
+    this.checkVersion(session.version, input.expected_version, input.trace_id);
     if (session.status === input.status)
       return { ...session, source_refs: [...session.source_refs] };
     if (session.status !== 'running' && session.status !== 'paused')
@@ -257,7 +259,6 @@ export class SessionService {
         'Session cannot be ended from its current state',
         { current_status: session.status, trace_id: input.trace_id, retryable: false },
       );
-    this.checkVersion(session.version, input.expected_version, input.trace_id);
     session.status = input.status;
     session.version += 1;
     session.ended_at = new Date().toISOString();
@@ -336,6 +337,20 @@ export class SessionService {
 
 function cloneSession(session: Session): Session {
   return { ...session, source_refs: [...session.source_refs] };
+}
+
+function sessionKey(
+  scope: SessionScope & { actor_id: string; client_id: string },
+  key: string,
+): string {
+  return JSON.stringify([
+    scope.tenant_id,
+    scope.workspace_id,
+    scope.project_id,
+    scope.actor_id,
+    scope.client_id,
+    key,
+  ]);
 }
 
 function cloneAgentRun(run: AgentRun): AgentRun {

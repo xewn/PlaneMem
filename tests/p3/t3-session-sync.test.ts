@@ -53,13 +53,24 @@ test('P3-U01/T3.1 enforces session lifecycle, idempotent start and scope isolati
     expected_version: 3,
   });
   assert.equal(ended.status, 'ended');
+  assert.throws(
+    () =>
+      service.endSession({
+        ...scope,
+        session_id: started.session_id,
+        status: 'ended',
+        trace_id: 'trace_session_end_retry',
+        expected_version: 99,
+      }),
+    /version does not match/,
+  );
   assert.equal(
     service.endSession({
       ...scope,
       session_id: started.session_id,
       status: 'ended',
-      trace_id: 'trace_session_end_retry',
-      expected_version: 99,
+      trace_id: 'trace_session_end_current',
+      expected_version: 4,
     }).status,
     'ended',
   );

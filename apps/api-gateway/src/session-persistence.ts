@@ -15,7 +15,7 @@ import type { MemoryRef } from '@planemem/domain';
 import { ContractError } from '@planemem/contracts';
 import postgres from 'postgres';
 
-type Sql = ReturnType<typeof postgres>;
+type Sql = ReturnType<typeof postgres> | postgres.TransactionSql;
 
 /** PostgreSQL adapter for PlaneMem session continuity. The session-service owns the domain rules. */
 export class PostgresSessionStore implements SessionStore, ContinuationStore {

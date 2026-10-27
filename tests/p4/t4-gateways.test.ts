@@ -188,3 +188,30 @@ test('P4-I01/T4.4 negotiates client capabilities and records explicit degradatio
     /codex:/,
   );
 });
+
+test('durable operation routes recheck current policy and never cache an Unknown query', async () => {
+  let allowed = true,
+    calls = 0;
+  const router = new CommandRouter(() =>
+    allowed ? { allowed: true } : { allowed: false, reason: 'changed' },
+  );
+  router.register('session.continuity.query', (request) => {
+    calls++;
+    return result(calls === 1 ? null : { outcome: 'ConfirmedEffect' }, request.context.trace_id);
+  });
+  const api = new ApiGateway(router);
+  api.handlerOwnsIdempotency('session.continuity.query');
+  api.route('POST', '/v1/continuity/query', 'session.continuity.query');
+  const request = {
+    method: 'POST' as const,
+    path: '/v1/continuity/query',
+    body: {},
+    headers: {},
+    context: { ...context, idempotency_key: 'query-key' },
+  };
+  assert.equal((await api.handle(request)).status, 200);
+  assert.deepEqual((await api.handle(request)).body, result({ outcome: 'ConfirmedEffect' }));
+  allowed = false;
+  assert.equal((await api.handle(request)).status, 403);
+  assert.equal(calls, 2);
+});

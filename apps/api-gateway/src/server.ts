@@ -32,6 +32,14 @@ import {
   persistPlaneEvent,
 } from './runtime-persistence.js';
 import { PostgresSessionStore } from './session-persistence.js';
+import { createSessionCommands, sessionOperations } from './session-commands.js';
+import { PostgresOperationTransactions } from './continuity-persistence.js';
+import {
+  ContinuityOperations,
+  continuityProtocol,
+  continuityActions,
+  type ContinuityRequest,
+} from './continuity-operations.js';
 
 export interface PlatformServerOptions {
   host?: string;
@@ -53,6 +61,8 @@ export interface PlatformServerOptions {
   ai_memory_token?: string;
   memory_actor_id?: string;
   memory_client_id?: string;
+  continuity_endpoint_ref?: string;
+  continuity_configuration_digest?: string;
 }
 
 export interface PlatformServer {
@@ -453,127 +463,67 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
     };
   });
 
-  router.register('session.start', async (request) => {
-    const session = await sessions.startSessionAsync({
-      ...sessionScope(request),
-      client_id: optionalString(request.input.client_id) ?? request.context.client_id,
-      actor_id: optionalString(request.input.actor_id) ?? request.context.actor_id,
-      ...(optionalString(request.input.parent_session_id) === undefined
-        ? {}
-        : { parent_session_id: optionalString(request.input.parent_session_id) as never }),
-      trace_id: request.context.trace_id,
-      idempotency_key: idempotencyFor(request),
-    });
-    return sessionResult(request, session, session.source_refs);
-  });
-  router.register('session.run.start', async (request) => {
-    const model = optionalString(request.input.model);
-    const run = await sessions.appendAgentRunAsync({
-      ...sessionScope(request),
-      session_id: requireString(request.input.session_id, 'session_id') as never,
-      ...(model === undefined ? {} : { model }),
-      trace_id: request.context.trace_id,
-      expected_version: expectedVersion(request),
-    });
-    return sessionResult(request, run, run.source_refs);
-  });
-  router.register('session.tool.call', async (request) => {
-    const toolCall = await sessions.recordToolCallAsync({
-      ...sessionScope(request),
-      session_id: requireString(request.input.session_id, 'session_id') as never,
-      run_id: requireString(request.input.run_id, 'run_id') as never,
-      tool_name: requireString(request.input.tool_name, 'tool_name'),
-      status: requireEnum(request.input.status, 'status', ['started', 'succeeded', 'failed']),
-      trace_id: request.context.trace_id,
-      expected_version: expectedVersion(request),
-    });
-    return sessionResult(request, toolCall, toolCall.source_refs);
-  });
-  router.register('session.end', async (request) => {
-    const session = await sessions.endSessionAsync({
-      ...sessionScope(request),
-      session_id: requireString(request.input.session_id, 'session_id') as never,
-      status: requireEnum(request.input.status, 'status', ['ended', 'abandoned', 'failed']),
-      trace_id: request.context.trace_id,
-      expected_version: expectedVersion(request),
-    });
-    return sessionResult(request, session, session.source_refs);
-  });
-  router.register('session.checkpoint', async (request) => {
-    const checkpoint = await continuation.createCheckpointAsync({
-      ...sessionScope(request),
-      session_id: requireString(request.input.session_id, 'session_id') as never,
-      completed: requireStringArray(request.input.completed, 'completed'),
-      in_progress: requireStringArray(request.input.in_progress, 'in_progress'),
-      next_actions: requireStringArray(request.input.next_actions, 'next_actions'),
-      decisions: requireStringArray(request.input.decisions, 'decisions'),
-      risks: requireStringArray(request.input.risks, 'risks'),
-      open_questions: requireStringArray(request.input.open_questions, 'open_questions'),
-      ...(request.input.context_pack === undefined
-        ? {}
-        : { context_pack: request.input.context_pack as never }),
-      ...(request.input.memory_ref === undefined
-        ? {}
-        : { memory_ref: request.input.memory_ref as never }),
-      trace_id: request.context.trace_id,
-      expected_session_version: expectedVersion(request),
-    });
-    return sessionResult(request, checkpoint, checkpoint.source_refs);
-  });
-  router.register('session.handoff', async (request) => {
-    const targetClient = optionalString(request.input.target_client);
-    const handoff = await continuation.createHandoffAsync({
-      ...sessionScope(request),
-      checkpoint_id: requireString(request.input.checkpoint_id, 'checkpoint_id') as never,
-      from_client: optionalString(request.input.from_client) ?? request.context.client_id,
-      ...(targetClient === undefined ? {} : { target_client: targetClient }),
-      trace_id: request.context.trace_id,
-      idempotency_key: idempotencyFor(request),
-    });
-    return sessionResult(request, handoff, handoff.source_refs);
-  });
-  router.register('session.handoff.claim', async (request) => {
-    const handoff = await continuation.claimHandoffAsync({
-      ...sessionScope(request),
-      handoff_id: requireString(request.input.handoff_id, 'handoff_id') as never,
-      client_id: optionalString(request.input.client_id) ?? request.context.client_id,
-      trace_id: request.context.trace_id,
-    });
-    return sessionResult(request, handoff, handoff.source_refs);
-  });
-  router.register('session.resume', async (request) => {
-    const handoffId = requireString(request.input.handoff_id, 'handoff_id') as never;
-    const handoff = continuation.getHandoff(handoffId, {
-      ...sessionScope(request),
-      trace_id: request.context.trace_id,
-    });
-    const checkpoint = continuation.getCheckpoint(handoff.checkpoint_id, {
-      ...sessionScope(request),
-      trace_id: request.context.trace_id,
-    });
-    const requestedSessionId = optionalString(request.input.session_id);
-    if (requestedSessionId !== undefined && requestedSessionId !== String(checkpoint.session_id)) {
-      throw new ContractError('SESSION_SCOPE_MISMATCH', 'Resume session does not match handoff', {
+  const transactionRunner = auditDb ? new PostgresOperationTransactions(auditDb) : undefined;
+  const offlineCommands = createSessionCommands(sessions, continuation);
+  for (const operation of sessionOperations)
+    router.register(operation, (request) =>
+      transactionRunner
+        ? transactionRunner.executeLegacy(request)
+        : offlineCommands.execute(request),
+    );
+  const continuityConfiguration = {
+    endpoint_ref: options.continuity_endpoint_ref ?? process.env.CONTINUITY_ENDPOINT_REF ?? '',
+    configuration_digest:
+      options.continuity_configuration_digest ?? process.env.CONTINUITY_CONFIGURATION_DIGEST ?? '',
+  };
+  const continuityOperations =
+    transactionRunner &&
+    continuityConfiguration.endpoint_ref &&
+    /^[a-f0-9]{64}$/.test(continuityConfiguration.configuration_digest)
+      ? new ContinuityOperations(transactionRunner, continuityConfiguration)
+      : undefined;
+  router.register('session.continuity.capabilities', (request) => ({
+    schema_version: 1,
+    trace_id: request.context.trace_id,
+    source_refs: [],
+    data: {
+      protocol_version: continuityProtocol,
+      ...continuityConfiguration,
+      durable_operation_proof: !!continuityOperations,
+      actions: continuityOperations ? [...continuityActions] : [],
+      observed_at: new Date().toISOString(),
+    },
+  }));
+  for (const operation of ['execute', 'query', 'close'] as const)
+    router.register(`session.continuity.${operation}`, async (request) => {
+      if (!continuityOperations)
+        throw new ContractError(
+          'OPERATION_UNAVAILABLE',
+          'Durable operation service is not configured',
+          { trace_id: request.context.trace_id, retryable: false },
+        );
+      const proof = await continuityOperations[operation](
+        request.input as unknown as ContinuityRequest,
+        request.context,
+      );
+      return {
+        schema_version: 1,
         trace_id: request.context.trace_id,
-        retryable: false,
-      });
-    }
-    const resumed = await continuation.resumeSessionAsync({
-      ...sessionScope(request),
-      handoff_id: handoffId,
-      client_id: optionalString(request.input.client_id) ?? request.context.client_id,
-      actor_id: optionalString(request.input.actor_id) ?? request.context.actor_id,
-      trace_id: request.context.trace_id,
-      idempotency_key: idempotencyFor(request),
+        source_refs: proof?.source_refs ?? [],
+        data: proof,
+      };
     });
-    return sessionResult(request, resumed, [
-      ...resumed.session.source_refs,
-      ...resumed.checkpoint.source_refs,
-      ...resumed.handoff.source_refs,
-    ]);
-  });
 
   const api = new ApiGateway(router, options.rate_limit ?? 100);
+  api.handlerOwnsIdempotency(
+    ...sessionOperations,
+    ...['capabilities', 'execute', 'query', 'close'].map(
+      (operation) => `session.continuity.${operation}`,
+    ),
+  );
+  api.route('GET', '/v1/continuity/capabilities', 'session.continuity.capabilities');
+  for (const operation of ['execute', 'query', 'close'])
+    api.route('POST', `/v1/continuity/${operation}`, `session.continuity.${operation}`);
   api.routeTemplate('GET', '/v1/projects/{project_id}/state', 'project.state');
   api.routeTemplate('GET', '/v1/work-items/{work_item_id}/context', 'workitem.context');
   api.route('POST', '/v1/context/index', 'context.index');
@@ -1324,70 +1274,6 @@ function requireString(value: unknown, field: string): string {
 
 function optionalString(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
-}
-
-function requireStringArray(value: unknown, field: string): string[] {
-  if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string'))
-    throw new ContractError('INVALID_INPUT', `${field} must be an array of strings`, {
-      field,
-      trace_id: 'trace_runtime_input',
-      retryable: false,
-    });
-  return value as string[];
-}
-
-function requireEnum<T extends string>(value: unknown, field: string, allowed: readonly T[]): T {
-  if (typeof value !== 'string' || !allowed.includes(value as T))
-    throw new ContractError('INVALID_INPUT', `${field} must be one of ${allowed.join(', ')}`, {
-      field,
-      trace_id: 'trace_runtime_input',
-      retryable: false,
-    });
-  return value as T;
-}
-
-function sessionScope(request: { context: RequestContext }): {
-  tenant_id: never;
-  workspace_id: never;
-  project_id: never;
-} {
-  return {
-    tenant_id: request.context.tenant_id as never,
-    workspace_id: request.context.workspace_id as never,
-    project_id: request.context.project_id as never,
-  };
-}
-
-function idempotencyFor(request: { context: RequestContext; input: RuntimeBody }): string {
-  return requireString(
-    request.context.idempotency_key ?? request.input.idempotency_key,
-    'idempotency_key',
-  );
-}
-
-function expectedVersion(request: { context: RequestContext; input: RuntimeBody }): number {
-  return requireInteger(
-    request.context.expected_version ?? request.input.expected_version,
-    'expected_version',
-  );
-}
-
-function sessionResult(
-  request: { context: RequestContext },
-  data: unknown,
-  source_refs: Array<{ type: string; id: string }>,
-): {
-  schema_version: 1;
-  trace_id: string;
-  source_refs: Array<{ type: string; id: string }>;
-  data: unknown;
-} {
-  return {
-    schema_version: 1,
-    trace_id: request.context.trace_id,
-    source_refs,
-    data,
-  };
 }
 
 function requireInteger(value: unknown, field: string): number {

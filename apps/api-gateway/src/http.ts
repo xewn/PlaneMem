@@ -16,6 +16,7 @@ export interface HttpResponse {
 }
 
 export class ApiGateway {
+  private readonly handlerIdempotency = new Set<string>();
   private readonly routes = new Map<string, string>();
   private readonly routeTemplates: Array<{
     method: HttpRequest['method'];
@@ -38,6 +39,10 @@ export class ApiGateway {
     this.routes.set(`${method} ${path}`, operation);
   }
 
+  handlerOwnsIdempotency(...operations: string[]): void {
+    for (const operation of operations) this.handlerIdempotency.add(operation);
+  }
+
   routeTemplate(method: HttpRequest['method'], template: string, operation: string): void {
     const parameters: string[] = [];
     const pattern = new RegExp(
@@ -57,7 +62,9 @@ export class ApiGateway {
 
   async handle(request: HttpRequest): Promise<HttpResponse> {
     const trace_id = request.context.trace_id;
-    const idempotency = idempotencyKey(request);
+    const route = this.resolveRoute(request.method, request.path);
+    const idempotency =
+      route && this.handlerIdempotency.has(route.operation) ? undefined : idempotencyKey(request);
     if (idempotency) {
       const fingerprint = requestFingerprint(request);
       const previous = this.idempotentResponses.get(idempotency.storageKey);
@@ -91,7 +98,6 @@ export class ApiGateway {
         trace_id,
       );
     else bucket.count += 1;
-    const route = this.resolveRoute(request.method, request.path);
     if (!route)
       return this.errorResponse(
         new ContractError('NOT_FOUND', 'Route does not exist', {
@@ -167,6 +173,7 @@ export class ApiGateway {
                   serialized.code === 'MEMORY_MCP_TOOL_ERROR' ||
                   serialized.code === 'MEMORY_MCP_UNAVAILABLE' ||
                   serialized.code === 'MEMORY_HANDOFF_UNCONFIRMED' ||
+                  serialized.code === 'OPERATION_UNAVAILABLE' ||
                   serialized.code === 'AUDIT_PERSISTENCE_UNAVAILABLE' ||
                   serialized.code === 'CONTEXT_PERSISTENCE_UNAVAILABLE' ||
                   serialized.code === 'RUNTIME_PERSISTENCE_UNAVAILABLE'
