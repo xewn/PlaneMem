@@ -1,6 +1,6 @@
 # 生成调用持久请求 v1
 
-更新：2026-11-04。仅源码与文档；未编译、类型检查、测试、执行 CLI、调用模型/网关、打开数据库或发布。实现位于 `workers/intelligence/src/generation-request.ts`、`generation-journal.ts` 和 `main.ts`，不增加依赖或数据库结构。
+更新：2026-11-04。仅源码与文档；未编译、类型检查、测试、执行 CLI、调用模型/网关、打开数据库或发布。实现位于 `workers/intelligence/src/generation-request.ts`、`generation-journal.ts`、`generation-recovery.ts` 和 `main.ts`，不增加依赖或数据库结构。
 
 ## 使用与状态
 
@@ -30,7 +30,7 @@ generation-status 完整核验三个关联文件后只返回状态、请求/领�
 
 generation-result 仅允许完整成功结果，导出普通 v1 generation 记录至新文件，可继续 inspect-generation、enqueue-generated 和原提交队列流程；原网关、项目、actor/client 绑定检查继续生效。生成请求键与提交队列键是两个不同操作的标识；提交重放继续沿用其原提交键。旧 generate/generate-prepared 不使用此 journal，重复调用仍会调用模型。
 
-退出码：0 表示命令完成；generation-run 保存失败 outcome 时为 1，其他参数/存储/已有领取拒绝也是 1。generation-status 成功读取 failed 状态仍为 0，表示查询完成。生成 journal 不使用提交 flush 的退出码 2。四个命令都不打开 SQLite、不自动提交或人工确认建议。
+退出码：0 表示命令完成；generation-run 保存失败 outcome 时为 1，其他参数/存储/已有领取拒绝也是 1。generation-status 成功读取 failed 状态仍为 0，表示查询完成。generation-recover 成功预览、补存或保留一个 failed 结果也为 0，表示本地恢复操作完成，不能据此认为模型生成成功。生成 journal 不使用提交 flush 的退出码 2。这些命令都不打开 SQLite、不自动提交或人工确认建议。
 
 ## 文件格式与核验
 
@@ -58,4 +58,30 @@ request/outcome 文件最多 3 MiB，attempt 文件最多 8 KiB；格式核验�
 
 排重依赖同一目录内原请求及领取文件持续保留。不要删除/替换标记、回滚到旧备份、换目录或新键来重发未知请求。文件同步不保证父目录元数据跨断电/系统崩溃持久化；断电丢失目录项、文件外部删除或备份回滚可能丢失领取。当前仅在原标记保留的前提下保守阻止再次派发，不承诺供应商恰好执行一次，也不提供对外部篡改的排他保护。
 
-仍缺供应商未知调用对账/结果取回、受控恢复导入、目录浏览/备份/保留策略、全局审计、费用与质量评估、真实并发/故障和文件系统运行证据。P7-01 与 R-009 保持未完成。
+## 已保留结果的预览与补存
+
+generation-run 已返回完整结果但保存失败时，可以将完整错误 JSON 保存为 UTF-8 文件，通过 generation-recover 补存。只读预览和实际补存均使用原 journal、绑定与键；以下示例未执行：
+
+```text
+pnpm proposal-worker generation-recover --journal journal --binding binding.json --key generation-001 --file retained-error.json --preview
+pnpm proposal-worker generation-recover --journal journal --binding binding.json --key generation-001 --file retained-error.json
+pnpm proposal-worker generation-result --journal journal --binding binding.json --key generation-001 --output new-generation-record.json
+```
+
+输入接受完整 PROPOSAL_GENERATION_REQUEST_SAVE_FAILED 封套（details.phase=outcome、retryable=false），或直接使用其中的 recovery 对象。完整封套必须包含 code/message/details/trace_id/retryable/recovery，拒绝额外顶层字段；message/trace 只检查类型，details 只用于确认 phase，不据其路径、发送状态或文字创建文件。实际目的地始终由命令的 journal 和原键计算。输入不改变原请求、配置、来源、键或领取。
+
+recovery 必须含完整 request 和 attempt，只允许附加 outcome、generation、failure；至少有一项结果，generation 与 failure 不能同时出现。完整 request/attempt/outcome 和内层记录均重新核验字段、摘要和关联。如果同时保留 outcome 与 generation/failure，二者须完整一致，不能静默忽略矛盾内容。无结果的领取竞争失败封套不能用于补存。
+
+没有 outcome 但保留完整 generation 时，使用原 preparation/provider 封装 generation 记录，再封装 outcome；只有筛选后的 failure 时封装失败 outcome。原 generation.generated_at、trace、模型/来源/正文保持不变；新 outcome.finished_at 表示本次本地封装时间，不补造原来未保存的完成时间。仍然受原 2 MiB 记录和 3 MiB outcome 限制，超限不截断。完整输入文件、compact JSON 和规范 pretty JSON 各不超过 8 MiB；扩大输入预算只为容纳错误封套中重复的完整请求、结果和生成正文，不放宽原记录字段限制。
+
+目标必须已保存完全相同的 request 和实际胜出的 attempt，包括 ID、摘要、内容及时间。缺请求、缺领取、竞争失败的候选领取或被重建为另一份请求均拒绝；不会从恢复文件重新创建这些前置文件。存在 outcome 时，完整 outcome 输入要求整份相同；从 generation/failure 重建时比较完整结果及请求/领取关系，忽略本次新封装时间，保留目标首次保存的 finished_at 和摘要。已有不同成功/失败结果均冲突，不覆盖、合并或将失败改成成功。
+
+--preview 只读取，返回 preview=true、action=create/retain、当前 state，以及 result_state、result_record_sha256、result_failure、result_finished_at、outcome_sha256 和 outcome_origin=preserved/reconstructed，不输出正文。当前 state=attempted 与 result_state=generated 可以同时出现，表示预计补存一个成功结果。实际操作重新读取和比较；预览不锁定目录、不授权更换结果，也不是后续写入一定成功的保证。无 outcome 的输入在实际运行时重新封装，因此其候选 finished_at/摘要可能不同；已有完整 outcome 的时间和摘要保持。
+
+正式补存只独占发布缺失的 outcome。写入失败或并发发布后重新读取全部关联文件：发现相同完整结果即返回 action=retain、replayed=true；不同结果报冲突，不再次写入。无法确认结果时保留规范 request/attempt/outcome，报原 SAVE_FAILED，details.operation=recover、provider_dispatch_scope=this-invocation、provider_dispatch=not-sent；可以保留该封套并用原命令再次补存。这只说明恢复操作没有调用模型，不表示原生成请求没有发送。临时文件可能仍保留，恢复不自动清理它们。
+
+输入错误报 PROPOSAL_GENERATION_REQUEST_RECOVERY_INVALID；目标请求/领取不同报 RECOVERY_MISMATCH；结果不同报 RECOVERY_CONFLICT（均带 PROPOSAL_GENERATION_REQUEST_ 前缀）。损坏的目标日志继续拒绝，不以恢复内容覆盖损坏文件。原恢复文件由用户保留，命令不修改或删除它。
+
+库入口为 inspectGenerationRecovery(value, binding, key) 和 recoverGenerationRequest(directory, binding, key, value, { preview? })。本功能只补存已经保留的本地结果，没有供应商调用、队列提交或人工审核。输入摘要与绑定核验不认证来源；应使用自己保留并审阅过的输出。恢复无法判定原生成进程是否仍在运行，不撤销原进程；若它随后完成，将与恢复争用同一个不可覆盖 outcome，异文保留冲突而不是丢弃原有结果。
+
+仍缺供应商未知调用对账/结果取回、缺失请求/领取的整套恢复、目录浏览/备份/保留策略、全局审计、费用与质量评估、真实并发/故障和文件系统运行证据。没有保留完整结果时不能靠此命令推断或重造模型输出。P7-01 与 R-009 保持未完成。

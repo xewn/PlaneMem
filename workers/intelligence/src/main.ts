@@ -37,9 +37,11 @@ import {
   prepareGenerationRequest,
   readGenerationRequest,
   runGenerationRequest,
+  recoverGenerationRequest,
   GenerationJournalWriteError,
 } from './generation-journal.js';
 import { generationRequestSummary, validateGenerationRequestKey } from './generation-request.js';
+import { GENERATION_RECOVERY_BYTES } from './generation-recovery.js';
 
 const help = `Proposal submission queue (Node.js 24)
   proposal-worker prepare-generation --binding binding.json --file selection.json --output NEW_SOURCES.json [--record]
@@ -50,6 +52,7 @@ const help = `Proposal submission queue (Node.js 24)
   proposal-worker generation-run --journal EXISTING_DIR --binding binding.json --key KEY
   proposal-worker generation-status --journal EXISTING_DIR --binding binding.json --key KEY
   proposal-worker generation-result --journal EXISTING_DIR --binding binding.json --key KEY --output NEW_RECORD.json
+  proposal-worker generation-recover --journal EXISTING_DIR --binding binding.json --key KEY --file RETAINED_ERROR.json [--preview]
   proposal-worker enqueue-generated --queue queue.sqlite --binding binding.json --file GENERATION_RECORD.json --key KEY
   proposal-worker generation-list --queue queue.sqlite --binding binding.json --id JOB_ID [--after SHA256] [--limit 10]
   proposal-worker generation-get --queue queue.sqlite --binding binding.json --id JOB_ID --sha256 SHA256 [--output NEW_RECORD.json]
@@ -67,6 +70,7 @@ inspect-generation verifies record consistency offline; enqueue-generated requir
 enqueue-generated stores the record with the job atomically; generation-list/get open existing queues read-only.
 generation-request saves immutable input; generation-run claims it once before calling the model. Existing attempts never resend.
 generation-status/result read saved journal files without model calls; a generated request can replay its saved result.
+generation-recover imports retained outcomes for the original existing attempt; --preview only reads. It never calls the model.
 prepare-generation reads pinned sources from the gateway; flush submits drafts. Both use PROPOSAL_WORKER_ACCESS_TOKEN.
 retry schedules the original draft/key; it does not send or regenerate content.
 Exit codes: 0 completed, 1 command/storage failure, 2 flush had retry/blocked/lost-lease jobs.
@@ -98,6 +102,7 @@ export async function main(args: string[]): Promise<number> {
         after: { type: 'string' },
         sha256: { type: 'string' },
         journal: { type: 'string' },
+        preview: { type: 'boolean' },
       },
     });
     const command = positionals[0];
@@ -110,6 +115,7 @@ export async function main(args: string[]): Promise<number> {
       'generation-run': ['journal', 'binding', 'key'],
       'generation-status': ['journal', 'binding', 'key'],
       'generation-result': ['journal', 'binding', 'key', 'output'],
+      'generation-recover': ['journal', 'binding', 'key', 'file', 'preview'],
       'enqueue-generated': ['file', 'key'],
       'generation-list': ['id', 'after', 'limit'],
       'generation-get': ['id', 'sha256', 'output'],
@@ -133,6 +139,7 @@ export async function main(args: string[]): Promise<number> {
             'generation-run',
             'generation-status',
             'generation-result',
+            'generation-recover',
           ].includes(command)
             ? []
             : ['queue', 'binding']),
@@ -155,14 +162,44 @@ export async function main(args: string[]): Promise<number> {
       return value;
     };
     if (
-      ['generation-request', 'generation-run', 'generation-status', 'generation-result'].includes(
-        command,
-      )
+      [
+        'generation-request',
+        'generation-run',
+        'generation-status',
+        'generation-result',
+        'generation-recover',
+      ].includes(command)
     ) {
       const key = required('key');
       validateGenerationRequestKey(key);
       const journal = required('journal');
       const binding = (await readJson(required('binding'), 16_384)) as ProposalQueueBinding;
+      if (command === 'generation-recover') {
+        const retained = await readJson(required('file'), GENERATION_RECOVERY_BYTES);
+        const result = await recoverGenerationRequest(journal, binding, key, retained, {
+          preview: values.preview === true,
+        });
+        process.stdout.write(
+          JSON.stringify(
+            {
+              ...generationRequestSummary(result),
+              preview: result.preview,
+              action: result.action,
+              replayed: result.replayed,
+              outcome_origin: result.outcome_origin,
+              result_state: result.result_state,
+              outcome_sha256: result.outcome_sha256,
+              result_record_sha256: result.result_record_sha256,
+              result_failure: result.result_failure,
+              result_finished_at: result.result_finished_at,
+              ...('output' in result ? { output: result.output } : {}),
+            },
+            null,
+            2,
+          ) + '\n',
+        );
+        return 0;
+      }
       if (command === 'generation-request') {
         const preparation = await readJson(required('file'), PROPOSAL_GENERATION_RECORD_BYTES);
         const provider = await readJson(required('provider'), 16_384);

@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [生成结果补存与预览](docs/design/01-contracts/proposal-generation-request-runtime.md)：保存失败后可用保留的完整结果先预览，再补入原请求日志；核对原请求和实际领取记录，相同结果保留、冲突拒绝，全程不重新调用模型。仅源码文档，未编译、测试、运行或发布。
+
 新增 [生成调用持久请求](docs/design/01-contracts/proposal-generation-request-runtime.md)：调用前保存原请求并独占领取，已有领取标记的请求不再次调用模型；可查看状态、取回已保存结果，保存失败保留恢复内容。仅源码文档，未编译、测试、调用模型或发布。
 
 新增 [项目搜索返回导航](docs/design/01-contracts/project-search-runtime.md)：打开工作项或上下文条目后可返回原搜索，保留关键词、筛选、分页和所选结果；读取失败时可按原条件重试。仅源码文档，未编译、测试、运行页面或发布。

@@ -13,6 +13,11 @@ import { createGeneratedProposalRecord } from './generation-record.js';
 import { prepareGenerationOutput, saveGenerationFile } from './generation-output.js';
 import type { ProposalQueueBinding } from './queue-binding.js';
 import {
+  inspectGenerationRecovery,
+  matchesGenerationRecovery,
+  type PreparedGenerationRecovery,
+} from './generation-recovery.js';
+import {
   createGenerationRequest,
   inspectGenerationRequest,
   createGenerationAttempt,
@@ -55,6 +60,7 @@ export class GenerationJournalWriteError extends ContractError {
     phase: 'request' | 'attempt' | 'outcome',
     cause: unknown,
     outputPath: string,
+    operation: 'generate' | 'recover' = 'generate',
   ) {
     super(
       'PROPOSAL_GENERATION_REQUEST_SAVE_FAILED',
@@ -65,10 +71,11 @@ export class GenerationJournalWriteError extends ContractError {
         request_key: recovery.request.request_key,
         request_sha256: recovery.request.sha256,
         phase,
+        operation,
         output_path: outputPath,
         provider_dispatch_scope: 'this-invocation',
         provider_dispatch:
-          phase === 'outcome'
+          operation === 'generate' && phase === 'outcome'
             ? (recovery.outcome?.failure?.provider_dispatch ??
               recovery.failure?.provider_dispatch ??
               'attempted')
@@ -213,6 +220,108 @@ export async function readGenerationRequest(
   key: string,
 ) {
   return readState(await directory(directoryPath), binding, key);
+}
+
+function compareRecovery(
+  current: ProposalGenerationRequestState,
+  recovery: PreparedGenerationRecovery,
+) {
+  if (
+    !isDeepStrictEqual(current.request, recovery.request) ||
+    !isDeepStrictEqual(current.attempt, recovery.attempt)
+  )
+    throw failure(
+      'PROPOSAL_GENERATION_REQUEST_RECOVERY_MISMATCH',
+      'Recovery requires the complete original request and existing winning attempt',
+      current.request,
+    );
+  if (current.outcome && !matchesGenerationRecovery(current.outcome, recovery))
+    throw failure(
+      'PROPOSAL_GENERATION_REQUEST_RECOVERY_CONFLICT',
+      'A different complete outcome already exists; it cannot be replaced',
+      current.request,
+    );
+  return current.outcome ? ('retain' as const) : ('create' as const);
+}
+
+/** Recover a saved result, never an execution lease. Preview performs the same reads without writes. */
+export async function recoverGenerationRequest(
+  directoryPath: string,
+  binding: ProposalQueueBinding,
+  key: string,
+  value: unknown,
+  options: { preview?: boolean } = {},
+) {
+  if (
+    !options ||
+    typeof options !== 'object' ||
+    Array.isArray(options) ||
+    Object.keys(options).some((name) => name !== 'preview') ||
+    (options.preview !== undefined && typeof options.preview !== 'boolean')
+  )
+    throw new TypeError('Use a boolean recovery preview option');
+  const preview = options.preview === true;
+  const recovery = inspectGenerationRecovery(value, binding, key);
+  const root = await directory(directoryPath);
+  const current = await readState(root, binding, key);
+  const action = compareRecovery(current, recovery);
+  const describe = (
+    state: ProposalGenerationRequestState,
+    selectedAction: 'create' | 'retain',
+  ) => ({
+    ...state,
+    action: selectedAction,
+    preview,
+    replayed: selectedAction === 'retain',
+    outcome_origin: recovery.outcome_preserved
+      ? ('preserved' as const)
+      : ('reconstructed' as const),
+    result_state: recovery.outcome.record ? ('generated' as const) : ('failed' as const),
+    outcome_sha256: state.outcome?.sha256 ?? recovery.outcome.sha256,
+    result_record_sha256: recovery.outcome.record?.sha256 ?? null,
+    result_failure: recovery.outcome.failure,
+    result_finished_at: state.outcome?.finished_at ?? recovery.outcome.finished_at,
+  });
+  if (preview || action === 'retain') return describe(current, action);
+  const file = paths(root, key).outcome;
+  try {
+    const output = await publish(file, recovery.outcome, recovery.request);
+    return {
+      ...describe(
+        {
+          request: recovery.request,
+          attempt: recovery.attempt,
+          outcome: recovery.outcome,
+          state: recovery.outcome.record ? 'generated' : 'failed',
+        },
+        'create',
+      ),
+      output,
+    };
+  } catch (error) {
+    // Exclusive publication may have succeeded or another writer may have completed first.
+    // Re-read the original prerequisites and compare complete results; never overwrite/retry.
+    try {
+      const after = await readState(root, binding, key);
+      if (compareRecovery(after, recovery) === 'retain') return describe(after, 'retain');
+    } catch (comparison) {
+      if (
+        comparison instanceof ContractError &&
+        [
+          'PROPOSAL_GENERATION_REQUEST_RECOVERY_MISMATCH',
+          'PROPOSAL_GENERATION_REQUEST_RECOVERY_CONFLICT',
+        ].includes(comparison.envelope.code)
+      )
+        throw comparison;
+    }
+    throw new GenerationJournalWriteError(
+      { request: recovery.request, attempt: recovery.attempt, outcome: recovery.outcome },
+      'outcome',
+      error,
+      file,
+      'recover',
+    );
+  }
 }
 export async function prepareGenerationRequest(
   directoryPath: string,
