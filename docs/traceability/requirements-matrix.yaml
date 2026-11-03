@@ -959,6 +959,22 @@ requirements:
         - "Offline routing without token/environment/SQLite, argument restrictions, output traces, provenance and exits"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, sample file generation, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_sqlite_native_readonly_development_increment:
+      date: "2026-11-03"
+      status: "Source-only native SQLite read-only open for existing inbox/outbox read paths; R-005 remains incomplete. No builds, typechecks, tests, CLI/Bridge runs, database opens, schema operations, migrations or release."
+      artifacts:
+        - "apps/context-bridge/src/outbox/sqlite.ts"
+        - "apps/context-bridge/src/inbox/sqlite.ts"
+        - "docs/design/01-contracts/outbox-reading-runtime.md"
+        - "docs/design/01-contracts/sync-inbox-runtime.md"
+      behavior: "Both constructors pass readOnly to DatabaseSync at open instead of relying solely on a later query_only PRAGMA. Existing query_only, regular-file/schema checks and close handling remain. Read-only opens never retry as writable or initialize/upgrade the main database. Outbox rejects nonboolean existing/readonly flags before opening; readonly=true always requires an existing file. Normal writable modes and explicit inbox creation retain their existing behavior. All current CLI read-only consumers inherit this change without new options, formats, dependencies or schema. Engine read-only mode is not a filesystem-wide sandbox or an atomic path-identity protocol."
+      evidence: []
+      pending_evidence:
+        - "Existing read-only filesystem files, missing files and disappearance between preflight and native read-only open"
+        - "Invalid mode flags, readonly/existing combinations, create/readonly conflict and unchanged writable initialization"
+        - "Connection PRAGMAs/schema reads, rejected writes and no writable fallback after native open failures"
+        - "All inbox/outbox read consumers, exports/previews, error categories, close handling and journal/lock environments"
+        - "Atomic file identity binding, filesystem side effects and runtime evidence remain pending"
     sync_outbox_restore_preview_development_increment:
       date: "2026-11-03"
       status: "Source-only read-only restore preview using the original archive/query; R-005 remains incomplete. No build, typecheck, tests, CLI/Bridge runtime, database, schema, migration or release execution."
@@ -1096,7 +1112,7 @@ requirements:
         - "apps/workctx-cli/src/main.ts"
         - "apps/workctx-cli/src/cli.ts"
         - "docs/design/01-contracts/outbox-reading-runtime.md"
-      behavior: "CLI outbox list now uses default-20/max-50 metadata pages with original scope, optional status and SQLite BINARY event-ID continuation. Bounded SQL projections omit payload/ref content and reject invalid selected metadata; next_query preserves scope and filters. Bridge readRecord and CLI outbox get fully validate one original, including command checksums, while allowing inspection of active senders without mutation. Readonly existing-file mode uses query_only and column checks without initialization/upgrades; read transactions and CLI close failures preserve original categories and known results."
+      behavior: "CLI outbox list now uses default-20/max-50 metadata pages with original scope, optional status and SQLite BINARY event-ID continuation. Bounded SQL projections omit payload/ref content and reject invalid selected metadata; next_query preserves scope and filters. Bridge readRecord and CLI outbox get fully validate one original, including command checksums, while allowing inspection of active senders without mutation. Readonly existing-file mode now uses native readOnly opening plus query_only and column checks without initialization/upgrades; read transactions and CLI close failures preserve original categories and known results."
       remaining_scope: "Legacy inspect still has its old diagnostic fallback and is not a recovery source. CLI list array/rowid ordering consumers/Mock/fixtures must migrate. No frozen membership, full queue/content audit, physical database integrity, legacy identity binding, bounded database cost or server-delivery proof. Runtime evidence remains pending."
       pending_evidence:
         - "Existing/missing/linked files, query_only and missing columns without implicit schema changes"

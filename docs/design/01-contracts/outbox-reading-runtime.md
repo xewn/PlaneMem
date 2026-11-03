@@ -4,7 +4,7 @@
 
 ## 本地读取入口
 
-Bridge 新增 `SqliteOutbox.listRecords(input, trace)`、`readRecord(scope,event_id,trace)` 和 `{readonly:true}` 构造选项。readonly 自动要求已有正规队列文件、拒绝文件符号链接，沿用已有列检查，并设置 SQLite `PRAGMA query_only = ON`；不创建目录/文件、初始化表或自动升级旧队列。缺列报 OUTBOX_UPGRADE_REQUIRED。query_only 是连接级写入限制，不是操作系统文件只读打开；SQLite 自身锁/日志行为及并发文件替换边界不因此改变。
+Bridge 提供 `SqliteOutbox.listRecords(input, trace)`、`readRecord(scope,event_id,trace)` 和 `{readonly:true}` 构造选项。2026-11-03 后续源码修正：readonly 自动要求已有正规队列文件、拒绝文件符号链接，在 `new DatabaseSync(path, {readOnly:true})` 打开时指定原生只读，再沿用已有列检查及 `PRAGMA query_only = ON`。不创建目录/主库、初始化表或自动升级；缺列报 OUTBOX_UPGRADE_REQUIRED。existing/readonly必须为布尔值或省略，错误类型在打开前报OUTBOX_STORAGE_OPTIONS_INVALID；readonly=true即使搭配existing=false仍要求已有文件。只读打开失败不回退默认可写模式；普通初始化和existing可写模式保持原规则。该模式不等于整个文件系统只读隔离，显式导出可写新文件；路径预检和SQLite打开仍非原子文件身份协议，锁/日志及文件权限环境兼容性尚未执行验证。无新依赖或运行版本变更，沿用项目Node 24及已安装类型定义。
 
 CLI 将既有 `outbox list` 接到有界摘要分页，新增 `outbox get EVENT_ID`。两入口均在网络主程序与嵌入 `runWorkctx` 中处理，只使用配置的三层项目范围，不需要令牌，也不调用 router、Gateway 或 SDK。路径继续采用 --outbox、WORKCTX_OUTBOX、默认 ~/.workctx/outbox.sqlite 的顺序，但缺文件不再自动新建。
 

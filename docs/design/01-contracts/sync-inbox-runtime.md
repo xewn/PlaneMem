@@ -14,7 +14,7 @@
 
 v1 包含 sync_inbox_schema 单行版本、sync_inbox_pages 完整不可变页面、sync_inbox_consumers 头页与接收位点。页面按 consumer_key/document_sha256 唯一，同时有消费者序号、前页摘要、起止 cursor、有效 limit、完整规范 document_json。前页与头使用复合外键，前页唯一约束和根页唯一索引防止同一消费者的两个分支；页面 UPDATE/DELETE 触发器拒绝常规修改/删除。消费者显式五字段唯一，并有三层 scope 索引。page_count 是安全递增的本地页面序号，received_cursor 是非负安全整数；相同游标也能保存新的终页观察。
 
-连接设置并核对 foreign_keys=ON、synchronous=FULL，busy_timeout=5000。写事务 BEGIN IMMEDIATE；读取使用 BEGIN 保持多次查询同一快照。status/head/audit-pages 的连接设置 query_only，业务不写入记录；这不是操作系统只读打开，SQLite 打开/日志恢复仍遵守本地引擎行为。文件路径检查与实际 SQLite 打开不是抵御恶意目录替换的原子协议；应使用用户控制的目录。没有更改既有 journal_mode，也没有引入新的备份、加密、磁盘配额或目录掉电保证。
+连接设置并核对 foreign_keys=ON、synchronous=FULL，busy_timeout=5000。写事务 BEGIN IMMEDIATE；读取使用 BEGIN 保持多次查询同一快照。2026-11-03 后续源码修正：readonly模式在 `new DatabaseSync(path, {readOnly:true})` 打开时即指定原生只读，再继续query_only及已有schema检查；status/head/audit-pages和后续已有只读入口沿用。只读打开失败不回退可写、初始化或修复主库；readonly与create:true仍互斥，普通已有库写入和显式创建使用readOnly:false。该连接模式不隔离全部文件系统行为，显式文件导出仍可写新文件。文件路径检查与实际SQLite打开仍不是原子身份绑定，日志/锁与权限环境兼容性尚未验证；没有更改journal_mode或引入备份、加密、配额、目录掉电保证。使用现有Node 24及本地类型定义，无依赖变化；仅源码未执行。
 
 ## 导入与推进
 

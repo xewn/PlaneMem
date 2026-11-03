@@ -143,7 +143,17 @@ export class SqliteOutbox {
   private readonly db: DatabaseSync;
 
   constructor(path = ':memory:', options: { existing?: boolean; readonly?: boolean } = {}) {
-    const existing = options.existing || options.readonly;
+    if (
+      (options.existing !== undefined && typeof options.existing !== 'boolean') ||
+      (options.readonly !== undefined && typeof options.readonly !== 'boolean')
+    )
+      throw reconciliationError(
+        'OUTBOX_STORAGE_OPTIONS_INVALID',
+        'Supply boolean existing and readonly options',
+        'trace_outbox_open',
+      );
+    const readOnly = options.readonly === true;
+    const existing = options.existing === true || readOnly;
     if (existing) {
       try {
         if (!path.trim() || path === ':memory:' || !lstatSync(path).isFile()) throw new TypeError();
@@ -155,10 +165,12 @@ export class SqliteOutbox {
         );
       }
     }
-    this.db = new DatabaseSync(path);
+    // Enforce the mode while opening; query_only alone applies only after a writable open.
+    // A failed read-only open must never be retried with writable defaults.
+    this.db = new DatabaseSync(path, { readOnly });
     if (existing) {
       try {
-        if (options.readonly) this.db.exec('PRAGMA query_only = ON');
+        if (readOnly) this.db.exec('PRAGMA query_only = ON');
         this.db.exec('PRAGMA busy_timeout = 5000');
         const columns = new Set(
           this.db

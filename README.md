@@ -1,5 +1,7 @@
 # PlaneMem
 
+完善本地 SQLite 只读打开：收件箱和发送队列在建立连接时指定 `readOnly`，查询、审计、导出和预览继续使用已有只读入口；打开失败不会自动切换为可写连接。仅源码文档，未编译、测试、运行或发布。
+
 新增 [发送队列恢复前预览](docs/design/01-contracts/outbox-restore-preview-runtime.md)，`outbox restore-preview` 复用实际恢复的检查，在只读快照中查看目标条件、原状态与预计状态、待处理和清租约数量；已完成的原请求返回历史回执。仅源码文档，未编译、测试、运行或发布。
 
 新增 [发送队列恢复历史与原档案找回](docs/design/01-contracts/outbox-restore-history-runtime.md)，可分页浏览恢复记录、按 ID 找回完整原查询/回执，并重新导出保存的原档案。目录只核对元数据，单条查看和导出完整核验历史。仅源码文档，未编译、测试、运行或发布。

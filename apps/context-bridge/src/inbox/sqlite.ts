@@ -211,7 +211,9 @@ export class SqliteSyncInbox {
         const handle = openSync(path, 'wx', 0o600);
         closeSync(handle);
       } else if (!lstatSync(path).isFile()) throw new TypeError();
-      this.db = new DatabaseSync(path);
+      // Enforce the mode at open, before any schema reads or connection PRAGMAs.
+      // Keep query_only as an additional guard; never retry a failed read-only open as writable.
+      this.db = new DatabaseSync(path, { readOnly: this.readOnly });
     } catch {
       throw failure(
         'INBOX_STORAGE_UNAVAILABLE',

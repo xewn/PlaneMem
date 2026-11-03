@@ -347,3 +347,6 @@ T1.2 责任范围扩展至连接器公共导出、README、兼容性说明和需
 
 2026-11-03 发送队列恢复预览协接（ADR-015）：T3.4/T4.3 新增 previewArchiveRestore/outbox restore-preview，复用固定原查询、完整档案、历史精确回执、全库恢复ID占用、暂停generation/空项目/原事件键冲突及不可变v1映射检查。只读已有库单事务；已完成原请求仅返回历史，首次恢复返回原状态/预计状态和待处理/清租约统计，Bridge完整预览结果128 KiB。明确仅本次预览、未写入且实际执行重新检查；不生成候选提交回执、预留ID或创建schema，不自动pause/resume/retry/发送。CLI复用稳定文件和范围核验，无网络/依赖/迁移变化。范围Bridge/CLI/契约/README/TODO/R005；仅源码文档，不编译、类型检查、测试、运行CLI/接口、打开库、初始化或发布，完成后独立提交并推送main，使用[skip ci]。
 
+
+2026-11-03 本地SQLite原生只读打开协接（ADR-015）：T3.4/T4.3 将SqliteOutbox/SqliteSyncInbox的readonly模式在DatabaseSync打开时传入readOnly，继续保留query_only和已有schema检查；只读打开失败不回退可写，不隐式创建或升级主库。Outbox在打开前严格检查existing/readonly布尔值，避免错误选项改变模式。正常写入/显式初始化模式沿用，不改CLI参数或共享格式。范围Bridge两构造器、现有读取契约、README/TODO/R005及协接文档，无新schema/依赖。仅源码文档，不编译、类型检查、测试、运行CLI/接口、打开数据库或发布；独立提交并推送main，带[skip ci]。
+

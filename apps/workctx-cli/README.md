@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+2026-11-03：已有本地只读命令统一继承Bridge的原生SQLite只读打开，包括收发队列查询/审计、导出、历史查看与预览。参数保持不变；读取无法打开时直接保留错误，不改为可写连接或初始化主库。文件导出仍是显式新文件操作。仅源码文档，未编译、测试、执行CLI或打开数据库。
+
 新增 `outbox restore-preview --outbox EXISTING_FILE --archive-file FILE --json-file ORIGINAL_QUERY`，沿用实际恢复查询和完整档案，以readonly模式查看目标条件和预计变化，实际restore重新检查。预览不输出文件或写回队列。见 [恢复前预览](../../docs/design/01-contracts/outbox-restore-preview-runtime.md)。仅源码文档，未编译、测试、运行或发布。
 
 新增 `outbox restore-history/restore-get/restore-export`，显式指定已有 `--outbox`，可浏览历史、按 ID 找回原查询和完整回执、独占导出原档案到 `--output NEW_FILE`。导出在读取和关闭尝试后写文件，失败保留历史与路径。见 [恢复历史](../../docs/design/01-contracts/outbox-restore-history-runtime.md)。仅源码文档，未编译、测试、运行或发布。
