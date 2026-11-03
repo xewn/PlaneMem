@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { proposalReceiptJson } from '@planemem/contracts';
 import { backupOperation } from '../sync/receipt/backup-operation';
 import type { BrowserRemovalResult } from '../sync/receipt/browser-store';
+import { EditingBackupPanel } from './editing-backup-panel';
 import {
   assertProposalSubmissionBinding,
   encodeProposalOriginal,
@@ -409,6 +410,17 @@ export function ProposalEditingPanel({
           </button>
         </div>
       )}
+      <EditingBackupPanel
+        binding={binding}
+        disabled={disabled}
+        begin={begin}
+        end={end}
+        onStorageChange={() => {
+          setPage(undefined);
+          setRemoveConfirmed(false);
+          setReplace(null);
+        }}
+      />
       {message && <p role="status">{message}</p>}
     </section>
   );

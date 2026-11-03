@@ -3452,6 +3452,25 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_web_editing_draft_backup_development_increment:
+      date: "2026-11-04"
+      status: "Source-only complete scoped editing backup and atomic missing-only restore; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/editing-backup-model.ts"
+        - "apps/web-console/src/app/proposals/editing-backup.ts"
+        - "apps/web-console/src/app/proposals/editing-backup-panel.tsx"
+        - "apps/web-console/src/app/proposals/editing-store.ts"
+        - "apps/web-console/src/app/proposals/editing-panel.tsx"
+        - "docs/design/01-contracts/proposal-editing-draft-runtime.md"
+      behavior: "A single scoped read transaction counts both stores and validates every complete pair before producing a sorted canonical backup of up to 100 drafts/16 MiB. Strict file and SHA-256 checks preserve raw fields and original save times. Read-only comparison covers every source key; matching requires full content and saved_at equality. Explicit digest-bound confirmation rechecks the entire source and target, atomically adds only missing pairs and reads every target back before commit. Conflicts, corrupt pairs and exceeded limits reject the whole operation. Unknown outcomes retain the backup and require another comparison; current editor fields, prepared requests and server proposals are unaffected."
+      evidence: []
+      pending_evidence:
+        - "Complete paired coverage, missing databases, empty scope and byte/count limits"
+        - "Canonical digests, strict fields, duplicate/order/scope checks and original save times"
+        - "Read-only comparisons, changed targets, atomic missing-only import and complete readback"
+        - "Confirmation invalidation, retained backup on unknown outcomes, cancellation and late results"
+      remaining_scope: "Cross-scope joint backup, autosave, quota/retention cleanup, remote sync and runtime compatibility evidence. Local backups do not authenticate sources or establish submission status."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, browser/API/database execution or release. No schema or dependency changes."
     proposal_web_editing_draft_removal_development_increment:
       date: "2026-11-04"
       status: "Source-only reviewed single-copy removal; R-009 remains incomplete."

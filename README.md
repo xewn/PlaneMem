@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [编辑草稿整批备份与恢复](docs/design/01-contracts/proposal-editing-draft-runtime.md#当前范围完整备份与恢复)：当前账号和项目下的已保存草稿可完整导出、核验后比较，明确确认才补入缺失副本；冲突拒绝整批恢复，保留原备份和当前编辑内容。仅源码文档，未编译、测试、运行或发布。
+
 新增 [编辑草稿逐份移除](docs/design/01-contracts/proposal-editing-draft-runtime.md#逐份移除浏览器副本)：审阅完整浏览器副本后独立确认删除，保留当前编辑内容及可导出的所选副本；删除前重新核对原文与保存时间，变化时拒绝。仅源码文档，未编译、测试、运行或发布。
 
 新增 [建议编辑草稿保存](docs/design/01-contracts/proposal-editing-draft-runtime.md)：未填写完整的建议也可保存到浏览器或导出文件，之后查找、预览并确认继续编辑；已准备原请求仍进入原恢复流程。仅源码文档，未编译、测试、运行或发布。
