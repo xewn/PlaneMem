@@ -169,6 +169,15 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
           >
             Recover an original review ↗
           </Link>
+          {' · '}
+          <Link
+            href="/proposals/recover-review-draft"
+            prefetch={false}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Recover unfinished review drafts ↗
+          </Link>
         </p>
         {page.create_allowed && (
           <Panel title="Submit a proposal" icon="decision">

@@ -36,6 +36,11 @@ export default async function ProposalReviewRecoveryPage() {
       </div>
       {content}
       <p>
+        <Link href="/proposals/recover-review-draft" prefetch={false}>
+          Recover unfinished review drafts
+        </Link>
+      </p>
+      <p>
         <Link href="/proposals" prefetch={false}>
           Proposal directory
         </Link>

@@ -3452,6 +3452,25 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_review_editing_development_increment:
+      date: "2026-11-04"
+      status: "Source-only unfinished review drafts with explicit save, export, discovery and guarded resumption; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/review-editing-model.ts"
+        - "apps/web-console/src/app/proposals/review-editing-store.ts"
+        - "apps/web-console/src/app/proposals/review-editing-panel.tsx"
+        - "apps/web-console/src/app/proposals/form.tsx"
+        - "apps/web-console/src/app/proposals/recover-review-draft/page.tsx"
+        - "docs/design/01-contracts/proposal-review-editing-runtime.md"
+      behavior: "Separate 32 KiB v1 editing copies preserve undecided or incomplete raw input, original identity, proposal revision and key. Immutable browser pairs retain first-save time, reject conflicting/corrupt slots and support scoped verified 20-entry discovery. File/browser loading only creates an inspectable exportable candidate. Explicit resume requires the same proposal/revision and checks the same-key original; an identical prepared review opens without saving or sending, while conflicts reject. Editing rotates keys and invalidates confirmations; all form/storage work shares a lock and bounded local lifetime."
+      evidence: []
+      pending_evidence:
+        - "Empty/whitespace reasons, strict shape/binding/time limits and separate original/draft formats"
+        - "Atomic save/readback, first-save timestamp retention, scoped pagination and partial/corrupt targets"
+        - "Bounded file import, retained candidates, explicit field replacement, stale versions and prepared-original conflicts"
+        - "Preparation recheck, shared operation locking, confirmation invalidation, unmount/late results and no implicit form submission"
+      remaining_scope: "Automatic saving, draft backup/cleanup and retention, cross-scope sync, durable review history and runtime evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, product/browser/API/database execution or release. New browser-store source only; no server schema or dependency changes."
     proposal_review_original_removal_development_increment:
       date: "2026-11-04"
       status: "Source-only inspected single browser review-original removal; R-009 remains incomplete."
