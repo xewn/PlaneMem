@@ -30,8 +30,9 @@ export default async function ReviewDraftRecoveryPage() {
           <p>
             Find manual or automatic editing copies, back up either collection or restore missing
             copies. Inspect the complete reason before resuming from the same proposal revision in
-            its review form. You can also inspect and remove individual saved browser copies. Backup
-            restoration and removal do not replace your current fields or send a review.
+            its review form. You can also inspect and remove saved copies, including selected groups
+            of automatic copies. Backup restoration and removal do not replace your current fields
+            or send a review.
           </p>
         </div>
       </div>

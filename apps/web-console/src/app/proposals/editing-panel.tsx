@@ -7,12 +7,15 @@ import type { BrowserRemovalResult } from '../sync/receipt/browser-store';
 import { EditingBackupPanel } from './editing-backup-panel';
 import { useEditingAutosave } from './use-editing-autosave';
 import { DraftAutosaveBackupPanel } from './draft-autosave-backup-panel';
+import { DraftAutosaveCleanupPanel } from './draft-autosave-cleanup-panel';
 import {
   listEditingAutosaves,
   loadEditingAutosave,
   removeEditingAutosave,
   editingAutosaveBackup,
+  editingAutosaveCleanup,
   type EditingAutosavePage,
+  type EditingAutosaveSummary,
 } from './editing-autosave-store';
 import {
   assertProposalSubmissionBinding,
@@ -184,7 +187,10 @@ export function ProposalEditingPanel({
   }
   async function readAutomaticPage(after: string | null) {
     await run(
-      (signal) => listEditingAutosaves(binding, after, signal),
+      (signal) => {
+        setAutomaticPage(undefined);
+        return listEditingAutosaves(binding, after, signal);
+      },
       (result) => {
         setAutomaticPage(result);
         setMessage(
@@ -280,6 +286,24 @@ export function ProposalEditingPanel({
           ))}
         </ul>
       )}
+      <DraftAutosaveCleanupPanel<ProposalEditingDraft, EditingAutosaveSummary>
+        binding={binding}
+        cleanup={editingAutosaveCleanup}
+        entries={automaticPage?.entries}
+        summaryLabel={(entry) =>
+          (entry.title || 'Untitled draft') + ' · ' + entry.classification + ' · ' + entry.saved_at
+        }
+        draftLabel={(draft) =>
+          (draft.fields.values.title || 'Untitled draft') +
+          ' · ' +
+          draft.fields.values.classification
+        }
+        disabled={disabled}
+        storageEpoch={automaticEpoch}
+        begin={beginManual}
+        end={end}
+        onStorageChange={automaticStorageChanged}
+      />
       <div className="heading-actions">
         <button
           type="button"

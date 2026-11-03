@@ -42,6 +42,12 @@ export interface AutosaveBackupRestoreResult {
   already_present: number;
 }
 export const AUTOSAVE_BACKUP_MAX_ENTRIES = 100;
+export const AUTOSAVE_SELECTION_MAX_ENTRIES = 20;
+export interface AutosaveSelectionRemovalResult {
+  total: number;
+  removed: number;
+  not_present: number;
+}
 export function draftAutosaveKey(binding: ProposalSubmissionBinding, session: string) {
   if (
     typeof session !== 'string' ||

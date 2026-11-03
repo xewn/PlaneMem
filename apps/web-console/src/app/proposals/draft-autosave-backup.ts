@@ -15,6 +15,39 @@ export interface ReviewedAutosaveBackup<Draft> {
   file: AutosaveBackupFile<Draft>;
   raw: string;
 }
+export async function inspectAutosaveBackup<Draft extends AutosaveDraft>(
+  model: AutosaveBackupModel<Draft>,
+  raw: string,
+  binding: ProposalSubmissionBinding,
+  check: () => void,
+): Promise<ReviewedAutosaveBackup<Draft>> {
+  check();
+  if (
+    !raw ||
+    raw.length > model.fileBytes ||
+    new TextEncoder().encode(raw).byteLength > model.fileBytes
+  )
+    throw new TypeError();
+  const file = model.parseFile(JSON.parse(raw.replace(/^\uFEFF/, '')));
+  assertProposalSubmissionBinding(file.document.binding, binding);
+  const digest = await backupHash(model.documentJson(file.document));
+  check();
+  if (digest !== file.document_sha256)
+    throw new TypeError('Automatic draft backup checksum differs');
+  return { file, raw: model.fileJson(file) };
+}
+export async function retainAutosaveBackup<Draft extends AutosaveDraft>(
+  model: AutosaveBackupModel<Draft>,
+  input: AutosaveBackupDocument<Draft>,
+  check: () => void,
+): Promise<ReviewedAutosaveBackup<Draft>> {
+  check();
+  const document = model.parseDocument(input);
+  const document_sha256 = await backupHash(model.documentJson(document));
+  check();
+  const file = model.parseFile({ document, document_sha256 });
+  return { file, raw: model.fileJson(file) };
+}
 export function createDraftAutosaveBackup<Draft extends AutosaveDraft>(store: {
   backupModel: AutosaveBackupModel<Draft>;
   readBackup: (
@@ -34,34 +67,18 @@ export function createDraftAutosaveBackup<Draft extends AutosaveDraft>(store: {
   ) => Promise<AutosaveBackupRestoreResult>;
 }) {
   const model = store.backupModel;
-  async function inspect(
+  function inspect(
     raw: string,
     binding: ProposalSubmissionBinding,
     check: () => void,
   ): Promise<ReviewedAutosaveBackup<Draft>> {
-    check();
-    if (
-      !raw ||
-      raw.length > model.fileBytes ||
-      new TextEncoder().encode(raw).byteLength > model.fileBytes
-    )
-      throw new TypeError();
-    const file = model.parseFile(JSON.parse(raw.replace(/^\uFEFF/, '')));
-    assertProposalSubmissionBinding(file.document.binding, binding);
-    const digest = await backupHash(model.documentJson(file.document));
-    check();
-    if (digest !== file.document_sha256)
-      throw new TypeError('Automatic draft backup checksum differs');
-    return { file, raw: model.fileJson(file) };
+    return inspectAutosaveBackup(model, raw, binding, check);
   }
   function prepare(binding: ProposalSubmissionBinding, signal: AbortSignal) {
     return backupOperation(signal, async (operationSignal, check) => {
       const document = await store.readBackup(binding, operationSignal, check);
       check();
-      const document_sha256 = await backupHash(model.documentJson(document));
-      check();
-      const file = model.parseFile({ document, document_sha256 });
-      return { file, raw: model.fileJson(file) };
+      return retainAutosaveBackup(model, document, check);
     });
   }
   function load(source: File, binding: ProposalSubmissionBinding, signal: AbortSignal) {

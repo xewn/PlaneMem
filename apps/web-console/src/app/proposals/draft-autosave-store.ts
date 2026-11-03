@@ -15,6 +15,7 @@ import {
 } from './original-model';
 import {
   AUTOSAVE_BACKUP_MAX_ENTRIES,
+  AUTOSAVE_SELECTION_MAX_ENTRIES,
   createAutosaveBackupModel,
   draftAutosaveKey as key,
   type AutosaveDraft,
@@ -22,6 +23,7 @@ import {
   type AutosaveBackupEntry,
   type AutosaveBackupComparison,
   type AutosaveBackupRestoreResult,
+  type AutosaveSelectionRemovalResult,
 } from './draft-autosave-backup-model';
 export interface DraftAutosavePage<Summary> {
   entries: Summary[];
@@ -415,5 +417,142 @@ export function createDraftAutosaveStore<
       },
     );
   }
-  return { save, list, load, remove, backupModel, readBackup, compareBackup, restoreBackup };
+  /** Read only the explicit current-page selections; a missing or stale selection rejects all. */
+  function readSelected(
+    input: ProposalSubmissionBinding,
+    selections: Summary[],
+    signal: AbortSignal,
+    check: () => void,
+  ) {
+    check();
+    const binding = parseProposalSubmissionBinding(input);
+    if (
+      !Array.isArray(selections) ||
+      selections.length < 1 ||
+      selections.length > AUTOSAVE_SELECTION_MAX_ENTRIES
+    )
+      throw new TypeError();
+    const expected = selections
+      .map((selection) => {
+        const slot = key(binding, selection.session_id);
+        const index = JSON.stringify(selection);
+        if (new TextEncoder().encode(index).byteLength > 4096) throw new TypeError();
+        return { slot, index };
+      })
+      .sort((left, right) => (left.slot < right.slot ? -1 : left.slot > right.slot ? 1 : 0));
+    for (let index = 1; index < expected.length; index += 1)
+      if (expected[index - 1]!.slot === expected[index]!.slot) throw new TypeError();
+    check();
+    return inBrowserStores<AutosaveBackupDocument<Draft>>(
+      layout,
+      'readonly',
+      signal,
+      () => {
+        throw new TypeError();
+      },
+      (context) => {
+        const entries: AutosaveBackupEntry<Draft>[] = [];
+        const account = readBudget();
+        const next = () => {
+          check();
+          const item = expected[entries.length];
+          if (!item) {
+            context.accept(
+              backupModel.parseDocument({
+                schema_version: 1,
+                kind: backupModel.kind,
+                binding,
+                entries,
+              }),
+            );
+            return;
+          }
+          readBrowserPair(context, item.slot, (raw, index, exists) => {
+            if (!exists || index !== item.index) throw new TypeError();
+            account(raw, index);
+            const saved = pair(raw, index, binding, item.slot);
+            entries.push({ session_id: saved.entry.session_id, draft: saved.draft });
+            next();
+          });
+        };
+        next();
+      },
+    );
+  }
+  /** Compare every retained pair before deletion; report absent copies separately. */
+  function removeSelected(
+    input: AutosaveBackupDocument<Draft>,
+    signal: AbortSignal,
+    check: () => void,
+  ) {
+    check();
+    const prepared = prepareBackup(input);
+    if (prepared.length < 1 || prepared.length > AUTOSAVE_SELECTION_MAX_ENTRIES)
+      throw new TypeError();
+    check();
+    return inBrowserStores<AutosaveSelectionRemovalResult>(
+      layout,
+      'readwrite',
+      signal,
+      () => ({ total: prepared.length, removed: 0, not_present: prepared.length }),
+      (context) => {
+        const present: typeof prepared = [];
+        const account = readBudget();
+        let inspected = 0;
+        let verified = 0;
+        const verify = () => {
+          check();
+          const item = prepared[verified];
+          if (!item) {
+            context.accept({
+              total: prepared.length,
+              removed: present.length,
+              not_present: prepared.length - present.length,
+            });
+            return;
+          }
+          readBrowserPair(context, item.slot, (_raw, _index, exists) => {
+            if (exists) throw new TypeError();
+            verified += 1;
+            verify();
+          });
+        };
+        const inspect = () => {
+          check();
+          const item = prepared[inspected];
+          if (!item) {
+            for (const entry of present) {
+              check();
+              context.content.delete(entry.slot);
+              context.directory.delete(entry.slot);
+            }
+            verify();
+            return;
+          }
+          readBrowserPair(context, item.slot, (raw, index, exists) => {
+            if (exists) account(raw, index);
+            const state = entryState(item, raw, index, exists);
+            if (state === 'different') throw new TypeError();
+            if (state === 'same') present.push(item);
+            inspected += 1;
+            inspect();
+          });
+        };
+        inspect();
+      },
+      { create: false },
+    );
+  }
+  return {
+    save,
+    list,
+    load,
+    remove,
+    backupModel,
+    readBackup,
+    compareBackup,
+    restoreBackup,
+    readSelected,
+    removeSelected,
+  };
 }

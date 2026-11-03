@@ -2,6 +2,7 @@
 
 import { createDraftAutosaveStore, type DraftAutosavePage } from './draft-autosave-store';
 import { createDraftAutosaveBackup } from './draft-autosave-backup';
+import { createDraftAutosaveCleanup } from './draft-autosave-cleanup';
 import {
   decodeProposalEditingDraft,
   encodeProposalEditingDraft,
@@ -36,3 +37,4 @@ export const listEditingAutosaves = store.list;
 export const loadEditingAutosave = store.load;
 export const removeEditingAutosave = store.remove;
 export const editingAutosaveBackup = createDraftAutosaveBackup(store);
+export const editingAutosaveCleanup = createDraftAutosaveCleanup(store);

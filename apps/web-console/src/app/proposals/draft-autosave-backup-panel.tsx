@@ -314,8 +314,9 @@ export function DraftAutosaveBackupPanel<Draft extends AutosaveDraft>({
           comparison do not save anything. Restoration preserves original copy identifiers and save
           times, and leaves current editor fields unchanged. It does not start automatic saving or
           prepare or send a proposal or review. Other open pages may still update their own copies;
-          the backup file keeps the captured contents. A checksum checks content, not authorship or
-          submission status.
+          the backup file keeps the captured contents. An imported file may contain only a selected
+          subset; restoration considers only its listed copies. A checksum checks content, not
+          authorship or submission status.
         </p>
         {message && <p role="status">{message}</p>}
       </div>

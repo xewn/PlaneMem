@@ -11,11 +11,13 @@ import { loadReviewOriginal } from './review-store';
 import { ReviewEditingBackupPanel } from './review-editing-backup-panel';
 import { useReviewEditingAutosave } from './use-review-editing-autosave';
 import { DraftAutosaveBackupPanel } from './draft-autosave-backup-panel';
+import { DraftAutosaveCleanupPanel } from './draft-autosave-cleanup-panel';
 import {
   listReviewEditingAutosaves,
   loadReviewEditingAutosave,
   removeReviewEditingAutosave,
   reviewEditingAutosaveBackup,
+  reviewEditingAutosaveCleanup,
   type ReviewEditingAutosavePage,
   type ReviewEditingAutosaveSummary,
 } from './review-editing-autosave-store';
@@ -248,7 +250,12 @@ export function ReviewEditingPanel({
             : 'No automatic review copies on this page for the current gateway and account.',
         );
       },
-      { start: () => setRemovalFresh(false) },
+      {
+        start: () => {
+          setRemovalFresh(false);
+          setAutomaticPage(undefined);
+        },
+      },
     );
   }
   function readAutomatic(selection: ReviewEditingAutosaveSummary) {
@@ -414,6 +421,32 @@ export function ReviewEditingPanel({
       )}
       <ReviewEditingBackupPanel
         binding={binding}
+        disabled={locked}
+        storageEpoch={storageEpoch}
+        begin={beginStorage}
+        end={endStorage}
+        onStorageChange={storageChanged}
+      />
+      <DraftAutosaveCleanupPanel<ReviewEditingDraft, ReviewEditingAutosaveSummary>
+        binding={binding}
+        cleanup={reviewEditingAutosaveCleanup}
+        entries={automaticPage?.entries}
+        summaryLabel={(entry) =>
+          entry.proposal_id +
+          ' · revision ' +
+          entry.expected_revision +
+          ' · ' +
+          (entry.decision || 'Undecided') +
+          ' · ' +
+          entry.saved_at
+        }
+        draftLabel={(draft) =>
+          draft.proposal_id +
+          ' · revision ' +
+          draft.expected_revision +
+          ' · ' +
+          (draft.decision || 'Undecided')
+        }
         disabled={locked}
         storageEpoch={storageEpoch}
         begin={beginStorage}
