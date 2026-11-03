@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import {
+  ContractError,
   assertSyncCommandIdentity,
   parseSyncApplicationArchiveFile,
   syncApplicationArchiveDocumentJson,
@@ -8,8 +9,6 @@ import {
   syncSavedPageDocumentJson,
   syncJsonSnapshot,
   SYNC_CHANGES_RESPONSE_BYTES,
-  SYNC_APPLICATION_ARCHIVE_DOCUMENT_BYTES,
-  SYNC_APPLICATION_ARCHIVE_MAX_PAGES,
   type SyncApplicationArchiveFile,
   type SyncCommandIdentity,
   type SyncSavedPageFile,
@@ -20,8 +19,10 @@ import {
   parseInboxApplicationQuery,
   type SyncInboxApplicationQuery,
 } from './application-model.js';
-import { auditInboxApplicationHistory } from './application-audit.js';
-import type { InboxApplicationHistoryStep } from './application-history.js';
+import {
+  compareInboxApplicationRestoreHistory,
+  type InboxApplicationRestoreReads,
+} from './application-restore-comparison.js';
 
 export interface SyncInboxApplicationRestoreQuery extends SyncInboxApplicationQuery {
   archive_document_sha256: string;
@@ -124,60 +125,36 @@ export function restoreInboxApplicationHistory(
   trace: string,
   check: () => void,
   progress: InboxApplicationRestoreProgress,
-  reads: {
-    head(): InboxApplicationHistoryStep | undefined;
-    step(digest: string): InboxApplicationHistoryStep | undefined;
-    events(step: InboxApplicationHistoryStep): void;
-    sources: InboxApplicationSourceRestore;
-  },
+  reads: InboxApplicationRestoreReads & { sources: InboxApplicationSourceRestore },
 ) {
   const { incoming } = prepared;
-  const conflict = () =>
-    applicationFailure(
-      'INBOX_APPLICATION_RESTORE_CONFLICT',
-      'Restore requires an empty application or its exact complete archived history; existing projections are never merged, replaced or rewound',
-      trace,
-    );
-  const match = (selected: InboxApplicationHistoryStep | undefined) => {
-    check();
-    if (selected) {
-      progress.selected_sequence = selected.sequence;
-      progress.selected_document_sha256 = selected.page.document_sha256;
-      const expected = incoming[selected.sequence - 1];
-      if (
-        !expected ||
-        selected.page.document_sha256 !== expected.page.document_sha256 ||
-        syncSavedPageDocumentJson(selected.page.document) !== expected.pageJson ||
-        selected.projectionJson !== expected.projectionJson ||
-        selected.projectionHash !== expected.projection_sha256 ||
-        selected.trace !== expected.application_trace_id
-      )
-        throw conflict();
-    }
-    return selected;
-  };
-  const audit = () =>
-    auditInboxApplicationHistory(
+  const audit = () => {
+    const compared = compareInboxApplicationRestoreHistory(
       db,
       key,
-      {
-        ...query,
-        max_pages: SYNC_APPLICATION_ARCHIVE_MAX_PAGES,
-        max_events: SYNC_APPLICATION_ARCHIVE_MAX_PAGES * 500,
-        max_bytes: SYNC_APPLICATION_ARCHIVE_DOCUMENT_BYTES,
-      },
+      query,
+      prepared,
       trace,
       check,
-      {
-        head: () => {
-          const head = reads.head();
-          if (head && head.sequence !== incoming.length) throw conflict();
-          return match(head);
-        },
-        step: (digest) => match(reads.step(digest)),
-        events: reads.events,
-      },
+      reads,
     );
+    const difference = compared.comparison.first_difference;
+    if (difference) {
+      progress.selected_sequence = difference.sequence;
+      progress.selected_document_sha256 = difference.target_document_sha256;
+    }
+    if (!compared.comparison.compatible)
+      throw new ContractError(
+        'INBOX_APPLICATION_RESTORE_CONFLICT',
+        'Restore requires an empty application or its exact complete archived history; existing projections are never merged, replaced or rewound',
+        {
+          trace_id: trace,
+          retryable: false,
+          details: { application_comparison: compared.comparison },
+        },
+      );
+    return compared.audited;
+  };
   progress.stage = 'existing-application';
   const before = audit();
   progress.stage = 'source-pages';

@@ -1,5 +1,13 @@
 # workctx 开发入口
 
+新增只读应用恢复预览（仅源码，示例未执行）：
+
+```text
+workctx inbox application-restore-preview --inbox local-inbox.sqlite --archive-file application-history.json --json-file restore-query.json
+```
+
+使用与 application-restore 相同的原身份/应用/归档摘要查询；在只读打开前核验文件与绑定，单次读取事务完整检查目标应用和接收链。返回目标关系、正序首个不同页/字段/摘要、预计新增页/事件及保留后缀数。合法冲突返回 status=conflict、restore_allowed=false、planned_changes/restore_query=null，命令退出码仍为 0；应读取结果字段判断是否兼容。损坏、超限或未完成则报错。不写入、不自动恢复或确认，预览不冻结目标；另行恢复会重新检查。见 [恢复预览契约](../../docs/design/01-contracts/sync-application-restore-preview-runtime.md)。未编译、测试、运行命令或打开库。
+
 新增应用归档恢复（仅源码，示例未执行）：
 
 ```text

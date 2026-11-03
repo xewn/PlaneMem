@@ -978,6 +978,29 @@ requirements:
         - "CLI primary/embedded local routing, old output migration, read/rollback/close failures and complete result retention"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_application_restore_preview_development_increment:
+      date: "2026-11-03"
+      status: "Source-only readonly application archive restore preview; R-005 remains incomplete."
+      artifacts:
+        - "apps/context-bridge/src/inbox/application-restore-comparison.ts"
+        - "apps/context-bridge/src/inbox/application-restore-preview.ts"
+        - "apps/context-bridge/src/inbox/application-restore.ts"
+        - "apps/context-bridge/src/inbox/applications.ts"
+        - "apps/context-bridge/src/inbox/sqlite.ts"
+        - "apps/workctx-cli/src/inbox-application-restore.ts"
+        - "apps/workctx-cli/src/inbox-application-archive.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/sync-application-restore-preview-runtime.md"
+      behavior: "Original query/file binding precedes readonly opening. One read transaction fully audits application and received histories using comparison rules shared with actual restore, reporting relations, earliest overlapping difference metadata, compatibility and planned page/event counts without projection bodies. Valid conflicts complete with restore_allowed=false and no plan/query, while corruption and incomplete audits remain errors. Actual restore rechecks in its own write transaction; preview does not reserve a target or write, replay reducers, acknowledge or automatically restore."
+      remaining_scope: "No merge of different application histories, old-version upgrades, persistent preview/target-version binding, acknowledgement/dispatch backup, source/semantic authentication, full cross-device recovery or runtime evidence. Original audit limits/deadline and 512 KiB preview response caps do not bound exact memory/IO/query cost or preflight time."
+      pending_evidence:
+        - "Empty/identical/shorter/longer/different applications, trace-only changes, earliest overlap differences and source divergence/newer suffixes"
+        - "Full audit despite differences, corrupt tails/ledger/orphans, limits/timeouts and no partial success"
+        - "Readonly primary/embedded routing, file preflight, missing schemas, conflict success exit with restore_allowed=false, close/rollback failures"
+        - "Actual restore sharing comparisons, changing targets after preview, commit/rollback uncertainty and no preview writes/reducers/acknowledgements"
+      evidence: []
+      execution: "Source and documentation only; no builds, typechecks, tests, CLI/Bridge/reducer/API/service runs, database opens, schema initialization, migrations, sample files or release. No new schema/dependencies; SQLite extensions and PostgreSQL 016-049 remain unexecuted. Task commits/pushes target main with skip-ci messages."
     sync_application_restore_development_increment:
       date: "2026-11-03"
       status: "Source-only atomic application archive restore; R-005 remains incomplete."

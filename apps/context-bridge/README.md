@@ -1,5 +1,7 @@
 # Context Bridge 本地同步存储
 
+2026-11-03 应用恢复预览增补：`previewApplicationArchiveRestore(archive,input,trace)` 使用同一原身份/应用/归档摘要查询，在单个只读事务完整审计目标应用与接收链，返回关系、首个正序差异摘要、可恢复性和预计新增页/事件数量。与实际恢复共用比较逻辑；合法不兼容返回 conflict，损坏/超限仍失败。只反映读取时快照，实际恢复重新检查；不输出投影正文或进行写入。CLI application-restore-preview 已接只读打开。见 [恢复预览契约](../../docs/design/01-contracts/sync-application-restore-preview-runtime.md)。仅源码文档，未编译、类型检查、测试、执行接口或打开库。
+
 2026-11-03 应用归档恢复增补：`restoreApplicationArchive(archive,input,trace)` 要求完整原身份/应用/归档摘要，在既有应用扩展上用单个写事务恢复原接收页、逐页投影/原 trace、事件绑定和应用头。仅接受空应用或完整相同历史；兼容接收前缀可补齐，较新接收后缀保留。恢复前后完整结构审计，提交/回滚不明保留 unknown 和原查询/进度。CLI application-restore 已接入；不执行 reducer 或确认服务器，归档不认证来源/业务语义。见 [应用归档恢复契约](../../docs/design/01-contracts/sync-application-restore-runtime.md)。仅源码文档，无新 schema/依赖，未编译、测试、执行恢复或打开库。
 
 2026-11-03 应用历史归档增补：`readApplicationArchive(input,trace)` 按原身份/应用在单次只读事务完整结构审计后导出根到应用头的原页面、逐页投影/摘要和原应用 trace。独立共享格式 v1，最多 1000 页、文档 16 MiB、投影 1 MiB；空页保持原投影、跨页事件 ID 唯一，原页面/投影/文档摘要分别核验。CLI application-export 保存新文件并最终读回，application-inspect/ application-archive-get 可离线分页查看/读指定快照；不包含未应用接收后缀或确认日志，不证明业务语义，导入恢复已另接显式入口，实际恢复证据仍缺。见 [应用历史归档契约](../../docs/design/01-contracts/sync-application-archive-runtime.md)。无新 schema/依赖，仅源码文档，未编译、测试、运行、生成样本或打开库。

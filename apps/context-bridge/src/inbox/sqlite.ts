@@ -19,6 +19,7 @@ import {
 } from '@planemem/contracts';
 import { SYNC_INBOX_SCHEMA_V1, SYNC_INBOX_SCHEMA_VERSION } from './schema.js';
 import { InboxApplications } from './applications.js';
+import { compareInboxApplicationRestoreSources } from './application-restore-comparison.js';
 export { parseInboxApplicationAuditQuery } from './application-audit.js';
 export type { SyncInboxApplicationAuditQuery } from './application-audit.js';
 export { parseInboxApplicationRestoreQuery } from './application-restore.js';
@@ -956,6 +957,22 @@ export class SqliteSyncInbox {
       true,
     );
   }
+  /** Caller owns the preview or restore transaction. */
+  private compareApplicationSourcePages(
+    identity: SyncCommandIdentity,
+    pages: readonly SyncSavedPageFile[],
+    trace: string,
+    check: () => void,
+  ) {
+    const original = identityFor(identity, trace);
+    return compareInboxApplicationRestoreSources(this.db, original.key, pages, trace, check, {
+      head: () => this.head(original, trace),
+      page: (digest) => {
+        const row = this.pageRow(original.key, digest);
+        return row ? this.decode(row, original.identity, trace) : undefined;
+      },
+    });
+  }
   /** Owned by the application restore transaction; never begins or commits a nested transaction. */
   private restoreApplicationSourcePages(
     identity: SyncCommandIdentity,
@@ -963,54 +980,25 @@ export class SqliteSyncInbox {
     trace: string,
     check: () => void,
   ) {
-    const original = identityFor(identity, trace);
     let source_stage = 'before';
     let source_selected_digest: string | null = null;
     let prepared_received_pages = 0;
     const audit = () => {
-      let bytes = 0;
-      const inspect = (selected: Head | undefined) => {
-        check();
-        if (selected) {
-          source_selected_digest = selected.page.document_sha256;
-          bytes += Buffer.byteLength(selected.json, 'utf8');
-          if (bytes > 64 * 1024 * 1024)
-            throw failure(
-              'INBOX_APPLICATION_RESTORE_SOURCE_LIMIT_REACHED',
-              'The received source chain exceeds its 64 MiB restore audit budget',
-              trace,
-            );
-          const expected = pages[selected.sequence - 1];
-          if (
-            expected &&
-            (selected.page.document_sha256 !== expected.document_sha256 ||
-              selected.json !== syncSavedPageDocumentJson(expected.document))
-          )
-            throw failure(
-              'INBOX_APPLICATION_RESTORE_SOURCE_CONFLICT',
-              'The existing received chain differs from the original archived pages; preserve both histories',
-              trace,
-            );
-        }
-        check();
-        return selected;
-      };
-      check();
-      const audited = auditInboxPageChain(this.db, original.key, 10000, trace, {
-        head: () => inspect(this.head(original, trace)),
-        page: (digest) => {
-          check();
-          const row = this.pageRow(original.key, digest);
-          return inspect(row ? this.decode(row, original.identity, trace) : undefined);
-        },
-      });
-      check();
-      return audited;
+      const compared = this.compareApplicationSourcePages(identity, pages, trace, check);
+      source_selected_digest =
+        compared.first_difference?.target_document_sha256 ?? compared.head_sha256;
+      if (!compared.compatible)
+        throw new ContractError(
+          'INBOX_APPLICATION_RESTORE_SOURCE_CONFLICT',
+          'The existing received chain differs from the original archived pages; preserve both histories',
+          { trace_id: trace, retryable: false, details: { source_comparison: compared } },
+        );
+      return compared;
     };
     try {
       const before = audit();
       source_stage = 'append';
-      for (let index = before.checked_pages; index < pages.length; index += 1) {
+      for (let index = before.page_count; index < pages.length; index += 1) {
         check();
         const page = pages[index];
         if (!page)
@@ -1032,12 +1020,12 @@ export class SqliteSyncInbox {
       source_stage = 'readback';
       const after = audit();
       const expectedHead =
-        before.checked_pages >= pages.length
-          ? (before.head?.page.document_sha256 ?? null)
+        before.page_count >= pages.length
+          ? before.head_sha256
           : (pages.at(-1)?.document_sha256 ?? null);
       if (
-        after.checked_pages !== Math.max(before.checked_pages, pages.length) ||
-        (after.head?.page.document_sha256 ?? null) !== expectedHead
+        after.page_count !== Math.max(before.page_count, pages.length) ||
+        after.head_sha256 !== expectedHead
       )
         throw failure(
           'INBOX_APPLICATION_RESTORE_SOURCE_INVALID',
@@ -1046,9 +1034,9 @@ export class SqliteSyncInbox {
         );
       return {
         added_received_pages: prepared_received_pages,
-        received_page_count: after.checked_pages,
-        received_head_sha256: after.head?.page.document_sha256 ?? null,
-        received_cursor: after.head?.page.document.page.data.next_cursor ?? 0,
+        received_page_count: after.page_count,
+        received_head_sha256: after.head_sha256,
+        received_cursor: after.received_cursor,
         received_history_audit: 'verified-structure' as const,
       };
     } catch (error) {
@@ -1063,7 +1051,10 @@ export class SqliteSyncInbox {
           details: {
             ...(error instanceof ContractError ? error.envelope.details : {}),
             source_stage,
-            source_selected_digest,
+            source_selected_digest:
+              error instanceof ContractError
+                ? (error.envelope.details?.source_selected_digest ?? source_selected_digest)
+                : source_selected_digest,
             prepared_received_pages,
             max_received_pages: 10000,
             max_received_bytes: 64 * 1024 * 1024,
@@ -1091,6 +1082,8 @@ export class SqliteSyncInbox {
       },
       (identity, pages, trace, check) =>
         this.restoreApplicationSourcePages(identity, pages, trace, check),
+      (identity, pages, trace, check) =>
+        this.compareApplicationSourcePages(identity, pages, trace, check),
     );
   }
   /** Explicit optional schema initialization; constructor/import do not enable applications. */
@@ -1110,6 +1103,10 @@ export class SqliteSyncInbox {
   /** Atomically restores compatible source pages and an empty or byte-identical application. */
   restoreApplicationArchive(value: unknown, input: unknown, trace: string) {
     return this.applications().restore(value, input, trace);
+  }
+  /** Readonly compatibility assessment; an actual restore always rechecks its own transaction. */
+  previewApplicationArchiveRestore(value: unknown, input: unknown, trace: string) {
+    return this.applications().previewRestore(value, input, trace);
   }
   readApplicationHistory(input: unknown, trace: string) {
     return this.applications().history(input, trace);

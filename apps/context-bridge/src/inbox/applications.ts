@@ -36,6 +36,8 @@ import {
   type InboxApplicationRestoreProgress,
   type InboxApplicationSourceRestore,
 } from './application-restore.js';
+import { previewInboxApplicationRestore } from './application-restore-preview.js';
+import type { InboxApplicationSourceCompare } from './application-restore-comparison.js';
 import {
   parseInboxApplicationCatalogQuery,
   readInboxApplicationCatalog,
@@ -125,6 +127,7 @@ export class InboxApplications {
     private readonly readOnly: boolean,
     private readonly readPage: ReadPage,
     private readonly restorePages: InboxApplicationSourceRestore,
+    private readonly comparePages: InboxApplicationSourceCompare,
   ) {}
   private corrupt(trace: string) {
     return applicationFailure(
@@ -540,6 +543,61 @@ export class InboxApplications {
       check();
       return archive;
     });
+  }
+  previewRestore(value: unknown, input: unknown, trace: string) {
+    const query = parseInboxApplicationRestoreQuery(input, trace);
+    const progress = { stage: 'archive' };
+    try {
+      const prepared = prepareInboxApplicationRestore(value, query, trace);
+      progress.stage = 'transaction';
+      return this.run(trace, query.timeout_ms, false, (check) => {
+        this.require(trace);
+        const preview = previewInboxApplicationRestore(
+          this.db,
+          keys(query),
+          query,
+          prepared,
+          trace,
+          check,
+          progress,
+          {
+            head: () => this.head(query, trace, check),
+            step: (digest) => this.step(query, digest, trace),
+            events: (step) => this.verifyEvents(query, step, trace, check),
+            sources: this.comparePages,
+          },
+        );
+        const result = { ...this.historyEnvelope(query, trace), ...preview };
+        try {
+          syncJsonSnapshot(result, 512 * 1024);
+        } catch {
+          throw applicationFailure(
+            'INBOX_APPLICATION_RESTORE_PREVIEW_TOO_LARGE',
+            'The complete restore preview exceeds 512 KiB',
+            trace,
+          );
+        }
+        check();
+        return result;
+      });
+    } catch (error) {
+      if (!(error instanceof ContractError)) throw error;
+      throw new ContractError(error.envelope.code, error.envelope.message, {
+        trace_id: trace,
+        retryable: false,
+        details: {
+          ...error.envelope.details,
+          expected_identity: query.expected_identity,
+          application: query.application,
+          archive_document_sha256: query.archive_document_sha256,
+          timeout_ms: query.timeout_ms,
+          preview_stage: progress.stage,
+          preview_completed: false,
+          local_write_state: 'not-performed',
+          acknowledgement_dispatch_state: 'not-sent',
+        },
+      });
+    }
   }
   restore(value: unknown, input: unknown, trace: string) {
     const query = parseInboxApplicationRestoreQuery(input, trace);
