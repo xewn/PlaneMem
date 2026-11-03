@@ -1,5 +1,7 @@
 # Context Bridge 本地同步存储
 
+新增 `readRestoreBackup` 和独立 `outbox-restore-backup` 子路径：复用单次全项目审计收集完整回执/原档案，v1文件最多100份/64 MiB文档，逐份及集合摘要共享原历史校验。独立文件核验不加载原生SQLite；不读取或修改当前队列。见 [恢复历史备份](../../docs/design/01-contracts/outbox-restore-backup-runtime.md)。无schema/依赖变化，仅源码文档，未运行、编译或测试。
+
 新增 `compareRestoreRecord`，按项目/恢复 ID/事件 ID 在单次只读事务完整核验历史，并对照全部23个当前存储列，返回原档案、恢复基线和当前摘要及变化列。固定90秒、结果128 KiB；内容相同不证明因果来源，当前缺失不推断删除或投递。见 [恢复记录对照](../../docs/design/01-contracts/outbox-restore-comparison-runtime.md)。无 schema/依赖变化，仅源码文档，未运行、编译或测试。
 
 新增 `auditRestoreReceipts`，完整核验原项目恢复历史，默认100份/64 MiB/30秒，上限1000份/512 MiB/90秒；先有界计数，再分批读取元数据、逐份完整验证原查询/档案及v1恢复摘要。预算在正文加载前检查，不留存全部档案；失败保留进度且不返回部分通过。目录新增全项目audit_query。见 [恢复历史核验](../../docs/design/01-contracts/outbox-restore-audit-runtime.md)。无schema/依赖变化，仅源码文档，未运行、编译或测试。

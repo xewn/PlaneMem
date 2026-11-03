@@ -54,8 +54,13 @@ export function parseOutboxRestoreAuditQuery(
   }
 }
 
-/** Complete selected-project history in one snapshot, without retaining every source archive in memory. */
-export function auditOutboxRestoreReceipts(db: DatabaseSync, input: unknown, trace: string) {
+/** Complete project snapshot. Without a collector, verified archives are released after each item. */
+export function auditOutboxRestoreReceipts(
+  db: DatabaseSync,
+  input: unknown,
+  trace: string,
+  collect?: (record: NonNullable<ReturnType<typeof outboxRestoreStoredRecord>>) => void,
+) {
   const query = parseOutboxRestoreAuditQuery(input, trace);
   const deadline = performance.now() + query.timeout_ms;
   let stage = 'schema';
@@ -175,6 +180,11 @@ export function auditOutboxRestoreReceipts(db: DatabaseSync, input: unknown, tra
               );
               if (!stored) throw corrupt();
               check();
+              if (collect) {
+                stage = 'collect';
+                collect(stored);
+                check();
+              }
               archived_records += stored.receipt.records;
               held_records += stored.receipt.held_records;
               historical_terminal_records.sent += stored.receipt.historical_terminal_records.sent;

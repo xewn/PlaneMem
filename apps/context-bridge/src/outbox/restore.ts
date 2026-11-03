@@ -156,6 +156,33 @@ function receiptFor(
   };
 }
 export type OutboxRestoreReceipt = ReturnType<typeof receiptFor>;
+
+/** Shared history verification for stored rows and detached backup files; performs no database IO. */
+export function outboxVerifiedRestoreRecord(
+  query: OutboxRestoreQuery,
+  sourceInput: unknown,
+  restored_at: unknown,
+  restore_trace_id: unknown,
+  restored_document_sha256: unknown,
+  trace: string,
+) {
+  if (
+    !canonicalTime(restored_at) ||
+    !validText(restore_trace_id) ||
+    typeof restored_document_sha256 !== 'string' ||
+    !DIGEST.test(restored_document_sha256)
+  )
+    throw new TypeError();
+  const source = verifyOutboxArchive(sourceInput, trace);
+  if (
+    !sameScope(source.document.scope, query.scope) ||
+    source.document_sha256 !== query.archive_sha256
+  )
+    throw new TypeError();
+  const restored = outboxRestoreRecords(source, restored_at, restore_trace_id);
+  if (restored.document_sha256 !== restored_document_sha256) throw new TypeError();
+  return { receipt: receiptFor(query, source, restored), source };
+}
 function unconfirmedReceipt(receipt: OutboxRestoreReceipt | null) {
   return receipt === null
     ? null
@@ -247,15 +274,16 @@ export function outboxRestoreStoredRecord(
     savedQuery = parseOutboxRestoreQuery(JSON.parse(row.query_json), trace);
     if (savedQuery.restore_id !== query.restore_id || !sameScope(savedQuery.scope, query.scope))
       throw new TypeError();
-    source = verifyOutboxArchive(JSON.parse(row.archive_json), trace);
-    if (
-      !sameScope(source.document.scope, savedQuery.scope) ||
-      source.document_sha256 !== savedQuery.archive_sha256
-    )
-      throw new TypeError();
-    const restored = outboxRestoreRecords(source, row.restored_at, row.restore_trace_id);
-    if (restored.document_sha256 !== row.restored_document_sha256) throw new TypeError();
-    receipt = receiptFor(savedQuery, source, restored);
+    const verified = outboxVerifiedRestoreRecord(
+      savedQuery,
+      JSON.parse(row.archive_json),
+      row.restored_at,
+      row.restore_trace_id,
+      row.restored_document_sha256,
+      trace,
+    );
+    source = verified.source;
+    receipt = verified.receipt;
   } catch (error) {
     throw fail(
       'OUTBOX_RESTORE_RECEIPT_INVALID',

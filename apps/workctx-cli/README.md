@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+新增 `outbox restore-history-backup --outbox EXISTING_FILE --output NEW_FILE` 与 `outbox inspect-restore-history-backup --archive-file FILE`。完整备份项目恢复回执和原档案，支持有界查询；读取和关闭尝试后独占保存并完整读回核验，离线检查无需队列/项目配置/令牌。见 [恢复历史备份](../../docs/design/01-contracts/outbox-restore-backup-runtime.md)。仅源码文档，未执行命令、编译、测试或发布。
+
 新增 `outbox restore-compare --outbox EXISTING_FILE --json/--json-file QUERY`，必须明确 restore_id/event_id，scope 可补入已固定的配置范围；只读展示原档案、恢复基线和当前摘要及变化列，保留底层定位和关闭状态。见 [恢复记录对照](../../docs/design/01-contracts/outbox-restore-comparison-runtime.md)。仅源码文档，未执行命令、编译、测试或发布。
 
 新增 `outbox restore-audit --outbox EXISTING_FILE`，可选 `--json/--json-file` 指定max_receipts/max_bytes/timeout_ms与scope；只读核验整个项目的恢复历史，拒绝输出文件、游标和原档案输入。目录audit_query可直接使用默认预算，失败保留进度/位置/关闭状态。见 [恢复历史核验](../../docs/design/01-contracts/outbox-restore-audit-runtime.md)。仅源码文档，未执行命令、编译、测试或发布。
@@ -523,6 +525,8 @@ observed-item.json 示例：`{"work_item_id":"plane-item-42"}`。CLI 核对返�
 | `outbox restore-history` | 必须 --outbox EXISTING_FILE；可选 --json/--json-file scope/limit/after_restore_id | 无；只读元数据分页，原档案正文未核验 |
 | `outbox restore-audit` | 必须 --outbox EXISTING_FILE；可选 --json/--json-file scope/max_receipts/max_bytes/timeout_ms | 无；单次只读事务完整核验项目恢复历史，超限或损坏不返回部分通过 |
 | `outbox restore-compare` | 必须 --outbox EXISTING_FILE 和 --json/--json-file restore_id/event_id；可选同项目 scope | 无；单次只读事务核验历史和当前原行，返回摘要及相对恢复基线的变化列，不证明来源 |
+| `outbox restore-history-backup` | 必须 --outbox EXISTING_FILE --output NEW_FILE；可选 --json/--json-file scope/max_receipts/max_bytes/timeout_ms | 只读完整项目恢复历史后独占保存新文件；最多100份/64 MiB文档，超限不截断 |
+| `outbox inspect-restore-history-backup` | 仅 --archive-file FILE | 无；离线核验全部原回执/档案及集合摘要，不加载SQLite或当前项目配置 |
 | `outbox restore-get ID` | 必须 --outbox EXISTING_FILE；不接受 JSON | 无；完整核验历史回执及原查询 |
 | `outbox restore-export ID` | 必须 --outbox EXISTING_FILE、--output NEW_FILE；不接受 JSON | 独占保存历史中的完整原档案，不改当前队列 |
 | `sync ack` | 保存的五字段 `expected_identity` 和非负安全整数 `cursor` | 不接受键/版本 |

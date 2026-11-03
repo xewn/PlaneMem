@@ -959,6 +959,28 @@ requirements:
         - "Offline routing without token/environment/SQLite, argument restrictions, output traces, provenance and exits"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, sample file generation, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_outbox_restore_backup_development_increment:
+      date: "2026-11-03"
+      status: "Source-only complete project restore history backup and offline verification; R-005 remains incomplete. No builds, typechecks, tests, CLI/Bridge execution, database opens, schema/migrations, sample generation or release."
+      artifacts:
+        - "apps/context-bridge/src/outbox/restore-backup.ts"
+        - "apps/context-bridge/src/outbox/restore-backup-reading.ts"
+        - "apps/context-bridge/src/outbox/restore-audit.ts"
+        - "apps/context-bridge/src/outbox/restore.ts"
+        - "apps/context-bridge/src/outbox/sqlite.ts"
+        - "apps/context-bridge/package.json"
+        - "apps/workctx-cli/src/outbox-restore-backup.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/outbox-restore-backup-runtime.md"
+      behavior: "Versioned workctx.sync-outbox-restore-history files preserve each complete receipt, original query and source archive, ordered uniquely by BINARY restore ID in one project. Shared pure history verification checks every original and immutable v1 normalized digest, rejects extra or inconsistent receipt fields and verifies a separate collection SHA. Readonly export reuses the full audit snapshot and pre-body stored-byte budget, then bounds aggregate canonical bytes and complexity; defaults/caps 100 receipts and 64 MiB, 30-second default and 90-second maximum preparation. Files are exclusively saved after complete reading and attempted close, then fully verified from the final path. Offline inspection uses a separate package subpath without native SQLite/current scope/token/network, returns historical aggregate summaries and never modifies queues or controls. Errors preserve query, audit progress, restore/event location, filesystem state and close details."
+      evidence: []
+      pending_evidence:
+        - "Strict queries, exact file fields, nested source/receipt verification, restored digest and collection hash, BINARY ordering/duplicates and empty histories"
+        - "Raw stored byte versus canonical aggregate limits, combined node/depth limits, deadlines and no partial export"
+        - "Existing native-readonly database routing, standalone offline dependency graph and strict argument/scope/file inputs"
+        - "Exclusive save races, full final readback, retained published-unconfirmed/temp paths and close/original error details"
+      remaining_scope: "Backup import/target comparison/selective extraction, cross-project backup, retention, causal provenance and runtime evidence remain pending. The history backup excludes current queue/control/unknown columns and is not a physical database backup. No new schema or dependency version changes; prior SQLite upgrades and PostgreSQL 016-049 remain unexecuted."
     sync_outbox_restore_comparison_development_increment:
       date: "2026-11-03"
       status: "Source-only single restored-event comparison; R-005 remains incomplete. No builds, typechecks, tests, CLI/Bridge execution, database opens, schema/migrations or release."
