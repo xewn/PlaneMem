@@ -29,6 +29,7 @@ import {
 import { readProposalReceiptRecordRecovery } from './proposal-receipt-recovery.js';
 import { readProposalQueueBackupRecovery } from './proposal-queue-backup-recovery.js';
 import { compareProposalQueueBackups } from './proposal-queue-backup-comparison.js';
+import { restoreProposalQueueBackup } from './proposal-queue-restore.js';
 import {
   proposalQueueBackupSummary,
   readProposalQueueBackup,
@@ -92,6 +93,8 @@ const help = `Proposal submission queue (Node.js 24)
   proposal-worker inspect-queue-backup --file BACKUP.json
   proposal-worker queue-backup-recover --file RETAINED_BACKUP_OR_ERROR.json --output NEW_BACKUP.json [--preview]
   proposal-worker queue-backup-compare --queue EXISTING.sqlite --binding binding.json --file BACKUP.json
+  proposal-worker queue-backup-restore --file BACKUP.json --binding binding.json --output NEW_QUEUE.sqlite --preview
+  proposal-worker queue-backup-restore --file BACKUP.json --binding binding.json --output NEW_QUEUE.sqlite --confirm-sha256 BACKUP_SHA256
   proposal-worker retry   --queue queue.sqlite --binding binding.json --id JOB_ID
   proposal-worker receipt --queue EXISTING.sqlite --binding binding.json --id JOB_ID [--timeout-ms 30000] [--output NEW_RECEIPT.json]
   proposal-worker reconcile --queue EXISTING.sqlite --binding binding.json --id JOB_ID [--timeout-ms 30000] [--output NEW_RECEIPT.json]
@@ -104,6 +107,7 @@ list/get open an existing initialized queue read-only; missing files are never c
 queue-backup saves a complete known-v1 logical snapshot after read-only queue close; inspect-queue-backup validates it offline. Neither restores, retries or sends tasks.
 queue-backup-recover saves a retained complete snapshot to a new file; --preview only inspects input and destination. Neither mode opens or restores a queue.
 queue-backup-compare compares a complete backup with a read-only existing queue snapshot, then closes before reporting metadata differences. It never restores or sends; exit 0 also permits differences.
+queue-backup-restore creates a new queue after digest confirmation. Every non-submitted task becomes blocked/uncertain; old leases are cleared only in the new copy. Preview creates nothing. Keep the original backup.
 generate calls the configured model once using PROPOSAL_GENERATION_API_KEY; it saves a new draft, without opening a queue.
 generate-prepared uses the same single call and saves the complete record; it does not refresh sources.
 inspect-generation verifies record consistency offline; enqueue-generated requires the original destination binding.
@@ -150,6 +154,7 @@ export async function main(args: string[]): Promise<number> {
         preview: { type: 'boolean' },
         state: { type: 'string' },
         'timeout-ms': { type: 'string' },
+        'confirm-sha256': { type: 'string' },
       },
     });
     const command = positionals[0];
@@ -174,6 +179,7 @@ export async function main(args: string[]): Promise<number> {
       'inspect-queue-backup': ['file'],
       'queue-backup-recover': ['file', 'output', 'preview'],
       'queue-backup-compare': ['file'],
+      'queue-backup-restore': ['file', 'binding', 'output', 'preview', 'confirm-sha256'],
       retry: ['id'],
       receipt: ['id', 'timeout-ms', 'output'],
       reconcile: ['id', 'timeout-ms', 'output'],
@@ -194,6 +200,7 @@ export async function main(args: string[]): Promise<number> {
             'inspect-receipt-record',
             'inspect-queue-backup',
             'queue-backup-recover',
+            'queue-backup-restore',
             'receipt-record-recover',
             'generation-request',
             'generation-run',
@@ -225,6 +232,34 @@ export async function main(args: string[]): Promise<number> {
     if (command === 'inspect-queue-backup') {
       const backup = await readProposalQueueBackup(required('file'));
       process.stdout.write(JSON.stringify(proposalQueueBackupSummary(backup), null, 2) + '\n');
+      return 0;
+    }
+    if (command === 'queue-backup-restore') {
+      const file = required('file');
+      const bindingFile = required('binding');
+      const output = required('output');
+      const backup = await readProposalQueueBackup(file);
+      const binding = (await readJson(bindingFile, 16_384)) as ProposalQueueBinding;
+      let result: unknown;
+      try {
+        result = await restoreProposalQueueBackup(backup, binding, output, {
+          ...(values.preview === undefined ? {} : { preview: values.preview }),
+          ...(values['confirm-sha256'] === undefined
+            ? {}
+            : { confirm_sha256: values['confirm-sha256'] }),
+        });
+      } catch (error) {
+        if (
+          !(error instanceof ContractError) ||
+          error.envelope.code !== 'PROPOSAL_QUEUE_RESTORE_FAILED'
+        )
+          throw error;
+        process.stderr.write(
+          JSON.stringify({ code: error.envelope.code, ...error.envelope.details }, null, 2) + '\n',
+        );
+        return 1;
+      }
+      process.stdout.write(JSON.stringify(result, null, 2) + '\n');
       return 0;
     }
     if (command === 'queue-backup-compare') {

@@ -20,6 +20,7 @@ import {
 import { parseSubmissionReceipt } from './receipt.js';
 import { normalizeQueueBinding, type ProposalQueueBinding } from './queue-binding.js';
 import { captureProposalQueueBackup } from './proposal-queue-backup.js';
+import { PROPOSAL_QUEUE_CORE_SCHEMA } from './proposal-queue-schema.js';
 import {
   inspectProposalGenerationRecord,
   readGeneratedProposalDraft,
@@ -128,16 +129,7 @@ export class SqliteProposalQueue {
       this.db.exec('PRAGMA journal_mode = WAL');
       this.db.exec('PRAGMA synchronous = FULL');
       this.transaction(() => {
-        this.db.exec(`CREATE TABLE IF NOT EXISTS proposal_queue_binding (
-          singleton INTEGER PRIMARY KEY CHECK (singleton = 1), schema_version INTEGER NOT NULL, binding TEXT NOT NULL);
-          CREATE TABLE IF NOT EXISTS proposal_jobs (
-          job_id TEXT PRIMARY KEY, request_key TEXT NOT NULL UNIQUE,
-          payload TEXT NOT NULL, payload_hash TEXT NOT NULL,
-          status TEXT NOT NULL CHECK (status IN ('queued','sending','retry','blocked','submitted')),
-          attempts INTEGER NOT NULL DEFAULT 0, next_attempt_ms INTEGER NOT NULL,
-          uncertain INTEGER NOT NULL DEFAULT 0, error_code TEXT, trace_id TEXT, receipt TEXT,
-          created_at TEXT NOT NULL, lease_token TEXT, lease_until_ms INTEGER);
-          CREATE INDEX IF NOT EXISTS proposal_jobs_due ON proposal_jobs(status, next_attempt_ms);`);
+        this.db.exec(PROPOSAL_QUEUE_CORE_SCHEMA);
         const stored = this.db
           .prepare('SELECT schema_version, binding FROM proposal_queue_binding WHERE singleton = 1')
           .get();

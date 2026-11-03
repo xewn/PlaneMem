@@ -15,6 +15,7 @@ import {
   type GeneratedProposalRecord,
 } from './generation-record.js';
 import type { ProposalQueueBinding } from './queue-binding.js';
+import { PROPOSAL_QUEUE_GENERATION_SCHEMA } from './proposal-queue-schema.js';
 
 // Internal helpers. The queue owns the surrounding transaction and original binding.
 const table = 'proposal_generation_records';
@@ -78,12 +79,7 @@ function schema(db: DatabaseSync, create: boolean): boolean {
   const found = db.prepare('SELECT type FROM sqlite_schema WHERE name = ?').get(table);
   if (!found && !create) return false;
   if (!found) {
-    db.exec(`CREATE TABLE proposal_generation_records (
-      job_id TEXT NOT NULL, record_sha256 TEXT NOT NULL,
-      schema_version INTEGER NOT NULL CHECK (schema_version = 1),
-      record_json TEXT NOT NULL, attached_at TEXT NOT NULL,
-      PRIMARY KEY (job_id, record_sha256),
-      FOREIGN KEY (job_id) REFERENCES proposal_jobs(job_id))`);
+    db.exec(PROPOSAL_QUEUE_GENERATION_SCHEMA);
   } else if (found.type !== 'table') corrupt();
   const columns = db.prepare('PRAGMA table_info(proposal_generation_records)').all();
   const expected = [

@@ -20,33 +20,14 @@ import {
 } from './generation-record.js';
 import { prepareGenerationOutput, saveGenerationFile } from './generation-output.js';
 import { readOptional } from './generation-journal-read.js';
+import {
+  PROPOSAL_QUEUE_JOB_COLUMNS as jobColumns,
+  PROPOSAL_QUEUE_GENERATION_COLUMNS as generationColumns,
+} from './proposal-queue-schema.js';
 
 export const PROPOSAL_QUEUE_BACKUP_BYTES = 32 * 1024 * 1024;
 export const PROPOSAL_QUEUE_BACKUP_MAX_JOBS = 100;
 export const PROPOSAL_QUEUE_BACKUP_MAX_GENERATIONS = 100;
-const jobColumns = [
-  'job_id',
-  'request_key',
-  'payload',
-  'payload_hash',
-  'status',
-  'attempts',
-  'next_attempt_ms',
-  'uncertain',
-  'error_code',
-  'trace_id',
-  'receipt',
-  'created_at',
-  'lease_token',
-  'lease_until_ms',
-] as const;
-const generationColumns = [
-  'job_id',
-  'record_sha256',
-  'schema_version',
-  'record_json',
-  'attached_at',
-] as const;
 export interface ProposalQueueBackupJob {
   job_id: string;
   request_key: string;
