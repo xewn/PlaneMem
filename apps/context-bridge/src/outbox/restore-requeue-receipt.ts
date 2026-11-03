@@ -13,8 +13,10 @@ import {
 import { outboxReadTransaction } from './reading.js';
 import {
   parseOutboxRestoreRequeueReceiptQuery,
+  parseOutboxRestoreRequeueSelection,
   type OutboxRestoreRequeueQuery,
   type OutboxRestoreRequeueReceiptQuery,
+  type OutboxRestoreRequeueSelection,
 } from './restore-requeue-query.js';
 
 const TABLE = 'local_outbox_requeue_receipts';
@@ -200,6 +202,17 @@ export function outboxOriginalRequeueReceipt(
   trace: string,
   check: () => void,
 ): { present: boolean; recorded: OutboxRestoreRequeueReceipt | null } {
+  return readRequeueRecord(db, query, trace, check, query);
+}
+
+/** Shared full reader; only explicit selection discovery may omit the expected original query. */
+function readRequeueRecord(
+  db: DatabaseSync,
+  query: OutboxRestoreRequeueSelection,
+  trace: string,
+  check: () => void,
+  expectedQuery?: OutboxRestoreRequeueReceiptQuery,
+): { present: boolean; recorded: OutboxRestoreRequeueReceipt | null } {
   check();
   const present = outboxRequeueReceiptTable(db, trace);
   if (!present) return { present, recorded: null };
@@ -272,7 +285,10 @@ export function outboxOriginalRequeueReceipt(
         : {},
     );
   }
-  if (syncJsonSnapshot(saved, QUERY_BYTES) !== syncJsonSnapshot(query, QUERY_BYTES))
+  if (
+    expectedQuery !== undefined &&
+    syncJsonSnapshot(saved, QUERY_BYTES) !== syncJsonSnapshot(expectedQuery, QUERY_BYTES)
+  )
     throw fail(
       'OUTBOX_REQUEUE_ID_REUSED',
       'This requeue ID belongs to a different original request; preserve that request',
@@ -318,6 +334,54 @@ export function outboxOriginalRequeueReceipt(
       error instanceof ContractError
         ? { ...error.envelope.details, cause_code: error.envelope.code }
         : {},
+    );
+  }
+}
+
+/** Explicit ID discovery never substitutes a new control generation or changes an original request. */
+export function readOutboxRestoreRequeueRecord(db: DatabaseSync, input: unknown, trace: string) {
+  const selection = parseOutboxRestoreRequeueSelection(input, trace);
+  assertOutboxRestoreTrace(trace);
+  const check = outboxRestoreBudget(trace);
+  let historical_receipt: OutboxRestoreRequeueReceipt | null = null;
+  try {
+    return outboxReadTransaction(
+      db,
+      () => {
+        const { recorded } = readRequeueRecord(db, selection, trace, check);
+        historical_receipt = recorded;
+        const result = {
+          scope: selection.scope,
+          selection,
+          status: recorded ? ('recorded' as const) : ('not-observed' as const),
+          original_query: recorded?.query ?? null,
+          receipt: recorded,
+          observation: 'original-requeue-request-lookup' as const,
+          current_queue: 'not-checked' as const,
+          current_control: 'not-checked' as const,
+          server_delivery: 'not-checked' as const,
+          local_commit: 'not-attempted' as const,
+          observed_at: new Date().toISOString(),
+        };
+        syncJsonSnapshot(result, 128 * 1024);
+        check();
+        return result;
+      },
+      trace,
+    );
+  } catch (error) {
+    throw fail(
+      error instanceof ContractError ? error.envelope.code : 'OUTBOX_REQUEUE_RECORD_UNAVAILABLE',
+      error instanceof ContractError
+        ? error.envelope.message
+        : 'The original requeue request and receipt could not be read',
+      trace,
+      {
+        ...(error instanceof ContractError ? error.envelope.details : {}),
+        selection,
+        historical_receipt,
+        local_commit: 'not-attempted',
+      },
     );
   }
 }

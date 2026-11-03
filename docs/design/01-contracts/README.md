@@ -50,6 +50,7 @@
 - [发送队列新恢复请求准备与保存](outbox-restore-prepare-runtime.md)
 - [恢复事件批量预览与显式重新排队](outbox-restore-requeue-runtime.md)
 - [恢复事件重新排队的持久原回执](outbox-restore-requeue-receipt-runtime.md)
+- [按批次ID找回重新排队原请求](outbox-restore-requeue-selection-runtime.md)
 - [发送队列恢复历史与原档案找回](outbox-restore-history-runtime.md)
 - [发送队列恢复历史全范围核验](outbox-restore-audit-runtime.md)
 - [发送队列单条恢复记录对照](outbox-restore-comparison-runtime.md)

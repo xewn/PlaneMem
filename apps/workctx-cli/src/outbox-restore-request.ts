@@ -1,23 +1,42 @@
 import { createHash } from 'node:crypto';
-import type { OutboxRestoreQuery } from '@planemem/context-bridge';
+import type {
+  OutboxRestoreQuery,
+  OutboxRestoreRequeueReceiptQuery,
+} from '@planemem/context-bridge';
 import { ContractError, syncJsonSnapshot } from '@planemem/contracts';
 import { readBoundedArtifactFile } from './artifact-files.js';
 import { saveArtifactOutput, type ArtifactOutput } from './artifact-output.js';
 
 /** Input is the complete parsed query from a finished preparation; freeze it before filesystem awaits. */
-export async function saveOutboxRestoreRequest(
+export function saveOutboxRestoreRequest(
   input: OutboxRestoreQuery,
   output: ArtifactOutput,
   trace: string,
 ) {
+  return saveRequest(input, output, trace, 'restore');
+}
+export function saveOutboxRestoreRequeueRequest(
+  input: OutboxRestoreRequeueReceiptQuery,
+  output: ArtifactOutput,
+  trace: string,
+) {
+  return saveRequest(input, output, trace, 'requeue');
+}
+async function saveRequest(
+  input: OutboxRestoreQuery | OutboxRestoreRequeueReceiptQuery,
+  output: ArtifactOutput,
+  trace: string,
+  kind: 'restore' | 'requeue',
+) {
+  const prefix = kind === 'restore' ? 'OUTBOX_RESTORE_REQUEST' : 'OUTBOX_REQUEUE_REQUEST';
   const destination = { ...output };
   let text: string;
   try {
     text = syncJsonSnapshot(input, 16384);
   } catch {
     throw new ContractError(
-      'OUTBOX_RESTORE_REQUEST_INVALID',
-      'The complete restore request exceeds its JSON limits',
+      `${prefix}_INVALID`,
+      'The complete original request exceeds its JSON limits',
       {
         trace_id: trace,
         details: { output_path: destination.path, local_state: 'not-saved' },
@@ -31,8 +50,8 @@ export async function saveOutboxRestoreRequest(
     local = await saveArtifactOutput(destination, bytes, file_sha256, trace);
   } catch (error) {
     throw new ContractError(
-      'OUTBOX_RESTORE_REQUEST_SAVE_FAILED',
-      'The prepared request could not be saved; retain the request and reported file state',
+      `${prefix}_SAVE_FAILED`,
+      'The original request could not be saved; retain the request and reported file state',
       {
         trace_id: trace,
         retryable: false,
@@ -61,7 +80,7 @@ export async function saveOutboxRestoreRequest(
       throw new TypeError();
   } catch (error) {
     throw new ContractError(
-      'OUTBOX_RESTORE_REQUEST_READBACK_FAILED',
+      `${prefix}_READBACK_FAILED`,
       'The request was published but its final contents could not be confirmed; retain the output',
       {
         trace_id: trace,
@@ -84,7 +103,10 @@ export async function saveOutboxRestoreRequest(
     ...local,
     file_bytes: bytes.byteLength,
     file_sha256,
-    format: 'outbox-restore-query-json' as const,
+    format:
+      kind === 'restore'
+        ? ('outbox-restore-query-json' as const)
+        : ('outbox-restore-requeue-query-json' as const),
     verification: 'exact-final-file-bytes-and-json' as const,
   };
 }

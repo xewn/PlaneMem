@@ -1,5 +1,7 @@
 # Context Bridge 本地同步存储
 
+新增 `readRestoreRequeueRecord`：严格scope/requeue_id选择，复用完整历史读取与父恢复回执/前后摘要验证，返回原七字段查询和原回执；旧精确查询仍完整比对expectedQuery。单读事务、90秒和128 KiB结果，不读写当前事件/控制。见 [按ID找回原请求](../../docs/design/01-contracts/outbox-restore-requeue-selection-runtime.md)。无schema/依赖变化，仅源码文档，未运行、编译或测试。
+
 批量重新排队新增可选requeue_id及 `readRestoreRequeueReceipt`：事件和原请求/变更前后摘要同事务保存，原恢复回执完整摘要绑定依赖历史；精确重复返回原历史，异请求/跨项目ID拒绝。固定v1映射共享，预览/读取不创建可选表。见 [持久原回执](../../docs/design/01-contracts/outbox-restore-requeue-receipt-runtime.md)。新表仅源码定义，未执行、编译或测试。
 
 新增 `previewRestoreRequeue/requeueRestoredRecords`：原scope/restore_id/档案SHA/暂停generation绑定显式1至100个event_ids及原因，整份原历史验证后逐条比较23列恢复基线。只允许未变化且无投递元数据的恢复待审阅行；写事务整批设pending、重置调度并完整读回历史/控制/事件，保持暂停，不发送。见 [批量重新排队](../../docs/design/01-contracts/outbox-restore-requeue-runtime.md)。无新schema或持久批次回执，仅源码文档，未运行、编译或测试。

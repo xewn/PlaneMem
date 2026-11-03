@@ -2,6 +2,7 @@ import { ContractError, isSyncIdentifier, syncJsonSnapshot } from '@planemem/con
 import type { OutboxScope } from './sqlite.js';
 import { isOutboxSendControlGeneration } from './control.js';
 import { parseOutboxRestorePreparation } from './restore.js';
+import { parseOutboxReadScope } from './reading.js';
 
 export interface OutboxRestoreRequeueQuery {
   scope: OutboxScope;
@@ -68,6 +69,36 @@ export function parseOutboxRestoreRequeueQuery(
 }
 
 export type OutboxRestoreRequeueReceiptQuery = OutboxRestoreRequeueQuery & { requeue_id: string };
+export interface OutboxRestoreRequeueSelection {
+  scope: OutboxScope;
+  requeue_id: string;
+}
+export function parseOutboxRestoreRequeueSelection(
+  input: unknown,
+  trace: string,
+): OutboxRestoreRequeueSelection {
+  try {
+    const value: unknown = JSON.parse(syncJsonSnapshot(input, 16384));
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError();
+    const row = value as Record<string, unknown>;
+    if (
+      Object.keys(row).length !== 2 ||
+      Object.keys(row).some((key) => !['scope', 'requeue_id'].includes(key)) ||
+      !isSyncIdentifier(row.requeue_id)
+    )
+      throw new TypeError();
+    return { scope: parseOutboxReadScope(row.scope, trace), requeue_id: row.requeue_id };
+  } catch (error) {
+    throw fail(
+      'OUTBOX_REQUEUE_SELECTION_INVALID',
+      'Supply exactly the original project scope and requeue_id',
+      trace,
+      error instanceof ContractError
+        ? { ...error.envelope.details, cause_code: error.envelope.code }
+        : {},
+    );
+  }
+}
 export function parseOutboxRestoreRequeueReceiptQuery(
   input: unknown,
   trace: string,

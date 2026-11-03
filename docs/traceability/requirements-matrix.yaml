@@ -959,6 +959,26 @@ requirements:
         - "Offline routing without token/environment/SQLite, argument restrictions, output traces, provenance and exits"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, sample file generation, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_outbox_restore_requeue_selection_development_increment:
+      date: "2026-11-03"
+      status: "Source-only original requeue request discovery and explicit file saving; R-005 remains incomplete."
+      artifacts:
+        - "apps/context-bridge/src/outbox/restore-requeue-query.ts"
+        - "apps/context-bridge/src/outbox/restore-requeue-receipt.ts"
+        - "apps/context-bridge/src/outbox/sqlite.ts"
+        - "apps/workctx-cli/src/outbox-restore-requeue.ts"
+        - "apps/workctx-cli/src/outbox-restore-request.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/outbox-restore-requeue-selection-runtime.md"
+      behavior: "Strict scope/requeue_id selection reads the complete original query and receipt through the shared bounded reader, validating full parent history and before/after digests. Exact-query receipt lookup and write replay still explicitly compare the full original request. CLI get is natively read-only and optionally saves the unchanged seven-field query after output preflight, full validation and close attempt; missing history creates no file. Shared exclusive request writer performs exact final byte/SHA/JSON readback. Failures retain original history/query, file publication/cleanup and close states; successful save survives later response-size failure."
+      evidence: []
+      pending_evidence:
+        - "Strict two-field selection, configured scope, global ID ambiguity/cross-project refusal, missing history and full linked-history corruption"
+        - "Unchanged exact-query/replay semantics, original event order/reason/generation preservation and recovered-file reuse"
+        - "Output preflight/exclusive publication, missing entry without file, close/readback/cleanup failures, response bounds with saved state"
+      remaining_scope: "Receipt pagination/catalog, full receipt files, combined backup/cross-device import, provenance and runtime evidence remain pending. No schema or dependency changes."
+      execution: "Source/docs only; no builds, typechecks, tests, CLI/Bridge runs, database opens, schema initialization, samples, migrations or release. All prior SQLite additions and PostgreSQL 016-049 remain unexecuted."
     sync_outbox_restore_requeue_receipt_development_increment:
       date: "2026-11-03"
       status: "Source-only optional atomic requeue receipts and exact original-query lookup; R-005 remains incomplete."

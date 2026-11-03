@@ -2,12 +2,15 @@ import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { ContractError, syncJsonSnapshot } from '@planemem/contracts';
 import { readBoundedArtifactFile } from './artifact-files.js';
+import { prepareArtifactOutput, type ArtifactOutput } from './artifact-output.js';
+import { saveOutboxRestoreRequeueRequest } from './outbox-restore-request.js';
 
 export function isOutboxRestoreRequeueCommand(command: string) {
   return (
     command === 'outbox restore-requeue' ||
     command === 'outbox restore-requeue-preview' ||
-    command === 'outbox restore-requeue-receipt'
+    command === 'outbox restore-requeue-receipt' ||
+    command === 'outbox restore-requeue-get'
   );
 }
 function fail(code: string, message: string, trace: string, details: Record<string, unknown> = {}) {
@@ -23,6 +26,7 @@ function argumentsFor(argv: string[], trace: string) {
         outbox: { type: 'string' },
         json: { type: 'string' },
         'json-file': { type: 'string' },
+        output: { type: 'string' },
       },
     });
     const command = args.positionals.join(' ');
@@ -35,21 +39,25 @@ function argumentsFor(argv: string[], trace: string) {
     const path = args.values.outbox;
     const json = args.values.json;
     const file = args.values['json-file'];
+    const output = args.values.output;
     if (
       !isOutboxRestoreRequeueCommand(command) ||
       args.positionals.length !== 2 ||
       path === undefined ||
       path === ':memory:' ||
-      [path, file].some((value) => value !== undefined && (!value.trim() || value === '-')) ||
+      [path, file, output].some(
+        (value) => value !== undefined && (!value.trim() || value === '-'),
+      ) ||
+      (output !== undefined && command !== 'outbox restore-requeue-get') ||
       (json === undefined) === (file === undefined) ||
       json === '-'
     )
       throw new TypeError();
-    return { command, path: resolve(path), json, file };
+    return { command, path: resolve(path), json, file, output };
   } catch {
     throw fail(
       'USAGE_ERROR',
-      'Use outbox restore-requeue, restore-requeue-preview or restore-requeue-receipt --outbox EXISTING_FILE --json/--json-file QUERY. Receipt lookup requires the complete original query with requeue_id. No extra/repeated options, positionals or stdin',
+      'Use outbox restore-requeue, restore-requeue-preview or restore-requeue-receipt --outbox EXISTING_FILE --json/--json-file QUERY. Receipt lookup requires the complete original query with requeue_id. Use restore-requeue-get with scope/requeue_id selection and optional --output NEW_QUERY_FILE. No extra/repeated options, positionals or stdin',
       trace,
     );
   }
@@ -88,7 +96,8 @@ export async function runOutboxRestoreRequeueArguments(
   const args = argumentsFor(argv, trace);
   const preview = args.command === 'outbox restore-requeue-preview';
   const receipt = args.command === 'outbox restore-requeue-receipt';
-  const reading = preview || receipt;
+  const get = args.command === 'outbox restore-requeue-get';
+  const reading = preview || receipt || get;
   const unopenedCommit = reading ? 'not-attempted' : 'not-committed';
   const scopeSnapshot = { ...configuredScope };
   const input = await inputFor(args, trace);
@@ -104,9 +113,11 @@ export async function runOutboxRestoreRequeueArguments(
     );
   }
   const scope = bridge.parseOutboxReadScope(scopeSnapshot, trace);
-  const parseQuery = receipt
-    ? bridge.parseOutboxRestoreRequeueReceiptQuery
-    : bridge.parseOutboxRestoreRequeueQuery;
+  const parseQuery = get
+    ? bridge.parseOutboxRestoreRequeueSelection
+    : receipt
+      ? bridge.parseOutboxRestoreRequeueReceiptQuery
+      : bridge.parseOutboxRestoreRequeueQuery;
   const query = parseQuery(
     { ...input, scope: Object.hasOwn(input, 'scope') ? input.scope : scope },
     trace,
@@ -122,6 +133,26 @@ export async function runOutboxRestoreRequeueArguments(
       trace,
       { query, local_commit: unopenedCommit },
     );
+  let output: ArtifactOutput | undefined;
+  if (args.output !== undefined) {
+    try {
+      output = await prepareArtifactOutput(args.output, trace);
+    } catch (error) {
+      throw fail(
+        error instanceof ContractError ? error.envelope.code : 'OUTBOX_REQUEUE_OUTPUT_UNAVAILABLE',
+        'Choose a new original request file in an existing directory',
+        trace,
+        {
+          ...(error instanceof ContractError ? error.envelope.details : {}),
+          query,
+          outbox: args.path,
+          output_path: resolve(args.output),
+          local_state: 'not-saved',
+          local_commit: unopenedCommit,
+        },
+      );
+    }
+  }
   let queue: InstanceType<typeof bridge.SqliteOutbox>;
   try {
     queue = new bridge.SqliteOutbox(args.path, reading ? { readonly: true } : { existing: true });
@@ -136,16 +167,19 @@ export async function runOutboxRestoreRequeueArguments(
         outbox: args.path,
         stage: 'open',
         local_commit: unopenedCommit,
+        ...(output ? { output_path: output.path, local_state: 'not-saved' } : {}),
       },
     );
   }
   let data;
   try {
-    data = receipt
-      ? queue.readRestoreRequeueReceipt(query, trace)
-      : preview
-        ? queue.previewRestoreRequeue(query, trace)
-        : queue.requeueRestoredRecords(query, trace);
+    data = get
+      ? queue.readRestoreRequeueRecord(query, trace)
+      : receipt
+        ? queue.readRestoreRequeueReceipt(query, trace)
+        : preview
+          ? queue.previewRestoreRequeue(query, trace)
+          : queue.requeueRestoredRecords(query, trace);
   } catch (error) {
     let close_pending = false;
     try {
@@ -164,6 +198,7 @@ export async function runOutboxRestoreRequeueArguments(
         query,
         outbox: args.path,
         close_pending,
+        ...(output ? { output_path: output.path, local_state: 'not-saved' } : {}),
       },
     );
   }
@@ -173,12 +208,41 @@ export async function runOutboxRestoreRequeueArguments(
   } catch {
     close_pending = true;
   }
+  let local: Awaited<ReturnType<typeof saveOutboxRestoreRequeueRequest>> | null = null;
+  if (output) {
+    try {
+      if (!('original_query' in data) || data.original_query === null)
+        throw fail(
+          'OUTBOX_REQUEUE_RECORD_NOT_FOUND',
+          'No verified original request was observed; no file was created',
+          trace,
+          { local_state: 'not-saved' },
+        );
+      local = await saveOutboxRestoreRequeueRequest(data.original_query, output, trace);
+    } catch (error) {
+      throw fail(
+        error instanceof ContractError ? error.envelope.code : 'OUTBOX_REQUEUE_REQUEST_SAVE_FAILED',
+        error instanceof ContractError
+          ? error.envelope.message
+          : 'The recovered original request could not be saved; retain its history and file state',
+        trace,
+        {
+          ...(error instanceof ContractError ? error.envelope.details : {}),
+          query,
+          history: data,
+          outbox: args.path,
+          output_path: output.path,
+          close_pending,
+        },
+      );
+    }
+  }
   const result = {
     schema_version: 1 as const,
     trace_id: trace,
     scope,
     source_refs: [{ type: 'outbox', id: scope.project_id }],
-    data: { ...data, outbox: args.path, close_pending },
+    data: { ...data, outbox: args.path, close_pending, ...(get ? { local } : {}) },
   };
   try {
     syncJsonSnapshot(result, 128 * 1024);
@@ -193,6 +257,7 @@ export async function runOutboxRestoreRequeueArguments(
         close_pending,
         local_commit: data.local_commit,
         result: data,
+        ...(get ? { local } : {}),
       },
     );
   }
