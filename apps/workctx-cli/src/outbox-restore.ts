@@ -5,7 +5,11 @@ import { readBoundedArtifactFile } from './artifact-files.js';
 import { readOutboxArchiveFile } from './outbox-archive.js';
 
 export function isOutboxRestoreCommand(command: string) {
-  return command === 'outbox restore' || command === 'outbox restore-receipt';
+  return (
+    command === 'outbox restore' ||
+    command === 'outbox restore-receipt' ||
+    command === 'outbox restore-preview'
+  );
 }
 function fail(code: string, message: string, trace: string, details: Record<string, unknown> = {}) {
   return new ContractError(code, message, { trace_id: trace, retryable: false, details });
@@ -13,7 +17,7 @@ function fail(code: string, message: string, trace: string, details: Record<stri
 function usage(trace: string) {
   return fail(
     'USAGE_ERROR',
-    'Use outbox restore --outbox EXISTING_FILE --archive-file FILE --json/--json-file ORIGINAL_QUERY, or outbox restore-receipt --outbox EXISTING_FILE --json/--json-file ORIGINAL_QUERY. No other/repeated options, extra positionals or stdin',
+    'Use outbox restore or outbox restore-preview --outbox EXISTING_FILE --archive-file FILE --json/--json-file ORIGINAL_QUERY, or outbox restore-receipt --outbox EXISTING_FILE --json/--json-file ORIGINAL_QUERY. No other/repeated options, extra positionals or stdin',
     trace,
   );
 }
@@ -51,7 +55,7 @@ function argumentsFor(argv: string[], trace: string) {
       ) ||
       (json === undefined) === (file === undefined) ||
       json === '-' ||
-      (command === 'outbox restore' ? archiveFile === undefined : archiveFile !== undefined)
+      (command === 'outbox restore-receipt' ? archiveFile !== undefined : archiveFile === undefined)
     )
       throw new TypeError();
     return { command, path: resolve(path), json, file, archiveFile };
@@ -88,7 +92,7 @@ async function readInput(
   }
 }
 
-/** A restore writes only local held originals/history; receipt lookup is entirely read-only. */
+/** Only restore writes local held originals/history; preview and receipt lookup are read-only. */
 export async function runOutboxRestoreArguments(
   argv: string[],
   configuredScope: { tenant_id: string; workspace_id: string; project_id: string },
@@ -190,7 +194,9 @@ export async function runOutboxRestoreArguments(
     data =
       args.command === 'outbox restore'
         ? queue.restoreArchive(source!.saved, query, trace)
-        : queue.readRestoreReceipt(query, trace);
+        : args.command === 'outbox restore-preview'
+          ? queue.previewArchiveRestore(source!.saved, query, trace)
+          : queue.readRestoreReceipt(query, trace);
   } catch (error) {
     let close_pending = false;
     try {
@@ -202,7 +208,9 @@ export async function runOutboxRestoreArguments(
       error instanceof ContractError ? error.envelope.code : 'OUTBOX_RESTORE_UNAVAILABLE',
       error instanceof ContractError
         ? error.envelope.message
-        : 'The local restore outcome could not be confirmed; preserve the original query and archive',
+        : args.command === 'outbox restore-preview'
+          ? 'The restore preview could not be read; no restore was attempted'
+          : 'The local restore outcome could not be confirmed; preserve the original query and archive',
       trace,
       {
         ...(error instanceof ContractError ? error.envelope.details : {}),

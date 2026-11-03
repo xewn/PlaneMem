@@ -60,6 +60,7 @@ export type { OutboxListQuery } from './reading.js';
 import { parseOutboxAuditQuery, auditOutboxRecords } from './audit.js';
 import { readOutboxSendControl, changeOutboxSendControl, outboxClaimGuard } from './control.js';
 import { restoreOutboxArchive, readOutboxRestoreReceipt } from './restore.js';
+import { previewOutboxArchiveRestore } from './restore-preview.js';
 import {
   listOutboxRestoreReceipts,
   readOutboxRestoreRecord,
@@ -399,6 +400,11 @@ export class SqliteOutbox {
   /** Explicit empty-project restore; nonterminal originals remain held until separately reviewed. */
   restoreArchive(archive: unknown, query: unknown, trace: string) {
     return restoreOutboxArchive(this.db, archive, query, trace);
+  }
+
+  /** One read snapshot; the actual restore repeats every precondition before writing. */
+  previewArchiveRestore(archive: unknown, query: unknown, trace: string) {
+    return previewOutboxArchiveRestore(this.db, archive, query, trace);
   }
 
   readRestoreReceipt(query: unknown, trace: string) {

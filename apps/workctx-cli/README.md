@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+新增 `outbox restore-preview --outbox EXISTING_FILE --archive-file FILE --json-file ORIGINAL_QUERY`，沿用实际恢复查询和完整档案，以readonly模式查看目标条件和预计变化，实际restore重新检查。预览不输出文件或写回队列。见 [恢复前预览](../../docs/design/01-contracts/outbox-restore-preview-runtime.md)。仅源码文档，未编译、测试、运行或发布。
+
 新增 `outbox restore-history/restore-get/restore-export`，显式指定已有 `--outbox`，可浏览历史、按 ID 找回原查询和完整回执、独占导出原档案到 `--output NEW_FILE`。导出在读取和关闭尝试后写文件，失败保留历史与路径。见 [恢复历史](../../docs/design/01-contracts/outbox-restore-history-runtime.md)。仅源码文档，未编译、测试、运行或发布。
 
 新增 `inbox application-pending --inbox FILE --json-file QUERY`，输入原身份/application 与可选 limit/timeout_ms，发现当前应用头后的已接收页面。`next_apply_query` 可交给预览或显式应用；应用推进后用 `refresh_query` 重读，不自动处理或确认。见 [待应用原页发现](../../docs/design/01-contracts/sync-application-pending-runtime.md)。仅源码文档，未执行命令、编译或测试。
@@ -510,6 +512,7 @@ observed-item.json 示例：`{"work_item_id":"plane-item-42"}`。CLI 核对返�
 | `outbox pause` | --json/--json-file（expected_generation/reason，可选scope）；可选 --outbox | 持久暂停新领取；首次显式初始化可选控制表，不取消在途发送 |
 | `outbox resume` | --json/--json-file（expected_generation/reason，可选scope）；可选 --outbox | 匹配当前版本后恢复新领取；不执行 flush |
 | `outbox restore` | 必须 --outbox EXISTING_FILE、--archive-file FILE、--json/--json-file 原恢复查询 | 原档案恢复到已暂停的空项目，未完成记录先转为待处理；原历史和回执同事务保存 |
+| `outbox restore-preview` | 必须 --outbox EXISTING_FILE、--archive-file FILE、--json/--json-file 原恢复查询 | 无；一次只读快照核验恢复条件及预计状态，或返回已核验原历史 |
 | `outbox restore-receipt` | 必须 --outbox EXISTING_FILE、--json/--json-file 同一原恢复查询；无档案文件 | 无；只读完整历史恢复回执，不代表当前队列状态 |
 | `outbox restore-history` | 必须 --outbox EXISTING_FILE；可选 --json/--json-file scope/limit/after_restore_id | 无；只读元数据分页，原档案正文未核验 |
 | `outbox restore-get ID` | 必须 --outbox EXISTING_FILE；不接受 JSON | 无；完整核验历史回执及原查询 |

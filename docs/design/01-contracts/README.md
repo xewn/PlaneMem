@@ -46,6 +46,7 @@
 - [原同步身份与离线队列](sync-identity-runtime.md)
 - [原同步事件回执查询](sync-event-receipt-runtime.md)
 - [发送队列档案受控恢复与原回执](outbox-restore-runtime.md)
+- [发送队列档案恢复前预览](outbox-restore-preview-runtime.md)
 - [发送队列恢复历史与原档案找回](outbox-restore-history-runtime.md)
 - [发送队列持久暂停与恢复发送](outbox-send-control-runtime.md)
 - [发送队列完整档案与离线检查](outbox-archive-runtime.md)

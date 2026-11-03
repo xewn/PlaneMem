@@ -56,7 +56,7 @@ function sameScope(left: OutboxScope, right: OutboxScope) {
     left.project_id === right.project_id
   );
 }
-function budget(trace: string) {
+export function outboxRestoreBudget(trace: string) {
   const deadline = performance.now() + 90000;
   return () => {
     if (performance.now() >= deadline)
@@ -106,7 +106,11 @@ export function parseOutboxRestoreQuery(input: unknown, trace: string): OutboxRe
 }
 
 /** Immutable v1 mapping: later format versions must not reinterpret an existing restore receipt. */
-function prepareRecords(source: OutboxArchiveFile, restored_at: string, trace: string) {
+export function outboxRestoreRecords(
+  source: OutboxArchiveFile,
+  restored_at: string,
+  trace: string,
+) {
   const records = source.document.records.map((record) => {
     const terminal = record.status === 'sent' || record.status === 'conflict';
     return outboxStoredColumns({
@@ -248,7 +252,7 @@ export function outboxRestoreStoredRecord(
       source.document_sha256 !== savedQuery.archive_sha256
     )
       throw new TypeError();
-    const restored = prepareRecords(source, row.restored_at, row.restore_trace_id);
+    const restored = outboxRestoreRecords(source, row.restored_at, row.restore_trace_id);
     if (restored.document_sha256 !== row.restored_document_sha256) throw new TypeError();
     receipt = receiptFor(savedQuery, source, restored);
   } catch (error) {
@@ -280,10 +284,105 @@ function readReceipt(
   return stored.receipt;
 }
 
+/** Shared by read-only preview and the actual write transaction; never initializes storage. */
+export function outboxRestoreOriginalReceipt(
+  db: DatabaseSync,
+  query: OutboxRestoreQuery,
+  trace: string,
+) {
+  const present = outboxRestoreReceiptTable(db, trace);
+  const recorded = readReceipt(db, query, trace, present);
+  if (
+    !recorded &&
+    present &&
+    db
+      .prepare(
+        'SELECT 1 AS present FROM main.local_outbox_restore_receipts WHERE restore_id = ? COLLATE BINARY LIMIT 1',
+      )
+      .get(query.restore_id)
+  )
+    throw fail(
+      'OUTBOX_RESTORE_ID_UNAVAILABLE',
+      'This restore ID is unavailable; preserve the original request',
+      trace,
+    );
+  return { present, recorded };
+}
+
+export function assertOutboxRestoreTrace(trace: string) {
+  if (!validText(trace))
+    throw fail(
+      'OUTBOX_RESTORE_QUERY_INVALID',
+      'Supply a valid restore trace',
+      'trace_outbox_restore',
+    );
+}
+
+export function outboxRestoreSource(archive: unknown, query: OutboxRestoreQuery, trace: string) {
+  const source = verifyOutboxArchive(archive, trace);
+  if (
+    !sameScope(source.document.scope, query.scope) ||
+    source.document_sha256 !== query.archive_sha256
+  )
+    throw fail(
+      'OUTBOX_RESTORE_ARCHIVE_MISMATCH',
+      'The complete archive differs from the exact original restore request',
+      trace,
+    );
+  return source;
+}
+
+/** Caller owns one transaction. A successful read is not a lock or a promise about later writes. */
+export function outboxRestoreTarget(
+  db: DatabaseSync,
+  source: OutboxArchiveFile,
+  query: OutboxRestoreQuery,
+  trace: string,
+  check: () => void,
+  select: (event_id: string | null) => void,
+) {
+  const control = outboxStoredSendControl(db, query.scope, trace);
+  if (control.state !== 'paused' || control.generation !== query.expected_control_generation)
+    throw fail(
+      'OUTBOX_RESTORE_CONTROL_CHANGED',
+      'The target must remain paused at the exact observed control generation',
+      trace,
+      { current_control: control },
+    );
+  if (
+    db
+      .prepare(
+        'SELECT 1 AS present FROM local_events WHERE tenant_id = ? AND workspace_id = ? AND project_id = ? LIMIT 1',
+      )
+      .get(query.scope.tenant_id, query.scope.workspace_id, query.scope.project_id)
+  )
+    throw fail(
+      'OUTBOX_RESTORE_TARGET_NOT_EMPTY',
+      'The target project contains records; this restore never replaces or merges them',
+      trace,
+    );
+  const conflict = db.prepare(
+    'SELECT 1 AS present FROM local_events WHERE event_id = ? OR idempotency_key = ? LIMIT 1',
+  );
+  for (const record of source.document.records) {
+    select(record.event_id as string);
+    check();
+    if (conflict.get(record.event_id as string, record.idempotency_key as string))
+      throw fail(
+        'OUTBOX_RESTORE_ORIGINAL_CONFLICT',
+        'An original event ID or idempotency key is already present in the destination queue',
+        trace,
+      );
+  }
+  select(null);
+  check();
+  return control;
+}
+
 /** Historical receipt lookup never checks or changes the present rows/control. */
 export function readOutboxRestoreReceipt(db: DatabaseSync, input: unknown, trace: string) {
   const query = parseOutboxRestoreQuery(input, trace);
-  const check = budget(trace);
+  const check = outboxRestoreBudget(trace);
   try {
     return outboxReadTransaction(
       db,
@@ -323,13 +422,8 @@ export function restoreOutboxArchive(
   trace: string,
 ) {
   const query = parseOutboxRestoreQuery(input, trace);
-  if (!validText(trace))
-    throw fail(
-      'OUTBOX_RESTORE_QUERY_INVALID',
-      'Supply a valid restore trace',
-      'trace_outbox_restore',
-    );
-  const check = budget(trace);
+  assertOutboxRestoreTrace(trace);
+  const check = outboxRestoreBudget(trace);
   const transaction: ReconciliationTransactionState = {
     settlement: 'not-committed',
     phase: 'not-started',
@@ -340,24 +434,14 @@ export function restoreOutboxArchive(
   let selected_event_id: string | null = null;
   let stage = 'archive';
   try {
-    const source = verifyOutboxArchive(archive, trace);
-    if (
-      !sameScope(source.document.scope, query.scope) ||
-      source.document_sha256 !== query.archive_sha256
-    )
-      throw fail(
-        'OUTBOX_RESTORE_ARCHIVE_MISMATCH',
-        'The complete archive differs from the exact original restore request',
-        trace,
-      );
+    const source = outboxRestoreSource(archive, query, trace);
     check();
     stage = 'receipt';
     return reconciliationTransaction(
       (sql) => db.exec(sql),
       () => {
         check();
-        const present = outboxRestoreReceiptTable(db, trace);
-        const recorded = readReceipt(db, query, trace, present);
+        const { present, recorded } = outboxRestoreOriginalReceipt(db, query, trace);
         historical_receipt = recorded;
         check();
         if (recorded)
@@ -367,57 +451,13 @@ export function restoreOutboxArchive(
             local_commit: 'historically-confirmed' as const,
             receipt: recorded,
           };
-        if (
-          present &&
-          db
-            .prepare(
-              'SELECT 1 AS present FROM main.local_outbox_restore_receipts WHERE restore_id = ? COLLATE BINARY LIMIT 1',
-            )
-            .get(query.restore_id)
-        )
-          throw fail(
-            'OUTBOX_RESTORE_ID_UNAVAILABLE',
-            'This restore ID is unavailable; preserve the original request',
-            trace,
-          );
         stage = 'target';
-        const control = outboxStoredSendControl(db, query.scope, trace);
-        if (control.state !== 'paused' || control.generation !== query.expected_control_generation)
-          throw fail(
-            'OUTBOX_RESTORE_CONTROL_CHANGED',
-            'The target must remain paused at the exact observed control generation',
-            trace,
-            { current_control: control },
-          );
+        const control = outboxRestoreTarget(db, source, query, trace, check, (event_id) => {
+          selected_event_id = event_id;
+        });
         const scopeArgs = [query.scope.tenant_id, query.scope.workspace_id, query.scope.project_id];
-        if (
-          db
-            .prepare(
-              'SELECT 1 AS present FROM local_events WHERE tenant_id = ? AND workspace_id = ? AND project_id = ? LIMIT 1',
-            )
-            .get(...scopeArgs)
-        )
-          throw fail(
-            'OUTBOX_RESTORE_TARGET_NOT_EMPTY',
-            'The target project contains records; this restore never replaces or merges them',
-            trace,
-          );
-        const conflict = db.prepare(
-          'SELECT 1 AS present FROM local_events WHERE event_id = ? OR idempotency_key = ? LIMIT 1',
-        );
-        for (const record of source.document.records) {
-          selected_event_id = record.event_id as string;
-          check();
-          if (conflict.get(record.event_id as string, record.idempotency_key as string))
-            throw fail(
-              'OUTBOX_RESTORE_ORIGINAL_CONFLICT',
-              'An original event ID or idempotency key is already present in the destination queue',
-              trace,
-            );
-        }
-        selected_event_id = null;
         stage = 'prepare';
-        const restored = prepareRecords(source, new Date().toISOString(), trace);
+        const restored = outboxRestoreRecords(source, new Date().toISOString(), trace);
         candidate_receipt = receiptFor(query, source, restored);
         const queryJson = syncJsonSnapshot(query, QUERY_BYTES);
         const archiveJson = syncJsonSnapshot(source, OUTBOX_ARCHIVE_FILE_BYTES);

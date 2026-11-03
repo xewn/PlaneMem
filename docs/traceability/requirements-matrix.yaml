@@ -959,6 +959,25 @@ requirements:
         - "Offline routing without token/environment/SQLite, argument restrictions, output traces, provenance and exits"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, sample file generation, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_outbox_restore_preview_development_increment:
+      date: "2026-11-03"
+      status: "Source-only read-only restore preview using the original archive/query; R-005 remains incomplete. No build, typecheck, tests, CLI/Bridge runtime, database, schema, migration or release execution."
+      artifacts:
+        - "apps/context-bridge/src/outbox/restore-preview.ts"
+        - "apps/context-bridge/src/outbox/restore.ts"
+        - "apps/context-bridge/src/outbox/sqlite.ts"
+        - "apps/workctx-cli/src/outbox-restore.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/outbox-restore-preview-runtime.md"
+      behavior: "Shares complete original archive validation, exact historical receipt replay, globally occupied restore IDs, paused generation/empty project/original ID and key conflicts, and immutable v1 normalization with the actual restore. One read snapshot returns would-restore with original/planned status counts, held records and cleared leases, or already-restored with the verified original receipt and no new plan. No writes, receipt candidates, ID reservation, schema creation or automatic sends. Bridge result is bounded to 128 KiB with a fixed 90-second preparation deadline. Errors retain original query, stage, selected event, historical receipt and rollback/close details. CLI requires explicit existing storage and verifies stable files/scope before readonly open. Actual restore repeats its checks under its existing write transaction."
+      evidence: []
+      pending_evidence:
+        - "Empty/nonempty targets, paused generation mismatch/races, globally occupied restore ID and original event/key conflicts"
+        - "Exact historical replay after current queue/control changes, different-query rejection and corrupted stored history"
+        - "All status mappings, raw original preservation, normalization/serialization bounds, empty archive and deadlines"
+        - "Main/embedded routing, strict options, stable files, read transaction failure/rollback, close failure and no writes"
+        - "Nonempty merge, sender coordination, batch activation and runtime evidence remain pending"
     sync_outbox_restore_history_development_increment:
       date: "2026-11-03"
       status: "Source-only history metadata browsing, verified receipt lookup by ID and original archive re-export; R-005 remains incomplete. No build, typecheck, tests, runtime, database, migration or release execution."

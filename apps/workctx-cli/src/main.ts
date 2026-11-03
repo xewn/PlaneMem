@@ -142,6 +142,7 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   outbox pause                   Pause new claims; JSON requires observed expected_generation and reason
   outbox resume                  Resume new claims with the observed generation and reason; does not flush
   outbox restore                 Restore --archive-file into an empty paused --outbox; requires original JSON query
+  outbox restore-preview         Preview the same archive/query against an existing --outbox without writing
   outbox restore-receipt         Read the saved local restore receipt using --outbox and original JSON query
   outbox restore-history         Browse restore metadata using explicit --outbox; optional limit/after_restore_id JSON
   outbox restore-get ID          Read the verified original restore receipt using explicit --outbox
@@ -420,6 +421,7 @@ export async function main(args: string[]): Promise<number> {
       'outbox pause',
       'outbox resume',
       'outbox restore',
+      'outbox restore-preview',
       'outbox restore-receipt',
       'outbox restore-history',
       'outbox restore-get',
