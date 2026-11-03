@@ -95,6 +95,8 @@ const help = `Proposal submission queue (Node.js 24)
   proposal-worker queue-backup-compare --queue EXISTING.sqlite --binding binding.json --file BACKUP.json
   proposal-worker queue-backup-restore --file BACKUP.json --binding binding.json --output NEW_QUEUE.sqlite --preview
   proposal-worker queue-backup-restore --file BACKUP.json --binding binding.json --output NEW_QUEUE.sqlite --confirm-sha256 BACKUP_SHA256
+  proposal-worker queue-backup-merge --queue EXISTING.sqlite --binding binding.json --file BACKUP.json --preview
+  proposal-worker queue-backup-merge --queue EXISTING.sqlite --binding binding.json --file BACKUP.json --confirm-sha256 PLAN_SHA256
   proposal-worker retry   --queue queue.sqlite --binding binding.json --id JOB_ID
   proposal-worker receipt --queue EXISTING.sqlite --binding binding.json --id JOB_ID [--timeout-ms 30000] [--output NEW_RECEIPT.json]
   proposal-worker reconcile --queue EXISTING.sqlite --binding binding.json --id JOB_ID [--timeout-ms 30000] [--output NEW_RECEIPT.json]
@@ -108,6 +110,7 @@ queue-backup saves a complete known-v1 logical snapshot after read-only queue cl
 queue-backup-recover saves a retained complete snapshot to a new file; --preview only inspects input and destination. Neither mode opens or restores a queue.
 queue-backup-compare compares a complete backup with a read-only existing queue snapshot, then closes before reporting metadata differences. It never restores or sends; exit 0 also permits differences.
 queue-backup-restore creates a new queue after digest confirmation. Every non-submitted task becomes blocked/uncertain; old leases are cleared only in the new copy. Preview creates nothing. Keep the original backup.
+queue-backup-merge previews the complete existing target read-only. Confirm its plan digest to atomically add only missing rows; conflicts or any target change reject the merge. Existing tasks are never updated.
 generate calls the configured model once using PROPOSAL_GENERATION_API_KEY; it saves a new draft, without opening a queue.
 generate-prepared uses the same single call and saves the complete record; it does not refresh sources.
 inspect-generation verifies record consistency offline; enqueue-generated requires the original destination binding.
@@ -180,6 +183,7 @@ export async function main(args: string[]): Promise<number> {
       'queue-backup-recover': ['file', 'output', 'preview'],
       'queue-backup-compare': ['file'],
       'queue-backup-restore': ['file', 'binding', 'output', 'preview', 'confirm-sha256'],
+      'queue-backup-merge': ['file', 'preview', 'confirm-sha256'],
       retry: ['id'],
       receipt: ['id', 'timeout-ms', 'output'],
       reconcile: ['id', 'timeout-ms', 'output'],
@@ -232,6 +236,72 @@ export async function main(args: string[]): Promise<number> {
     if (command === 'inspect-queue-backup') {
       const backup = await readProposalQueueBackup(required('file'));
       process.stdout.write(JSON.stringify(proposalQueueBackupSummary(backup), null, 2) + '\n');
+      return 0;
+    }
+    if (command === 'queue-backup-merge') {
+      const path = required('queue');
+      const preview = values.preview === true;
+      const confirmation = values['confirm-sha256'];
+      if (
+        (preview && confirmation !== undefined) ||
+        (!preview && (typeof confirmation !== 'string' || !/^[a-f0-9]{64}$/.test(confirmation)))
+      )
+        throw new ContractError(
+          'PROPOSAL_QUEUE_MERGE_CONFIRMATION_REQUIRED',
+          'Preview or confirm the complete merge plan SHA-256',
+        );
+      const backup = await readProposalQueueBackup(required('file'));
+      const binding = normalizeQueueBinding(
+        (await readJson(required('binding'), 16_384)) as ProposalQueueBinding,
+      );
+      if (!isDeepStrictEqual(binding, backup.binding))
+        throw new ContractError(
+          'PROPOSAL_QUEUE_BINDING_MISMATCH',
+          'Keep the original backup binding when merging',
+        );
+      queue = new SqliteProposalQueue(path, binding, { readonly: preview, existing: true });
+      const connection = queue;
+      let result: Record<string, unknown> | undefined;
+      let failure: unknown;
+      let failed = false;
+      try {
+        result = preview
+          ? { ...connection.previewBackupMerge(backup), state: 'preview', mutation: 'none' }
+          : connection.mergeBackup(backup, confirmation!);
+      } catch (error) {
+        failed = true;
+        failure = error;
+      }
+      queue = undefined;
+      let closed = true;
+      try {
+        connection.close();
+      } catch {
+        closed = false;
+      }
+      if (failed || !closed) {
+        process.stderr.write(
+          JSON.stringify(
+            {
+              code: !closed
+                ? 'PROPOSAL_QUEUE_MERGE_CLOSE_FAILED'
+                : failure instanceof ContractError
+                  ? failure.envelope.code
+                  : 'PROPOSAL_QUEUE_MERGE_FAILED',
+              mutation: result?.mutation ?? 'none',
+              ...(failure instanceof ContractError
+                ? { ...failure.envelope.details, operation_error_code: failure.envelope.code }
+                : {}),
+              ...(result ? { result } : {}),
+              close_state: closed ? 'closed' : 'not-confirmed',
+            },
+            null,
+            2,
+          ) + '\n',
+        );
+        return 1;
+      }
+      process.stdout.write(JSON.stringify({ ...result, close_state: 'closed' }, null, 2) + '\n');
       return 0;
     }
     if (command === 'queue-backup-restore') {

@@ -12,6 +12,7 @@ import {
 } from './proposal-queue-backup.js';
 import { compareProposalQueueBackups } from './proposal-queue-backup-comparison.js';
 import { prepareGenerationOutput } from './generation-output.js';
+import { restoredProposalQueueJob } from './proposal-queue-restore-state.js';
 import {
   PROPOSAL_QUEUE_CORE_SCHEMA,
   PROPOSAL_QUEUE_GENERATION_SCHEMA,
@@ -35,18 +36,7 @@ function prepare(value: unknown, input: ProposalQueueBinding) {
       'PROPOSAL_QUEUE_BINDING_MISMATCH',
       'Keep the original backup gateway, project and identity when restoring',
     );
-  const jobs = backup.jobs.map((row) =>
-    row.status === 'submitted'
-      ? row
-      : {
-          ...row,
-          status: 'blocked' as const,
-          uncertain: 1 as const,
-          error_code: 'PROPOSAL_QUEUE_RESTORED_UNKNOWN',
-          lease_token: null,
-          lease_until_ms: null,
-        },
-  );
+  const jobs = backup.jobs.map(restoredProposalQueueJob);
   const { sha256: _sourceDigest, ...original } = backup;
   // This synthetic snapshot validates the planned content; its capture time is not a new observation.
   const body = { ...original, jobs };

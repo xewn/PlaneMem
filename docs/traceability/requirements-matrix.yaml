@@ -3452,6 +3452,27 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_queue_merge_development_increment:
+      date: "2026-11-04"
+      status: "Source-only atomic missing-row merge into an existing queue with complete preview confirmation; R-009 remains incomplete."
+      artifacts:
+        - "workers/intelligence/src/proposal-queue-merge.ts"
+        - "workers/intelligence/src/proposal-queue-restore-state.ts"
+        - "workers/intelligence/src/proposal-queue-restore.ts"
+        - "workers/intelligence/src/proposal-queue-backup.ts"
+        - "workers/intelligence/src/submission.ts"
+        - "workers/intelligence/src/main.ts"
+        - "workers/intelligence/src/index.ts"
+        - "docs/design/01-contracts/proposal-queue-backup-runtime.md"
+      behavior: "queue-backup-merge previews a complete existing queue natively read-only. Its plan digest binds the original backup, every target logical field excluding snapshot capture time, expected merged contents and fixed restore policy. BEGIN IMMEDIATE re-reads/replans and checks confirmation before any writes. Existing jobs must exactly equal original or quarantined restored rows; key ownership or association content/time conflicts reject the entire merge. Only absent rows and a needed optional v1 table are inserted. New unconfirmed jobs use shared quarantine; existing tasks/leases and target-only rows remain exact. Complete readback precedes commit. Failures retain plan, phase, rollback/mutation status; close failures preserve already committed results."
+      evidence: []
+      pending_evidence:
+        - "Full original/target binding and limits, stable content digest excluding only capture time, target-only change invalidation"
+        - "Original/restored row equivalence, crossed keys, all task/association fields, no partial merge on conflict or overflow"
+        - "Optional-table transaction creation, missing-only insertion, complete readback, commit/rollback unknown states and fresh preview after retry"
+        - "Native-readonly preview, writable existing-only mode, close-after-commit failure retention, no task update or remote action"
+      remaining_scope: "Conflict resolution, explicit uncertainty release, legacy sender coordination, automatic backup/retention, large-queue volumes, joint journal archival and runtime evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/SQL/database execution or release. Existing v1 schema reused; no migrations or dependency changes."
     proposal_queue_restore_development_increment:
       date: "2026-11-04"
       status: "Source-only complete backup restoration to a new queue with unconfirmed tasks quarantined; R-009 remains incomplete."
@@ -3471,7 +3492,7 @@ requirements:
         - "All source statuses, retained submitted receipts, no unconfirmed dispatch, explicit retry/reconcile behavior and generation records"
         - "Shared v1 DDL, full transaction import, write/read connection closure and complete readonly logical readback"
         - "File bounds, sync/digests, no-overwrite publication, failures at each phase, cleanup identity and Windows filesystem compatibility"
-      remaining_scope: "Merge/restore into an existing queue, explicit uncertainty release, legacy sender coordination, automatic backup/retention, large-queue volumes, joint journal archival and runtime evidence."
+      remaining_scope: "Conflict resolution, explicit uncertainty release, legacy sender coordination, automatic backup/retention, large-queue volumes, joint journal archival and runtime evidence."
       execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/SQL/database execution or release. Existing v1 schema reused; no migrations or dependency changes."
     proposal_queue_backup_comparison_development_increment:
       date: "2026-11-04"
@@ -3488,7 +3509,7 @@ requirements:
         - "Same-id/key conflicts, crossed key ownership, missing and target-only inventories, all 14 job fields"
         - "Association linkage, raw record/time differences, missing/empty optional tables and equal contents with different capture times"
         - "Metadata-only complete output, CLI option isolation, no mutation or remote access"
-      remaining_scope: "Merge/restore into an existing queue, uncertainty release, automatic backup/retention, large-queue volumes, joint journal archival and runtime evidence. Fresh-file restore is implemented by the separate source-only increment above."
+      remaining_scope: "Conflict resolution, uncertainty release, automatic backup/retention, large-queue volumes, joint journal archival and runtime evidence. Fresh-file restore is implemented by the separate source-only increment above."
       execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/SQL/database execution or release; no schema or dependency changes."
     proposal_queue_backup_recovery_development_increment:
       date: "2026-11-04"
@@ -3505,7 +3526,7 @@ requirements:
         - "Preserved capture time, raw payloads/receipts, original binding, hashes, leases, uncertainty and generation associations"
         - "Read-only preview, same-path/collision rejection, publication/readback failures and retained complete content"
         - "CLI option isolation, inert historical paths, no queue access or remote actions"
-      remaining_scope: "Merge/restore into an existing queue, uncertainty release, automatic backup/retention, large-queue volumes, joint journal archival and runtime evidence. Read-only comparison and fresh-file restore are implemented by separate source-only increments above."
+      remaining_scope: "Conflict resolution, uncertainty release, automatic backup/retention, large-queue volumes, joint journal archival and runtime evidence. Read-only comparison and fresh-file restore are implemented by separate source-only increments above."
       execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/SQL/database execution or release; no schema or dependency changes."
     proposal_queue_backup_development_increment:
       date: "2026-11-04"
@@ -3523,7 +3544,7 @@ requirements:
         - "Every job state, original raw payload/hash, lease/uncertainty preservation, generation linkage and corruption rejection"
         - "Strict offline shape/order/identity/inner-outer hashes, file bounds, output collision and failure retention"
         - "CLI option isolation, native readonly open/close and no generation, claim, retry, restore or send"
-      remaining_scope: "Merge/restore into an existing queue, uncertainty release, automatic backup/retention, large-queue volumes, joint journal archival and runtime evidence. Retained-error file recovery, read-only comparison and fresh-file restore are implemented by separate source-only increments above."
+      remaining_scope: "Conflict resolution, uncertainty release, automatic backup/retention, large-queue volumes, joint journal archival and runtime evidence. Retained-error file recovery, read-only comparison and fresh-file restore are implemented by separate source-only increments above."
       execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/SQL/database execution or release; no schema or dependency changes."
     proposal_review_history_selection_cleanup_development_increment:
       date: "2026-11-04"

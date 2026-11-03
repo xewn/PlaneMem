@@ -21,6 +21,7 @@ import { parseSubmissionReceipt } from './receipt.js';
 import { normalizeQueueBinding, type ProposalQueueBinding } from './queue-binding.js';
 import { captureProposalQueueBackup } from './proposal-queue-backup.js';
 import { PROPOSAL_QUEUE_CORE_SCHEMA } from './proposal-queue-schema.js';
+import { planProposalQueueMerge, mergeProposalQueueBackup } from './proposal-queue-merge.js';
 import {
   inspectProposalGenerationRecord,
   readGeneratedProposalDraft,
@@ -236,6 +237,22 @@ export class SqliteProposalQueue {
         'Open an existing queue read-only before exporting its snapshot',
       );
     return this.readTransaction(() => captureProposalQueueBackup(this.db, this.binding));
+  }
+
+  previewBackupMerge(value: unknown) {
+    if (!this.readOnly)
+      throw new ContractError(
+        'PROPOSAL_QUEUE_READ_ONLY_REQUIRED',
+        'Open an existing queue read-only for merge preview',
+      );
+    return this.readTransaction(() =>
+      planProposalQueueMerge(value, captureProposalQueueBackup(this.db, this.binding)),
+    );
+  }
+
+  mergeBackup(value: unknown, confirmation: string) {
+    this.requireWritable();
+    return mergeProposalQueueBackup(this.db, this.binding, value, confirmation);
   }
 
   private enqueuePayload(

@@ -308,7 +308,7 @@ function schema(db: DatabaseSync) {
   return names.includes('proposal_generation_records');
 }
 
-/** Caller owns a native-readonly transaction. Count and bound every value before materializing bodies. */
+/** Read-only helper; caller owns a stable transaction (native-readonly for export/preview). */
 export function captureProposalQueueBackup(
   db: DatabaseSync,
   input: ProposalQueueBinding,
