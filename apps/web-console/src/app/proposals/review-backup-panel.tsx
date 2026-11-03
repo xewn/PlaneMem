@@ -14,12 +14,14 @@ import {
 export function ReviewBackupPanel({
   binding,
   disabled,
+  storageEpoch,
   begin,
   end,
   onStorageChange,
 }: {
   binding: ProposalSubmissionBinding;
   disabled: boolean;
+  storageEpoch: number;
   begin: () => boolean;
   end: () => void;
   onStorageChange: () => void;
@@ -27,6 +29,7 @@ export function ReviewBackupPanel({
   const [reviewed, setReviewed] = useState<ReviewBackupCandidate>();
   const [comparison, setComparison] = useState<{
     digest: string;
+    epoch: number;
     value: ReviewBackupComparison;
   }>();
   const [confirmed, setConfirmed] = useState<string | null>(null);
@@ -45,6 +48,10 @@ export function ReviewBackupPanel({
       }
     };
   }, [end]);
+  useEffect(() => {
+    setComparison(undefined);
+    setConfirmed(null);
+  }, [storageEpoch]);
 
   async function run(
     action: 'prepare' | 'load' | 'compare' | 'restore' | 'download',
@@ -56,6 +63,7 @@ export function ReviewBackupPanel({
     if (
       action === 'restore' &&
       (!comparison?.value.can_restore ||
+        comparison.epoch !== storageEpoch ||
         !comparison.value.entries.length ||
         comparison.digest !== reviewed?.file.document_sha256 ||
         confirmed !== comparison.digest)
@@ -97,7 +105,11 @@ export function ReviewBackupPanel({
         );
         if (!isCurrent()) return;
         setReviewed({ file: result.file, raw: result.raw });
-        setComparison({ digest: result.file.document_sha256, value: result.comparison });
+        setComparison({
+          digest: result.file.document_sha256,
+          epoch: storageEpoch,
+          value: result.comparison,
+        });
         setMessage(
           'Comparison completed without saving. Restore checks every copy again; any changed or damaged copy blocks the whole import.',
         );
@@ -149,7 +161,10 @@ export function ReviewBackupPanel({
   }
   const locked = disabled || busy;
   const matching =
-    reviewed && comparison && comparison.digest === reviewed.file.document_sha256
+    reviewed &&
+    comparison &&
+    comparison.epoch === storageEpoch &&
+    comparison.digest === reviewed.file.document_sha256
       ? comparison.value
       : undefined;
   return (
@@ -160,6 +175,10 @@ export function ReviewBackupPanel({
           Back up all saved original reviews for this gateway, project, account and client. Save
           your original review first if you want it included. Up to 100 requests and a 4 MiB
           document are supported; larger collections are rejected as a whole.
+        </p>
+        <p>
+          Files exported from a selected group contain only that subset. Comparison and restoration
+          cover only the original reviews listed in the file.
         </p>
         <button
           type="button"

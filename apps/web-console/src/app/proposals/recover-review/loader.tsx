@@ -11,12 +11,14 @@ import {
 import {
   listReviewOriginals,
   loadReviewOriginal,
+  reviewOriginalCleanup,
   type SavedReview,
   type SavedReviewPage,
 } from '../review-store';
 import { OriginalProposalReview } from '../review-submission';
 import { ReviewBackupPanel } from '../review-backup-panel';
 import { ReviewRemovalPanel } from '../review-removal-panel';
+import { SavedCopyCleanupPanel } from '../saved-copy-cleanup-panel';
 
 export function ProposalReviewRecovery({ binding }: { binding: ProposalSubmissionBinding }) {
   const [requestKey, setRequestKey] = useState('');
@@ -26,6 +28,7 @@ export function ProposalReviewRecovery({ binding }: { binding: ProposalSubmissio
   const [removal, setRemoval] = useState<{ original: ProposalReviewOriginal; sequence: number }>();
   const [removalFresh, setRemovalFresh] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [storageEpoch, setStorageEpoch] = useState(0);
   const [message, setMessage] = useState(
     'Find a saved original review, enter its request key or load its complete file. Loading does not save or send a decision.',
   );
@@ -48,6 +51,7 @@ export function ProposalReviewRecovery({ binding }: { binding: ProposalSubmissio
     if (!mounted.current) return;
     setPage(undefined);
     setRemovalFresh(false);
+    setStorageEpoch((value) => value + 1);
     setMessage(
       'Saved review storage may have changed. Find saved original reviews again to refresh the directory. Keep any retained copy or backup if the outcome is unknown.',
     );
@@ -101,7 +105,10 @@ export function ProposalReviewRecovery({ binding }: { binding: ProposalSubmissio
   }
   function browse(after: string | null) {
     void run(
-      (signal) => listReviewOriginals(binding, after, signal),
+      (signal) => {
+        storageChanged();
+        return listReviewOriginals(binding, after, signal);
+      },
       (result) => {
         setPage(result);
         setMessage(
@@ -153,6 +160,7 @@ export function ProposalReviewRecovery({ binding }: { binding: ProposalSubmissio
       <ReviewBackupPanel
         binding={binding}
         disabled={busy}
+        storageEpoch={storageEpoch}
         begin={beginStorage}
         end={endStorage}
         onStorageChange={storageChanged}
@@ -205,6 +213,25 @@ export function ProposalReviewRecovery({ binding }: { binding: ProposalSubmissio
           ))}
         </ul>
       )}
+      <SavedCopyCleanupPanel<ProposalReviewOriginal, SavedReview>
+        binding={binding}
+        cleanup={reviewOriginalCleanup}
+        entries={page?.entries}
+        summaryLabel={(entry) =>
+          `${entry.proposal_id} · ${entry.decision} · reviewed revision ${entry.expected_revision}`
+        }
+        copyLabel={(entry) =>
+          `${entry.proposal_id} · ${entry.decision} · reviewed revision ${entry.expected_revision}`
+        }
+        heading="Select and remove original review copies from this page"
+        findLabel="Find saved original reviews"
+        scopeNote="Removal affects only these browser copies. It does not send, withdraw or cancel reviews, check their results, or change editing drafts and historical receipts. Other pages and exported files keep their copies. Keep a recovery file for unknown outcomes; explicit saving or restoration can recreate removed copies."
+        disabled={busy}
+        storageEpoch={storageEpoch}
+        begin={beginStorage}
+        end={endStorage}
+        onStorageChange={storageChanged}
+      />
       <label>
         Original review request key
         <input

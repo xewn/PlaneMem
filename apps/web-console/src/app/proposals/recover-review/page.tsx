@@ -30,7 +30,8 @@ export default async function ProposalReviewRecoveryPage() {
           <p>
             Find an original decision, back up saved reviews or restore missing copies. Loading and
             restoring do not send a review; query its receipt or explicitly send only after
-            inspecting the original.
+            inspecting the original. You can also inspect, export and remove selected browser copies
+            together; removal does not withdraw or cancel a review.
           </p>
         </div>
       </div>

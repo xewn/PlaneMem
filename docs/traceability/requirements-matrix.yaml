@@ -3452,6 +3452,28 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_review_original_selection_cleanup_development_increment:
+      date: "2026-11-04"
+      status: "Source-only selected original-review inspection, recoverable subset export and atomic confirmed removal; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/saved-copy-cleanup.ts"
+        - "apps/web-console/src/app/proposals/saved-copy-cleanup-panel.tsx"
+        - "apps/web-console/src/app/proposals/manual-draft-cleanup.ts"
+        - "apps/web-console/src/app/proposals/manual-draft-cleanup-panel.tsx"
+        - "apps/web-console/src/app/proposals/review-store.ts"
+        - "apps/web-console/src/app/proposals/review-backup-panel.tsx"
+        - "apps/web-console/src/app/proposals/recover-review/loader.tsx"
+        - "apps/web-console/src/app/proposals/recover-review/page.tsx"
+        - "docs/design/01-contracts/proposal-review-recovery-runtime.md"
+      behavior: "One read transaction validates 1-20 selected original-review pairs and exact selected directory summaries. Preserve all original identity/key/decision/reason/revision fields in an existing-format checksummed subset; no invented save time. Removal revalidates file/binding/digest, preflights every target in one write transaction, rejects any difference/damage, deletes exact pairs and reads every selected key back absent before commit; missing pairs are counted separately without initializing a missing database. Page/selection/epoch changes revoke eligibility; single/batch removal, restoration and directory refresh invalidate old backup confirmations. Unknown outcomes retain exportable contents and require fresh inspection. Shared service/panel extraction retains manual-draft adapters and formats. No sending, receipt query, withdrawal or cancellation."
+      evidence: []
+      pending_evidence:
+        - "Exact original-review fields, duplicate/oversized selection rejection, 32 KiB/4 MiB budgets, missing/changed/partial pairs and collections above 100"
+        - "Subset checksum/export/existing restoration, stale confirmation invalidation and no imported-file deletion shortcut"
+        - "Atomic all-target preflight and absence readback, already-absent accounting, missing database, unknown outcomes and shared lock release"
+        - "Manual-draft adapter compatibility, save-time retention, creation/review format separation and preserved editor/prepared-request/history state"
+      remaining_scope: "Automatic/capacity cleanup, retention, cross-scope management, damaged-slot recovery and runtime/compatibility evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, product/browser/database execution or release. Existing v1 stores and backup formats reused; no schema or dependency changes."
     proposal_manual_draft_selection_cleanup_development_increment:
       date: "2026-11-04"
       status: "Source-only selected manual-draft inspection, recoverable subset export and atomic confirmed batch removal; R-009 remains incomplete."

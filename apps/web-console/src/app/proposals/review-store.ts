@@ -21,10 +21,15 @@ import {
 } from './review-model';
 import {
   REVIEW_BACKUP_DOCUMENT_BYTES,
+  REVIEW_BACKUP_FILE_BYTES,
   REVIEW_BACKUP_MAX_ENTRIES,
+  reviewBackupDocumentJson,
+  reviewBackupFileJson,
+  parseReviewBackupFile,
   parseReviewBackupDocument,
   type ReviewBackupDocument,
 } from './review-backup-model';
+import { createSavedCopyCleanup } from './saved-copy-cleanup';
 
 const layout = { databaseName: 'planemem-proposal-review-originals', contentStore: 'originals' };
 export interface SavedReview {
@@ -281,6 +286,25 @@ function backupReadBudget() {
     if (bytes > REVIEW_BACKUP_DOCUMENT_BYTES) throw new TypeError();
   };
 }
+export const reviewOriginalCleanup = createSavedCopyCleanup<
+  ProposalReviewOriginal,
+  SavedReview,
+  ReviewBackupDocument
+>({
+  layout,
+  kind: 'proposal-review-originals-backup',
+  documentBytes: REVIEW_BACKUP_DOCUMENT_BYTES,
+  fileBytes: REVIEW_BACKUP_FILE_BYTES,
+  key,
+  pair,
+  encode: encodeReviewOriginal,
+  summary,
+  readBudget: backupReadBudget,
+  parseDocument: parseReviewBackupDocument,
+  documentJson: reviewBackupDocumentJson,
+  parseFile: parseReviewBackupFile,
+  fileJson: reviewBackupFileJson,
+});
 type ReviewBackupState = 'missing' | 'same' | 'different';
 export interface ReviewBackupComparison {
   entries: Array<{
