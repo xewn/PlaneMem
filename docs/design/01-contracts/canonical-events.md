@@ -60,3 +60,5 @@ Hook observation 先由 ai-memory sanitizer 处理，再映射为 WorkMesh 的 `
 2026-11-03 同步上下文消费增补：共享 `parseContextItemSyncChange` 按 Gateway 现有五类 ContextItemCreated/Updated/Confirmed/Archived/Restored 的 v1 同步封套，验证 item_id/version/status/archived、完整范围与唯一来源引用。它供本地生命周期元数据适配器使用，不替换全局 validateEvent 或扩大 Webhook 事件入口。CLI 显式应用固定原页，缺创建基线/版本缺口整页拒绝；完整正文不在同步 payload，详见 [上下文生命周期投影](sync-context-item-application-runtime.md)。仅源码文档，未运行或测试。
 
 2026-11-03 建议同步消费增补：共享 parseProposalSyncChange 对 Gateway 既有 Proposal ApprovalRequested/Completed 的规范同步封套和 proposal_id/status/revision/kind 四字段 payload 进行完整范围/来源/版本绑定校验。固定 proposal-lifecycle/1 本地适配器保存原请求/最终决定元数据，显式原页应用和只读全历史重放共用选择器；不扩大全局 validateEvent 或 Webhook 入口，不包含正文或当前审阅权限。见[建议生命周期投影](sync-proposal-application-runtime.md)。仅源码文档，未运行或测试。
+
+2026-11-03 冲突同步消费增补：共享 parseConflictSyncChange 按当前 Gateway ConflictDetected/Resolved 的完整封套、原主体/字段版本及来源绑定校验。独立 conflict-lifecycle/1 本地适配器保留检测/决策与 resolved_value，允许分类上调但不下调；逐页 apply 与 readonly replay 共用固定选择器。旧外部 ID 的决策可按既有回退规则解析，但不补造检测基线。不替换全局 validateEvent、修改源字段或推断原请求回执。见[冲突生命周期投影](sync-conflict-application-runtime.md)。仅源码文档，未执行。

@@ -62,6 +62,7 @@ export {
   type ContextItemLifecycleProjection,
 } from './context-item-application.js';
 export { PROPOSAL_APPLICATION, type ProposalLifecycleProjection } from './proposal-application.js';
+export { CONFLICT_APPLICATION, type ConflictLifecycleProjection } from './conflict-application.js';
 import type { SyncInboxApplicationHandlers } from './application-model.js';
 export {
   parseInboxApplicationQuery,

@@ -34,6 +34,7 @@
 - [应用恢复回执完整范围审计](sync-application-restore-receipt-audit-runtime.md)
 - [上下文条目生命周期同步投影](sync-context-item-application-runtime.md)
 - [建议生命周期同步投影](sync-proposal-application-runtime.md)
+- [冲突生命周期同步投影](sync-conflict-application-runtime.md)
 - [收件箱原确认日志、显式观察与重试](sync-inbox-ack-runtime.md)
 - [本地确认凭据文件与页面恢复](sync-ack-evidence-runtime.md)
 - [确认调用结果文件与离线查看](sync-ack-result-runtime.md)

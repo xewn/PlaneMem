@@ -54,3 +54,5 @@ workctx inbox application-replay --inbox local-inbox.sqlite --json-file proposal
 建议规则只暴露固定 INBOX_PROPOSAL_EVENT_INVALID、PROJECTION_INVALID、BASELINE_REQUIRED、VERSION_GAP、TRANSITION_INVALID、LIMIT_REACHED（后五项同前缀）。普通自定义 handler 异常仍用原 reducer 失败码，未知事件仍用 INBOX_APPLICATION_EVENT_UNSUPPORTED。提交或回滚不明确时，既有 COMMIT_UNKNOWN/ROLLBACK_UNKNOWN 优先保留 unknown，并保存安全 cause_code；不能用业务错误把未知写入改为未提交。CLI 保留原身份/应用/页/前驱及关闭状态，重放失败保留页/事件位置和进度。
 
 本次未执行任何 reducer 或数据库路径。建议正文、历史缺口引导、权限变化重建、其他业务适配器、跨设备恢复及并发/崩溃/兼容运行证据仍待补。R-005 保持未完成。
+
+2026-11-03 后续冲突增补：共同选择器另支持 conflict-lifecycle/1，见[冲突生命周期](sync-conflict-application-runtime.md)。本文建议 v1 的状态、忽略集合和原投影不变；三种内置应用各自维护原消费者下的独立进度。仅源码文档，未运行。

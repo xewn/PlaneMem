@@ -67,3 +67,4 @@ export * from './sync-application-archive.js';
 export * from './sync-event-receipt-file.js';
 export * from './sync-application-restore-receipt.js';
 export * from './proposal-sync.js';
+export * from './conflict-sync.js';

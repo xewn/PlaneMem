@@ -978,6 +978,29 @@ requirements:
         - "CLI primary/embedded local routing, old output migration, read/rollback/close failures and complete result retention"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_conflict_lifecycle_application_development_increment:
+      date: "2026-11-03"
+      status: "Source-only original conflict detection/decision history projection and full saved-history replay; R-005 remains incomplete."
+      artifacts:
+        - "packages/contracts/src/conflict-sync.ts"
+        - "packages/contracts/src/index.ts"
+        - "apps/context-bridge/src/inbox/conflict-application.ts"
+        - "apps/context-bridge/src/inbox/built-in-applications.ts"
+        - "apps/context-bridge/src/inbox/application-rejection.ts"
+        - "apps/context-bridge/src/inbox/sqlite.ts"
+        - "apps/workctx-cli/src/inbox.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "docs/design/01-contracts/sync-conflict-application-runtime.md"
+      behavior: "Strict existing Gateway ConflictDetected/Resolved envelope/payload parsing with original scope, actor, source bindings and version arithmetic. Conflict-lifecycle/1 preserves open/resolved status and complete detection/latest events including recorded resolved value; only detection version 1 to matching decision version 2, unchanged subject/field versions and original sources, increasing cursor and nondecreasing classification. Missing baseline, repeated terminal decisions, unknown event types and 512-conflict/existing byte limits reject the page. Fixed selector serves apply and readonly full-history replay; prior adapters remain unchanged."
+      remaining_scope: "No source-entity mutation, proof of selected value against missing original local/server values, original request-key receipt binding, current decision authority, source authentication, old conflict baseline recovery, permission rebuild or actual concurrent/crash/cross-device evidence. Legacy resolved envelopes can parse without constituting an application baseline."
+      pending_evidence:
+        - "Current producer detection/decision envelopes; safe versions, fixed field policy, source suffix/prefix and actor/legacy aggregate-ID bindings"
+        - "Null/mixed/empty pages, open/resolved projections, missing detection, duplicate decisions, changed subject or sources and classification escalation/downgrade"
+        - "Explicit JSON null versus missing resolved value, oversized values/source arrays, projection sort/ID/cursor/snapshot-boundary integrity"
+        - "Shared apply/replay selection, independent application keys, existing adapter snapshot/diagnostic compatibility and every-page replay comparison"
+        - "Budgets, predecessor and duplicate-page behavior, commit/rollback/close failures and preserved unknown outcomes"
+      evidence: []
+      execution: "Source and documentation only; no builds, typechecks, tests, reducer/CLI/Bridge/API/service runs, sample artifacts, database opens, schema initialization, migrations or release. No new schema/dependencies or Gateway wire changes; existing SQLite extensions and PostgreSQL 016-049 remain unexecuted. Task commit/push targets main with skip-ci."
     sync_proposal_lifecycle_application_development_increment:
       date: "2026-11-03"
       status: "Source-only Proposal lifecycle metadata consumption and full saved-history replay through the second fixed built-in adapter; R-005 remains incomplete."

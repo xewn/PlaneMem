@@ -1,5 +1,7 @@
 # Context Bridge 本地同步存储
 
+新增 `CONFLICT_APPLICATION={name:'conflict-lifecycle',version:'1'}`，将现有冲突检测/决策事件投影为 open/resolved 历史，保留完整原事件与决策值，核对原字段/版本/来源及分类不下调。内置 apply/replay 使用同一选择器，最多 512 冲突并沿用原字节预算；不更新工作项等源字段。见 [冲突生命周期](../../docs/design/01-contracts/sync-conflict-application-runtime.md)。仅源码文档，未运行、编译或测试。
+
 新增 `PROPOSAL_APPLICATION={name:'proposal-lifecycle',version:'1'}`。内置 apply/replay 按原 application 选择上下文或建议适配器；建议保留请求和完成事件，严格创建基线、版本、种类、分类与游标，只表达历史状态。共享解析器按现有 Gateway 事件核验，不含正文或实时审阅权限。见 [建议生命周期](../../docs/design/01-contracts/sync-proposal-application-runtime.md)。无 schema/依赖变化，仅源码文档，未运行、编译或测试。
 
 新增 `auditApplicationRestoreReceipts`，在一次只读事务内核对所选原身份/应用的全部恢复回执，默认最多 1000 份/64 MiB，逐条完整校验并核对实际行数。失败保留原查询、阶段和已核验数量；不读当前应用头。见 [回执完整范围审计](../../docs/design/01-contracts/sync-application-restore-receipt-audit-runtime.md)。仅源码，未运行或测试。

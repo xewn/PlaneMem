@@ -4,6 +4,8 @@
 
 > 当前实现缺口与待办项见：[TODO.md](TODO.md)。该清单按 P0–P8 对照本文件、运行时代码和验证证据整理。
 
+新增 [冲突生命周期同步投影](docs/design/01-contracts/sync-conflict-application-runtime.md)，保存冲突发现与决策历史、决策值，并接入原页应用和只读重放；不改写源实体。仅源码文档，未编译、测试、运行或发布。
+
 新增 [建议生命周期同步投影](docs/design/01-contracts/sync-proposal-application-runtime.md)，按现有建议创建/确认/拒绝事件保存本地历史状态，并接入显式原页应用和只读历史重放。仅源码文档，未编译、测试、运行或发布。
 
 新增 [应用恢复回执完整范围审计](docs/design/01-contracts/sync-application-restore-receipt-audit-runtime.md)，支持在一次只读事务中核验原消费者/应用的全部回执；数量、字节或期限超限明确未完成，目录提供对应查询参数。仅源码文档，未编译、测试、运行或发布。
