@@ -12,6 +12,7 @@ import {
   createWorkbenchProposal,
   getWorkbenchProposalSubmissionBinding,
   submitWorkbenchProposalOriginal,
+  readWorkbenchProposalCreateReceipt,
 } from '../../lib/server-api';
 import {
   decodeProposalOriginal,
@@ -65,6 +66,21 @@ export async function submitSavedProposal(data: FormData) {
       original: raw,
       message:
         'The original submission is not confirmed. Keep this request unchanged. Restore the original gateway, account, client and project before retrying.',
+    };
+  }
+}
+export async function readSavedProposalReceipt(data: FormData) {
+  const original = decodeProposalOriginal(data.get('original'));
+  const raw = encodeProposalOriginal(original);
+  try {
+    const receipt = await readWorkbenchProposalCreateReceipt(original);
+    return { status: 'read' as const, original: raw, receipt };
+  } catch {
+    return {
+      status: 'unavailable' as const,
+      original: raw,
+      message:
+        'The original creation receipt could not be confirmed. Keep the original request and restore its gateway, account, client and project before another explicit query. No creation request was sent.',
     };
   }
 }

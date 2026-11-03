@@ -199,6 +199,11 @@ import type { ConflictRegistryQuery } from '@planemem/contracts';
 import type { ConflictReceiptQuery } from '@planemem/contracts';
 import { readConflictReceipt, type WcpConflictReceiptOptions } from './conflict-receipt.js';
 import {
+  readProposalCreateReceipt,
+  type WcpProposalCreateReceiptOptions,
+} from './proposal-create-receipt.js';
+import type { ProposalCreateReceiptQuery } from '@planemem/contracts';
+import {
   submitConflictDecision,
   type WcpConflictSubmissionOptions,
 } from './conflict-submission.js';
@@ -362,6 +367,12 @@ export class WcpClient {
       throw this.invalid(error instanceof Error ? error.message : 'Invalid proposal');
     }
     return this.command<ProposalMutationReceipt>('/v1/proposals', body, options);
+  }
+  getProposalCreateReceipt(
+    input: ProposalCreateReceiptQuery,
+    options: WcpProposalCreateReceiptOptions = {},
+  ) {
+    return readProposalCreateReceipt(this.transport, this.context, input, options);
   }
   listProposals(input: ProposalListQuery = {}) {
     let filters: ProposalListQuery;

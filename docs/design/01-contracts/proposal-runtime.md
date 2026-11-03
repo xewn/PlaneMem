@@ -1,12 +1,13 @@
 # Proposal 提交与人工审核开发说明
 
-更新：2026-11-01。本文记录新增代码；未执行编译、类型检查、测试、数据库迁移、部署或发布。
+更新：2026-11-04。本文记录新增代码；未执行编译、类型检查、测试、数据库迁移、部署或发布。
 
 ## 入口与身份
 
 | 方法 | 路径 | 能力 |
 | --- | --- | --- |
 | POST | `/v1/proposals` | `proposal.write` |
+| POST | `/v1/proposals/creation-receipt` | 未过期的已验证原客户端及 `proposal.write`（或 admin） |
 | GET | `/v1/proposals` | `context.read` |
 | GET | `/v1/proposals/submission-context` | 有效客户端身份；仅返回自身身份及范围 |
 | GET | `/v1/proposals/{proposal_id}` | `context.read` |
@@ -74,6 +75,20 @@ verified 表示该建议 revision 曾经过明确人工审核，不表示来源�
 
 创建追加 `ApprovalRequested`，审核追加 `ApprovalCompleted`，aggregate_type 为 Proposal。同步 payload 仅含 ID、kind、status、revision，不含正文或审核理由；通过详情权限读取具体内容。同步事件根据建议及其当前本地来源可见性过滤。
 
+## 原创建回执只读查询
+
+`POST /v1/proposals/creation-receipt` 使用保存的 `{identity, request_key, draft}`。identity 包含原 tenant/workspace/project/actor/client 五字段并与可信令牌一致；draft 必须是提交时完整规范草稿，包含分类、TTL 和适用的 derived_from，不补默认值或修改正文。请求最多 1 MiB，只接受 JSON UTF-8；不接受查询参数、外层幂等键、版本、缓存条件、Range 或 Content-Encoding。读取要求原已验证客户端、未过期令牌及 proposal.write 或 admin，并继续检查当前项目、建议、本地来源与派生链可见性。
+
+处理器在 repeatable-read/read-only 事务内按原 actor/client 派生键查现有命令回执，核对原创建指纹、创建者、时间/TTL、不可变正文/来源/生成信息和原 ApprovalRequested 事件；不获取写流锁，不创建建议或补存回执。正常审阅或过期不撤销原创建结果，来源失去当前可见性则不能确认。平台常规鉴权/审计仍适用，“只读”指业务查询不修改建议、命令或同步事件。
+
+响应为 `{schema_version:1, trace_id, source_refs, data}`，data 完整回显原 identity/request_key/draft 并携带 status。`not-observed` 没有 receipt 或来源，仅表示本次快照未观察到回执，不证明失败、不取消在途提交。`recorded` 携带 `receipt:{proposal_id,status:'proposed',revision:1,event_id,occurred_at,server_cursor,current_state:'not-checked'}` 和唯一 proposal/revision 1 来源；时间为规范 UTC，游标为正安全整数。它只确认历史创建，不表示当前状态或来源有效性；当前详情需另读。查询不返回外层 ETag/revision，不提供审核回执。
+
+不同原内容复用键返回 IDEMPOTENCY_KEY_REUSED；当前不可见返回 PROPOSAL_NOT_FOUND；记录、提案或对应事件损坏返回 PROPOSAL_INVALID；缺表/存储失败返回 PROPOSAL_STORAGE_UNAVAILABLE，均不能降级为 not-observed。共享解析器拒绝未知字段、回显不一致、错误 trace、来源和历史回执。
+
+SDK `getProposalCreateReceipt(original, {timeout_ms?,signal?})` 默认本地等待 30 秒，成功正文最多 2 MiB、错误最多 16 KiB，不继承上下文写条件、不自动重试。原范围和上下文已有 actor/client 约束必须匹配；预期身份头绑定原账号/客户端。Fetch 与方法预算取先到者，自定义 transport 必须支持 bounded-json/signal。调用方需事先保存完整原请求，不能用当前值重建未知原请求。
+
+Web 完整原提交组件增加 “Check original submission result”，先核对原网关和可信身份，再显式查询；无需先成功保存浏览器副本。服务器和浏览器都核验完整原请求对应关系，已确认后提供当前详情入口；未知/不可用时保留原键和正文。查询不自动保存回执、不提交或审核；离开页面忽略过期结果。CLI/MCP/Mock 专用入口、worker 对账和持久历史回执备份仍待开发。复用现有回执/事件表，无新迁移或依赖；仅源码文档，未运行验证。
+
 ## 列表和客户端
 
 GET 列表接受 status、kind、before、limit，以及可选的 derived_from（原建议 ULID 字符串）。默认 25 条，limit 为 1–100，按 proposal_id 倒序返回摘要；`data.next_before` 为下一页 before。继续分页时保留 status/kind/derived_from 等原筛选。分页是当前视图，不提供跨请求快照；审核导致状态变化后，应返回第一页刷新。详情返回 `data.proposal`、`sources_current` 和 `review_allowed`。review_allowed 仅表示基础身份/能力条件，最终决定仍经过策略。
@@ -84,7 +99,7 @@ GET 列表接受 status、kind、before、limit，以及可选的 derived_from�
 
 列表增加可选 `data.create_allowed` 和 `data.restricted_read`，供工作台显示提交入口与分类选项。create_allowed 要求经过认证的客户端及 proposal.write（或 admin），restricted_read 对应 data.restricted.read。旧响应缺少这些提示时，工作台默认不显示创建表单。它们不是授权凭据；提交仍经过网关鉴权、策略和来源检查。
 
-- SDK：createProposal/listProposals/getProposal/confirmProposal/rejectProposal。审核选项为 `{ expected_revision, idempotency_key }`，理由作为单独参数。
+- SDK：createProposal/getProposalCreateReceipt/listProposals/getProposal/confirmProposal/rejectProposal。审核选项为 `{ expected_revision, idempotency_key }`，理由作为单独参数。
 - CLI：proposals create/list/get/confirm/reject。审核 JSON 使用 proposal_id、expected_revision、reason 和稳定 `--key`。
 - MCP：create_proposal/list_proposals/get_proposal/confirm_proposal/reject_proposal。审核工具只向签名 human 身份且具备能力的客户端展示；调用同样强制校验。资源为 `work://project/{project_id}/proposal/{proposal_id}`。
 - 工作台 `/proposals`：授权用户可以提交建议，包含类型、正文、分类、有效期、模型/提示版本和 1–32 条来源；也提供状态/类型筛选、分页、正文、来源、警告、审核历史和确认/拒绝表单。未知审核结果保留并锁定原决定与理由；版本冲突提供显式重新加载。外部来源只显示安全 HTTP(S) 链接，不执行其中内容。
@@ -109,7 +124,7 @@ GET 列表接受 status、kind、before、limit，以及可选的 derived_from�
 
 每次明确发送，服务器先比较当前配置网关与原网关，再读取可信 submission-context 检查 identity_preconditions=1、完整身份、scope、trace 和空来源封套。实际 POST 继续携带原键、原草稿及 X-Expected-Actor-Id/Client-Id，服务器还比较当前项目范围；登录切换不会把原请求改绑到新账号。预检身份不授予 proposal.write、不证明来源仍有效；实际 Gateway 仍执行原权限/来源/幂等校验。上下文响应最多 16 KiB、提交回执最多 64 KiB，读取有本地期限且不重定向或自动重试。
 
-提交成功必须核对 trace、revision=1、ETag、正安全整数 server_cursor、单一 proposal 来源及对应 ID/revision，以及 proposed/revision 1 的完整命令回执；浏览器再次检查原请求对应关系和回执。只有这些检查完成才显示成功链接。历史幂等回执说明原创建已确认，不表示建议当前仍为 proposed，详情会重新读取。任何不确定结果、后续权限/来源错误及页面离开都不删除原请求或改变键；恢复后仅显式重试同一创建命令，不会自动确认/拒绝建议。当前没有只读创建回执查询，也不提供自动放弃、原请求正文修改或审核请求恢复。
+提交成功必须核对 trace、revision=1、ETag、正安全整数 server_cursor、单一 proposal 来源及对应 ID/revision，以及 proposed/revision 1 的完整命令回执；浏览器再次检查原请求对应关系和回执。只有这些检查完成才显示成功链接。历史幂等回执说明原创建已确认，不表示建议当前仍为 proposed，详情会重新读取。任何不确定结果、后续权限/来源错误及页面离开都不删除原请求或改变键；恢复后可先显式只读查询原创建回执，或明确重试同一创建命令，不会自动确认/拒绝建议。不提供自动放弃、原请求正文修改或审核请求恢复。
 
 本增量只覆盖新版创建表单准备出的完整原提交及同格式文件；旧页面里没有完整身份绑定的内存草稿不能冒充可恢复原请求。来源的当前真实性、内容签名和跨设备存储完整性不由本地 JSON 证明。未编译、类型检查、测试、运行浏览器/网关、执行数据库或发布。
 
@@ -125,7 +140,7 @@ GET 列表接受 status、kind、before、limit，以及可选的 derived_from�
 
 打开连接与事务各有10秒本地等待边界；组件离开时取消未完成存储操作，忽略过期异步结果，存储完成前离开不继续调用提交动作。已经调用的服务器动作仍可能完成，不能把离开页面当作取消提交。保存失败、容量不足、旧副本冲突或损坏均保留原键和正文，明确重试时继续比较原副本。
 
-同源同浏览器配置的副本可在关闭标签页后恢复，但浏览器清理、隐私模式、存储驱逐或更换设备都可能导致缺失，不保证长期保留。独立导出文件仍有必要；当前绑定范围的完整备份见下节，自动云备份、跨范围整库联合备份、清理/容量管理、未准备草稿持久化、审核请求恢复或只读创建回执接口仍缺。仅源码及文档与人工审阅，无编译、类型检查、测试或运行证据。
+同源同浏览器配置的副本可在关闭标签页后恢复，但浏览器清理、隐私模式、存储驱逐或更换设备都可能导致缺失，不保证长期保留。独立导出文件仍有必要；当前绑定范围的完整备份见下节，自动云备份、跨范围整库联合备份、清理/容量管理、未准备草稿持久化、审核请求恢复仍缺；原创建回执只读查询见上节。仅源码及文档与人工审阅，无编译、类型检查、测试或运行证据。
 
 ### 原请求范围备份与导入
 

@@ -69,5 +69,6 @@ export * from './sync-originals-backup.js';
 export * from './sync-receipts-backup.js';
 export * from './sync-application-restore-receipt.js';
 export * from './proposal-sync.js';
+export * from './proposal-create-receipt.js';
 export * from './conflict-sync.js';
 export * from './client-event-sync.js';

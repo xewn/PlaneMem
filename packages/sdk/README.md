@@ -271,6 +271,8 @@ SDK 上传错误保留固定代码/文案及本次 dispatch_state，原始错误
 
 `confirmProposal(id, reason, { expected_revision, idempotency_key })` 和 rejectProposal 要求签名 human 身份与 proposal.review；创建使用 proposal.write。列表在 data.next_before 返回下一页游标，详情在 data.sources_current 标记本地来源链是否仍符合提交时的状态，含本地引用但缺少依赖摘要的旧建议返回 false。写回执只表示历史命令，不自动创建已确认上下文。见 [Proposal 运行时说明](../../docs/design/01-contracts/proposal-runtime.md)。
 
+`getProposalCreateReceipt({identity,request_key,draft}, {timeout_ms?,signal?})` 只读查询保存的原创建请求。identity 是原 tenant/workspace/project/actor/client；draft 必须包含所有规范字段及适用 derived_from。原范围和上下文已有 actor/client 必须匹配，Gateway 校验完整可信身份、未过期 writer/admin 和当前可见性。请求最多 1 MiB，默认本地 30 秒，成功正文 2 MiB、错误 16 KiB；不继承写条件、不重试。完整封套核验原请求回显、trace、来源及历史事件定位，recorded 的 current_state=not-checked，not-observed 不证明失败。调用方自行保留原请求；自定义 transport 须支持 bounded-json/signal。CLI/MCP/Mock 专用适配、worker 对账及回执持久历史仍缺，仅源码，未运行验证。见 [原创建回执查询](../../docs/design/01-contracts/proposal-runtime.md#原创建回执只读查询)。
+
 来源条目新建至少提供 title/content/source_refs，默认 proposed；编辑和归档的选项要求 `expected_version` 和 `idempotency_key`。写入返回 `ContextItemMutationReceipt`，只确认历史命令，不包含当前正文。重试返回 `replayed=true`；后续编辑前用 `getContextItem(id)` 读取最新版本。列表筛选支持 query/layer/classification/status/item_type。范围、字段和 017 迁移依赖见 [ContextItem 开发说明](../../docs/design/01-contracts/context-item-runtime.md)。
 
 `listContextItems` 默认返回 25 条，支持 1–100 的 limit。将响应外层字符串 `next_cursor` 作为下一次请求的 cursor，并保留原筛选；没有 next_cursor 时结束。分页按优先级、更新时间倒序和 ID 升序继续，项目/权限/筛选变化后应移除 cursor。单次调用不再返回全量条目；分页是实时视图，并发编辑可能改变条目位置。共享输入类型和解析器为 `ContextItemListQuery`、`parseContextItemListQuery`（`@planemem/contracts`）。

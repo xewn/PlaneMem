@@ -6,6 +6,10 @@ import {
   parseCreateProposal,
   parseProposalOrigin,
   parseProposalListQuery,
+  parseProposalCreateReceiptQuery,
+  parseProposalCreateReceiptEnvelope,
+  assertProposalReceiptIdentity,
+  proposalReceiptJson,
   proposalText,
   proposalWarnings,
   validateIdempotencyKey,
@@ -70,6 +74,16 @@ type ReceiptRow = {
 };
 const classes: Classification[] = ['public', 'internal', 'confidential', 'restricted'];
 
+export function canReadProposalCreateReceipt(context: RequestContext): boolean {
+  const expires = Date.parse(context.token_expires_at ?? '');
+  return (
+    context.authenticated_client === true &&
+    Number.isFinite(expires) &&
+    expires > Date.now() &&
+    (context.capability.includes('proposal.write') || context.roles?.includes('admin') === true)
+  );
+}
+
 export function mayReviewProposal(context: RequestContext): boolean {
   return (
     context.actor_type === 'human' &&
@@ -129,6 +143,146 @@ function proposalLineage(alias: string): string {
 }
 
 export function registerProposals(router: CommandRouter, database: RuntimeSql | undefined) {
+  router.register('proposal.create.receipt', async (request) => {
+    const context = structuredClone(request.context);
+    if (!canReadProposalCreateReceipt(context))
+      throw fail(context, 'DENIED', 'A verified unexpired proposal writer is required');
+    let query;
+    try {
+      if (context.idempotency_key !== undefined || context.expected_version !== undefined)
+        throw new TypeError();
+      query = parseProposalCreateReceiptQuery(request.input);
+    } catch {
+      throw fail(
+        context,
+        'INVALID_INPUT',
+        'Supply original identity, key and complete normalized draft without write conditions',
+      );
+    }
+    try {
+      assertProposalReceiptIdentity(query.identity, context);
+    } catch {
+      throw fail(context, 'DENIED', 'Use the original proposal account, client and project');
+    }
+    const original = query;
+    const receiptKey = commandReceipt({ ...request, context }, original.request_key).key;
+    // Must stay identical to the original create-command fingerprint, including null array positions.
+    const requestHash = fingerprint(['create', undefined, undefined, undefined, original.draft]);
+    return storage(database, context, (db) =>
+      db.begin('isolation level repeatable read read only', async (tx) => {
+        const [project] = await tx<
+          { id: string }[]
+        >`SELECT id FROM wcp_projects WHERE tenant_id = ${context.tenant_id}
+        AND workspace_id = ${context.workspace_id} AND id = ${context.project_id} AND deleted_at IS NULL
+        AND (${context.capability.includes('data.restricted.read')} OR classification <> 'restricted')`;
+        if (!project)
+          throw fail(context, 'PROPOSAL_NOT_FOUND', 'Original proposal scope is unavailable');
+        const [saved] = await tx<
+          ReceiptRow[]
+        >`SELECT fingerprint, proposal_id, status, revision, event_id, server_cursor, occurred_at
+        FROM wcp_proposal_commands WHERE tenant_id = ${context.tenant_id} AND workspace_id = ${context.workspace_id}
+        AND project_id = ${context.project_id} AND request_key = ${receiptKey}`;
+        if (!saved) {
+          if (!canReadProposalCreateReceipt(context))
+            throw fail(context, 'DENIED', 'The verified session expired');
+          return parseProposalCreateReceiptEnvelope(
+            {
+              schema_version: 1,
+              trace_id: context.trace_id,
+              source_refs: [],
+              data: { ...original, status: 'not-observed' },
+            },
+            original,
+            context.trace_id,
+          );
+        }
+        if (saved.fingerprint !== requestHash)
+          throw fail(
+            context,
+            'IDEMPOTENCY_KEY_REUSED',
+            'This original key belongs to different parameters',
+          );
+        const row = await read(tx, context, saved.proposal_id);
+        try {
+          const recorded = result(saved, context, true);
+          if (
+            recorded.data.status !== 'proposed' ||
+            recorded.data.revision !== 1 ||
+            row.created_by !== original.identity.actor_id ||
+            row.created_by_client !== original.identity.client_id ||
+            iso(row.created_at) !== recorded.data.occurred_at ||
+            Date.parse(iso(row.expires_at)) - Date.parse(iso(row.created_at)) !==
+              original.draft.ttl_seconds * 1000 ||
+            classes.indexOf(row.classification) < classes.indexOf(original.draft.classification)
+          )
+            throw new TypeError();
+          const persisted = {
+            kind: row.kind,
+            title: row.title,
+            content: row.content,
+            source_refs: row.source_refs,
+            model_version: row.provenance.model_version,
+            prompt_version: row.provenance.prompt_version,
+            classification: original.draft.classification,
+            ttl_seconds: original.draft.ttl_seconds,
+            ...(row.provenance.derived_from === undefined
+              ? {}
+              : { derived_from: row.provenance.derived_from }),
+          };
+          if (proposalReceiptJson(persisted) !== proposalReceiptJson(original.draft))
+            throw new TypeError();
+          const sources = [{ type: 'proposal', id: saved.proposal_id, revision: 1 }];
+          const [event] = await tx<{ valid: boolean }[]>`SELECT (
+          e.event_type = 'ApprovalRequested' AND e.trace_id <> '' AND e.payload->>'trace_id' = e.trace_id
+          AND e.payload->'schema_version' = '1'::jsonb AND e.payload->>'event_type' = 'ApprovalRequested'
+          AND e.payload->>'event_id' = e.event_id AND e.payload->>'tenant_id' = e.tenant_id
+          AND e.payload->>'workspace_id' = e.workspace_id AND e.payload->>'project_id' = e.project_id
+          AND e.payload->>'aggregate_type' = 'Proposal' AND e.payload->>'aggregate_id' = ${saved.proposal_id}
+          AND e.payload->'aggregate_version' = '1'::jsonb AND e.payload->>'client_id' = ${context.client_id}
+          AND (${isUlid(context.actor_id)} AND e.payload->>'actor_id' = ${context.actor_id}
+            OR NOT ${isUlid(context.actor_id)} AND NOT (e.payload ? 'actor_id'))
+          AND e.payload->>'occurred_at' = ${recorded.data.occurred_at} AND e.payload->>'sensitivity' = ${row.classification}
+          AND e.source_refs = ${JSON.stringify(sources)}::jsonb AND e.payload->'source_refs' = ${JSON.stringify(sources)}::jsonb
+          AND e.payload->'payload' = ${JSON.stringify({ proposal_id: saved.proposal_id, status: 'proposed', revision: 1, kind: original.draft.kind })}::jsonb
+        ) IS TRUE AS valid FROM wcp_sync_events e WHERE e.tenant_id = ${context.tenant_id} AND e.workspace_id = ${context.workspace_id}
+          AND e.project_id = ${context.project_id} AND e.event_id = ${saved.event_id} AND e.server_cursor = ${recorded.server_cursor}`;
+          if (event?.valid !== true) throw new TypeError();
+          const response = parseProposalCreateReceiptEnvelope(
+            {
+              schema_version: 1,
+              trace_id: context.trace_id,
+              source_refs: sources,
+              data: {
+                ...original,
+                status: 'recorded',
+                receipt: {
+                  proposal_id: recorded.data.proposal_id,
+                  status: 'proposed',
+                  revision: 1,
+                  event_id: recorded.data.event_id,
+                  occurred_at: recorded.data.occurred_at,
+                  server_cursor: recorded.server_cursor,
+                  current_state: 'not-checked',
+                },
+              },
+            },
+            original,
+            context.trace_id,
+          );
+          if (!canReadProposalCreateReceipt(context))
+            throw fail(context, 'DENIED', 'The verified session expired');
+          return response;
+        } catch (error) {
+          if (error instanceof ContractError) throw error;
+          throw fail(
+            context,
+            'PROPOSAL_INVALID',
+            'The historical creation receipt could not be verified',
+          );
+        }
+      }),
+    );
+  });
   router.register('proposal.list', (request) =>
     storage(database, request.context, async (db) => {
       const { input, context } = request;
@@ -639,7 +793,7 @@ function result(row: ReceiptRow, context: RequestContext, replayed: boolean) {
     server_cursor: cursor,
   };
 }
-function envelope(context: RequestContext, data: unknown, source_refs: SourceRef[]) {
+function envelope<T>(context: RequestContext, data: T, source_refs: SourceRef[]) {
   return { schema_version: 1 as const, data, trace_id: context.trace_id, source_refs };
 }
 function proposalId(value: unknown, context: RequestContext) {

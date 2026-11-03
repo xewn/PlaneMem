@@ -138,6 +138,32 @@ export class ApiGateway {
       context: request.context,
     };
     if (
+      route.operation === 'proposal.create.receipt' &&
+      Object.entries(request.headers).some(
+        ([name, value]) =>
+          value !== undefined &&
+          [
+            'idempotency-key',
+            'if-match',
+            'if-match-version',
+            'if-none-match',
+            'if-modified-since',
+            'if-unmodified-since',
+            'range',
+            'if-range',
+            'content-encoding',
+          ].includes(name.toLowerCase()),
+      )
+    )
+      return this.errorResponse(
+        new ContractError(
+          'INVALID_INPUT',
+          'Creation receipt queries do not accept write or cache conditions',
+          { trace_id },
+        ),
+        trace_id,
+      );
+    if (
       route.operation === 'conflict.read' &&
       request.body?.conflict_id !== undefined &&
       request.body.conflict_id !== route.parameters.conflict_id

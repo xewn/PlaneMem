@@ -1,7 +1,6 @@
 import {
-  isUlid,
   parseCreateProposal,
-  parseLegacyContextIdentity,
+  parseProposalCommandIdentity,
   syncJsonSnapshot,
   validateIdempotencyKey,
   type LegacyContextIdentity,
@@ -54,12 +53,7 @@ export function parseProposalSubmissionBinding(value: unknown): ProposalSubmissi
     url.hash
   )
     throw new TypeError('Use the original gateway origin');
-  const identity = parseLegacyContextIdentity(row.identity);
-  for (const field of ['tenant_id', 'workspace_id', 'project_id'] as const)
-    if (!isUlid(identity[field])) throw new TypeError('Invalid proposal project identity');
-  for (const field of ['actor_id', 'client_id'] as const)
-    if (!/^[\x21-\x7e]{1,255}$/.test(identity[field]))
-      throw new TypeError('Invalid proposal identity');
+  const identity = parseProposalCommandIdentity(row.identity);
   return { gateway_url: url.origin, identity };
 }
 export function assertProposalSubmissionBinding(actual: unknown, expected: unknown) {

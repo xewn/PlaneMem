@@ -10,6 +10,10 @@ import {
 } from '../app/proposals/original-model';
 import {
   buildEtag,
+  parseProposalCreateReceiptQuery,
+  parseProposalCreateReceiptEnvelope,
+  PROPOSAL_CREATE_RECEIPT_RESPONSE_BYTES,
+  type ProposalCreateReceiptEnvelope,
   ContractError,
   parseConflictReadQuery,
   parseConflictReadEnvelope,
@@ -1776,6 +1780,23 @@ export async function submitWorkbenchProposalOriginal(value: unknown) {
     },
   );
 }
+export async function readWorkbenchProposalCreateReceipt(value: unknown) {
+  const original = parseProposalOriginal(value);
+  await getWorkbenchProposalSubmissionBinding(original.binding);
+  const query = parseProposalCreateReceiptQuery({
+    identity: original.binding.identity,
+    request_key: original.request_key,
+    draft: original.draft,
+  });
+  return gatewayRequest<ProposalCreateReceiptEnvelope['data']>(
+    '/v1/proposals/creation-receipt',
+    { ...query },
+    undefined,
+    'POST',
+    original.binding.identity,
+    (response, _scope, trace) => parseProposalCreateReceiptEnvelope(response, query, trace),
+  );
+}
 export function reviewWorkbenchProposal(
   id: string,
   choice: 'confirm' | 'reject',
@@ -1858,7 +1879,9 @@ async function gatewayRequest<T>(
       '/v1/proposals/submission-context',
     ].includes(path) && method === 'GET';
   const proposalOriginalRequest =
-    method === 'POST' && path === '/v1/proposals' && expectedIdentity !== undefined;
+    method === 'POST' &&
+    ['/v1/proposals', '/v1/proposals/creation-receipt'].includes(path) &&
+    expectedIdentity !== undefined;
   const checkpointDetailRequest =
     method === 'GET' &&
     /^\/v1\/sessions\/[0-9A-HJKMNP-TV-Z]{26}\/checkpoints\/[0-9A-HJKMNP-TV-Z]{26}$/.test(path);
@@ -1997,7 +2020,9 @@ async function gatewayRequest<T>(
             response,
             requestSignal,
             proposalOriginalRequest
-              ? 65_536
+              ? path === '/v1/proposals/creation-receipt'
+                ? PROPOSAL_CREATE_RECEIPT_RESPONSE_BYTES
+                : 65_536
               : conflictOriginalRequest
                 ? CONFLICT_RECEIPT_RESPONSE_BYTES
                 : checkpointRequest
