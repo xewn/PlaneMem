@@ -28,8 +28,9 @@ export default async function ReviewDraftRecoveryPage() {
         <div>
           <h1>Recover unfinished proposal reviews</h1>
           <p>
-            Find or import an editing copy, inspect the complete reason and export it. Resume from
-            the same proposal revision in its review form after checking current sources.
+            Find an editing copy, back up saved drafts or restore missing copies. Inspect the
+            complete reason before resuming from the same proposal revision in its review form.
+            Backup restoration does not replace your current fields or send a review.
           </p>
         </div>
       </div>

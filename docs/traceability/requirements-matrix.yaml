@@ -3452,6 +3452,25 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_review_editing_backup_development_increment:
+      date: "2026-11-04"
+      status: "Source-only complete scoped review editing draft backup and atomic missing-only restoration; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/review-editing-backup-model.ts"
+        - "apps/web-console/src/app/proposals/review-editing-backup.ts"
+        - "apps/web-console/src/app/proposals/review-editing-backup-panel.tsx"
+        - "apps/web-console/src/app/proposals/review-editing-store.ts"
+        - "apps/web-console/src/app/proposals/review-editing-panel.tsx"
+        - "docs/design/01-contracts/proposal-review-editing-runtime.md"
+      behavior: "Independent v1 backup covers all saved review editing drafts under one complete original binding, bounded to 100 entries and a 4 MiB canonical document. One readonly snapshot verifies both store counts and every pair without truncation. Canonical SHA-256, strict UTF-8 and full scope validation precede read-only comparison. Explicit digest/epoch-bound restoration rechecks all targets in one transaction, preserves identical copies, adds missing pairs only and reads every target back before reporting commit; differing saved times or contents and corruption reject the whole restore. Shared locking invalidates prior directory/comparison/confirmation on every mutation attempt, retaining drafts and backups on unknown outcomes. No review is prepared, sent or queried, and current fields are not replaced."
+      evidence: []
+      pending_evidence:
+        - "Full scoped snapshot counts, orphan/partial/corrupt pairs, empty scope, 100-entry and byte limits"
+        - "Strict backup kind/binding/order/checksum, raw incomplete text and timestamp preservation"
+        - "Read-only comparison, concurrent changes, atomic missing-only restoration and complete readback"
+        - "Shared locks, mutation epoch/digest confirmation, retained backups, unmount and late work"
+      remaining_scope: "Draft cleanup, automatic save/backup, retention, cross-scope sync, durable review history and runtime evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, product/browser/API/database execution or release; no schema or dependency changes."
     proposal_review_editing_development_increment:
       date: "2026-11-04"
       status: "Source-only unfinished review drafts with explicit save, export, discovery and guarded resumption; R-009 remains incomplete."
@@ -3469,7 +3488,7 @@ requirements:
         - "Atomic save/readback, first-save timestamp retention, scoped pagination and partial/corrupt targets"
         - "Bounded file import, retained candidates, explicit field replacement, stale versions and prepared-original conflicts"
         - "Preparation recheck, shared operation locking, confirmation invalidation, unmount/late results and no implicit form submission"
-      remaining_scope: "Automatic saving, draft backup/cleanup and retention, cross-scope sync, durable review history and runtime evidence."
+      remaining_scope: "Automatic saving, draft cleanup and retention, cross-scope sync, durable review history and runtime evidence. Complete scoped backup/restoration is covered by the subsequent increment."
       execution: "Source/docs and manual review only; no build, typecheck, tests, product/browser/API/database execution or release. New browser-store source only; no server schema or dependency changes."
     proposal_review_original_removal_development_increment:
       date: "2026-11-04"

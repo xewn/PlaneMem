@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { proposalText } from '@planemem/contracts';
 import { backupOperation } from '../sync/receipt/backup-operation';
 import { assertProposalSubmissionBinding, type ProposalSubmissionBinding } from './original-model';
 import { encodeReviewOriginal, type ProposalReviewOriginal } from './review-model';
 import { loadReviewOriginal } from './review-store';
+import { ReviewEditingBackupPanel } from './review-editing-backup-panel';
 import {
   decodeReviewEditingDraft,
   encodeReviewEditingDraft,
@@ -46,19 +47,47 @@ export function ReviewEditingPanel({
   const [confirmed, setConfirmed] = useState(false);
   const [requestKey, setRequestKey] = useState('');
   const [busy, setBusy] = useState(false);
+  const [storageEpoch, setStorageEpoch] = useState(0);
   const [message, setMessage] = useState(
     'Save unfinished reasons separately from prepared reviews. Loading a draft never sends a decision.',
   );
   const retained = useRef<ReviewEditingDraft | undefined>(undefined);
   const mounted = useRef(false);
+  const active = useRef(false);
   const operation = useRef<AbortController | undefined>(undefined);
   const release = useRef<(() => void) | undefined>(undefined);
+  const parentBegin = editor?.begin;
+  const parentEnd = editor?.end;
+  const beginStorage = useCallback(() => {
+    if (!mounted.current || active.current || (parentBegin && !parentBegin())) return false;
+    active.current = true;
+    release.current = parentEnd;
+    setBusy(true);
+    setConfirmed(false);
+    return true;
+  }, [parentBegin, parentEnd]);
+  const endStorage = useCallback(() => {
+    active.current = false;
+    if (mounted.current) setBusy(false);
+    release.current?.();
+    release.current = undefined;
+  }, []);
+  const storageChanged = useCallback(() => {
+    if (!mounted.current) return;
+    setPage(undefined);
+    setConfirmed(false);
+    setStorageEpoch((value) => value + 1);
+    setMessage(
+      'Saved drafts may have changed. Find saved review drafts again. Current text and inspected copies are retained; compare the backup again before restoring.',
+    );
+  }, []);
   useEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
       operation.current?.abort();
       operation.current = undefined;
+      active.current = false;
       release.current?.();
       release.current = undefined;
     };
@@ -69,12 +98,9 @@ export function ReviewEditingPanel({
     work: (signal: AbortSignal, check: () => void) => Promise<T>,
     receive: (value: T) => void,
   ) {
-    if (!mounted.current || locked || operation.current || (editor && !editor.begin())) return;
+    if (!mounted.current || locked || operation.current || !beginStorage()) return;
     const controller = new AbortController();
     operation.current = controller;
-    release.current = editor?.end;
-    setBusy(true);
-    setConfirmed(false);
     try {
       const result = await backupOperation(controller.signal, work);
       if (mounted.current && operation.current === controller && !controller.signal.aborted)
@@ -87,9 +113,7 @@ export function ReviewEditingPanel({
     } finally {
       if (operation.current === controller) {
         operation.current = undefined;
-        if (mounted.current) setBusy(false);
-        release.current?.();
-        release.current = undefined;
+        endStorage();
       }
     }
   }
@@ -213,6 +237,14 @@ export function ReviewEditingPanel({
         Save the decision and reason you are still editing. These copies do not record approval or
         prove that a review was sent. Browser clearing can remove them; keep a separate file.
       </p>
+      <ReviewEditingBackupPanel
+        binding={binding}
+        disabled={locked}
+        storageEpoch={storageEpoch}
+        begin={beginStorage}
+        end={endStorage}
+        onStorageChange={storageChanged}
+      />
       {editor && (
         <div className="heading-actions">
           <button
@@ -222,7 +254,7 @@ export function ReviewEditingPanel({
             onClick={() =>
               void run(
                 async (signal) => {
-                  setPage(undefined);
+                  storageChanged();
                   return saveReviewEditingDraft(snapshot(), signal);
                 },
                 (saved) => {
@@ -294,7 +326,7 @@ export function ReviewEditingPanel({
           maxLength={255}
           disabled={locked}
           onChange={(event) => {
-            if (!operation.current && !editor?.disabled) setRequestKey(event.target.value);
+            if (!active.current && !editor?.disabled) setRequestKey(event.target.value);
           }}
         />
       </label>
@@ -384,7 +416,7 @@ export function ReviewEditingPanel({
                   checked={confirmed}
                   disabled={locked}
                   onChange={(event) => {
-                    if (!operation.current && !editor?.disabled) setConfirmed(event.target.checked);
+                    if (!active.current && !editor?.disabled) setConfirmed(event.target.checked);
                   }}
                 />{' '}
                 I inspected this draft and want to replace the current review fields. If this same
