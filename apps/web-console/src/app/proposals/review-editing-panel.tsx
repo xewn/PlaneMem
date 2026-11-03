@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { proposalText } from '@planemem/contracts';
 import { backupOperation } from '../sync/receipt/backup-operation';
+import type { BrowserRemovalResult } from '../sync/receipt/browser-store';
 import { assertProposalSubmissionBinding, type ProposalSubmissionBinding } from './original-model';
 import { encodeReviewOriginal, type ProposalReviewOriginal } from './review-model';
 import { loadReviewOriginal } from './review-store';
@@ -19,6 +20,7 @@ import {
   listReviewEditingDrafts,
   loadReviewEditingDraft,
   saveReviewEditingDraft,
+  removeReviewEditingDraft,
   type ReviewEditingPage,
   type ReviewEditingSummary,
 } from './review-editing-store';
@@ -43,7 +45,15 @@ export function ReviewEditingPanel({
   editor?: ReviewEditor;
 }) {
   const [page, setPage] = useState<ReviewEditingPage>();
-  const [candidate, setCandidate] = useState<ReviewEditingDraft>();
+  const [reviewed, setReviewed] = useState<{
+    draft: ReviewEditingDraft;
+    source: 'browser' | 'file';
+    epoch: number;
+  }>();
+  const candidate = reviewed?.draft;
+  const [removalFresh, setRemovalFresh] = useState(false);
+  const [removeConfirmed, setRemoveConfirmed] = useState(false);
+  const [removalStatus, setRemovalStatus] = useState<BrowserRemovalResult | 'unknown'>();
   const [confirmed, setConfirmed] = useState(false);
   const [requestKey, setRequestKey] = useState('');
   const [busy, setBusy] = useState(false);
@@ -64,6 +74,7 @@ export function ReviewEditingPanel({
     release.current = parentEnd;
     setBusy(true);
     setConfirmed(false);
+    setRemoveConfirmed(false);
     return true;
   }, [parentBegin, parentEnd]);
   const endStorage = useCallback(() => {
@@ -76,6 +87,8 @@ export function ReviewEditingPanel({
     if (!mounted.current) return;
     setPage(undefined);
     setConfirmed(false);
+    setRemoveConfirmed(false);
+    setRemovalFresh(false);
     setStorageEpoch((value) => value + 1);
     setMessage(
       'Saved drafts may have changed. Find saved review drafts again. Current text and inspected copies are retained; compare the backup again before restoring.',
@@ -92,23 +105,29 @@ export function ReviewEditingPanel({
       release.current = undefined;
     };
   }, []);
-  useEffect(() => setConfirmed(false), [editor?.requestKey]);
+  useEffect(() => {
+    setConfirmed(false);
+    setRemoveConfirmed(false);
+  }, [editor?.requestKey]);
   const locked = busy || !!editor?.disabled;
   async function run<T>(
     work: (signal: AbortSignal, check: () => void) => Promise<T>,
     receive: (value: T) => void,
+    options: { start?: () => void; failureMessage?: string } = {},
   ) {
     if (!mounted.current || locked || operation.current || !beginStorage()) return;
     const controller = new AbortController();
     operation.current = controller;
     try {
+      options.start?.();
       const result = await backupOperation(controller.signal, work);
       if (mounted.current && operation.current === controller && !controller.signal.aborted)
         receive(result);
     } catch {
       if (mounted.current && operation.current === controller)
         setMessage(
-          'The draft operation could not be confirmed. Keep your current text, inspected copy or exported file. Different, incomplete or damaged saved copies are never replaced. Nothing was sent.',
+          options.failureMessage ??
+            'The draft operation could not be confirmed. Keep your current text, inspected copy or exported file. Different, incomplete or damaged saved copies are never replaced. Nothing was sent.',
         );
     } finally {
       if (operation.current === controller) {
@@ -136,7 +155,7 @@ export function ReviewEditingPanel({
     retained.current = draft;
     return draft;
   }
-  function inspect(draft: ReviewEditingDraft | null) {
+  function inspect(draft: ReviewEditingDraft | null, source: 'browser' | 'file') {
     if (!draft) {
       setPage(undefined);
       setMessage(
@@ -145,7 +164,10 @@ export function ReviewEditingPanel({
       return;
     }
     assertProposalSubmissionBinding(draft.binding, binding);
-    setCandidate(draft);
+    setReviewed({ draft, source, epoch: storageEpoch });
+    setRemovalFresh(source === 'browser');
+    setRemoveConfirmed(false);
+    setRemovalStatus(undefined);
     setMessage(
       'Inspect the complete saved text. Resume requires the same proposal and reviewed revision, and a separate confirmation to replace the current fields.',
     );
@@ -184,7 +206,40 @@ export function ReviewEditingPanel({
     );
   }
   function read(key: string, selection?: ReviewEditingSummary) {
-    void run((signal) => loadReviewEditingDraft(binding, key, signal, selection), inspect);
+    void run(
+      (signal) => loadReviewEditingDraft(binding, key, signal, selection),
+      (draft) => inspect(draft, 'browser'),
+      { start: () => setRemovalFresh(false) },
+    );
+  }
+  const canRemove =
+    !!candidate &&
+    reviewed?.source === 'browser' &&
+    reviewed.epoch === storageEpoch &&
+    removalFresh &&
+    removalStatus === undefined;
+  function remove() {
+    if (!candidate || !canRemove || !removeConfirmed) return;
+    void run(
+      (signal) => removeReviewEditingDraft(binding, candidate, signal),
+      (result) => {
+        setRemovalStatus(result);
+        setMessage(
+          result === 'removed'
+            ? 'The inspected browser draft was removed. Its retained text remains below for export or explicit resumption. Find saved review drafts again to refresh the directory.'
+            : 'This browser draft was absent when checked. This does not prove an earlier removal completed or a review was never sent. The retained copy remains available for export.',
+        );
+      },
+      {
+        start: () => {
+          setRemovalStatus('unknown');
+          storageChanged();
+          setMessage('Rechecking the complete inspected draft before removing its browser copy…');
+        },
+        failureMessage:
+          'Removal could not be confirmed and may already have completed. Keep or export the inspected draft. Read and inspect the current browser copy again before another removal attempt. No review was sent.',
+      },
+    );
   }
   const matching =
     !!editor &&
@@ -253,16 +308,14 @@ export function ReviewEditingPanel({
             disabled={locked}
             onClick={() =>
               void run(
-                async (signal) => {
-                  storageChanged();
-                  return saveReviewEditingDraft(snapshot(), signal);
-                },
+                async (signal) => saveReviewEditingDraft(snapshot(), signal),
                 (saved) => {
                   retained.current = saved;
                   setMessage(
                     'The complete editing draft was saved and read back. Keep an exported file for recovery.',
                   );
                 },
+                { start: storageChanged },
               )
             }
           >
@@ -348,16 +401,20 @@ export function ReviewEditingPanel({
             const file = event.target.files?.[0];
             event.target.value = '';
             if (!file) return;
-            void run(async (_signal, check) => {
-              if (file.size < 1 || file.size > REVIEW_EDITING_BYTES) throw new TypeError();
-              const bytes = await file.arrayBuffer();
-              check();
-              if (bytes.byteLength !== file.size || bytes.byteLength > REVIEW_EDITING_BYTES)
-                throw new TypeError();
-              return decodeReviewEditingDraft(
-                new TextDecoder('utf-8', { fatal: true }).decode(bytes),
-              );
-            }, inspect);
+            void run(
+              async (_signal, check) => {
+                if (file.size < 1 || file.size > REVIEW_EDITING_BYTES) throw new TypeError();
+                const bytes = await file.arrayBuffer();
+                check();
+                if (bytes.byteLength !== file.size || bytes.byteLength > REVIEW_EDITING_BYTES)
+                  throw new TypeError();
+                return decodeReviewEditingDraft(
+                  new TextDecoder('utf-8', { fatal: true }).decode(bytes),
+                );
+              },
+              (draft) => inspect(draft, 'file'),
+              { start: () => setRemovalFresh(false) },
+            );
           }}
         />
       </label>
@@ -400,6 +457,59 @@ export function ReviewEditingPanel({
           >
             Export inspected review draft
           </button>
+          <div>
+            <h4>Remove this browser draft copy</h4>
+            <p>
+              Export the inspected draft first if you want to keep it. Removing a saved copy keeps
+              your current editor, prepared original reviews, other tabs, exported files and
+              backups. It does not cancel or withdraw any review. A later explicit save or backup
+              restore can save this draft here again.
+            </p>
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={locked}
+              onClick={() => read(candidate.request_key)}
+            >
+              Read current browser draft again
+            </button>
+            {canRemove ? (
+              <>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={removeConfirmed}
+                    disabled={locked}
+                    onChange={(event) => {
+                      if (!active.current && !editor?.disabled && canRemove)
+                        setRemoveConfirmed(event.target.checked);
+                    }}
+                  />{' '}
+                  I inspected the complete draft and want to remove only this saved browser copy.
+                </label>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  disabled={locked || !removeConfirmed}
+                  onClick={remove}
+                >
+                  Remove inspected browser draft
+                </button>
+              </>
+            ) : (
+              <p role="status">
+                {removalStatus === 'removed'
+                  ? 'Removal of the inspected draft was confirmed for that operation.'
+                  : removalStatus === 'not-present'
+                    ? 'The draft was not present at the last check.'
+                    : removalStatus === 'unknown'
+                      ? 'Removal is not confirmed. Read and inspect the current browser draft again before another attempt.'
+                      : reviewed?.source === 'file'
+                        ? 'An imported file does not authorize browser deletion. Read and inspect the current browser copy first.'
+                        : 'Storage may have changed or a read failed. Read and inspect the current browser draft again before removing it.'}
+              </p>
+            )}
+          </div>
           <Link
             href={'/proposals?status=all&proposal=' + encodeURIComponent(candidate.proposal_id)}
             prefetch={false}

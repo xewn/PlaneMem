@@ -1,6 +1,11 @@
 'use client';
 
-import { inBrowserStores, readBrowserPair } from '../sync/receipt/browser-store';
+import {
+  inBrowserStores,
+  readBrowserPair,
+  removeBrowserPair,
+  type BrowserRemovalResult,
+} from '../sync/receipt/browser-store';
 import {
   assertProposalSubmissionBinding,
   parseProposalSubmissionBinding,
@@ -112,6 +117,38 @@ export function loadReviewEditingDraft(
     },
   );
 }
+/** Remove only the complete inspected pair, including its original save time. */
+export function removeReviewEditingDraft(
+  input: ProposalSubmissionBinding,
+  reviewed: ReviewEditingDraft,
+  signal: AbortSignal,
+) {
+  const binding = parseProposalSubmissionBinding(input);
+  const expectedRaw = encodeReviewEditingDraft(reviewed);
+  const draft = decodeReviewEditingDraft(expectedRaw);
+  assertProposalSubmissionBinding(draft.binding, binding);
+  const slot = key(binding, draft.request_key);
+  const expectedIndex = JSON.stringify(summary(draft));
+  return inBrowserStores<BrowserRemovalResult>(
+    layout,
+    'readwrite',
+    signal,
+    () => 'not-present',
+    (context) => {
+      readBrowserPair(context, slot, (raw, index, exists) => {
+        if (!exists) {
+          context.accept('not-present');
+          return;
+        }
+        pair(raw, index, binding, slot);
+        if (raw !== expectedRaw || index !== expectedIndex) throw new TypeError();
+        removeBrowserPair(context, slot);
+      });
+    },
+    { create: false },
+  );
+}
+
 export function listReviewEditingDrafts(
   input: ProposalSubmissionBinding,
   after: string | null,
