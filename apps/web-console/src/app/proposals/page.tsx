@@ -171,6 +171,15 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
           </Link>
           {' · '}
           <Link
+            href="/proposals/review-history"
+            prefetch={false}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Saved review history ↗
+          </Link>
+          {' · '}
+          <Link
             href="/proposals/recover-review-draft"
             prefetch={false}
             target="_blank"

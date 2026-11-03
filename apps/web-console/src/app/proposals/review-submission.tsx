@@ -17,6 +17,8 @@ import {
   type ProposalReviewReceipt,
 } from './review-model';
 import { saveReviewOriginal } from './review-store';
+import type { ReviewObservation } from './review-history-model';
+import { ReviewHistoryPanel } from './review-history-panel';
 
 export function OriginalProposalReview({
   original,
@@ -30,15 +32,30 @@ export function OriginalProposalReview({
   const [busy, setBusy] = useState(false);
   const [receipt, setReceipt] = useState<ProposalReviewReceipt>();
   const [observed, setObserved] = useState<ProposalReviewRecordedReceipt>();
+  const [observation, setObservation] = useState<ReviewObservation>();
+  const [confirmedObservation, setConfirmedObservation] = useState<ReviewObservation>();
   const [message, setMessage] = useState(
     'The original decision is fixed. Save or export it, then review it before explicitly sending.',
   );
   const mounted = useRef(false);
+  const active = useRef(false);
   const operation = useRef<AbortController | undefined>(undefined);
+  const beginHistory = useCallback(() => {
+    if (!mounted.current || active.current) return false;
+    active.current = true;
+    setBusy(true);
+    setConfirmed(false);
+    return true;
+  }, []);
+  const endHistory = useCallback(() => {
+    active.current = false;
+    if (mounted.current) setBusy(false);
+  }, []);
   const save = useCallback(async () => {
-    if (!mounted.current || operation.current) return;
+    if (!mounted.current || active.current) return;
     const controller = new AbortController();
     operation.current = controller;
+    active.current = true;
     setBusy(true);
     try {
       await backupOperation(controller.signal, (signal) => saveReviewOriginal(request, signal));
@@ -54,6 +71,7 @@ export function OriginalProposalReview({
     } finally {
       if (operation.current === controller) {
         operation.current = undefined;
+        active.current = false;
         if (mounted.current) setBusy(false);
       }
     }
@@ -65,12 +83,14 @@ export function OriginalProposalReview({
       mounted.current = false;
       operation.current?.abort();
       operation.current = undefined;
+      active.current = false;
     };
   }, [save, saveOnMount]);
   async function send() {
-    if (!mounted.current || operation.current || !confirmed || receipt || observed) return;
+    if (!mounted.current || active.current || !confirmed || receipt || observed) return;
     const controller = new AbortController();
     operation.current = controller;
+    active.current = true;
     setBusy(true);
     setConfirmed(false);
     setMessage('Saving the complete original before sending the review…');
@@ -95,7 +115,18 @@ export function OriginalProposalReview({
       if (!mounted.current || operation.current !== controller) return;
       if (result.original !== encodeReviewOriginal(request)) throw new TypeError();
       if (result.status === 'saved') {
-        setReceipt(parseReviewReceipt(result.receipt, request, result.receipt.trace_id));
+        const checked = parseReviewReceipt(result.receipt, request, result.receipt.trace_id);
+        const document: ReviewObservation = {
+          schema_version: 1,
+          kind: 'proposal-review-observation',
+          original: request,
+          observed_at: new Date().toISOString(),
+          source: 'submission',
+          receipt: checked,
+        };
+        setReceipt(checked);
+        setObservation(document);
+        setConfirmedObservation(document);
         setMessage(
           'The gateway confirmed the original review. This is its historical result; open the proposal for current details.',
         );
@@ -110,14 +141,16 @@ export function OriginalProposalReview({
     } finally {
       if (operation.current === controller) {
         operation.current = undefined;
+        active.current = false;
         if (mounted.current) setBusy(false);
       }
     }
   }
   async function checkReceipt() {
-    if (!mounted.current || operation.current) return;
+    if (!mounted.current || active.current) return;
     const controller = new AbortController();
     operation.current = controller;
+    active.current = true;
     setBusy(true);
     setConfirmed(false);
     setMessage('Checking the original review receipt…');
@@ -141,7 +174,17 @@ export function OriginalProposalReview({
         reviewReceiptQuery(request),
         result.receipt.trace_id,
       );
+      const document: ReviewObservation = {
+        schema_version: 1,
+        kind: 'proposal-review-observation',
+        original: request,
+        observed_at: new Date().toISOString(),
+        source: 'receipt-query',
+        receipt: checked,
+      };
+      setObservation(document);
       if (checked.data.status === 'recorded') {
+        setConfirmedObservation(document);
         setObserved(checked.data.receipt);
         setMessage(
           'The gateway found the original historical review receipt. Open the proposal for current details. No review was sent by this lookup.',
@@ -159,12 +202,13 @@ export function OriginalProposalReview({
     } finally {
       if (operation.current === controller) {
         operation.current = undefined;
+        active.current = false;
         if (mounted.current) setBusy(false);
       }
     }
   }
   function download() {
-    if (!mounted.current || operation.current) return;
+    if (!mounted.current || active.current) return;
     let url: string | undefined;
     try {
       url = URL.createObjectURL(
@@ -243,6 +287,14 @@ export function OriginalProposalReview({
           Recover a saved review ↗
         </Link>
         <Link
+          href="/proposals/review-history"
+          prefetch={false}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Open saved review history ↗
+        </Link>
+        <Link
           href={'/proposals?status=all&proposal=' + encodeURIComponent(request.proposal_id)}
           prefetch={false}
           target="_blank"
@@ -271,7 +323,7 @@ export function OriginalProposalReview({
               checked={confirmed}
               disabled={busy}
               onChange={(event) => {
-                if (!operation.current) setConfirmed(event.target.checked);
+                if (!active.current) setConfirmed(event.target.checked);
               }}
             />{' '}
             I reviewed this original decision and its supporting sources and want to send or retry
@@ -294,6 +346,14 @@ export function OriginalProposalReview({
           {observed.occurred_at} · event {observed.event_id}
         </p>
       )}
+      <ReviewHistoryPanel
+        binding={request.binding}
+        live={observation}
+        confirmedLive={confirmedObservation}
+        disabled={busy}
+        begin={beginHistory}
+        end={endHistory}
+      />
       <p role="status">{message}</p>
     </div>
   );

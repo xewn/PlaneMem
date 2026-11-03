@@ -3452,6 +3452,25 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_review_history_development_increment:
+      date: "2026-11-04"
+      status: "Source-only explicit durable browser review-observation history and file recovery; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/review-history-model.ts"
+        - "apps/web-console/src/app/proposals/review-history-store.ts"
+        - "apps/web-console/src/app/proposals/review-history-panel.tsx"
+        - "apps/web-console/src/app/proposals/review-history/page.tsx"
+        - "apps/web-console/src/app/proposals/review-submission.tsx"
+        - "docs/design/01-contracts/proposal-review-history-runtime.md"
+      behavior: "Each explicit saved observation retains the complete original review, full validated submission or receipt-query envelope, source and observation time. Independent 128 KiB v1 documents use SHA-256 content addressing so distinct traces/times do not overwrite history. Same-file save is idempotent with exact pair checks and committed readback. Scoped 20-entry discovery and selected reads validate full content and digests; bounded UTF-8 files can be inspected, exported and explicitly saved. Latest confirmed evidence survives later not-observed/error reads. Imported history remains offline reference and cannot send, retry, authorize, change current state or clear another page's unknown outcome."
+      evidence: []
+      pending_evidence:
+        - "Complete original/envelope linkage, strict kind/shape/time/size checks, canonical digest and tampered files"
+        - "Submission, recorded-query and not-observed preservation; prior confirmed envelope retention"
+        - "Exact immutable dual-store saves, collisions/corruption, readback, scoped pagination and post-transaction hash verification"
+        - "History/query/send locking, failed storage retention, file provenance, unmount/late results and no implicit review action"
+      remaining_scope: "Automatic history capture, batch backup/restore/cleanup, retention, cross-scope sync, server archival and runtime evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, product/browser/API/database execution or release. Browser-store source added; no server schema or dependency changes."
     proposal_review_editing_removal_development_increment:
       date: "2026-11-04"
       status: "Source-only inspected single browser review-draft removal; R-009 remains incomplete."
