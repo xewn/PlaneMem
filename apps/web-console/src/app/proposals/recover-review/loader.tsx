@@ -16,12 +16,15 @@ import {
 } from '../review-store';
 import { OriginalProposalReview } from '../review-submission';
 import { ReviewBackupPanel } from '../review-backup-panel';
+import { ReviewRemovalPanel } from '../review-removal-panel';
 
 export function ProposalReviewRecovery({ binding }: { binding: ProposalSubmissionBinding }) {
   const [requestKey, setRequestKey] = useState('');
   const [raw, setRaw] = useState('');
   const [page, setPage] = useState<SavedReviewPage>();
   const [original, setOriginal] = useState<ProposalReviewOriginal>();
+  const [removal, setRemoval] = useState<{ original: ProposalReviewOriginal; sequence: number }>();
+  const [removalFresh, setRemovalFresh] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(
     'Find a saved original review, enter its request key or load its complete file. Loading does not save or send a decision.',
@@ -29,22 +32,24 @@ export function ProposalReviewRecovery({ binding }: { binding: ProposalSubmissio
   const mounted = useRef(false);
   const loaded = useRef(false);
   const active = useRef(false);
+  const inspection = useRef(0);
   const operation = useRef<AbortController | undefined>(undefined);
-  const beginBackup = useCallback(() => {
+  const beginStorage = useCallback(() => {
     if (!mounted.current || active.current || loaded.current) return false;
     active.current = true;
     setBusy(true);
     return true;
   }, []);
-  const endBackup = useCallback(() => {
+  const endStorage = useCallback(() => {
     active.current = false;
     if (mounted.current) setBusy(false);
   }, []);
   const storageChanged = useCallback(() => {
     if (!mounted.current) return;
     setPage(undefined);
+    setRemovalFresh(false);
     setMessage(
-      'The saved review list needs to be read again after an import attempt. Keep the backup if the outcome is unknown.',
+      'Saved review storage may have changed. Find saved original reviews again to refresh the directory. Keep any retained copy or backup if the outcome is unknown.',
     );
   }, []);
   useEffect(() => {
@@ -114,6 +119,28 @@ export function ProposalReviewRecovery({ binding }: { binding: ProposalSubmissio
       load,
     );
   }
+  function inspectForRemoval(keyToRead: string, selection?: SavedReview) {
+    if (!mounted.current || active.current || loaded.current) return;
+    setRemovalFresh(false);
+    void run(
+      (signal) => loadReviewOriginal(binding, keyToRead, signal, selection),
+      (value) => {
+        if (!value) {
+          setPage(undefined);
+          setMessage(
+            'The requested browser copy was not found. Any previously inspected copy remains available below for export. Nothing was removed or sent.',
+          );
+          return;
+        }
+        assertProposalSubmissionBinding(value.binding, binding);
+        setRemoval({ original: value, sequence: ++inspection.current });
+        setRemovalFresh(true);
+        setMessage(
+          'The complete browser copy is available below. Inspect its original decision and reason before independently confirming removal.',
+        );
+      },
+    );
+  }
   if (original) return <OriginalProposalReview original={original} />;
   return (
     <div className="handoff-form" aria-busy={busy} style={{ overflowWrap: 'anywhere' }}>
@@ -126,8 +153,8 @@ export function ProposalReviewRecovery({ binding }: { binding: ProposalSubmissio
       <ReviewBackupPanel
         binding={binding}
         disabled={busy}
-        begin={beginBackup}
-        end={endBackup}
+        begin={beginStorage}
+        end={endStorage}
         onStorageChange={storageChanged}
       />
       <div className="heading-actions">
@@ -166,6 +193,14 @@ export function ProposalReviewRecovery({ binding }: { binding: ProposalSubmissio
               >
                 Load original review
               </button>
+              <button
+                type="button"
+                className="secondary-button"
+                disabled={busy}
+                onClick={() => inspectForRemoval(entry.request_key, entry)}
+              >
+                Inspect browser copy for removal
+              </button>
             </li>
           ))}
         </ul>
@@ -189,6 +224,27 @@ export function ProposalReviewRecovery({ binding }: { binding: ProposalSubmissio
       >
         Read original by key
       </button>
+      <button
+        type="button"
+        className="secondary-button"
+        disabled={busy || !requestKey}
+        onClick={() => inspectForRemoval(requestKey)}
+      >
+        Inspect browser copy by key for removal
+      </button>
+      {removal && (
+        <ReviewRemovalPanel
+          key={removal.sequence}
+          binding={binding}
+          original={removal.original}
+          disabled={busy}
+          canRemove={removalFresh}
+          begin={beginStorage}
+          end={endStorage}
+          onStorageChange={storageChanged}
+          onReload={() => inspectForRemoval(removal.original.request_key)}
+        />
+      )}
       <label>
         Import original review file
         <input

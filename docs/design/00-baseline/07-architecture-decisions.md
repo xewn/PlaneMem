@@ -1,5 +1,7 @@
 # 架构决策记录摘要
 
+2026-11-04 审核原请求逐份移除协接（ADR-015）：T5.1/T7.2在恢复目录/按键读取增加独立浏览器副本审阅与移除入口，先完整读取原绑定/决定/理由/版本/键并可导出，确认后单事务重新核对正文和目录，仅移除完全一致双槽并读回等待提交。缺库不初始化、缺项仅当前未见，异文/半槽/损坏拒绝；所有存储改变撤销旧移除资格并失效目录，结果未知保留完整候选且重新读审后才可再删。文件载入不能直接授权删除，删除不取消/发送审核、不改变服务器/回执或其他副本；与备份/读取共享页面互斥。范围Web review-store、新review-removal-panel、恢复loader及契约/README/TODO/R009，无schema/依赖变化；只源码文档人工审阅，不编译/类型检查/测试/运行产品浏览器接口数据库或发布，独立提交并push main带[skip ci]。
+
 2026-11-04 审核原请求整批备份协接（ADR-015）：T5.1/T7.2新增独立review-originals-backup v1、当前原网关/完整身份范围完整读取、规范SHA-256、有界文件加载与只读比较，确认后在单事务预检全部目标并仅补缺失双槽。最多100份/4 MiB文档，原理由/决定/版本/键不变，既有同文保留、异文或损坏拒绝整批，写后完整读回并等待提交；未知结果保留备份并要求重新比较。恢复页操作共用互斥，导入失效旧目录，不自动加载单份或发送/查询审核；不包含未准备输入、回执或创建/编辑草稿，不新增库schema/依赖。范围Web review-store、新review-backup model/adapter/panel、恢复页及契约/README/TODO/R009和协调记录；只源码文档人工审阅，不编译/类型检查/测试/运行浏览器/接口/数据库或发布，独立提交push main带[skip ci]。
 
 2026-11-04 CLI/MCP原审核回执协接（ADR-015）：T4.2/T4.3新增proposals review-receipt与get_proposal_review_receipt，接收完整原identity/request_key/proposal_id/decision/expected_revision/reason，只读复用现有Gateway及SDK严格封套。CLI稳定普通文件/内联JSON限32 KiB，拒绝标准输入/重复/写选项，网络与嵌入要求原身份及未过期human/review权限；MCP发现/调用同门禁，成功64 KiB/错误16 KiB、两路容量/30秒本地期限，超时保留名额至底层结束，不扩张普通HTTP预算。not-observed不证明失败或重发，查询不改文件/键/决定。范围CLI/MCP源码、契约/README/TODO/R009及协调记录，无schema/依赖变化；只开发人工审阅，不编译/类型检查/测试/运行CLI/MCP/网关/数据库或发布，独立提交并push main带[skip ci]。

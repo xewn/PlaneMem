@@ -3452,6 +3452,23 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_review_original_removal_development_increment:
+      date: "2026-11-04"
+      status: "Source-only inspected single browser review-original removal; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/review-store.ts"
+        - "apps/web-console/src/app/proposals/review-removal-panel.tsx"
+        - "apps/web-console/src/app/proposals/recover-review/loader.tsx"
+        - "docs/design/01-contracts/proposal-review-recovery-runtime.md"
+      behavior: "Only a complete freshly loaded browser original enables independent removal confirmation. A single existing-store transaction rechecks exact original text and directory under the original binding, removes matching pairs and reads absence back before reporting commit. Missing pairs report only current absence; conflicts, corruption and partial pairs reject. Every local storage mutation attempt invalidates the directory and prior removal eligibility. Unknown outcomes require a fresh full inspection; the selected original remains available for export and copying. No review is sent, canceled or withdrawn."
+      evidence: []
+      pending_evidence:
+        - "Browser-only inspection, directory metadata matching, retained exports and file-import separation"
+        - "Exact original pair recheck, concurrent changes, atomic delete/readback, missing database and partial/corrupt targets"
+        - "Confirmation invalidation after restore/removal, unknown outcomes, fresh reread and late/unmounted results"
+        - "No server decision change, receipt query, other-copy deletion, automatic resend or implicit resave"
+      remaining_scope: "Unprepared review drafts, batch/automatic cleanup and retention, cross-scope backup/sync, durable receipt history and runtime evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, browser/API/database execution or release; no schema or dependency changes."
     proposal_review_originals_backup_development_increment:
       date: "2026-11-04"
       status: "Source-only complete scoped review-original backup and atomic missing-only restoration; R-009 remains incomplete."
@@ -3470,7 +3487,7 @@ requirements:
         - "Single-snapshot pair counts, orphan/corrupt slots, no truncated export and missing-store reads"
         - "Read-only complete comparison, atomic preflight/add/readback, concurrent targets, quota and uncertain commit"
         - "Digest-bound confirmation, shared UI lock, late work/unmount, retained backup and no review dispatch"
-      remaining_scope: "Unprepared review drafts, review cleanup, cross-scope backup/sync, durable receipt history and runtime evidence."
+      remaining_scope: "Unprepared review drafts, batch/automatic cleanup, cross-scope backup/sync, durable receipt history and runtime evidence. Inspected single-copy removal is covered by the subsequent increment."
       execution: "Source/docs and manual review only; no build, typecheck, tests, browser/API/database execution or release; no schema or dependency changes."
     proposal_review_receipt_clients_development_increment:
       date: "2026-11-04"

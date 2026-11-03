@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [审核原请求逐份移除](docs/design/01-contracts/proposal-review-recovery-runtime.md#逐份审阅并移除浏览器副本)：从浏览器完整读取并审阅后，独立确认移除精确匹配的本地副本，保留候选供导出；未知结果需重新读取审阅。删除不撤回或发送审核。仅源码文档，未编译、测试、运行或发布。
+
 新增 [审核原请求整批备份与恢复](docs/design/01-contracts/proposal-review-recovery-runtime.md#当前范围完整审核备份与恢复)：恢复页可完整备份当前原网关和账号下已保存的审核决定，加载后先比较，确认后仅补入缺失副本；冲突拒绝整批，保留原决定、理由、版本和请求键，不发送审核。仅源码文档，未编译、测试、运行或发布。
 
 新增 [CLI/MCP原审核回执查询](docs/design/01-contracts/proposal-review-receipt-runtime.md#cli-与-mcp-原审核查询)：命令行proposals review-receipt和MCP get_proposal_review_receipt按完整原请求只读核对历史结果，要求原人工审核身份，不发送决定或自动重试。仅源码文档，未编译、测试、运行或发布。
