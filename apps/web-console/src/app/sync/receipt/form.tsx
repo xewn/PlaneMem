@@ -599,6 +599,9 @@ export function SyncReceiptForm() {
             </>
           )}
           {message && <p role="status">{message}</p>}
+          <Link href="/sync/receipt/backup" target="_blank" rel="noreferrer" prefetch={false}>
+            Back up or restore saved originals in another tab ↗
+          </Link>
         </div>
       </Panel>
       {removal && (

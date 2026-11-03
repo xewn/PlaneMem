@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [浏览器原查询完整备份与恢复](docs/design/01-contracts/sync-browser-originals-backup-runtime.md)，可完整备份本浏览器已保存原查询，并在审阅后原子补入缺失记录；同槽异文整批拒绝，最多 256 条/32 MiB，超限不截断。仅源码文档，未编译、测试、运行或发布。
+
 新增 [浏览器保存副本管理](docs/design/01-contracts/sync-browser-storage-removal-runtime.md)，原同步查询和历史回执可逐条审阅、下载后显式移除；删除前重新核对完整内容，结果不确定时保留审阅副本。仅源码文档，未编译、测试、运行或发布。
 
 新增 [待应用页面发现](docs/design/01-contracts/sync-application-pending-runtime.md)，按当前应用进度列出已接收的待处理页面，并返回下一页的完整预览/应用参数，包含空终页。仅源码文档，未编译、测试、运行或发布。

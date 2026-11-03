@@ -978,6 +978,28 @@ requirements:
         - "CLI primary/embedded local routing, old output migration, read/rollback/close failures and complete result retention"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_browser_originals_backup_development_increment:
+      date: "2026-11-03"
+      status: "Source-only complete bounded browser original-query backup and explicit atomic restore; R-005 remains incomplete."
+      artifacts:
+        - "packages/contracts/src/sync-originals-backup.ts"
+        - "packages/contracts/src/index.ts"
+        - "apps/web-console/src/app/sync/receipt/original-store.ts"
+        - "apps/web-console/src/app/sync/receipt/original-backup.ts"
+        - "apps/web-console/src/app/sync/receipt/backup/page.tsx"
+        - "apps/web-console/src/app/sync/receipt/backup/form.tsx"
+        - "apps/web-console/src/app/sync/receipt/form.tsx"
+        - "docs/design/01-contracts/sync-browser-originals-backup-runtime.md"
+      behavior: "Strict workctx.sync-originals-backup v1 with at most 256 unique original slots in canonical key order, 32 MiB document plus shared JSON complexity limits, and independently checked canonical document SHA. One readonly transaction counts both stores and validates every original/directory pair; missing database yields empty, failures produce no partial backup. Dedicated new-tab review imports without writes and retains full download/copy after success or unknown failure. Explicit restore rechecks file/hash, preflights all selected pairs in one readwrite transaction, then adds and reads back only missing pairs; differing/corrupt/one-sided records abort the batch. Existing exact records and unrelated records remain unchanged."
+      remaining_scope: "Original queries only, not historical receipt backups, drafts or queues. No overwrite, damaged-storage repair, capacity management, delivery lookup/acknowledgement, source authentication, queue settlement or runtime evidence. Explicit nonempty restore can initialize existing v1 stores in a separate upgrade transaction, leaving empty stores after later failure. Browser clone/synchronous parsing cannot be preempted; concurrent changes after completion remain possible."
+      pending_evidence:
+        - "Strict fields/schema/order/duplicates, original identity/event binding, event property order, digest mismatch, UTF-8/BOM and aggregate byte/node/depth limits"
+        - "Complete single-transaction snapshot, count mismatch/equal-count orphan keys, invalid originals/metadata, empty/missing databases and no truncated exports"
+        - "Atomic full preflight/add/readback, exact existing slots, conflicting/one-sided slots, cross-tab changes, quota/abort and uncertain commit outcomes"
+        - "Explicit import-review-confirm flow, paginated metadata versus complete file, download/copy retention, synchronous locks, focus and empty restore without initialization"
+        - "Whole-operation deadline, late file/hash results, unmount cancellation, blocked storage and no network/queue operations"
+      evidence: []
+      execution: "Source and documentation only; no builds, typechecks, tests, browser/service runs, IndexedDB access, sample files or release. New standalone shared file format only; no API/schema/dependency changes. Existing IndexedDB/SQLite schemas and PostgreSQL 016-049 remain unexecuted. Task commit/push targets main with skip-ci."
     sync_browser_copy_removal_development_increment:
       date: "2026-11-03"
       status: "Source-only reviewed single-copy removal for browser sync originals and historical receipts; R-005 remains incomplete."

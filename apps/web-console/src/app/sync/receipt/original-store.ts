@@ -4,6 +4,10 @@ import {
   isSyncIdentifier,
   parseSyncCommandIdentity,
   SYNC_EVENT_RECEIPT_REQUEST_BYTES,
+  parseSyncOriginalsBackupDocument,
+  SYNC_ORIGINALS_BACKUP_MAX_ENTRIES,
+  SYNC_ORIGINALS_BACKUP_DOCUMENT_BYTES,
+  type SyncOriginalsBackupDocument,
   type SyncCommandIdentity,
   type SyncEventReceiptQuery,
 } from '@planemem/contracts';
@@ -209,6 +213,146 @@ export function removeBrowserSyncOriginal(
         removeBrowserPair(context, selected.key);
       }),
     { create: false },
+  );
+}
+
+/** Complete paired-store coverage in one snapshot; never returns a truncated backup. */
+export function readBrowserSyncOriginalBackup(signal: AbortSignal) {
+  const empty = (): SyncOriginalsBackupDocument => ({
+    schema_version: 1,
+    kind: 'workctx.sync-originals-backup',
+    entries: [],
+  });
+  return inBrowserStores<SyncOriginalsBackupDocument>(
+    originalDatabase,
+    'readonly',
+    signal,
+    empty,
+    (context) => {
+      const originals = context.content.count();
+      const directory = context.directory.count();
+      directory.onsuccess = context.guard(() => {
+        const count = originals.result;
+        if (
+          !Number.isSafeInteger(count) ||
+          count < 0 ||
+          count > SYNC_ORIGINALS_BACKUP_MAX_ENTRIES ||
+          directory.result !== count
+        )
+          throw unavailable();
+        const entries: SyncEventReceiptQuery[] = [];
+        let totalBytes = 0;
+        const request = context.content.openKeyCursor();
+        request.onsuccess = context.guard(() => {
+          const cursor = request.result;
+          if (!cursor) {
+            if (entries.length !== count) throw unavailable();
+            context.accept(parseSyncOriginalsBackupDocument({ ...empty(), entries }));
+            return;
+          }
+          if (entries.length >= count) throw unavailable();
+          const key = checkedKey(cursor.primaryKey);
+          readBrowserPair(context, key, (raw, summary, present) => {
+            if (
+              !present ||
+              typeof raw !== 'string' ||
+              raw.length > SYNC_EVENT_RECEIPT_REQUEST_BYTES
+            )
+              throw unavailable();
+            totalBytes += bytes(raw);
+            if (totalBytes > SYNC_ORIGINALS_BACKUP_DOCUMENT_BYTES) throw unavailable();
+            entries.push(readOriginal(raw, summary, key));
+            cursor.continue();
+          });
+        });
+      });
+    },
+  );
+}
+
+export interface OriginalBackupRestoreResult {
+  status: 'restored' | 'already-present' | 'empty';
+  total: number;
+  restored: number;
+  already_present: number;
+}
+/** File adapters verify the digest before calling. Only missing exact slots are added. */
+export function restoreBrowserSyncOriginalBackup(
+  input: SyncOriginalsBackupDocument,
+  signal: AbortSignal,
+  check: () => void,
+) {
+  check();
+  const document = parseSyncOriginalsBackupDocument(input);
+  check();
+  if (signal.aborted) throw unavailable();
+  if (document.entries.length === 0)
+    return Promise.resolve<OriginalBackupRestoreResult>({
+      status: 'empty',
+      total: 0,
+      restored: 0,
+      already_present: 0,
+    });
+  const prepared = document.entries.map((original) => {
+    check();
+    const raw = encodeSyncReceiptQuery(original);
+    const key = slot(original.identity, original.event.event_id);
+    const summary = JSON.stringify(metadata(original, raw));
+    readOriginal(raw, summary, key);
+    return { raw, key, summary };
+  });
+  check();
+  return inBrowserStores<OriginalBackupRestoreResult>(
+    originalDatabase,
+    'readwrite',
+    signal,
+    () => {
+      throw unavailable();
+    },
+    (context) => {
+      const missing: typeof prepared = [];
+      let checked = 0;
+      let written = 0;
+      // Queue the next request synchronously in each callback to keep this single transaction active.
+      const writeNext = () => {
+        check();
+        const item = missing[written];
+        if (!item) {
+          context.accept({
+            status: missing.length ? 'restored' : 'already-present',
+            total: prepared.length,
+            restored: missing.length,
+            already_present: prepared.length - missing.length,
+          });
+          return;
+        }
+        context.content.add(item.raw, item.key);
+        context.directory.add(item.summary, item.key);
+        readBrowserPair(context, item.key, (raw, summary, present) => {
+          if (!present || encodeSyncReceiptQuery(readOriginal(raw, summary, item.key)) !== item.raw)
+            throw unavailable();
+          written += 1;
+          writeNext();
+        });
+      };
+      const inspectNext = () => {
+        check();
+        const item = prepared[checked];
+        if (!item) {
+          writeNext();
+          return;
+        }
+        readBrowserPair(context, item.key, (raw, summary, present) => {
+          if (present) {
+            if (encodeSyncReceiptQuery(readOriginal(raw, summary, item.key)) !== item.raw)
+              throw unavailable();
+          } else missing.push(item);
+          checked += 1;
+          inspectNext();
+        });
+      };
+      inspectNext();
+    },
   );
 }
 
