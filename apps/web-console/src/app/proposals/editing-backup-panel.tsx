@@ -83,7 +83,7 @@ export function EditingBackupPanel({
         setReviewed(result);
         setMessage(
           action === 'prepare'
-            ? 'The complete saved-draft backup is ready to download. Unsaved editor changes are not included.'
+            ? 'The complete manual-draft backup is ready to download. Automatic copies and unsaved editor changes are not included.'
             : 'The editing backup matches this gateway and account. Compare it with this browser before restoring.',
         );
       } else if (action === 'compare') {
@@ -147,12 +147,13 @@ export function EditingBackupPanel({
       : undefined;
   return (
     <details className="side-detail">
-      <summary>Back up or restore all saved editing drafts</summary>
+      <summary>Back up or restore all manually saved editing drafts</summary>
       <div aria-busy={busy} style={{ overflowWrap: 'anywhere' }}>
         <p>
-          Back up all saved editing drafts for this gateway, project, account and client. Save your
-          current edits first if you want them included. Up to 100 drafts and a 16 MiB document are
-          supported; larger collections are rejected as a whole.
+          Back up all manually saved editing drafts for this gateway, project, account and client.
+          Automatic copies are separate. Use Save editing draft for your current edits first if you
+          want them included. Up to 100 drafts and a 16 MiB document are supported; larger
+          collections are rejected as a whole.
         </p>
         <button
           type="button"

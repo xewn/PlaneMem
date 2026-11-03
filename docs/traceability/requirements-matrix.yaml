@@ -3452,6 +3452,24 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_editing_autosave_development_increment:
+      date: "2026-11-04"
+      status: "Source-only opt-in automatic creation-draft saving and guarded recovery; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/editing-autosave-store.ts"
+        - "apps/web-console/src/app/proposals/use-editing-autosave.ts"
+        - "apps/web-console/src/app/proposals/editing-panel.tsx"
+        - "apps/web-console/src/app/proposals/editing-backup-panel.tsx"
+        - "docs/design/01-contracts/proposal-editing-draft-runtime.md"
+      behavior: "An explicit start owns a fresh bound UUID session and debounces complete raw drafts by 1.5 seconds. A separate v1 browser store compares the last acknowledged full pair before replacing it and confirms full readback on transaction completion. Writes serialize without locking typing; earlier acknowledgements cannot claim newer fields saved. Manual draft operations pause the writer; cancellation, unknown outcomes and lost restricted capability stop it. Restart uses a new slot. Twenty-entry discovery, exact selected reads, full review/export, existing original-request checks before confirmed resumption, and exact confirmed removal are integrated. Manual immutable snapshots and their complete backups exclude automatic copies. No automatic prepare, submit, migration or cleanup."
+      evidence: []
+      pending_evidence:
+        - "Debounce, concurrent typing, single-flight writes, stale acknowledgements, unmount/binding changes and restricted capability loss"
+        - "Atomic last-copy comparison, deleted or changed slots, half pairs, quota/timeout and unknown commit handling without retries"
+        - "Independent tabs and restarted sessions, scoped bounded pagination, stale selection and original-request recovery checks"
+        - "Manual-operation pause, exact removal without writer resurrection, export compatibility and explicit backup scope"
+      remaining_scope: "Automatic-copy batch backup/cleanup and retention, review-draft autosave, cross-scope or remote drafts, and runtime/compatibility evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, product/browser/database execution or release. Separate browser v1 schema source only; no server schema or dependency changes."
     proposal_queue_merge_development_increment:
       date: "2026-11-04"
       status: "Source-only atomic missing-row merge into an existing queue with complete preview confirmation; R-009 remains incomplete."

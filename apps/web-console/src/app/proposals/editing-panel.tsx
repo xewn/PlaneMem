@@ -5,6 +5,13 @@ import { proposalReceiptJson } from '@planemem/contracts';
 import { backupOperation } from '../sync/receipt/backup-operation';
 import type { BrowserRemovalResult } from '../sync/receipt/browser-store';
 import { EditingBackupPanel } from './editing-backup-panel';
+import { useEditingAutosave } from './use-editing-autosave';
+import {
+  listEditingAutosaves,
+  loadEditingAutosave,
+  removeEditingAutosave,
+  type EditingAutosavePage,
+} from './editing-autosave-store';
 import {
   assertProposalSubmissionBinding,
   encodeProposalOriginal,
@@ -51,9 +58,12 @@ export function ProposalEditingPanel({
   onOriginal: (original: ProposalOriginal) => void;
 }) {
   const [page, setPage] = useState<ProposalEditingPage>();
+  const [automaticPage, setAutomaticPage] = useState<EditingAutosavePage>();
+  const autosave = useEditingAutosave({ binding, requestKey, fields, disabled, restricted });
   const [reviewed, setReviewed] = useState<{
     draft: ProposalEditingDraft;
-    source: 'browser' | 'file';
+    source: 'browser' | 'file' | 'autosave';
+    session?: string;
   }>();
   const candidate = reviewed?.draft;
   const [removeConfirmed, setRemoveConfirmed] = useState(false);
@@ -91,7 +101,7 @@ export function ProposalEditingPanel({
     work: (signal: AbortSignal, check: () => void) => Promise<T>,
     receive: (result: T) => void,
   ) {
-    if (disabled || operation.current || !begin()) return;
+    if (disabled || operation.current || !beginManual()) return;
     const controller = new AbortController();
     operation.current = controller;
     setMessage('Reading or updating the saved editing draft…');
@@ -102,7 +112,7 @@ export function ProposalEditingPanel({
     } catch {
       if (mounted.current && operation.current === controller)
         setMessage(
-          'The draft operation could not be confirmed. Keep your current text and any reviewed copy or exported file. Reload saved drafts before another storage change.',
+          'The draft operation could not be confirmed. Keep your current text and any reviewed copy or exported file. Find saved or automatic drafts again before another storage change.',
         );
     } finally {
       if (operation.current === controller) {
@@ -111,10 +121,20 @@ export function ProposalEditingPanel({
       }
     }
   }
-  function review(draft: ProposalEditingDraft, source: 'browser' | 'file') {
+  function beginManual() {
+    if (!begin()) return false;
+    autosave.pause();
+    return true;
+  }
+  function review(
+    draft: ProposalEditingDraft,
+    source: 'browser' | 'file' | 'autosave',
+    session?: string,
+  ) {
     assertProposalSubmissionBinding(draft.binding, binding);
     if (draft.fields.values.classification === 'restricted' && !restricted) throw new TypeError();
-    setReviewed({ draft, source });
+    if (source === 'autosave' && !session) throw new TypeError();
+    setReviewed({ draft, source, ...(session ? { session } : {}) });
     setReplace(null);
     setRemoveConfirmed(false);
     setRemovalStatus(undefined);
@@ -152,6 +172,19 @@ export function ProposalEditingPanel({
       },
     );
   }
+  async function readAutomaticPage(after: string | null) {
+    await run(
+      (signal) => listEditingAutosaves(binding, after, signal),
+      (result) => {
+        setAutomaticPage(result);
+        setMessage(
+          result.entries.length
+            ? 'Select an automatic copy to review it. Automatic saving is paused while you review stored drafts.'
+            : 'No automatic copies on this page for this project and account.',
+        );
+      },
+    );
+  }
   return (
     <section aria-label="Save and resume editing drafts">
       <h3>Save your editing draft</h3>
@@ -159,6 +192,70 @@ export function ProposalEditingPanel({
         Save unfinished fields in this browser or export a file to continue later. Preparing or
         submitting a proposal remains a separate step.
       </p>
+      <label>
+        <input
+          type="checkbox"
+          checked={autosave.enabled}
+          disabled={disabled || (!autosave.enabled && !autosave.allowed)}
+          onChange={(event) => {
+            if (operation.current) return;
+            if (event.target.checked) autosave.start();
+            else autosave.pause();
+          }}
+        />{' '}
+        Automatically save this editor in this browser
+      </label>
+      <p role="status">{autosave.message}</p>
+      <p className="muted">
+        Each start keeps one latest automatic copy after a short pause in typing. Draft actions
+        pause automatic saving. Manual snapshots and their backups are separate; export an automatic
+        copy or continue from it and save a manual snapshot to keep an archive.
+      </p>
+      <div className="heading-actions">
+        <button
+          type="button"
+          className="secondary-button"
+          disabled={disabled}
+          onClick={() => void readAutomaticPage(null)}
+        >
+          Find automatic drafts
+        </button>
+        {automaticPage?.next && (
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={disabled}
+            onClick={() => void readAutomaticPage(automaticPage.next)}
+          >
+            Next automatic drafts
+          </button>
+        )}
+      </div>
+      {automaticPage && (
+        <ul>
+          {automaticPage.entries.map((entry) => (
+            <li key={entry.session_id}>
+              <p>
+                {entry.title || 'Untitled draft'} · {entry.classification} · automatically saved{' '}
+                {entry.saved_at}
+              </p>
+              <button
+                type="button"
+                className="secondary-button"
+                disabled={disabled}
+                onClick={() =>
+                  void run(
+                    (signal) => loadEditingAutosave(binding, entry, signal),
+                    (draft) => review(draft, 'autosave', entry.session_id),
+                  )
+                }
+              >
+                Review automatic draft
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
       <div className="heading-actions">
         <button
           type="button"
@@ -258,7 +355,13 @@ export function ProposalEditingPanel({
       {candidate && (
         <div>
           <p>
-            Selected: {candidate.fields.values.title || 'Untitled draft'} ·{' '}
+            Selected{' '}
+            {reviewed?.source === 'autosave'
+              ? 'automatic'
+              : reviewed?.source === 'file'
+                ? 'file'
+                : 'manual'}{' '}
+            copy: {candidate.fields.values.title || 'Untitled draft'} ·{' '}
             {candidate.fields.values.kind} · {candidate.fields.sources.length} sources · saved{' '}
             {candidate.saved_at}
           </p>
@@ -288,7 +391,7 @@ export function ProposalEditingPanel({
           >
             Export selected copy
           </button>
-          {reviewed?.source === 'browser' && (
+          {(reviewed?.source === 'browser' || reviewed?.source === 'autosave') && (
             <div>
               <p>
                 You can remove this saved editing copy from this browser. Your current editor,
@@ -320,12 +423,22 @@ export function ProposalEditingPanel({
                           setReplace(null);
                           setRemovalStatus('unknown');
                           setPage(undefined);
+                          setAutomaticPage(undefined);
+                          if (reviewed.source === 'autosave') {
+                            if (!reviewed.session) throw new TypeError();
+                            return removeEditingAutosave(
+                              binding,
+                              reviewed.session,
+                              candidate,
+                              signal,
+                            );
+                          }
                           return removeProposalEditingDraft(binding, candidate, signal);
                         },
                         (result) => {
                           setRemovalStatus(result);
                           setMessage(
-                            'The storage check finished. The selected copy remains below for export or continued editing. Find saved drafts again to refresh the directory.',
+                            'The storage check finished. The selected copy remains below for export or continued editing. Find saved or automatic drafts again to refresh the directory.',
                           );
                         },
                       );
@@ -340,7 +453,7 @@ export function ProposalEditingPanel({
                     ? 'The reviewed editing copy was removed from browser storage.'
                     : removalStatus === 'not-present'
                       ? 'The selected editing copy was already absent when checked.'
-                      : 'Removal is not confirmed. Keep or export the reviewed copy. If this operation does not complete, find saved drafts and review the current entry before another removal attempt.'}
+                      : 'Removal is not confirmed. Keep or export the reviewed copy. If this operation does not complete, find saved or automatic drafts and review the current entry before another removal attempt.'}
                 </p>
               )}
             </div>
@@ -413,7 +526,7 @@ export function ProposalEditingPanel({
       <EditingBackupPanel
         binding={binding}
         disabled={disabled}
-        begin={begin}
+        begin={beginManual}
         end={end}
         onStorageChange={() => {
           setPage(undefined);
