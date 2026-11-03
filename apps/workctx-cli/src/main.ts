@@ -31,6 +31,10 @@ import {
 import { isInboxAckHistoryCommand, runInboxAckHistoryArguments } from './inbox-ack-history.js';
 import { isInboxAckResultCommand, runSyncAckResultArguments } from './inbox-ack-result-file.js';
 import { isInboxCommand, runInboxArguments } from './inbox.js';
+import {
+  isInboxApplicationRestoreReceiptFileCommand,
+  runInboxApplicationRestoreReceiptFileArguments,
+} from './inbox-application-restore-receipt-file.js';
 import { isInboxPageChainCommand, runInboxPageChainArguments } from './inbox-page-chain.js';
 import {
   isInboxApplicationArchiveCommand,
@@ -72,6 +76,9 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   inbox application-restore-receipt  Read a historical receipt using --inbox and the complete original restore query including restore_request_id (--json or --json-file); no archive required
   inbox application-restore-receipt-get  Find the original query by expected_identity/application/restore_request_id JSON; optional read timeout_ms and --output NEW_QUERY_FILE
   inbox application-restore-receipt-list  Discover historical receipt IDs using --inbox and original identity/application JSON; optional limit (1–50), after_request_id and timeout_ms
+  inbox application-restore-receipt-inspect  Inspect a complete historical --receipt-file offline
+  inbox application-restore-receipt-query  Extract its original query using --receipt-file and --output NEW_QUERY
+                                 Receipt get accepts --receipt-output NEW_FILE instead of --output to export the complete historical receipt
   inbox application-status       Read a local projection using --inbox and --json/--json-file
                                  Requires expected_identity and application name/version; optional JSON timeout_ms
   inbox application-apply        Apply one imported page with the built-in context-item-lifecycle/1 adapter
@@ -244,6 +251,8 @@ function parseOptions(args: string[]) {
         'archive-file': { type: 'string' },
         'evidence-file': { type: 'string' },
         'result-file': { type: 'string' },
+        'receipt-file': { type: 'string' },
+        'receipt-output': { type: 'string' },
         'result-output': { type: 'string' },
         'dispatch-id': { type: 'string' },
         'record-id': { type: 'string' },
@@ -343,6 +352,8 @@ export async function main(args: string[]): Promise<number> {
       'inbox application-restore-receipt',
       'inbox application-restore-receipt-get',
       'inbox application-restore-receipt-list',
+      'inbox application-restore-receipt-inspect',
+      'inbox application-restore-receipt-query',
       'inbox application-status',
       'inbox application-list',
       'inbox application-export',
@@ -473,6 +484,14 @@ export async function main(args: string[]): Promise<number> {
         : positionals.length > 2)
     )
       usage('Unknown or incomplete command. Run workctx --help');
+    if (isInboxApplicationRestoreReceiptFileCommand(name)) {
+      print(await runInboxApplicationRestoreReceiptFileArguments(args, trace));
+      return 0;
+    }
+    if (values['receipt-file'] !== undefined)
+      usage('--receipt-file is only for application-restore-receipt-inspect/query');
+    if (values['receipt-output'] !== undefined && name !== 'inbox application-restore-receipt-get')
+      usage('--receipt-output is only for application-restore-receipt-get');
     if (isInboxApplicationArchiveCommand(name)) {
       print(await runInboxApplicationArchiveArguments(args, trace));
       return 0;

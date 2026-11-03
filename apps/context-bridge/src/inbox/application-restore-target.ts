@@ -1,5 +1,4 @@
-import { ContractError } from '@planemem/contracts';
-import { applicationDigest } from './application-model.js';
+import { ContractError, parseSyncApplicationRestoreTarget } from '@planemem/contracts';
 
 export interface SyncInboxApplicationRestoreTarget {
   schema_version: 1;
@@ -11,20 +10,7 @@ export interface SyncInboxApplicationRestoreTarget {
 export function parseInboxApplicationRestoreTarget(
   value: unknown,
 ): SyncInboxApplicationRestoreTarget {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError();
-  const row = value as Record<string, unknown>;
-  const fields = ['schema_version', 'application_history_sha256', 'received_history_sha256'];
-  if (
-    row.schema_version !== 1 ||
-    Object.keys(row).length !== fields.length ||
-    Object.keys(row).some((key) => !fields.includes(key))
-  )
-    throw new TypeError();
-  return {
-    schema_version: 1,
-    application_history_sha256: applicationDigest(row.application_history_sha256),
-    received_history_sha256: applicationDigest(row.received_history_sha256),
-  };
+  return parseSyncApplicationRestoreTarget(value);
 }
 
 export function inboxApplicationRestoreTarget(

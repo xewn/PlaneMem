@@ -1,8 +1,12 @@
 import { createHash } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
-import { ContractError, isSyncIdentifier, syncJsonSnapshot } from '@planemem/contracts';
 import {
-  applicationDigest,
+  ContractError,
+  isSyncIdentifier,
+  syncJsonSnapshot,
+  parseSyncApplicationRestoreReceipt,
+} from '@planemem/contracts';
+import {
   applicationFailure,
   applicationTrace,
   parseInboxApplicationQuery,
@@ -13,7 +17,6 @@ import {
   type SyncInboxApplicationRestoreQuery,
   type restoreInboxApplicationHistory,
 } from './application-restore.js';
-import { parseInboxApplicationRestoreTarget } from './application-restore-target.js';
 import { SYNC_INBOX_APPLICATION_RESTORE_RECEIPT_SCHEMA_V1 } from './application-restore-receipt-schema.js';
 
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
@@ -68,91 +71,13 @@ export function parseInboxApplicationRestoreReceiptSelection(
   }
 }
 
-function record(value: unknown, fields: readonly string[]) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError();
-  const data = value as Record<string, unknown>;
-  if (
-    Object.keys(data).length !== fields.length ||
-    fields.some((field) => !Object.hasOwn(data, field))
-  )
-    throw new TypeError();
-  return data;
-}
-function count(value: unknown, max: number) {
-  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0 || value > max)
-    throw new TypeError();
-  return value;
-}
-/** Parse all persisted fields and relationships, then reconstruct the canonical receipt. */
+/** Keep digest verification in the storage adapter; shared parsing is platform independent. */
 function parseReceipt(input: unknown, trace: string) {
-  const data = record(input, [
-    'schema_version',
-    'kind',
-    'query',
-    'request_sha256',
-    'restore_trace_id',
-    'outcome',
-  ]);
-  if (data.schema_version !== 1 || data.kind !== 'application-restore-receipt')
+  applicationTrace(trace);
+  const receipt = parseSyncApplicationRestoreReceipt(input);
+  if (hash(syncJsonSnapshot(receipt.query, 16384)) !== receipt.request_sha256)
     throw new TypeError();
-  const query = parseInboxApplicationRestoreReceiptQuery(data.query, trace);
-  const request_sha256 = applicationDigest(data.request_sha256);
-  if (hash(syncJsonSnapshot(query, 16384)) !== request_sha256) throw new TypeError();
-  const raw = record(data.outcome, [
-    'status',
-    'added_received_pages',
-    'added_application_pages',
-    'added_application_events',
-    'application_page_count',
-    'application_event_count',
-    'received_page_count',
-    'target_before',
-    'target_after',
-  ]);
-  if (raw.status !== 'restored' && raw.status !== 'already-restored' && raw.status !== 'empty')
-    throw new TypeError();
-  const outcome = {
-    status: raw.status as 'restored' | 'already-restored' | 'empty',
-    added_received_pages: count(raw.added_received_pages, 1000),
-    added_application_pages: count(raw.added_application_pages, 1000),
-    added_application_events: count(raw.added_application_events, 500000),
-    application_page_count: count(raw.application_page_count, 1000),
-    application_event_count: count(raw.application_event_count, 500000),
-    received_page_count: count(raw.received_page_count, 10000),
-    target_before: parseInboxApplicationRestoreTarget(raw.target_before),
-    target_after: parseInboxApplicationRestoreTarget(raw.target_after),
-  };
-  if (
-    outcome.received_page_count < outcome.application_page_count ||
-    outcome.added_received_pages > outcome.added_application_pages ||
-    (query.expected_target !== undefined &&
-      JSON.stringify(query.expected_target) !== JSON.stringify(outcome.target_before)) ||
-    (outcome.status === 'restored'
-      ? outcome.application_page_count === 0 ||
-        outcome.added_application_pages !== outcome.application_page_count ||
-        outcome.added_application_events !== outcome.application_event_count
-      : outcome.added_received_pages !== 0 ||
-        outcome.added_application_pages !== 0 ||
-        outcome.added_application_events !== 0) ||
-    (outcome.status === 'empty'
-      ? outcome.application_page_count !== 0 || outcome.application_event_count !== 0
-      : outcome.application_page_count === 0) ||
-    (outcome.added_application_pages === 0) !==
-      (outcome.target_before.application_history_sha256 ===
-        outcome.target_after.application_history_sha256) ||
-    (outcome.added_received_pages === 0) !==
-      (outcome.target_before.received_history_sha256 ===
-        outcome.target_after.received_history_sha256)
-  )
-    throw new TypeError();
-  return {
-    schema_version: 1 as const,
-    kind: 'application-restore-receipt' as const,
-    query,
-    request_sha256,
-    restore_trace_id: applicationTrace(data.restore_trace_id),
-    outcome,
-  };
+  return receipt;
 }
 export type SyncInboxApplicationRestoreReceipt = ReturnType<typeof parseReceipt>;
 

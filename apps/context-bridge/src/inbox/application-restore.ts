@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import {
   ContractError,
-  isSyncIdentifier,
+  parseSyncApplicationRestoreQuery,
   assertSyncCommandIdentity,
   parseSyncApplicationArchiveFile,
   syncApplicationArchiveDocumentJson,
@@ -15,9 +15,8 @@ import {
   type SyncSavedPageFile,
 } from '@planemem/contracts';
 import {
-  applicationDigest,
   applicationFailure,
-  parseInboxApplicationQuery,
+  applicationTrace,
   type SyncInboxApplicationQuery,
 } from './application-model.js';
 import {
@@ -27,7 +26,6 @@ import {
 import {
   assertInboxApplicationRestoreTargetHistory,
   inboxApplicationRestoreTarget,
-  parseInboxApplicationRestoreTarget,
   type SyncInboxApplicationRestoreTarget,
 } from './application-restore-target.js';
 
@@ -65,24 +63,8 @@ export function parseInboxApplicationRestoreQuery(
   trace: string,
 ): SyncInboxApplicationRestoreQuery {
   try {
-    const value: unknown = JSON.parse(syncJsonSnapshot(input, 16384));
-    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError();
-    const { archive_document_sha256, expected_target, restore_request_id, ...base } =
-      value as Record<string, unknown>;
-    if (restore_request_id !== undefined && !isSyncIdentifier(restore_request_id))
-      throw new TypeError();
-    return {
-      ...parseInboxApplicationQuery(base, trace),
-      archive_document_sha256: applicationDigest(archive_document_sha256),
-      ...(restore_request_id === undefined
-        ? {}
-        : { restore_request_id: restore_request_id as string }),
-      ...(expected_target === undefined
-        ? {}
-        : {
-            expected_target: parseInboxApplicationRestoreTarget(expected_target),
-          }),
-    };
+    applicationTrace(trace);
+    return parseSyncApplicationRestoreQuery(input);
   } catch {
     throw applicationFailure(
       'INBOX_APPLICATION_RESTORE_QUERY_INVALID',

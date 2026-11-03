@@ -65,3 +65,4 @@ export * from './sync-ack-result.js';
 export * from './sync-page-chain.js';
 export * from './sync-application-archive.js';
 export * from './sync-event-receipt-file.js';
+export * from './sync-application-restore-receipt.js';

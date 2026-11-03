@@ -1,5 +1,7 @@
 # 按请求 ID 找回应用恢复原查询
 
+get 已增补与 output 互斥的 receipt-output，用于保存完整历史回执，详见 [回执文件与离线原查询提取](sync-application-restore-receipt-file-runtime.md)。下文 output 的纯原查询保存含义不变。
+
 2026-11-03 开发增量，仅源码和文档。未编译、类型检查、测试、执行 CLI/Bridge/reducer、打开数据库、执行扩展/迁移、生成样本或发布。无新 schema/依赖；既有 SQLite 扩展和 PostgreSQL 016–049 仍未执行。关联 ADR-015、T3.4、T4.3、R-005；evidence 为空。
 
 ## 选择已有回执
@@ -54,4 +56,4 @@ workctx inbox application-restore-receipt --inbox local-inbox.sqlite --json-file
 
 若请求 ID 也已遗失，可先使用 [恢复回执目录](sync-application-restore-receipt-catalog-runtime.md)，按完整原消费者/应用分页发现 ID 和 receipt_get_query；不需要猜测原请求内容。
 
-当前数据库读取预算不覆盖输出预检、库打开、文件写入/发布/最终读回；同步 SQL 等待仍没有硬实时保证。仍缺回执完整独立文件导出/离线查看、跨应用回执发现、数据库实例绑定、不同历史合并和真实故障/跨设备运行证据。本次只开发并人工审阅源码，R-005 保持未完成。
+当前数据库读取预算不覆盖输出预检、库打开、文件写入/发布/最终读回；同步 SQL 等待仍没有硬实时保证。仍缺跨应用回执发现、数据库实例绑定、不同历史合并和真实故障/跨设备运行证据。本次只开发并人工审阅源码，R-005 保持未完成。

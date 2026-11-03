@@ -1,5 +1,7 @@
 # Context Bridge 本地同步存储
 
+恢复查询/目标/回执结构解析已提取为共享契约，保持原字段顺序与规范查询/回执摘要，Bridge 继续独立核验原查询和数据库回执 SHA。供 [回执文件离线流程](../../docs/design/01-contracts/sync-application-restore-receipt-file-runtime.md)复用；无数据库结构变更，仅源码，未运行或测试。
+
 新增 `listApplicationRestoreReceipts` 按原消费者/应用分页发现恢复回执 ID；默认 20、最多 50，完整校验选中记录和前瞻后返回历史摘要及 get 查询。按 ID 排序，每页独立快照，不称为恢复时间线或完整审计。见 [回执目录](../../docs/design/01-contracts/sync-application-restore-receipt-catalog-runtime.md)。仅源码，未打开库、编译或测试。
 
 新增 `getApplicationRestoreReceipt` 按原身份/应用/restore_request_id 找回历史回执及完整原查询；本次读取 timeout_ms 不覆盖记录中的原期限。复用既有完整回执校验，原完整查询精确核对仍保留。见 [原查询找回](../../docs/design/01-contracts/sync-application-restore-receipt-selection-runtime.md)。仅源码，未打开数据库、编译或测试。

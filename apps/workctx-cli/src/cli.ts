@@ -34,6 +34,10 @@ import {
 import { isInboxAckHistoryCommand, runInboxAckHistoryArguments } from './inbox-ack-history.js';
 import { isInboxAckResultCommand, runSyncAckResultArguments } from './inbox-ack-result-file.js';
 import { isInboxCommand, runInboxArguments } from './inbox.js';
+import {
+  isInboxApplicationRestoreReceiptFileCommand,
+  runInboxApplicationRestoreReceiptFileArguments,
+} from './inbox-application-restore-receipt-file.js';
 import { isInboxPageChainCommand, runInboxPageChainArguments } from './inbox-page-chain.js';
 import {
   isInboxApplicationArchiveCommand,
@@ -115,6 +119,8 @@ export async function runWorkctx(
     'inbox application-restore-receipt': 'inbox.application-restore-receipt',
     'inbox application-restore-receipt-get': 'inbox.application-restore-receipt-get',
     'inbox application-restore-receipt-list': 'inbox.application-restore-receipt-list',
+    'inbox application-restore-receipt-inspect': 'inbox.application-restore-receipt-inspect',
+    'inbox application-restore-receipt-query': 'inbox.application-restore-receipt-query',
     'inbox application-status': 'inbox.application-status',
     'inbox application-list': 'inbox.application-list',
     'inbox application-export': 'inbox.application-export',
@@ -250,6 +256,17 @@ export async function runWorkctx(
       }),
     };
   try {
+    if (command && isInboxApplicationRestoreReceiptFileCommand(command)) {
+      const result = await runInboxApplicationRestoreReceiptFileArguments(argv, context.trace_id);
+      return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
+    }
+    if (argv.some((arg) => arg === '--receipt-file' || arg.startsWith('--receipt-file=')))
+      usage('--receipt-file is only for application-restore-receipt-inspect/query');
+    if (
+      command !== 'inbox application-restore-receipt-get' &&
+      argv.some((arg) => arg === '--receipt-output' || arg.startsWith('--receipt-output='))
+    )
+      usage('--receipt-output is only for application-restore-receipt-get');
     if (command && isInboxApplicationArchiveCommand(command)) {
       const result = await runInboxApplicationArchiveArguments(argv, context.trace_id);
       return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };

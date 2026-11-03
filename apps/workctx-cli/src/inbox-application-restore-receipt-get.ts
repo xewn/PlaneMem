@@ -4,6 +4,7 @@ import { assertSyncCommandIdentity, ContractError, syncJsonSnapshot } from '@pla
 import { prepareArtifactOutput, type ArtifactOutput } from './artifact-output.js';
 import { applicationArchiveFailure as fail } from './inbox-application-archive-file.js';
 import { saveInboxApplicationRestoreRequest } from './inbox-application-restore-request.js';
+import { saveInboxApplicationRestoreReceiptFile } from './inbox-application-restore-receipt-file.js';
 
 /** Look up a historical record first; any original-query file is written after closing the reader. */
 export async function runInboxApplicationRestoreReceiptGet(
@@ -11,7 +12,14 @@ export async function runInboxApplicationRestoreReceiptGet(
   input: unknown,
   trace: string,
   outputPath?: string,
+  receiptOutputPath?: string,
 ) {
+  if (outputPath !== undefined && receiptOutputPath !== undefined)
+    throw fail(
+      'USAGE_ERROR',
+      'Choose either --output for the original query or --receipt-output for the complete receipt',
+      trace,
+    );
   let bridge: typeof import('@planemem/context-bridge');
   try {
     bridge = await import('@planemem/context-bridge');
@@ -25,17 +33,20 @@ export async function runInboxApplicationRestoreReceiptGet(
   const selection = bridge.parseInboxApplicationRestoreReceiptSelection(input, trace);
   const context = { selection, inbox: inboxPath, local_write_state: 'not-performed' as const };
   let output: ArtifactOutput | undefined;
-  if (outputPath !== undefined) {
+  const selectedOutputPath = receiptOutputPath ?? outputPath;
+  if (selectedOutputPath !== undefined) {
     try {
-      output = await prepareArtifactOutput(outputPath, trace);
+      output = await prepareArtifactOutput(selectedOutputPath, trace);
     } catch {
       throw fail(
-        'INBOX_APPLICATION_RESTORE_REQUEST_OUTPUT_UNAVAILABLE',
-        'Choose a new original-query file in an existing directory',
+        receiptOutputPath === undefined
+          ? 'INBOX_APPLICATION_RESTORE_REQUEST_OUTPUT_UNAVAILABLE'
+          : 'INBOX_APPLICATION_RESTORE_RECEIPT_OUTPUT_UNAVAILABLE',
+        'Choose a new output file in an existing directory',
         trace,
         {
           ...context,
-          output_path: outputPath,
+          output_path: selectedOutputPath,
           receipt_lookup_completed: false,
         },
       );
@@ -124,6 +135,48 @@ export async function runInboxApplicationRestoreReceiptGet(
     );
   }
   if (output === undefined) return response;
+  if (receiptOutputPath !== undefined) {
+    let receiptFile:
+      | Awaited<ReturnType<typeof saveInboxApplicationRestoreReceiptFile>>
+      | { state: 'not-created'; path: string; reason: 'receipt-not-observed' };
+    try {
+      receiptFile =
+        result.receipt === null
+          ? { state: 'not-created', path: output.path, reason: 'receipt-not-observed' }
+          : await saveInboxApplicationRestoreReceiptFile(result.receipt, output, trace);
+    } catch (error) {
+      throw fail(
+        error instanceof ContractError
+          ? error.envelope.code
+          : 'INBOX_APPLICATION_RESTORE_RECEIPT_SAVE_FAILED',
+        error instanceof ContractError
+          ? error.envelope.message
+          : 'The historical receipt could not be saved',
+        trace,
+        {
+          ...(error instanceof ContractError ? error.envelope.details : {}),
+          ...completedContext,
+          output_path: output.path,
+        },
+      );
+    }
+    const completed = { ...response, data: { ...response.data, receipt_file: receiptFile } };
+    try {
+      syncJsonSnapshot(completed, 256 * 1024);
+    } catch {
+      throw fail(
+        'INBOX_APPLICATION_RESTORE_RECEIPT_GET_TOO_LARGE',
+        'The complete receipt response exceeds 256 KiB; retain the reported receipt file state',
+        trace,
+        {
+          ...completedContext,
+          receipt_file: receiptFile,
+          response_completed: false,
+        },
+      );
+    }
+    return completed;
+  }
   let requestFile:
     | Awaited<ReturnType<typeof saveInboxApplicationRestoreRequest>>
     | { state: 'not-created'; path: string; reason: 'receipt-not-observed' };

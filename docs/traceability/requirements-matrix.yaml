@@ -978,6 +978,31 @@ requirements:
         - "CLI primary/embedded local routing, old output migration, read/rollback/close failures and complete result retention"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_application_restore_receipt_file_development_increment:
+      date: "2026-11-03"
+      status: "Source-only complete restore receipt export, offline inspection and original-query extraction; R-005 remains incomplete."
+      artifacts:
+        - "packages/contracts/src/sync-application-restore-receipt.ts"
+        - "packages/contracts/src/index.ts"
+        - "apps/context-bridge/src/inbox/application-restore.ts"
+        - "apps/context-bridge/src/inbox/application-restore-target.ts"
+        - "apps/context-bridge/src/inbox/application-restore-receipts.ts"
+        - "apps/workctx-cli/src/inbox-application-restore-receipt-file.ts"
+        - "apps/workctx-cli/src/inbox-application-restore-receipt-get.ts"
+        - "apps/workctx-cli/src/inbox.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/sync-application-restore-receipt-file-runtime.md"
+      behavior: "Shared v1 query/target/receipt structural parsing preserves original canonical ordering and database receipt bytes; adapters independently verify hashes. Get accepts receipt-output instead of original-query output, preflights before open and publishes only a complete recorded receipt after the read transaction and attempted close. The bounded file wraps the original receipt and canonical document digest. Offline inspect/query verify both document and original-query SHA-256 without Bridge loading or database/network access; query extraction preserves the original guard/timeout/ID. Missing records produce no file; publication/readback/response errors retain original receipt/query, paths and independent file state."
+      remaining_scope: "No receipt import/settlement, source authentication, database-instance binding, cross-application discovery, history merging or real fault/concurrent/cross-device recovery evidence. File self-consistency does not prove current database receipt presence or application state."
+      pending_evidence:
+        - "Shared parser compatibility with existing canonical query/target/receipt JSON and SHA values, unknown fields and all original outcome invariants"
+        - "Mutually exclusive output flags, invalid/existing paths before open, absent records with no file, primary/embedded routing"
+        - "Malformed UTF-8/oversized files, wrong document/query SHA, changed nested query with only outer hash updated, original trace/guard/timeout preservation"
+        - "Offline inspect/query without Bridge/database/network, extraction publication/readback failures and retained published-unconfirmed states"
+        - "Close/transaction failures, pre/post-save response limits and confirmed file state retained after response failure"
+      evidence: []
+      execution: "Source and documentation only; no builds, typechecks, tests, CLI/Bridge/reducer/API/service runs, generated receipt/query samples, database opens, schema initialization, migrations or release. No new schema/dependencies; existing SQLite extensions and PostgreSQL 016-049 remain unexecuted. Task commits/pushes target main with skip-ci."
     sync_application_restore_receipt_catalog_development_increment:
       date: "2026-11-03"
       status: "Source-only bounded discovery of historical restore request IDs for one original consumer/application; R-005 remains incomplete."
