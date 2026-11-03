@@ -1,5 +1,7 @@
 # Context Bridge 本地同步存储
 
+新增 `previewRestoreRequeue/requeueRestoredRecords`：原scope/restore_id/档案SHA/暂停generation绑定显式1至100个event_ids及原因，整份原历史验证后逐条比较23列恢复基线。只允许未变化且无投递元数据的恢复待审阅行；写事务整批设pending、重置调度并完整读回历史/控制/事件，保持暂停，不发送。见 [批量重新排队](../../docs/design/01-contracts/outbox-restore-requeue-runtime.md)。无新schema或持久批次回执，仅源码文档，未运行、编译或测试。
+
 新增 `prepareArchiveRestore`：严格 scope/新 restore_id/reason，完整核验源档案，在单个读快照中拒绝任何已占用ID、读取当前暂停generation并共享实际恢复的目标检查与v1计划，返回完整restore_query；不创建表或预留ID。见 [恢复请求准备](../../docs/design/01-contracts/outbox-restore-prepare-runtime.md)。固定90秒/128 KiB结果，仅源码文档，未运行、编译或测试。
 
 离线 `outbox-restore-backup` 子路径新增 `listOutboxRestoreBackupHistory/readOutboxRestoreBackupEntry`，整份备份核验后按摘要绑定分页/选中，目录默认10/最多20项，元数据128 KiB。单条返回原回执/源摘要及供显式文件提取的source，CLI剥离正文后输出。见 [备份离线取用](../../docs/design/01-contracts/outbox-restore-backup-access-runtime.md)。无schema/依赖变化，仅源码文档，未运行、编译或测试。

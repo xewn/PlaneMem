@@ -59,6 +59,10 @@ import {
 import { isOutboxControlCommand, runOutboxControlArguments } from './outbox-control.js';
 import { isOutboxRestoreCommand, runOutboxRestoreArguments } from './outbox-restore.js';
 import {
+  isOutboxRestoreRequeueCommand,
+  runOutboxRestoreRequeueArguments,
+} from './outbox-restore-requeue.js';
+import {
   isOutboxRestoreHistoryCommand,
   runOutboxRestoreHistoryArguments,
 } from './outbox-restore-history.js';
@@ -187,6 +191,8 @@ export async function runWorkctx(
     'outbox restore-preview': 'outbox.restore-preview',
     'outbox restore-prepare': 'outbox.restore-prepare',
     'outbox restore-receipt': 'outbox.restore-receipt',
+    'outbox restore-requeue-preview': 'outbox.restore-requeue-preview',
+    'outbox restore-requeue': 'outbox.restore-requeue',
     'outbox restore-history': 'outbox.restore-history',
     'outbox restore-audit': 'outbox.restore-audit',
     'outbox restore-compare': 'outbox.restore-compare',
@@ -292,7 +298,7 @@ export async function runWorkctx(
       stderr: JSON.stringify({
         code: 'USAGE_ERROR',
         message:
-          'Expected admin snapshot, audit, artifacts, plane-events, observed, search, index, overview, work-items, sessions, runs, tool-calls, handoffs, checkpoints, context, resume, checkpoint, handoff, sync, inbox, outbox list/get/audit/export/inspect-archive/send-control/pause/resume/restore/restore-preview/restore-prepare/restore-receipt/restore-history/restore-audit/restore-compare/restore-history-backup/inspect-restore-history-backup/restore-backup-history/restore-backup-get/restore-backup-export/restore-history-import/restore-history-import-preview/restore-get/restore-export/reconcile/inspect-result, conflicts or doctor',
+          'Expected admin snapshot, audit, artifacts, plane-events, observed, search, index, overview, work-items, sessions, runs, tool-calls, handoffs, checkpoints, context, resume, checkpoint, handoff, sync, inbox, outbox list/get/audit/export/inspect-archive/send-control/pause/resume/restore/restore-preview/restore-prepare/restore-receipt/restore-requeue/restore-requeue-preview/restore-history/restore-audit/restore-compare/restore-history-backup/inspect-restore-history-backup/restore-backup-history/restore-backup-get/restore-backup-export/restore-history-import/restore-history-import-preview/restore-get/restore-export/reconcile/inspect-result, conflicts or doctor',
         trace_id: context.trace_id,
       }),
     };
@@ -344,6 +350,18 @@ export async function runWorkctx(
     }
     if (command && isOutboxRestoreCommand(command)) {
       const result = await runOutboxRestoreArguments(
+        argv,
+        {
+          tenant_id: context.tenant_id,
+          workspace_id: context.workspace_id,
+          project_id: context.project_id,
+        },
+        context.trace_id,
+      );
+      return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
+    }
+    if (command && isOutboxRestoreRequeueCommand(command)) {
+      const result = await runOutboxRestoreRequeueArguments(
         argv,
         {
           tenant_id: context.tenant_id,

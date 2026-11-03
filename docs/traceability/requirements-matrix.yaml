@@ -959,6 +959,24 @@ requirements:
         - "Offline routing without token/environment/SQLite, argument restrictions, output traces, provenance and exits"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, sample file generation, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_outbox_restore_requeue_development_increment:
+      date: "2026-11-03"
+      status: "Source-only explicit restored-event batch requeue and read-only preview; R-005 remains incomplete."
+      artifacts:
+        - "apps/context-bridge/src/outbox/restore-requeue.ts"
+        - "apps/context-bridge/src/outbox/sqlite.ts"
+        - "apps/workctx-cli/src/outbox-restore-requeue.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/outbox-restore-requeue-runtime.md"
+      behavior: "Exact scope/restore ID/archive SHA/paused generation/1-100 unique event IDs/reason selects immutable restored baselines. Full original history verifies before every current selected row is compared across all 23 stored columns. Terminal originals, delivery metadata, missing/changed/ambiguous rows reject the entire batch. Preview uses one read snapshot. Explicit BEGIN IMMEDIATE requeue sets only status/attempt/error/schedule, fully reads back every selected row and revalidates original history and complete paused control before commit. Source content, identities, keys and pause stay intact. Errors retain original query, selected ID, candidate plan, transaction/commit uncertainty and close state."
+      evidence: []
+      pending_evidence:
+        - "Strict unique selection and scope/digest/generation binding, complete historical corruption, current baseline changes including original JSON text"
+        - "Terminal/delivery evidence rejection, atomic whole-batch update, reentrant trigger changes, readback errors and commit/rollback uncertainty"
+        - "Read-only preview, paused claims, no network/resume/send, response bounds and known committed result despite close/output failure"
+      remaining_scope: "No durable requeue receipt or automatic remote reconciliation; repeated calls do not prove an earlier commit. Old sender coordination, persistent batch request/result evidence, nonempty restore merge, general batch retry and end-to-end runtime evidence remain pending."
+      execution: "Source/docs only; no builds, typechecks, tests, CLI/Bridge runs, database opens, samples, schema initialization, migrations or release. No schema/dependency changes; prior SQLite upgrades and PostgreSQL 016-049 remain unexecuted."
     sync_outbox_restore_prepare_development_increment:
       date: "2026-11-03"
       status: "Source-only new event restore request preparation and explicit query file saving; R-005 remains incomplete."

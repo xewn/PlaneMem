@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+新增 `outbox restore-requeue-preview/restore-requeue --outbox EXISTING_FILE --json-file QUERY`：绑定原恢复ID、档案SHA、暂停版本和显式事件列表，先预览或整批重新排队；不接受档案文件、不自动发送。失败保留原查询、候选计划、提交/回滚及关闭状态；同查询重复调用不作为提交凭据。见 [批量重新排队](../../docs/design/01-contracts/outbox-restore-requeue-runtime.md)。仅源码文档，未执行、编译、测试或发布。
+
 新增 `outbox restore-prepare --outbox EXISTING_FILE --archive-file ORIGINAL_ARCHIVE --json-file PREPARATION --output NEW_QUERY_FILE`：输入scope（可取配置）/新restore_id/reason，只读检查目标后独占保存完整五字段恢复查询，可供restore-preview/restore使用。完成读取及关闭尝试后写文件并核对最终字节，失败保留原请求/计划/文件状态。见 [恢复请求准备](../../docs/design/01-contracts/outbox-restore-prepare-runtime.md)。仅源码文档，未执行、编译、测试或发布。
 
 新增离线 `outbox restore-backup-history/get/export`：显式 `--archive-file`，目录可省略JSON，get/export须提供backup_sha256/restore_id，export另需 `--output NEW_FILE`。目录直接给出绑定原文件摘要的next_query/get_query，导出保留原事件档案文档摘要并完整读回；不需队列/项目配置/令牌。见 [备份离线取用](../../docs/design/01-contracts/outbox-restore-backup-access-runtime.md)。仅源码文档，未执行、编译、测试或发布。
@@ -528,6 +530,8 @@ observed-item.json 示例：`{"work_item_id":"plane-item-42"}`。CLI 核对返�
 | `outbox restore` | 必须 --outbox EXISTING_FILE、--archive-file FILE、--json/--json-file 原恢复查询 | 原档案恢复到已暂停的空项目，未完成记录先转为待处理；原历史和回执同事务保存 |
 | `outbox restore-preview` | 必须 --outbox EXISTING_FILE、--archive-file FILE、--json/--json-file 原恢复查询 | 无；一次只读快照核验恢复条件及预计状态，或返回已核验原历史 |
 | `outbox restore-prepare` | 必须 --outbox EXISTING_FILE、--archive-file FILE、--json/--json-file 三字段准备输入、--output NEW_QUERY_FILE | 只读检查新ID/暂停/空目标后独占保存完整恢复查询；不预留ID或恢复事件 |
+| `outbox restore-requeue-preview` | 必须 --outbox EXISTING_FILE、--json/--json-file 六字段选择查询 | 原生只读，验证整份恢复历史和显式所选记录的完整基线，返回批次计划 |
+| `outbox restore-requeue` | 同一六字段查询和已有 --outbox | 整事务重新检查、设置所选记录pending并完整读回；保持暂停，不发送，不自动重试 |
 | `outbox restore-receipt` | 必须 --outbox EXISTING_FILE、--json/--json-file 同一原恢复查询；无档案文件 | 无；只读完整历史恢复回执，不代表当前队列状态 |
 | `outbox restore-history` | 必须 --outbox EXISTING_FILE；可选 --json/--json-file scope/limit/after_restore_id | 无；只读元数据分页，原档案正文未核验 |
 | `outbox restore-audit` | 必须 --outbox EXISTING_FILE；可选 --json/--json-file scope/max_receipts/max_bytes/timeout_ms | 无；单次只读事务完整核验项目恢复历史，超限或损坏不返回部分通过 |

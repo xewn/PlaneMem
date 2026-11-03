@@ -59,6 +59,10 @@ import {
 import { isOutboxControlCommand, runOutboxControlArguments } from './outbox-control.js';
 import { isOutboxRestoreCommand, runOutboxRestoreArguments } from './outbox-restore.js';
 import {
+  isOutboxRestoreRequeueCommand,
+  runOutboxRestoreRequeueArguments,
+} from './outbox-restore-requeue.js';
+import {
   isOutboxRestoreHistoryCommand,
   runOutboxRestoreHistoryArguments,
 } from './outbox-restore-history.js';
@@ -153,6 +157,8 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   outbox restore-preview         Preview the same archive/query against an existing --outbox without writing
   outbox restore-prepare         Prepare a new restore query from --outbox/--archive-file and --json/--json-file {scope,restore_id,reason}; requires --output NEW_QUERY_FILE
   outbox restore-receipt         Read the saved local restore receipt using --outbox and original JSON query
+  outbox restore-requeue-preview Preview selected restored events using --outbox EXISTING_FILE and --json/--json-file QUERY
+  outbox restore-requeue         Explicitly requeue reviewed baseline events with the same query; keeps the project paused
   outbox restore-history         Browse restore metadata using explicit --outbox; optional limit/after_restore_id JSON
   outbox restore-audit           Verify all project restore receipts/archives using --outbox; optional max_receipts/max_bytes/timeout_ms JSON
   outbox restore-compare         Compare one restored event with its current row using --outbox and restore_id/event_id JSON
@@ -442,6 +448,8 @@ export async function main(args: string[]): Promise<number> {
       'outbox restore-preview',
       'outbox restore-prepare',
       'outbox restore-receipt',
+      'outbox restore-requeue-preview',
+      'outbox restore-requeue',
       'outbox restore-history',
       'outbox restore-audit',
       'outbox restore-compare',
@@ -608,6 +616,20 @@ export async function main(args: string[]): Promise<number> {
     if (isOutboxRestoreCommand(name)) {
       print(
         await runOutboxRestoreArguments(
+          args,
+          {
+            tenant_id: envId('WORKCTX_TENANT_ID'),
+            workspace_id: envId('WORKCTX_WORKSPACE_ID'),
+            project_id: envId('WORKCTX_PROJECT_ID'),
+          },
+          trace,
+        ),
+      );
+      return 0;
+    }
+    if (isOutboxRestoreRequeueCommand(name)) {
+      print(
+        await runOutboxRestoreRequeueArguments(
           args,
           {
             tenant_id: envId('WORKCTX_TENANT_ID'),

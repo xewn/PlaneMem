@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [恢复事件批量重新排队](docs/design/01-contracts/outbox-restore-requeue-runtime.md)：可先预览，再显式把审阅过的恢复事件整批设为待发送。要求原档案摘要、暂停版本和全部原记录匹配，任一条变化则拒绝整批；保持项目暂停并完整读回后提交。仅源码文档，未编译、测试、运行或发布。
+
 新增 [发送队列恢复请求准备](docs/design/01-contracts/outbox-restore-prepare-runtime.md)：`outbox restore-prepare` 检查原档案、暂停目标和空队列，拒绝已占用恢复 ID，再把含档案摘要及当前暂停版本的完整新请求保存为文件；实际恢复仍重新检查。仅源码文档，未编译、测试、运行或发布。
 
 新增 [恢复历史备份离线取用](docs/design/01-contracts/outbox-restore-backup-access-runtime.md)：可分页查看备份中的恢复记录、读取指定完整回执，并提取原事件档案为新文件。续页和选中查询绑定原备份摘要，完整核验后才返回结果或导出。仅源码文档，未编译、测试、运行或发布。
