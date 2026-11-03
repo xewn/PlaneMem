@@ -3452,6 +3452,25 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_review_history_backup_development_increment:
+      date: "2026-11-04"
+      status: "Source-only complete scoped review history backup, inspection and explicit missing-only restore; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/review-history-backup-model.ts"
+        - "apps/web-console/src/app/proposals/review-history-backup.ts"
+        - "apps/web-console/src/app/proposals/review-history-backup-panel.tsx"
+        - "apps/web-console/src/app/proposals/review-history-store.ts"
+        - "apps/web-console/src/app/proposals/review-history-panel.tsx"
+        - "docs/design/01-contracts/proposal-review-history-runtime.md"
+      behavior: "A complete current-binding snapshot counts both stores and validates every pair without truncation, then verifies all individual digests outside the read transaction. Independent v1 archives retain up to 100 observations in a 16 MiB document with an outer SHA-256. Strict bounded UTF-8 import validates scope, ordering, every original/envelope, inner hashes and outer hash. Read-only comparison precedes explicit confirmation. Restore rechecks all targets in one transaction, rejects collisions/corruption, adds only missing pairs and confirms full readback plus commit. Save/restore attempts invalidate directories and prior comparison/confirmation while preserving candidates. History operations share the original review lock and never query, send or change review state."
+      evidence: []
+      pending_evidence:
+        - "Outer and inner digest tampering, exact schema, binding, duplicates/order, per-record and total limits"
+        - "Full scoped snapshot, orphaned pairs, empty or missing stores, oversized collections and no truncation"
+        - "Missing/same/conflicting comparisons, all-target preflight, atomic missing-only restore and committed readback"
+        - "Shared locks, stale comparison revocation, timeout/unmount, unknown commit retention and no review action"
+      remaining_scope: "Automatic save/backup, history removal and retention, cross-scope backup/sync, server archival and runtime evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, product/browser/API/database execution or release; no schema or dependency changes."
     proposal_review_history_development_increment:
       date: "2026-11-04"
       status: "Source-only explicit durable browser review-observation history and file recovery; R-009 remains incomplete."

@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { backupOperation } from '../sync/receipt/backup-operation';
 import type { ProposalSubmissionBinding } from './original-model';
+import { ReviewHistoryBackupPanel } from './review-history-backup-panel';
 import {
   REVIEW_HISTORY_FILE_BYTES,
   reviewObservationStatus,
@@ -42,18 +43,42 @@ export function ReviewHistoryPanel({
   const [page, setPage] = useState<ReviewHistoryPage>();
   const [digest, setDigest] = useState('');
   const [busy, setBusy] = useState(false);
+  const [storageEpoch, setStorageEpoch] = useState(0);
   const [message, setMessage] = useState(
     'Save complete historical observations explicitly. Loading a history copy does not query the gateway or send a review.',
   );
   const mounted = useRef(false);
+  const active = useRef(false);
   const operation = useRef<AbortController | undefined>(undefined);
   const release = useRef<(() => void) | undefined>(undefined);
+  const beginStorage = useCallback(() => {
+    if (!mounted.current || active.current || (begin && !begin())) return false;
+    active.current = true;
+    release.current = end;
+    setBusy(true);
+    return true;
+  }, [begin, end]);
+  const endStorage = useCallback(() => {
+    active.current = false;
+    if (mounted.current) setBusy(false);
+    release.current?.();
+    release.current = undefined;
+  }, []);
+  const storageChanged = useCallback(() => {
+    if (!mounted.current) return;
+    setPage(undefined);
+    setStorageEpoch((value) => value + 1);
+    setMessage(
+      'Saved history may have changed. Find saved review history again; compare any retained backup again before restoring. Received results and inspected copies are retained.',
+    );
+  }, []);
   useEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
       operation.current?.abort();
       operation.current = undefined;
+      active.current = false;
       release.current?.();
       release.current = undefined;
     };
@@ -62,11 +87,9 @@ export function ReviewHistoryPanel({
     work: (signal: AbortSignal, check: () => void) => Promise<T>,
     receive: (value: T) => void,
   ) {
-    if (!mounted.current || disabled || operation.current || (begin && !begin())) return;
+    if (!mounted.current || disabled || operation.current || !beginStorage()) return;
     const controller = new AbortController();
     operation.current = controller;
-    release.current = end;
-    setBusy(true);
     try {
       const result = await backupOperation(controller.signal, work);
       if (mounted.current && operation.current === controller && !controller.signal.aborted)
@@ -79,9 +102,7 @@ export function ReviewHistoryPanel({
     } finally {
       if (operation.current === controller) {
         operation.current = undefined;
-        if (mounted.current) setBusy(false);
-        release.current?.();
-        release.current = undefined;
+        endStorage();
       }
     }
   }
@@ -210,7 +231,7 @@ export function ReviewHistoryPanel({
           maxLength={64}
           disabled={locked}
           onChange={(event) => {
-            if (!operation.current && !disabled) setDigest(event.target.value);
+            if (!active.current && !disabled) setDigest(event.target.value);
           }}
         />
       </label>
@@ -315,7 +336,7 @@ export function ReviewHistoryPanel({
               onClick={() =>
                 void run(
                   async (signal, check) => {
-                    setPage(undefined);
+                    storageChanged();
                     return saveReviewHistory(selected.value.raw, binding, signal, check);
                   },
                   () =>
@@ -381,6 +402,14 @@ export function ReviewHistoryPanel({
           </p>
         </div>
       )}
+      <ReviewHistoryBackupPanel
+        binding={binding}
+        disabled={locked}
+        storageEpoch={storageEpoch}
+        begin={beginStorage}
+        end={endStorage}
+        onStorageChange={storageChanged}
+      />
       <p role="status">{message}</p>
     </section>
   );
