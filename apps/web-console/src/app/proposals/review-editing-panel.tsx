@@ -10,10 +10,12 @@ import { encodeReviewOriginal, type ProposalReviewOriginal } from './review-mode
 import { loadReviewOriginal } from './review-store';
 import { ReviewEditingBackupPanel } from './review-editing-backup-panel';
 import { useReviewEditingAutosave } from './use-review-editing-autosave';
+import { DraftAutosaveBackupPanel } from './draft-autosave-backup-panel';
 import {
   listReviewEditingAutosaves,
   loadReviewEditingAutosave,
   removeReviewEditingAutosave,
+  reviewEditingAutosaveBackup,
   type ReviewEditingAutosavePage,
   type ReviewEditingAutosaveSummary,
 } from './review-editing-autosave-store';
@@ -366,9 +368,8 @@ export function ReviewEditingPanel({
         </div>
       )}
       <p className="muted">
-        Automatic copies are separate from manual snapshots and their backups. Export an automatic
-        copy, or resume it in the matching review form and save a manual snapshot to include it in a
-        backup.
+        Automatic copies are separate from manual snapshots and their backups. Use the automatic
+        backup controls below to keep all saved automatic review copies in a file.
       </p>
       <div className="heading-actions">
         <button
@@ -413,6 +414,22 @@ export function ReviewEditingPanel({
       )}
       <ReviewEditingBackupPanel
         binding={binding}
+        disabled={locked}
+        storageEpoch={storageEpoch}
+        begin={beginStorage}
+        end={endStorage}
+        onStorageChange={storageChanged}
+      />
+      <DraftAutosaveBackupPanel<ReviewEditingDraft>
+        binding={binding}
+        backup={reviewEditingAutosaveBackup}
+        label={(draft) =>
+          draft.proposal_id +
+          ' · revision ' +
+          draft.expected_revision +
+          ' · ' +
+          (draft.decision || 'Undecided')
+        }
         disabled={locked}
         storageEpoch={storageEpoch}
         begin={beginStorage}

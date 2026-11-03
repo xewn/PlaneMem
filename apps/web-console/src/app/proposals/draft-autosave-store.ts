@@ -10,36 +10,47 @@ import {
 import {
   assertProposalSubmissionBinding,
   parseProposalSubmissionBinding,
-  proposalOriginalStorageKey,
   proposalOriginalStoragePrefix,
   type ProposalSubmissionBinding,
 } from './original-model';
+import {
+  AUTOSAVE_BACKUP_MAX_ENTRIES,
+  createAutosaveBackupModel,
+  draftAutosaveKey as key,
+  type AutosaveDraft,
+  type AutosaveBackupDocument,
+  type AutosaveBackupEntry,
+  type AutosaveBackupComparison,
+  type AutosaveBackupRestoreResult,
+} from './draft-autosave-backup-model';
 export interface DraftAutosavePage<Summary> {
   entries: Summary[];
   next: string | null;
 }
-function key(binding: ProposalSubmissionBinding, session: string) {
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(session))
-    throw new TypeError();
-  const slot = proposalOriginalStorageKey(binding, session);
-  if (new TextEncoder().encode(slot).byteLength > 16384) throw new TypeError();
-  return slot;
-}
 /** Fixed codecs and separate layouts keep each draft kind in its own validated store. */
 export function createDraftAutosaveStore<
-  Draft extends { binding: ProposalSubmissionBinding },
+  Draft extends AutosaveDraft,
   Summary extends { session_id: string },
 >({
   layout,
   encode,
   decode,
   summary,
+  backup,
 }: {
   layout: BrowserStoreLayout;
   encode: (value: unknown) => string;
   decode: (raw: string) => Draft;
   summary: (session: string, draft: Draft) => Summary;
+  backup: {
+    kind: 'proposal-editing-autosaves-backup' | 'proposal-review-editing-autosaves-backup';
+    documentBytes: number;
+  };
 }) {
+  const backupModel = createAutosaveBackupModel({
+    ...backup,
+    parseDraft: (value) => decode(encode(value)),
+  });
   function pair(raw: unknown, index: unknown, binding: ProposalSubmissionBinding, slot: string) {
     if (
       typeof raw !== 'string' ||
@@ -189,5 +200,220 @@ export function createDraftAutosaveStore<
       { create: false },
     );
   }
-  return { save, list, load, remove };
+  function readBudget() {
+    let bytes = 0;
+    return (raw: unknown, index: unknown) => {
+      if (
+        typeof raw !== 'string' ||
+        raw.length > backupModel.documentBytes ||
+        typeof index !== 'string' ||
+        index.length > 4096 ||
+        new TextEncoder().encode(index).byteLength > 4096
+      )
+        throw new TypeError();
+      bytes += new TextEncoder().encode(raw).byteLength;
+      if (bytes > backupModel.documentBytes) throw new TypeError();
+    };
+  }
+  /** Count and read the entire scoped collection in one snapshot; never truncate a backup. */
+  function readBackup(input: ProposalSubmissionBinding, signal: AbortSignal, check: () => void) {
+    check();
+    const binding = parseProposalSubmissionBinding(input);
+    key(binding, '00000000-0000-4000-8000-000000000000');
+    const prefix = proposalOriginalStoragePrefix(binding);
+    const document = (entries: AutosaveBackupEntry<Draft>[]) =>
+      backupModel.parseDocument({
+        schema_version: 1,
+        kind: backupModel.kind,
+        binding,
+        entries,
+      });
+    return inBrowserStores<AutosaveBackupDocument<Draft>>(
+      layout,
+      'readonly',
+      signal,
+      () => document([]),
+      (context) => {
+        const range = IDBKeyRange.bound(prefix, prefix + '\uffff', false, true);
+        const contents = context.content.count(range);
+        const directory = context.directory.count(range);
+        directory.onsuccess = context.guard(() => {
+          check();
+          const count = contents.result;
+          if (
+            !Number.isSafeInteger(count) ||
+            count < 0 ||
+            count > AUTOSAVE_BACKUP_MAX_ENTRIES ||
+            directory.result !== count
+          )
+            throw new TypeError();
+          const entries: AutosaveBackupEntry<Draft>[] = [];
+          const account = readBudget();
+          const request = context.content.openKeyCursor(range);
+          request.onsuccess = context.guard(() => {
+            check();
+            const cursor = request.result;
+            if (!cursor) {
+              if (entries.length !== count) throw new TypeError();
+              context.accept(document(entries));
+              return;
+            }
+            const slot = cursor.primaryKey;
+            if (
+              entries.length >= count ||
+              typeof slot !== 'string' ||
+              new TextEncoder().encode(slot).byteLength > 16384
+            )
+              throw new TypeError();
+            readBrowserPair(context, slot, (raw, index, exists) => {
+              if (!exists) throw new TypeError();
+              account(raw, index);
+              const saved = pair(raw, index, binding, slot);
+              entries.push({ session_id: saved.entry.session_id, draft: saved.draft });
+              cursor.continue();
+            });
+          });
+        });
+      },
+    );
+  }
+  function prepareBackup(input: AutosaveBackupDocument<Draft>) {
+    const document = backupModel.parseDocument(input);
+    return document.entries.map(({ session_id, draft }) => ({
+      session_id,
+      draft,
+      slot: key(document.binding, session_id),
+      raw: encode(draft),
+      index: JSON.stringify(summary(session_id, draft)),
+    }));
+  }
+  function entryState(
+    item: ReturnType<typeof prepareBackup>[number],
+    raw: unknown,
+    index: unknown,
+    exists: boolean,
+  ) {
+    if (!exists) return 'missing' as const;
+    pair(raw, index, item.draft.binding, item.slot);
+    return raw === item.raw && index === item.index ? ('same' as const) : ('different' as const);
+  }
+  function comparison(entries: AutosaveBackupComparison['entries']): AutosaveBackupComparison {
+    const missing = entries.filter((entry) => entry.state === 'missing').length;
+    const same = entries.filter((entry) => entry.state === 'same').length;
+    const different = entries.filter((entry) => entry.state === 'different').length;
+    return { entries, missing, same, different, can_restore: different === 0 };
+  }
+  function compareBackup(
+    input: AutosaveBackupDocument<Draft>,
+    signal: AbortSignal,
+    check: () => void,
+  ) {
+    check();
+    const prepared = prepareBackup(input);
+    check();
+    if (!prepared.length) return Promise.resolve(comparison([]));
+    return inBrowserStores<AutosaveBackupComparison>(
+      layout,
+      'readonly',
+      signal,
+      () =>
+        comparison(
+          prepared.map((item) => ({
+            session_id: item.session_id,
+            request_key: item.draft.request_key,
+            state: 'missing',
+          })),
+        ),
+      (context) => {
+        const entries: AutosaveBackupComparison['entries'] = [];
+        const account = readBudget();
+        const next = () => {
+          check();
+          const item = prepared[entries.length];
+          if (!item) {
+            context.accept(comparison(entries));
+            return;
+          }
+          readBrowserPair(context, item.slot, (raw, index, exists) => {
+            if (exists) account(raw, index);
+            entries.push({
+              session_id: item.session_id,
+              request_key: item.draft.request_key,
+              state: entryState(item, raw, index, exists),
+            });
+            next();
+          });
+        };
+        next();
+      },
+    );
+  }
+  /** Preflight every selected session before inserting any missing pair, then reread every pair. */
+  function restoreBackup(
+    input: AutosaveBackupDocument<Draft>,
+    signal: AbortSignal,
+    check: () => void,
+  ) {
+    check();
+    const prepared = prepareBackup(input);
+    check();
+    if (!prepared.length) return Promise.resolve({ total: 0, added: 0, already_present: 0 });
+    return inBrowserStores<AutosaveBackupRestoreResult>(
+      layout,
+      'readwrite',
+      signal,
+      () => {
+        throw new TypeError();
+      },
+      (context) => {
+        const missing: typeof prepared = [];
+        const preflightBudget = readBudget();
+        const verificationBudget = readBudget();
+        let inspected = 0;
+        let verified = 0;
+        const verify = () => {
+          check();
+          const item = prepared[verified];
+          if (!item) {
+            context.accept({
+              total: prepared.length,
+              added: missing.length,
+              already_present: prepared.length - missing.length,
+            });
+            return;
+          }
+          readBrowserPair(context, item.slot, (raw, index, exists) => {
+            if (!exists) throw new TypeError();
+            verificationBudget(raw, index);
+            if (entryState(item, raw, index, exists) !== 'same') throw new TypeError();
+            verified += 1;
+            verify();
+          });
+        };
+        const inspect = () => {
+          check();
+          const item = prepared[inspected];
+          if (!item) {
+            for (const absent of missing) {
+              check();
+              context.content.add(absent.raw, absent.slot);
+              context.directory.add(absent.index, absent.slot);
+            }
+            verify();
+            return;
+          }
+          readBrowserPair(context, item.slot, (raw, index, exists) => {
+            if (exists) preflightBudget(raw, index);
+            const state = entryState(item, raw, index, exists);
+            if (state === 'missing') missing.push(item);
+            else if (state !== 'same') throw new TypeError();
+            inspected += 1;
+            inspect();
+          });
+        };
+        inspect();
+      },
+    );
+  }
+  return { save, list, load, remove, backupModel, readBackup, compareBackup, restoreBackup };
 }

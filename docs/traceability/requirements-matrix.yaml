@@ -3452,6 +3452,29 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_autosave_backup_development_increment:
+      date: "2026-11-04"
+      status: "Source-only complete automatic-draft backup, inspection and atomic missing-only restoration for creation and review; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/draft-autosave-backup-model.ts"
+        - "apps/web-console/src/app/proposals/draft-autosave-backup.ts"
+        - "apps/web-console/src/app/proposals/draft-autosave-backup-panel.tsx"
+        - "apps/web-console/src/app/proposals/draft-autosave-store.ts"
+        - "apps/web-console/src/app/proposals/editing-autosave-store.ts"
+        - "apps/web-console/src/app/proposals/review-editing-autosave-store.ts"
+        - "apps/web-console/src/app/proposals/editing-panel.tsx"
+        - "apps/web-console/src/app/proposals/review-editing-panel.tsx"
+        - "apps/web-console/src/app/proposals/recover-review-draft/page.tsx"
+        - "docs/design/01-contracts/proposal-autosave-backup-runtime.md"
+      behavior: "Separate fixed v1 backup kinds retain every original session UUID and complete raw draft under the original binding. Counts and all dual-store pairs are checked in one read transaction; limit 100 sessions, 16 MiB creation or 4 MiB review document, no truncation. Canonical checksums bind all contents and times; loading/comparison revalidate kind, binding, ordering, sizes and digest. Confirmation binds file digest and local storage epoch. A write transaction preflights every source target, adds missing pairs only, preserves exact same copies, rejects any conflict or damage, rereads all pairs and waits for commit. Current autosaving pauses; other pages may continue their own sessions. Restore/removal invalidate directories and confirmations, unknown outcomes retain the file and require comparison again. No automatic writer takeover, editor replacement, preparation or submission. Manual snapshots remain separate."
+      evidence: []
+      pending_evidence:
+        - "Both backup codecs, same-request different-session preservation, unique ordered UUIDs, strict fields/binding and 100-session/byte limits"
+        - "Complete dual-count snapshot, dangling pairs and malformed data, empty missing database without initialization, no partial export"
+        - "Digest revalidation, target-body read budgets, conflict before writes, missing-only add, complete readback and unknown commit reporting"
+        - "Stable operation release across renders, current writer pause, other-page changes, restore/removal epoch invalidation, retained file and fresh comparison after failure"
+      remaining_scope: "Automatic-copy batch/automatic cleanup, retention, scheduled or cross-scope backups, remote sync and runtime/compatibility evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, product/browser/database execution or release. Existing browser v1 stores reused; no migrations, server schema or dependency changes."
     proposal_review_editing_autosave_development_increment:
       date: "2026-11-04"
       status: "Source-only opt-in unfinished review autosave with guarded discovery, recovery and removal; R-009 remains incomplete."

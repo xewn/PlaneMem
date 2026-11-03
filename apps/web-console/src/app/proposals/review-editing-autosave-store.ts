@@ -1,6 +1,7 @@
 'use client';
 
 import { createDraftAutosaveStore, type DraftAutosavePage } from './draft-autosave-store';
+import { createDraftAutosaveBackup } from './draft-autosave-backup';
 import {
   decodeReviewEditingDraft,
   encodeReviewEditingDraft,
@@ -18,6 +19,7 @@ export interface ReviewEditingAutosaveSummary {
 export type ReviewEditingAutosavePage = DraftAutosavePage<ReviewEditingAutosaveSummary>;
 const store = createDraftAutosaveStore<ReviewEditingDraft, ReviewEditingAutosaveSummary>({
   layout: { databaseName: 'planemem-proposal-review-editing-autosaves', contentStore: 'drafts' },
+  backup: { kind: 'proposal-review-editing-autosaves-backup', documentBytes: 4 * 1024 * 1024 },
   encode: encodeReviewEditingDraft,
   decode: decodeReviewEditingDraft,
   summary: (session, draft) => ({
@@ -33,3 +35,4 @@ export const saveReviewEditingAutosave = store.save;
 export const listReviewEditingAutosaves = store.list;
 export const loadReviewEditingAutosave = store.load;
 export const removeReviewEditingAutosave = store.remove;
+export const reviewEditingAutosaveBackup = createDraftAutosaveBackup(store);

@@ -1,15 +1,17 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { proposalReceiptJson } from '@planemem/contracts';
 import { backupOperation } from '../sync/receipt/backup-operation';
 import type { BrowserRemovalResult } from '../sync/receipt/browser-store';
 import { EditingBackupPanel } from './editing-backup-panel';
 import { useEditingAutosave } from './use-editing-autosave';
+import { DraftAutosaveBackupPanel } from './draft-autosave-backup-panel';
 import {
   listEditingAutosaves,
   loadEditingAutosave,
   removeEditingAutosave,
+  editingAutosaveBackup,
   type EditingAutosavePage,
 } from './editing-autosave-store';
 import {
@@ -59,17 +61,25 @@ export function ProposalEditingPanel({
 }) {
   const [page, setPage] = useState<ProposalEditingPage>();
   const [automaticPage, setAutomaticPage] = useState<EditingAutosavePage>();
+  const [automaticEpoch, setAutomaticEpoch] = useState(0);
   const autosave = useEditingAutosave({ binding, requestKey, fields, disabled, restricted });
   const [reviewed, setReviewed] = useState<{
     draft: ProposalEditingDraft;
     source: 'browser' | 'file' | 'autosave';
     session?: string;
+    automaticEpoch?: number;
   }>();
   const candidate = reviewed?.draft;
   const [removeConfirmed, setRemoveConfirmed] = useState(false);
   const [removalStatus, setRemovalStatus] = useState<BrowserRemovalResult | 'unknown'>();
   const [replace, setReplace] = useState<string | null>(null);
   const [message, setMessage] = useState('');
+  const automaticStorageChanged = useCallback(() => {
+    setAutomaticPage(undefined);
+    setAutomaticEpoch((value) => value + 1);
+    setRemoveConfirmed(false);
+    setReplace(null);
+  }, []);
   const operation = useRef<AbortController | undefined>(undefined);
   const retained = useRef<ProposalEditingDraft | undefined>(undefined);
   const mounted = useRef(false);
@@ -134,7 +144,7 @@ export function ProposalEditingPanel({
     assertProposalSubmissionBinding(draft.binding, binding);
     if (draft.fields.values.classification === 'restricted' && !restricted) throw new TypeError();
     if (source === 'autosave' && !session) throw new TypeError();
-    setReviewed({ draft, source, ...(session ? { session } : {}) });
+    setReviewed({ draft, source, ...(session ? { session, automaticEpoch } : {}) });
     setReplace(null);
     setRemoveConfirmed(false);
     setRemovalStatus(undefined);
@@ -208,9 +218,23 @@ export function ProposalEditingPanel({
       <p role="status">{autosave.message}</p>
       <p className="muted">
         Each start keeps one latest automatic copy after a short pause in typing. Draft actions
-        pause automatic saving. Manual snapshots and their backups are separate; export an automatic
-        copy or continue from it and save a manual snapshot to keep an archive.
+        pause automatic saving. Manual snapshots and their backups are separate; automatic copies
+        have their own complete backup controls below.
       </p>
+      <DraftAutosaveBackupPanel<ProposalEditingDraft>
+        binding={binding}
+        backup={editingAutosaveBackup}
+        label={(draft) =>
+          (draft.fields.values.title || 'Untitled draft') +
+          ' · ' +
+          draft.fields.values.classification
+        }
+        disabled={disabled}
+        storageEpoch={automaticEpoch}
+        begin={beginManual}
+        end={end}
+        onStorageChange={automaticStorageChanged}
+      />
       <div className="heading-actions">
         <button
           type="button"
@@ -398,7 +422,8 @@ export function ProposalEditingPanel({
                 prepared requests and submitted proposals are kept. Export the selected copy first
                 if you want to keep it after leaving this page.
               </p>
-              {removalStatus === undefined ? (
+              {removalStatus === undefined &&
+              (reviewed.source !== 'autosave' || reviewed.automaticEpoch === automaticEpoch) ? (
                 <>
                   <label>
                     <input
@@ -416,7 +441,13 @@ export function ProposalEditingPanel({
                     className="secondary-button"
                     disabled={disabled || !removeConfirmed}
                     onClick={() => {
-                      if (!removeConfirmed || removalStatus !== undefined) return;
+                      if (
+                        !removeConfirmed ||
+                        removalStatus !== undefined ||
+                        (reviewed.source === 'autosave' &&
+                          reviewed.automaticEpoch !== automaticEpoch)
+                      )
+                        return;
                       void run(
                         (signal) => {
                           setRemoveConfirmed(false);
@@ -426,6 +457,7 @@ export function ProposalEditingPanel({
                           setAutomaticPage(undefined);
                           if (reviewed.source === 'autosave') {
                             if (!reviewed.session) throw new TypeError();
+                            automaticStorageChanged();
                             return removeEditingAutosave(
                               binding,
                               reviewed.session,
@@ -449,11 +481,13 @@ export function ProposalEditingPanel({
                 </>
               ) : (
                 <p role="status">
-                  {removalStatus === 'removed'
-                    ? 'The reviewed editing copy was removed from browser storage.'
-                    : removalStatus === 'not-present'
-                      ? 'The selected editing copy was already absent when checked.'
-                      : 'Removal is not confirmed. Keep or export the reviewed copy. If this operation does not complete, find saved or automatic drafts and review the current entry before another removal attempt.'}
+                  {removalStatus === undefined
+                    ? 'Automatic copies may have changed. Find automatic drafts and review the current copy before removing it.'
+                    : removalStatus === 'removed'
+                      ? 'The reviewed editing copy was removed from browser storage.'
+                      : removalStatus === 'not-present'
+                        ? 'The selected editing copy was already absent when checked.'
+                        : 'Removal is not confirmed. Keep or export the reviewed copy. If this operation does not complete, find saved or automatic drafts and review the current entry before another removal attempt.'}
                 </p>
               )}
             </div>
