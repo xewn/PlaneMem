@@ -132,6 +132,7 @@ export async function runWorkctx(
     'inbox application-archive-get': 'inbox.application-archive-get',
     'inbox application-apply': 'inbox.application-apply',
     'inbox application-apply-preview': 'inbox.application-apply-preview',
+    'inbox application-pending': 'inbox.application-pending',
     'inbox application-audit': 'inbox.application-audit',
     'inbox application-replay': 'inbox.application-replay',
     'inbox application-history': 'inbox.application-history',

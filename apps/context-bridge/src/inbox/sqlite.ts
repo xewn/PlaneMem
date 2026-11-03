@@ -42,6 +42,8 @@ export { parseInboxApplicationRestoreReceiptAuditQuery } from './application-res
 export type { SyncInboxApplicationRestoreReceiptAuditQuery } from './application-restore-receipt-audit.js';
 export { parseInboxApplicationCatalogQuery } from './application-catalog.js';
 export type { SyncInboxApplicationCatalogQuery } from './application-catalog.js';
+export { parseInboxBuiltInApplicationPendingQuery } from './application-pending.js';
+export type { SyncInboxApplicationPendingQuery } from './application-pending.js';
 export { parseInboxBuiltInApplicationReplayQuery } from './application-replay.js';
 export type { SyncInboxApplicationReplayQuery } from './application-replay.js';
 export {
@@ -1111,6 +1113,7 @@ export class SqliteSyncInbox {
         this.restoreApplicationSourcePages(identity, pages, trace, check, expectedHistory),
       (identity, pages, trace, check) =>
         this.compareApplicationSourcePages(identity, pages, trace, check),
+      (identity, trace) => this.head(identityFor(identity, trace), trace),
     );
   }
   /** Explicit optional schema initialization; constructor/import do not enable applications. */
@@ -1176,6 +1179,10 @@ export class SqliteSyncInbox {
   /** Only pure synchronous handlers are supported. External effects are outside this transaction. */
   applyApplicationPage(input: unknown, handlers: SyncInboxApplicationHandlers, trace: string) {
     return this.applications().apply(input, handlers, trace);
+  }
+  /** Discover the received suffix after the current application head without executing reducers. */
+  readBuiltInApplicationPendingPages(input: unknown, trace: string) {
+    return this.applications().pending(input, trace);
   }
   /** Readonly planning with fixed built-ins; actual application must check again. */
   previewBuiltInApplicationPage(input: unknown, trace: string) {

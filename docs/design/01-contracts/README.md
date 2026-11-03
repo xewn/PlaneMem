@@ -2,6 +2,7 @@
 
 所有并行任务只能使用以下契约；任何私有 payload 都必须被拒绝。契约变更流程：ADR → Schema → generated SDK → Mock/Fixtures → compatibility test → downstream migration plan。
 
+- [待应用原页发现](sync-application-pending-runtime.md)
 - [原页应用只读预览](sync-application-apply-preview-runtime.md)
 - [WCP API](wcp-api.md)
 - [Canonical Event](canonical-events.md)

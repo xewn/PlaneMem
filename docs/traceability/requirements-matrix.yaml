@@ -978,6 +978,28 @@ requirements:
         - "CLI primary/embedded local routing, old output migration, read/rollback/close failures and complete result retention"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_application_pending_development_increment:
+      date: "2026-11-03"
+      status: "Source-only discovery of the received suffix immediately after a selected built-in application head; R-005 remains incomplete."
+      artifacts:
+        - "apps/context-bridge/src/inbox/application-pending.ts"
+        - "apps/context-bridge/src/inbox/applications.ts"
+        - "apps/context-bridge/src/inbox/sqlite.ts"
+        - "apps/workctx-cli/src/inbox-application-pending.ts"
+        - "apps/workctx-cli/src/inbox.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/sync-application-pending-runtime.md"
+      behavior: "Strict original identity and built-in application query before opening readonly storage. One transaction checks applied and received heads, then 1-50 immediate pending pages plus a fully decoded lookahead with original sequence/digest/predecessor/cursor/limit continuity. Includes empty pages even when cursors match; reports checkpoint-derived count, summaries and only the first pending page's exact next_apply_query. Explicit application advances the refreshed window. Deduplicated selected source documents capped at 64 MiB and complete Bridge/CLI responses at 512 KiB; preserve query/stage/page progress and close state."
+      remaining_scope: "No reducer execution, semantic readiness claim, full received/application history audit, arbitrary skipping, automatic application, writes or acknowledgement. No missing baseline recovery, additional business adapters, permission rebuild, frozen cross-call state or runtime/cross-device evidence."
+      pending_evidence:
+        - "Strict query/adapter selection, local primary and embedded routing, readonly existing storage and prohibited output/options"
+        - "Missing consumers/applications, orphan rows, identical heads, pending root/suffix and empty equal-cursor pages"
+        - "Short/gapped/duplicate metadata, predecessor/cursor/limit changes, complete lookahead decoding and exact final boundary"
+        - "First-page query retention, checkpoint-derived count, refresh after concurrent source/application advancement and no reducers or writes"
+        - "Byte/response/deadline limits, safe numeric boundaries, read rollback/open/close failures and original diagnostic preservation"
+      evidence: []
+      execution: "Source and documentation only; no builds, typechecks, tests, reducer/CLI/Bridge/API runs, sample artifacts, database opens, schema initialization, migrations or release. No schema/dependency changes; prior SQLite extensions and PostgreSQL 016-049 remain unexecuted. Task commit/push targets main with skip-ci."
     sync_application_apply_preview_development_increment:
       date: "2026-11-03"
       status: "Source-only readonly exact-page application preview with shared apply preparation; R-005 remains incomplete."

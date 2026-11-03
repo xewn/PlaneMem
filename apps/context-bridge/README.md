@@ -1,5 +1,7 @@
 # Context Bridge 本地同步存储
 
+新增 `readBuiltInApplicationPendingPages`，在同一只读事务核对应用与接收检查点，列出紧随应用头的连续原页，返回首待处理页的 `next_apply_query`。默认20/最多50页并完整核验前瞻页，64 MiB原页预算、512 KiB完整响应，不执行 reducer。见 [待应用原页发现](../../docs/design/01-contracts/sync-application-pending-runtime.md)。仅源码文档，未运行、编译或测试。
+
 新增 `previewBuiltInApplicationPage`，复用 apply 的原页/前驱/事件/投影校验与归约，在单次读事务中返回 current_state 和独立 planned_application。已应用页只核验历史、返回当前状态；完整响应上限 3 MiB，不创建步骤或回执。见 [原页应用预览](../../docs/design/01-contracts/sync-application-apply-preview-runtime.md)。仅源码文档，未运行、编译或测试。
 
 新增 `CONFLICT_APPLICATION={name:'conflict-lifecycle',version:'1'}`，将现有冲突检测/决策事件投影为 open/resolved 历史，保留完整原事件与决策值，核对原字段/版本/来源及分类不下调。内置 apply/replay 使用同一选择器，最多 512 冲突并沿用原字节预算；不更新工作项等源字段。见 [冲突生命周期](../../docs/design/01-contracts/sync-conflict-application-runtime.md)。仅源码文档，未运行、编译或测试。

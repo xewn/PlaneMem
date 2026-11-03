@@ -8,6 +8,8 @@
 
 仅支持固定 `context-item-lifecycle/1`、`proposal-lifecycle/1`、`conflict-lifecycle/1`。CLI 在打开库之前完成查询及适配器名称版本选择，然后以 `create:false`、`readonly:true` 打开已有收件箱。必须已有完整 application 扩展；缺失或不完整明确失败，不自动创建或升级。主程序和嵌入 CLI 均本地分流，不使用当前账号、凭据、Gateway 或网络；拒绝 stdin、外部代码、重复/未知选项、`--output`、`--receipt-output`、`--page-file`、`--key` 和 `--timeout-ms`。
 
+还未选定页面时，可用 [待应用原页发现](sync-application-pending-runtime.md) 按原身份/application 读取 `next_apply_query`，然后显式交给预览。发现列表不执行 reducer，不证明该页可成功应用；预览仍重新校验。
+
 ## 与实际应用共享的处理
 
 预览在一次读事务中调用与 apply 相同的准备流程：完整核验当前头和快照、原页及相邻前驱、原应用前置条件、事件类型支持与事件 ID/cursor 去重；在独立 JSON 副本上依次执行当前固定内置 reducer，再校验最终投影。单份投影上限 1 MiB，单页输入投影/事件/输出投影累计最多 64 MiB。未知事件、版本断档、缺基线、非法转换、损坏、超限或超时沿用实际应用的拒绝语义，没有部分成功。

@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+新增 `inbox application-pending --inbox FILE --json-file QUERY`，输入原身份/application 与可选 limit/timeout_ms，发现当前应用头后的已接收页面。`next_apply_query` 可交给预览或显式应用；应用推进后用 `refresh_query` 重读，不自动处理或确认。见 [待应用原页发现](../../docs/design/01-contracts/sync-application-pending-runtime.md)。仅源码文档，未执行命令、编译或测试。
+
 新增 `inbox application-apply-preview --inbox FILE --json-file QUERY`，复用原 application-apply 查询和三个内置适配器，只读打开已有库，输出已存状态与预计投影；拒绝文件输出，失败保留原查询/阶段和关闭状态。实际 apply 重新校验，预览不提交或确认。见 [原页应用预览](../../docs/design/01-contracts/sync-application-apply-preview-runtime.md)。仅源码文档，未执行命令、编译或测试。
 
 `inbox application-apply` 和 `application-replay` 新增 `application:{name:"conflict-lifecycle",version:"1"}`，保存与重算原冲突发现/决策历史。必须从原检测事件建立基线，决策保留 resolved_value，原字段/版本/来源变化或分类下调会拒绝整页；不发起决策或更新源字段。见 [冲突生命周期](../../docs/design/01-contracts/sync-conflict-application-runtime.md)。仅源码文档，未执行命令、编译或测试。

@@ -63,6 +63,10 @@ SQL 对投影/元数据做类型和字节投影保护；精确查找最多读两
 
 上述状态入口仅新增 CLI 源码与文档，没有执行示例、打开数据库或启用 schema。后续同日增补已接 `inbox application-apply` 与固定 context-item-lifecycle/1 内置适配器，详见 [上下文生命周期投影](sync-context-item-application-runtime.md)；状态读取仍不重跑 reducer、推进游标或发送确认。
 
+## 待处理页面发现
+
+`readBuiltInApplicationPendingPages` / `inbox application-pending` 从当前应用头后的第一页开始返回连续原页摘要与首待处理页完整查询，默认20/最多50页。只读核验两个检查点、窗口和前瞻，不执行 reducer；完整响应512 KiB、原页预算64 MiB。见 [待应用原页发现](sync-application-pending-runtime.md)，可接下述预览或显式应用后刷新。仅源码文档，未运行或测试。
+
 ## 原页应用预览
 
 `previewBuiltInApplicationPage` / `inbox application-apply-preview` 复用实际 apply 的准备阶段，在单次读事务返回当前完整状态和独立预计投影，支持三个固定内置适配器；已应用页保留当前状态且不重跑。完整响应上限 3 MiB，失败保留原查询与阶段；后续实际应用重新校验，不自动写入或确认。详见 [原页应用只读预览](sync-application-apply-preview-runtime.md)。仅源码文档，无 schema/依赖变化，未运行或测试。

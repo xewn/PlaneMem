@@ -87,6 +87,8 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
                                  JSON also requires document_sha256 and expected_previous_sha256 (null for root)
   inbox application-apply-preview Preview one original page with a built-in adapter without saving its projection
                                  Uses the same application-apply JSON; actual application checks again
+  inbox application-pending      List the first pending pages and exact next apply query without running reducers
+                                 JSON: expected_identity/application; optional limit (1–50) and timeout_ms
   inbox application-audit        Audit the selected application's entire saved history without running reducers
                                  JSON: expected_identity/application; optional max_pages/max_events/max_bytes/timeout_ms
   inbox application-replay       Recompute every saved context-item-lifecycle/1, proposal-lifecycle/1 or conflict-lifecycle/1 projection without writing
@@ -369,6 +371,7 @@ export async function main(args: string[]): Promise<number> {
       'inbox application-archive-get',
       'inbox application-apply',
       'inbox application-apply-preview',
+      'inbox application-pending',
       'inbox application-audit',
       'inbox application-replay',
       'inbox application-history',

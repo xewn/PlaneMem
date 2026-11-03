@@ -31,6 +31,10 @@ import {
 import { SYNC_INBOX_APPLICATION_SCHEMA_V1 } from './application-schema.js';
 import { InboxApplicationRejection } from './application-rejection.js';
 import {
+  parseInboxBuiltInApplicationPendingQuery,
+  readInboxApplicationPendingPages,
+} from './application-pending.js';
+import {
   builtInApplicationAdapter,
   parseInboxBuiltInApplicationApplyQuery,
 } from './built-in-applications.js';
@@ -152,6 +156,10 @@ export class InboxApplications {
     private readonly readPage: ReadPage,
     private readonly restorePages: InboxApplicationSourceRestore,
     private readonly comparePages: InboxApplicationSourceCompare,
+    private readonly readReceivedHead: (
+      identity: SyncCommandIdentity,
+      trace: string,
+    ) => ReturnType<ReadPage> | undefined,
   ) {}
   private corrupt(trace: string) {
     return applicationFailure(
@@ -1298,6 +1306,61 @@ export class InboxApplications {
           max_replay_bytes: query.max_replay_bytes,
           timeout_ms: query.timeout_ms,
           history_update: 'not-performed',
+          acknowledgement_dispatch_state: 'not-sent',
+        },
+      });
+    }
+  }
+  pending(input: unknown, trace: string) {
+    const query = parseInboxBuiltInApplicationPendingQuery(input, trace);
+    const progress: Record<string, unknown> = {
+      stage: 'begin',
+      checked_pending_pages: 0,
+      checked_bytes: 0,
+    };
+    try {
+      return this.run(trace, query.timeout_ms, false, (check) => {
+        progress.stage = 'application-checkpoint';
+        this.require(trace);
+        const applied = this.head(query, trace, check);
+        progress.stage = 'received-checkpoint';
+        const received = this.readReceivedHead(query.expected_identity, trace);
+        check();
+        const pending = readInboxApplicationPendingPages(
+          this.db,
+          keys(query).consumer,
+          query,
+          applied,
+          received,
+          (digest) => this.readPage(query.expected_identity, digest, trace),
+          trace,
+          check,
+          progress,
+        );
+        const result = { ...this.historyEnvelope(query, trace), ...pending };
+        try {
+          syncJsonSnapshot(result, 512 * 1024);
+        } catch {
+          throw applicationFailure(
+            'INBOX_APPLICATION_PENDING_TOO_LARGE',
+            'The complete pending page response exceeds 512 KiB; request a smaller limit',
+            trace,
+          );
+        }
+        check();
+        return result;
+      });
+    } catch (error) {
+      if (!(error instanceof ContractError)) throw error;
+      throw new ContractError(error.envelope.code, error.envelope.message, {
+        trace_id: trace,
+        retryable: false,
+        details: {
+          ...progress,
+          ...error.envelope.details,
+          pending_query: query,
+          listing_completed: false,
+          local_write_state: 'not-performed',
           acknowledgement_dispatch_state: 'not-sent',
         },
       });

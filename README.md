@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [待应用页面发现](docs/design/01-contracts/sync-application-pending-runtime.md)，按当前应用进度列出已接收的待处理页面，并返回下一页的完整预览/应用参数，包含空终页。仅源码文档，未编译、测试、运行或发布。
+
 新增 [原页应用只读预览](docs/design/01-contracts/sync-application-apply-preview-runtime.md)，在写入前查看当前已存状态、预计投影及拒绝原因，支持三个内置适配器；实际应用重新检查。仅源码文档，未编译、测试、运行或发布。
 
 项目记忆：多人协同，多AI终端协同开发，记忆统一。
