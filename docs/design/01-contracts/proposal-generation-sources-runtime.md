@@ -47,8 +47,8 @@ input.sources 中每条引用固定为 context-item/原 ID/revision，分类取�
 
 timeout_ms 默认 60000，允许 1000–120000。预检、全部来源读取和本地解析共用单调时钟期限，后续请求只使用剩余时间；单请求采用已有有界 JSON 传输，支持取消、响应大小限制和禁止重定向，不自动重试。身份失败、权限拒绝、来源缺失、版本冲突、内容/响应无效和超时都不保存部分输入。错误输出提供 trace、已知条目 ID、版本冲突信息及经过筛选的 cause_code，不回显原始响应或凭据。
 
-成功结果包含 schema_version、trace_id、prepared_at、binding、规范 selection、observations 和 input。`--output` 只保存可直接交给 generate 的 input；完整身份和读取观察位于 JSON 命令输出，需要这些记录的调用者应一起保存。输入文件本身不强制绑定后续队列或目标项目，也不是权限证明；用户仍须核对后续 binding，网关仍检查固定来源。
+成功结果包含 schema_version、trace_id、prepared_at、binding、规范 selection、observations 和 input。默认 `--output` 只保存可直接交给 generate 的 input，完整身份和读取观察位于 JSON 命令输出；此普通输入文件不强制绑定后续队列或目标项目。新增 `--record` 可保存完整准备记录，交给 generate-prepared，并经 enqueue-generated 核对原目标后入队，详见 [完整记录契约](proposal-generation-record-runtime.md)。两种文件都不是权限证明，网关仍检查固定来源。
 
 输出预检发生在联网前；保存复用同目录独占临时文件、同步、完整读回、硬链接发布及发布后读回，不覆盖已存在路径。文件系统须支持硬链接；不宣称跨崩溃目录持久性。保存失败退出 1，错误 JSON 的 preparation 保留完整已准备结果，output 提供保存阶段、目标和可能的临时文件位置，便于恢复，无需为了找回相同文本重新读取。生成前应重新评估已保存内容是否仍适用。
 
-后台来源发现、自动刷新版本、历史来源恢复、完整准备结果文件/目的地绑定、持久生成任务和审计、真实权限/网络/文件系统运行证据仍待后续工作。本轮未增加 Gateway 路由、依赖、数据表或迁移。
+完整准备结果文件与目的地绑定已接入独立记录流程；后台来源发现、自动刷新版本、历史来源恢复、持久生成任务及审计关联、真实权限/网络/文件系统运行证据仍待后续工作。本轮未增加 Gateway 路由、依赖、数据表或迁移。

@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [完整生成记录与目标绑定](docs/design/01-contracts/proposal-generation-record-runtime.md)：保存来源准备、模型配置和生成结果，支持离线核对，并在入队前检查原网关、项目、账号和客户端。保存失败保留已完成结果供恢复。仅源码文档，未编译、测试、调用服务或发布。
+
 新增 [网关来源准备](docs/design/01-contracts/proposal-generation-sources-runtime.md)：按选定条目和版本读取有权限访问的完整文本，保留来源状态及实际分类，生成可审阅的模型输入文件。任一版本冲突或读取失败均不保存部分结果。仅源码文档，未调用接口、编译、测试或发布。
 
 新增 [显式模型草稿生成](docs/design/01-contracts/proposal-generation-runtime.md)：用户配置模型端点并选择来源摘录，单次生成标题和正文，保留原来源与分类，保存为新草稿后再审阅入队。仅源码文档，未调用模型、编译、测试或发布。

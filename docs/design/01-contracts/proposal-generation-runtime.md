@@ -56,7 +56,7 @@ pnpm proposal-worker enqueue --queue queue.sqlite --binding binding.json --file 
 
 模型只能返回 title/content；额外字段、非 JSON、缺失或非法内容均拒绝。kind、source_refs、classification、ttl_seconds 和 prompt_version 由原输入及固定实现产生，响应不能改写。标题/正文使用共享 Proposal 创建校验，草稿 JSON 文件限制为 1 MiB 以兼容现有 enqueue。未固定本次提交目标项目，也不认证外部来源；后续网关仍检查目标项目、本地固定版本、分类和当前来源链。提示与结构校验不能证明模型事实正确或杜绝提示注入，需要人工审阅。
 
-返回 schema_version、trace_id、generated_at、prompt_version、requested_model、returned_model、provider_response_id、source_refs 和 draft。草稿 model_version 使用响应报告的模型标识；请求模型与返回模型分别保留，支持别名解析后的记录，不把供应商报告当作独立模型认证。输出文件只含标准草稿，完整生成元数据在命令 JSON 输出中；需要完整 provenance 的调用者应同时保存该结果。
+返回 schema_version、trace_id、generated_at、prompt_version、requested_model、returned_model、provider_response_id、source_refs 和 draft。草稿 model_version 使用响应报告的模型标识；请求模型与返回模型分别保留，支持别名解析后的记录，不把供应商报告当作独立模型认证。原 generate 输出文件只含标准草稿，完整生成元数据在命令 JSON 输出中。新增 generate-prepared 从完整准备记录生成，保存原准备记录、无凭据模型配置和完整生成结果；inspect-generation 离线核对，enqueue-generated 在打开队列前检查原绑定，详见 [完整记录与目标绑定](proposal-generation-record-runtime.md)。记录摘要不证明模型执行或当前权限，不会改变原普通草稿流程。
 
 ## 适配器协议与失败
 

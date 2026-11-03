@@ -7,6 +7,10 @@ import {
   type CreateProposalRequest,
 } from '@planemem/contracts';
 import { parseProposalGenerationRequest, type ProposalGenerationRequest } from './generation.js';
+import {
+  inspectProposalGenerationRecord,
+  PROPOSAL_GENERATION_RECORD_BYTES,
+} from './generation-record.js';
 
 interface Output {
   path: string;
@@ -71,6 +75,22 @@ export async function savePreparedGeneration(
     512 * 1024,
     trace,
     'PROPOSAL_SOURCE_PREPARATION_SAVE_FAILED',
+  );
+}
+
+/** Save a fully inspected record as a new file; never replace an existing destination. */
+export async function saveProposalGenerationRecord(output: Output, value: unknown) {
+  const record = inspectProposalGenerationRecord(value);
+  const trace =
+    record.kind === 'proposal-preparation'
+      ? record.preparation.trace_id
+      : record.generation.trace_id;
+  return saveGenerationFile(
+    output,
+    Buffer.from(JSON.stringify(record, null, 2) + '\n', 'utf8'),
+    PROPOSAL_GENERATION_RECORD_BYTES,
+    trace,
+    'PROPOSAL_GENERATION_RECORD_SAVE_FAILED',
   );
 }
 
