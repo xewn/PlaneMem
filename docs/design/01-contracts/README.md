@@ -52,6 +52,7 @@
 - [发送队列单条恢复记录对照](outbox-restore-comparison-runtime.md)
 - [发送队列完整恢复历史备份与离线核验](outbox-restore-backup-runtime.md)
 - [发送队列恢复历史备份导入与预览](outbox-restore-backup-import-runtime.md)
+- [恢复历史备份离线目录、回执读取与档案提取](outbox-restore-backup-access-runtime.md)
 - [发送队列持久暂停与恢复发送](outbox-send-control-runtime.md)
 - [发送队列完整档案与离线检查](outbox-archive-runtime.md)
 - [发送队列完整原记录核验](outbox-audit-runtime.md)

@@ -134,12 +134,15 @@ export async function saveOutboxArchiveFile(
       stored.saved.document_sha256 !== file.document_sha256
     )
       throw new TypeError();
-  } catch {
+  } catch (error) {
     throw fail(
       'OUTBOX_ARCHIVE_READBACK_FAILED',
       'The archive was created but its final content could not be confirmed; preserve the reported paths',
       trace,
       {
+        ...(error instanceof ContractError
+          ? { ...error.envelope.details, cause_code: error.envelope.code }
+          : {}),
         ...local,
         state: 'published-unconfirmed',
         content_state: 'unconfirmed',

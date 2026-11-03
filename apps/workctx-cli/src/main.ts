@@ -52,6 +52,10 @@ import {
   isOutboxRestoreBackupCommand,
   runOutboxRestoreBackupArguments,
 } from './outbox-restore-backup.js';
+import {
+  isOutboxRestoreBackupAccessCommand,
+  runOutboxRestoreBackupAccessArguments,
+} from './outbox-restore-backup-access.js';
 import { isOutboxControlCommand, runOutboxControlArguments } from './outbox-control.js';
 import { isOutboxRestoreCommand, runOutboxRestoreArguments } from './outbox-restore.js';
 import {
@@ -153,6 +157,9 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   outbox restore-compare         Compare one restored event with its current row using --outbox and restore_id/event_id JSON
   outbox restore-history-backup  Save all project restore receipts and source archives using --outbox and --output NEW_FILE
   outbox inspect-restore-history-backup  Verify --archive-file offline without a queue, token or project configuration
+  outbox restore-backup-history  Browse verified --archive-file history; optional JSON limit/backup_sha256/after_restore_id
+  outbox restore-backup-get      Read one archived receipt using --archive-file and backup_sha256/restore_id JSON
+  outbox restore-backup-export   Extract its original event archive to --output NEW_FILE using the same selection
   outbox restore-history-import-preview  Compare --archive-file history backup with --outbox using original scope/backup_sha256 JSON
   outbox restore-history-import  Add missing histories from --archive-file to --outbox with the same query; does not restore events
   outbox restore-get ID          Read the verified original restore receipt using explicit --outbox
@@ -438,6 +445,9 @@ export async function main(args: string[]): Promise<number> {
       'outbox restore-compare',
       'outbox restore-history-backup',
       'outbox inspect-restore-history-backup',
+      'outbox restore-backup-history',
+      'outbox restore-backup-get',
+      'outbox restore-backup-export',
       'outbox restore-history-import',
       'outbox restore-history-import-preview',
       'outbox restore-get',
@@ -557,6 +567,10 @@ export async function main(args: string[]): Promise<number> {
       usage('--receipt-output is only for application-restore-receipt-get');
     if (isInboxApplicationArchiveCommand(name)) {
       print(await runInboxApplicationArchiveArguments(args, trace));
+      return 0;
+    }
+    if (isOutboxRestoreBackupAccessCommand(name)) {
+      print(await runOutboxRestoreBackupAccessArguments(args, trace));
       return 0;
     }
     if (isOutboxRestoreBackupCommand(name)) {

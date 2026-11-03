@@ -959,6 +959,24 @@ requirements:
         - "Offline routing without token/environment/SQLite, argument restrictions, output traces, provenance and exits"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, sample file generation, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_outbox_restore_backup_access_development_increment:
+      date: "2026-11-03"
+      status: "Source-only offline backup pagination, original receipt lookup and source archive extraction; R-005 remains incomplete. No builds, typechecks, tests, CLI/Bridge execution, database opens, generated samples, migrations or release."
+      artifacts:
+        - "apps/context-bridge/src/outbox/restore-backup.ts"
+        - "apps/workctx-cli/src/outbox-restore-backup-access.ts"
+        - "apps/workctx-cli/src/outbox-restore-backup.ts"
+        - "apps/workctx-cli/src/outbox-archive.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/outbox-restore-backup-access-runtime.md"
+      behavior: "Offline readers fully validate every source/receipt and collection digest before listing or selecting. Pages default to 10 and cap at 20 with BINARY IDs, total file history count and digest-bound next/get queries; continuation without the original digest or a changed document rejects. Exact selection returns original receipt/source metadata or file-local not-found. Explicit export strips source from stdout and exclusively saves the original event archive after complete verification, preserving its document SHA and fully checking final file bytes/content. Failure retains original query/history, input/output paths, publication state and nested readback diagnostics. Native SQLite, configured project, tokens and network are not used. Metadata is bounded to 128 KiB with a 90-second complete in-memory verification/selection budget."
+      evidence: []
+      pending_evidence:
+        - "Strict page/selection fields, mandatory original digest for continuation and selected reads, changed file and Unicode byte-order boundaries"
+        - "Full-file corruption refusal outside the selected page, empty/absent entries, complete original receipt and exact source document preservation"
+        - "No native SQLite/project/token dependencies, exclusive output, missing entry without file creation and published-unconfirmed readback diagnostics"
+      remaining_scope: "No automatic new restore request or event restoration. Cross-project discovery/backup, retention/repair, provenance, integrated recovery guidance and runtime evidence remain pending. No schema/dependency changes; previous SQLite upgrades and PostgreSQL 016-049 remain unexecuted."
     sync_outbox_restore_backup_import_development_increment:
       date: "2026-11-03"
       status: "Source-only atomic missing-history import and read-only preview; R-005 remains incomplete. No builds, typechecks, tests, CLI/Bridge execution, database opens, schema initialization/migrations or release."

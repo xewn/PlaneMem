@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
-import { ContractError, syncJsonSnapshot } from '@planemem/contracts';
+import { ContractError, isSyncIdentifier, syncJsonSnapshot } from '@planemem/contracts';
+import { outboxArchiveSummary } from './archive.js';
 import type { OutboxScope } from './sqlite.js';
 import { parseOutboxReadScope } from './reading.js';
 import { parseOutboxRestoreAuditQuery, type OutboxRestoreAuditQuery } from './restore-audit.js';
@@ -216,4 +217,205 @@ export function outboxRestoreBackupSummary(file: OutboxRestoreBackupFile) {
     server_delivery: 'not-checked' as const,
     source_authenticity: 'not-proven' as const,
   };
+}
+
+export interface OutboxRestoreBackupHistoryQuery {
+  limit: number;
+  backup_sha256?: string;
+  after_restore_id?: string;
+}
+export interface OutboxRestoreBackupSelection {
+  backup_sha256: string;
+  restore_id: string;
+}
+function queryObject(input: unknown) {
+  const value: unknown = JSON.parse(syncJsonSnapshot(input, 16384));
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError();
+  return value as Record<string, unknown>;
+}
+function digest(value: unknown): value is string {
+  return typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
+}
+export function parseOutboxRestoreBackupHistoryQuery(
+  input: unknown,
+  trace: string,
+): OutboxRestoreBackupHistoryQuery {
+  try {
+    const row = queryObject(input);
+    const limit = row.limit === undefined ? 10 : row.limit;
+    if (
+      Object.keys(row).some(
+        (key) => !['limit', 'backup_sha256', 'after_restore_id'].includes(key),
+      ) ||
+      typeof limit !== 'number' ||
+      !Number.isSafeInteger(limit) ||
+      limit < 1 ||
+      limit > 20
+    )
+      throw new TypeError();
+    const query: OutboxRestoreBackupHistoryQuery = { limit };
+    if (row.backup_sha256 !== undefined) {
+      if (!digest(row.backup_sha256)) throw new TypeError();
+      query.backup_sha256 = row.backup_sha256;
+    }
+    if (row.after_restore_id !== undefined) {
+      if (!isSyncIdentifier(row.after_restore_id) || query.backup_sha256 === undefined)
+        throw new TypeError();
+      query.after_restore_id = row.after_restore_id;
+    }
+    return query;
+  } catch {
+    throw fail(
+      'OUTBOX_RESTORE_BACKUP_HISTORY_QUERY_INVALID',
+      'Supply optional limit (1–20), backup_sha256 and after_restore_id; continuation requires the original backup digest',
+      trace,
+    );
+  }
+}
+export function parseOutboxRestoreBackupSelection(
+  input: unknown,
+  trace: string,
+): OutboxRestoreBackupSelection {
+  try {
+    const row = object(queryObject(input), ['backup_sha256', 'restore_id']);
+    if (!digest(row.backup_sha256) || !isSyncIdentifier(row.restore_id)) throw new TypeError();
+    return { backup_sha256: row.backup_sha256, restore_id: row.restore_id };
+  } catch {
+    throw fail(
+      'OUTBOX_RESTORE_BACKUP_SELECTION_INVALID',
+      'Supply the original backup document SHA-256 and restore_id',
+      trace,
+    );
+  }
+}
+function assertBackupSelection(
+  file: OutboxRestoreBackupFile,
+  expected: string | undefined,
+  trace: string,
+) {
+  if (expected !== undefined && expected !== file.document_sha256)
+    throw fail(
+      'OUTBOX_RESTORE_BACKUP_SELECTION_CHANGED',
+      'The selected backup differs from the original query; keep the original file and selection',
+      trace,
+      { expected_backup_sha256: expected, observed_backup_sha256: file.document_sha256 },
+    );
+}
+function backupObservation(file: OutboxRestoreBackupFile) {
+  return {
+    scope: file.document.scope,
+    backup_sha256: file.document_sha256,
+    backup_observed_at: file.document.observed_at,
+    backup_export_trace_id: file.document.export_trace_id,
+    total_receipts: file.document.records.length,
+    archive_integrity: 'verified' as const,
+    current_queue: 'not-checked' as const,
+    current_control: 'not-checked' as const,
+    server_delivery: 'not-checked' as const,
+    source_authenticity: 'not-proven' as const,
+  };
+}
+function boundedMetadata<T>(input: T, trace: string, check: () => void) {
+  try {
+    syncJsonSnapshot(input, 128 * 1024);
+  } catch {
+    throw fail(
+      'OUTBOX_RESTORE_BACKUP_METADATA_TOO_LARGE',
+      'The complete history metadata exceeds 128 KiB; use a smaller limit when listing',
+      trace,
+    );
+  }
+  check();
+  return input;
+}
+function accessError(error: unknown, query: unknown, trace: string) {
+  return fail(
+    error instanceof ContractError
+      ? error.envelope.code
+      : 'OUTBOX_RESTORE_BACKUP_ACCESS_UNAVAILABLE',
+    error instanceof ContractError
+      ? error.envelope.message
+      : 'The complete backup history selection could not be read',
+    trace,
+    { ...(error instanceof ContractError ? error.envelope.details : {}), query },
+  );
+}
+
+/** Full-file verification precedes pagination; every continuation is bound to that document digest. */
+export function listOutboxRestoreBackupHistory(input: unknown, selection: unknown, trace: string) {
+  const query = parseOutboxRestoreBackupHistoryQuery(selection, trace);
+  const check = budget(trace);
+  try {
+    const file = verifyOutboxRestoreBackup(input, trace);
+    assertBackupSelection(file, query.backup_sha256, trace);
+    check();
+    const after =
+      query.after_restore_id === undefined ? null : Buffer.from(query.after_restore_id, 'utf8');
+    const selected = file.document.records.filter(
+      (record) =>
+        after === null ||
+        Buffer.compare(Buffer.from(record.receipt.query.restore_id, 'utf8'), after) > 0,
+    );
+    const items = selected.slice(0, query.limit).map(({ receipt }) => ({
+      restore_id: receipt.query.restore_id,
+      restored_at: receipt.restored_at,
+      source_observed_at: receipt.source_observed_at,
+      archive_sha256: receipt.archive_sha256,
+      restored_document_sha256: receipt.restored_document_sha256,
+      records: receipt.records,
+      held_records: receipt.held_records,
+      historical_terminal_records: receipt.historical_terminal_records,
+      get_query: { backup_sha256: file.document_sha256, restore_id: receipt.query.restore_id },
+    }));
+    const has_more = selected.length > query.limit;
+    return boundedMetadata(
+      {
+        ...backupObservation(file),
+        query: { ...query, backup_sha256: file.document_sha256 },
+        items,
+        has_more,
+        next_query: has_more
+          ? {
+              backup_sha256: file.document_sha256,
+              limit: query.limit,
+              after_restore_id: items[items.length - 1]!.restore_id,
+            }
+          : null,
+        observation: 'archived-restore-history-page' as const,
+      },
+      trace,
+      check,
+    );
+  } catch (error) {
+    throw accessError(error, query, trace);
+  }
+}
+
+/** Complete historical selection. Callers must explicitly strip source before printing metadata. */
+export function readOutboxRestoreBackupEntry(input: unknown, selection: unknown, trace: string) {
+  const query = parseOutboxRestoreBackupSelection(selection, trace);
+  const check = budget(trace);
+  try {
+    const file = verifyOutboxRestoreBackup(input, trace);
+    assertBackupSelection(file, query.backup_sha256, trace);
+    check();
+    const record = file.document.records.find(
+      (entry) => entry.receipt.query.restore_id === query.restore_id,
+    );
+    const metadata = boundedMetadata(
+      {
+        ...backupObservation(file),
+        query,
+        status: record ? ('recorded' as const) : ('not-found' as const),
+        receipt: record?.receipt ?? null,
+        source_summary: record ? outboxArchiveSummary(record.source, trace) : null,
+        observation: 'archived-restore-history-entry' as const,
+      },
+      trace,
+      check,
+    );
+    return { ...metadata, source: record?.source ?? null };
+  } catch (error) {
+    throw accessError(error, query, trace);
+  }
 }

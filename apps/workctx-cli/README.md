@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+新增离线 `outbox restore-backup-history/get/export`：显式 `--archive-file`，目录可省略JSON，get/export须提供backup_sha256/restore_id，export另需 `--output NEW_FILE`。目录直接给出绑定原文件摘要的next_query/get_query，导出保留原事件档案文档摘要并完整读回；不需队列/项目配置/令牌。见 [备份离线取用](../../docs/design/01-contracts/outbox-restore-backup-access-runtime.md)。仅源码文档，未执行、编译、测试或发布。
+
 新增 `outbox restore-history-import/restore-history-import-preview`，显式已有 `--outbox`、完整历史备份 `--archive-file` 和原scope/backup_sha256查询。预览显示缺失/相同/冲突；实际导入只补缺失项，完整读回后提交，不恢复当前事件；未知结果保留原输入和事务/关闭状态。见 [历史导入](../../docs/design/01-contracts/outbox-restore-backup-import-runtime.md)。仅源码文档，未执行、编译、测试或发布。
 
 新增 `outbox restore-history-backup --outbox EXISTING_FILE --output NEW_FILE` 与 `outbox inspect-restore-history-backup --archive-file FILE`。完整备份项目恢复回执和原档案，支持有界查询；读取和关闭尝试后独占保存并完整读回核验，离线检查无需队列/项目配置/令牌。见 [恢复历史备份](../../docs/design/01-contracts/outbox-restore-backup-runtime.md)。仅源码文档，未执行命令、编译、测试或发布。
@@ -529,6 +531,9 @@ observed-item.json 示例：`{"work_item_id":"plane-item-42"}`。CLI 核对返�
 | `outbox restore-compare` | 必须 --outbox EXISTING_FILE 和 --json/--json-file restore_id/event_id；可选同项目 scope | 无；单次只读事务核验历史和当前原行，返回摘要及相对恢复基线的变化列，不证明来源 |
 | `outbox restore-history-backup` | 必须 --outbox EXISTING_FILE --output NEW_FILE；可选 --json/--json-file scope/max_receipts/max_bytes/timeout_ms | 只读完整项目恢复历史后独占保存新文件；最多100份/64 MiB文档，超限不截断 |
 | `outbox inspect-restore-history-backup` | 仅 --archive-file FILE | 无；离线核验全部原回执/档案及集合摘要，不加载SQLite或当前项目配置 |
+| `outbox restore-backup-history` | 必须 --archive-file BACKUP；可选 --json/--json-file limit/backup_sha256/after_restore_id | 无；完整核验备份后离线分页，续页必须绑定原摘要 |
+| `outbox restore-backup-get` | --archive-file BACKUP 和 --json/--json-file backup_sha256/restore_id | 无；返回指定原回执和源档案摘要，stdout无source正文 |
+| `outbox restore-backup-export` | 同一原选择查询/备份和 --output NEW_FILE | 独占提取所选原事件档案，保留原文档SHA并完整读回；缺项不创建文件 |
 | `outbox restore-history-import-preview` | 必须 --outbox EXISTING_FILE --archive-file BACKUP --json/--json-file scope/backup_sha256 | 无；单次只读事务比较原历史，列出缺失/相同/异文/跨项目占用，不预留ID |
 | `outbox restore-history-import` | 同一原备份和scope/backup_sha256查询，显式已有 --outbox | 整事务只补缺失历史，全部完整读回后提交；不恢复当前事件/发送控制 |
 | `outbox restore-get ID` | 必须 --outbox EXISTING_FILE；不接受 JSON | 无；完整核验历史回执及原查询 |

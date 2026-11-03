@@ -80,20 +80,38 @@ function argumentsFor(argv: string[], trace: string) {
     );
   }
 }
-export async function readOutboxRestoreBackupFile(path: string, trace: string) {
+/** Parsing alone does not validate history; the caller must verify the complete input before use. */
+export async function readOutboxRestoreBackupInputFile(path: string, trace: string) {
   try {
     const bytes = await readBoundedArtifactFile(path, OUTBOX_RESTORE_BACKUP_FILE_BYTES, trace);
-    const saved = verifyOutboxRestoreBackup(
-      JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes).replace(/^\uFEFF/, '')),
-      trace,
+    const input: unknown = JSON.parse(
+      new TextDecoder('utf-8', { fatal: true }).decode(bytes).replace(/^\uFEFF/, ''),
     );
-    return { saved, file_bytes: bytes.byteLength, file_sha256: hash(bytes) };
+    return { input, file_bytes: bytes.byteLength, file_sha256: hash(bytes) };
   } catch (error) {
     throw fail(
       error instanceof ContractError ? error.envelope.code : 'OUTBOX_RESTORE_BACKUP_FILE_INVALID',
       error instanceof ContractError
         ? error.envelope.message
         : 'Read a stable regular UTF-8 restore history backup within its complete file limit',
+      trace,
+      {
+        ...(error instanceof ContractError ? error.envelope.details : {}),
+        archive_file: resolve(path),
+      },
+    );
+  }
+}
+export async function readOutboxRestoreBackupFile(path: string, trace: string) {
+  const { input, ...file } = await readOutboxRestoreBackupInputFile(path, trace);
+  try {
+    return { saved: verifyOutboxRestoreBackup(input, trace), ...file };
+  } catch (error) {
+    throw fail(
+      error instanceof ContractError ? error.envelope.code : 'OUTBOX_RESTORE_BACKUP_FILE_INVALID',
+      error instanceof ContractError
+        ? error.envelope.message
+        : 'The complete restore history backup is invalid',
       trace,
       {
         ...(error instanceof ContractError ? error.envelope.details : {}),
