@@ -19,6 +19,15 @@ import {
 } from '@planemem/contracts';
 import { SYNC_INBOX_SCHEMA_V1, SYNC_INBOX_SCHEMA_VERSION } from './schema.js';
 import { InboxApplications } from './applications.js';
+import {
+  contextItemApplicationAdapter,
+  parseInboxBuiltInApplicationApplyQuery,
+} from './context-item-application.js';
+export {
+  CONTEXT_ITEM_APPLICATION,
+  parseInboxBuiltInApplicationApplyQuery,
+  type ContextItemLifecycleProjection,
+} from './context-item-application.js';
 import type { SyncInboxApplicationHandlers } from './application-model.js';
 export {
   parseInboxApplicationQuery,
@@ -955,6 +964,15 @@ export class SqliteSyncInbox {
   /** Only pure synchronous handlers are supported. External effects are outside this transaction. */
   applyApplicationPage(input: unknown, handlers: SyncInboxApplicationHandlers, trace: string) {
     return this.applications().apply(input, handlers, trace);
+  }
+  /** Fixed built-in semantics; the complete original page and predecessor remain caller-selected. */
+  applyBuiltInApplicationPage(input: unknown, trace: string) {
+    const query = parseInboxBuiltInApplicationApplyQuery(input, trace);
+    const adapter = contextItemApplicationAdapter(query.expected_identity);
+    return {
+      ...this.applications().apply(query, adapter.handlers, trace, adapter.validateProjection),
+      adapter: adapter.descriptor,
+    };
   }
   private acknowledgementJournal() {
     return new InboxAcknowledgements(

@@ -9,6 +9,7 @@ import {
 import type {
   SqliteSyncInbox,
   SyncInboxApplicationQuery,
+  SyncInboxApplicationApplyQuery,
   SyncInboxConsumersQuery,
   SyncInboxPageAuditQuery,
   SyncInboxPageDetailQuery,
@@ -29,6 +30,7 @@ export function isInboxCommand(command: string) {
     'inbox head',
     'inbox enable-applications',
     'inbox application-status',
+    'inbox application-apply',
     'inbox enable-ack',
     'inbox enable-ack-dispatch',
     'inbox enable-ack-recovery',
@@ -39,7 +41,7 @@ export function isInboxCommand(command: string) {
 function invalid(trace: string) {
   return new ContractError(
     'USAGE_ERROR',
-    'Use local inbox init/import/status/consumers/audit-pages/page-history/page-get/head/enable-applications/application-status/enable-ack/enable-ack-dispatch/enable-ack-recovery/ack-status/ack-dispatch-status with --inbox FILE. Init and enable commands accept only --inbox. Import requires --page-file. Reads require --json or --json-file: consumers accepts {} or limit/after_consumer_key; other reads require expected_identity and selection parameters. Application-status also requires application name/version and permits timeout_ms in JSON. Head requires --output NEW_PAGE; page-get optionally exports to --output NEW_PAGE. No stdin, key, --timeout-ms or repeated options',
+    'Use local inbox init/import/status/consumers/audit-pages/page-history/page-get/head/enable-applications/application-status/application-apply/enable-ack/enable-ack-dispatch/enable-ack-recovery/ack-status/ack-dispatch-status with --inbox FILE. Init and enable commands accept only --inbox. Import requires --page-file. Reads and application-apply require --json or --json-file: consumers accepts {} or limit/after_consumer_key; other queries require expected_identity and selection parameters. Application-status requires application name/version; application-apply selects context-item-lifecycle/1 and also requires document_sha256 and expected_previous_sha256 (root null). Both application queries permit timeout_ms in JSON. Head requires --output NEW_PAGE; page-get optionally exports to --output NEW_PAGE. No stdin, key, --timeout-ms or repeated options',
     { trace_id: trace, retryable: false, acknowledgement_dispatch_state: 'not-sent' },
   );
 }
@@ -174,6 +176,7 @@ export async function runInboxArguments(argv: string[], trace: string) {
       : undefined;
   const queryInput = [
     'inbox application-status',
+    'inbox application-apply',
     'inbox consumers',
     'inbox audit-pages',
     'inbox page-history',
@@ -186,12 +189,16 @@ export async function runInboxArguments(argv: string[], trace: string) {
   let historyQuery: SyncInboxPageHistoryQuery | undefined;
   let detailQuery: SyncInboxPageDetailQuery | undefined;
   let applicationQuery: SyncInboxApplicationQuery | undefined;
+  let applicationApplyQuery: SyncInboxApplicationApplyQuery | undefined;
   const output =
     args.output === undefined ? undefined : await prepareSyncPageOutput(args.output, trace);
   let inbox: SqliteSyncInbox;
   try {
     const bridge = await import('@planemem/context-bridge');
-    if (args.command === 'inbox application-status') {
+    if (args.command === 'inbox application-apply') {
+      applicationApplyQuery = bridge.parseInboxBuiltInApplicationApplyQuery(queryInput, trace);
+      identity = applicationApplyQuery.expected_identity;
+    } else if (args.command === 'inbox application-status') {
       applicationQuery = bridge.parseInboxApplicationQuery(queryInput, trace);
       identity = applicationQuery.expected_identity;
     } else if (args.command === 'inbox consumers') {
@@ -247,6 +254,17 @@ export async function runInboxArguments(argv: string[], trace: string) {
         local_commit_state: 'committed',
         acknowledgement_dispatch_state: 'not-sent',
       });
+    } else if (applicationApplyQuery) {
+      result = envelope(
+        trace,
+        {
+          ...inbox.applyBuiltInApplicationPage(applicationApplyQuery, trace),
+          inbox: args.path,
+          local_commit_state: 'committed',
+          acknowledgement_dispatch_state: 'not-sent',
+        },
+        applicationApplyQuery.expected_identity,
+      );
     } else if (applicationQuery) {
       result = envelope(
         trace,
@@ -382,6 +400,7 @@ export async function runInboxArguments(argv: string[], trace: string) {
         'inbox page-get',
         'inbox enable-applications',
         'inbox application-status',
+        'inbox application-apply',
       ].includes(args.command) &&
       error instanceof ContractError
     )
@@ -391,6 +410,14 @@ export async function runInboxArguments(argv: string[], trace: string) {
         details: {
           ...error.envelope.details,
           inbox: args.path,
+          ...(applicationApplyQuery
+            ? {
+                expected_identity: applicationApplyQuery.expected_identity,
+                application: applicationApplyQuery.application,
+                document_sha256: applicationApplyQuery.document_sha256,
+                expected_previous_sha256: applicationApplyQuery.expected_previous_sha256,
+              }
+            : {}),
           ...(args.command === 'inbox audit-pages'
             ? { audit_scope: 'consumer-page-chain', audit_completed: false }
             : {}),

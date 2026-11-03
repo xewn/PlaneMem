@@ -66,6 +66,8 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   inbox enable-applications      Explicitly add local projection storage to an existing --inbox
   inbox application-status       Read a local projection using --inbox and --json/--json-file
                                  Requires expected_identity and application name/version; optional JSON timeout_ms
+  inbox application-apply        Apply one imported page with the built-in context-item-lifecycle/1 adapter
+                                 JSON also requires document_sha256 and expected_previous_sha256 (null for root)
   inbox ack-status               Read latest original acknowledgement using expected_identity JSON
   inbox ack-dispatch-status      Read latest target and dispatch using expected_identity JSON
   inbox ack-history              Page original acknowledgement summaries using identity/history JSON
@@ -313,6 +315,7 @@ export async function main(args: string[]): Promise<number> {
       'inbox enable-ack-recovery',
       'inbox enable-applications',
       'inbox application-status',
+      'inbox application-apply',
       'inbox ack-status',
       'inbox ack-dispatch-status',
       'inbox ack-history',

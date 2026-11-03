@@ -61,8 +61,8 @@ SQL 对投影/元数据做类型和字节投影保护；精确查找最多读两
 
 两个命令均通过主程序与嵌入式 CLI 本地分流，不需要环境身份/令牌，不调用路由器或网络。拒绝 stdin、重复/未知选项及 page-file/output/key/timeout-ms 等混用；JSON 中 timeout_ms 与远端 --timeout-ms 参数不同。操作后尝试关闭连接，成功保留完整结果和顶层 close_pending；失败保留原错误 code/details，补 inbox/close_pending，未知提交不能因关闭失败或包装错误而变成未提交。打开库前的失败没有连接关闭阶段。
 
-仅新增 CLI 源码与文档，没有执行示例、打开数据库或启用 schema。CLI 暂无 apply 命令，具体业务 handler 仍由 Bridge 调用方实现；状态读取不重跑 reducer、推进游标或发送确认。
+上述状态入口仅新增 CLI 源码与文档，没有执行示例、打开数据库或启用 schema。后续同日增补已接 `inbox application-apply` 与固定 context-item-lifecycle/1 内置适配器，详见 [上下文生命周期投影](sync-context-item-application-runtime.md)；状态读取仍不重跑 reducer、推进游标或发送确认。
 
 ## 尚未完成
 
-目前提供 Bridge 可编程投影事务和读取基础，以及 CLI 显式启用/指定原身份与版本读取状态；具体业务事件 reducer、CLI 执行应用/版本管理、应用目录、历史完整审计、快照导出/恢复、跨设备迁移，以及真实并发/重启/崩溃证据仍待补。既有页面链归档只包含接收页，不包含此应用头/投影/ledger；恢复原页面不会自动恢复或重建应用状态。所有 schema、SQLite 事务和 reducer 路径均未实际运行。
+目前提供 Bridge 可编程投影事务、读取基础、首个上下文生命周期元数据适配器，以及 CLI 显式启用/读取/指定原页应用。其他业务适配器、完整正文、版本管理、应用目录、历史完整审计、快照导出/恢复、跨设备迁移，以及真实并发/重启/崩溃证据仍待补。既有页面链归档只包含接收页，不包含此应用头/投影/ledger；恢复原页面不会自动恢复或重建应用状态。所有 schema、SQLite 事务和 reducer 路径均未实际运行。

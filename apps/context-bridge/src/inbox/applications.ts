@@ -22,6 +22,7 @@ import {
   type SyncInboxApplicationHandlers,
 } from './application-model.js';
 import { SYNC_INBOX_APPLICATION_SCHEMA_V1 } from './application-schema.js';
+import { InboxApplicationRejection } from './application-rejection.js';
 
 type ReadPage = (
   identity: SyncCommandIdentity,
@@ -138,7 +139,11 @@ export class InboxApplications {
           rollback = 'failed';
         }
       }
-      const cause = error instanceof ContractError ? error.envelope : undefined;
+      const failure =
+        error instanceof InboxApplicationRejection
+          ? applicationFailure(error.code, error.message, trace)
+          : error;
+      const cause = failure instanceof ContractError ? failure.envelope : undefined;
       if (write && (committing || rollback === 'failed'))
         throw new ContractError(
           committing ? 'INBOX_APPLICATION_COMMIT_UNKNOWN' : 'INBOX_APPLICATION_ROLLBACK_UNKNOWN',
@@ -156,7 +161,7 @@ export class InboxApplications {
           },
         );
       if (cause) {
-        if (rollback !== 'failed') throw error;
+        if (rollback !== 'failed') throw failure;
         throw new ContractError(cause.code, cause.message, {
           trace_id: trace,
           retryable: false,
@@ -429,13 +434,25 @@ export class InboxApplications {
       return this.state(query, this.head(query, trace, check), trace);
     });
   }
-  apply(input: unknown, suppliedHandlers: SyncInboxApplicationHandlers, trace: string) {
+  apply(
+    input: unknown,
+    suppliedHandlers: SyncInboxApplicationHandlers,
+    trace: string,
+    validateProjection?: (projection: unknown, appliedCursor: number) => void,
+  ) {
     const query = parseInboxApplicationApplyQuery(input, trace);
     const handlers = applicationHandlers(suppliedHandlers, trace);
     const key = keys(query);
     return this.run(trace, query.timeout_ms, true, (check) => {
       this.require(trace);
       const current = this.head(query, trace, check);
+      if (validateProjection) {
+        validateProjection(
+          JSON.parse(current?.projectionJson ?? 'null') as unknown,
+          current?.page.document.page.data.next_cursor ?? 0,
+        );
+        check();
+      }
       const duplicate = this.step(query, query.document_sha256, trace);
       if (duplicate) {
         if (
@@ -449,6 +466,13 @@ export class InboxApplications {
             trace,
           );
         this.verifyEvents(query, duplicate, trace, check);
+        if (validateProjection) {
+          validateProjection(
+            JSON.parse(duplicate.projectionJson) as unknown,
+            duplicate.page.document.page.data.next_cursor,
+          );
+          check();
+        }
         return {
           status: 'already-applied' as const,
           document_sha256: query.document_sha256,
@@ -516,7 +540,8 @@ export class InboxApplications {
             throw new TypeError('Asynchronous reducers are unsupported');
           }
           projectionJson = syncJsonSnapshot(result, INBOX_APPLICATION_STATE_BYTES);
-        } catch {
+        } catch (error) {
+          if (error instanceof InboxApplicationRejection) throw error;
           throw applicationFailure(
             'INBOX_APPLICATION_REDUCER_FAILED',
             'A reducer failed, returned asynchronous work or produced an invalid/oversized projection; the page was not applied',
@@ -530,6 +555,13 @@ export class InboxApplications {
             'The complete page exceeds the local reduction byte budget; no partial application was committed',
             trace,
           );
+        check();
+      }
+      if (validateProjection) {
+        validateProjection(
+          JSON.parse(projectionJson) as unknown,
+          selected.page.document.page.data.next_cursor,
+        );
         check();
       }
       const projectionHash = hash(projectionJson);

@@ -978,6 +978,29 @@ requirements:
         - "CLI primary/embedded local routing, old output migration, read/rollback/close failures and complete result retention"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_context_item_application_development_increment:
+      date: "2026-11-03"
+      status: "Source-only context item lifecycle metadata reducer and explicit original-page CLI application; R-005 remains incomplete."
+      artifacts:
+        - "packages/contracts/src/context-item-sync.ts"
+        - "packages/contracts/src/index.ts"
+        - "apps/context-bridge/src/inbox/application-rejection.ts"
+        - "apps/context-bridge/src/inbox/context-item-application.ts"
+        - "apps/context-bridge/src/inbox/applications.ts"
+        - "apps/context-bridge/src/inbox/sqlite.ts"
+        - "apps/workctx-cli/src/inbox.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/sync-context-item-application-runtime.md"
+      behavior: "Fixed context-item-lifecycle/1 validates actual Gateway context event metadata and preserves creation/latest events. Creation version one, exact version succession, stable classification and valid proposed/confirmed/archived/restored transitions are required. Nine unrelated stream types explicitly retain the projection; unknown types reject the page. CLI application-apply requires the original identity, fixed adapter, imported page and expected predecessor before opening the existing inbox. Projection/ledger/head reuse the application transaction with in-transaction validation on empty, duplicate and new pages."
+      remaining_scope: "No full item body, realtime source/permission check, other domain reducers, legacy/visibility baseline import, code authenticity, full-history replay/audit, application backup/restore, automatic ack or runtime evidence."
+      pending_evidence:
+        - "Actual Gateway envelope/source binding, canonical fields, malformed payloads, legacy aggregate fallback and version/type constraints"
+        - "Creation/update/confirmation/archive/restore transitions, missing baseline, version gaps, classification drift and 512-item/byte budgets"
+        - "Mixed streams, explicit ignored types, unknown-type whole-page refusal, empty pages and duplicate-page validation without reducers"
+        - "CLI primary/embedded routing, pre-open adapter selection, immutable original preconditions and commit/rollback/close error retention"
+      evidence: []
+      execution: "Source and documentation only. No builds, typechecks, tests, CLI/Bridge/API/service runs, database opens, schema initialization, migrations, sample generation or release. No new schema/dependencies; existing SQLite extensions and PostgreSQL 016-049 remain unexecuted. Git commit/push is authorized with skip-ci messages."
     sync_inbox_application_cli_development_increment:
       date: "2026-11-03"
       status: "Source-only local application extension enablement and selected projection status CLI; R-005 remains incomplete."

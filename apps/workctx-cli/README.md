@@ -1,5 +1,15 @@
 # workctx 开发入口
 
+首个内置应用已接入显式原页处理（仅源码，示例未执行）：
+
+```text
+workctx inbox application-apply --inbox local-inbox.sqlite --json-file application-page-query.json
+```
+
+查询必须含完整 expected_identity、`application:{name:"context-item-lifecycle",version:"1"}`、已导入原页 document_sha256 和原预期前驱 expected_previous_sha256（根页为 null），可选 timeout_ms。先使用下述 enable-applications；命令不自动建库/启用、选最新页或发送确认。主程序/嵌入入口均本地执行，仅接受已有内置适配器，不加载外部模块。重复同一已提交原页返回当前状态，不重跑处理。
+
+投影只保存上下文创建/更新/确认/归档/恢复的历史状态元数据及创建/最新事件，服务端事件不包含完整正文。必须有版本 1 的原创建事件，后续版本连续；缺基线、断档、非法迁移或分类改变拒绝整页。最多 512 条，另受 1 MiB 投影/单页 64 MiB 处理预算限制。结果 adapter 明确列出处理/范围外类型，未知类型拒绝，applied_cursor 仅对应此本地投影。详情与错误边界见 [上下文生命周期投影契约](../../docs/design/01-contracts/sync-context-item-application-runtime.md)。无新 schema/依赖，未执行命令、数据库操作、编译或测试。
+
 本地应用存储启用和状态读取已接入 CLI（仅源码，示例未执行）：
 
 ```text
@@ -25,7 +35,7 @@ enable-applications 只接受已有 inbox 路径，显式启用可选 applicatio
 
 状态命令必须提供 --json/--json-file 二选一；查询最多 16 KiB，timeout_ms 可省略，默认 30000、范围 1–90000。此预算用于 Bridge 读取事务，不覆盖参数文件读取或打开库。严格解析后只读打开已有库；缺少/不完整扩展明确失败，不自动启用。结果 data.state 保留完整投影、摘要、原应用 trace、applied_cursor、page_count、head_sha256 和本地应用边界。recorded=false 仅表示指定应用没有保存进度，不判断源页面链是否存在。主程序和嵌入入口都不读取当前账号/令牌、不调用网络或路由器；重复/未知选项、--page-file、--output、--key 和 --timeout-ms 均拒绝。
 
-成功结果保留 close_pending；操作失败的原错误码、提交/回滚未知状态与关闭失败标记同时保留。应用版本是调用方声明，不是代码认证；状态读取不是完整应用历史审计或服务端应用证明。执行应用仍须调用 Bridge 的受信同步 reducer 接口，CLI 尚无执行应用命令。该 SQLite 扩展未执行，无新增 schema/依赖；详见 [应用运行契约](../../docs/design/01-contracts/sync-inbox-application-runtime.md)。
+成功结果保留 close_pending；操作失败的原错误码、提交/回滚未知状态与关闭失败标记同时保留。应用版本是调用方声明，不是代码认证；状态读取不是完整应用历史审计或服务端应用证明。CLI 只支持上述内置应用，其他自定义投影仍须调用 Bridge 的受信同步 reducer 接口。该 SQLite 扩展未执行，无新增 schema/依赖；详见 [应用运行契约](../../docs/design/01-contracts/sync-inbox-application-runtime.md)。
 
 收件箱新增原确认日志（仅源码，示例未执行）：
 
