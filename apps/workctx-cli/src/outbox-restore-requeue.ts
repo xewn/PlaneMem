@@ -11,7 +11,8 @@ export function isOutboxRestoreRequeueCommand(command: string) {
     command === 'outbox restore-requeue-preview' ||
     command === 'outbox restore-requeue-receipt' ||
     command === 'outbox restore-requeue-get' ||
-    command === 'outbox restore-requeue-history'
+    command === 'outbox restore-requeue-history' ||
+    command === 'outbox restore-requeue-audit'
   );
 }
 function fail(code: string, message: string, trace: string, details: Record<string, unknown> = {}) {
@@ -51,7 +52,10 @@ function argumentsFor(argv: string[], trace: string) {
       ) ||
       (output !== undefined && command !== 'outbox restore-requeue-get') ||
       (json !== undefined && file !== undefined) ||
-      (command !== 'outbox restore-requeue-history' && json === undefined && file === undefined) ||
+      (command !== 'outbox restore-requeue-history' &&
+        command !== 'outbox restore-requeue-audit' &&
+        json === undefined &&
+        file === undefined) ||
       json === '-'
     )
       throw new TypeError();
@@ -59,7 +63,7 @@ function argumentsFor(argv: string[], trace: string) {
   } catch {
     throw fail(
       'USAGE_ERROR',
-      'Use outbox restore-requeue, restore-requeue-preview or restore-requeue-receipt --outbox EXISTING_FILE --json/--json-file QUERY. Receipt lookup requires the complete original query with requeue_id. Use restore-requeue-get with scope/requeue_id selection and optional --output NEW_QUERY_FILE; restore-requeue-history accepts optional scope/limit/after_requeue_id JSON. No extra/repeated options, positionals or stdin',
+      'Use outbox restore-requeue, restore-requeue-preview or restore-requeue-receipt --outbox EXISTING_FILE --json/--json-file QUERY. Receipt lookup requires the complete original query with requeue_id. Use restore-requeue-get with scope/requeue_id selection and optional --output NEW_QUERY_FILE; restore-requeue-history accepts optional scope/limit/after_requeue_id JSON; restore-requeue-audit accepts optional scope/max_receipts/max_bytes/timeout_ms JSON. No extra/repeated options, positionals or stdin',
       trace,
     );
   }
@@ -90,7 +94,7 @@ async function inputFor(args: ReturnType<typeof argumentsFor>, trace: string) {
     );
   }
 }
-/** Explicit selected local scheduling only; no gateway or automatic resume/flush. */
+/** Local history reads and explicit selected scheduling; no gateway or automatic resume/flush. */
 export async function runOutboxRestoreRequeueArguments(
   argv: string[],
   configuredScope: { tenant_id: string; workspace_id: string; project_id: string },
@@ -101,7 +105,8 @@ export async function runOutboxRestoreRequeueArguments(
   const receipt = args.command === 'outbox restore-requeue-receipt';
   const get = args.command === 'outbox restore-requeue-get';
   const history = args.command === 'outbox restore-requeue-history';
-  const reading = preview || receipt || get || history;
+  const audit = args.command === 'outbox restore-requeue-audit';
+  const reading = preview || receipt || get || history || audit;
   const unopenedCommit = reading ? 'not-attempted' : 'not-committed';
   const scopeSnapshot = { ...configuredScope };
   const input = await inputFor(args, trace);
@@ -117,13 +122,15 @@ export async function runOutboxRestoreRequeueArguments(
     );
   }
   const scope = bridge.parseOutboxReadScope(scopeSnapshot, trace);
-  const parseQuery = history
-    ? bridge.parseOutboxRestoreRequeueHistoryQuery
-    : get
-      ? bridge.parseOutboxRestoreRequeueSelection
-      : receipt
-        ? bridge.parseOutboxRestoreRequeueReceiptQuery
-        : bridge.parseOutboxRestoreRequeueQuery;
+  const parseQuery = audit
+    ? bridge.parseOutboxRestoreRequeueAuditQuery
+    : history
+      ? bridge.parseOutboxRestoreRequeueHistoryQuery
+      : get
+        ? bridge.parseOutboxRestoreRequeueSelection
+        : receipt
+          ? bridge.parseOutboxRestoreRequeueReceiptQuery
+          : bridge.parseOutboxRestoreRequeueQuery;
   const query = parseQuery(
     { ...input, scope: Object.hasOwn(input, 'scope') ? input.scope : scope },
     trace,
@@ -179,15 +186,17 @@ export async function runOutboxRestoreRequeueArguments(
   }
   let data;
   try {
-    data = history
-      ? queue.listRestoreRequeueReceipts(query, trace)
-      : get
-        ? queue.readRestoreRequeueRecord(query, trace)
-        : receipt
-          ? queue.readRestoreRequeueReceipt(query, trace)
-          : preview
-            ? queue.previewRestoreRequeue(query, trace)
-            : queue.requeueRestoredRecords(query, trace);
+    data = audit
+      ? queue.auditRestoreRequeueReceipts(query, trace)
+      : history
+        ? queue.listRestoreRequeueReceipts(query, trace)
+        : get
+          ? queue.readRestoreRequeueRecord(query, trace)
+          : receipt
+            ? queue.readRestoreRequeueReceipt(query, trace)
+            : preview
+              ? queue.previewRestoreRequeue(query, trace)
+              : queue.requeueRestoredRecords(query, trace);
   } catch (error) {
     let close_pending = false;
     try {

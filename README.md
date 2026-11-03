@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [重新排队完整历史审计](docs/design/01-contracts/outbox-restore-requeue-audit-runtime.md)：`outbox restore-requeue-audit` 在同一只读快照核验项目全部批次、关联恢复历史和事件变更摘要。读取正文前检查数量及累计字节预算，超限或损坏不返回部分通过。仅源码文档，未编译、测试、运行或发布。
+
 新增 [重新排队回执目录](docs/design/01-contracts/outbox-restore-requeue-history-runtime.md)：`outbox restore-requeue-history` 可按项目分页发现批次，返回单条查询及续页参数；明确区分元数据核验与完整历史核验，可衔接按 ID 找回原请求。仅源码文档，未编译、测试、运行或发布。
 
 新增 [按批次ID找回原请求](docs/design/01-contracts/outbox-restore-requeue-selection-runtime.md)：`outbox restore-requeue-get` 只读核验完整历史，找回原请求和回执，并可将原请求独占保存为新文件；保留原事件顺序、原因和暂停版本。仅源码文档，未编译、测试、运行或发布。

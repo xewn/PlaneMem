@@ -3,6 +3,7 @@
 所有并行任务只能使用以下契约；任何私有 payload 都必须被拒绝。契约变更流程：ADR → Schema → generated SDK → Mock/Fixtures → compatibility test → downstream migration plan。
 
 - [重新排队回执元数据目录](outbox-restore-requeue-history-runtime.md)
+- [重新排队完整历史审计](outbox-restore-requeue-audit-runtime.md)
 - [浏览器历史同步回执完整备份与恢复](sync-browser-receipts-backup-runtime.md)
 - [浏览器原同步查询完整备份与恢复](sync-browser-originals-backup-runtime.md)
 - [浏览器同步保存副本移除](sync-browser-storage-removal-runtime.md)

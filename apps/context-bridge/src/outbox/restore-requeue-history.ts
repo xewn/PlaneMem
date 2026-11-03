@@ -87,6 +87,7 @@ export function listOutboxRestoreRequeueReceipts(db: DatabaseSync, input: unknow
         const result = {
           scope: query.scope,
           query,
+          audit_query: { scope: query.scope },
           records,
           has_more,
           next_query: has_more

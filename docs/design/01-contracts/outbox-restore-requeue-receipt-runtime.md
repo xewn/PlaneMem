@@ -52,3 +52,5 @@ query_sha256绑定完整规范原查询；restore_document_sha256绑定原恢复
 2026-11-03 后续已补 [按批次ID找回原请求](outbox-restore-requeue-selection-runtime.md)：scope/requeue_id只读选择复用完整历史/摘要验证，可返回原七字段查询和回执；CLI可显式独占保存原请求文件，缺项不创建，原完整查询校验及重复操作语义不变。仅源码文档，未编译、测试、运行或打开库。
 
 2026-11-03 后续已补 [重新排队回执元数据目录](outbox-restore-requeue-history-runtime.md)：按项目只读分页发现批次，默认10最多20，返回get_query/next_query；目录只校验有界原查询与元数据，关联历史和事件内容仍须单条完整核验。无schema/依赖变化，仅源码文档，未运行、编译、测试或打开库。
+
+2026-11-03 后续已补 [重新排队完整历史审计](outbox-restore-requeue-audit-runtime.md)：目录新增audit_query，单读事务核验整个项目全部批次和完整父历史/前后摘要；先按数量及存储查询/档案字节预检，共享父历史逐次计费，失败保留阶段/ID/进度，不返回部分通过。目录自身仍只验证元数据。无schema/依赖变化，仅源码文档，未运行、编译、测试或打开库。

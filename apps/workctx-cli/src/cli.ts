@@ -196,6 +196,7 @@ export async function runWorkctx(
     'outbox restore-requeue-receipt': 'outbox.restore-requeue-receipt',
     'outbox restore-requeue-get': 'outbox.restore-requeue-get',
     'outbox restore-requeue-history': 'outbox.restore-requeue-history',
+    'outbox restore-requeue-audit': 'outbox.restore-requeue-audit',
     'outbox restore-history': 'outbox.restore-history',
     'outbox restore-audit': 'outbox.restore-audit',
     'outbox restore-compare': 'outbox.restore-compare',
@@ -301,7 +302,7 @@ export async function runWorkctx(
       stderr: JSON.stringify({
         code: 'USAGE_ERROR',
         message:
-          'Expected admin snapshot, audit, artifacts, plane-events, observed, search, index, overview, work-items, sessions, runs, tool-calls, handoffs, checkpoints, context, resume, checkpoint, handoff, sync, inbox, outbox list/get/audit/export/inspect-archive/send-control/pause/resume/restore/restore-preview/restore-prepare/restore-receipt/restore-requeue/restore-requeue-preview/restore-requeue-receipt/restore-requeue-get/restore-requeue-history/restore-history/restore-audit/restore-compare/restore-history-backup/inspect-restore-history-backup/restore-backup-history/restore-backup-get/restore-backup-export/restore-history-import/restore-history-import-preview/restore-get/restore-export/reconcile/inspect-result, conflicts or doctor',
+          'Expected admin snapshot, audit, artifacts, plane-events, observed, search, index, overview, work-items, sessions, runs, tool-calls, handoffs, checkpoints, context, resume, checkpoint, handoff, sync, inbox, outbox list/get/audit/export/inspect-archive/send-control/pause/resume/restore/restore-preview/restore-prepare/restore-receipt/restore-requeue/restore-requeue-preview/restore-requeue-receipt/restore-requeue-get/restore-requeue-history/restore-requeue-audit/restore-history/restore-audit/restore-compare/restore-history-backup/inspect-restore-history-backup/restore-backup-history/restore-backup-get/restore-backup-export/restore-history-import/restore-history-import-preview/restore-get/restore-export/reconcile/inspect-result, conflicts or doctor',
         trace_id: context.trace_id,
       }),
     };
