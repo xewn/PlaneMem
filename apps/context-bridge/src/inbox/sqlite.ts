@@ -21,6 +21,14 @@ import { SYNC_INBOX_SCHEMA_V1, SYNC_INBOX_SCHEMA_VERSION } from './schema.js';
 import { InboxApplications } from './applications.js';
 export { parseInboxApplicationAuditQuery } from './application-audit.js';
 export type { SyncInboxApplicationAuditQuery } from './application-audit.js';
+export {
+  parseInboxApplicationHistoryQuery,
+  parseInboxApplicationSnapshotQuery,
+} from './application-history.js';
+export type {
+  SyncInboxApplicationHistoryQuery,
+  SyncInboxApplicationSnapshotQuery,
+} from './application-history.js';
 import {
   contextItemApplicationAdapter,
   parseInboxBuiltInApplicationApplyQuery,
@@ -962,6 +970,12 @@ export class SqliteSyncInbox {
   }
   readApplicationState(input: unknown, trace: string) {
     return this.applications().read(input, trace);
+  }
+  readApplicationHistory(input: unknown, trace: string) {
+    return this.applications().history(input, trace);
+  }
+  readApplicationSnapshot(input: unknown, trace: string) {
+    return this.applications().snapshot(input, trace);
   }
   /** Complete structural coverage in one read transaction; never re-executes reducers. */
   auditApplicationHistory(input: unknown, trace: string) {

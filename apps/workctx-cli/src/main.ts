@@ -70,6 +70,9 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
                                  JSON also requires document_sha256 and expected_previous_sha256 (null for root)
   inbox application-audit        Audit the selected application's entire saved history without running reducers
                                  JSON: expected_identity/application; optional max_pages/max_events/max_bytes/timeout_ms
+  inbox application-history      Page application summaries with fixed sequence/page/projection boundaries
+  inbox application-get          Read a saved projection selected by document_sha256; optional expected_projection_sha256
+                                 Both require --inbox and original identity/application JSON; history accepts limit 1–50
   inbox ack-status               Read latest original acknowledgement using expected_identity JSON
   inbox ack-dispatch-status      Read latest target and dispatch using expected_identity JSON
   inbox ack-history              Page original acknowledgement summaries using identity/history JSON
@@ -319,6 +322,8 @@ export async function main(args: string[]): Promise<number> {
       'inbox application-status',
       'inbox application-apply',
       'inbox application-audit',
+      'inbox application-history',
+      'inbox application-get',
       'inbox ack-status',
       'inbox ack-dispatch-status',
       'inbox ack-history',

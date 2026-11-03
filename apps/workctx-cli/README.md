@@ -1,5 +1,14 @@
 # workctx 开发入口
 
+应用历史新增只读分页和指定快照读取（仅源码，示例未执行）：
+
+```text
+workctx inbox application-history --inbox local-inbox.sqlite --json-file application-history-query.json
+workctx inbox application-get --inbox local-inbox.sqlite --json-file application-selection-query.json
+```
+
+两个查询均含完整 expected_identity/application，可选 timeout_ms。history 默认 20、最多 50 项，续页直接使用返回的 next_query，固定首次上界及上次末项的序号/原页摘要/投影摘要；每项 selection_query 可交给 get，读取该页对应的完整历史投影并核对预期投影摘要。get 也可显式给 document_sha256 和可选 expected_projection_sha256，缺步骤返回 found=false/snapshot=null，摘要变化明确报错。两个入口独立展示当前头，不推进或回退应用进度；前瞻同样核验，损坏/超限不输出部分列表。只读打开已有库，不自动启用扩展、翻页、导出或请求网络。详见 [历史浏览契约](../../docs/design/01-contracts/sync-application-history-runtime.md)，仍非完整历史审计或业务语义证明；无新 schema/依赖，未运行命令或数据库。
+
 应用历史新增只读结构审计（仅源码，示例未执行）：
 
 ```text

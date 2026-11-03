@@ -1,5 +1,7 @@
 # Context Bridge 本地同步存储
 
+2026-11-03 应用历史浏览增补：`readApplicationHistory(input,trace)` 返回固定双边界的步骤摘要分页，默认 20/最多 50，每个边界绑定序号/原页摘要/投影摘要；完整核验选中步骤、ledger 与一条前瞻，返回 next_query 和每项 selection_query。`readApplicationSnapshot(input,trace)` 按原页摘要读取完整历史投影，可绑定 expected_projection_sha256；缺步骤返回 found=false/snapshot=null，当前头以独立摘要返回。均要求原 expected_identity/application，可选 timeout_ms；只读事务，64 MiB 不同选中源文档/投影预算，列表摘要 512 KiB/详情 2 MiB 响应限额，不自动导出、恢复、重放或确认。CLI application-history/application-get 同步接入；范围及局限见 [历史浏览契约](../../docs/design/01-contracts/sync-application-history-runtime.md)。无新 schema/依赖，仅源码文档，未编译、测试、运行或打开数据库。
+
 现有 SqliteOutbox 保存待上传事件。新增 SqliteSyncInbox 保存已下载的完整页面和按原消费者隔离的连续 received_cursor，两者使用独立文件与 schema。
 
 SqliteSyncInbox 提供显式新库创建、importPage、inspect、readHead、close；已有库不会自动升级。完整页面经过共享契约与 SHA-256 校验，BEGIN IMMEDIATE 内追加不可变页面并推进头，首篇从零开始，后续绑定原前驱、起点和页大小；重复旧页不回退。读取核验完整头页和相邻前页，提交错误保留本次未知状态。

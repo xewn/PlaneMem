@@ -65,4 +65,4 @@ SQL 对投影/元数据做类型和字节投影保护；精确查找最多读两
 
 ## 尚未完成
 
-目前提供 Bridge 可编程投影事务、读取基础、首个上下文生命周期元数据适配器，以及 CLI 显式启用/读取/指定原页应用。新增 auditApplicationHistory/CLI application-audit 已提供同一只读快照的完整历史结构覆盖，详见 [应用历史结构审计](sync-application-audit-runtime.md)，不执行 reducer 或核对业务语义。其他业务适配器、完整正文、版本管理、应用目录、历史业务重放、快照导出/恢复、跨设备迁移，以及真实并发/重启/崩溃证据仍待补。既有页面链归档只包含接收页，不包含此应用头/投影/ledger；恢复原页面不会自动恢复或重建应用状态。所有 schema、SQLite 事务和 reducer 路径均未实际运行。
+目前提供 Bridge 可编程投影事务、读取基础、首个上下文生命周期元数据适配器，以及 CLI 显式启用/读取/指定原页应用。新增 auditApplicationHistory/CLI application-audit 已提供同一只读快照的完整历史结构覆盖，详见 [应用历史结构审计](sync-application-audit-runtime.md)，不执行 reducer 或核对业务语义。readApplicationHistory/readApplicationSnapshot 与 CLI application-history/application-get 已补固定双边界分页和指定历史投影读取，见 [历史浏览契约](sync-application-history-runtime.md)，仅核验选中步骤与边界，不继承完整历史审计状态。其他业务适配器、完整正文、版本管理、应用目录、历史业务重放、快照导出/恢复、跨设备迁移，以及真实并发/重启/崩溃证据仍待补。既有页面链归档只包含接收页，不包含此应用头/投影/ledger；恢复原页面不会自动恢复或重建应用状态。所有 schema、SQLite 事务和 reducer 路径均未实际运行。

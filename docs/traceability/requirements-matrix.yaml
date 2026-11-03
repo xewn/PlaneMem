@@ -978,6 +978,26 @@ requirements:
         - "CLI primary/embedded local routing, old output migration, read/rollback/close failures and complete result retention"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_application_history_development_increment:
+      date: "2026-11-03"
+      status: "Source-only application history pagination and exact historical projection reads; R-005 remains incomplete."
+      artifacts:
+        - "apps/context-bridge/src/inbox/application-history.ts"
+        - "apps/context-bridge/src/inbox/applications.ts"
+        - "apps/context-bridge/src/inbox/sqlite.ts"
+        - "apps/workctx-cli/src/inbox.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/sync-application-history-runtime.md"
+      behavior: "Strict original identity/application queries are parsed before readonly CLI opening. Default-20/max-50 summaries bind both continuation boundaries to sequence/source-page/projection digests. Selected steps and one lookahead validate full pages, projection hashes and event ledgers; contiguous intervals check empty-page invariance and must reach the saved bound on their final page. Each item supplies an exact snapshot selection query. Detail returns the saved full projection or explicit absence, optionally checks its expected hash, and separately summarizes the current head."
+      remaining_scope: "No cross-call frozen database, full-history audit or reducer semantic replay, snapshot export/restore, application directory, received-suffix/acknowledgement audit, source authentication or runtime evidence. Detail does not inspect all ancestors or compare full predecessor projections for empty-page invariance. Fixed 64 MiB distinct selected document/projection accounting is not exact IO or memory accounting."
+      pending_evidence:
+        - "Strict queries, identity/application isolation, all double-boundary combinations and both readonly CLI routes"
+        - "Empty/root/multiple pages, end-bound equality, advanced current head, changed/missing boundaries and damaged lookahead"
+        - "Missing snapshot, expected projection mismatch, event ledger corruption and gap/empty-page interval rejection"
+        - "Selected byte and response budgets, timeout/rollback/close failures with no partial success or reducer invocation"
+      evidence: []
+      execution: "Source and documentation only; no builds, typechecks, tests, CLI/Bridge/API/service runs, database opens, schema changes, migrations, sample generation or release. No new schema/dependencies; prior SQLite extensions and PostgreSQL 016-049 remain unexecuted. Commit/push to main is authorized with skip-ci messages."
     sync_application_audit_development_increment:
       date: "2026-11-03"
       status: "Source-only full structural audit of one original consumer/application history; R-005 remains incomplete."

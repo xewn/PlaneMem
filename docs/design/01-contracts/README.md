@@ -18,6 +18,7 @@
 - [本地同步收件箱与连续接收游标](sync-inbox-runtime.md)
 - [收件箱本地投影与应用进度](sync-inbox-application-runtime.md)
 - [收件箱应用历史结构审计](sync-application-audit-runtime.md)
+- [收件箱应用历史浏览与指定快照](sync-application-history-runtime.md)
 - [上下文条目生命周期同步投影](sync-context-item-application-runtime.md)
 - [收件箱原确认日志、显式观察与重试](sync-inbox-ack-runtime.md)
 - [本地确认凭据文件与页面恢复](sync-ack-evidence-runtime.md)

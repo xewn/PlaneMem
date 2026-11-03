@@ -24,6 +24,13 @@ import {
 import { SYNC_INBOX_APPLICATION_SCHEMA_V1 } from './application-schema.js';
 import { InboxApplicationRejection } from './application-rejection.js';
 import {
+  applicationHistoryBudget,
+  inboxApplicationStepSummary,
+  parseInboxApplicationHistoryQuery,
+  parseInboxApplicationSnapshotQuery,
+  readInboxApplicationHistory,
+} from './application-history.js';
+import {
   auditInboxApplicationHistory,
   parseInboxApplicationAuditQuery,
 } from './application-audit.js';
@@ -436,6 +443,95 @@ export class InboxApplications {
     return this.run(trace, query.timeout_ms, false, (check) => {
       this.require(trace);
       return this.state(query, this.head(query, trace, check), trace);
+    });
+  }
+  private historyReads(query: SyncInboxApplicationQuery, trace: string, check: () => void) {
+    this.require(trace);
+    const charge = applicationHistoryBudget(trace, check);
+    const head = this.head(query, trace, check);
+    if (head) charge(head);
+    const read = (digest: string) => {
+      check();
+      if (head?.page.document_sha256 === digest) return head;
+      const selected = this.step(query, digest, trace);
+      if (!selected) return undefined;
+      if (!head || selected.sequence >= head.sequence) throw this.corrupt(trace);
+      charge(selected);
+      this.verifyEvents(query, selected, trace, check);
+      check();
+      return selected;
+    };
+    return { head, read };
+  }
+  private historyEnvelope(query: SyncInboxApplicationQuery, trace: string) {
+    return {
+      schema_version: 1 as const,
+      trace_id: trace,
+      source_refs: [],
+      expected_identity: { ...query.expected_identity },
+      application: { ...query.application },
+      scope: {
+        tenant_id: query.expected_identity.tenant_id,
+        workspace_id: query.expected_identity.workspace_id,
+        project_id: query.expected_identity.project_id,
+      },
+      application_scope: 'local-reducer' as const,
+      server_application: 'not-verified' as const,
+      source_authenticity: 'not-verified' as const,
+      projection_semantics: 'not-verified' as const,
+      full_application_history_audit: 'not-performed' as const,
+      acknowledgement_dispatch_state: 'not-sent' as const,
+    };
+  }
+  history(input: unknown, trace: string) {
+    const query = parseInboxApplicationHistoryQuery(input, trace);
+    return this.run(trace, query.timeout_ms, false, (check) => {
+      const { head, read } = this.historyReads(query, trace, check);
+      return {
+        ...this.historyEnvelope(query, trace),
+        ...readInboxApplicationHistory(this.db, keys(query), query, head, read, trace, check),
+      };
+    });
+  }
+  snapshot(input: unknown, trace: string) {
+    const query = parseInboxApplicationSnapshotQuery(input, trace);
+    return this.run(trace, query.timeout_ms, false, (check) => {
+      const { head, read } = this.historyReads(query, trace, check);
+      const selected = read(query.document_sha256);
+      if (
+        selected &&
+        query.expected_projection_sha256 !== undefined &&
+        selected.projectionHash !== query.expected_projection_sha256
+      )
+        throw applicationFailure(
+          'INBOX_APPLICATION_SNAPSHOT_CHANGED',
+          'The selected saved projection differs from its expected digest',
+          trace,
+        );
+      const result = {
+        ...this.historyEnvelope(query, trace),
+        kind: 'application-snapshot' as const,
+        document_sha256: query.document_sha256,
+        found: selected !== undefined,
+        snapshot: selected
+          ? {
+              ...inboxApplicationStepSummary(selected),
+              projection: JSON.parse(selected.projectionJson) as unknown,
+            }
+          : null,
+        current_checkpoint: head ? inboxApplicationStepSummary(head) : null,
+      };
+      try {
+        syncJsonSnapshot(result, 2 * 1024 * 1024);
+      } catch {
+        throw applicationFailure(
+          'INBOX_APPLICATION_SNAPSHOT_TOO_LARGE',
+          'The complete application snapshot response exceeds 2 MiB',
+          trace,
+        );
+      }
+      check();
+      return result;
     });
   }
   audit(input: unknown, trace: string) {
