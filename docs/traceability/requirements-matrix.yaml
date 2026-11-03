@@ -959,6 +959,27 @@ requirements:
         - "Offline routing without token/environment/SQLite, argument restrictions, output traces, provenance and exits"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, sample file generation, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_outbox_restore_prepare_development_increment:
+      date: "2026-11-03"
+      status: "Source-only new event restore request preparation and explicit query file saving; R-005 remains incomplete."
+      artifacts:
+        - "apps/context-bridge/src/outbox/restore-prepare.ts"
+        - "apps/context-bridge/src/outbox/restore-preview.ts"
+        - "apps/context-bridge/src/outbox/restore.ts"
+        - "apps/context-bridge/src/outbox/sqlite.ts"
+        - "apps/workctx-cli/src/outbox-restore.ts"
+        - "apps/workctx-cli/src/outbox-restore-request.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/outbox-restore-prepare-runtime.md"
+      behavior: "Strict scope/new restore_id/reason preparation fully verifies the event archive, rejects every occupied global restore ID including imported history, observes validated paused control and checks the empty project/global original event and key constraints in one read snapshot. Shared immutable v1 planning checks complete serialization bounds; output includes the complete five-field restore_query. CLI requires a preflighted new output, opens existing storage natively read-only, attempts close before exclusive file publication and checks final bytes/SHA/JSON. Errors retain source locations, preparation/query/plan, file publication/cleanup and close states. Bridge budget is 90 seconds; result and complete CLI envelope cap at 128 KiB, query at 16 KiB."
+      evidence: []
+      pending_evidence:
+        - "Strict fields and bounds, configured scope binding, full source corruption, paused generation, empty/nonempty and global event/key conflicts"
+        - "All occupied IDs including imported/same-query/cross-project histories, missing optional tables, no reservation and later restore races"
+        - "Immutable normalized plan limits, read rollback/close failure, exclusive output races, exact readback and published-unconfirmed retention"
+      remaining_scope: "Nonempty merge, old sender coordination, bulk activation, cross-project discovery, provenance and end-to-end runtime evidence remain pending. No automatic pause, restore or send; no mutation of an existing failed request."
+      execution: "Source and documentation only; no builds, typechecks, tests, CLI/Bridge execution, database opens, generated samples, schema initialization, migrations or release. No schema/dependency changes; prior SQLite upgrades and PostgreSQL 016-049 remain unexecuted."
     sync_outbox_restore_backup_access_development_increment:
       date: "2026-11-03"
       status: "Source-only offline backup pagination, original receipt lookup and source archive extraction; R-005 remains incomplete. No builds, typechecks, tests, CLI/Bridge execution, database opens, generated samples, migrations or release."

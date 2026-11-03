@@ -61,6 +61,7 @@ import { parseOutboxAuditQuery, auditOutboxRecords } from './audit.js';
 import { readOutboxSendControl, changeOutboxSendControl, outboxClaimGuard } from './control.js';
 import { restoreOutboxArchive, readOutboxRestoreReceipt } from './restore.js';
 import { previewOutboxArchiveRestore } from './restore-preview.js';
+import { prepareOutboxArchiveRestore } from './restore-prepare.js';
 import { auditOutboxRestoreReceipts } from './restore-audit.js';
 import { compareOutboxRestoreRecord } from './restore-comparison.js';
 import { readOutboxRestoreBackup } from './restore-backup-reading.js';
@@ -83,8 +84,12 @@ import {
 } from './restore-history.js';
 export { parseOutboxRestoreSelection, parseOutboxRestoreHistoryQuery } from './restore-history.js';
 export type { OutboxRestoreSelection, OutboxRestoreHistoryQuery } from './restore-history.js';
-export { parseOutboxRestoreQuery } from './restore.js';
-export type { OutboxRestoreQuery, OutboxRestoreReceipt } from './restore.js';
+export { parseOutboxRestoreQuery, parseOutboxRestorePreparation } from './restore.js';
+export type {
+  OutboxRestoreQuery,
+  OutboxRestoreReceipt,
+  OutboxRestorePreparation,
+} from './restore.js';
 export { parseOutboxSendControlChange } from './control.js';
 export type { OutboxSendControl, OutboxSendControlChange } from './control.js';
 export { parseOutboxAuditQuery } from './audit.js';
@@ -432,6 +437,10 @@ export class SqliteOutbox {
   /** One read snapshot; the actual restore repeats every precondition before writing. */
   previewArchiveRestore(archive: unknown, query: unknown, trace: string) {
     return previewOutboxArchiveRestore(this.db, archive, query, trace);
+  }
+
+  prepareArchiveRestore(archive: unknown, preparation: unknown, trace: string) {
+    return prepareOutboxArchiveRestore(this.db, archive, preparation, trace);
   }
 
   readRestoreReceipt(query: unknown, trace: string) {

@@ -1,6 +1,10 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { ContractError, syncJsonSnapshot } from '@planemem/contracts';
-import { OUTBOX_ARCHIVE_DOCUMENT_BYTES, OUTBOX_ARCHIVE_FILE_BYTES } from './archive.js';
+import {
+  OUTBOX_ARCHIVE_DOCUMENT_BYTES,
+  OUTBOX_ARCHIVE_FILE_BYTES,
+  type OutboxArchiveFile,
+} from './archive.js';
 import { outboxReadTransaction } from './reading.js';
 import {
   assertOutboxRestoreTrace,
@@ -11,7 +15,52 @@ import {
   outboxRestoreTarget,
   parseOutboxRestoreQuery,
   type OutboxRestoreReceipt,
+  type OutboxRestoreQuery,
 } from './restore.js';
+
+/** Caller owns the read snapshot and deadline. Shared immutable mapping and serialization bounds. */
+export function outboxRestorePlan(
+  source: OutboxArchiveFile,
+  query: OutboxRestoreQuery,
+  observed_at: string,
+  trace: string,
+  check: () => void,
+) {
+  const restored = outboxRestoreRecords(source, observed_at, trace);
+  syncJsonSnapshot(query, 16384);
+  syncJsonSnapshot(source, OUTBOX_ARCHIVE_FILE_BYTES);
+  const normalized_document_bytes_at_preview = Buffer.byteLength(
+    syncJsonSnapshot(restored.document, OUTBOX_ARCHIVE_DOCUMENT_BYTES),
+    'utf8',
+  );
+  const source_statuses = { pending: 0, sending: 0, failed: 0, sent: 0, conflict: 0 };
+  const restored_statuses = { pending: 0, sending: 0, failed: 0, sent: 0, conflict: 0 };
+  let cleared_lease_tokens = 0;
+  for (const record of source.document.records) {
+    check();
+    source_statuses[record.status as keyof typeof source_statuses] += 1;
+    if (record.lease_token !== null) cleared_lease_tokens += 1;
+  }
+  for (const record of restored.document.records) {
+    check();
+    restored_statuses[record.status as keyof typeof restored_statuses] += 1;
+  }
+  check();
+  return {
+    records: restored.document.records.length,
+    source_statuses,
+    restored_statuses,
+    held_records: restored_statuses.failed,
+    historical_terminal_records: {
+      sent: restored_statuses.sent,
+      conflict: restored_statuses.conflict,
+    },
+    cleared_lease_tokens,
+    normalized_document_bytes_at_preview,
+    nonterminal_policy: 'failed-review-required' as const,
+    automatic_send: false as const,
+  };
+}
 
 /** Shares the restore preconditions and v1 mapping, but never reserves or writes anything. */
 export function previewOutboxArchiveRestore(
@@ -72,26 +121,7 @@ export function previewOutboxArchiveRestore(
           selected_event_id = event_id;
         });
         stage = 'prepare';
-        const restored = outboxRestoreRecords(source, observed_at, trace);
-        // Exercise the same complete serialization bounds as the write path before reporting a plan.
-        syncJsonSnapshot(query, 16384);
-        syncJsonSnapshot(source, OUTBOX_ARCHIVE_FILE_BYTES);
-        const normalized_document_bytes_at_preview = Buffer.byteLength(
-          syncJsonSnapshot(restored.document, OUTBOX_ARCHIVE_DOCUMENT_BYTES),
-          'utf8',
-        );
-        const source_statuses = { pending: 0, sending: 0, failed: 0, sent: 0, conflict: 0 };
-        const restored_statuses = { pending: 0, sending: 0, failed: 0, sent: 0, conflict: 0 };
-        let cleared_lease_tokens = 0;
-        for (const record of source.document.records) {
-          check();
-          source_statuses[record.status as keyof typeof source_statuses] += 1;
-          if (record.lease_token !== null) cleared_lease_tokens += 1;
-        }
-        for (const record of restored.document.records) {
-          check();
-          restored_statuses[record.status as keyof typeof restored_statuses] += 1;
-        }
+        const plan = outboxRestorePlan(source, query, observed_at, trace, check);
         stage = 'result';
         return bounded({
           ...common,
@@ -99,20 +129,7 @@ export function previewOutboxArchiveRestore(
           current_queue: 'checked-empty' as const,
           current_control: control,
           historical_receipt: null,
-          plan: {
-            records: restored.document.records.length,
-            source_statuses,
-            restored_statuses,
-            held_records: restored_statuses.failed,
-            historical_terminal_records: {
-              sent: restored_statuses.sent,
-              conflict: restored_statuses.conflict,
-            },
-            cleared_lease_tokens,
-            normalized_document_bytes_at_preview,
-            nonterminal_policy: 'failed-review-required' as const,
-            automatic_send: false as const,
-          },
+          plan,
         });
       },
       trace,

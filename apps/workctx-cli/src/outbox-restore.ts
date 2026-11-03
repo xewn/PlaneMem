@@ -1,15 +1,18 @@
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { ContractError } from '@planemem/contracts';
+import { ContractError, syncJsonSnapshot } from '@planemem/contracts';
 import { readBoundedArtifactFile } from './artifact-files.js';
+import { prepareArtifactOutput, type ArtifactOutput } from './artifact-output.js';
 import { readOutboxArchiveFile } from './outbox-archive.js';
 import { readOutboxRestoreBackupFile } from './outbox-restore-backup.js';
+import { saveOutboxRestoreRequest } from './outbox-restore-request.js';
 
 export function isOutboxRestoreCommand(command: string) {
   return (
     command === 'outbox restore' ||
     command === 'outbox restore-receipt' ||
     command === 'outbox restore-preview' ||
+    command === 'outbox restore-prepare' ||
     command === 'outbox restore-history-import' ||
     command === 'outbox restore-history-import-preview'
   );
@@ -20,7 +23,7 @@ function fail(code: string, message: string, trace: string, details: Record<stri
 function usage(trace: string) {
   return fail(
     'USAGE_ERROR',
-    'Use outbox restore, restore-preview, restore-history-import or restore-history-import-preview --outbox EXISTING_FILE --archive-file FILE --json/--json-file ORIGINAL_QUERY, or outbox restore-receipt --outbox EXISTING_FILE --json/--json-file ORIGINAL_QUERY. No other/repeated options, extra positionals or stdin',
+    'Use outbox restore, restore-preview, restore-history-import or restore-history-import-preview --outbox EXISTING_FILE --archive-file FILE --json/--json-file ORIGINAL_QUERY; restore-prepare uses the same paths with PREPARATION and mandatory --output NEW_QUERY_FILE. Or use outbox restore-receipt --outbox EXISTING_FILE --json/--json-file ORIGINAL_QUERY. No other/repeated options, extra positionals or stdin',
     trace,
   );
 }
@@ -35,6 +38,7 @@ function argumentsFor(argv: string[], trace: string) {
         'archive-file': { type: 'string' },
         json: { type: 'string' },
         'json-file': { type: 'string' },
+        output: { type: 'string' },
       },
     });
     const command = args.positionals.join(' ');
@@ -48,20 +52,22 @@ function argumentsFor(argv: string[], trace: string) {
     const json = args.values.json;
     const file = args.values['json-file'];
     const archiveFile = args.values['archive-file'];
+    const output = args.values.output;
     if (
       !isOutboxRestoreCommand(command) ||
       args.positionals.length !== 2 ||
       path === undefined ||
       path === ':memory:' ||
-      [path, file, archiveFile].some(
+      [path, file, archiveFile, output].some(
         (value) => value !== undefined && (!value.trim() || value === '-'),
       ) ||
       (json === undefined) === (file === undefined) ||
       json === '-' ||
+      (command === 'outbox restore-prepare' ? output === undefined : output !== undefined) ||
       (command === 'outbox restore-receipt' ? archiveFile !== undefined : archiveFile === undefined)
     )
       throw new TypeError();
-    return { command, path: resolve(path), json, file, archiveFile };
+    return { command, path: resolve(path), json, file, archiveFile, output };
   } catch {
     throw usage(trace);
   }
@@ -105,6 +111,7 @@ export async function runOutboxRestoreArguments(
   trace: string,
 ) {
   const args = argumentsFor(argv, trace);
+  const prepares = args.command === 'outbox restore-prepare';
   const historyImport =
     args.command === 'outbox restore-history-import' ||
     args.command === 'outbox restore-history-import-preview';
@@ -126,9 +133,11 @@ export async function runOutboxRestoreArguments(
   }
   const scope = bridge.parseOutboxReadScope(snapshot, trace);
   const scopedInput = { ...input, scope: Object.hasOwn(input, 'scope') ? input.scope : scope };
-  const query = historyImport
-    ? bridge.parseOutboxRestoreBackupImportQuery(scopedInput, trace)
-    : bridge.parseOutboxRestoreQuery(scopedInput, trace);
+  const query = prepares
+    ? bridge.parseOutboxRestorePreparation(scopedInput, trace)
+    : historyImport
+      ? bridge.parseOutboxRestoreBackupImportQuery(scopedInput, trace)
+      : bridge.parseOutboxRestoreQuery(scopedInput, trace);
   if (
     query.scope.tenant_id !== scope.tenant_id ||
     query.scope.workspace_id !== scope.workspace_id ||
@@ -140,6 +149,26 @@ export async function runOutboxRestoreArguments(
       trace,
       { query, local_commit: unopenedCommit },
     );
+  let output: ArtifactOutput | undefined;
+  if (args.output !== undefined) {
+    try {
+      output = await prepareArtifactOutput(args.output, trace);
+    } catch (error) {
+      throw fail(
+        error instanceof ContractError ? error.envelope.code : 'OUTBOX_RESTORE_OUTPUT_UNAVAILABLE',
+        'Choose a new restore query file in an existing directory',
+        trace,
+        {
+          ...(error instanceof ContractError ? error.envelope.details : {}),
+          query,
+          outbox: args.path,
+          output_path: resolve(args.output),
+          local_commit: unopenedCommit,
+          local_state: 'not-saved',
+        },
+      );
+    }
+  }
   let source:
     | Awaited<ReturnType<typeof readOutboxArchiveFile>>
     | Awaited<ReturnType<typeof readOutboxRestoreBackupFile>>
@@ -150,8 +179,8 @@ export async function runOutboxRestoreArguments(
         ? await readOutboxRestoreBackupFile(args.archiveFile, trace)
         : await readOutboxArchiveFile(args.archiveFile, trace);
       if (
-        source.saved.document_sha256 !==
-          ('backup_sha256' in query ? query.backup_sha256 : query.archive_sha256) ||
+        ('backup_sha256' in query && source.saved.document_sha256 !== query.backup_sha256) ||
+        ('archive_sha256' in query && source.saved.document_sha256 !== query.archive_sha256) ||
         source.saved.document.scope.tenant_id !== scope.tenant_id ||
         source.saved.document.scope.workspace_id !== scope.workspace_id ||
         source.saved.document.scope.project_id !== scope.project_id
@@ -174,6 +203,7 @@ export async function runOutboxRestoreArguments(
           archive_file: resolve(args.archiveFile),
           outbox: args.path,
           local_commit: unopenedCommit,
+          ...(output ? { output_path: output.path, local_state: 'not-saved' } : {}),
         },
       );
     }
@@ -201,13 +231,15 @@ export async function runOutboxRestoreArguments(
         archive_file: file,
         stage: 'open',
         local_commit: unopenedCommit,
+        ...(output ? { output_path: output.path, local_state: 'not-saved' } : {}),
       },
     );
   }
   let data;
   try {
-    data =
-      args.command === 'outbox restore-history-import'
+    data = prepares
+      ? queue.prepareArchiveRestore(source!.saved, query, trace)
+      : args.command === 'outbox restore-history-import'
         ? queue.importRestoreBackup(source!.saved, query, trace)
         : args.command === 'outbox restore-history-import-preview'
           ? queue.previewRestoreBackupImport(source!.saved, query, trace)
@@ -237,6 +269,7 @@ export async function runOutboxRestoreArguments(
         outbox: args.path,
         archive_file: file,
         close_pending,
+        ...(output ? { output_path: output.path, local_state: 'not-saved' } : {}),
       },
     );
   }
@@ -245,6 +278,42 @@ export async function runOutboxRestoreArguments(
     queue.close();
   } catch {
     close_pending = true;
+  }
+  if (output) {
+    let local: Awaited<ReturnType<typeof saveOutboxRestoreRequest>> | null = null;
+    try {
+      if (!('restore_query' in data)) throw new TypeError('Missing prepared restore query');
+      local = await saveOutboxRestoreRequest(data.restore_query, output, trace);
+      const result = {
+        schema_version: 1 as const,
+        trace_id: trace,
+        scope,
+        source_refs: [{ type: 'outbox', id: scope.project_id }],
+        data: { ...data, outbox: args.path, archive_file: file, close_pending, local },
+      };
+      syncJsonSnapshot(result, 128 * 1024);
+      return result;
+    } catch (error) {
+      throw fail(
+        error instanceof ContractError
+          ? error.envelope.code
+          : 'OUTBOX_RESTORE_PREPARATION_OUTPUT_FAILED',
+        error instanceof ContractError
+          ? error.envelope.message
+          : 'The prepared request or complete output could not be returned; retain the request and file state',
+        trace,
+        {
+          ...(error instanceof ContractError ? error.envelope.details : {}),
+          preparation: query,
+          prepared: data,
+          outbox: args.path,
+          archive_file: file,
+          output_path: output.path,
+          close_pending,
+          local,
+        },
+      );
+    }
   }
   return {
     schema_version: 1 as const,

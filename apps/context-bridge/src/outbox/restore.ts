@@ -31,6 +31,7 @@ export interface OutboxRestoreQuery {
   expected_control_generation: string;
   reason: string;
 }
+export type OutboxRestorePreparation = Pick<OutboxRestoreQuery, 'scope' | 'restore_id' | 'reason'>;
 function fail(code: string, message: string, trace: string, details: Record<string, unknown> = {}) {
   return new ContractError(code, message, { trace_id: trace, retryable: false, details });
 }
@@ -66,6 +67,35 @@ export function outboxRestoreBudget(trace: string) {
         trace,
       );
   };
+}
+export function parseOutboxRestorePreparation(
+  input: unknown,
+  trace: string,
+): OutboxRestorePreparation {
+  try {
+    const value: unknown = JSON.parse(syncJsonSnapshot(input, QUERY_BYTES));
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError();
+    const row = value as Record<string, unknown>;
+    const fields = ['scope', 'restore_id', 'reason'];
+    if (
+      Object.keys(row).length !== fields.length ||
+      Object.keys(row).some((key) => !fields.includes(key)) ||
+      !isSyncIdentifier(row.restore_id) ||
+      !validText(row.reason)
+    )
+      throw new TypeError();
+    return {
+      scope: parseOutboxReadScope(row.scope, trace),
+      restore_id: row.restore_id,
+      reason: row.reason,
+    };
+  } catch {
+    throw fail(
+      'OUTBOX_RESTORE_PREPARATION_INVALID',
+      'Supply exactly scope, a new restore_id and reason',
+      trace,
+    );
+  }
 }
 export function parseOutboxRestoreQuery(input: unknown, trace: string): OutboxRestoreQuery {
   try {

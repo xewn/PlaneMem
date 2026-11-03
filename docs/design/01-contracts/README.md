@@ -47,6 +47,7 @@
 - [原同步事件回执查询](sync-event-receipt-runtime.md)
 - [发送队列档案受控恢复与原回执](outbox-restore-runtime.md)
 - [发送队列档案恢复前预览](outbox-restore-preview-runtime.md)
+- [发送队列新恢复请求准备与保存](outbox-restore-prepare-runtime.md)
 - [发送队列恢复历史与原档案找回](outbox-restore-history-runtime.md)
 - [发送队列恢复历史全范围核验](outbox-restore-audit-runtime.md)
 - [发送队列单条恢复记录对照](outbox-restore-comparison-runtime.md)
