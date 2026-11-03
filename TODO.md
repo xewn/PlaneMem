@@ -6,6 +6,8 @@
 
 ### 2026-11-04 开发补充（未编译、未发布、未测试）
 
+- P0-02：新增 MockSyncStore 与固定模拟会话，MockWcpServer 可配置同步身份、changes、cursor、ack 四个路由。完整有界事件流、显式可见集合先过滤后分页，末页保留高水位；缺省读取原消费者确认，确认按五字段身份隔离、允许重复、拒绝回退/超前。复用完整共享契约、独立副本、trace/来源及响应大小/取消检查；身份来自开发配置，不从预期身份头授权。原项目 Mock 保持，上传/冲突/其他公开路由与真实 Policy/持久化/网络未知结果仍未覆盖，P0-02 不勾选。无依赖/schema/Gateway 变化，仅源码文档，未编译、类型检查、测试、执行 Mock/产品、打开库、生成样本或发布；按任务提交 push main 带 [skip ci]。
+
 - P3/P4：新增共享parseClientEventSyncChange和client-event-history/1固定适配器，保存ClientEventRecorded完整content/来源及原账号、客户端、事件ID；核对规范封套、身份/来源尾项绑定，字段建议保留扩展content并验证字段/base/observed版本。投影按原身份三元组排序去重，最多512条/1 MiB，拒绝重复ID/cursor、回退和未知外层类型；接入现有apply/preview/pending/replay与通用历史归档。明确接收不等于源字段生效，不重建缺失原client_cursor/批次键/分类、不结算队列。无schema/依赖/Gateway格式变化，仅源码文档，未编译、类型检查、测试、执行reducer/产品、打开库、生成样本或发布；源实体完整同步、其他业务适配/容量管理及运行证据仍缺，按任务提交push main带[skip ci]。
 
 - P3/P4：新增联合重新排队备份import/import-preview，scope/backup_sha256严格绑定完整源；同事务比较全部父历史/批次，只补缺失、同文保留、异文/跨项目冲突拒绝。与单批次共用目标比较器，每轮共用父只读一次，目标64 MiB/轮、总256 MiB；写父前复查、父写后核对整批计划、逐批写前复查、最终全部父历史和批次关联读回，空备份不建表。保留source-only缺父修复、源摘要/候选结果及未知提交/回滚/关闭状态，原ID继续历史幂等，不恢复事件或发送。CLI源完整验证后打开已有库，预览原生只读；90秒/128 KiB，备份摘要提供import_query。无schema/依赖变化，仅源码文档，未编译、类型检查、测试、执行产品、打开库、初始化表、生成样本或发布。跨项目备份/保留管理/来源证明与运行证据仍缺；按任务提交推送main，带[skip ci]。
@@ -425,7 +427,7 @@
 ## P0：契约、事件和开发平台
 
 - [ ] **[P0-01][缺实现] 生成并发布 OpenAPI v1、AsyncAPI/CloudEvents v1 和 MCP schema。** 当前仓库有 JSON Schema 和 Markdown 契约，但没有可被工具消费的 OpenAPI/AsyncAPI 文档文件。完成条件：生成物进入版本控制，SDK/Mock/契约测试从生成物校验，CI 对破坏性变更失败。
-- [ ] **[P0-02][缺实现] 扩充 `packages/sdk` 和 Mock Server 到完整 WCP 面。** SDK 已有会话、同步、冲突、上下文、建议、资料、观察目录及审计查询/导出等源码入口；Mock Server 仍只处理 `POST /v1/projects`，公开路由覆盖、客户端兼容与错误/幂等/ETag 契约证据尚未逐项闭合。完成条件仍为所有公开路由的类型化 SDK、Mock 与契约证据；当前新增源码不作为测试通过或发布完成依据。
+- [ ] **[P0-02][缺实现] 扩充 `packages/sdk` 和 Mock Server 到完整 WCP 面。** SDK 已有会话、同步、冲突、上下文、建议、资料、观察目录及审计查询/导出等源码入口；Mock Server 保留 `POST /v1/projects` 并可选配置同步身份/变化分页/当前游标/显式确认四路由，共享内存流与按原身份隔离的确认，显式配置可见集合。上传、冲突及其余公开路由尚未覆盖，客户端兼容与错误/幂等/ETag 契约证据尚未逐项闭合。完成条件仍为所有公开路由的类型化 SDK、Mock 与契约证据；当前新增源码不作为测试通过或发布完成依据。
 - [ ] **[P0-03][缺实现] 接入真实 NATS JetStream 事件总线。** 当前 TypeScript 源码没有 NATS publisher/consumer，NATS 只出现在 Compose 和故障脚本中。完成条件：事件写入、消费、重放、积压指标和故障恢复均使用真实 NATS；内存路径只保留为离线 fixture。
 - [ ] **[P0-04][文档漂移] 修正计划计数和追踪状态。** `plan-audit` 当前报告 `task_files=38`、`expected_task_files=37`，而 `docs/traceability/requirements-matrix.yaml` 仍为 `status: planned`。完成条件：统一 38 个任务（含 T8.4）的计数、需求状态、ReadMe 勾选项和完成审计。
 

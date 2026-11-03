@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-04：新增 `MockSyncStore`、`MockSyncSeed` 和 `MockSyncSession`。`new MockWcpServer({sync:{store,session}})` 可模拟同步身份读取、变化分页、当前确认查询与显式确认，衔接现有 `getSyncCommandContext/getSyncChanges/syncPages/getSyncCursor/acknowledgeSync`。固定有界事件流和显式可见集合，多个模拟账号可共享 store，确认按完整原身份隔离、禁止回退和超前；读取不自动确认。构造/连接/返回复制数据，共享契约校验完整响应，支持取消及响应字节限制。无配置时保留原项目创建 Mock；其余路由、真实权限与持久化仍未覆盖。见 [同步消费 Mock](../../docs/design/01-contracts/sync-mock-runtime.md) 的配置、接线示例与限制。本轮仅源码文档，未编译、测试、调用 Mock 或发布。
+
 新增 `submitConflictDecision(original, {reviewed:true, timeout_ms?, signal?})`，发送已保存的完整原 identity/request_key/command；固定原正文、身份前置条件、键和版本，不生成键或自动重试。默认本地 30 秒，完整成功/错误响应限 2 MiB/16 KiB，并验证旧封套和完整决策事件；返回仅 `status=unconfirmed` 的规范结果及原请求副本，需后续明确 getConflictReceipt 确认绑定。SDK 自身不保存文件或查询回执，原 resolveConflict 保留兼容行为。新提交及 getConflictReceipt 始终核对三层范围和已提供的身份约束；普通字符串账号可在 SDK 上下文省略 actor/client，仍由 original.identity 生成预期身份头供 Gateway 对可信身份完全核对。见 `docs/design/01-contracts/conflict-submission-runtime.md`；仅源码，未编译、测试或调用。
 
 新增 `getConflictCommandContext(options?)` 和 `WcpConflictCommandContextOptions`，只读当前可信冲突操作 identity、expires_at、resolve_conflicts=true。默认本地 30 秒，支持 timeout_ms/signal；成功/错误正文各 16 KiB，完整验证范围/trace/空来源、可选 actor/client 相等约束和未过期时间。固定请求副本，不继承幂等键/写版本、不自动重试或保存；提示不能替换旧请求的原身份/版本/键，不证明项目可读或原决定成功。输出类型 ConflictCommandContextData/Envelope 已导出，见 `docs/design/01-contracts/conflict-recovery-runtime.md`；仅源码，未编译、测试或实际调用。
@@ -263,7 +265,7 @@ Artifact 元数据新增 `getArtifact(id)` 和 `getArtifactVersion(id, version)`
 
 SDK 上传错误保留固定代码/文案及本次 dispatch_state，原始错误正文/details 不透传；retryable=false 不代表远端确定失败，未返回完整回执时继续保留原事件、原身份和键。方法不自动重试、分批、保存或更换身份；持久保存由调用方或 Bridge outbox 负责，旧未知身份不能从当前令牌推断。SDK 共用 RequestBudget 改用单调时钟，有界正文清理失败不再覆盖原错误。见 [同步上传与完整批次回执](../../docs/design/01-contracts/sync-upload-runtime.md)。仅源码和文档，未执行示例、编译或测试。
 
-为兼容已有调用，`createProject` 仍保留原有实体响应及 mock 行为；当前实际 Gateway 尚未注册 `/v1/projects` 创建路由。`MockWcpServer` 仍只覆盖该旧接口，不能替代新增连续性接口的真实网关。
+为兼容已有调用，`createProject` 仍保留原有实体响应及 mock 行为；当前实际 Gateway 尚未注册 `/v1/projects` 创建路由。`MockWcpServer` 可选的同步消费配置另支持四个同步路由，其余连续性接口尚未模拟，不能替代真实网关。
 
 `confirmProposal(id, reason, { expected_revision, idempotency_key })` 和 rejectProposal 要求签名 human 身份与 proposal.review；创建使用 proposal.write。列表在 data.next_before 返回下一页游标，详情在 data.sources_current 标记本地来源链是否仍符合提交时的状态，含本地引用但缺少依赖摘要的旧建议返回 false。写回执只表示历史命令，不自动创建已确认上下文。见 [Proposal 运行时说明](../../docs/design/01-contracts/proposal-runtime.md)。
 
@@ -291,7 +293,7 @@ FetchWcpTransport 支持原生 FormData：request 为 application/json 文件部
 
 返回对象的 data 包含公开 artifact、audit_id、audit_state=release-recorded 和 content_state=verified；顶层 content 为独立 Uint8Array，source_refs 固定到该 Artifact/版本。release-recorded 指服务端已持久记录获准释放，不能证明客户端已写入磁盘，也不确认原上传请求。SDK 不打开文件、不生成下载 URL、不写磁盘；Fetch 超时仍默认为 30 秒，可显式配置 timeout_ms。此入口仅源码，未编译、类型检查、测试、下载样本或运行，完整边界见 Artifact 持久化说明。
 
-2026-11-03：`listConflicts` 已改为默认 25、最多 100 条的元数据页，返回 `ConflictRegistryEnvelope`，不再返回旧 `WcpConflict` 全文。query 支持 query/status/entity_type/conflict_id/limit/cursor；显式续页须保留筛选和 limit。版本全部为十进制字符串；值与逐条来源使用 getConflict 获取。选项 timeout_ms/signal 控制默认 30 秒本地等待，成功 2 MiB、错误 16 KiB，完整范围/trace/记录/游标检查，不自动翻页或重试。此变更须协调旧消费者；MockWcpServer 仍只覆盖项目创建，兼容性尚无运行证据，见 [冲突目录分页](../../docs/design/01-contracts/conflict-registry-runtime.md)。
+2026-11-03：`listConflicts` 已改为默认 25、最多 100 条的元数据页，返回 `ConflictRegistryEnvelope`，不再返回旧 `WcpConflict` 全文。query 支持 query/status/entity_type/conflict_id/limit/cursor；显式续页须保留筛选和 limit。版本全部为十进制字符串；值与逐条来源使用 getConflict 获取。选项 timeout_ms/signal 控制默认 30 秒本地等待，成功 2 MiB、错误 16 KiB，完整范围/trace/记录/游标检查，不自动翻页或重试。此变更须协调旧消费者；MockWcpServer 已另补四个同步消费路由，冲突接口尚未覆盖，兼容性仍无运行证据，见 [冲突目录分页](../../docs/design/01-contracts/conflict-registry-runtime.md)。
 
 2026-11-03：新增 `getConflictReceipt(original, options?)`，original 是保存的 `{identity, request_key, command}`，command 包含原有效 conflict_id/expected_version/resolution/适用 merged_value 与全部额外原字段。SDK 必须匹配原三层范围以及上下文已提供的 actor/client 约束；普通字符串账号可使用仅含范围和 trace 的 SDK 上下文，原完整 actor/client 仍用于预期身份头。Gateway 对可信 token 核对全部五字段，要求未过期 resolver。查询不继承写条件，默认本地 30 秒、成功 2 MiB/错误 16 KiB，有完整原请求和结果校验，不重试。recorded 只确认原决定及事件，not-observed/legacy 仍保持未知，不证明源实体应用。调用方必须在写入前自行保存原请求；旧 resolveConflict 接口未自动创建恢复记录。见 [冲突原请求回执](../../docs/design/01-contracts/conflict-receipt-runtime.md)，仅源码，未运行验证。
 

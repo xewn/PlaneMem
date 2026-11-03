@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [SDK 同步消费 Mock](docs/design/01-contracts/sync-mock-runtime.md)：开发时可配置固定事件流和模拟账号，使用现有客户端读取身份、分页下载、查询与更新确认位点。支持多个账号共享事件流、各自确认和显式可见事件集合。仅源码文档，未编译、测试、调用 Mock 或发布。
+
 新增 [客户端事件同步历史](docs/design/01-contracts/sync-client-event-application-runtime.md)：收件箱可保存服务器已接收的完整客户端内容，按原账号、客户端和事件 ID 区分记录，并接入已有应用预览和历史重放。保留历史语义，不将接收记录当作业务字段已生效。仅源码文档，未编译、测试、运行或发布。
 
 新增 [重新排队备份原子导入与预览](docs/design/01-contracts/outbox-restore-requeue-backup-import-runtime.md)：整份比较父历史和批次，只补缺失项、保留相同内容、冲突整批拒绝，全部读回后统一提交。支持先只读预览；导入仅恢复历史。仅源码文档，未编译、测试、运行或发布。

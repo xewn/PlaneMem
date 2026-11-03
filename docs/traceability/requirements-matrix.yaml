@@ -11,6 +11,23 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    sdk_sync_mock_development_increment:
+      date: "2026-11-04"
+      status: "Source-only four-route sync consumer Mock; full WCP Mock coverage and R-001 remain incomplete."
+      artifacts:
+        - "packages/sdk/src/mock-sync.ts"
+        - "packages/sdk/src/mock-server.ts"
+        - "packages/sdk/src/index.ts"
+        - "docs/design/01-contracts/sync-mock-runtime.md"
+      behavior: "An explicit shared in-memory stream connects fixed simulated sessions to sync identity, changes, cursor and acknowledgement routes. Full SDK-compatible envelopes, visibility before pagination, source/trace preservation, consumer-isolated monotonic cursors, bounded detached data and cancellation checks reuse existing shared contracts. Identity comes from configuration, never request preconditions."
+      evidence: []
+      pending_evidence:
+        - "SDK methods/iterator compatibility and preserved legacy project Mock behavior"
+        - "Visibility gaps/empty tail, default acknowledgement cursor, explicit zero and pagination sources"
+        - "Account/client isolation, duplicate ack, regression/gap, expiry/permissions and expected identity matching"
+        - "Configuration/response limits, cancellation, mutation isolation and invalid request branches"
+      remaining_scope: "All other public Mock routes, production authentication/Policy/audit, durable recovery, network uncertainty and generated contract coverage."
+      execution: "Source/docs only; no build, typecheck, tests, Mock/product execution, sample generation, database or release."
     gates: ["merge", "nightly", "production"]
 
   - id: R-002
@@ -800,6 +817,15 @@ requirements:
     design: ["canonical-event", "sync-outbox"]
     subprojects: ["P0", "P1", "P3", "P8"]
     tests: ["unit.event_dedup", "integration.event_replay", "resilience.network_loss", "resilience.service_restart"]
+    sync_consumer_mock_development_increment:
+      date: "2026-11-04"
+      status: "Source-only in-memory development model; no durability or runtime evidence."
+      artifacts:
+        - "packages/sdk/src/mock-sync.ts"
+        - "docs/design/01-contracts/sync-mock-runtime.md"
+      behavior: "Fixed complete ordered event seeds and explicit session visibility support download and per-original-consumer acknowledgement. Reading never acknowledges; unknown or hidden tail cursors remain represented by the configured high-water mark. This model does not apply source entities, upload events, settle outbox records or prove original request outcomes."
+      evidence: []
+      remaining_scope: "R-005 stays incomplete; real losslessness, crash recovery, permissions, upload/idempotency and unknown-commit behavior remain outside this Mock."
     sync_client_event_application_development_increment:
       date: "2026-11-04"
       status: "Source-only complete recorded-client-content history adapter and shared parser; R-005 remains incomplete."
