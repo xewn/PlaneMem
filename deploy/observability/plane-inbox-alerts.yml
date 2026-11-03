@@ -1,0 +1,91 @@
+# Development configuration only. No rules have been loaded or evaluated.
+groups:
+  - name: planemem-plane-inbox
+    interval: 30s
+    rules:
+      - alert: PlaneMemMetricsTargetDown
+        expr: up{job="planemem"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Platform metrics cannot be scraped'
+          description: 'Check the target and private scrape network. Missing observations do not mean an empty queue.'
+          runbook: 'docs/runbooks/alerts.md'
+      - alert: PlaneInboxCollectionUnavailable
+        expr: >-
+          (planemem_plane_inbox_metrics_enabled == 1)
+          unless on(job, instance) (planemem_plane_inbox_snapshot_fresh == 1)
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'No fresh Plane inbox snapshot'
+          description: 'Collection has failed, not completed, or exceeded the 90-second freshness window. Inspect database connectivity, migrations and query load; do not infer zero backlog.'
+          runbook: 'docs/runbooks/alerts.md'
+      - alert: PlaneInboxWorkerPollFailure
+        expr: planemem_plane_inbox_worker_poll_failed == 1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Plane inbox processing polls are failing'
+          description: 'Inspect this gateway and database transaction errors. This is a worker poll signal, not the number of rejected events.'
+          runbook: 'docs/runbooks/alerts.md'
+      - alert: PlaneInboxWorkerPollNotCompleting
+        expr: >-
+          (time() - planemem_plane_inbox_worker_last_poll_timestamp_seconds > 600)
+          or (planemem_plane_inbox_worker_running == 0)
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Plane inbox worker has no recent completed poll'
+          description: 'Inspect process scheduling, database waits and worker lifecycle. Startup without any completed poll receives a ten-minute grace period. Other gateway workers may still be processing.'
+          runbook: 'docs/runbooks/alerts.md'
+      - alert: PlaneInboxDueBacklog
+        expr: >-
+          (planemem_plane_inbox_events{state="due"} >= 100)
+          and on(job, instance) (planemem_plane_inbox_snapshot_fresh == 1)
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'At least 100 Plane events are due for processing'
+          description: 'Inspect pending due events with an authorized administrator. Due rows can include transactions still processing; do not bulk retry solely from this count.'
+          runbook: 'docs/runbooks/alerts.md'
+      - alert: PlaneInboxOldDueReceipt
+        expr: >-
+          (time() - planemem_plane_inbox_oldest_received_timestamp_seconds{state="due"} > 900)
+          and (planemem_plane_inbox_events{state="due"} > 0)
+          and on(job, instance) (planemem_plane_inbox_snapshot_fresh == 1)
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'A currently due Plane event was received over 15 minutes ago'
+          description: 'Age measures time since receipt, not time continuously overdue. Check the saved error and current processing receipt before deciding on recovery.'
+          runbook: 'docs/runbooks/alerts.md'
+      - alert: PlaneInboxRecordedVersionGap
+        expr: >-
+          (time() - planemem_plane_inbox_oldest_received_timestamp_seconds{state="version_gap"} > 1800)
+          and (planemem_plane_inbox_events{state="version_gap"} > 0)
+          and on(job, instance) (planemem_plane_inbox_snapshot_fresh == 1)
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'An older pending Plane receipt has a recorded version gap'
+          description: 'Receipt age exceeds 30 minutes; this is the last recorded attempt, not proof that the earlier version is still absent. Missing versions are not fetched automatically.'
+          runbook: 'docs/runbooks/alerts.md'
+      - alert: PlaneInboxRejectedEvents
+        expr: >-
+          (planemem_plane_inbox_events{state="rejected"} > 0)
+          and on(job, instance) (planemem_plane_inbox_snapshot_fresh == 1)
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Plane inbox contains rejected events'
+          description: 'Review event-level reasons with current administrator permissions. Rejected events are not retried automatically and must not be removed to silence this signal.'
+          runbook: 'docs/runbooks/alerts.md'

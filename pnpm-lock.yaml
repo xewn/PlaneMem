@@ -101,6 +101,12 @@ importers:
 
   apps/api-gateway:
     dependencies:
+      '@planemem/artifact-service':
+        specifier: workspace:*
+        version: link:../artifact-service
+      '@planemem/context-compiler':
+        specifier: workspace:*
+        version: link:../../packages/context-compiler
       '@planemem/audit-service':
         specifier: workspace:*
         version: link:../audit-service
@@ -125,6 +131,9 @@ importers:
       '@planemem/session-service':
         specifier: workspace:*
         version: link:../session-service
+      '@planemem/sync-service':
+        specifier: workspace:*
+        version: link:../sync-service
       postgres:
         specifier: 3.4.7
         version: 3.4.7
@@ -276,9 +285,18 @@ importers:
       '@planemem/api-gateway':
         specifier: workspace:*
         version: link:../api-gateway
+      '@planemem/context-bridge':
+        specifier: workspace:*
+        version: link:../context-bridge
       '@planemem/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@planemem/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
+      tsx:
+        specifier: 4.20.5
+        version: 4.20.5
 
   packages/auth:
     dependencies:
@@ -347,6 +365,12 @@ importers:
       '@planemem/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@planemem/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
+      tsx:
+        specifier: 4.20.5
+        version: 4.20.5
 
 packages:
 

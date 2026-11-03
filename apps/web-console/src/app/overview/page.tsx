@@ -1,9 +1,12 @@
+import Link from 'next/link';
 import { Icon } from '../../components/icons';
-import { PageError, numberValue, textValue, toneFor } from '../../components/page-state';
-import { Badge, MiniBars, Panel, Progress } from '../../components/ui';
-import { queryWorkbench } from '../../lib/server-api';
-
-type Row = Record<string, unknown>;
+import { PageError, textValue, toneFor } from '../../components/page-state';
+import { Badge, Panel, Progress } from '../../components/ui';
+import {
+  queryAuditPreview,
+  getWorkbenchOverview,
+  listWorkbenchWorkItems,
+} from '../../lib/server-api';
 
 const layerNames: Record<string, string> = {
   L0: 'Project Brief',
@@ -13,39 +16,28 @@ const layerNames: Record<string, string> = {
   L4: 'External Docs',
 };
 
-export async function OverviewPage() {
+export default async function OverviewPage() {
   try {
-    const [
-      overviewResponse,
-      workItemsResponse,
-      contextResponse,
-      sessionsResponse,
-      conflictsResponse,
-      auditResponse,
-    ] = await Promise.all([
-      queryWorkbench<Row>('overview'),
-      queryWorkbench<Row[]>('work_items'),
-      queryWorkbench<Row[]>('context'),
-      queryWorkbench<Row[]>('sessions'),
-      queryWorkbench<Row[]>('conflicts'),
-      queryWorkbench<Row[]>('audit'),
+    const [overviewRead, workItemsRead, auditRead] = await Promise.allSettled([
+      getWorkbenchOverview(),
+      listWorkbenchWorkItems({ limit: 5 }),
+      queryAuditPreview(),
     ]);
+    if (overviewRead.status === 'rejected') throw overviewRead.reason;
+    const overviewResponse = overviewRead.value;
+    const auditResponse = auditRead.status === 'fulfilled' ? auditRead.value : undefined;
     const data = overviewResponse.data;
-    const items = workItemsResponse.data ?? [];
-    const context = contextResponse.data ?? [];
-    const sessions = sessionsResponse.data ?? [];
-    const conflicts = conflictsResponse.data ?? [];
-    const audits = auditResponse.data ?? [];
-    const total = items.length;
-    const completed = items.filter((item) => item.status === 'done').length;
-    const active = items.filter((item) => !['done', 'cancelled'].includes(String(item.status)));
-    const blocked = items.filter((item) => item.status === 'blocked');
-    const decisions = context.filter(
-      (item) => item.item_type === 'Decision' || item.status === 'proposed',
-    );
-    const proposedDecisions = decisions.filter((item) => item.status === 'proposed');
-    const openConflicts = conflicts.filter((item) => item.status === 'open');
-    const goalItem = context.find((item) => item.layer === 'L0');
+    const items = workItemsRead.status === 'fulfilled' ? workItemsRead.value.data : [];
+    const sessions = data.active_session_preview;
+    const audits = auditResponse?.data ?? [];
+    const total = data.total_work_items;
+    const completed = data.completed_work_items;
+    const active = data.active_work_items;
+    const blocked = data.blocked_work_items;
+    const proposedContext = data.proposed_context_preview;
+    const expiredContext = data.expired_context_preview;
+    const openConflicts = data.open_conflict_preview;
+    const goalItem = data.project_brief;
     const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
     const trace = overviewResponse.trace_id;
 
@@ -57,61 +49,93 @@ export async function OverviewPage() {
             <p>PlaneMem / Work Continuity Platform</p>
           </div>
           <div className="heading-actions">
-            <Badge tone="green">LIVE · {trace}</Badge>
+            <Link className="panel-link" href="/overview/observed" prefetch={false}>
+              Plane observation
+            </Link>
+            <Badge tone="neutral">Saved records</Badge>
+            <form action="/overview" method="get">
+              <button className="secondary-button" type="submit">
+                <Icon name="refresh" /> Refresh overview
+              </button>
+            </form>
           </div>
         </div>
+        <p className="muted">
+          Read at {data.read_at} · Trace {trace}. Counts cover visible, non-archived records in this
+          project. Previews show a limited selection. Work item and audit previews are read
+          separately and may reflect different update times.
+        </p>
 
         <div className="overview-grid">
           <Metric
-            label="Progress"
+            label="Completed Work"
             value={`${progress}%`}
             icon="target"
             tone="cyan"
             progress={progress}
+            detail={`${completed} of ${total} recorded items, including cancelled items in the total`}
+            href="/work-items?view=list"
           />
           <Metric
             label="Active Work Items"
-            value={active.length}
+            value={active}
             icon="work"
             tone="blue"
-            bars={barsFor(active.length, total)}
+            detail="Todo, in progress, in review and blocked"
+            href="/work-items"
           />
           <Metric
             label="Blocked"
-            value={blocked.length}
+            value={blocked}
             icon="conflicts"
             tone="red"
-            bars={barsFor(blocked.length, total)}
+            detail="Work items recorded as blocked"
+            href="/work-items?status=blocked"
           />
           <Metric
-            label="Decisions Awaiting"
-            value={proposedDecisions.length}
+            label="Proposed Context"
+            value={data.proposed_context_items}
             icon="decision"
             tone="yellow"
-            bars={barsFor(proposedDecisions.length, decisions.length)}
+            detail="Recorded proposals; review readiness is checked in details"
+            href="/context?status=proposed"
           />
         </div>
 
         <div className="overview-columns overview-first">
-          <Panel title="Project Goal" icon="target" className="goal-card">
-            <h3>{textValue(goalItem?.title, 'Project goal not published')}</h3>
+          <Panel title="Recorded Project Brief" icon="target" className="goal-card">
+            <h3>{textValue(goalItem?.title, 'No confirmed project brief')}</h3>
             <p>
               {contentSummary(
                 goalItem?.content,
-                'No goal context is currently available in this scope.',
+                'No brief text is available in this saved record.',
               )}
             </p>
             <div className="muted">
               Project · {textValue(data.project_name, textValue(data.external_id))}
             </div>
+            <p className="muted">
+              Confirmed L0 record within its recorded expiry. Source freshness is checked in context
+              details.
+            </p>
+            <Link
+              className="panel-link"
+              href={{
+                pathname: '/context',
+                query: { layer: 'L0', ...(goalItem ? { item: goalItem.id } : {}) },
+              }}
+              prefetch={false}
+            >
+              Read project brief <Icon name="arrow" />
+            </Link>
           </Panel>
           <Panel
-            title="Milestones"
+            title="Recent Work Updates"
             icon="flag"
             action={
-              <span className="panel-link">
+              <Link className="panel-link" href="/work-items?view=list">
                 View details <Icon name="arrow" />
-              </span>
+              </Link>
             }
           >
             <div className="timeline">
@@ -123,7 +147,12 @@ export async function OverviewPage() {
                     <i className="timeline-dot" />
                     <div>
                       <strong>
-                        M{index + 1} {textValue(item.title)}
+                        <Link
+                          href={{ pathname: '/work-items/detail', query: { item: item.id } }}
+                          prefetch={false}
+                        >
+                          {textValue(item.title)}
+                        </Link>
                       </strong>
                       <span>
                         {status.replace('_', ' ')} · {textValue(item.due_at, 'No due date')}
@@ -132,18 +161,19 @@ export async function OverviewPage() {
                   </div>
                 );
               })}
-              {items.length === 0 ? (
-                <div className="empty-inline">No milestone data in scope.</div>
+              {workItemsRead.status === 'rejected' && <PageError error={workItemsRead.reason} />}
+              {workItemsRead.status === 'fulfilled' && items.length === 0 ? (
+                <div className="empty-inline">No work item updates in scope.</div>
               ) : null}
             </div>
           </Panel>
           <Panel
-            title="Current Plan"
+            title="Recently Updated Work"
             icon="work"
             action={
-              <span className="panel-link">
+              <Link className="panel-link" href="/work-items">
                 View details <Icon name="arrow" />
-              </span>
+              </Link>
             }
           >
             <div className="plan-list">
@@ -155,9 +185,11 @@ export async function OverviewPage() {
                   status={String(item.status).replace('_', ' ')}
                   tone={toneFor(item.status)}
                   priority={textValue(item.priority)}
+                  href={'/work-items/detail?item=' + encodeURIComponent(item.id)}
                 />
               ))}
-              {items.length === 0 ? (
+              {workItemsRead.status === 'rejected' && <PageError error={workItemsRead.reason} />}
+              {workItemsRead.status === 'fulfilled' && items.length === 0 ? (
                 <div className="empty-inline">No work items in scope.</div>
               ) : null}
             </div>
@@ -174,77 +206,92 @@ export async function OverviewPage() {
                 </span>
               </div>
               <div className="legend">
-                <Legend
-                  color="blue"
-                  label="In Progress"
-                  value={active.filter((item) => item.status === 'in_progress').length}
-                />
-                <Legend
-                  color="gray"
-                  label="Todo"
-                  value={items.filter((item) => item.status === 'todo').length}
-                />
-                <Legend color="red" label="Blocked" value={blocked.length} />
+                <Legend color="blue" label="In Progress" value={data.in_progress_work_items} />
+                <Legend color="gray" label="Todo" value={data.todo_work_items} />
+                <Legend color="red" label="Blocked" value={blocked} />
+                <Legend color="gray" label="In Review" value={data.in_review_work_items} />
+                <Legend color="gray" label="Cancelled" value={data.cancelled_work_items} />
                 <Legend color="green" label="Done" value={completed} />
               </div>
             </div>
           </Panel>
           <Panel
-            title="Risks & Decisions"
+            title="Conflicts & Expired Context"
             icon="conflicts"
             action={
-              <span className="panel-link">
-                View details <Icon name="arrow" />
-              </span>
+              <Link className="panel-link" href="/conflicts?status=open">
+                Open conflicts <Icon name="arrow" />
+              </Link>
             }
           >
             <div className="risk-list">
+              <p className="muted">
+                {data.open_conflicts} open conflicts · {data.expired_context_items} expired context
+                records
+              </p>
               {openConflicts.slice(0, 3).map((conflict) => (
                 <div className="risk-row" key={String(conflict.conflict_id)}>
                   <Badge tone="red">{textValue(conflict.status)}</Badge>
-                  <span>
+                  <Link
+                    href={{ pathname: '/conflicts', query: { item: conflict.conflict_id } }}
+                    prefetch={false}
+                  >
                     {textValue(conflict.entity_type)} · {textValue(conflict.field)}
-                  </span>
-                  <small>{textValue(conflict.trace_id)}</small>
+                  </Link>
                 </div>
               ))}
-              {context
-                .filter((item) => item.status === 'expired')
-                .slice(0, 2)
-                .map((item) => (
-                  <div className="risk-row" key={String(item.id)}>
-                    <Badge tone={toneFor(item.priority)}>{textValue(item.priority)}</Badge>
-                    <span>{textValue(item.title)}</span>
-                    <small>{textValue(item.status)}</small>
-                  </div>
-                ))}
-              {openConflicts.length === 0 &&
-              context.filter((item) => item.status === 'expired').length === 0 ? (
-                <div className="empty-inline">No open risks in the current scope.</div>
+              {expiredContext.map((item) => (
+                <div className="risk-row" key={String(item.id)}>
+                  <Badge tone="yellow">Expired</Badge>
+                  <Link href={{ pathname: '/context', query: { item: item.id } }} prefetch={false}>
+                    {item.title}
+                  </Link>
+                  <small>
+                    {item.status === 'expired' ? 'Recorded expired' : 'Expiry date reached'}
+                  </small>
+                </div>
+              ))}
+              {data.open_conflicts === 0 && data.expired_context_items === 0 ? (
+                <div className="empty-inline">
+                  No open conflicts or expired context records in scope.
+                </div>
               ) : null}
             </div>
           </Panel>
-          <Panel title="Decision Approvals" icon="decision">
+          <Panel
+            title="Proposed Context"
+            icon="decision"
+            action={
+              <Link className="panel-link" href="/context?status=proposed">
+                View all <Icon name="arrow" />
+              </Link>
+            }
+          >
             <div className="approval-list">
-              {decisions.slice(0, 3).map((item) => {
-                const pending = item.status === 'proposed';
+              {proposedContext.map((item) => {
                 return (
                   <div className="approval-row" key={String(item.id)}>
-                    <i className={`approval-marker ${pending ? 'pending' : ''}`} />
+                    <i className="approval-marker pending" />
                     <div>
-                      <strong>{textValue(item.title)}</strong>
-                      <small>
-                        {pending ? 'Human confirmation required' : textValue(item.status)}
-                      </small>
+                      <strong>
+                        <Link
+                          href={{
+                            pathname: '/context',
+                            query: { item: item.id, status: 'proposed' },
+                          }}
+                          prefetch={false}
+                        >
+                          {item.title}
+                        </Link>
+                      </strong>
+                      <small>{item.item_type} · Open details to check review readiness</small>
                     </div>
-                    <Badge tone={pending ? 'yellow' : 'green'}>
-                      {pending ? 'Review' : 'Confirmed'}
-                    </Badge>
+                    <Badge tone="yellow">Proposed</Badge>
                   </div>
                 );
               })}
-              {decisions.length === 0 ? (
-                <div className="empty-inline">No decisions recorded in scope.</div>
+              {data.proposed_context_items === 0 ? (
+                <div className="empty-inline">No proposed context recorded in scope.</div>
               ) : null}
             </div>
           </Panel>
@@ -255,9 +302,9 @@ export async function OverviewPage() {
             title="Recent Activity"
             icon="activity"
             action={
-              <span className="panel-link">
+              <Link className="panel-link" href="/audit">
                 View details <Icon name="arrow" />
-              </span>
+              </Link>
             }
           >
             <div className="activity-list">
@@ -270,50 +317,53 @@ export async function OverviewPage() {
                   <small>{textValue(audit.client_id)}</small>
                 </div>
               ))}
-              {audits.length === 0 ? (
-                <div className="empty-inline">No recent activity in scope.</div>
+              {auditRead.status === 'rejected' && <PageError error={auditRead.reason} />}
+              {auditRead.status === 'fulfilled' && audits.length === 0 ? (
+                <div className="empty-inline">
+                  {auditResponse
+                    ? 'No recent activity in scope.'
+                    : 'Audit access is required to view recent activity.'}
+                </div>
               ) : null}
             </div>
           </Panel>
           <Panel
-            title="Context Freshness"
+            title="Recorded Context Confidence"
             icon="context"
             action={
-              <button className="secondary-button">
-                <Icon name="refresh" />
-                Refresh
-              </button>
+              <Link className="panel-link" href="/context">
+                View context <Icon name="arrow" />
+              </Link>
             }
           >
-            {['L0', 'L1', 'L2', 'L3', 'L4'].map((layer, index) => {
-              const layerItems = context.filter((item) => item.layer === layer);
-              const count = layerItems.length;
-              const freshness =
-                count === 0
-                  ? 0
-                  : Math.round(
-                      (layerItems.reduce((sum, item) => sum + numberValue(item.confidence), 0) /
-                        count) *
-                        100,
-                    );
+            <p className="muted">
+              Average saved confidence across all visible non-archived items. This does not measure
+              source freshness.
+            </p>
+            {data.context_layers.map((layer, index) => {
               return (
-                <Fresh
-                  key={layer}
-                  label={layerNames[layer] ?? layer}
-                  value={freshness}
+                <ContextLayer
+                  key={layer.layer}
+                  layer={layer.layer}
+                  label={layerNames[layer.layer] ?? layer.layer}
+                  value={
+                    layer.average_confidence === null
+                      ? null
+                      : Math.round(layer.average_confidence * 100)
+                  }
                   tone={['green', 'cyan', 'yellow', 'blue', 'purple'][index] ?? 'cyan'}
-                  count={count}
+                  count={layer.count}
                 />
               );
             })}
           </Panel>
           <Panel
-            title="Active Sessions"
+            title={`Running Sessions (${data.active_sessions})`}
             icon="users"
             action={
-              <span className="panel-link">
+              <Link className="panel-link" href="/sessions?status=running">
                 View details <Icon name="arrow" />
-              </span>
+              </Link>
             }
           >
             <div className="session-list">
@@ -321,17 +371,23 @@ export async function OverviewPage() {
                 <div className="session-row" key={String(session.session_id)}>
                   <i className="status-dot" />
                   <div className="session-client">
-                    <strong>{textValue(session.client_id)}</strong>
+                    <strong>
+                      <Link
+                        href={{ pathname: '/sessions', query: { item: session.session_id } }}
+                        prefetch={false}
+                      >
+                        {session.client_id}
+                      </Link>
+                    </strong>
                     <small>
-                      {numberValue(session.run_count)} agent runs ·{' '}
-                      {numberValue(session.tool_call_count)} tool calls
+                      {session.run_count} agent runs · {session.tool_call_count} tool calls
                     </small>
                   </div>
                   <Badge tone={toneFor(session.status)}>{textValue(session.status)}</Badge>
                 </div>
               ))}
               {sessions.length === 0 ? (
-                <div className="empty-inline">No sessions in scope.</div>
+                <div className="empty-inline">No running sessions in scope.</div>
               ) : null}
             </div>
           </Panel>
@@ -353,22 +409,22 @@ export async function OverviewPage() {
   }
 }
 
-export default OverviewPage;
-
 function Metric({
   label,
   value,
   icon,
   tone,
   progress,
-  bars,
+  detail,
+  href,
 }: {
   label: string;
   value: string | number;
   icon: string;
   tone: string;
   progress?: number;
-  bars?: number[];
+  detail: string;
+  href: string;
 }) {
   return (
     <section className={`panel metric-card metric-${tone}`}>
@@ -376,22 +432,17 @@ function Metric({
         <span className="metric-label">{label}</span>
         <strong>{value}</strong>
         {progress !== undefined ? <Progress value={progress} tone={tone} /> : null}
+        <small>{detail}</small>
       </div>
       <div className="metric-side">
         <div className="metric-icon">
           <Icon name={icon} />
         </div>
-        {bars ? <MiniBars values={bars} tone={tone} /> : <span className="delta">live data</span>}
+        <Link className="panel-link" href={href}>
+          View <Icon name="arrow" />
+        </Link>
       </div>
     </section>
-  );
-}
-
-function barsFor(value: number, total: number): number[] {
-  if (!total) return [0, 0, 0, 0, 0, 0];
-  const ratio = Math.max(8, Math.round((value / total) * 100));
-  return [ratio * 0.45, ratio * 0.7, ratio * 0.55, ratio * 0.85, ratio * 0.65, ratio].map((item) =>
-    Math.round(item),
   );
 }
 
@@ -401,17 +452,21 @@ function PlanRow({
   status,
   tone,
   priority,
+  href,
 }: {
   index: string;
   text: string;
   status: string;
   tone: string;
   priority: string;
+  href: string;
 }) {
   return (
     <div className="plan-row">
       <span className="plan-index">{index}</span>
-      <span>{text}</span>
+      <Link href={href} prefetch={false}>
+        {text}
+      </Link>
       <Badge tone={tone}>{status}</Badge>
       <span className="plan-priority">{priority}</span>
     </div>
@@ -428,34 +483,40 @@ function Legend({ color, label, value }: { color: string; label: string; value: 
   );
 }
 
-function Fresh({
+function ContextLayer({
+  layer,
   label,
   value,
   tone,
   count,
 }: {
+  layer: string;
   label: string;
-  value: number;
+  value: number | null;
   tone: string;
   count: number;
 }) {
   return (
     <div className="fresh-row">
-      <b>{label.slice(0, 2)}</b>
-      <span className="fresh-name">{label}</span>
-      <Progress value={value} tone={tone} />
+      <b>{layer}</b>
+      <Link className="fresh-name" href={{ pathname: '/context', query: { layer } }}>
+        {label}
+      </Link>
+      <Progress value={value ?? 0} tone={tone} />
       <small>
-        {count} · {value}%
+        {count} · {value === null ? '—' : `${value}%`}
       </small>
     </div>
   );
 }
 
 function contentSummary(value: unknown, fallback: string): string {
+  const excerpt = (text: string) => (text.length > 1200 ? text.slice(0, 1200) + '…' : text);
+  if (typeof value === 'string' && value.trim()) return excerpt(value);
   if (typeof value === 'object' && value !== null) {
     const record = value as Record<string, unknown>;
     const summary = record.summary ?? record.description ?? record.decision;
-    if (typeof summary === 'string' && summary.trim()) return summary;
+    if (typeof summary === 'string' && summary.trim()) return excerpt(summary);
   }
   return fallback;
 }

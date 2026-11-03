@@ -6,6 +6,8 @@ export interface RequestContext {
   project_id: string;
   actor_id: string;
   client_id: string;
+  authenticated_client?: boolean;
+  actor_type?: 'human' | 'service';
   trace_id: string;
   capability: string[];
   roles?: string[];
@@ -22,6 +24,9 @@ export interface CommandRequest {
 }
 
 export interface CommandResult {
+  etag?: string;
+  revision?: number;
+  server_cursor?: number;
   schema_version: 1;
   trace_id: string;
   source_refs: Array<{ type: string; id: string }>;
@@ -54,7 +59,17 @@ export class CommandRouter {
     this.handlers.set(operation, handler);
   }
 
-  async execute(request: CommandRequest): Promise<CommandResult> {
+  async execute(
+    request: CommandRequest,
+    afterAuthorization?: (run: () => Promise<CommandResult>) => Promise<CommandResult>,
+  ): Promise<CommandResult> {
+    await this.authorize(request);
+    const run = () => this.dispatch(request);
+    return afterAuthorization ? afterAuthorization(run) : run();
+  }
+
+  /** Apply the same policy and audit boundary to a resource used by another command. */
+  async authorize(request: CommandRequest): Promise<void> {
     const decision = await this.policy(request);
     await this.observeDecision?.(request, decision);
     if (!decision.allowed)
@@ -63,6 +78,9 @@ export class CommandRouter {
         trace_id: request.context.trace_id,
         retryable: false,
       });
+  }
+
+  private async dispatch(request: CommandRequest): Promise<CommandResult> {
     const handler = this.handlers.get(request.operation);
     if (!handler)
       throw new ContractError('COMMAND_NOT_FOUND', 'Command is not supported', {

@@ -1,0 +1,191 @@
+# ContextItem 录入与编辑开发说明
+
+更新：2026-11-01。本文记录代码实现；未执行编译、类型检查、测试、数据库迁移、部署或发布。
+
+## 入口
+
+| 方法 | 路径 | 能力 | 结果 |
+| --- | --- | --- | --- |
+| POST | `/v1/context-items` | `context.write` | 新建 proposed 条目的命令回执 |
+| GET | `/v1/context-items/{item_id}` | `context.read` | 当前完整条目 |
+| GET | `/v1/context-items/{item_id}/archived` | `context.read` | 已归档条目及 archived_at |
+| GET | `/v1/context-items/{item_id}/history` | `context.read` | 已记录版本的分页摘要 |
+| GET | `/v1/context-items/{item_id}/versions/{version}` | `context.read` | 指定版本的只读快照 |
+| POST | `/v1/context-items/{item_id}/update` | `context.write` | 编辑命令回执 |
+| POST | `/v1/context-items/{item_id}/archive` | `context.write` | 归档命令回执 |
+| POST | `/v1/context-items/{item_id}/restore` | `context.write` | 恢复命令回执，恢复后仍为 excluded |
+| POST | `/v1/context-items/{item_id}/confirm` | `context.review` + 签名 human 身份 | 确认指定 proposed 版本并保存理由 |
+| POST | `/v1/workbench/query`，`operation=context` | `context.read` | 当前项目可见条目列表 |
+
+以上接口使用 Bearer 身份及租户、工作区、项目范围头。写入还要求有效客户端身份和稳定 `Idempotency-Key`。编辑、归档必须提供当前 `expected_version` 或 `If-Match: W/"version-N"`；同时提供时须一致。`item_id` 以 URL 路径为准。直接条目路由仅 history 接受 before_version/limit 查询参数，其余拒绝查询参数。
+
+restricted 内容的新增、读取、修改、归档和恢复要求 `data.restricted.read`，管理员也须满足内容可见性限制。没有权限时，已有条目返回与不存在一致的 404。普通列表在 SQL 阶段过滤 restricted 和已归档条目；显式归档视图只返回已归档且当前可读的记录。
+
+## 列表分页
+
+`POST /v1/workbench/query` 的 `operation=context` 支持 query/layer/classification/status/item_type，以及 `limit`、`cursor` 和布尔值 `archived`。默认每页 25 条，limit 必须是 1–100 的整数。archived 默认为 false；true 只返回已归档条目，列表中的 archived_at 为归档时间，活动条目为 null。空筛选值表示不筛选，query/item_type 会去除首尾空白；未知字段、非法游标或超限参数返回 `INVALID_INPUT`。列表继续返回原有投影字段和正文，数据库数字仍可能为字符串。
+
+```json
+{
+  "operation": "context",
+  "layer": "L4",
+  "status": "proposed",
+  "limit": 25
+}
+```
+
+响应保持 `data: [...]`，有后续条目时在**外层**增加字符串 `next_cursor`。下一次请求将它传为 `cursor`，保留同一筛选条件；没有 next_cursor 时停止。旧调用方不能再把一次列表请求当作全部数据，需要显式处理分页。该游标与同步接口 `data.next_cursor` 的数字含义不同。
+
+排序保持优先级 High → Medium → Low，然后 updated_at 倒序、ID 升序。使用最后一条的排序位置继续，不要求边界条目仍然存在；SQL 读取最多 limit + 1 条。时间边界保留 PostgreSQL 微秒精度，避免同一毫秒内的记录被跳过。019 迁移提供匹配排序的部分索引，仅创建了迁移文件，尚未执行；列表功能不依赖该索引存在。
+
+游标包含排序位置及范围/筛选摘要，绑定 tenant/workspace/project、restricted 读取能力、归档视图和规范化筛选条件。切换项目、权限、归档视图或筛选后应从第一页开始；limit 可改变。新增归档维度前产生的游标需要重新从第一页获取。游标不是授权凭据，每页仍独立检查鉴权、范围和当前分类。
+
+分页展示实时数据，不提供跨请求数据库快照。翻页期间发生编辑、优先级调整或归档时，条目可能改变位置；需要刷新完整视图时从第一页重新读取并按 ID 去重。本接口不承担一致性导出或同步职责。ContextPack 的编译候选查询不使用此分页，原有候选数量限制不变。
+
+## 新建与编辑字段
+
+```json
+{
+  "title": "交接记录的保留约定",
+  "content": "本条记录描述待确认的工作约定，后续仍需人工审核。",
+  "source_refs": [{ "type": "meeting", "id": "notes-2026-11-01" }],
+  "item_type": "note",
+  "layer": "L4",
+  "classification": "internal",
+  "priority": "Medium",
+  "confidence": 0.5,
+  "expires_at": null
+}
+```
+
+新建必填 `title`、`content` 和非空 `source_refs`。默认 `item_type=note`、`layer=L4`、`classification=internal`、`priority=Medium`、`confidence=0.5`、无到期时间；初始版本为 1，状态固定为 proposed。记录来源不代表网关已验证来源真实性，也不能据此将内容升级为 confirmed。
+
+| 字段 | 限制 |
+| --- | --- |
+| `title` | 非空，最多 300 字符；去除首尾空白 |
+| `content` | 非空文本，最多 131072 个 JavaScript 字符串长度单位；保留正文空白 |
+| `item_type` | 非空，最多 64 字符 |
+| `layer` | L0、L1、L2、L3、L4 |
+| `priority` | High、Medium、Low |
+| `confidence` | 0–1，归一化到三位小数，与存储精度一致 |
+| `expires_at` | UTC ISO 时间，必须以 Z 结尾；小数秒最多三位；null 清除到期时间 |
+| `source_refs` | 1–32 条；每条 type≤64、id≤255、uri≤2048；revision 为非负安全整数 |
+
+编辑正文为上述字段的局部更新，但不接受 `classification`。额外允许 `status=proposed|excluded`。至少更改请求中的一个可编辑字段；字段值与当前值相同也属于新命令，会递增版本。分类在创建后保持不变，受控重新分类尚未接入。确认通过独立的 confirm 命令完成，不能通过普通编辑授予。
+
+除原本 excluded 且未指定新状态外，编辑后状态回到 proposed；因此修改已确认或标记过期的旧条目不会沿用确认状态。excluded 条目通过 `status=proposed` 可以重新参与后续 ContextPack 选择；时间到期仍独立生效。更新来源列表时同步维护展示用的 `source_ref`。省略来源时保留全部原始引用。
+
+归档为软删除，同时将状态设为 excluded 并递增版本。归档后普通读取和列表不可见，新 ContextPack 不再纳入；恢复使用下文的 restore 命令，目前没有硬删除入口。若只想暂时排除但仍保留在列表中，使用编辑命令设置 `status=excluded`。
+
+新建/编辑的文本及来源引用拒绝 NUL、未配对代理字符与未知字段。既有 JSON 正文仍可读取；局部更新未包含 content 时保留其结构，提供新 content 后按文本保存。
+
+## 回执、并发和同步
+
+需要已有上下文及同步表和新增的 `017_context_item_commands.sql`。迁移文件已写入，尚未执行。没有数据库或迁移缺失时返回存储不可用，不退回进程内写入。
+
+事务先获取项目同步流锁，再锁定条目，保持与 ContextPack 编译相同的锁顺序。编辑和归档在锁内检查版本；不匹配返回 `CONTEXT_ITEM_VERSION_CONFLICT`（409），不覆盖当前内容。成功写入、同步事件、请求回执一同提交。
+
+请求键按 actor/client 哈希后，在 tenant/workspace/project 范围内保存。指纹包含命令类型、条目 ID、原版本和规范化字段。相同键、相同请求重试返回原命令回执；不同请求复用同一键返回 `IDEMPOTENCY_KEY_REUSED`。重试前重新经过策略，并检查条目当前分类和原回执分类；不会从内存缓存返回已无权访问的内容。
+
+写响应的 `data` 为：
+
+```json
+{
+  "item_id": "01JAAAAAAAAAAAAAAAAAAAAAAA",
+  "operation": "update",
+  "version": 2,
+  "event_id": "01JBBBBBBBBBBBBBBBBBBBBBBB",
+  "occurred_at": "2026-11-01T10:00:00.000Z",
+  "replayed": false
+}
+```
+
+外层保留 trace、revision、ETag、server_cursor 和条目来源引用。这是历史命令回执，**不是当前完整条目**；若其他操作已修改或归档条目，重试仍可在权限允许时确认原命令完成，并返回 `replayed=true`。调用方应通过 GET 获取当前内容和版本，归档后 GET 返回 404。请求结果不确定时保留原键、原版本和原内容重试，不自动换键。
+
+`ContextItemCreated`、`ContextItemUpdated`、`ContextItemArchived` 的同步 payload 只包含条目 ID、版本、状态和归档标记，不携带正文和外部来源。事件查询同时检查事件原分类及条目当前分类。归档保留最小事件和行，以便授权客户端收到删除标记。读取最新正文继续经过 `context.read`。
+
+编辑/归档引起条目版本与内容指纹变化，引用它的已保存 ContextPack 在下次读取时返回 stale；不会静默修改旧包正文。新增条目不会改变既有快照，需要重新编译才能纳入。
+
+| 错误 | HTTP |
+| --- | --- |
+| `INVALID_INPUT` | 400 |
+| `DENIED` | 403 |
+| `CONTEXT_ITEM_NOT_FOUND` | 404 |
+| `CONTEXT_ITEM_VERSION_CONFLICT`、`IDEMPOTENCY_KEY_REUSED` | 409 |
+| `CONTEXT_ITEM_NOT_ARCHIVED` | 409 |
+| `CONTEXT_ITEM_HISTORY_CONFLICT` | 409 |
+| `CONTEXT_ITEM_INVALID` | 500 |
+| `CONTEXT_ITEM_STORAGE_UNAVAILABLE` | 503 |
+
+## 客户端
+
+- SDK：`createContextItem`、`getContextItem`、`listContextItems`、`updateContextItem`、`archiveContextItem`；类型和写入字段解析位于 `@planemem/contracts`。列表保留投影视图格式，其中数据库数字可能为字符串，编辑前应转为安全正整数，或直接 GET 获取已规范化版本。
+- CLI：`context create/read/list/update/archive`；`context get` 继续表示读取 ContextPack，避免与来源条目混淆。
+- MCP：`create_context_item`、`get_context_item`、`list_context_items`、`update_context_item`、`archive_context_item`；资源模板为 `work://project/{project_id}/context-item/{item_id}`。
+- 工作台 `/context`：授权用户可新增、编辑、排除和归档；每页 25 条，下一页保留筛选，修改筛选回到第一页，层级统计仅反映当前页。指定 item 的详情通过独立 GET 读取，可以打开其他页或不匹配筛选的可见条目；不可见/归档时展示读取错误，不替换为另一条。编辑与归档入口位于条目详情，不依赖保存包存在。新增和编辑均支持 1–32 条来源的类型、标识、固定 revision 与 URI，编辑保持原分类。只提交实际编辑字段，未改动的旧 JSON 正文和来源保持原结构。网络结果不确定时锁定原草稿并允许重试；版本冲突时保留草稿，显式重新加载后才替换为最新数据。
+
+### 工作台来源修复
+
+来源编辑器可添加、删除及撤销本次来源修改。新来源列表或修改后的列表通过共享创建/更新解析器校验；本地 `context-item` 引用还要求有效标识及正安全整数 revision，拒绝直接引用自身或同一条目的冲突版本。上述本地限制是工作台的录入辅助；存储契约继续兼容旧引用，网关确认和使用时仍执行递归检查，不把表单校验当作当前有效性的保证。
+
+未修改来源时不会提交 `source_refs`，只修改其他字段不强制修复旧来源；一旦修改来源列表，则完整列表需满足录入要求。撤销来源修改恢复打开编辑器时的列表，不读取或替换为最新来源。共享解析器仅校验实际补丁，避免未改动的旧 JSON 正文或旧引用触发浏览器字段校验并阻塞其他字段修改。
+
+有效本地标识提供当前条目和指定固定版本的历史链接，在新标签打开。历史尚未捕获或不可见时仍显示原有读取错误，不回退到当前内容。用户自行核对并填写版本，不自动刷新固定版本。外部 URI 作为原文保存，不生成任意地址的跳转链接或主动抓取。
+
+活动详情增加可选 `source_checks`，按来源原位置显示逐条状态、处理提示及可读活动来源的当前版本；缺失、未检查或不可用结果不会被显示为检查通过。诊断与总来源检查来自同一次遍历，不暴露隐藏后代信息，不写入内容版本。具体字段和权限边界见 [本地来源链说明](context-source-runtime.md)。
+
+保存来源修改沿用预期版本、历史快照和持久请求回执，并撤去当前确认；不会刷新旧包或修改旧建议。未知结果锁定正文及完整来源列表，保留同一草稿和请求键供重试。本轮仅开发代码和说明，未运行编译、类型检查、测试或发布。
+
+列表复用工作台查询，已开发筛选和分页。外部来源自动摄取、分类变更审批、后台失效通知、历史保留清理策略和完整运行验证仍待后续开发。本轮不提供运行正确性或兼容性验证结论。
+
+## 人工确认
+
+`POST /v1/context-items/{item_id}/confirm` 接受 `{ "expected_version": 1, "reason": "已核对会议原文及当前内容。" }` 和稳定 Idempotency-Key；If-Match 可以提供原版本，两处同时给出时必须一致。reason 必填、去除首尾空白、最多 2000 个 JavaScript 字符串长度单位，不允许 NUL 或未配对代理字符。未知字段拒绝。
+
+确认要求通过验证的 `actor_type: "human"`、明确认证的客户端和 `context.review`（或管理员角色）；context.write、模型 provenance 或客户端名称不能代替这些条件。管理员也不能绕过 human、版本或 restricted 可见性。网关策略审计、命令处理器和 MCP 均保留人工身份限制；OPA 策略增加 context.review 动作，但本轮没有修改外部身份系统或给账户自动授予能力。
+
+仅活动、未过期的 proposed 条目可确认；confirmed/excluded/expired 状态返回 `CONTEXT_ITEM_NOT_PROPOSED`（409），时间到期返回 `CONTEXT_ITEM_EXPIRED`（410）。排除或过期内容需先经过编辑，重新成为 proposed，再明确确认新版本。正文、来源、分类、层级、置信度和到期时间保持不变，状态变为 confirmed、版本加一。后续任意编辑仍按既有规则撤去该版本的确认，归档/恢复也不沿用确认。
+
+条目须包含 1–32 条来源。本地 context-item 来源链递归检查固定正整数 revision、同项目可见性、活动/confirmed 状态、到期时间和分类，拒绝循环或超限。条目分类不能低于子来源；不满足时返回 `CONTEXT_ITEM_SOURCE_STALE` 或 `CONTEXT_ITEM_SOURCE_UNAVAILABLE`（409），不泄露不可见来源信息。检查在项目流锁及行锁内进行，等待来源后再次核对过期时间。其他类型的引用不由网关抓取验证，须由审核人核实。
+
+确认记录某人在该版本上的明确批准，不代表外部证据已自动验证或永久有效。来源后来编辑/过期，不会自动重写条目的历史批准或存储状态；活动详情增加 sources_current/source_check，递归检查使用时有效性。无效链不能进入新保存包或新的有效建议，旧保存包和建议的依赖摘要也会重新核对。确认不重写旧包、不调整层级、不修改 Plane 或 Proposal。检查边界、容量上限及旧快照兼容见 [本地来源链说明](context-source-runtime.md)。
+
+新增 `022_context_item_confirmation.sql` 扩展命令/历史操作约束并增加 confirmation_reason；只写入迁移文件，未执行。确认状态、`ContextItemConfirmed` 最小同步事件、历史快照、理由、actor/client 和命令回执在同一事务内保存。所有新的条目写入现在依赖 022 的历史列；上线前需由后续运维流程安排依赖迁移。快照哈希仍覆盖 `{ item, archived_at }`，确认理由与 actor/client 一样是独立历史元数据。
+
+幂等指纹包含确认理由和原版本；同键异理由拒绝，同键同请求返回历史 confirm 回执，不重新确认后来编辑的内容。写回执只含操作、条目/事件 ID、版本、时间和 replayed，不含理由。活动 GET 的 data 增加 `confirm_allowed` 提示及 `confirmation`，后者包含 reviewed_version、confirmed_version、actor_id、client_id、reason、confirmed_at 和 event_id。提示不是授权保证；实际确认仍检查所有条件。
+
+已认证且具备审核权限的 human 读取活动 proposed 条目时，另返回 `confirmation_readiness`，在同一批来源数据上执行严格确认检查，包含 sources_current、source_check、逐条 source_checks 和有效链最早到期时间 effective_expires_at。confirm_allowed 依据严格结果及有效期给出，普通来源链有效但仍有 proposed 依赖时不显示确认表单；页面先提示需确认的来源及重新核对固定版本。严格预览共享原节点/深度/工作上限，不增加逐条查询，不改变普通 sources_current，也不代表提前批准或锁定来源。
+
+`GET .../versions/{version}` 的 data 同样增加 confirmation，历史列表只显示操作和摘要，不返回理由。旧 confirmed 记录没有可证明的审核元数据时返回 null，不补造审批；当前已编辑/归档后的旧确认只能通过对应历史版本查看。当前条目和其确认元数据使用同一个可重复读事务读取，真实确认记录还需匹配当前内容快照哈希。
+
+SDK：`confirmContextItem(id, reason, { expected_version, idempotency_key })`。CLI：`context confirm`，JSON 提供 item_id/expected_version/reason 并传 `--key`。MCP：`confirm_context_item`，只向具备能力的签名 human 客户端展示；expected_version、reason 和 idempotency_key 必填。工作台活动详情在 confirm_allowed=true 时显示确认表单，填写理由并明确勾选；确认记录和历史理由可读。未知结果锁定原理由和请求键重试，即使随后发生鉴权错误也保留未知状态；版本或来源冲突需重新加载。
+
+## 版本历史
+
+迁移 `021_context_item_history.sql` 新增版本快照表，依赖现有上下文条目和同步事件表；仅写入文件，尚未执行。代码部署时需先完成该迁移，之后新增、编辑、归档和恢复都必须在原事务内保存对应完整快照、操作人/客户端、事件 ID 及记录时间。历史存储失败时整笔写入回滚，不出现条目已更新但对应快照缺失的成功结果。幂等回放直接使用旧回执，不额外创建历史记录或替原作者重新署名。
+
+快照以项目范围、item_id、version 唯一保存，包含完整条目和该版本的归档时间。SHA-256 基于规范化的 `{ item, archived_at }` 计算，读取具体版本时检查范围、版本、分类/状态、来源和哈希一致性；这是一致性校验，不是数字签名。查询列表只读取摘要列，不返回所有版本的正文。历史读取响应不提供可用于当前编辑的 ETag；编辑前仍需重新获取当前条目版本。
+
+已有条目在第一次成功修改前保存当前版本作为 `baseline`，actor/client/event 均为空，不把当前操作者标为历史作者。recorded_at 表示捕获时间，item.updated_at 保留原条目更新时间。不会回填或猜测更早的正文。绕过这些网关写入路径的数据库修改不会自动生成完整历史；如果当前版本与已记录快照不一致，下一次网关修改返回 `CONTEXT_ITEM_HISTORY_CONFLICT`，保留原历史并回滚本次请求。
+
+`GET .../history` 默认 25 条、limit 范围 1–100，按版本倒序。data 包含 item_id、current_version、current_archived、versions，存在下一页时包含 next_before_version，继续请求将其传为 before_version。版本号是正安全整数，URL 参数不接受重复值。历史缺口或权限过滤可能导致版本跳号；列表不是全历史快照导出。
+
+`GET .../versions/{version}` 返回 `ContextItemRevision`，其中 item 为历史完整条目，另含 operation、archived_at、recorded_at、actor_id/client_id/event_id 和 snapshot_hash。不存在、未记录或不可见的版本统一返回 404，不回退到当前正文。历史行及当前条目同时按当前项目和 restricted 能力过滤，在同一次可重复读事务里确定可见性。当前条目缺失/移出范围/不可读时不可通过历史入口读取旧正文；当前分类降低也不会让原 restricted 快照变得可读。归档条目的历史可通过此显式入口查看。
+
+SDK：`listContextItemHistory(id, { before_version?, limit? })` 和 `getContextItemVersion(id, version)`；CLI：`context history`、`context version`；MCP：`list_context_item_history`、`get_context_item_version`。工作台条目详情提供历史入口 `/context/history?item=...`，支持分页、操作/作者/时间查看和指定版本链接。快照页面只读，历史中的 confirmed 仅表示当时状态，不恢复旧正文、不重新授予确认、不改变来源有效性。
+
+## 归档读取与恢复
+
+归档是保留记录的生命周期状态，不是物理删除或保密屏障。具备 context.read 的同项目身份可显式查询 `archived: true`，或者读取 `/v1/context-items/{item_id}/archived`；restricted 读取限制照常生效。普通 GET 仍对归档条目返回 404，归档 GET 只返回归档条目，对活动条目也返回 404。归档详情在完整条目上增加 UTC 字符串 archived_at，不允许原地编辑，需先恢复。
+
+恢复需要 context.write、明确认证的客户端、稳定请求键及归档后的 expected_version（或匹配 If-Match）。项目同步流锁、条目行锁、版本校验、状态写入、`ContextItemRestored` 事件及 restore 命令回执在同一事务完成。恢复清除 deleted_at、增加版本，并保持 excluded；正文、来源、分类和到期时间不变。不会重新授予 confirmed，也不会自动纳入新包；如需启用，先检查内容，再通过普通 update 显式改为 proposed，并按需更新到期时间。
+
+对活动条目发起新 restore 请求返回 `CONTEXT_ITEM_NOT_ARCHIVED`，版本不匹配优先返回版本冲突。原 restore 请求可重复回放历史回执，后续即使被再次编辑或归档也不会重复恢复；当前权限仍必须满足。删除和恢复均增加版本，引用归档前版本的旧 ContextPack 仍 stale；引用它的 Proposal 可能重新可见，但 sources_current 仍为 false，不能直接确认。
+
+迁移 `020_context_item_restore.sql` 扩展命令表的操作约束并增加归档列表索引，依赖 017；仅新增文件，未执行。实际使用 restore 前需要执行该迁移。已有归档条目无需回填，读取原 deleted_at 作为归档时间；硬删除或缺失记录不能通过此命令恢复。
+
+客户端入口：SDK `getArchivedContextItem`、`restoreContextItem` 和 `listContextItems({ archived: true })`；CLI `context read-archived`、`context restore`；MCP `get_archived_context_item`、`restore_context_item` 和列表 archived 参数。普通资源模板仍只表示活动条目。
+
+工作台筛选提供 Active/Archived 视图，归档详情显示归档时间及恢复确认表单。归档成功后转到归档详情，恢复成功后转到活动详情；归档视图不显示编辑、再次归档或创建建议入口。写入结果未知时固定原参数和请求键，后续权限/404 等错误不直接解除该未知状态，保留原请求重试；不自动换键恢复。
+
+具备 proposal.write 和客户端身份时，条目详情提供创建建议入口。跳转后重新读取当前条目，将 ID/revision/分类带入 Proposal 草稿；建议仍需填写正文和 provenance 并显式提交。该操作不会确认原条目，参见 [Proposal 提交流程](proposal-runtime.md)。

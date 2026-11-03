@@ -4,6 +4,22 @@
   "title": "PlaneMem Canonical Event v1",
   "type": "object",
   "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": { "event_type": { "const": "WorkItemDeleted" } },
+        "required": ["event_type"]
+      },
+      "then": { "$ref": "work-item-deleted.json" }
+    },
+    {
+      "if": {
+        "properties": { "event_type": { "const": "WorkItemRestored" } },
+        "required": ["event_type"]
+      },
+      "then": { "$ref": "work-item-restored.json" }
+    }
+  ],
   "required": [
     "event_id",
     "event_type",

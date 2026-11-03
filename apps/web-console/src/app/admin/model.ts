@@ -1,30 +1,41 @@
+import { parseWorkbenchAdminEnvelope, type WorkbenchAdminEnvelope } from '@planemem/contracts';
 import type { ViewState, WorkbenchScope } from '../../lib/api';
 
-export interface AdminHealth {
-  schema_version: 1;
-  release: string;
-  services: Array<{ name: string; status: 'ok' | 'degraded' | 'down'; version: string }>;
-  audit_count: number;
-  trace_id: string;
-}
+export type AdminHealth = WorkbenchAdminEnvelope;
 
+/** Pure display model; the Gateway still owns identity, capability and classification checks. */
 export class AdminPanel {
+  private readonly scope: WorkbenchScope;
+
   constructor(
     private readonly role: 'admin' | 'user',
-    private readonly scope: WorkbenchScope,
-  ) {}
+    scope: WorkbenchScope,
+  ) {
+    this.scope = { ...scope };
+  }
 
-  view(health: AdminHealth): ViewState<AdminHealth> {
+  view(health: unknown, expectedTrace?: string): ViewState<AdminHealth> {
+    // An absent request trace remains absent; never invent a successful query identifier.
+    const trace_id = expectedTrace ?? '';
     if (this.role !== 'admin')
-      return { status: 'denied', message: 'Admin role is required', trace_id: health.trace_id };
-    return {
-      status: health.services.every((service) => service.status === 'ok') ? 'ready' : 'stale',
-      data: { ...health, services: health.services.map((service) => ({ ...service })) },
-      trace_id: health.trace_id,
-      source_refs: [
-        { type: 'release', id: health.release },
-        { type: 'scope', id: this.scope.project_id },
-      ],
-    };
+      return { status: 'denied', message: 'Admin role is required', trace_id };
+    if (!expectedTrace)
+      return { status: 'error', message: 'The original query trace is required', trace_id };
+    try {
+      const data = parseWorkbenchAdminEnvelope(health, this.scope, expectedTrace);
+      return {
+        // Ready describes validated display data, not external health or release readiness.
+        status: 'ready',
+        data,
+        trace_id,
+        source_refs: data.source_refs.map((ref) => ({ ...ref })),
+      };
+    } catch {
+      return {
+        status: 'error',
+        message: 'Administration snapshot could not be validated',
+        trace_id,
+      };
+    }
   }
 }

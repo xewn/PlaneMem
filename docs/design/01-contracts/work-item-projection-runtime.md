@@ -1,0 +1,35 @@
+# 工作项投影详情（开发状态）
+
+2026-11-02：本批仅修改源码和文档，未编译、类型检查、测试、运行服务、执行迁移或发布。不代表已有运行验证。
+
+## 读取入口
+
+`POST /v1/workbench/query`，正文为 `{"operation":"work_item","item_id":"本地工作项 ID"}`。复用令牌鉴权、context.read 策略、审计和限流；不要求写客户端或请求键。范围由令牌和当前项目确定，不能通过正文指定其他项目。
+
+item_id 是 `wcp_work_items.id`，不是 Plane external_id；允许非 ULID 标识，要求 1–255 字符，无首尾空白或控制字符。详情拒绝未知字段、数组、空 ID。一次查询按 tenant/workspace/project/id 读取未删除记录，缺少 data.restricted.read 时排除 restricted；缺失、已删除、跨项目或不可见统一返回 WORK_ITEM_NOT_FOUND / HTTP 404。损坏的投影返回 WORK_ITEM_PROJECTION_INVALID / HTTP 500，数据库不可用返回 503，不退回内存数据。
+
+响应保留 WCP schema_version/data/trace_id/source_refs 封套。data 为共享类型 WorkItemProjection，含本地 ID、外部 ID、标题、状态、优先级、负责人、进度、描述、到期时间、分类、创建/更新时间、记录 trace_id/source_refs 和 version。version 是无损正十进制字符串，范围为 PostgreSQL 正 BIGINT；列表也增加同格式 version。详情解析器核对所请求 ID、字段、状态、版本和引用。数据库 Date 在返回前转为时间字符串。
+
+所有 workbench.query 读取绕过进程内幂等响应缓存，即使客户端误带请求键，也重新检查可见性并读取当前投影。HTTP 响应继续 private, no-store。
+
+## 列表分页补充
+
+`POST /v1/workbench/query` 的 `operation=work_items` 现支持 query/status/cursor/limit。默认 25 条，每页 1–100 条；query 最多 500 字符，搜索 external_id/title/owner，空 query/status 表示不过滤。共享 `parseWorkItemListQuery` 拒绝未知字段、非法状态和游标；SDK/CLI/Web 使用同一规范化逻辑。
+
+响应 data 仍是数组，条目增加 created_at 并与详情使用相同字段验证。存在后续数据时在外层返回 next_cursor；调用方把它作为下一次 cursor，并保留查询和状态条件。没有 next_cursor 即当前读取结束，不能把单页条数当项目总数。SDK `listWorkItemProjections`、CLI `work-items list`、MCP `list_work_item_projections` 均接入；客户端验证页大小、重复 ID、所选状态和游标形状。
+
+按 updated_at 降序、id 升序读取 limit+1 条，游标保留数据库微秒时间，并绑定租户、工作区、项目、restricted 可读权限和规范化筛选。跨范围或换筛选使用旧游标返回 INVALID_INPUT，必须回到第一页；limit 可调整。游标是位置描述，不是授权凭据，每页均重新检查范围和可见性。此分页不是快照：并发更新、删除或权限变化可能使记录移动或当前页为空。
+
+工作台看板/列表标注“当前页”，选中任务和视图切换保留当前位置；翻页清除当前选择，筛选提交从第一页开始。错误页提供重新浏览入口。概览工作项总数、各状态和完成比例使用 overview 汇总，不再按预览页计算；预览最多五项，明确标注最近更新。后续上下文统计、有限预览和页面说明见 [项目概览读取](workbench-overview-runtime.md)。
+
+新增 `030_work_item_pagination.sql` 为有/无状态筛选提供活动记录分页索引，仅新增文件，未执行。未编译、类型检查、测试、启动服务或发布。
+
+## 单条入口与边界
+
+- SDK：`getWorkItemProjection(itemId)`，共享输入/响应解析器，返回 WCP 封套。
+- CLI：`workctx work-items get --json-file work-item.json`，文件内容 `{"item_id":"本地 ID"}`，无需 --key。
+- MCP：`get_work_item_projection`，输入 item_id，要求 context.read，声明只读。
+- 工作台：`/work-items/detail?item=...` 独立读取指定任务，展示描述、版本、时间和来源；刷新表单重新请求详情。来源 URI 作为文本展示，不自动访问。
+- 看板/列表提供详情入口。显式指定 item 不在筛选结果中时，不选择另一条任务；保留原 ID 并提供独立读取入口。没有指定 item 时仍默认选择第一条。
+
+这是本地保存的只读投影，不证明当前 Plane 状态或来源仍然有效。local version 不能用于 Plane If-Match；source_refs 是已记录证据，不表示已检查外部来源。get_work_item_context 和新增 get_work_item_state 已使用独立的持久 Plane 观察快照读取，使用 external_id/aggregate_id，见 [Plane 观察状态](observed-state-runtime.md)；两类投影尚不自动互相同步。本批没有新增 Plane 写入流程。单条读取复用 008 表，列表新增的 030 索引迁移仍未执行。

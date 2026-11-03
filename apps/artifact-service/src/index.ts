@@ -214,3 +214,11 @@ async function digest(bytes: Uint8Array): Promise<string> {
   );
   return [...hash].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
+export * from './persistent-model.js';
+export { PersistentArtifactService } from './persistent.js';
+export {
+  S3ArtifactObjects,
+  S3ArtifactObjectError,
+  type S3ArtifactOptions,
+  type S3ArtifactCredentials,
+} from './s3-objects.js';

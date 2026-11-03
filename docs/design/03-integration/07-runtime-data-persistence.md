@@ -1,5 +1,9 @@
 # 运行时真实数据闭环协接规范
 
+2026-11-02 开发覆盖说明：旧 Context hit 不再启动时加载进搜索/资源缓存，搜索与 MCP 单条资源即时查询数据库；手工索引在事务内记录命中及请求回执。新增 classification/expires_at/deleted_at 及 032 迁移仅写文件，未执行或测试。下文历史恢复描述不作为本次验证证据，最新边界见 [旧索引持久读取](../01-contracts/legacy-search-runtime.md)。
+
+同日增补：项目/工作项观察读取也已改为查询提交后的投影、源事件、索引及项目权限；Webhook 持久化前核对同范围/版本，投影更新不倒退。启动只恢复支持的 Plane 观察事件，不再把会话/上下文/建议等事件当作工作项。写入失败队列仍为进程内状态；本批不宣称持久重试或运行验证完成。详见 [Plane 观察状态](../01-contracts/observed-state-runtime.md)。
+
 ## 协接对象
 
 本规范约束 Plane connector、API Gateway、Projection、Search、Audit、PostgreSQL migration、Compose 和 k3s Helm 之间的协接。各实现方只能依赖下表字段和 HTTP 行为。

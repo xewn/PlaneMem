@@ -60,7 +60,7 @@ export function assertUtcTimestamp(value: unknown): asserts value is string {
   }
 }
 
-function validateSourceRef(value: unknown): SourceRef {
+export function validateSourceRef(value: unknown): SourceRef {
   if (!isRecord(value)) {
     throw new TypeError('source_refs entries must be objects');
   }

@@ -1,36 +1,265 @@
+import Link from 'next/link';
+import { parseConflictRegistryQuery, type ConflictRegistryRecord } from '@planemem/contracts';
 import { Icon } from '../../components/icons';
-import { PageError, numberValue, textValue, toneFor } from '../../components/page-state';
+import { PageError, toneFor } from '../../components/page-state';
 import { Badge, Panel } from '../../components/ui';
 import { queryWorkbench } from '../../lib/server-api';
+import { ConflictSelection } from './selection';
+import { ConflictLookup } from './lookup';
 
-export default async function ConflictsPage() {
+type SearchParams = Record<string, string | string[] | undefined>;
+
+export default async function ConflictsPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
   try {
-    const response = await queryWorkbench<Record<string, unknown>[]>('conflicts');
-    const conflicts = response.data ?? [];
-    const open = conflicts.filter((conflict) => String(conflict.status) === 'open');
-    const resolved = conflicts.length - open.length;
-    const selected = open[0] ?? conflicts[0];
+    const params = await searchParams;
+    if (
+      Object.keys(params).some(
+        (key) => !['q', 'status', 'type', 'conflict', 'cursor', 'item'].includes(key),
+      ) ||
+      Object.values(params).some((value) => value !== undefined && typeof value !== 'string')
+    )
+      throw new Error(
+        'Use each conflict filter once. Restart from the first page when changing filters.',
+      );
+    const query = parseConflictRegistryQuery({
+      ...(params.q === undefined ? {} : { query: params.q }),
+      ...(params.status === undefined ? {} : { status: params.status }),
+      ...(params.type === undefined ? {} : { entity_type: params.type }),
+      ...(params.conflict === undefined ? {} : { conflict_id: params.conflict }),
+      ...(params.cursor === undefined ? {} : { cursor: params.cursor }),
+    });
+    const response = await queryWorkbench<ConflictRegistryRecord[]>('conflicts', { ...query });
+    const conflicts = response.data;
+    const open = conflicts.filter((row) => row.status === 'open').length;
+    const filters = {
+      ...(query.query ? { q: query.query } : {}),
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.entity_type ? { type: query.entity_type } : {}),
+      ...(query.conflict_id ? { conflict: query.conflict_id } : {}),
+    };
+    const position = { ...filters, ...(query.cursor ? { cursor: query.cursor } : {}) };
+    const selectedId = typeof params.item === 'string' ? params.item : conflicts[0]?.conflict_id;
     return (
       <>
-        <div className="page-heading"><div><h1>Conflicts</h1><p>Compare versions, understand scope and resolve concurrent changes with an explicit decision.</p></div><div className="heading-actions"><Badge tone="red">{open.length} open</Badge><button className="secondary-button"><Icon name="audit" /> Open audit</button></div></div>
-        <div className="status-card-grid"><Metric label="Open conflicts" value={open.length} tone={open.length ? 'red' : 'green'} /><Metric label="Resolved" value={resolved} tone="green" /><Metric label="Entities affected" value={new Set(conflicts.map((item) => String(item.entity_id))).size} tone="cyan" /><Metric label="Source refs" value={conflicts.reduce((sum, item) => sum + (Array.isArray(item.source_refs) ? item.source_refs.length : 0), 0)} tone="purple" /></div>
-        <div className="filters conflict-filters"><div className="filter-input"><Icon name="search" /> Search entity or field</div><button className="filter-chip">Status <Icon name="chevron" /></button><button className="filter-chip">Entity type <Icon name="chevron" /></button><div className="view-tabs"><span className="active">Diff</span><span>History</span></div></div>
-        <div className="drawer-layout conflict-layout">
-          <Panel title="Conflict center" icon="conflicts">
-            <div className="table-wrap"><table className="data-table"><thead><tr><th>Entity</th><th>Field</th><th>Versions</th><th>Status</th><th>Resolution</th><th>Actor</th></tr></thead><tbody>{conflicts.map((conflict) => <tr key={String(conflict.conflict_id)}><td><strong>{textValue(conflict.entity_type)} · {textValue(conflict.entity_id).slice(0, 10)}…</strong></td><td>{textValue(conflict.field)}</td><td>base {numberValue(conflict.base_version)} → local {numberValue(conflict.local_version)} / server {numberValue(conflict.server_version)}</td><td><Badge tone={toneFor(conflict.status)}>{textValue(conflict.status)}</Badge></td><td>{textValue(conflict.resolution)}</td><td>{textValue(conflict.actor_id)}</td></tr>)}</tbody></table>{conflicts.length === 0 ? <div className="empty-state"><h3>No conflicts</h3><p>The current scope has no version conflicts.</p></div> : null}</div>
-          </Panel>
-          <Panel title="Selected conflict" icon="conflicts" className="drawer conflict-drawer">{selected ? <ConflictDetail conflict={selected} /> : <div className="empty-state"><h3>Select a conflict</h3><p>Resolved conflicts remain available in the audit trail.</p></div>}</Panel>
+        <div className="page-heading">
+          <div>
+            <h1>Conflicts</h1>
+            <p>Browse saved conflict metadata, then open a record to compare its values.</p>
+          </div>
+          <Badge tone={open ? 'red' : 'green'}>{open} open on this page</Badge>
         </div>
+        <div className="status-card-grid">
+          <Metric label="Records on this page" value={conflicts.length} tone="cyan" />
+          <Metric label="Open on this page" value={open} tone={open ? 'red' : 'green'} />
+          <Metric label="Resolved on this page" value={conflicts.length - open} tone="green" />
+          <Metric
+            label="Entities on this page"
+            value={
+              new Set(conflicts.map((row) => JSON.stringify([row.entity_type, row.entity_id]))).size
+            }
+            tone="purple"
+          />
+        </div>
+        <form
+          action="/conflicts"
+          method="get"
+          target="_blank"
+          rel="noreferrer"
+          className="filters work-item-filters"
+          key={JSON.stringify(filters)}
+        >
+          <label className="filter-input">
+            <Icon name="search" />
+            <input
+              type="search"
+              name="q"
+              aria-label="Search conflict metadata"
+              maxLength={500}
+              defaultValue={query.query ?? ''}
+              placeholder="Entity, field, actor or trace"
+            />
+          </label>
+          <select
+            className="filter-chip"
+            name="status"
+            aria-label="Conflict status"
+            defaultValue={query.status ?? ''}
+          >
+            <option value="">All statuses</option>
+            <option value="open">Open</option>
+            <option value="resolved">Resolved</option>
+          </select>
+          <input
+            className="filter-chip"
+            name="type"
+            aria-label="Exact entity type"
+            maxLength={255}
+            defaultValue={query.entity_type ?? ''}
+            placeholder="Exact entity type"
+          />
+          {query.conflict_id && <input type="hidden" name="conflict" value={query.conflict_id} />}
+          <button className="secondary-button">Apply filters ↗</button>
+          <Link
+            className="panel-link"
+            href="/conflicts"
+            target="_blank"
+            rel="noreferrer"
+            prefetch={false}
+          >
+            Clear filters ↗
+          </Link>
+        </form>
+        <p className="muted">
+          Search matches metadata literally and ignores ASCII letter case. Pages reflect current
+          records. Filters, page links and record selection open in a new tab so an existing
+          decision form stays open.
+        </p>
+        <div className="drawer-layout conflict-layout">
+          <Panel title="Conflict directory" icon="conflicts">
+            <div className="table-wrap">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Entity</th>
+                    <th>Field</th>
+                    <th>Versions</th>
+                    <th>Status</th>
+                    <th>Resolution</th>
+                    <th>Record actor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {conflicts.map((row) => (
+                    <tr key={row.conflict_id}>
+                      <td>
+                        <Link
+                          className="work-item-link table-title"
+                          href={{
+                            pathname: '/conflicts',
+                            query: { ...position, item: row.conflict_id },
+                          }}
+                          target="_blank"
+                          rel="noreferrer"
+                          prefetch={false}
+                          aria-current={selectedId === row.conflict_id ? 'true' : undefined}
+                        >
+                          <div>
+                            <strong>{row.entity_type}</strong>
+                            <small>{row.entity_id}</small>
+                            <small>{row.conflict_id} ↗</small>
+                          </div>
+                        </Link>
+                      </td>
+                      <td>
+                        {row.field}
+                        <Link
+                          className="panel-link"
+                          prefetch={false}
+                          target="_blank"
+                          rel="noreferrer"
+                          href={{
+                            pathname: '/conflicts/detail',
+                            query: { conflict: row.conflict_id },
+                          }}
+                        >
+                          Independent details ↗
+                        </Link>
+                      </td>
+                      <td>
+                        base {row.base_version} · local {row.local_version} / server{' '}
+                        {row.server_version}
+                      </td>
+                      <td>
+                        <Badge tone={toneFor(row.status)}>{row.status}</Badge>
+                      </td>
+                      <td>{row.resolution ?? 'Not recorded'}</td>
+                      <td>{row.actor_id ?? 'Not recorded'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {!conflicts.length && (
+                <div className="empty-state">
+                  <h3>No records on this page for the current filters</h3>
+                </div>
+              )}
+            </div>
+            <div className="heading-actions">
+              <Link
+                className="secondary-button"
+                href={{ pathname: '/conflicts', query: filters }}
+                prefetch={false}
+                target="_blank"
+                rel="noreferrer"
+              >
+                First page ↗
+              </Link>
+              {response.has_more && response.next_cursor && (
+                <Link
+                  className="secondary-button"
+                  href={{
+                    pathname: '/conflicts',
+                    query: { ...filters, cursor: response.next_cursor },
+                  }}
+                  prefetch={false}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Next page ↗
+                </Link>
+              )}
+            </div>
+            <p className="muted">Directory read trace · {response.trace_id}</p>
+          </Panel>
+          <Panel title="Selected conflict" icon="conflicts" className="drawer conflict-drawer">
+            {selectedId !== undefined ? (
+              <ConflictSelection
+                id={selectedId}
+                canResolve={response.conflict_permissions?.resolve === true}
+                explicit={params.item === selectedId}
+                position={position}
+              />
+            ) : (
+              <div className="empty-state">
+                <h3>Select a conflict</h3>
+              </div>
+            )}
+          </Panel>
+        </div>
+        <ConflictLookup />
       </>
     );
   } catch (error) {
-    return <><div className="page-heading"><div><h1>Conflicts</h1><p>Compare versions, understand scope and resolve concurrent changes with an explicit decision.</p></div></div><PageError error={error} /></>;
+    return (
+      <>
+        <div className="page-heading">
+          <h1>Conflicts</h1>
+        </div>
+        <PageError error={error} />
+        <Link
+          className="panel-link"
+          href="/conflicts"
+          prefetch={false}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Restart conflict directory ↗
+        </Link>
+        <ConflictLookup />
+      </>
+    );
   }
 }
 
-function ConflictDetail({ conflict }: { conflict: Record<string, unknown> }) {
-  const refs = Array.isArray(conflict.source_refs) ? conflict.source_refs : [];
-  const isOpen = String(conflict.status) === 'open';
-  return <div className="side-detail"><div className="selected-session-header"><div className="selected-session-icon"><Icon name="conflicts" /></div><div><h2>{textValue(conflict.entity_type)} · {textValue(conflict.field)}</h2><small>{textValue(conflict.entity_id)}</small></div><Badge tone={toneFor(conflict.status)}>{textValue(conflict.status)}</Badge></div><div className="drawer-badges"><Badge tone="yellow">v{numberValue(conflict.local_version)} vs v{numberValue(conflict.server_version)}</Badge><Badge tone="neutral">{textValue(conflict.actor_id)}</Badge></div><div className="diff-box"><div><span>Local value</span><pre>{JSON.stringify(conflict.local_value ?? null, null, 2)}</pre></div><div><span>Server value</span><pre>{JSON.stringify(conflict.server_value ?? null, null, 2)}</pre></div></div><hr /><h3 className="detail-section-title">Decision record</h3><div className="source-line"><span>Base version</span><strong>{numberValue(conflict.base_version)}</strong></div><div className="source-line"><span>Resolution</span><strong>{textValue(conflict.resolution, 'pending human decision')}</strong></div><div className="source-line"><span>Trace</span><strong>{textValue(conflict.trace_id)}</strong></div><div className="source-tags">{refs.length ? refs.map((ref, index) => <Badge key={String(ref) + '-' + index} tone="cyan">{typeof ref === 'object' && ref ? textValue((ref as Record<string, unknown>).type) : String(ref)}</Badge>) : <Badge tone="neutral">No source refs</Badge>}</div>{isOpen ? <div className="confirmation-box"><span className="check-box" /><div><strong>Human confirmation required</strong><small>Choose the version to write back into the scoped projection.</small></div></div> : null}<div className="heading-actions detail-actions"><button className="primary-button" disabled={!isOpen}><Icon name="check" /> Resolve with server</button><button className="secondary-button" disabled={!isOpen}>Keep local</button></div><div className="drawer-tabs"><span className="active">Diff</span><span>Source refs</span><span>Audit trail</span></div></div>;
+function Metric({ label, value, tone }: { label: string; value: number; tone: string }) {
+  return (
+    <section className="panel status-card">
+      <small>{label}</small>
+      <strong className={'text-' + tone}>{value}</strong>
+    </section>
+  );
 }
-function Metric({ label, value, tone }: { label: string; value: number; tone: string }) { return <section className="panel status-card"><small>{label}</small><strong className={'text-' + tone}>{value}</strong><div className="muted">live from PostgreSQL</div></section>; }

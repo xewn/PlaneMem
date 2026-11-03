@@ -1,22 +1,65 @@
+import Link from 'next/link';
+import { parseWorkItemListQuery, type WorkItemProjection } from '@planemem/contracts';
 import { Icon } from '../../components/icons';
 import { PageError, numberValue, textValue, toneFor } from '../../components/page-state';
 import { Badge, Panel, Progress } from '../../components/ui';
-import { queryWorkbench } from '../../lib/server-api';
+import { listWorkbenchWorkItems } from '../../lib/server-api';
 
-type WorkItem = Record<string, unknown>;
+type WorkItem = WorkItemProjection;
 const columns = [
   ['todo', 'To Do', 'neutral'],
   ['in_progress', 'In Progress', 'cyan'],
   ['in_review', 'In Review', 'purple'],
   ['blocked', 'Blocked', 'red'],
   ['done', 'Done', 'green'],
+  ['cancelled', 'Cancelled', 'neutral'],
 ] as const;
 
-export default async function WorkItemsPage() {
+type SearchParams = Record<string, string | string[] | undefined>;
+
+export default async function WorkItemsPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
   try {
-    const response = await queryWorkbench<WorkItem[]>('work_items');
+    const params = await searchParams;
+    const filters = parseWorkItemListQuery({
+      query: params.q ?? '',
+      status: params.status ?? '',
+      limit: 25,
+      ...(params.cursor === undefined ? {} : { cursor: params.cursor }),
+    });
+    const query = filters.query ?? '';
+    const status = filters.status ?? '';
+    const cursor = filters.cursor;
+    const list = params.view === 'list';
+    const response = await listWorkbenchWorkItems(filters);
     const items = response.data ?? [];
-    const selected = items[0];
+    const requestedId = typeof params.item === 'string' ? params.item : undefined;
+    const selected =
+      params.item === undefined ? items[0] : items.find((item) => item.id === requestedId);
+    const visibleColumns = columns.filter(([value]) =>
+      status
+        ? value === status
+        : value !== 'cancelled' || items.some((item) => item.status === value),
+    );
+    function href(
+      view: string,
+      item?: WorkItem,
+      pageCursor: string | null = cursor ?? null,
+      keepSelected = true,
+    ) {
+      const search = new URLSearchParams();
+      if (query) search.set('q', query);
+      if (status) search.set('status', status);
+      if (view === 'list') search.set('view', view);
+      if (pageCursor) search.set('cursor', pageCursor);
+      if (item) search.set('item', String(item.id));
+      else if (keepSelected && requestedId !== undefined) search.set('item', requestedId);
+      const suffix = search.toString();
+      return suffix ? '/work-items?' + suffix : '/work-items';
+    }
     return (
       <>
         <div className="page-heading">
@@ -25,46 +68,166 @@ export default async function WorkItemsPage() {
             <p>Project work, progress and dependencies from the PlaneMem projection.</p>
           </div>
           <div className="heading-actions">
-            <Badge tone="green">{items.length} items</Badge>
-            <button className="primary-button">New work item</button>
+            <Link className="panel-link" href="/work-items/observed/list" prefetch={false}>
+              Browse Plane observations
+            </Link>
+            <Link className="panel-link" href="/work-items/observed" prefetch={false}>
+              Find Plane observation
+            </Link>
+            <Badge tone="green">{items.length} items on this page</Badge>
           </div>
         </div>
-        <div className="filters">
-          <div className="filter-input">
+        <form
+          className="filters work-item-filters"
+          action="/work-items"
+          method="get"
+          key={JSON.stringify([query, status])}
+        >
+          {list && <input type="hidden" name="view" value="list" />}
+          <label className="filter-input">
             <Icon name="search" />
-            Search work items
-          </div>
-          <button className="filter-chip">
-            Filters <Icon name="chevron" />
+            <input
+              type="search"
+              name="q"
+              defaultValue={query}
+              aria-label="Search by ID, title or owner"
+              placeholder="ID, title or owner"
+              maxLength={500}
+            />
+          </label>
+          <select
+            className="filter-chip"
+            name="status"
+            aria-label="Work item status"
+            defaultValue={status}
+          >
+            <option value="">All statuses</option>
+            {columns.map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <button className="secondary-button" type="submit">
+            Apply filters
           </button>
-          <button className="filter-chip">
-            Group by <Icon name="chevron" />
-          </button>
+          {(query || status) && (
+            <Link className="panel-link" href={list ? '/work-items?view=list' : '/work-items'}>
+              Clear filters
+            </Link>
+          )}
           <div className="view-tabs">
-            <span className="active">Board</span>
-            <span>List</span>
-            <span>Timeline</span>
+            <Link
+              className={!list ? 'active' : ''}
+              aria-current={!list ? 'page' : undefined}
+              href={href('board', selected)}
+            >
+              Board
+            </Link>
+            <Link
+              className={list ? 'active' : ''}
+              aria-current={list ? 'page' : undefined}
+              href={href('list', selected)}
+            >
+              List
+            </Link>
           </div>
-        </div>
+        </form>
+        <nav className="heading-actions" aria-label="Work item pages">
+          <span className="muted">
+            Newest updates first · Up to 25 per page. Column counts are for this page.
+          </span>
+          {cursor ? (
+            <Link
+              className="panel-link"
+              href={href(list ? 'list' : 'board', undefined, null, false)}
+              prefetch={false}
+            >
+              First page
+            </Link>
+          ) : null}
+          {response.next_cursor ? (
+            <Link
+              className="panel-link"
+              href={href(list ? 'list' : 'board', undefined, response.next_cursor, false)}
+              prefetch={false}
+            >
+              Next page
+            </Link>
+          ) : null}
+        </nav>
         <div className="drawer-layout">
-          <Panel title={`${items.length} items`} icon="work" className="board-panel">
-            <div className="board-grid">
-              {columns.map(([status, label, tone]) => (
-                <div className="board-column" key={status}>
-                  <div className="board-column-head">
-                    <span>
-                      <i className={`column-dot dot-${tone}`} /> {label}
-                    </span>
-                    <b>{items.filter((item) => String(item.status) === status).length}</b>
-                  </div>
-                  {items
-                    .filter((item) => String(item.status) === status)
-                    .map((item) => (
-                      <WorkCard key={String(item.id)} item={item} />
+          <Panel title={`${items.length} items on this page`} icon="work" className="board-panel">
+            {items.length === 0 ? (
+              <div className="empty-state">
+                <h3>
+                  {cursor
+                    ? 'No more work items on this page'
+                    : query || status
+                      ? 'No matching work items'
+                      : 'No work items in this project'}
+                </h3>
+                {query || status ? <p>Change or clear the filters to see more items.</p> : null}
+              </div>
+            ) : list ? (
+              <div className="table-wrap">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Work item</th>
+                      <th>Status</th>
+                      <th>Priority</th>
+                      <th>Owner</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((item) => (
+                      <tr key={String(item.id)}>
+                        <td>
+                          <Link
+                            className="work-item-link"
+                            href={href('list', item)}
+                            scroll={false}
+                            prefetch={false}
+                            aria-current={selected === item ? 'true' : undefined}
+                          >
+                            {textValue(item.external_id)} · {textValue(item.title)}
+                          </Link>
+                        </td>
+                        <td>
+                          <Badge tone={toneFor(item.status)}>{textValue(item.status)}</Badge>
+                        </td>
+                        <td>{textValue(item.priority)}</td>
+                        <td>{textValue(item.owner)}</td>
+                      </tr>
                     ))}
-                </div>
-              ))}
-            </div>
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="board-grid work-item-board">
+                {visibleColumns.map(([status, label, tone]) => (
+                  <div className="board-column" key={status}>
+                    <div className="board-column-head">
+                      <span>
+                        <i className={`column-dot dot-${tone}`} /> {label}
+                      </span>
+                      <b>{items.filter((item) => String(item.status) === status).length}</b>
+                    </div>
+                    {items
+                      .filter((item) => String(item.status) === status)
+                      .map((item) => (
+                        <WorkCard
+                          key={String(item.id)}
+                          item={item}
+                          href={href('board', item)}
+                          selected={selected === item}
+                        />
+                      ))}
+                  </div>
+                ))}
+              </div>
+            )}
           </Panel>
           <Panel title="Selected work item" icon="work" className="drawer">
             <div className="side-detail">
@@ -73,6 +236,13 @@ export default async function WorkItemsPage() {
                   <h2>
                     {textValue(selected.external_id)} · {textValue(selected.title)}
                   </h2>
+                  <Link
+                    className="panel-link"
+                    href={{ pathname: '/work-items/detail', query: { item: String(selected.id) } }}
+                    prefetch={false}
+                  >
+                    Open full details and sources
+                  </Link>
                   <div className="drawer-badges">
                     <Badge tone={toneFor(selected.priority)}>{textValue(selected.priority)}</Badge>
                     <Badge tone={toneFor(selected.status)}>
@@ -96,35 +266,49 @@ export default async function WorkItemsPage() {
                       <small>Classification</small>
                       <strong>{textValue(selected.classification)}</strong>
                     </div>
+                    <div>
+                      <small>Local projection version</small>
+                      <strong>{textValue(selected.version)}</strong>
+                    </div>
                   </div>
                   <Progress value={numberValue(selected.progress)} tone="cyan" />
                   <div className="proposal">
-                    <h4>AI work proposal</h4>
+                    <h4>Description</h4>
                     <p>{textValue(selected.description)}</p>
                     <div className="source-tags">
                       <Badge tone="cyan">{textValue(selected.external_id)}</Badge>
                       <Badge tone="neutral">{textValue(selected.classification)}</Badge>
                     </div>
                   </div>
-                  <div className="confirmation-box">
-                    <span className="check-box" />
-                    <div>
-                      <strong>Human confirmation</strong>
-                      <small>Review the scoped proposal before changing status or ownership.</small>
-                    </div>
-                  </div>
-                  <div className="source-line"><span>Trace ID</span><strong>{textValue(selected.trace_id)}</strong></div>
-                  <div className="drawer-tabs">
-                    <span className="active">Details</span>
-                    <span>Context</span>
-                    <span>Dependencies</span>
-                    <span>Activity</span>
+                  <div className="source-line">
+                    <span>Trace ID</span>
+                    <strong>{textValue(selected.trace_id)}</strong>
                   </div>
                 </>
               ) : (
                 <div className="empty-state">
-                  <h3>No work items</h3>
-                  <p>Query returned no records in the current project scope.</p>
+                  <h3>
+                    {params.item === undefined
+                      ? 'No item selected'
+                      : 'Selected item is outside this result'}
+                  </h3>
+                  {requestedId ? (
+                    <>
+                      <p>
+                        Read the item directly to check whether it is still available in this
+                        project.
+                      </p>
+                      <Link
+                        className="panel-link"
+                        href={{ pathname: '/work-items/detail', query: { item: requestedId } }}
+                        prefetch={false}
+                      >
+                        Read selected item
+                      </Link>
+                    </>
+                  ) : params.item !== undefined ? (
+                    <p>Select one work item from the list or board.</p>
+                  ) : null}
                 </div>
               )}
             </div>
@@ -142,14 +326,23 @@ export default async function WorkItemsPage() {
           </div>
         </div>
         <PageError error={error} />
+        <Link className="panel-link" href="/work-items" prefetch={false}>
+          Restart work item browsing
+        </Link>
       </>
     );
   }
 }
 
-function WorkCard({ item }: { item: WorkItem }) {
+function WorkCard({ item, href, selected }: { item: WorkItem; href: string; selected: boolean }) {
   return (
-    <article className="work-card">
+    <Link
+      className="work-card work-item-link"
+      href={href}
+      scroll={false}
+      prefetch={false}
+      aria-current={selected ? 'true' : undefined}
+    >
       <strong>
         {textValue(item.external_id)} {textValue(item.title)}
       </strong>
@@ -159,6 +352,6 @@ function WorkCard({ item }: { item: WorkItem }) {
       </div>
       <p>{textValue(item.description)}</p>
       <Progress value={numberValue(item.progress)} tone={toneFor(item.status)} />
-    </article>
+    </Link>
   );
 }

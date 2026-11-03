@@ -15,6 +15,18 @@ features:
   attachments: true
   webhooks: true
   comments: false
+  native_deletion_webhook_mapping: false
+  project_deletion: false
+  work_item_restore: false
+  rest_transport_runtime_validated: false
 known_limitations:
+  - capability: rest_transport_runtime_validated
+    reason: 'Fetch transport, bounded read retries, cancellation, response validation, work-item reads and conditional GET with opaque ETags exist in source only. Native Plane routes/auth/pagination/ETag/304/idempotency and gateway write integration remain unverified; no network requests or tests were run.'
   - capability: comments
     reason: 'Not part of the first connector contract'
+  - capability: native_deletion_webhook_mapping
+    reason: 'WorkItemDeleted is implemented only for the signed canonical event ingress in source; native Plane deletion mapping and runtime evidence are absent. Migration 040 has not been executed.'
+  - capability: project_deletion
+    reason: 'Project deletion and its child-observation policy are not implemented.'
+  - capability: work_item_restore
+    reason: 'WorkItemRestored is implemented only for signed canonical ingress in source, with an exact deletion reference and preserved classification/expiry. Native Plane restore mapping and runtime evidence are absent; migration 040 is unexecuted.'

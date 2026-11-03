@@ -1,4 +1,4 @@
-import { createUlid, type SourceRef, type Ulid } from '@planemem/contracts';
+import { createUlid, proposalWarnings, type SourceRef, type Ulid } from '@planemem/contracts';
 
 export interface ProposalScope {
   tenant_id: string;
@@ -30,6 +30,7 @@ export interface ProviderFailure {
   source_refs: SourceRef[];
 }
 
+/** @deprecated Offline compatibility helper only. Use SqliteProposalQueue and flushProposalQueue for gateway submission. */
 export class ProposalService {
   private readonly proposals = new Map<string, Proposal>();
   private readonly idempotency = new Map<string, Proposal>();
@@ -54,11 +55,7 @@ export class ProposalService {
     const previous = this.idempotency.get(input.idempotency_key);
     if (previous !== undefined) return clone(previous);
     if (input.source_refs.length === 0) throw new Error('source_refs_required');
-    const warnings = /ignore\s+(?:all\s+)?policy|execute\s+(?:shell|command)|system\s+prompt/i.test(
-      input.content,
-    )
-      ? ['prompt_injection_suspected']
-      : [];
+    const warnings = proposalWarnings(input.content);
     const proposal: Proposal = {
       schema_version: 1,
       proposal_id: createUlid(),

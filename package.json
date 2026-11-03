@@ -8,6 +8,8 @@
     "pnpm": ">=11 <12"
   },
   "scripts": {
+    "workctx": "node apps/workctx-cli/bin/workctx.mjs",
+    "proposal-worker": "node workers/intelligence/bin/proposal-worker.mjs",
     "build": "tsc --project tsconfig.build.json",
     "lint": "prettier --check \".github/**/*.yml\" \"packages/**/*.{ts,mjs,json}\" \"apps/**/*.{ts,mjs,json}\" \"tests/**/*.{mjs,js,ts,json}\" \"tools/**/*.{mjs,js,ts,json}\" \"deploy/**/*.{yml,yaml,mjs,json}\" \"integrations/**/*.{yml,yaml,json}\" \"*.{json,yaml,yml,mjs,ts}\"",
     "typecheck": "tsc --noEmit",

@@ -1,24 +1,5 @@
-import type { Classification, SourceRef, Ulid } from '@planemem/contracts';
-
-export type ContextLayer = 'L0' | 'L1' | 'L2' | 'L3' | 'L4';
-
-export interface ContextItem {
-  schema_version: 1;
-  id: string;
-  layer: ContextLayer;
-  content: string;
-  source_refs: SourceRef[];
-  confirmed: boolean;
-  confidence: number;
-  priority: number;
-  sensitivity: Classification;
-  tenant_id: Ulid;
-  workspace_id: Ulid;
-  project_id: Ulid;
-  trace_id: string;
-  expires_at?: string;
-  selection_reason?: 'ranked-fit' | 'priority-override';
-}
+import type { Classification, ContextItem, ContextLayer } from '@planemem/contracts';
+export type { ContextItem, ContextLayer } from '@planemem/contracts';
 
 export interface PolicyFilter {
   allowed_classifications: Classification[];

@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "bin": {
+    "workctx": "./bin/workctx.mjs"
+  },
   "exports": {
     ".": "./src/index.ts"
   },
@@ -13,6 +16,9 @@
   },
   "dependencies": {
     "@planemem/api-gateway": "workspace:*",
-    "@planemem/contracts": "workspace:*"
+    "@planemem/context-bridge": "workspace:*",
+    "@planemem/contracts": "workspace:*",
+    "@planemem/sdk": "workspace:*",
+    "tsx": "4.20.5"
   }
 }

@@ -1,63 +1,180 @@
-import { Icon } from '../../components/icons';
-import { PageError, numberValue, textValue, toneFor } from '../../components/page-state';
-import { Badge, Panel, Progress } from '../../components/ui';
+import Link from 'next/link';
+import {
+  WORKBENCH_ADMIN_CHECKS,
+  type WorkbenchAdminCount,
+  type WorkbenchAdminSnapshot,
+} from '@planemem/contracts';
+import { PageError } from '../../components/page-state';
+import { Badge, Panel } from '../../components/ui';
 import { queryWorkbench } from '../../lib/server-api';
 
+const checkLabels: Record<(typeof WORKBENCH_ADMIN_CHECKS)[number], string> = {
+  audit_write: 'Audit write and recovery',
+  identity_provider: 'Identity provider availability',
+  policy_service: 'Policy service availability',
+  plane_connector: 'Plane connector availability',
+  telemetry: 'Telemetry delivery',
+  release_readiness: 'Release readiness',
+};
+
 export default async function AdminPage() {
+  let content;
   try {
-    const response = await queryWorkbench<Record<string, unknown>>('admin');
-    const health = response.data;
-    const services = Array.isArray(health.services) ? (health.services as Record<string, unknown>[]) : [];
-    const degraded = services.filter((service) => !['ok', 'healthy'].includes(String(service.status))).length;
-    const auditCount = numberValue(health.audit_count);
-    const activeSessions = numberValue(health.active_sessions);
-    const openConflicts = numberValue(health.open_conflicts);
-    return (
+    const response = await queryWorkbench<WorkbenchAdminSnapshot>('admin');
+    const snapshot = response.data;
+    const { counts } = snapshot;
+    content = (
       <>
-        <div className="page-heading">
-          <div><h1>Admin</h1><p>Connector health, policy decisions, audit persistence and release readiness.</p></div>
-          <div className="heading-actions"><Badge tone={degraded ? 'yellow' : 'green'}>{degraded ? degraded + ' degraded' : 'System healthy'}</Badge><button className="secondary-button"><Icon name="refresh" /> Refresh</button></div>
-        </div>
-        {degraded ? <div className="warning-banner"><Icon name="conflicts" /><div><strong>Service health needs attention</strong><span>{degraded} scoped service reports a non-ready status. Review the live service table below.</span></div></div> : null}
         <div className="status-card-grid">
-          <Status label="Uptime signal" value={services.length ? 'OK' : '—'} tone={degraded ? 'yellow' : 'green'} hint="database health" />
-          <Status label="Audit records" value={auditCount} tone="cyan" hint="persisted in scope" />
-          <Status label="Open conflicts" value={openConflicts} tone={openConflicts ? 'red' : 'green'} hint={activeSessions + ' active sessions'} />
-          <Status label="Release" value={textValue(health.release)} tone="purple" hint="gateway build" />
+          <CountCard
+            label="Visible audit records"
+            count={counts.audit_records}
+            access="Audit access required"
+          />
+          <CountCard
+            label="Running sessions"
+            count={counts.running_sessions}
+            access="Context access required"
+          />
+          <CountCard
+            label="Open visible conflicts"
+            count={counts.open_conflicts}
+            access="Context access required"
+          />
+          <section className="panel status-card">
+            <small>Gateway reported version</small>
+            <strong className="text-purple">{snapshot.gateway_version}</strong>
+            <div className="muted">Runtime declaration</div>
+          </section>
         </div>
+        <p className="muted">
+          Counts include records visible to this session in this project at the time of the query.
+          Missing access is shown separately from zero. Refresh explicitly to read a new snapshot.
+        </p>
         <div className="service-grid admin-service-grid">
-          <Panel title="Service health" icon="admin">
-            <div className="service-row-head"><span>Service</span><span>Status</span><span>Version</span></div>
-            {services.map((service) => <div className="service-row" key={String(service.name)}><i className={'health-dot ' + String(service.status)} /><span>{textValue(service.name)}</span><Badge tone={toneFor(service.status)}>{textValue(service.status)}</Badge><small>{textValue(service.version)}</small></div>)}
-            {services.length === 0 ? <div className="empty-inline">No service health rows returned by the scoped database query.</div> : null}
+          <Panel title="Database read observation" icon="database">
+            <div className="side-detail">
+              <Badge tone="cyan">Query completed</Badge>
+              <dl className="detail-grid">
+                <div>
+                  <dt>Read at</dt>
+                  <dd>
+                    <time dateTime={snapshot.read_at}>{snapshot.read_at}</time>
+                  </dd>
+                </div>
+                <div>
+                  <dt>PostgreSQL reported version</dt>
+                  <dd>{snapshot.database.version}</dd>
+                </div>
+                <div>
+                  <dt>Project</dt>
+                  <dd>{response.scope?.project_id}</dd>
+                </div>
+                <div>
+                  <dt>Workspace</dt>
+                  <dd>{response.scope?.workspace_id}</dd>
+                </div>
+                <div>
+                  <dt>Tenant</dt>
+                  <dd>{response.scope?.tenant_id}</dd>
+                </div>
+              </dl>
+              <p>
+                This observation confirms that this query returned. It does not establish uptime,
+                database write availability, connector health or readiness to release.
+              </p>
+            </div>
           </Panel>
-          <Panel title="Connector health" icon="database">
-            <div className="connector-grid"><Connector label="PostgreSQL projection" status={services.find((service) => service.name === 'postgres')?.status ?? 'unknown'} /><Connector label="AuthServer OIDC" status="configured" /><Connector label="OpenTelemetry" status="trace ready" /></div>
-            <div className="health-note">Connector statuses are shown from the live workbench health response and configured runtime integration.</div>
+          <Panel title="Checks outside this snapshot" icon="admin">
+            <div className="admin-list">
+              {WORKBENCH_ADMIN_CHECKS.map((key) => (
+                <div className="source-line" key={key}>
+                  <span>{checkLabels[key]}</span>
+                  <Badge>
+                    {snapshot.checks[key] === 'not-checked' ? 'Not checked' : 'Unknown'}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+            <p className="muted">
+              These checks need their own observations. Record counts do not indicate feature
+              settings, event latency or the state of a release manifest.
+            </p>
           </Panel>
         </div>
-        <div className="admin-grid">
-          <Panel title="Policy and identity" icon="users"><div className="admin-list"><Row label="Scope fence" value="tenant / workspace / project" tone="green" /><Row label="Bearer session" value="required" tone="green" /><Row label="Classification" value="internal" tone="cyan" /><Row label="Audit persistence" value="enabled" tone="green" /></div></Panel>
-          <Panel title="Event latency" icon="activity"><div className="latency-card"><div><strong>{services.length ? 'live' : '—'}</strong><small>health response</small></div><Progress value={services.length ? 100 : 0} tone={degraded ? 'yellow' : 'green'} /></div><div className="admin-list"><Row label="Trace propagation" value="trace_id preserved" tone="cyan" /><Row label="Source references" value="postgres envelope" tone="purple" /></div></Panel>
-          <Panel title="Feature flags" icon="target"><div className="flag-grid"><Flag label="audit" enabled /><Flag label="context" enabled /><Flag label="handoff" enabled={activeSessions > 0 || auditCount > 0} /><Flag label="conflicts" enabled={openConflicts > 0} /></div></Panel>
-        </div>
-        <div className="service-grid">
-          <Panel title="Release manifest" icon="context"><div className="release-box"><Badge tone="green">Current</Badge><h2>{textValue(health.release)}</h2><p className="muted">Versioned runtime health from the workbench database connection.</p><code>{'api_gateway: 0.1.0\\ndatabase: PostgreSQL 16\\ntrace_schema: v1\\nfeature_flags: audit, context'}</code></div></Panel>
-          <Panel title="Deployment topology" icon="sessions"><div className="topology-list"><div><span className="topology-dot ok" /><strong>API Gateway</strong><small>scoped query endpoint</small></div><div><span className="topology-dot ok" /><strong>PostgreSQL</strong><small>projection and audit store</small></div><div><span className="topology-dot cyan" /><strong>AuthServer</strong><small>OIDC / PKCE session</small></div></div></Panel>
-        </div>
+        <Panel title="Project records and sources" icon="context">
+          <nav className="heading-actions" aria-label="Administration record views">
+            {counts.audit_records.state === 'available' && (
+              <Link className="panel-link" href="/audit" prefetch={false}>
+                Audit records
+              </Link>
+            )}
+            {counts.running_sessions.state === 'available' && (
+              <Link className="panel-link" href="/sessions" prefetch={false}>
+                Sessions
+              </Link>
+            )}
+            {counts.open_conflicts.state === 'available' && (
+              <Link className="panel-link" href="/conflicts" prefetch={false}>
+                Conflicts
+              </Link>
+            )}
+            <Link className="panel-link" href="/admin/plane-events" prefetch={false}>
+              Plane event queue
+            </Link>
+          </nav>
+          <p className="muted">Each destination checks the current permissions again.</p>
+          <div className="source-line">
+            <span>Query trace</span>
+            <strong>{response.trace_id}</strong>
+          </div>
+          <ul>
+            {response.source_refs.map((ref) => (
+              <li key={`${ref.type}:${ref.id}`}>
+                {ref.type}: {ref.id}
+              </li>
+            ))}
+          </ul>
+        </Panel>
       </>
     );
   } catch (error) {
-    return <><div className="page-heading"><div><h1>Admin</h1><p>Connector health, policy decisions, audit persistence and release readiness.</p></div></div><PageError error={error} /></>;
+    content = <PageError error={error} />;
   }
+  return (
+    <>
+      <div className="page-heading">
+        <div>
+          <h1>Admin</h1>
+          <p>Project counts and the database observation from this page load.</p>
+        </div>
+        <form action="/admin" method="get">
+          <button className="secondary-button" type="submit">
+            Refresh snapshot
+          </button>
+        </form>
+      </div>
+      {content}
+    </>
+  );
 }
 
-function Status({ label, value, tone, hint }: { label: string; value: number | string; tone: string; hint: string }) {
-  return <section className="panel status-card"><small>{label}</small><strong className={'text-' + tone}>{value}</strong><div className="muted">{hint} · live</div></section>;
+function CountCard({
+  label,
+  count,
+  access,
+}: {
+  label: string;
+  count: WorkbenchAdminCount;
+  access: string;
+}) {
+  return (
+    <section className="panel status-card">
+      <small>{label}</small>
+      <strong className={count.state === 'available' ? 'text-cyan' : 'muted'}>
+        {count.state === 'available' ? count.value.toLocaleString('en-US') : 'Not available'}
+      </strong>
+      <div className="muted">{count.state === 'available' ? 'Visible at query time' : access}</div>
+    </section>
+  );
 }
-function Connector({ label, status }: { label: string; status: unknown }) {
-  const ok = ['ok', 'healthy', 'configured', 'trace ready'].includes(String(status));
-  return <div className="connector-row"><i className={'health-dot ' + (ok ? 'ok' : 'degraded')} /><div><strong>{label}</strong><small>{textValue(status)}</small></div><Badge tone={ok ? 'green' : 'yellow'}>{ok ? 'ready' : 'review'}</Badge></div>;
-}
-function Row({ label, value, tone }: { label: string; value: string; tone: string }) { return <div className="source-line"><span>{label}</span><Badge tone={tone}>{value}</Badge></div>; }
-function Flag({ label, enabled }: { label: string; enabled: boolean }) { return <div className="flag"><span className={enabled ? 'flag-on' : 'flag-off'}>{enabled ? 'ON' : 'OFF'}</span><strong>{label}</strong></div>; }

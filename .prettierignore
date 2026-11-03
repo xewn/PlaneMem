@@ -10,3 +10,5 @@ FILE_INDEX.md
 pnpm-lock.yaml
 deploy/helm/**/*.yaml
 artifacts
+!apps/web-console/src/app/artifacts/
+!apps/web-console/src/app/artifacts/**

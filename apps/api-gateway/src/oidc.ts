@@ -41,6 +41,8 @@ export class OidcTokenError extends Error {
   }
 }
 
+class OidcProviderError extends Error {}
+
 export class OidcTokenVerifier {
   private readonly issuer: string;
   private readonly audience: string | undefined;
@@ -66,8 +68,8 @@ export class OidcTokenVerifier {
     const headerPart = parts[0] as string;
     const payloadPart = parts[1] as string;
     const signaturePart = parts[2] as string;
-    const header = parseJson(headerPart, 'JWT header') as Record<string, unknown>;
-    const payload = parseJson(payloadPart, 'JWT claims') as Partial<OidcClaims>;
+    const header = parseJson(headerPart, 'JWT header');
+    const payload = parseJson(payloadPart, 'JWT claims');
     if (header.alg !== 'RS256') throw new OidcTokenError('JWT algorithm is not allowed');
     if (typeof header.kid !== 'string' || header.kid.length === 0)
       throw new OidcTokenError('JWT key id is missing');
@@ -75,7 +77,9 @@ export class OidcTokenVerifier {
       typeof payload.iss !== 'string' ||
       normalizeIssuer(payload.iss) !== this.issuer ||
       typeof payload.sub !== 'string' ||
-      typeof payload.exp !== 'number'
+      !payload.sub.trim() ||
+      typeof payload.exp !== 'number' ||
+      !Number.isFinite(new Date(payload.exp * 1000).getTime())
     )
       throw new OidcTokenError('JWT issuer, subject or expiry is invalid');
     if (this.audience !== undefined && !hasAudience(payload.aud, this.audience))
@@ -106,7 +110,7 @@ export class OidcTokenVerifier {
     const response = await this.fetchImpl(discovery.jwks_uri, {
       headers: { accept: 'application/json' },
     });
-    if (!response.ok) throw new OidcTokenError('OIDC JWKS endpoint is unavailable');
+    if (!response.ok) throw new OidcProviderError('OIDC JWKS endpoint is unavailable');
     const body = (await response.json()) as JwksResponse;
     const keys = new Map<string, KeyObject>();
     for (const jwk of body.keys ?? []) {
@@ -117,7 +121,7 @@ export class OidcTokenVerifier {
         continue;
       }
     }
-    if (keys.size === 0) throw new OidcTokenError('OIDC JWKS contains no usable RSA keys');
+    if (keys.size === 0) throw new OidcProviderError('OIDC JWKS contains no usable RSA keys');
     this.jwks = { expiresAt: now + this.cacheTtlMs, keys };
     return keys;
   }
@@ -127,14 +131,14 @@ export class OidcTokenVerifier {
     const response = await this.fetchImpl(this.issuer + '/.well-known/openid-configuration', {
       headers: { accept: 'application/json' },
     });
-    if (!response.ok) throw new OidcTokenError('OIDC discovery endpoint is unavailable');
+    if (!response.ok) throw new OidcProviderError('OIDC discovery endpoint is unavailable');
     const body = (await response.json()) as Partial<OidcDiscovery>;
     if (
       typeof body.issuer !== 'string' ||
       normalizeIssuer(body.issuer) !== this.issuer ||
       typeof body.jwks_uri !== 'string'
     )
-      throw new OidcTokenError('OIDC discovery metadata is invalid');
+      throw new OidcProviderError('OIDC discovery metadata is invalid');
     this.discovery = { issuer: body.issuer, jwks_uri: body.jwks_uri };
     return this.discovery;
   }
@@ -147,12 +151,15 @@ function parseBearer(authorization: string | undefined): string {
   return token;
 }
 
-function parseJson(value: string, label: string): unknown {
+function parseJson(value: string, label: string): Record<string, unknown> {
   try {
-    return JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
+    const parsed: unknown = JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed))
+      return parsed as Record<string, unknown>;
   } catch {
-    throw new OidcTokenError(label + ' is invalid');
+    // Use the same response for malformed JSON and non-object JWT segments.
   }
+  throw new OidcTokenError(label + ' is invalid');
 }
 
 function normalizeIssuer(value: string): string {

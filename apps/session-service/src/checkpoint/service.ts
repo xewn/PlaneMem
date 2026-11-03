@@ -1,4 +1,18 @@
-import { ContractError, createUlid, type SourceRef, type Ulid } from '@planemem/contracts';
+import {
+  ContractError,
+  createUlid,
+  isUlid,
+  validateSourceRef,
+  parseHandoffClaimReceiptLookup,
+  parseHandoffCreateCommand,
+  parseHandoffCreateReceiptLookup,
+  assertHandoffCreationCurrent,
+  validateIdempotencyKey,
+  type HandoffCreateRecorded,
+  type HandoffClaimRecorded,
+  type SourceRef,
+  type Ulid,
+} from '@planemem/contracts';
 import type { ContextPack } from '@planemem/context-compiler';
 import type { MemoryRef } from '@planemem/domain';
 import { SessionService, type Session, type SessionScope } from '../session/service.js';
@@ -16,6 +30,7 @@ export interface Checkpoint extends SessionScope {
   open_questions: string[];
   state_hash: string;
   context_pack_hash?: string;
+  context_pack_id?: string;
   memory_ref?: MemoryRef;
   trace_id: string;
   source_refs: SourceRef[];
@@ -29,12 +44,15 @@ export interface Handoff extends SessionScope {
   target_client?: string;
   status: 'open' | 'claimed' | 'expired';
   claimed_by?: string;
+  claimed_by_actor?: string;
   version: number;
   trace_id: string;
   source_refs: SourceRef[];
 }
 
 export interface CreateCheckpointInput extends SessionScope {
+  /** Trusted adapter capability used by durable project visibility checks. */
+  read_restricted?: boolean;
   session_id: Ulid;
   completed: string[];
   in_progress: string[];
@@ -43,17 +61,53 @@ export interface CreateCheckpointInput extends SessionScope {
   risks: string[];
   open_questions: string[];
   context_pack?: ContextPack;
+  /** Trusted adapter resolves this saved ID to context_pack before calling the service. */
+  context_pack_id?: string;
   memory_ref?: MemoryRef;
   trace_id: string;
   expected_session_version: number;
+  receipt?: { key: string; fingerprint: string };
 }
 
 export interface CreateHandoffInput extends SessionScope {
+  session_id?: Ulid;
   checkpoint_id: Ulid;
   from_client: string;
   target_client?: string;
   trace_id: string;
   idempotency_key: string;
+}
+
+export interface ClaimHandoffInput extends SessionScope {
+  read_restricted?: boolean;
+  handoff_id: Ulid;
+  client_id: string;
+  actor_id?: string;
+  expected_version?: number;
+  require_claimed?: boolean;
+  trace_id: string;
+}
+
+export interface CreateHandoffReceiptInput extends CreateHandoffInput {
+  session_id: Ulid;
+  actor_id: string;
+  receipt: { key: string; fingerprint: string };
+  read_restricted?: boolean;
+}
+export interface HandoffCreateCommit {
+  handoff: Handoff;
+  receipt: HandoffCreateRecorded;
+}
+
+export interface ClaimHandoffReceiptInput extends ClaimHandoffInput {
+  actor_id: string;
+  expected_version: number;
+  receipt: { key: string; fingerprint: string };
+  read_restricted?: boolean;
+}
+export interface HandoffClaimCommit {
+  handoff: Handoff;
+  receipt: HandoffClaimRecorded;
 }
 
 export interface ContinuationStoreSnapshot {
@@ -65,13 +119,34 @@ export interface ContinuationStoreSnapshot {
 export interface ContinuationStore {
   loadContinuations(): Promise<ContinuationStoreSnapshot>;
   saveCheckpoint(checkpoint: Checkpoint): Promise<void>;
-  saveHandoff(handoff: Handoff, idempotency_key?: string): Promise<void>;
+  appendCheckpoint?(
+    input: CreateCheckpointInput,
+    prepare: (session: Pick<Session, 'status' | 'version'>, revision: number) => Checkpoint,
+  ): Promise<Checkpoint>;
+  saveHandoff(handoff: Handoff, idempotency_key?: string): Promise<Handoff | void>;
+  createHandoffWithReceipt?(
+    input: CreateHandoffReceiptInput,
+    candidate: Handoff,
+  ): Promise<HandoffCreateCommit>;
+  findCheckpoint?(id: Ulid, scope: SessionScope): Promise<Checkpoint | undefined>;
+  findHandoff?(id: Ulid, scope: SessionScope): Promise<Handoff | undefined>;
+  updateHandoff?(
+    input: ClaimHandoffInput,
+    transition: (current: Handoff) => Handoff,
+  ): Promise<Handoff>;
+  claimHandoffWithReceipt?(
+    input: ClaimHandoffReceiptInput,
+    transition: (current: Handoff) => Handoff,
+  ): Promise<HandoffClaimCommit>;
 }
 
 export class ContinuationService {
   private readonly checkpoints = new Map<string, Checkpoint>();
+  private readonly checkpointReceipts = new Map<string, { id: Ulid; fingerprint: string }>();
   private readonly handoffs = new Map<string, Handoff>();
-  private readonly handoffIdempotency = new Map<string, Handoff>();
+  private readonly handoffIdempotency = new Map<string, Ulid>();
+  // Serialize writes for single-instance store adapters without an atomic update operation.
+  private readonly pendingWrites = new Map<string, Promise<unknown>>();
 
   constructor(
     private readonly sessions: SessionService,
@@ -82,6 +157,7 @@ export class ContinuationService {
     if (!this.store) return;
     const snapshot = await this.store.loadContinuations();
     this.checkpoints.clear();
+    this.checkpointReceipts.clear();
     this.handoffs.clear();
     this.handoffIdempotency.clear();
     for (const checkpoint of snapshot.checkpoints)
@@ -90,7 +166,7 @@ export class ContinuationService {
       const handoff = cloneHandoff(row.handoff);
       this.handoffs.set(String(handoff.handoff_id), handoff);
       if (row.idempotency_key !== undefined)
-        this.handoffIdempotency.set(row.idempotency_key, handoff);
+        this.handoffIdempotency.set(handoffKey(handoff, row.idempotency_key), handoff.handoff_id);
     }
   }
 
@@ -111,7 +187,42 @@ export class ContinuationService {
   }
 
   createCheckpoint(input: CreateCheckpointInput): Checkpoint {
-    const session = this.sessions.getSession(input.session_id, input);
+    const previous = this.replayedCheckpoint(input);
+    if (previous) return previous;
+    return this.rememberCheckpoint(input, this.prepareCheckpoint(input));
+  }
+
+  private replayedCheckpoint(input: CreateCheckpointInput): Checkpoint | undefined {
+    if (!input.receipt) return;
+    const previous = this.checkpointReceipts.get(checkpointReceiptKey(input, input.receipt.key));
+    if (!previous) return;
+    if (previous.fingerprint !== input.receipt.fingerprint)
+      throw new ContractError(
+        'IDEMPOTENCY_KEY_REUSED',
+        'Key belongs to another checkpoint request',
+        { trace_id: input.trace_id },
+      );
+    return this.getCheckpoint(previous.id, input);
+  }
+
+  private rememberCheckpoint(input: CreateCheckpointInput, checkpoint: Checkpoint): Checkpoint {
+    this.checkpoints.set(checkpoint.checkpoint_id, cloneCheckpoint(checkpoint));
+    if (input.receipt)
+      this.checkpointReceipts.set(checkpointReceiptKey(input, input.receipt.key), {
+        id: checkpoint.checkpoint_id,
+        fingerprint: input.receipt.fingerprint,
+      });
+    return cloneCheckpoint(checkpoint);
+  }
+
+  private prepareCheckpoint(
+    input: CreateCheckpointInput,
+    session: Pick<Session, 'status' | 'version'> = this.sessions.getSession(
+      input.session_id,
+      input,
+    ),
+    revision?: number,
+  ): Checkpoint {
     if (session.status !== 'running' && session.status !== 'paused')
       throw new ContractError('SESSION_STATE_CONFLICT', 'Checkpoint requires a live session', {
         session_id: input.session_id,
@@ -126,19 +237,55 @@ export class ContinuationService {
         retryable: false,
       });
     if (
-      input.context_pack !== undefined &&
-      (input.context_pack.scope.project_id !== input.project_id ||
-        input.context_pack.scope.workspace_id !== input.workspace_id ||
-        input.context_pack.scope.tenant_id !== input.tenant_id)
+      input.context_pack_id !== undefined &&
+      (!isUlid(input.context_pack_id) || input.context_pack === undefined)
     )
       throw new ContractError(
-        'CONTEXT_SCOPE_MISMATCH',
-        'ContextPack scope does not match checkpoint scope',
-        { trace_id: input.trace_id, retryable: false },
+        'INVALID_INPUT',
+        'A saved pack binding requires its resolved document',
+        {
+          trace_id: input.trace_id,
+        },
       );
-    const previous = [...this.checkpoints.values()]
-      .filter((checkpoint) => checkpoint.session_id === input.session_id)
-      .sort((left, right) => right.revision - left.revision)[0];
+    if (input.context_pack !== undefined) {
+      if (
+        !input.context_pack?.scope ||
+        typeof input.context_pack.pack_hash !== 'string' ||
+        !input.context_pack.pack_hash
+      )
+        throw new ContractError('INVALID_INPUT', 'ContextPack requires scope and pack_hash', {
+          trace_id: input.trace_id,
+        });
+      this.checkReferenceScope(input, input.context_pack.scope);
+    }
+    if (input.memory_ref !== undefined) {
+      const ref = input.memory_ref;
+      if (
+        typeof ref?.page_ref !== 'string' ||
+        !ref.page_ref ||
+        typeof ref.hash !== 'string' ||
+        !ref.hash ||
+        !Number.isSafeInteger(ref.revision) ||
+        ref.revision < 1
+      )
+        throw new ContractError(
+          'INVALID_INPUT',
+          'Memory reference requires a page, revision and hash',
+          { trace_id: input.trace_id },
+        );
+      this.checkReferenceScope(input, ref);
+    }
+    for (const source of [input.memory_ref, input.context_pack]) {
+      if (!source) continue;
+      try {
+        if (!Array.isArray(source.source_refs)) throw new TypeError();
+        source.source_refs.forEach(validateSourceRef);
+      } catch {
+        throw new ContractError('INVALID_INPUT', 'Invalid checkpoint source references', {
+          trace_id: input.trace_id,
+        });
+      }
+    }
     const checkpoint: Checkpoint = {
       schema_version: 1,
       tenant_id: input.tenant_id,
@@ -146,7 +293,7 @@ export class ContinuationService {
       project_id: input.project_id,
       checkpoint_id: createUlid(),
       session_id: input.session_id,
-      revision: (previous?.revision ?? 0) + 1,
+      revision: revision ?? this.nextRevision(input.session_id),
       completed: [...input.completed],
       in_progress: [...input.in_progress],
       next_actions: [...input.next_actions],
@@ -162,16 +309,23 @@ export class ContinuationService {
           risks: input.risks,
           open_questions: input.open_questions,
           context_pack_hash: input.context_pack?.pack_hash,
+          ...(input.context_pack_id === undefined
+            ? {}
+            : { context_pack_id: input.context_pack_id }),
           memory_page_ref: input.memory_ref?.page_ref,
         }),
       ),
       ...(input.context_pack === undefined
         ? {}
         : { context_pack_hash: input.context_pack.pack_hash }),
+      ...(input.context_pack_id === undefined ? {} : { context_pack_id: input.context_pack_id }),
       ...(input.memory_ref === undefined ? {} : { memory_ref: input.memory_ref }),
       trace_id: input.trace_id,
       source_refs: [
         { type: 'session', id: String(input.session_id) },
+        ...(input.context_pack_id === undefined
+          ? []
+          : [{ type: 'context-pack', id: input.context_pack_id }]),
         ...(input.memory_ref?.source_refs ?? []),
         ...(input.context_pack?.source_refs ?? []),
       ].filter(
@@ -180,21 +334,61 @@ export class ContinuationService {
           index,
       ),
     };
-    this.checkpoints.set(String(checkpoint.checkpoint_id), checkpoint);
-    return cloneCheckpoint(checkpoint);
-  }
-
-  async createCheckpointAsync(input: CreateCheckpointInput): Promise<Checkpoint> {
-    const checkpoint = this.createCheckpoint(input);
-    await this.store?.saveCheckpoint(checkpoint);
     return checkpoint;
   }
 
+  private nextRevision(sessionId: Ulid): number {
+    let revision = 0;
+    for (const checkpoint of this.checkpoints.values())
+      if (checkpoint.session_id === sessionId) revision = Math.max(revision, checkpoint.revision);
+    return revision + 1;
+  }
+
+  private checkReferenceScope(input: CreateCheckpointInput, scope: SessionScope): void {
+    if (
+      scope.tenant_id !== input.tenant_id ||
+      scope.workspace_id !== input.workspace_id ||
+      scope.project_id !== input.project_id
+    )
+      throw new ContractError(
+        'CONTEXT_SCOPE_MISMATCH',
+        'Reference scope does not match checkpoint scope',
+        { trace_id: input.trace_id },
+      );
+  }
+
+  async createCheckpointAsync(input: CreateCheckpointInput): Promise<Checkpoint> {
+    if (!this.store) return this.createCheckpoint(input);
+    const store = this.store;
+    return this.serializeWrite(input.session_id, async () => {
+      if (store.appendCheckpoint) {
+        const checkpoint = await store.appendCheckpoint(input, (session, revision) =>
+          this.prepareCheckpoint(input, session, revision),
+        );
+        return this.rememberCheckpoint(input, checkpoint);
+      }
+      const previous = this.replayedCheckpoint(input);
+      if (previous) return previous;
+      const checkpoint = this.prepareCheckpoint(input);
+      await store.saveCheckpoint(checkpoint);
+      return this.rememberCheckpoint(input, checkpoint);
+    });
+  }
+
   createHandoff(input: CreateHandoffInput): Handoff {
-    const previous = this.handoffIdempotency.get(input.idempotency_key);
-    if (previous !== undefined) return cloneHandoff(previous);
     const checkpoint = this.getCheckpoint(input.checkpoint_id, input);
-    const handoff: Handoff = {
+    const handoff = this.prepareHandoff(input, checkpoint);
+    return this.rememberHandoff(input, handoff);
+  }
+
+  private prepareHandoff(input: CreateHandoffInput, checkpoint: Checkpoint): Handoff {
+    if (input.session_id !== undefined && input.session_id !== checkpoint.session_id)
+      throw new ContractError('SESSION_SCOPE_MISMATCH', 'Checkpoint belongs to another session', {
+        trace_id: input.trace_id,
+      });
+    const previous = this.handoffIdempotency.get(handoffKey(input, input.idempotency_key));
+    if (previous !== undefined) return this.getHandoff(previous, input);
+    return {
       schema_version: 1,
       tenant_id: checkpoint.tenant_id,
       workspace_id: checkpoint.workspace_id,
@@ -208,31 +402,124 @@ export class ContinuationService {
       trace_id: input.trace_id,
       source_refs: [{ type: 'checkpoint', id: String(checkpoint.checkpoint_id) }],
     };
-    this.handoffs.set(String(handoff.handoff_id), handoff);
-    this.handoffIdempotency.set(input.idempotency_key, handoff);
-    return cloneHandoff(handoff);
+  }
+
+  private rememberHandoff(input: CreateHandoffInput, handoff: Handoff): Handoff {
+    this.assertScope(handoff, input, input.trace_id);
+    if (
+      handoff.checkpoint_id !== input.checkpoint_id ||
+      handoff.from_client !== input.from_client ||
+      handoff.target_client !== input.target_client
+    )
+      throw new ContractError(
+        'IDEMPOTENCY_KEY_REUSED',
+        'Idempotency key belongs to another handoff request',
+        {
+          trace_id: input.trace_id,
+        },
+      );
+    const cached = this.handoffs.get(handoff.handoff_id);
+    if (!cached || cached.version < handoff.version) this.handoffs.set(handoff.handoff_id, handoff);
+    this.handoffIdempotency.set(handoffKey(input, input.idempotency_key), handoff.handoff_id);
+    return this.getHandoff(handoff.handoff_id, input);
   }
 
   async createHandoffAsync(input: CreateHandoffInput): Promise<Handoff> {
-    const previous = this.handoffIdempotency.get(input.idempotency_key);
-    if (previous !== undefined) return cloneHandoff(previous);
-    const handoff = this.createHandoff(input);
-    await this.store?.saveHandoff(handoff, input.idempotency_key);
-    return handoff;
+    if (!this.store) return this.createHandoff(input);
+    const store = this.store;
+    const key = handoffKey(input, input.idempotency_key);
+    return this.serializeWrite(key, async () => {
+      const handoff = this.prepareHandoff(
+        input,
+        await this.getCheckpointAsync(input.checkpoint_id, input),
+      );
+      if (this.handoffIdempotency.has(key)) return this.rememberHandoff(input, handoff);
+      const stored = await store.saveHandoff(handoff, input.idempotency_key);
+      return this.rememberHandoff(input, stored ?? handoff);
+    });
   }
 
-  claimHandoff(
-    input: SessionScope & { handoff_id: Ulid; client_id: string; trace_id: string },
-  ): Handoff {
-    const handoff = this.handoffs.get(String(input.handoff_id));
-    if (!handoff)
-      throw new ContractError('HANDOFF_NOT_FOUND', 'Handoff does not exist', {
-        handoff_id: input.handoff_id,
+  claimHandoff(input: ClaimHandoffInput): Handoff {
+    const handoff = this.claimedHandoff(this.getHandoff(input.handoff_id, input), input);
+    this.handoffs.set(handoff.handoff_id, handoff);
+    return cloneHandoff(handoff);
+  }
+
+  /** Always consult durable history; the legacy in-memory key map is not creation evidence. */
+  async createHandoffWithReceiptAsync(
+    input: CreateHandoffReceiptInput,
+  ): Promise<HandoffCreateCommit> {
+    const store = this.store;
+    if (!store?.createHandoffWithReceipt)
+      throw new ContractError(
+        'SESSION_RECEIPT_STORAGE_UNAVAILABLE',
+        'Durable handoff creation is unavailable',
+        {
+          trace_id: input.trace_id,
+          retryable: true,
+        },
+      );
+    const command = parseHandoffCreateCommand({
+      session_id: input.session_id,
+      checkpoint_id: input.checkpoint_id,
+      from_client: input.from_client,
+      ...(input.target_client === undefined ? {} : { target_client: input.target_client }),
+    });
+    validateIdempotencyKey(input.idempotency_key);
+    if (
+      !isUlid(input.session_id) ||
+      !input.actor_id ||
+      !/^[a-f0-9]{64}$/.test(input.receipt.key) ||
+      !/^[a-f0-9]{64}$/.test(input.receipt.fingerprint)
+    )
+      throw new ContractError('INVALID_INPUT', 'Invalid original handoff creation', {
         trace_id: input.trace_id,
-        retryable: false,
       });
+    const candidate: Handoff = {
+      schema_version: 1,
+      tenant_id: input.tenant_id,
+      workspace_id: input.workspace_id,
+      project_id: input.project_id,
+      handoff_id: createUlid(),
+      checkpoint_id: input.checkpoint_id,
+      from_client: input.from_client,
+      ...(input.target_client === undefined ? {} : { target_client: input.target_client }),
+      status: 'open',
+      version: 1,
+      trace_id: input.trace_id,
+      source_refs: [{ type: 'checkpoint', id: input.checkpoint_id }],
+    };
+    const committed = await store.createHandoffWithReceipt(input, candidate);
+    try {
+      const receipt = parseHandoffCreateReceiptLookup(
+        committed.receipt,
+        input.session_id,
+        command,
+        {
+          actor_id: input.actor_id,
+          client_id: input.from_client,
+        },
+      );
+      if (receipt.status !== 'recorded') throw new TypeError();
+      assertHandoffCreationCurrent(committed.handoff, receipt, input);
+      const cached = this.handoffs.get(committed.handoff.handoff_id);
+      if (!cached || cached.version <= committed.handoff.version)
+        this.handoffs.set(committed.handoff.handoff_id, cloneHandoff(committed.handoff));
+      // Do not add this actor-bound receipt to the legacy client-only idempotency map.
+      return { handoff: cloneHandoff(committed.handoff), receipt };
+    } catch {
+      throw new ContractError(
+        'SESSION_RECEIPT_INVALID',
+        'Committed handoff creation could not be confirmed',
+        {
+          trace_id: input.trace_id,
+        },
+      );
+    }
+  }
+
+  private claimedHandoff(handoff: Handoff, input: ClaimHandoffInput): Handoff {
     this.assertScope(handoff, input, input.trace_id);
-    if (handoff.status === 'claimed') return cloneHandoff(handoff);
     if (handoff.status === 'expired')
       throw new ContractError('HANDOFF_EXPIRED', 'Handoff has expired', {
         handoff_id: input.handoff_id,
@@ -245,19 +532,145 @@ export class ContinuationService {
         trace_id: input.trace_id,
         retryable: false,
       });
-    handoff.status = 'claimed';
-    handoff.claimed_by = input.client_id;
-    handoff.version += 1;
-    handoff.trace_id = input.trace_id;
-    return cloneHandoff(handoff);
+    if (handoff.status === 'claimed') {
+      if (input.require_claimed && handoff.claimed_by_actor === undefined)
+        throw new ContractError(
+          'HANDOFF_ACCESS_DENIED',
+          'This older claim has no recorded actor for workbench resume',
+          { trace_id: input.trace_id },
+        );
+      if (
+        handoff.claimed_by !== input.client_id ||
+        (handoff.claimed_by_actor !== undefined && handoff.claimed_by_actor !== input.actor_id)
+      )
+        throw new ContractError(
+          'HANDOFF_CLAIM_CONFLICT',
+          'Handoff has already been claimed by another recipient',
+          {
+            trace_id: input.trace_id,
+          },
+        );
+      return handoff;
+    }
+    if (input.expected_version !== undefined && input.expected_version !== handoff.version)
+      throw new ContractError(
+        'HANDOFF_VERSION_CONFLICT',
+        'Handoff changed since it was displayed',
+        {
+          current_version: handoff.version,
+          expected_version: input.expected_version,
+          trace_id: input.trace_id,
+        },
+      );
+    if (input.require_claimed)
+      throw new ContractError(
+        'HANDOFF_CLAIM_REQUIRED',
+        'Claim ownership before resuming this handoff',
+        { trace_id: input.trace_id },
+      );
+    return {
+      ...handoff,
+      status: 'claimed',
+      claimed_by: input.client_id,
+      ...(input.actor_id === undefined ? {} : { claimed_by_actor: input.actor_id }),
+      version: handoff.version + 1,
+      trace_id: input.trace_id,
+    };
   }
 
-  async claimHandoffAsync(
-    input: SessionScope & { handoff_id: Ulid; client_id: string; trace_id: string },
-  ): Promise<Handoff> {
-    const handoff = this.claimHandoff(input);
-    await this.store?.saveHandoff(handoff, undefined);
-    return handoff;
+  async claimHandoffAsync(input: ClaimHandoffInput): Promise<Handoff> {
+    if (!this.store) return this.claimHandoff(input);
+    const store = this.store;
+    return this.serializeWrite(input.handoff_id, async () => {
+      let handoff: Handoff;
+      if (store.updateHandoff) {
+        handoff = await store.updateHandoff(input, (current) =>
+          this.claimedHandoff(current, input),
+        );
+      } else {
+        const current = this.getHandoff(input.handoff_id, input);
+        handoff = this.claimedHandoff(current, input);
+        if (handoff !== current) await store.saveHandoff(handoff);
+      }
+      this.handoffs.set(handoff.handoff_id, handoff);
+      return cloneHandoff(handoff);
+    });
+  }
+
+  /** A durable original-command outcome, separate from the handoff's current ownership. */
+  async claimHandoffWithReceiptAsync(input: ClaimHandoffReceiptInput): Promise<HandoffClaimCommit> {
+    const store = this.store;
+    if (!store?.claimHandoffWithReceipt)
+      throw new ContractError(
+        'SESSION_RECEIPT_STORAGE_UNAVAILABLE',
+        'Durable handoff claim receipts are unavailable',
+        { trace_id: input.trace_id, retryable: true },
+      );
+    if (
+      !isUlid(input.handoff_id) ||
+      !input.actor_id ||
+      !input.client_id ||
+      !Number.isSafeInteger(input.expected_version) ||
+      input.expected_version < 1 ||
+      input.expected_version >= Number.MAX_SAFE_INTEGER ||
+      !/^[a-f0-9]{64}$/.test(input.receipt.key) ||
+      !/^[a-f0-9]{64}$/.test(input.receipt.fingerprint) ||
+      input.require_claimed === true
+    )
+      throw new ContractError('INVALID_INPUT', 'Invalid original handoff claim', {
+        trace_id: input.trace_id,
+      });
+    return this.serializeWrite(input.handoff_id, async () => {
+      const commit = await store.claimHandoffWithReceipt!(input, (current) => {
+        this.assertScope(current, input, input.trace_id);
+        if (current.version !== input.expected_version)
+          throw new ContractError(
+            'HANDOFF_VERSION_CONFLICT',
+            'Handoff changed since this original request',
+            { trace_id: input.trace_id },
+          );
+        if (current.status === 'claimed' && current.claimed_by_actor === undefined)
+          throw new ContractError(
+            'HANDOFF_CLAIM_LEGACY_UNVERIFIED',
+            'The historical claim has no recorded actor',
+            { trace_id: input.trace_id },
+          );
+        return this.claimedHandoff(current, input);
+      });
+      const receipt = parseHandoffClaimReceiptLookup(
+        commit.receipt,
+        input.handoff_id,
+        input.expected_version,
+        input,
+      );
+      this.assertScope(commit.handoff, input, input.trace_id);
+      if (
+        receipt.status !== 'recorded' ||
+        commit.handoff.handoff_id !== input.handoff_id ||
+        receipt.checkpoint_id !== commit.handoff.checkpoint_id ||
+        !Number.isSafeInteger(commit.handoff.version) ||
+        commit.handoff.version < receipt.handoff_version
+      )
+        throw new ContractError(
+          'SESSION_RECEIPT_INVALID',
+          'Stored handoff claim does not match current history',
+          { trace_id: input.trace_id },
+        );
+      // Publish only the current committed handoff, never a historical snapshot from its receipt.
+      this.handoffs.set(commit.handoff.handoff_id, cloneHandoff(commit.handoff));
+      return { handoff: cloneHandoff(commit.handoff), receipt };
+    });
+  }
+
+  private async serializeWrite<T>(key: string, write: () => Promise<T>): Promise<T> {
+    const previous = this.pendingWrites.get(key);
+    const pending = previous ? previous.then(write, write) : write();
+    this.pendingWrites.set(key, pending);
+    try {
+      return await pending;
+    } finally {
+      if (this.pendingWrites.get(key) === pending) this.pendingWrites.delete(key);
+    }
   }
 
   getHandoff(handoff_id: Ulid, scope: SessionScope & { trace_id?: string }): Handoff {
@@ -284,6 +697,18 @@ export class ContinuationService {
     return cloneCheckpoint(checkpoint);
   }
 
+  private async getCheckpointAsync(
+    id: Ulid,
+    scope: SessionScope & { trace_id?: string },
+  ): Promise<Checkpoint> {
+    if (this.store?.findCheckpoint) {
+      const row = await this.store.findCheckpoint(id, scope);
+      if (row) this.checkpoints.set(id, row);
+      else this.checkpoints.delete(id);
+    }
+    return this.getCheckpoint(id, scope);
+  }
+
   resumeSession(
     input: SessionScope & {
       handoff_id: Ulid;
@@ -298,12 +723,20 @@ export class ContinuationService {
     const session = this.sessions.startSession({
       ...input,
       parent_session_id: checkpoint.session_id,
+      resume_origin: {
+        handoff_id: input.handoff_id,
+        checkpoint_id: checkpoint.checkpoint_id,
+        require_claimed: false,
+      },
     });
     return { session, checkpoint, handoff };
   }
 
   async resumeSessionAsync(
     input: SessionScope & {
+      read_restricted?: boolean;
+      session_id?: Ulid;
+      require_claimed?: boolean;
       handoff_id: Ulid;
       client_id: string;
       actor_id: string;
@@ -311,13 +744,37 @@ export class ContinuationService {
       idempotency_key: string;
     },
   ): Promise<{ session: Session; checkpoint: Checkpoint; handoff: Handoff }> {
+    const checkpoint = await this.checkpointForResumeAsync(input);
     const handoff = await this.claimHandoffAsync(input);
-    const checkpoint = this.getCheckpoint(handoff.checkpoint_id, input);
     const session = await this.sessions.startSessionAsync({
       ...input,
       parent_session_id: checkpoint.session_id,
+      resume_origin: {
+        handoff_id: input.handoff_id,
+        checkpoint_id: checkpoint.checkpoint_id,
+        require_claimed: input.require_claimed === true,
+      },
     });
     return { session, checkpoint, handoff };
+  }
+
+  /** Read and authorize the immutable checkpoint without claiming or starting a session. */
+  async checkpointForResumeAsync(
+    input: ClaimHandoffInput & { session_id?: Ulid },
+  ): Promise<Checkpoint> {
+    if (this.store?.findHandoff) {
+      const row = await this.store.findHandoff(input.handoff_id, input);
+      if (row) this.handoffs.set(row.handoff_id, row);
+      else this.handoffs.delete(input.handoff_id);
+    }
+    const ref = this.getHandoff(input.handoff_id, input);
+    const checkpoint = await this.getCheckpointAsync(ref.checkpoint_id, input);
+    if (input.session_id !== undefined && input.session_id !== checkpoint.session_id)
+      throw new ContractError('SESSION_SCOPE_MISMATCH', 'Resume session does not match handoff', {
+        trace_id: input.trace_id,
+      });
+    this.claimedHandoff(ref, input);
+    return checkpoint;
   }
 
   private assertScope(value: SessionScope, scope: SessionScope, trace_id: string): void {
@@ -334,20 +791,31 @@ export class ContinuationService {
 }
 
 function cloneCheckpoint(checkpoint: Checkpoint): Checkpoint {
-  return {
-    ...checkpoint,
-    completed: [...checkpoint.completed],
-    in_progress: [...checkpoint.in_progress],
-    next_actions: [...checkpoint.next_actions],
-    decisions: [...checkpoint.decisions],
-    risks: [...checkpoint.risks],
-    open_questions: [...checkpoint.open_questions],
-    source_refs: [...checkpoint.source_refs],
-  };
+  return structuredClone(checkpoint);
 }
 
 function cloneHandoff(handoff: Handoff): Handoff {
   return { ...handoff, source_refs: [...handoff.source_refs] };
+}
+
+function handoffKey(scope: SessionScope & { from_client: string }, key: string): string {
+  return JSON.stringify([
+    scope.tenant_id,
+    scope.workspace_id,
+    scope.project_id,
+    scope.from_client,
+    key,
+  ]);
+}
+
+function checkpointReceiptKey(input: CreateCheckpointInput, key: string): string {
+  return JSON.stringify([
+    input.tenant_id,
+    input.workspace_id,
+    input.project_id,
+    input.session_id,
+    key,
+  ]);
 }
 
 function stableHash(value: string): string {

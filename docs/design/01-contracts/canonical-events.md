@@ -30,7 +30,19 @@
 
 ## 事件集合
 
-ProjectCreated/Updated、WorkItemCreated/Updated、WorkItemStatusProposed/Confirmed、PlanCreated、PlanRevisionCreated、DecisionRecorded、RiskRaised/Resolved、ArtifactCreated/Updated、SessionStarted/Ended、AgentRunStarted/Completed、ToolCallStarted/Completed、CheckpointCreated、HandoffCreated/Accepted、ContextPackIssued、ConflictDetected/Resolved、ClientConnected/Disconnected、PolicyDenied、ApprovalRequested/Completed。
+ProjectCreated/Updated、WorkItemCreated/Updated/Deleted/Restored、WorkItemStatusProposed/Confirmed、PlanCreated、PlanRevisionCreated、DecisionRecorded、RiskRaised/Resolved、ArtifactCreated/Updated、SessionStarted/Ended、AgentRunStarted/Completed、ToolCallStarted/Completed、CheckpointCreated、HandoffCreated/Accepted、ContextPackIssued、ConflictDetected/Resolved、ClientConnected/Disconnected、PolicyDenied、ApprovalRequested/Completed。
+
+## WorkItemDeleted（2026-11-02，仅源码）
+
+事件封套 schema_version=1、aggregate_type=work_item，必须有 project_id；payload 只允许必填 external_id，遵循既有外部标识校验。occurred_at 是删除观察的源时间，aggregate_version 沿用同一 aggregate 的严格顺序，不因删除而跳过缺口。`canonical-event.json` 通过条件引用 `work-item-deleted.json` 增加这些限制，运行时 validateEvent 同步校验。
+
+删除仍经签名 Canonical Webhook 和持久 inbox，不调用 Plane 删除 API，也不宣称已完成原生 Plane 删除 Webhook 转换。已提交删除保留历史事件、别名和删除快照，并停用对应检索索引。观察 state 的内层 schema_version=2 用于删除标记（外层 HTTP envelope 与事件仍为 v1），活动观察继续为 v1。普通后续更新不能恢复已删除工作项；显式恢复见下节，项目删除和外部副本清理仍待开发。040 迁移只新增文件，没有执行编译、测试、迁移、启动或发布。
+
+## WorkItemRestored（2026-11-02，仅源码）
+
+封套仍为 v1，aggregate_type=work_item，必须有 project_id 和 causation_id。payload 必填 external_id、非空 title（最长 2000 字符）、非空 status（最长 255 字符），以及 restored_from；其余业务观察字段可选。restored_from 只含 event_id（删除事件 ULID）和 aggregate_version（删除版本，正安全整数）。causation_id 必须等于引用 event_id，恢复事件 ID 必须不同，恢复版本必须是删除版本加一且为安全整数。JSON Schema 通过 work-item-restored.json 描述结构，跨字段相等及版本算术由 validateEvent 校验。
+
+payload 是全新活动观察，不合并删除前字段。无已提交基线或存在版本缺口时等待；紧邻版本仍需精确匹配最新 WorkItemDeleted 的事件 ID、版本与 external_id。事务锁内核对删除快照、删除源事件和未过期删除索引，缺失或不一致拒绝 PLANE_RESTORE_PRECONDITION_FAILED。成功后清除本地删除标记、保留到期时间和较高分类；旧事件不修改。恢复结果为内层 v1，并带顶层 restored_from 来源；后续普通更新不携带该顶层来源。此入口不向 Plane 发恢复命令，不恢复外部副本，也未实现原生恢复事件映射。沿用尚未执行的 040，无新迁移。
 
 ## 消费者要求
 

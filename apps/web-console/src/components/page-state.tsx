@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { AuthRequiredError } from '../lib/server-api';
+import { AuthRequiredError, WorkbenchApiError } from '../lib/server-api';
 import { EmptyState, QueryError } from './ui';
 
 export function LoginRequired() {
@@ -19,46 +19,22 @@ export function LoginRequired() {
 }
 
 export function PageError({ error }: { error: unknown }) {
-  return error instanceof AuthRequiredError ? (
-    <LoginRequired />
-  ) : (
+  if (error instanceof AuthRequiredError) return <LoginRequired />;
+  if (error instanceof WorkbenchApiError && error.status === 403)
+    return (
+      <div className="panel">
+        <EmptyState
+          title="Access denied"
+          message="Your account cannot read this view in the selected project."
+          trace={error.trace_id}
+        />
+      </div>
+    );
+  return (
     <div className="panel">
       <QueryError error={error} />
     </div>
   );
 }
 
-export function numberValue(value: unknown): number {
-  const parsed = typeof value === 'number' ? value : Number(value ?? 0);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-export function textValue(value: unknown, fallback = '—'): string {
-  return typeof value === 'string' && value.length > 0 ? value : fallback;
-}
-
-export function toneFor(value: unknown): string {
-  const normalized = String(value ?? '').toLowerCase();
-  if (normalized.includes('block') || normalized.includes('denied') || normalized.includes('error'))
-    return 'red';
-  if (
-    normalized.includes('review') ||
-    normalized.includes('proposed') ||
-    normalized.includes('pending')
-  )
-    return 'yellow';
-  if (
-    normalized.includes('done') ||
-    normalized.includes('confirmed') ||
-    normalized.includes('allowed') ||
-    normalized.includes('running')
-  )
-    return 'green';
-  if (
-    normalized.includes('active') ||
-    normalized.includes('progress') ||
-    normalized.includes('latest')
-  )
-    return 'cyan';
-  return 'neutral';
-}
+export { numberValue, textValue, toneFor } from './record-format';

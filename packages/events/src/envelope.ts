@@ -2,6 +2,8 @@ import {
   ContractError,
   assertUlid,
   assertUtcTimestamp,
+  parseObservedRecordId,
+  parsePlaneRestoreReference,
   type Classification,
   type ErrorEnvelope,
   type SourceRef,
@@ -13,6 +15,8 @@ export const CANONICAL_EVENT_TYPES = [
   'ProjectUpdated',
   'WorkItemCreated',
   'WorkItemUpdated',
+  'WorkItemDeleted',
+  'WorkItemRestored',
   'WorkItemStatusProposed',
   'WorkItemStatusConfirmed',
   'PlanCreated',
@@ -32,9 +36,15 @@ export const CANONICAL_EVENT_TYPES = [
   'HandoffCreated',
   'HandoffAccepted',
   'ContextPackIssued',
+  'ContextItemCreated',
+  'ContextItemUpdated',
+  'ContextItemArchived',
+  'ContextItemRestored',
+  'ContextItemConfirmed',
   'ConflictDetected',
   'ConflictResolved',
   'ClientConnected',
+  'ClientEventRecorded',
   'ClientDisconnected',
   'PolicyDenied',
   'ApprovalRequested',
@@ -186,6 +196,36 @@ export function validateEvent<T = Record<string, unknown>>(
     }
     if (!isRecord(input.payload)) {
       throw new TypeError('payload must be an object');
+    }
+    if (eventType === 'WorkItemDeleted') {
+      if (
+        input.aggregate_type !== 'work_item' ||
+        input.project_id === undefined ||
+        Object.keys(input.payload).some((key) => key !== 'external_id')
+      )
+        throw new TypeError(
+          'WorkItemDeleted requires a scoped work_item and only external_id in payload',
+        );
+      parseObservedRecordId(input.payload.external_id);
+    }
+    if (eventType === 'WorkItemRestored') {
+      const ref = parsePlaneRestoreReference(input.payload.restored_from, input.aggregate_version);
+      if (
+        input.aggregate_type !== 'work_item' ||
+        input.project_id === undefined ||
+        input.causation_id !== ref.event_id ||
+        input.event_id === ref.event_id ||
+        typeof input.payload.title !== 'string' ||
+        !input.payload.title.trim() ||
+        input.payload.title.length > 2000 ||
+        typeof input.payload.status !== 'string' ||
+        !input.payload.status.trim() ||
+        input.payload.status.length > 255
+      )
+        throw new TypeError(
+          'WorkItemRestored requires a scoped work_item, title, status and matching deletion causation',
+        );
+      parseObservedRecordId(input.payload.external_id);
     }
   } catch (error) {
     return invalid('EVENT_SCHEMA_VALIDATION_FAILED', traceId, {

@@ -12,14 +12,17 @@
     "test": "node --test"
   },
   "dependencies": {
+    "@planemem/artifact-service": "workspace:*",
     "@planemem/audit-service": "workspace:*",
     "@planemem/contracts": "workspace:*",
+    "@planemem/context-compiler": "workspace:*",
     "@planemem/events": "workspace:*",
     "@planemem/plane-connector": "workspace:*",
     "@planemem/policy-service": "workspace:*",
     "@planemem/search-service": "workspace:*",
     "postgres": "3.4.7",
     "@planemem/context-service": "workspace:*",
-    "@planemem/session-service": "workspace:*"
+    "@planemem/session-service": "workspace:*",
+    "@planemem/sync-service": "workspace:*"
   }
 }

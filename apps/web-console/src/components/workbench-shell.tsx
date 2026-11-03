@@ -7,11 +7,15 @@ import { Icon, LogoMark } from './icons';
 
 const navItems = [
   { href: '/overview', label: 'Project Overview', icon: 'home' },
+  { href: '/search', label: 'Search', icon: 'search' },
   { href: '/work-items', label: 'Work Items', icon: 'work' },
   { href: '/context', label: 'Context', icon: 'context' },
+  { href: '/artifacts', label: 'Files & artifacts', icon: 'database' },
+  { href: '/proposals', label: 'Proposals', icon: 'decision' },
   { href: '/sessions', label: 'Sessions', icon: 'sessions' },
   { href: '/handoffs', label: 'Handoffs', icon: 'handoffs' },
   { href: '/conflicts', label: 'Conflicts', icon: 'conflicts' },
+  { href: '/sync/receipt', label: 'Sync receipts', icon: 'refresh' },
   { href: '/audit', label: 'Audit', icon: 'audit' },
   { href: '/admin', label: 'Admin', icon: 'admin' },
 ] as const;
@@ -35,7 +39,7 @@ export function WorkbenchShell({ children, actor }: { children: ReactNode; actor
             <Link
               key={item.href}
               href={item.href}
-              className={`nav-item ${active === item.href ? 'is-active' : ''}`}
+              className={`nav-item ${active === item.href || active.startsWith(item.href + '/') ? 'is-active' : ''}`}
             >
               <Icon name={item.icon} />
               <span>{item.label}</span>
@@ -47,7 +51,10 @@ export function WorkbenchShell({ children, actor }: { children: ReactNode; actor
           <strong>PlaneMem / Work Continuity Platform</strong>
           <p>Keep work moving across AI clients.</p>
           <div className="sidebar-sync">
-            <i /> Live · request scoped
+            <i />{' '}
+            {active.startsWith('/sync/receipt')
+              ? 'Saved originals · explicit lookup'
+              : 'Live · request scoped'}
           </div>
         </div>
       </aside>
@@ -63,15 +70,25 @@ export function WorkbenchShell({ children, actor }: { children: ReactNode; actor
           </div>
           <div className="topbar-right">
             <div className="live-pill">
-              <i /> LIVE <span>· fresh query</span>
+              <i /> {active.startsWith('/sync/receipt') ? 'READ ONLY' : 'LIVE'}{' '}
+              <span>
+                · {active.startsWith('/sync/receipt') ? 'explicit lookup' : 'fresh query'}
+              </span>
             </div>
             <div className="health-pill">
-              <span>⌂</span> Connected
+              <span>⌂</span> {active.startsWith('/sync/receipt') ? 'On demand' : 'Connected'}
             </div>
-            <div className="global-search">
+            <form className="global-search" role="search" action="/search" method="get">
               <Icon name="search" />
-              <span>Search...</span>
-            </div>
+              <input
+                type="search"
+                name="q"
+                aria-label="Search saved project records"
+                placeholder="Search project records…"
+                maxLength={500}
+                required
+              />
+            </form>
             <button className="icon-button" aria-label="Notifications">
               <Icon name="bell" />
             </button>

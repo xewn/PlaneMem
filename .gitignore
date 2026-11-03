@@ -10,3 +10,8 @@ pnpm-debug.log*
 # Generated release evidence, offline image bundles and local browser/k3s data.
 # Curated evidence already tracked in Git remains tracked after this rule.
 artifacts/
+!/apps/web-console/src/app/artifacts/
+!/apps/web-console/src/app/artifacts/**
+
+# Local proposal queue, bindings and drafts.
+/workers/intelligence/.local/

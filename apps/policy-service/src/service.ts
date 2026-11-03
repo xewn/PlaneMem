@@ -112,6 +112,16 @@ export class PolicyService {
 }
 
 function capabilityFor(action: string): string | undefined {
+  if (action === 'export.audit') return 'audit.read';
+  if (action === 'export.artifact') return 'artifact.read';
+  if (action === 'artifact.read' || action === 'artifact.write') return action;
+  if (action === 'plane.retry') return action;
+  if (action === 'context.review') return action;
+  if (action === 'proposal.write' || action === 'proposal.review') return action;
+  if (action === 'audit.read') return 'audit.read';
+  if (action === 'conflict.resolve') return 'conflict.resolve';
+  if (action === 'sync.read') return 'sync.read';
+  if (action === 'sync.write') return 'sync.write';
   if (action.startsWith('context.read') || action.startsWith('project.read')) return 'context.read';
   if (action.startsWith('context.write')) return 'context.write';
   if (action.startsWith('handoff.claim')) return 'handoff.claim';

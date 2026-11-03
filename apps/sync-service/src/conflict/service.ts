@@ -1,9 +1,10 @@
 import { ContractError, createUlid, type SourceRef, type Ulid } from '@planemem/contracts';
+import { isDeepStrictEqual } from 'node:util';
 import type { SyncScope } from '../cursor/service.js';
 
-export interface ConflictRecord extends SyncScope {
+export interface ConflictRecord<Id extends string = Ulid> extends SyncScope {
   schema_version: 1;
-  conflict_id: Ulid;
+  conflict_id: Id;
   entity_type: string;
   entity_id: string;
   field: string;
@@ -14,10 +15,20 @@ export interface ConflictRecord extends SyncScope {
   server_value: unknown;
   status: 'open' | 'resolved';
   resolution?: 'local' | 'server' | 'merge';
+  resolved_value?: unknown;
   actor_id?: string;
   version: number;
   trace_id: string;
   source_refs: SourceRef[];
+}
+
+export interface ResolveConflictInput<Id extends string = Ulid> extends SyncScope {
+  conflict_id: Id;
+  resolution: 'local' | 'server' | 'merge';
+  merged_value?: unknown;
+  actor_id: string;
+  expected_version: number;
+  trace_id: string;
 }
 
 export class ConflictService {
@@ -56,7 +67,13 @@ export class ConflictService {
       source_refs?: SourceRef[];
     },
   ): ConflictRecord | undefined {
-    if (input.local_version === input.server_version) return undefined;
+    // Two clients may both advance to the same revision from the same base.
+    if (
+      input.local_version === input.server_version &&
+      (input.local_version <= input.base_version ||
+        isDeepStrictEqual(input.local_value, input.server_value))
+    )
+      return undefined;
     const conflict: ConflictRecord = {
       schema_version: 1,
       tenant_id: input.tenant_id,
@@ -79,7 +96,7 @@ export class ConflictService {
           ? [{ type: input.entity_type, id: input.entity_id }]
           : [...input.source_refs],
     };
-    this.conflicts.set(String(conflict.conflict_id), conflict);
+    this.conflicts.set(String(conflict.conflict_id), clone(conflict));
     return clone(conflict);
   }
 
@@ -94,15 +111,7 @@ export class ConflictService {
       .map(clone);
   }
 
-  resolveConflict(
-    input: SyncScope & {
-      conflict_id: Ulid;
-      resolution: 'local' | 'server' | 'merge';
-      actor_id: string;
-      expected_version: number;
-      trace_id: string;
-    },
-  ): ConflictRecord {
+  resolveConflict(input: ResolveConflictInput): ConflictRecord {
     const conflict = this.conflicts.get(String(input.conflict_id));
     if (!conflict)
       throw new ContractError('CONFLICT_NOT_FOUND', 'Conflict does not exist', {
@@ -110,30 +119,9 @@ export class ConflictService {
         trace_id: input.trace_id,
         retryable: false,
       });
-    if (
-      conflict.tenant_id !== input.tenant_id ||
-      conflict.workspace_id !== input.workspace_id ||
-      conflict.project_id !== input.project_id
-    )
-      throw new ContractError('CONFLICT_ACCESS_DENIED', 'Conflict scope is not authorized', {
-        conflict_id: input.conflict_id,
-        trace_id: input.trace_id,
-        retryable: false,
-      });
-    if (conflict.status === 'resolved') return clone(conflict);
-    if (conflict.version !== input.expected_version)
-      throw new ContractError('CONFLICT_VERSION_MISMATCH', 'Conflict version does not match', {
-        current_version: conflict.version,
-        expected_version: input.expected_version,
-        trace_id: input.trace_id,
-        retryable: false,
-      });
-    conflict.status = 'resolved';
-    conflict.resolution = input.resolution;
-    conflict.actor_id = input.actor_id;
-    conflict.version += 1;
-    conflict.trace_id = input.trace_id;
-    return clone(conflict);
+    const resolved = resolveConflictRecord(conflict, input);
+    this.conflicts.set(resolved.conflict_id, resolved);
+    return clone(resolved);
   }
 
   emitResolution(conflict: ConflictRecord): {
@@ -165,6 +153,56 @@ export class ConflictService {
   }
 }
 
-function clone(conflict: ConflictRecord): ConflictRecord {
-  return { ...conflict, source_refs: [...conflict.source_refs] };
+function clone<Id extends string>(conflict: ConflictRecord<Id>): ConflictRecord<Id> {
+  return structuredClone(conflict);
+}
+
+export function resolveConflictRecord<Id extends string>(
+  conflict: ConflictRecord<Id>,
+  input: ResolveConflictInput<Id>,
+): ConflictRecord<Id> {
+  if (
+    conflict.conflict_id !== input.conflict_id ||
+    conflict.tenant_id !== input.tenant_id ||
+    conflict.workspace_id !== input.workspace_id ||
+    conflict.project_id !== input.project_id
+  )
+    throw new ContractError('CONFLICT_ACCESS_DENIED', 'Conflict scope is not authorized', {
+      trace_id: input.trace_id,
+    });
+  if (conflict.status === 'resolved') {
+    if (
+      conflict.actor_id !== input.actor_id ||
+      conflict.resolution !== input.resolution ||
+      (input.resolution === 'merge' &&
+        !isDeepStrictEqual(conflict.resolved_value, input.merged_value))
+    )
+      throw new ContractError(
+        'CONFLICT_ALREADY_RESOLVED',
+        'A different decision has already been recorded',
+        { trace_id: input.trace_id },
+      );
+    return clone(conflict);
+  }
+  if (conflict.version !== input.expected_version)
+    throw new ContractError('CONFLICT_VERSION_MISMATCH', 'Conflict version does not match', {
+      current_version: conflict.version,
+      expected_version: input.expected_version,
+      trace_id: input.trace_id,
+    });
+  const selected =
+    input.resolution === 'local'
+      ? conflict.local_value
+      : input.resolution === 'server'
+        ? conflict.server_value
+        : input.merged_value;
+  return clone({
+    ...conflict,
+    status: 'resolved',
+    resolution: input.resolution,
+    actor_id: input.actor_id,
+    ...(selected === undefined ? {} : { resolved_value: selected }),
+    trace_id: input.trace_id,
+    version: conflict.version + 1,
+  });
 }

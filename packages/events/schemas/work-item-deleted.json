@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/work-item-deleted.json",
+  "title": "WorkItemDeleted canonical event constraints, in addition to the v1 envelope",
+  "type": "object",
+  "required": ["event_type", "schema_version", "aggregate_type", "project_id", "payload"],
+  "properties": {
+    "event_type": { "const": "WorkItemDeleted" },
+    "schema_version": { "const": 1 },
+    "aggregate_type": { "const": "work_item" },
+    "project_id": { "type": "string", "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$" },
+    "payload": {
+      "type": "object",
+      "required": ["external_id"],
+      "additionalProperties": false,
+      "properties": {
+        "external_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "Stable external ID; runtime also rejects surrounding whitespace, dot paths, controls and lone surrogates."
+        }
+      }
+    }
+  }
+}

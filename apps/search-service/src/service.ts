@@ -1,3 +1,5 @@
+import type { Classification } from '@planemem/contracts';
+
 export interface SearchScope {
   tenant_id: string;
   workspace_id: string;
@@ -11,7 +13,9 @@ export interface SearchHit extends SearchScope {
   snippet: string;
   revision: number;
   score: number;
-  rank_source: 'fts' | 'vector' | 'rrf';
+  rank_source: 'fts' | 'vector' | 'rrf' | 'memory';
+  classification?: Classification;
+  expires_at?: string | null;
   source_refs: Array<{ type: string; id: string }>;
 }
 
@@ -22,6 +26,8 @@ export interface SearchResult {
   trace_id: string;
   hits: SearchHit[];
   degraded: boolean;
+  backend?: 'postgres';
+  vector_used?: false;
   source_refs: Array<{ type: string; id: string }>;
 }
 
@@ -39,13 +45,15 @@ export class SearchService {
     status: 'ok' | 'degraded';
     ready: true;
     vector_enabled: boolean;
+    vector_requested: boolean;
   } {
     return {
       service: 'search-service',
       version: '0.1.0',
-      status: this.vector_enabled ? 'ok' : 'degraded',
+      status: this.vector_enabled ? 'degraded' : 'ok',
       ready: true,
-      vector_enabled: this.vector_enabled,
+      vector_enabled: false,
+      vector_requested: this.vector_enabled,
     };
   }
 
@@ -55,6 +63,18 @@ export class SearchService {
     },
   ): SearchHit {
     const stored: SearchHit = { schema_version: 1, rank_source: hit.rank_source ?? 'fts', ...hit };
+    const previous = this.hits.findIndex(
+      (item) =>
+        item.tenant_id === hit.tenant_id &&
+        item.workspace_id === hit.workspace_id &&
+        item.project_id === hit.project_id &&
+        item.id === hit.id,
+    );
+    if (previous >= 0) {
+      const current = this.hits[previous]!;
+      if (current.revision >= hit.revision) return clone(current);
+      this.hits.splice(previous, 1);
+    }
     this.hits.push({ ...stored, source_refs: stored.source_refs.map((ref) => ({ ...ref })) });
     return clone(stored);
   }

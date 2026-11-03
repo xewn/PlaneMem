@@ -1,0 +1,435 @@
+import { resolve } from 'node:path';
+import { parseArgs } from 'node:util';
+import {
+  ContractError,
+  parseSyncCursorQuery,
+  SYNC_CURSOR_REQUEST_BYTES,
+  type SyncCommandIdentity,
+} from '@planemem/contracts';
+import type {
+  SqliteSyncInbox,
+  SyncInboxApplicationQuery,
+  SyncInboxConsumersQuery,
+  SyncInboxPageAuditQuery,
+  SyncInboxPageDetailQuery,
+  SyncInboxPageHistoryQuery,
+} from '@planemem/context-bridge';
+import { readBoundedArtifactFile } from './artifact-files.js';
+import { readSyncPageFile, prepareSyncPageOutput, saveSyncPageArchive } from './sync-page-file.js';
+
+export function isInboxCommand(command: string) {
+  return [
+    'inbox init',
+    'inbox import',
+    'inbox status',
+    'inbox consumers',
+    'inbox audit-pages',
+    'inbox page-history',
+    'inbox page-get',
+    'inbox head',
+    'inbox enable-applications',
+    'inbox application-status',
+    'inbox enable-ack',
+    'inbox enable-ack-dispatch',
+    'inbox enable-ack-recovery',
+    'inbox ack-status',
+    'inbox ack-dispatch-status',
+  ].includes(command);
+}
+function invalid(trace: string) {
+  return new ContractError(
+    'USAGE_ERROR',
+    'Use local inbox init/import/status/consumers/audit-pages/page-history/page-get/head/enable-applications/application-status/enable-ack/enable-ack-dispatch/enable-ack-recovery/ack-status/ack-dispatch-status with --inbox FILE. Init and enable commands accept only --inbox. Import requires --page-file. Reads require --json or --json-file: consumers accepts {} or limit/after_consumer_key; other reads require expected_identity and selection parameters. Application-status also requires application name/version and permits timeout_ms in JSON. Head requires --output NEW_PAGE; page-get optionally exports to --output NEW_PAGE. No stdin, key, --timeout-ms or repeated options',
+    { trace_id: trace, retryable: false, acknowledgement_dispatch_state: 'not-sent' },
+  );
+}
+function argumentsFor(argv: string[], trace: string) {
+  try {
+    const args = parseArgs({
+      args: [...argv],
+      tokens: true,
+      allowPositionals: true,
+      options: {
+        inbox: { type: 'string' },
+        'page-file': { type: 'string' },
+        json: { type: 'string' },
+        'json-file': { type: 'string' },
+        output: { type: 'string' },
+      },
+    });
+    const command = args.positionals.join(' ');
+    const path = args.values.inbox;
+    const file = args.values['page-file'];
+    const json = args.values.json;
+    const jsonFile = args.values['json-file'];
+    const output = args.values.output;
+    const seen = new Set<string>();
+    for (const token of args.tokens) {
+      if (token.kind !== 'option') continue;
+      if (seen.has(token.name)) throw new TypeError();
+      seen.add(token.name);
+    }
+    if (
+      !isInboxCommand(command) ||
+      args.positionals.length !== 2 ||
+      !path?.trim() ||
+      path === ':memory:' ||
+      path === '-' ||
+      [file, jsonFile, output].some(
+        (value) => value !== undefined && (!value.trim() || value === '-'),
+      ) ||
+      json === '-'
+    )
+      throw new TypeError();
+    if (
+      command === 'inbox init' ||
+      command === 'inbox enable-applications' ||
+      command === 'inbox enable-ack' ||
+      command === 'inbox enable-ack-dispatch' ||
+      command === 'inbox enable-ack-recovery'
+        ? seen.size !== 1
+        : command === 'inbox import'
+          ? file === undefined || seen.size !== 2
+          : file !== undefined ||
+            (json === undefined) === (jsonFile === undefined) ||
+            (command === 'inbox head' && output === undefined) ||
+            (command !== 'inbox head' && command !== 'inbox page-get' && output !== undefined)
+    )
+      throw new TypeError();
+    return { command, path: resolve(path), file, json, jsonFile, output };
+  } catch {
+    throw invalid(trace);
+  }
+}
+async function readQuery(args: ReturnType<typeof argumentsFor>, trace: string): Promise<unknown> {
+  let raw = args.json;
+  if (args.jsonFile !== undefined) {
+    let bytes;
+    try {
+      bytes = await readBoundedArtifactFile(args.jsonFile, SYNC_CURSOR_REQUEST_BYTES, trace);
+    } catch {
+      throw new ContractError(
+        'INBOX_IDENTITY_FILE_UNAVAILABLE',
+        'Read a stable regular inbox query file within 16 KiB',
+        {
+          trace_id: trace,
+          retryable: false,
+          acknowledgement_dispatch_state: 'not-sent',
+        },
+      );
+    }
+    try {
+      raw = new TextDecoder('utf-8', { fatal: true }).decode(bytes).replace(/^\uFEFF/, '');
+    } catch {
+      throw invalid(trace);
+    }
+  }
+  try {
+    if (raw === undefined || Buffer.byteLength(raw, 'utf8') > SYNC_CURSOR_REQUEST_BYTES)
+      throw new TypeError();
+    return JSON.parse(raw);
+  } catch {
+    throw invalid(trace);
+  }
+}
+async function readIdentity(
+  args: ReturnType<typeof argumentsFor>,
+  trace: string,
+): Promise<SyncCommandIdentity> {
+  const input = await readQuery(args, trace);
+  try {
+    const query = parseSyncCursorQuery(input);
+    if (!query.expected_identity) throw new TypeError();
+    return query.expected_identity;
+  } catch {
+    throw invalid(trace);
+  }
+}
+function envelope(trace: string, data: unknown, identity?: SyncCommandIdentity) {
+  return {
+    schema_version: 1 as const,
+    trace_id: trace,
+    source_refs: [],
+    scope: identity
+      ? {
+          tenant_id: identity.tenant_id,
+          workspace_id: identity.workspace_id,
+          project_id: identity.project_id,
+        }
+      : null,
+    data,
+  };
+}
+/** Explicit local commands: they never need a gateway, token, or current account. */
+export async function runInboxArguments(argv: string[], trace: string) {
+  const args = argumentsFor(argv, trace);
+  const page =
+    args.command === 'inbox import' ? await readSyncPageFile(args.file!, trace) : undefined;
+  let identity =
+    args.command === 'inbox status' ||
+    args.command === 'inbox head' ||
+    args.command === 'inbox ack-status' ||
+    args.command === 'inbox ack-dispatch-status'
+      ? await readIdentity(args, trace)
+      : undefined;
+  const queryInput = [
+    'inbox application-status',
+    'inbox consumers',
+    'inbox audit-pages',
+    'inbox page-history',
+    'inbox page-get',
+  ].includes(args.command)
+    ? await readQuery(args, trace)
+    : undefined;
+  let auditQuery: SyncInboxPageAuditQuery | undefined;
+  let consumersQuery: SyncInboxConsumersQuery | undefined;
+  let historyQuery: SyncInboxPageHistoryQuery | undefined;
+  let detailQuery: SyncInboxPageDetailQuery | undefined;
+  let applicationQuery: SyncInboxApplicationQuery | undefined;
+  const output =
+    args.output === undefined ? undefined : await prepareSyncPageOutput(args.output, trace);
+  let inbox: SqliteSyncInbox;
+  try {
+    const bridge = await import('@planemem/context-bridge');
+    if (args.command === 'inbox application-status') {
+      applicationQuery = bridge.parseInboxApplicationQuery(queryInput, trace);
+      identity = applicationQuery.expected_identity;
+    } else if (args.command === 'inbox consumers') {
+      consumersQuery = bridge.parseInboxConsumersQuery(queryInput, trace);
+    } else if (args.command === 'inbox audit-pages') {
+      auditQuery = bridge.parseInboxPageAuditQuery(queryInput, trace);
+      identity = auditQuery.expected_identity;
+    } else if (args.command === 'inbox page-history') {
+      historyQuery = bridge.parseInboxPageHistoryQuery(queryInput, trace);
+      identity = historyQuery.expected_identity;
+    } else if (args.command === 'inbox page-get') {
+      detailQuery = bridge.parseInboxPageDetailQuery(queryInput, trace);
+      identity = detailQuery.expected_identity;
+    }
+    inbox = new bridge.SqliteSyncInbox(args.path, {
+      create: args.command === 'inbox init',
+      readonly:
+        args.command === 'inbox application-status' ||
+        args.command === 'inbox consumers' ||
+        args.command === 'inbox status' ||
+        args.command === 'inbox audit-pages' ||
+        args.command === 'inbox page-history' ||
+        args.command === 'inbox page-get' ||
+        args.command === 'inbox head' ||
+        args.command === 'inbox ack-status' ||
+        args.command === 'inbox ack-dispatch-status',
+      trace_id: trace,
+    });
+  } catch (error) {
+    if (error instanceof ContractError) throw error;
+    throw new ContractError('INBOX_STORAGE_UNAVAILABLE', 'The local inbox could not be opened', {
+      trace_id: trace,
+      retryable: false,
+      acknowledgement_dispatch_state: 'not-sent',
+    });
+  }
+  let result;
+  let exportedPage;
+  let selectedSequence: number | undefined;
+  try {
+    if (args.command === 'inbox init') {
+      result = envelope(trace, {
+        status: 'initialized',
+        schema_version: 1,
+        inbox: args.path,
+        local_commit_state: 'committed',
+        acknowledgement_dispatch_state: 'not-sent',
+      });
+    } else if (args.command === 'inbox enable-applications') {
+      result = envelope(trace, {
+        ...inbox.enableApplications(trace),
+        inbox: args.path,
+        local_commit_state: 'committed',
+        acknowledgement_dispatch_state: 'not-sent',
+      });
+    } else if (applicationQuery) {
+      result = envelope(
+        trace,
+        { state: inbox.readApplicationState(applicationQuery, trace), inbox: args.path },
+        applicationQuery.expected_identity,
+      );
+    } else if (
+      args.command === 'inbox enable-ack' ||
+      args.command === 'inbox enable-ack-dispatch' ||
+      args.command === 'inbox enable-ack-recovery'
+    ) {
+      result = envelope(trace, {
+        ...(args.command === 'inbox enable-ack'
+          ? inbox.enableAcknowledgements(trace)
+          : args.command === 'inbox enable-ack-dispatch'
+            ? inbox.enableAcknowledgementDispatches(trace)
+            : inbox.enableAcknowledgementRecoveries(trace)),
+        inbox: args.path,
+        local_commit_state: 'committed',
+        acknowledgement_dispatch_state: 'not-sent',
+      });
+    } else if (args.command === 'inbox ack-dispatch-status' && identity) {
+      result = envelope(
+        trace,
+        {
+          ...inbox.readAcknowledgementDispatch(identity, trace),
+          inbox: args.path,
+          acknowledgement_dispatch_state: 'not-sent',
+        },
+        identity,
+      );
+    } else if (args.command === 'inbox ack-status' && identity) {
+      result = envelope(
+        trace,
+        {
+          record: inbox.readAcknowledgement(identity, trace),
+          inbox: args.path,
+          acknowledgement_dispatch_state: 'not-sent',
+        },
+        identity,
+      );
+    } else if (page) {
+      const imported = inbox.importPage(
+        { document: page.document, document_sha256: page.document_sha256 },
+        trace,
+      );
+      result = envelope(
+        trace,
+        {
+          ...imported,
+          inbox: args.path,
+          local_commit_state: 'committed',
+          acknowledgement_dispatch_state: 'not-sent',
+        },
+        page.document.expected_identity,
+      );
+    } else if (consumersQuery) {
+      result = envelope(trace, {
+        ...inbox.listConsumers(consumersQuery, trace),
+        inbox: args.path,
+        acknowledgement_dispatch_state: 'not-sent',
+        event_application: 'not-verified',
+      });
+    } else if (historyQuery) {
+      result = envelope(
+        trace,
+        {
+          ...inbox.readPageHistory(historyQuery, trace),
+          inbox: args.path,
+          acknowledgement_dispatch_state: 'not-sent',
+          event_application: 'not-verified',
+        },
+        historyQuery.expected_identity,
+      );
+    } else if (detailQuery) {
+      const detail = inbox.readPageByDigest(detailQuery, trace);
+      if (output) {
+        if (!detail.page)
+          throw new ContractError(
+            'INBOX_PAGE_NOT_FOUND',
+            'The selected page is absent for this original consumer; no file was produced',
+            {
+              trace_id: trace,
+              retryable: false,
+              acknowledgement_dispatch_state: 'not-sent',
+            },
+          );
+        exportedPage = detail.page;
+        selectedSequence = detail.summary?.sequence;
+      } else
+        result = envelope(
+          trace,
+          {
+            ...detail,
+            inbox: args.path,
+            acknowledgement_dispatch_state: 'not-sent',
+            event_application: 'not-verified',
+          },
+          detailQuery.expected_identity,
+        );
+    } else if (auditQuery) {
+      result = envelope(
+        trace,
+        { ...inbox.auditPages(auditQuery, trace), inbox: args.path },
+        auditQuery.expected_identity,
+      );
+    } else if (args.command === 'inbox status' && identity) {
+      result = envelope(
+        trace,
+        {
+          inbox: args.path,
+          state: inbox.inspect(identity, trace),
+          acknowledgement_dispatch_state: 'not-sent',
+        },
+        identity,
+      );
+    } else if (identity && output) {
+      exportedPage = inbox.readHead(identity, trace);
+    } else throw invalid(trace);
+  } catch (error) {
+    let close_pending = false;
+    try {
+      inbox.close();
+    } catch {
+      /* Preserve the original error or commit uncertainty. */
+      close_pending = true;
+    }
+    if (
+      [
+        'inbox consumers',
+        'inbox audit-pages',
+        'inbox page-history',
+        'inbox page-get',
+        'inbox enable-applications',
+        'inbox application-status',
+      ].includes(args.command) &&
+      error instanceof ContractError
+    )
+      throw new ContractError(error.envelope.code, error.envelope.message, {
+        trace_id: trace,
+        retryable: false,
+        details: {
+          ...error.envelope.details,
+          inbox: args.path,
+          ...(args.command === 'inbox audit-pages'
+            ? { audit_scope: 'consumer-page-chain', audit_completed: false }
+            : {}),
+          close_pending,
+          acknowledgement_dispatch_state: 'not-sent',
+        },
+      });
+    throw error;
+  }
+  let close_pending = false;
+  try {
+    inbox.close();
+  } catch {
+    close_pending = true;
+  }
+  if (exportedPage && output) {
+    // File work happens after releasing the read transaction and database connection.
+    try {
+      const saved = await saveSyncPageArchive(exportedPage, output, trace);
+      return {
+        ...saved,
+        data: {
+          ...saved.data,
+          inbox: args.path,
+          close_pending,
+          ...(selectedSequence === undefined
+            ? {}
+            : { selected_sequence: selectedSequence, full_chain_audit: 'not-performed' }),
+        },
+      };
+    } catch (error) {
+      if (!(error instanceof ContractError)) throw error;
+      throw new ContractError(error.envelope.code, error.envelope.message, {
+        trace_id: trace,
+        retryable: false,
+        details: { ...error.envelope.details, inbox: args.path, close_pending },
+      });
+    }
+  }
+  if (!result) throw invalid(trace);
+  return { ...result, close_pending };
+}
