@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [回执文件离线补存](docs/design/01-contracts/proposal-queue-reconciliation-runtime.md#已保留回执记录的补存)：保存失败后可从保留的完整记录或错误JSON预览并另存新文件，保持原时间、摘要和结算状态，无需重新查询或结算队列。仅源码文档，未编译、测试、运行或发布。
+
 新增 [worker 回执记录保存](docs/design/01-contracts/proposal-queue-reconciliation-runtime.md#回执记录保存与离线核对)：查询或结算后可显式保存完整原请求与回执到新文件，并离线核对摘要、身份和状态；文件保存失败保留已取得的结果。仅源码文档，未编译、测试、运行或发布。
 
 新增 [建议 Mock 原创建回执查询](docs/design/01-contracts/proposal-mock-runtime.md#请求和状态)：开发环境可按完整原身份、请求键和草稿查询历史创建结果；查询不重提建议，审核后仍保留原创建语义。仅源码文档，未编译、测试、运行或发布。

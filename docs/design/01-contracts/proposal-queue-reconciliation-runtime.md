@@ -52,7 +52,21 @@ v1记录含 `schema_version:1`、`kind:'proposal-queue-receipt'`、`operation:'r
 
 库导出createProposalQueueReceiptRecord、inspectProposalQueueReceiptRecord、proposalQueueReceiptRecordSummary、readProposalQueueReceiptRecord、prepareProposalReceiptRecordOutput、saveProposalQueueReceiptRecord及对应类型。创建函数的受信调用方须提供已关闭的完整原结果；函数不能认证调用者声明的数据库状态。摘要只检查所载内容一致性，不是签名或服务器证明，snapshot_sha256未包含原完整行，离线无法重新计算它。文件不认证现在或过去的实际提交、不授权重提，也不能直接传入本地结算；需要新结果时仍调用可信网关入口。
 
-本轮只新增显式单次文件记录，没有自动历史索引、留存清理、整库备份、恢复导入或签名验证。无新表/迁移/依赖，仅源码人工审阅，未运行命令、文件导出、数据库或测试。
+本轮只新增显式单次文件记录，没有自动历史索引、留存清理、整库备份、队列恢复导入或签名验证。文件保存失败后的独立补存见下节。无新表/迁移/依赖，仅源码人工审阅，未运行命令、文件导出、数据库或测试。
+
+## 已保留回执记录的补存
+
+2026-11-04：`proposal-worker receipt-record-recover --file RETAINED_RECORD_OR_ERROR.json --output NEW_RECEIPT.json [--preview]` 读取完整v1记录，或先前PROPOSAL_RECEIPT_RECORD_EXPORT_FAILED输出的完整JSON。预览完整核验输入并检查新目标路径，只输出元数据和output.state=preview；正式执行再次读取核验，以既有独占发布流程保存新文件。两种模式均无需令牌，不打开队列、不访问网关、不重新结算或查询。
+
+恢复文件上限为8 MiB+128 KiB，因错误封套同时保留record与重复result；独立record仍受4 MiB限制，错误output元数据最多64 KiB。沿用普通文件、打开前后身份/大小、严格UTF-8及有界读取。输入必须是完整记录，或严格包含code/trace_id/result/record/output的导出错误；旧record须通过全部字段/身份/原query/回执/状态组合/摘要校验，外层result和trace必须与record完全一致。output只接受原输出路径/阶段及适用的save_phase/publication/temporary_path字段，阶段组合也须一致。
+
+保留原operation、recorded_at、sha256、原query及完整result，不重新封装时间、重算修复摘要或推断缺失结果。没有record的构造失败、只有result的成功输出、未知查询/事务/关闭错误及矛盾封套均拒绝，不凭错误码合成“已完成”记录。成功补存仍只是复制已核验的历史文件内容，元数据继续标记file-consistency-only及当前队列/远端not-checked；not-observed或local.mutation=none不会因此变成已提交。
+
+目标只能使用本次明确的output，须为已有目录中的新文件；已存在则拒绝，无论内容相同与否。预览不预留文件，正式保存时并发占用也不覆盖。源错误中的旧路径、临时文件路径和发布状态仅作为有界元数据检查，绝不据此访问、删除、清理或覆盖文件。若上次发布可能成功，应先inspect-receipt-record检查已有目标；需要另存时选择新路径。
+
+预检或保存再次失败时保留同一完整record/result，并输出同一PROPOSAL_RECEIPT_RECORD_EXPORT_FAILED封套，export_phase为prepare或save，可再次作为本命令输入。已知的原本地mutation保持，文件保存失败不要求重做网关操作。输入读取/核验失败返回对应RECOVERY_UNAVAILABLE/RECOVERY_INVALID，不回写源文件；文件写入仍受既有硬链接/目录可信及断电持久性边界约束。
+
+返回0表示预览完成或新文件保存完成，不表示建议已成功创建或队列已结算；失败返回1。库新增inspectProposalReceiptRecordRecovery、readProposalReceiptRecordRecovery和ProposalReceiptRecordRecovery，返回规范原record与source=record/export-error，调用方可组合既有prepare/save函数。没有恢复目录扫描、历史索引、自动失败归档或数据库导入。仅源码文档和人工审阅，未执行命令、导出、网关、数据库或测试。
 
 ## flush 未知结果门禁
 

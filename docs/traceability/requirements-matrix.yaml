@@ -3452,6 +3452,23 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_worker_receipt_recovery_development_increment:
+      date: "2026-11-04"
+      status: "Source-only offline retained receipt record preview and new-file recovery; R-009 remains incomplete."
+      artifacts:
+        - "workers/intelligence/src/proposal-receipt-recovery.ts"
+        - "workers/intelligence/src/main.ts"
+        - "workers/intelligence/src/index.ts"
+        - "docs/design/01-contracts/proposal-queue-reconciliation-runtime.md"
+      behavior: "Accepts an intact original record or matching complete export-failure JSON, validates record fields/digest plus repeated result/trace and bounded save metadata, and preserves the original operation/time/checksum/outcome. Preview only reads and checks a fresh destination; explicit recovery exclusively publishes a new file. Prior error paths are inert and never followed or cleaned. Missing records, unknown transaction failures or conflicting content cannot reconstruct success. Repeated save failures retain the same complete record for another attempt. No queue or gateway operation occurs."
+      evidence: []
+      pending_evidence:
+        - "Original and export-error inputs, repeated result/trace mismatch, absent records and invalid state/save metadata"
+        - "Input/record/metadata byte limits, UTF-8 and regular-file identity checks"
+        - "Preview without writes, destination conflicts/concurrent publication, repeat failure and preserved original digest/time"
+        - "No source-file changes, old-path access, network/queue operations or promotion of historical outcome claims"
+      remaining_scope: "Automatic error archival/history discovery, whole-queue recovery/import, cryptographic authenticity and runtime evidence. Offline consistency never authenticates actual local or remote outcomes."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/product/API/database execution or release. No new schema, migrations or dependencies."
     proposal_worker_receipt_record_development_increment:
       date: "2026-11-04"
       status: "Source-only explicit complete receipt record export and offline inspection; R-009 remains incomplete."

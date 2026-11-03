@@ -22,6 +22,7 @@ import {
   saveProposalQueueReceiptRecord,
   type ProposalQueueReceiptRecord,
 } from './proposal-receipt-record.js';
+import { readProposalReceiptRecordRecovery } from './proposal-receipt-recovery.js';
 import {
   generateProposalDraft,
   parseProposalGenerationProvider,
@@ -79,6 +80,7 @@ const help = `Proposal submission queue (Node.js 24)
   proposal-worker receipt --queue EXISTING.sqlite --binding binding.json --id JOB_ID [--timeout-ms 30000] [--output NEW_RECEIPT.json]
   proposal-worker reconcile --queue EXISTING.sqlite --binding binding.json --id JOB_ID [--timeout-ms 30000] [--output NEW_RECEIPT.json]
   proposal-worker inspect-receipt-record --file RECEIPT_RECORD.json
+  proposal-worker receipt-record-recover --file RETAINED_RECORD_OR_ERROR.json --output NEW_RECEIPT.json [--preview]
   proposal-worker flush   --queue queue.sqlite --binding binding.json [--limit 25]
 
 binding.json contains gateway_url, tenant_id, workspace_id, project_id, actor_id, client_id.
@@ -96,6 +98,7 @@ Both use PROPOSAL_WORKER_ACCESS_TOKEN. retry preserves unknown outcomes and neve
 retry schedules the original draft/key; it does not send or regenerate content.
 receipt only queries the original creation. reconcile explicitly settles unchanged non-sending jobs from a recorded receipt; neither submits.
 Optional receipt/reconcile output saves a new full record after queue close. inspect-receipt-record checks file consistency offline, not authenticity or current state.
+receipt-record-recover saves retained complete records to a new file; --preview only inspects. Neither mode queries or settles a queue.
 Exit codes: 0 completed (receipt may be not-observed), 1 command/storage failure, 2 flush had unsettled jobs or reconciliation did not settle.
 `;
 
@@ -152,6 +155,7 @@ export async function main(args: string[]): Promise<number> {
       receipt: ['id', 'timeout-ms', 'output'],
       reconcile: ['id', 'timeout-ms', 'output'],
       'inspect-receipt-record': ['file'],
+      'receipt-record-recover': ['file', 'output', 'preview'],
       flush: ['limit'],
     };
     if (!command || !Object.hasOwn(allowed, command) || positionals.length !== 1)
@@ -165,6 +169,7 @@ export async function main(args: string[]): Promise<number> {
             'generate-prepared',
             'inspect-generation',
             'inspect-receipt-record',
+            'receipt-record-recover',
             'generation-request',
             'generation-run',
             'generation-status',
@@ -192,6 +197,50 @@ export async function main(args: string[]): Promise<number> {
         throw new TypeError('--' + name + ' is required');
       return value;
     };
+    if (command === 'receipt-record-recover') {
+      const target = required('output');
+      const recovery = await readProposalReceiptRecordRecovery(required('file'));
+      const summary = proposalQueueReceiptRecordSummary(recovery.record);
+      let outputPath = target;
+      let exportPhase = 'prepare';
+      let report: unknown;
+      try {
+        const destination = await prepareProposalReceiptRecordOutput(target);
+        outputPath = destination.path;
+        if (values.preview) {
+          report = {
+            ...summary,
+            recovery_source: recovery.source,
+            output: { state: 'preview', path: destination.path },
+          };
+        } else {
+          exportPhase = 'save';
+          const saved = await saveProposalQueueReceiptRecord(destination, recovery.record);
+          report = { ...summary, recovery_source: recovery.source, output: saved };
+        }
+      } catch (error) {
+        process.stderr.write(
+          JSON.stringify(
+            {
+              code: 'PROPOSAL_RECEIPT_RECORD_EXPORT_FAILED',
+              trace_id: recovery.record.result.trace_id,
+              result: recovery.record.result,
+              record: recovery.record,
+              output: {
+                output_path: outputPath,
+                export_phase: exportPhase,
+                ...(error instanceof ContractError ? error.envelope.details : {}),
+              },
+            },
+            null,
+            2,
+          ) + '\n',
+        );
+        return 1;
+      }
+      process.stdout.write(JSON.stringify(report, null, 2) + '\n');
+      return 0;
+    }
     if (command === 'inspect-receipt-record') {
       const record = await readProposalQueueReceiptRecord(required('file'));
       process.stdout.write(

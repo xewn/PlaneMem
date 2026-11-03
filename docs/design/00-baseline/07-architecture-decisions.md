@@ -1,5 +1,7 @@
 # 架构决策记录摘要
 
+2026-11-04 worker 回执文件补存协接（ADR-015）：T7.2 新增 receipt-record-recover --file --output [--preview]，读取原完整v1记录或保留record的导出失败封套，严格核验原记录及重复result/trace一致性和失败元数据。只保留原封装时间/摘要/结果，不从缺记录或未知事务重建；预览检查新目标但不写，正式执行复用独占保存，失败再次返回可补存完整封套。旧错误路径仅为元数据，不自动访问/清理/覆盖；全程不打开队列、不联网、不结算、不改变历史mutation。范围worker恢复模块/main/index/README、契约/README/TODO/R009，无schema/依赖变化，仅源码文档人工审阅，不编译/类型检查/测试/运行产品或数据库/发布，独立提交push main带[skip ci]。
+
 2026-11-04 worker 回执记录导出协接（ADR-015）：T7.2 receipt/reconcile 增加显式 --output 新文件，查询及本地操作正常完成且队列关闭后保存完整v1原绑定/任务/快照摘要/原查询回执/本地结算状态与封装时间、SHA-256。输出预检在打开库和网络前，复用有界独占文件写入/读回；保存失败保留完整结果和已构造记录，不把已提交状态改称回滚。新增 inspect-receipt-record 离线核验严格字段、原身份/内容/trace、结果状态组合及摘要，只输出元数据，不打开库或联网，不信任文件为远端认证。范围worker新记录模块/main/index/README、队列契约/README/TODO/R009；无新表/依赖/迁移，仅源码文档人工审阅，不编译/类型检查/测试/执行产品或数据库/发布，独立提交push main带[skip ci]。
 
 2026-11-04 建议 Mock 原创建回执协接（ADR-015）：T4.3/T7.2 在 MockProposalStore 增加 creation-receipt 只读入口，使用既有原 actor/client 键空间与创建指纹，完整校验原身份/规范草稿/回执和可见建议的不可变字段；缺记录返回not-observed，审核、过期及来源变旧不改历史创建语义。要求未过期模拟创建能力和当前项目/来源/派生链可见性，拒绝写条件；查询不创建建议、命令或游标，无新持久数据。范围 SDK Mock 源码/README、Proposal Mock契约、README/TODO/R009与协调记录；仅开发和人工审阅，不编译/类型检查/测试/运行Mock或产品/数据库/发布，无依赖/schema变化，独立提交 push main 带 [skip ci]。

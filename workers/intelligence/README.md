@@ -6,6 +6,8 @@
 
 ## 配置与命令
 
+新增 [回执文件补存](../../docs/design/01-contracts/proposal-queue-reconciliation-runtime.md#已保留回执记录的补存)：`receipt-record-recover --file RETAINED_RECORD_OR_ERROR.json --output NEW_RECEIPT.json [--preview]` 接受原完整记录或保留record的导出失败JSON，先核对重复结果与原摘要，保留原时间/状态。preview只检查输入和新目标，正式执行只保存新文件，不覆盖已有路径、不访问旧错误路径或重新查询/结算队列；再次失败保留相同完整记录供后续补存。离线无令牌，缺record或未知事务错误不能重建成功记录，输入最多8 MiB+128 KiB。
+
 新增 [完整回执记录](../../docs/design/01-contracts/proposal-queue-reconciliation-runtime.md#回执记录保存与离线核对)：`receipt` / `reconcile` 可加 `--output NEW_RECEIPT.json`，在队列正常关闭后独占保存原绑定、任务、完整原请求/回执、本地状态与摘要，已有文件不覆盖。`inspect-receipt-record --file RECEIPT_RECORD.json` 离线完整核验并输出元数据，无需令牌、不打开队列或联网。文件和格式化内容均限4 MiB；not-observed也可留档但不证明失败，摘要不认证远端结果。保存失败保留完整result/已构造record及保存阶段，原结算状态不改写；没有自动历史索引或文件导入结算。
 
 新增 [原创建回执与显式结算](../../docs/design/01-contracts/proposal-queue-reconciliation-runtime.md)：`receipt --queue EXISTING.sqlite --binding binding.json --id JOB_ID [--timeout-ms 30000]` 原生只读查询原创建结果；`reconcile` 使用相同参数，只有远端 recorded、完整本地任务未变且非sending时才标记 submitted。not-observed、并发变化、过期发送租约都不据此重提或接管；已submitted须匹配同一历史回执。输出包含完整原建议，未知本地提交/关闭失败保留远端观察和原请求，没有自动保存文件或持久对账历史。两命令需原账号的 PROPOSAL_WORKER_ACCESS_TOKEN，existing模式不初始化缺失结构。仅源码，未执行命令或数据库。
