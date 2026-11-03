@@ -1,6 +1,12 @@
 export * from './client.js';
 export * from './mock-server.js';
 export { MockSyncStore, type MockSyncSeed, type MockSyncSession } from './mock-sync.js';
+export {
+  MockProposalStore,
+  type MockProposalSeed,
+  type MockProposalSource,
+  type MockProposalSession,
+} from './mock-proposals.js';
 export * from './continuity.js';
 export * from './fetch-transport.js';
 export type { WcpSyncUploadOptions } from './sync-upload.js';

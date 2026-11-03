@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-04：新增 `MockProposalStore` 与显式模拟会话，接入建议身份读取、创建、列表、详情、确认和拒绝。支持原账号/客户端隔离的命令回放、人工版本审核、来源变化、分类继承和直接修订筛选；可直接用现有五个建议 SDK 方法。见 [建议生命周期 Mock](../../docs/design/01-contracts/proposal-mock-runtime.md) 的接线示例与边界。只修改源码文档，未编译、测试、运行 Mock 或发布。
+
 2026-11-04：新增 `MockSyncStore`、`MockSyncSeed` 和 `MockSyncSession`。`new MockWcpServer({sync:{store,session}})` 可模拟同步身份读取、变化分页、当前确认查询与显式确认，衔接现有 `getSyncCommandContext/getSyncChanges/syncPages/getSyncCursor/acknowledgeSync`。固定有界事件流和显式可见集合，多个模拟账号可共享 store，确认按完整原身份隔离、禁止回退和超前；读取不自动确认。构造/连接/返回复制数据，共享契约校验完整响应，支持取消及响应字节限制。无配置时保留原项目创建 Mock；其余路由、真实权限与持久化仍未覆盖。见 [同步消费 Mock](../../docs/design/01-contracts/sync-mock-runtime.md) 的配置、接线示例与限制。本轮仅源码文档，未编译、测试、调用 Mock 或发布。
 
 新增 `submitConflictDecision(original, {reviewed:true, timeout_ms?, signal?})`，发送已保存的完整原 identity/request_key/command；固定原正文、身份前置条件、键和版本，不生成键或自动重试。默认本地 30 秒，完整成功/错误响应限 2 MiB/16 KiB，并验证旧封套和完整决策事件；返回仅 `status=unconfirmed` 的规范结果及原请求副本，需后续明确 getConflictReceipt 确认绑定。SDK 自身不保存文件或查询回执，原 resolveConflict 保留兼容行为。新提交及 getConflictReceipt 始终核对三层范围和已提供的身份约束；普通字符串账号可在 SDK 上下文省略 actor/client，仍由 original.identity 生成预期身份头供 Gateway 对可信身份完全核对。见 `docs/design/01-contracts/conflict-submission-runtime.md`；仅源码，未编译、测试或调用。
@@ -265,7 +267,7 @@ Artifact 元数据新增 `getArtifact(id)` 和 `getArtifactVersion(id, version)`
 
 SDK 上传错误保留固定代码/文案及本次 dispatch_state，原始错误正文/details 不透传；retryable=false 不代表远端确定失败，未返回完整回执时继续保留原事件、原身份和键。方法不自动重试、分批、保存或更换身份；持久保存由调用方或 Bridge outbox 负责，旧未知身份不能从当前令牌推断。SDK 共用 RequestBudget 改用单调时钟，有界正文清理失败不再覆盖原错误。见 [同步上传与完整批次回执](../../docs/design/01-contracts/sync-upload-runtime.md)。仅源码和文档，未执行示例、编译或测试。
 
-为兼容已有调用，`createProject` 仍保留原有实体响应及 mock 行为；当前实际 Gateway 尚未注册 `/v1/projects` 创建路由。`MockWcpServer` 可选的同步消费配置另支持四个同步路由，其余连续性接口尚未模拟，不能替代真实网关。
+为兼容已有调用，`createProject` 仍保留原有实体响应及 mock 行为；当前实际 Gateway 尚未注册 `/v1/projects` 创建路由。`MockWcpServer` 可选配置支持四个同步消费路由及六个建议生命周期路由，其余连续性接口尚未模拟，不能替代真实网关。
 
 `confirmProposal(id, reason, { expected_revision, idempotency_key })` 和 rejectProposal 要求签名 human 身份与 proposal.review；创建使用 proposal.write。列表在 data.next_before 返回下一页游标，详情在 data.sources_current 标记本地来源链是否仍符合提交时的状态，含本地引用但缺少依赖摘要的旧建议返回 false。写回执只表示历史命令，不自动创建已确认上下文。见 [Proposal 运行时说明](../../docs/design/01-contracts/proposal-runtime.md)。
 

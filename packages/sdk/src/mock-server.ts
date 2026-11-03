@@ -1,23 +1,33 @@
 import { ContractError, type ProjectEntity, validateEntity } from '@planemem/contracts';
 import type { WcpRequest, WcpTransport } from './client.js';
 import { isMockSyncPath, type MockSyncSession, type MockSyncStore } from './mock-sync.js';
+import {
+  isMockProposalPath,
+  type MockProposalSession,
+  type MockProposalStore,
+} from './mock-proposals.js';
 
 export interface MockWcpServerOptions {
   onRequest?: (request: WcpRequest) => void;
   sync?: { store: MockSyncStore; session: MockSyncSession };
+  proposals?: { store: MockProposalStore; session: MockProposalSession };
 }
 
 export class MockWcpServer implements WcpTransport {
   private readonly idempotentResponses = new Map<string, ProjectEntity>();
   private readonly sync: WcpTransport | undefined;
+  private readonly proposals: WcpTransport | undefined;
 
   constructor(private readonly options: MockWcpServerOptions = {}) {
     this.sync = options.sync?.store.connect(options.sync.session);
+    this.proposals = options.proposals?.store.connect(options.proposals.session);
   }
 
   async request<T = unknown>(request: WcpRequest): Promise<T> {
     this.options.onRequest?.(request);
     if (this.sync && isMockSyncPath(request.path)) return this.sync.request<T>(request);
+    if (this.proposals && isMockProposalPath(request.path))
+      return this.proposals.request<T>(request);
     if (request.method !== 'POST' || request.path !== '/v1/projects') {
       throw new ContractError('MOCK_ROUTE_NOT_FOUND', 'Mock route not found', {
         trace_id: request.headers.traceparent ?? 'trace_unknown',

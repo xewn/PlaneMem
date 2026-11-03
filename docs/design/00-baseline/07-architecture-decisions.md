@@ -1,5 +1,7 @@
 # 架构决策记录摘要
 
+2026-11-04 建议生命周期 Mock 协接（ADR-015）：T0.5 在 SDK 新增共享内存 MockProposalStore 与固定模拟会话，接入 submission-context、建议创建/目录/详情/确认/拒绝。使用显式项目/身份/能力和本地来源状态配置，创建固定 proposed，人工审核要求原版本；保存按 actor/client 隔离的原命令回执，重试不重复副作用。来源可见性/当前版本、分类继承及最多 32 层派生链复用真实接口语义，来源依赖变化由开发配置显式模拟，不冒充真实 Policy/数据库/同步事件。范围 SDK 源码/README、Mock 契约、任务/ADR、README/TODO/R001；无新依赖/schema。只开发源码文档，不编译、类型检查、测试、执行 Mock/API/CLI、生成样本或发布；独立提交 push main 带 [skip ci]。
+
 ## ADR-001：Plane 作为 Work Control Plane
 
 选择 Plane 保存项目和工作项，WorkMesh 只保存引用、投影和跨客户端过程。原因：减少重复主库、复用项目管理能力、降低升级和一致性风险。

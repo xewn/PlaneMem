@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [建议生命周期 Mock](docs/design/01-contracts/proposal-mock-runtime.md)：客户端开发可模拟创建、浏览、人工审核、来源变化和原请求重试，多个模拟账号共享建议数据。仅源码文档，未编译、测试、运行或发布。
+
 建议提交队列现支持只读查询：`proposal-worker list/get` 只打开已有且绑定匹配的队列，路径写错不会创建空库；只读实例拒绝写入。见 [worker 使用说明](workers/intelligence/README.md)。仅源码文档，未编译、测试、运行或发布。
 
 工作项详情现可返回原筛选结果：保留筛选条件、分页位置、看板/列表视图和所选项，刷新或读取失败时也能重试原目标。返回地址限定为已验证的内部工作项页面。见 [工作项投影](docs/design/01-contracts/work-item-projection-runtime.md)。仅源码文档，未编译、测试、运行或发布。

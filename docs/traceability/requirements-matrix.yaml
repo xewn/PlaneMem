@@ -11,6 +11,22 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    sdk_proposal_mock_development_increment:
+      date: "2026-11-04"
+      status: "Source-only proposal lifecycle simulation; full WCP Mock coverage and R-001 remain incomplete."
+      artifacts:
+        - "packages/sdk/src/mock-proposals.ts"
+        - "packages/sdk/src/mock-server.ts"
+        - "packages/sdk/src/index.ts"
+        - "docs/design/01-contracts/proposal-mock-runtime.md"
+      behavior: "Explicit scoped sessions share an initially empty in-memory proposal store. Creation, filtered pagination, details, human versioned confirmation/rejection and submission identity use existing request contracts. Original actor/client command receipts survive later review; changed commands reject reused keys. Explicit source fixtures model visibility, revision/dependency changes and classification inheritance through at most 32 derivations."
+      evidence: []
+      pending_evidence:
+        - "Existing SDK methods, normalized command replay, identity isolation, receipt history and version conflict"
+        - "Source visibility, expiry/dependency changes, classification inheritance and derivation depth"
+        - "Pagination, returned-data isolation, session/response limits and no mutation on rejected operations"
+      remaining_scope: "Other public Mock routes, real Policy/source graphs/audit, sync publication, persistence, crash recovery and network uncertainty."
+      execution: "Source/docs only; no build, typecheck, tests, Mock/API execution, database access or release."
     sdk_sync_mock_development_increment:
       date: "2026-11-04"
       status: "Source-only four-route sync consumer Mock; full WCP Mock coverage and R-001 remain incomplete."
