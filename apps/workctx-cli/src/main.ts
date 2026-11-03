@@ -161,6 +161,7 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   outbox restore-requeue         Explicitly requeue reviewed baseline events with the same query; keeps the project paused
   outbox restore-requeue-receipt Read the original batch receipt using the complete query including requeue_id
   outbox restore-requeue-get     Recover the original query/receipt by scope/requeue_id JSON; optional --output NEW_QUERY_FILE
+  outbox restore-requeue-history Browse project batch metadata with --outbox EXISTING_FILE and optional limit/after_requeue_id JSON
   outbox restore-history         Browse restore metadata using explicit --outbox; optional limit/after_restore_id JSON
   outbox restore-audit           Verify all project restore receipts/archives using --outbox; optional max_receipts/max_bytes/timeout_ms JSON
   outbox restore-compare         Compare one restored event with its current row using --outbox and restore_id/event_id JSON
@@ -454,6 +455,7 @@ export async function main(args: string[]): Promise<number> {
       'outbox restore-requeue',
       'outbox restore-requeue-receipt',
       'outbox restore-requeue-get',
+      'outbox restore-requeue-history',
       'outbox restore-history',
       'outbox restore-audit',
       'outbox restore-compare',

@@ -959,6 +959,26 @@ requirements:
         - "Offline routing without token/environment/SQLite, argument restrictions, output traces, provenance and exits"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, sample file generation, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_outbox_restore_requeue_history_development_increment:
+      date: "2026-11-03"
+      status: "Source-only project requeue receipt metadata pagination; R-005 remains incomplete."
+      artifacts:
+        - "apps/context-bridge/src/outbox/restore-requeue-query.ts"
+        - "apps/context-bridge/src/outbox/restore-requeue-receipt.ts"
+        - "apps/context-bridge/src/outbox/restore-requeue-history.ts"
+        - "apps/context-bridge/src/outbox/sqlite.ts"
+        - "apps/workctx-cli/src/outbox-restore-requeue.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/outbox-restore-requeue-history-runtime.md"
+      behavior: "Strict project query defaults to 10 and caps at 20 records within a single read transaction. BINARY ID pagination reads limit+1 and validates bounded original-query SHA/scope/ID, metadata shapes, timestamps/traces, global selected-ID uniqueness and strict ordering including lookahead. Compact entries explicitly leave linked history and selected content unverified; get_query enables full verification and next_query uses the last returned ID. Optional-table absence yields an empty not-configured catalog. CLI opens natively read-only, accepts optional JSON and preserves query/selected ID/read/close states; no current event/control reads or writes."
+      evidence: []
+      pending_evidence:
+        - "Strict scope/limit/cursor, configured-project binding, missing table and page boundaries"
+        - "Lookahead corruption, duplicate global IDs, binary ordering and metadata bounds"
+        - "Full-reader compatibility, transaction/close failures, response limits and cross-page changes"
+      remaining_scope: "Full linked-history audit, receipt files, combined backup/cross-device import, provenance and runtime evidence remain pending. Catalog pages do not preserve a cross-page snapshot."
+      execution: "Source/docs only; no builds, typechecks, tests, CLI/Bridge runs, database opens, schema initialization, samples, migrations or release. No schema/dependency changes; prior SQLite additions and PostgreSQL 016-049 remain unexecuted."
     sync_outbox_restore_requeue_selection_development_increment:
       date: "2026-11-03"
       status: "Source-only original requeue request discovery and explicit file saving; R-005 remains incomplete."

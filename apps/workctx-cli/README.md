@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+新增 `outbox restore-requeue-history --outbox EXISTING_FILE [--json QUERY | --json-file QUERY_FILE]`，按当前项目浏览批次元数据，默认10最多20，支持after_requeue_id续页。返回get_query用于完整核验和找回原请求，next_query继续目录；关联历史与选中内容明确未核验。原生只读，不接受output。见 [回执目录](../../docs/design/01-contracts/outbox-restore-requeue-history-runtime.md)。仅源码文档，未执行、编译、测试或发布。
+
 新增 `outbox restore-requeue-get --outbox EXISTING_FILE --json-file SELECTION [--output NEW_QUERY_FILE]`，按scope/requeue_id找回完整原查询及回执。可选输出先预检、完整读取并尝试关闭后独占保存原查询，最终核对字节/SHA/JSON；缺记录不创建文件，失败保留历史/文件/关闭状态。见 [按ID找回原请求](../../docs/design/01-contracts/outbox-restore-requeue-selection-runtime.md)。仅源码文档，未执行、编译、测试或发布。
 
 批量重新排队查询可加requeue_id以保存原回执；新增 `outbox restore-requeue-receipt --outbox EXISTING_FILE --json-file ORIGINAL_QUERY`，要求包含该ID的完整原查询，只读核验回执及关联原历史。精确重复原操作/预览只返回历史，不重新检查或修改当前队列。见 [持久原回执](../../docs/design/01-contracts/outbox-restore-requeue-receipt-runtime.md)。未编译、测试、运行、初始化表或发布。
@@ -538,6 +540,7 @@ observed-item.json 示例：`{"work_item_id":"plane-item-42"}`。CLI 核对返�
 | `outbox restore-requeue` | 同一六字段查询和已有 --outbox | 整事务重新检查、设置所选记录pending并完整读回；保持暂停，不发送，不自动重试 |
 | `outbox restore-requeue-receipt` | 必须已有 --outbox 和 --json/--json-file 完整原查询，包括requeue_id | 原生只读核验原请求/关联恢复历史及选中前后摘要；无记录不等于原提交失败 |
 | `outbox restore-requeue-get` | 必须已有 --outbox、--json/--json-file scope/requeue_id选择；可选 --output NEW_QUERY_FILE | 只读完整核验后发现原请求/回执；显式保存原七字段请求，不覆盖文件或重新排队 |
+| `outbox restore-requeue-history` | 必须已有 --outbox；可选 --json/--json-file scope/limit/after_requeue_id | 只读元数据目录，默认10最多20；返回单条查询及续页参数，不代表完整历史核验 |
 | `outbox restore-receipt` | 必须 --outbox EXISTING_FILE、--json/--json-file 同一原恢复查询；无档案文件 | 无；只读完整历史恢复回执，不代表当前队列状态 |
 | `outbox restore-history` | 必须 --outbox EXISTING_FILE；可选 --json/--json-file scope/limit/after_restore_id | 无；只读元数据分页，原档案正文未核验 |
 | `outbox restore-audit` | 必须 --outbox EXISTING_FILE；可选 --json/--json-file scope/max_receipts/max_bytes/timeout_ms | 无；单次只读事务完整核验项目恢复历史，超限或损坏不返回部分通过 |

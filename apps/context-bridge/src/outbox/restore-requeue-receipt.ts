@@ -21,10 +21,78 @@ import {
 
 const TABLE = 'local_outbox_requeue_receipts';
 const QUERY_BYTES = 16384;
+const RECEIPT_FIELDS: readonly [string, number][] = [
+  ['query_json', QUERY_BYTES],
+  ['query_sha256', 64],
+  ['restore_document_sha256', 64],
+  ['restore_receipt_sha256', 64],
+  ['before_sha256', 64],
+  ['after_sha256', 64],
+  ['requeued_at', 64],
+  ['requeue_trace_id', 4096],
+];
 function fail(code: string, message: string, trace: string, details: Record<string, unknown> = {}) {
   return new ContractError(code, message, { trace_id: trace, retryable: false, details });
 }
 const digest = (text: string) => createHash('sha256').update(text, 'utf8').digest('hex');
+
+/** Fixed bounded projection shared by metadata discovery and complete history verification. */
+export function outboxRequeueReceiptProjection() {
+  return (
+    `CASE WHEN typeof(schema_version) = 'integer' AND schema_version = 1 THEN 1 ELSE NULL END AS schema_version, ` +
+    RECEIPT_FIELDS.map(
+      ([name, max]) =>
+        `CASE WHEN typeof(${name}) = 'text' AND length(CAST(${name} AS BLOB)) <= ${max} THEN ${name} ELSE NULL END AS ${name}`,
+    ).join(', ')
+  );
+}
+export function outboxRequeueReceiptMetadata(
+  row: Record<string, unknown>,
+  selection: OutboxRestoreRequeueSelection,
+  trace: string,
+) {
+  try {
+    if (row.schema_version !== 1 || RECEIPT_FIELDS.some(([name]) => typeof row[name] !== 'string'))
+      throw new TypeError();
+    const original = parseOutboxRestoreRequeueReceiptQuery(
+      JSON.parse(row.query_json as string),
+      trace,
+    );
+    if (
+      original.requeue_id !== selection.requeue_id ||
+      original.scope.tenant_id !== selection.scope.tenant_id ||
+      original.scope.workspace_id !== selection.scope.workspace_id ||
+      original.scope.project_id !== selection.scope.project_id ||
+      digest(syncJsonSnapshot(original, QUERY_BYTES)) !== row.query_sha256 ||
+      ['restore_document_sha256', 'restore_receipt_sha256', 'before_sha256', 'after_sha256'].some(
+        (name) => !/^[a-f0-9]{64}$/.test(row[name] as string),
+      ) ||
+      !Number.isFinite(Date.parse(row.requeued_at as string)) ||
+      new Date(row.requeued_at as string).toISOString() !== row.requeued_at
+    )
+      throw new TypeError();
+    assertOutboxRestoreTrace(row.requeue_trace_id as string);
+    return {
+      original_query: original,
+      query_sha256: row.query_sha256 as string,
+      restore_document_sha256: row.restore_document_sha256 as string,
+      restore_receipt_sha256: row.restore_receipt_sha256 as string,
+      before_sha256: row.before_sha256 as string,
+      after_sha256: row.after_sha256 as string,
+      requeued_at: row.requeued_at as string,
+      requeue_trace_id: row.requeue_trace_id as string,
+    };
+  } catch (error) {
+    throw fail(
+      'OUTBOX_REQUEUE_RECEIPT_INVALID',
+      'The stored original requeue query or receipt metadata is invalid',
+      trace,
+      error instanceof ContractError
+        ? { ...error.envelope.details, cause_code: error.envelope.code }
+        : {},
+    );
+  }
+}
 
 /** Immutable requeue v1 selection and mapping, also used to verify historical receipts. */
 export function outboxRequeueSelection(
@@ -228,25 +296,9 @@ function readRequeueRecord(
       'The requeue ID is ambiguous; preserve the queue',
       trace,
     );
-  const fields: [string, number][] = [
-    ['query_json', QUERY_BYTES],
-    ['query_sha256', 64],
-    ['restore_document_sha256', 64],
-    ['restore_receipt_sha256', 64],
-    ['before_sha256', 64],
-    ['after_sha256', 64],
-    ['requeued_at', 64],
-    ['requeue_trace_id', 4096],
-  ];
-  const projection = fields
-    .map(
-      ([name, max]) =>
-        `CASE WHEN typeof(${name}) = 'text' AND length(CAST(${name} AS BLOB)) <= ${max} THEN ${name} ELSE NULL END AS ${name}`,
-    )
-    .join(', ');
   const rows = db
     .prepare(
-      `SELECT CASE WHEN typeof(schema_version) = 'integer' AND schema_version = 1 THEN 1 ELSE NULL END AS schema_version, ${projection}
+      `SELECT ${outboxRequeueReceiptProjection()}
     FROM main.local_outbox_requeue_receipts WHERE requeue_id = ? COLLATE BINARY AND tenant_id = ? COLLATE BINARY
     AND workspace_id = ? COLLATE BINARY AND project_id = ? COLLATE BINARY LIMIT 2`,
     )
@@ -258,33 +310,9 @@ function readRequeueRecord(
       trace,
     );
   const row = rows[0]!;
-  let saved: OutboxRestoreRequeueReceiptQuery;
-  try {
-    if (
-      rows.length !== 1 ||
-      row.schema_version !== 1 ||
-      fields.some(([name]) => typeof row[name] !== 'string')
-    )
-      throw new TypeError();
-    saved = parseOutboxRestoreRequeueReceiptQuery(JSON.parse(row.query_json as string), trace);
-    if (
-      saved.requeue_id !== query.requeue_id ||
-      saved.scope.tenant_id !== query.scope.tenant_id ||
-      saved.scope.workspace_id !== query.scope.workspace_id ||
-      saved.scope.project_id !== query.scope.project_id ||
-      digest(syncJsonSnapshot(saved, QUERY_BYTES)) !== row.query_sha256
-    )
-      throw new TypeError();
-  } catch (error) {
-    throw fail(
-      'OUTBOX_REQUEUE_RECEIPT_INVALID',
-      'The stored original requeue query is invalid',
-      trace,
-      error instanceof ContractError
-        ? { ...error.envelope.details, cause_code: error.envelope.code }
-        : {},
-    );
-  }
+  if (rows.length !== 1)
+    throw fail('OUTBOX_REQUEUE_RECEIPT_INVALID', 'The selected requeue ID is ambiguous', trace);
+  const saved = outboxRequeueReceiptMetadata(row, query, trace).original_query;
   if (
     expectedQuery !== undefined &&
     syncJsonSnapshot(saved, QUERY_BYTES) !== syncJsonSnapshot(expectedQuery, QUERY_BYTES)

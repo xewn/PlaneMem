@@ -63,6 +63,7 @@ import { restoreOutboxArchive, readOutboxRestoreReceipt } from './restore.js';
 import { previewOutboxArchiveRestore } from './restore-preview.js';
 import { prepareOutboxArchiveRestore } from './restore-prepare.js';
 import { requeueOutboxRestoreRecords } from './restore-requeue.js';
+import { listOutboxRestoreRequeueReceipts } from './restore-requeue-history.js';
 import {
   readOutboxRestoreRequeueReceipt,
   readOutboxRestoreRequeueRecord,
@@ -70,10 +71,12 @@ import {
 export {
   parseOutboxRestoreRequeueReceiptQuery,
   parseOutboxRestoreRequeueSelection,
+  parseOutboxRestoreRequeueHistoryQuery,
 } from './restore-requeue-query.js';
 export type {
   OutboxRestoreRequeueReceiptQuery,
   OutboxRestoreRequeueSelection,
+  OutboxRestoreRequeueHistoryQuery,
 } from './restore-requeue-query.js';
 export type { OutboxRestoreRequeueReceipt } from './restore-requeue-receipt.js';
 export { parseOutboxRestoreRequeueQuery } from './restore-requeue.js';
@@ -473,6 +476,10 @@ export class SqliteOutbox {
 
   readRestoreRequeueRecord(selection: unknown, trace: string) {
     return readOutboxRestoreRequeueRecord(this.db, selection, trace);
+  }
+
+  listRestoreRequeueReceipts(query: unknown, trace: string) {
+    return listOutboxRestoreRequeueReceipts(this.db, query, trace);
   }
 
   readRestoreReceipt(query: unknown, trace: string) {

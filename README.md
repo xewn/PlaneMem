@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [重新排队回执目录](docs/design/01-contracts/outbox-restore-requeue-history-runtime.md)：`outbox restore-requeue-history` 可按项目分页发现批次，返回单条查询及续页参数；明确区分元数据核验与完整历史核验，可衔接按 ID 找回原请求。仅源码文档，未编译、测试、运行或发布。
+
 新增 [按批次ID找回原请求](docs/design/01-contracts/outbox-restore-requeue-selection-runtime.md)：`outbox restore-requeue-get` 只读核验完整历史，找回原请求和回执，并可将原请求独占保存为新文件；保留原事件顺序、原因和暂停版本。仅源码文档，未编译、测试、运行或发布。
 
 新增 [重新排队持久回执](docs/design/01-contracts/outbox-restore-requeue-receipt-runtime.md)：批量请求可带 `requeue_id`，与事件更新同事务保存原请求和结果摘要；完整相同请求只返回历史，不再次修改队列。新增 `outbox restore-requeue-receipt` 只读查询。仅源码文档，未编译、测试、运行、初始化表或发布。

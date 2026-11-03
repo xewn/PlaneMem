@@ -73,6 +73,47 @@ export interface OutboxRestoreRequeueSelection {
   scope: OutboxScope;
   requeue_id: string;
 }
+export interface OutboxRestoreRequeueHistoryQuery {
+  scope: OutboxScope;
+  limit: number;
+  after_requeue_id?: string;
+}
+export function parseOutboxRestoreRequeueHistoryQuery(
+  input: unknown,
+  trace: string,
+): OutboxRestoreRequeueHistoryQuery {
+  try {
+    const value: unknown = JSON.parse(syncJsonSnapshot(input, 16384));
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError();
+    const row = value as Record<string, unknown>;
+    const limit = row.limit === undefined ? 10 : row.limit;
+    if (
+      Object.keys(row).some((key) => !['scope', 'limit', 'after_requeue_id'].includes(key)) ||
+      typeof limit !== 'number' ||
+      !Number.isSafeInteger(limit) ||
+      limit < 1 ||
+      limit > 20 ||
+      (Object.hasOwn(row, 'after_requeue_id') && !isSyncIdentifier(row.after_requeue_id))
+    )
+      throw new TypeError();
+    return {
+      scope: parseOutboxReadScope(row.scope, trace),
+      limit,
+      ...(Object.hasOwn(row, 'after_requeue_id')
+        ? { after_requeue_id: row.after_requeue_id as string }
+        : {}),
+    };
+  } catch (error) {
+    throw fail(
+      'OUTBOX_REQUEUE_HISTORY_QUERY_INVALID',
+      'Supply scope and optional limit (1 to 20) and after_requeue_id',
+      trace,
+      error instanceof ContractError
+        ? { ...error.envelope.details, cause_code: error.envelope.code }
+        : {},
+    );
+  }
+}
 export function parseOutboxRestoreRequeueSelection(
   input: unknown,
   trace: string,
