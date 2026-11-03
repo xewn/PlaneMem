@@ -48,6 +48,7 @@ import { callOutboxReconcileArguments } from './outbox-reconcile.js';
 import { inspectOutboxReceiptArguments } from './outbox-receipt-file.js';
 import { isOutboxReadCommand, runOutboxReadArguments } from './outbox-read.js';
 import { isOutboxArchiveCommand, runOutboxArchiveArguments } from './outbox-archive.js';
+import { isOutboxControlCommand, runOutboxControlArguments } from './outbox-control.js';
 import { callConflictSubmission } from './conflict-submission.js';
 import { callConflictPreparation } from './conflict-preparation.js';
 import { callConflictReceiptArguments } from './conflict-receipt.js';
@@ -132,6 +133,9 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   outbox audit                   Audit every original in the configured project; optional JSON budgets
   outbox export                  Save a complete project archive to --output NEW_FILE; optional JSON budgets
   outbox inspect-archive         Verify --archive-file offline without a queue, token or project configuration
+  outbox send-control            Read project pause state and bounded sending-record counts
+  outbox pause                   Pause new claims; JSON requires observed expected_generation and reason
+  outbox resume                  Resume new claims with the observed generation and reason; does not flush
   outbox retry EVENT_ID          Schedule another attempt for a pending or failed event
   outbox reconcile EVENT_ID      Confirm original delivery and settle this local row
                                  Optional --result-output NEW_FILE saves the complete validated receipt
@@ -402,6 +406,9 @@ export async function main(args: string[]): Promise<number> {
       'outbox audit',
       'outbox export',
       'outbox inspect-archive',
+      'outbox send-control',
+      'outbox pause',
+      'outbox resume',
       'outbox retry',
       'outbox reconcile',
       'outbox inspect-result',
@@ -511,6 +518,20 @@ export async function main(args: string[]): Promise<number> {
       usage('--receipt-output is only for application-restore-receipt-get');
     if (isInboxApplicationArchiveCommand(name)) {
       print(await runInboxApplicationArchiveArguments(args, trace));
+      return 0;
+    }
+    if (isOutboxControlCommand(name)) {
+      print(
+        await runOutboxControlArguments(
+          args,
+          {
+            tenant_id: envId('WORKCTX_TENANT_ID'),
+            workspace_id: envId('WORKCTX_WORKSPACE_ID'),
+            project_id: envId('WORKCTX_PROJECT_ID'),
+          },
+          trace,
+        ),
+      );
       return 0;
     }
     if (isOutboxArchiveCommand(name)) {

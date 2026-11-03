@@ -72,3 +72,7 @@ SqliteSyncInbox 提供显式新库创建、importPage、inspect、readHead、clo
 2026-11-03：新增 `auditRecords(input,trace)`，严格原项目和 max_events/max_bytes/timeout_ms，在单次只读事务核验全部原身份/正文/命令摘要、事件和幂等键唯一性并对齐实际数量。默认1000行/64 MiB/30秒，超限或损坏明确未完成，保留原查询/定位/进度；不发送、改租约、确认或修复。CLI `outbox audit` 主程序与嵌入均只读已有文件；详见 [完整队列核验契约](../../docs/design/01-contracts/outbox-audit-runtime.md)。仅源码文档，未编译、类型检查、测试、执行 CLI、打开库或发布。
 
 2026-11-03：新增 readArchive 与 outbox export/inspect-archive，完整保存指定项目已知原列/正文文本、身份/摘要、状态/调度/租约，最多1000行/32 MiB；单次只读 audit 收集全部记录，超限或损坏不截断。独立 outbox-archive 包子路径提供无 SQLite 的文件核验；原事件检查抽取共用，旧算法不变。CLI 关闭库后独占保存新文件并完整读回，失败保留路径/档案摘要/关闭状态；历史租约不授予发送权限，恢复另待补。见 [发送队列档案契约](../../docs/design/01-contracts/outbox-archive-runtime.md)。仅源码文档，未编译、类型检查、测试、执行CLI、打开库或生成样本。
+
+
+2026-11-03：新增 readSendControl/changeSendControl 和 outbox send-control/pause/resume，按项目持久暂停后续领取，原 generation 比较防止陈旧覆盖；首次显式暂停同事务初始化可选控制表，常规读取/构造不初始化。发送领取每次读取，暂停项目不占跨项目窗口；已领取批次仍可能发送和结算。只读状态有界统计发送中记录，过期/缺令牌或超限不声明发送已停止；提交未知保留原查询和候选generation。旧进程协调、档案恢复与运行证据仍待补。见 [发送控制契约](../../docs/design/01-contracts/outbox-send-control-runtime.md)。仅源码文档，未编译、类型检查、测试、执行CLI、打开库、初始化schema或发布。
+

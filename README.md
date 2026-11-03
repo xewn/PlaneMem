@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [发送队列持久暂停与恢复发送](docs/design/01-contracts/outbox-send-control-runtime.md)，`outbox send-control/pause/resume` 按项目保存控制状态，以原版本标识防止并发覆盖；发送领取每次读取暂停状态，已有在途请求仍可完成。仅源码文档，未编译、测试、运行或发布。
+
 新增 [发送队列完整档案与离线检查](docs/design/01-contracts/outbox-archive-runtime.md)，`outbox export` 完整保存指定项目原记录，`outbox inspect-archive` 离线核验档案和逐行原摘要；保留原正文、身份、调度与租约历史，显式写入新文件。仅源码文档，未编译、测试、运行或发布。
 
 新增 [发送队列完整原记录核验](docs/design/01-contracts/outbox-audit-runtime.md)，`outbox audit` 在同一只读快照中核验指定项目全部记录的原身份、正文和摘要，超限或损坏明确未完成，保留定位与进度。仅源码文档，未编译、测试、运行或发布。

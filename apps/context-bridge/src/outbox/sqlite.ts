@@ -58,6 +58,9 @@ import {
 export { parseOutboxReadScope, parseOutboxListQuery } from './reading.js';
 export type { OutboxListQuery } from './reading.js';
 import { parseOutboxAuditQuery, auditOutboxRecords } from './audit.js';
+import { readOutboxSendControl, changeOutboxSendControl, outboxClaimGuard } from './control.js';
+export { parseOutboxSendControlChange } from './control.js';
+export type { OutboxSendControl, OutboxSendControlChange } from './control.js';
 export { parseOutboxAuditQuery } from './audit.js';
 export type { OutboxAuditQuery } from './audit.js';
 export type {
@@ -374,6 +377,15 @@ export class SqliteOutbox {
     return auditOutboxRecords(this.db, query, trace, checkedOriginalEvent);
   }
 
+  readSendControl(scope: unknown, trace: string) {
+    return readOutboxSendControl(this.db, scope, trace);
+  }
+
+  /** Explicit compare-and-change; affects future claims, never cancels an existing publisher. */
+  changeSendControl(input: unknown, trace: string) {
+    return changeOutboxSendControl(this.db, input, trace);
+  }
+
   /** Collect only the fully audited snapshot; file publication is the caller's explicit action. */
   readArchive(input: unknown, trace: string) {
     const query = parseOutboxArchiveQuery(input, trace);
@@ -642,12 +654,14 @@ export class SqliteOutbox {
     const token = randomUUID();
     const expires = new Date(now.getTime() + 120_000).toISOString();
     return this.transaction(() => {
+      const gate = outboxClaimGuard(this.db, 'trace_outbox_claim_' + token);
+      if (scope) gate.assertEnabled(scope);
       const filter = scope ? 'AND tenant_id = ? AND workspace_id = ? AND project_id = ?' : '';
       const rows = this.db
         .prepare(
           `SELECT * FROM local_events
         WHERE ((status IN ('pending', 'sending') AND next_retry_at <= ?) OR (status = 'sending' AND lease_token IS NULL))
-        ${filter} ORDER BY rowid LIMIT ?`,
+        ${filter} ${gate.filter} ORDER BY rowid LIMIT ?`,
         )
         .all(
           now.toISOString(),
@@ -666,6 +680,11 @@ export class SqliteOutbox {
       let bytes = overhead;
       let batchIdentity: SyncCommandIdentity | undefined;
       for (const row of rows) {
+        gate.assertEnabled({
+          tenant_id: row.tenant_id,
+          workspace_id: row.workspace_id,
+          project_id: row.project_id,
+        });
         let event: LocalEvent;
         try {
           event = fromRow(row);

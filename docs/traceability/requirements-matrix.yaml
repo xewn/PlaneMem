@@ -959,6 +959,27 @@ requirements:
         - "Offline routing without token/environment/SQLite, argument restrictions, output traces, provenance and exits"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, sample file generation, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_outbox_send_control_development_increment:
+      date: "2026-11-03"
+      status: "Source-only persistent project claim control and bounded sending diagnostics; R-005 remains incomplete."
+      artifacts:
+        - "apps/context-bridge/src/outbox/control.ts"
+        - "apps/context-bridge/src/outbox/sqlite.ts"
+        - "apps/workctx-cli/src/outbox-control.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/outbox-send-control-runtime.md"
+      behavior: "Optional local_outbox_send_control v1 is initialized only by an explicit first pause within the same immediate transaction as its scoped row. Each change compares expected_generation, requires a state transition, preserves reason/time/trace, generates a fresh UUID and reads back before commit. Every new claim reads persisted control in its immediate transaction: scoped paused claims fail, unscoped claims filter paused projects before LIMIT and validate candidate project controls. Status reads one snapshot with at most 1000 sending records; oversized/invalid diagnostics yield null counts while preserving control. CLI binds configured scope, parses stable bounded input before opening existing storage and retains commit uncertainty/proposed generation/rollback/close details."
+      remaining_scope: "This coordinates cooperating new claimers only. Already claimed batches may still publish and settle; expired leases or zero sending records do not prove sender shutdown. Enqueue/retry/reconcile/purge remain available. Older senders, other queue copies, cancellation, global maintenance locks, controlled archive restore and runtime evidence are pending. Archive v1 excludes send-control state. Latest control rows are not an immutable history or authorization mechanism."
+      pending_evidence:
+        - "Optional table absence, explicit first pause/rollback, strict rows, duplicate scopes, unknown versions and bounded SQL fields"
+        - "Generation compare-and-change races, same-state rejection, ABA prevention, exact readback, unknown commit/rollback and close failures"
+        - "Claim-versus-pause ordering, scoped rejection, unscoped pre-LIMIT filtering, process reopen and corrupt candidate controls"
+        - "Previously claimed publisher/settlement continuity, original event preservation, paused enqueue/retry/reconcile behavior"
+        - "Sending counts, missing/expired leases, 1001-row cap, malformed metadata, fixed deadline and no inferred shutdown"
+        - "CLI main/embedded routing, no token/network/flush, original scope and input restrictions, stable files and failure provenance"
+      evidence: []
+      execution: "Source and documentation only; no builds, typechecks, tests, CLI/Bridge/API execution, database opens, control schema initialization, migrations, sample generation or release. Added optional local table initialization source; no dependency or Gateway API changes. Prior SQLite upgrades and PostgreSQL 016-049 remain unexecuted. Task commit/push targets main with skip-ci."
     sync_outbox_archive_development_increment:
       date: "2026-11-03"
       status: "Source-only complete project outbox archive export and offline verification; R-005 remains incomplete."
