@@ -1,5 +1,13 @@
 # workctx 开发入口
 
+新增应用归档恢复（仅源码，示例未执行）：
+
+```text
+workctx inbox application-restore --inbox local-inbox.sqlite --archive-file application-history.json --json-file restore-query.json
+```
+
+原查询必须包含完整 expected_identity、application={name,version}、archive_document_sha256，可选 timeout_ms（默认 30000、最多 90000）。先完整核对文件及身份/应用/摘要，再打开已有库；core/application 扩展须已存在。单事务只恢复空应用或确认完整相同历史，补齐兼容接收前缀并保留较新接收后缀，原页/投影/原 trace/事件绑定/应用头一并写入和完整读回。返回 restored/already-restored/empty、完整状态和文件信息；提交/回滚未知时保留 unknown 与原查询/进度，关闭失败保留 close_pending。不自动初始化、运行 reducer、发送确认或重试；不同应用历史拒绝覆盖。见 [应用归档恢复契约](../../docs/design/01-contracts/sync-application-restore-runtime.md)。未编译、类型检查、测试、执行命令或打开库。
+
 新增应用历史归档导出和离线浏览（仅源码，示例未执行）：
 
 ```text
@@ -9,7 +17,7 @@ workctx inbox application-inspect --archive-file application-history.json --json
 workctx inbox application-archive-get --archive-file application-history.json --json-file archive-selection-query.json
 ```
 
-export 的原应用 JSON 含 expected_identity/application，可选 timeout_ms；先完整审计应用历史，只读事务结束并尝试关闭后独占保存新文件，最终读回核对全部摘要。归档包含原页面与逐页完整投影/原 trace，最多 1000 页/16 MiB 文档，投影 1 MiB。inspect 默认 20/最多 50 项，可用 next_query 续页、selection_query 精确读快照；每次先核对整个文件的页面/投影/外层摘要。get 要求原归档和页面两个摘要，缺页返回 found=false/snapshot=null。离线入口不加载 Bridge/数据库，不接受 inbox/output，不发送请求；保存失败保留路径和关闭信息。摘要不认证来源/业务语义，未包含确认日志/未应用后缀，导入恢复仍缺。详见 [应用归档契约](../../docs/design/01-contracts/sync-application-archive-runtime.md)。未执行命令或生成样本，无新 schema/依赖。
+export 的原应用 JSON 含 expected_identity/application，可选 timeout_ms；先完整审计应用历史，只读事务结束并尝试关闭后独占保存新文件，最终读回核对全部摘要。归档包含原页面与逐页完整投影/原 trace，最多 1000 页/16 MiB 文档，投影 1 MiB。inspect 默认 20/最多 50 项，可用 next_query 续页、selection_query 精确读快照；每次先核对整个文件的页面/投影/外层摘要。get 要求原归档和页面两个摘要，缺页返回 found=false/snapshot=null。离线入口不加载 Bridge/数据库，不接受 inbox/output，不发送请求；保存失败保留路径和关闭信息。摘要不认证来源/业务语义，未包含确认日志/未应用后缀；导入恢复已另接上述显式入口，实际恢复证据仍缺。详见 [应用归档契约](../../docs/design/01-contracts/sync-application-archive-runtime.md)。未执行命令或生成样本，无新 schema/依赖。
 
 新增已保存应用目录（仅源码，示例未执行）：
 

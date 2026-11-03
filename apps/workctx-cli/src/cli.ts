@@ -114,6 +114,7 @@ export async function runWorkctx(
     'inbox application-status': 'inbox.application-status',
     'inbox application-list': 'inbox.application-list',
     'inbox application-export': 'inbox.application-export',
+    'inbox application-restore': 'inbox.application-restore',
     'inbox application-inspect': 'inbox.application-inspect',
     'inbox application-archive-get': 'inbox.application-archive-get',
     'inbox application-apply': 'inbox.application-apply',
@@ -254,7 +255,7 @@ export async function runWorkctx(
     }
     if (argv.some((arg) => arg === '--archive-file' || arg.startsWith('--archive-file=')))
       usage(
-        '--archive-file is only for inbox inspect-pages/archive-history/archive-page/restore-pages/compare-pages/append-pages/application-inspect/application-archive-get',
+        '--archive-file is only for inbox inspect-pages/archive-history/archive-page/restore-pages/compare-pages/append-pages/application-inspect/application-archive-get/application-restore',
       );
     if (command && isInboxAckResultCommand(command)) {
       const result = await runSyncAckResultArguments(argv, context.trace_id);

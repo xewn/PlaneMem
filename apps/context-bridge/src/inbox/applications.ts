@@ -30,6 +30,13 @@ import {
 import { SYNC_INBOX_APPLICATION_SCHEMA_V1 } from './application-schema.js';
 import { InboxApplicationRejection } from './application-rejection.js';
 import {
+  parseInboxApplicationRestoreQuery,
+  prepareInboxApplicationRestore,
+  restoreInboxApplicationHistory,
+  type InboxApplicationRestoreProgress,
+  type InboxApplicationSourceRestore,
+} from './application-restore.js';
+import {
   parseInboxApplicationCatalogQuery,
   readInboxApplicationCatalog,
 } from './application-catalog.js';
@@ -117,6 +124,7 @@ export class InboxApplications {
     private readonly db: DatabaseSync,
     private readonly readOnly: boolean,
     private readonly readPage: ReadPage,
+    private readonly restorePages: InboxApplicationSourceRestore,
   ) {}
   private corrupt(trace: string) {
     return applicationFailure(
@@ -180,6 +188,7 @@ export class InboxApplications {
               local_commit_state: 'unknown',
               acknowledgement_dispatch_state: 'not-sent',
               cause_code: cause?.code ?? 'INBOX_STORAGE_UNAVAILABLE',
+              ...(cause === undefined ? {} : { cause_details: cause.details }),
               phase: committing ? 'commit' : 'body',
               rollback,
             },
@@ -531,6 +540,88 @@ export class InboxApplications {
       check();
       return archive;
     });
+  }
+  restore(value: unknown, input: unknown, trace: string) {
+    const query = parseInboxApplicationRestoreQuery(input, trace);
+    const progress: InboxApplicationRestoreProgress = {
+      stage: 'archive',
+      prepared_received_pages: 0,
+      prepared_application_pages: 0,
+      prepared_application_events: 0,
+      selected_sequence: null,
+      selected_document_sha256: null,
+    };
+    try {
+      const prepared = prepareInboxApplicationRestore(value, query, trace);
+      progress.stage = 'transaction';
+      return this.run(trace, query.timeout_ms, true, (check) => {
+        this.require(trace);
+        const restored = restoreInboxApplicationHistory(
+          this.db,
+          keys(query),
+          query,
+          prepared,
+          trace,
+          check,
+          progress,
+          {
+            head: () => this.head(query, trace, check),
+            step: (digest) => this.step(query, digest, trace),
+            events: (step) => this.verifyEvents(query, step, trace, check),
+            sources: this.restorePages,
+          },
+        );
+        const result = {
+          ...this.historyEnvelope(query, trace),
+          status: restored.status,
+          restore_completed: true,
+          archive_document_sha256: prepared.archive.document_sha256,
+          added_application_pages: restored.added_application_pages,
+          added_application_events: restored.added_application_events,
+          ...restored.sources,
+          state: {
+            ...this.state(query, restored.restored.head, trace),
+            full_application_history_audit: 'verified-structure' as const,
+          },
+          full_application_history_audit: 'verified-structure' as const,
+          application_history_policy: 'empty-or-identical' as const,
+          source_page_policy: 'preserve-compatible-received-chain' as const,
+          restore_provenance: 'local-archive-not-authenticated' as const,
+          event_ledger: 'derived-from-original-pages' as const,
+          reducer_replay: 'not-performed' as const,
+          local_commit_state: 'committed' as const,
+        };
+        try {
+          syncJsonSnapshot(result, 2 * 1024 * 1024);
+        } catch {
+          throw applicationFailure(
+            'INBOX_APPLICATION_RESTORE_RESULT_TOO_LARGE',
+            'The complete restore result exceeds 2 MiB',
+            trace,
+          );
+        }
+        check();
+        return result;
+      });
+    } catch (error) {
+      if (!(error instanceof ContractError)) throw error;
+      throw new ContractError(error.envelope.code, error.envelope.message, {
+        trace_id: trace,
+        retryable: false,
+        details: {
+          ...progress,
+          local_commit_state: 'not-committed',
+          ...error.envelope.details,
+          restore_stage: progress.stage,
+          restore_completed: false,
+          expected_identity: query.expected_identity,
+          application: query.application,
+          archive_document_sha256: query.archive_document_sha256,
+          timeout_ms: query.timeout_ms,
+          acknowledgement_dispatch_state: 'not-sent',
+        },
+      });
+    }
   }
   catalog(input: unknown, trace: string) {
     const query = parseInboxApplicationCatalogQuery(input, trace);

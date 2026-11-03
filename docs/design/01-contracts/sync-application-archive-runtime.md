@@ -49,4 +49,4 @@ application-archive-get 必须提供 archive-file 和 JSON 中精确 archive_doc
 
 文件读取/内容错误分别为 INBOX_APPLICATION_ARCHIVE_FILE_UNAVAILABLE/FILE_INVALID；输出预检/保存/最终读回分别为 OUTPUT_UNAVAILABLE/SAVE_FAILED/READBACK_FAILED（同一前缀）。续页或详情摘要不符为 INBOX_APPLICATION_ARCHIVE_CHANGED，越界为 POSITION_INVALID，完整返回超限为 RESPONSE_TOO_LARGE。所有路径保留 acknowledgement_dispatch_state=not-sent。
 
-summary 明确 received_suffix/acknowledgement_history=not-included、server_application/source_authenticity/projection_semantics=not-verified、provenance=local-archive-not-authenticated。档案摘要仅检查内容自洽，不认证来源、旧执行代码或业务语义。恢复/导入、与目标库比较/合并、旧版本迁移、跨设备完整恢复及真实故障证据仍未完成。本轮未实际导出、检查归档、执行命令或生成样本，R-005 继续保持未完成。
+summary 明确 received_suffix/acknowledgement_history=not-included、server_application/source_authenticity/projection_semantics=not-verified、provenance=local-archive-not-authenticated。档案摘要仅检查内容自洽，不认证来源、旧执行代码或业务语义。显式空应用/完整相同历史恢复已补 Bridge/CLI 源码，见 [应用归档原子恢复](sync-application-restore-runtime.md)；只读恢复预览、不同历史比较/合并、旧版本迁移、跨设备完整恢复及真实故障证据仍未完成。本轮未实际导出、检查归档、执行命令或生成样本，R-005 继续保持未完成。

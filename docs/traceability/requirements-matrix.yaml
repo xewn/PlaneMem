@@ -978,6 +978,27 @@ requirements:
         - "CLI primary/embedded local routing, old output migration, read/rollback/close failures and complete result retention"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_application_restore_development_increment:
+      date: "2026-11-03"
+      status: "Source-only atomic application archive restore; R-005 remains incomplete."
+      artifacts:
+        - "apps/context-bridge/src/inbox/application-restore.ts"
+        - "apps/context-bridge/src/inbox/applications.ts"
+        - "apps/context-bridge/src/inbox/sqlite.ts"
+        - "apps/workctx-cli/src/inbox-application-restore.ts"
+        - "apps/workctx-cli/src/inbox-application-archive.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/sync-application-restore-runtime.md"
+      behavior: "Original identity/application/archive digest are explicitly bound before opening the existing inbox; Bridge independently verifies all nested and outer digests. One write transaction audits existing application and received histories, appends missing compatible source pages, restores an empty application with original snapshots/traces and derived event bindings, and audits exact complete readback before commit. Identical complete application history is accepted without rewriting, while partial/divergent/longer applications are rejected. Compatible newer received suffixes are preserved. Commit/rollback uncertainty retains unknown state, original selection, progress and cause diagnostics; no reducers, acknowledgement or automatic retry."
+      remaining_scope: "No readonly restore preview, merge of different application histories, old-version migration, acknowledgement/dispatch backup, source/business-semantic authentication, physical backup or cross-device runtime recovery evidence. Existing schemas are required. Fixed archive/source/response limits and transaction deadline do not bound exact memory/IO/query cost or preflight time."
+      pending_evidence:
+        - "Empty and identical histories; different traces/projections, partial/longer applications and orphan records"
+        - "Empty/shorter/equal/newer compatible received chains, source divergence, atomic append/ledger/head/readback failures"
+        - "Original identity/application/digest mismatches before opening, missing schemas and main/embedded local CLI routing"
+        - "Archive/application/source/response/deadline limits, commit and rollback unknown states, original query/cause retention and close failures"
+      evidence: []
+      execution: "Source and documentation only; no builds, typechecks, tests, CLI/Bridge/reducer/API/service runs, database opens, schema initialization, migrations, sample archives or release. No new schema/dependencies; SQLite extensions and PostgreSQL 016-049 remain unexecuted. Task commits/pushes target main with skip-ci messages."
     sync_application_archive_development_increment:
       date: "2026-11-03"
       status: "Source-only complete application-history archive export and offline browsing; R-005 remains incomplete."

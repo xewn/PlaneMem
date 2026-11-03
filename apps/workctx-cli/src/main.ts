@@ -79,6 +79,7 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   inbox application-list         List saved applications and checkpoint summaries for the original identity
                                  JSON: expected_identity; optional limit (1–50), after_application_key, timeout_ms
   inbox application-export       Save full audited application history to --output NEW_FILE using --inbox and original application JSON
+  inbox application-restore      Restore source pages and an empty/identical application using --inbox, --archive-file and original identity/application/archive digest JSON
   inbox application-inspect      Inspect --archive-file offline; optional JSON limit/after_sequence/archive_document_sha256
   inbox application-archive-get  Read an archived projection using --archive-file and archive/page digest JSON
   inbox application-history      Page application summaries with fixed sequence/page/projection boundaries
@@ -333,6 +334,7 @@ export async function main(args: string[]): Promise<number> {
       'inbox application-status',
       'inbox application-list',
       'inbox application-export',
+      'inbox application-restore',
       'inbox application-inspect',
       'inbox application-archive-get',
       'inbox application-apply',
@@ -468,7 +470,7 @@ export async function main(args: string[]): Promise<number> {
     }
     if (values['archive-file'] !== undefined)
       usage(
-        '--archive-file is only for inbox inspect-pages/archive-history/archive-page/restore-pages/compare-pages/append-pages/application-inspect/application-archive-get',
+        '--archive-file is only for inbox inspect-pages/archive-history/archive-page/restore-pages/compare-pages/append-pages/application-inspect/application-archive-get/application-restore',
       );
     if (isInboxAckResultCommand(name)) {
       print(await runSyncAckResultArguments(args, trace));

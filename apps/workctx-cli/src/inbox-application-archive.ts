@@ -9,6 +9,7 @@ import {
 } from '@planemem/contracts';
 import { readBoundedArtifactFile } from './artifact-files.js';
 import { prepareArtifactOutput, type ArtifactOutput } from './artifact-output.js';
+import { runInboxApplicationRestore } from './inbox-application-restore.js';
 import {
   applicationArchiveFailure as fail,
   readApplicationArchiveFile,
@@ -22,6 +23,7 @@ import {
 export function isInboxApplicationArchiveCommand(command: string) {
   return [
     'inbox application-export',
+    'inbox application-restore',
     'inbox application-inspect',
     'inbox application-archive-get',
   ].includes(command);
@@ -64,6 +66,9 @@ function argumentsFor(argv: string[], trace: string) {
     if (command === 'inbox application-export') {
       if (!inbox || !output || file !== undefined || (json === undefined && jsonFile === undefined))
         throw new TypeError();
+    } else if (command === 'inbox application-restore') {
+      if (!inbox || !file || output !== undefined || (json === undefined && jsonFile === undefined))
+        throw new TypeError();
     } else {
       if (
         !file ||
@@ -86,7 +91,7 @@ function argumentsFor(argv: string[], trace: string) {
   } catch {
     throw fail(
       'USAGE_ERROR',
-      'Use inbox application-export with --inbox, original application JSON and --output NEW_FILE; application-inspect with --archive-file and optional pagination JSON; application-archive-get with --archive-file and exact archive/page digest JSON. Use --json or --json-file; no stdin, repeated or other options',
+      'Use inbox application-export with --inbox, original application JSON and --output NEW_FILE; application-restore with --inbox, --archive-file and original identity/application/archive digest JSON; application-inspect with --archive-file and optional pagination JSON; application-archive-get with --archive-file and exact archive/page digest JSON. Use --json or --json-file; no stdin, repeated or other options',
       trace,
     );
   }
@@ -144,6 +149,8 @@ function envelope(
 export async function runInboxApplicationArchiveArguments(argv: string[], trace: string) {
   const args = argumentsFor(argv, trace);
   const input = await readQuery(args, trace);
+  if (args.command === 'inbox application-restore')
+    return runInboxApplicationRestore(args.inbox!, args.file!, input, trace);
   if (args.file !== undefined) {
     const local = await readApplicationArchiveFile(args.file, trace);
     const selected =
