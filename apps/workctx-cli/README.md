@@ -507,6 +507,8 @@ observed-item.json 示例：`{"work_item_id":"plane-item-42"}`。CLI 核对返�
 | `outbox send-control` | 可选 --outbox EXISTING_FILE；无 JSON | 无；查看项目暂停状态和有界发送中计数 |
 | `outbox pause` | --json/--json-file（expected_generation/reason，可选scope）；可选 --outbox | 持久暂停新领取；首次显式初始化可选控制表，不取消在途发送 |
 | `outbox resume` | --json/--json-file（expected_generation/reason，可选scope）；可选 --outbox | 匹配当前版本后恢复新领取；不执行 flush |
+| `outbox restore` | 必须 --outbox EXISTING_FILE、--archive-file FILE、--json/--json-file 原恢复查询 | 原档案恢复到已暂停的空项目，未完成记录先转为待处理；原历史和回执同事务保存 |
+| `outbox restore-receipt` | 必须 --outbox EXISTING_FILE、--json/--json-file 同一原恢复查询；无档案文件 | 无；只读完整历史恢复回执，不代表当前队列状态 |
 | `sync ack` | 保存的五字段 `expected_identity` 和非负安全整数 `cursor` | 不接受键/版本 |
 | `context compile` | 可选 `budget_tokens`、`ttl_seconds` | `--key` |
 | `context get` | 可选 `pack_id`、`format` | 无 |
@@ -608,4 +610,8 @@ workctx context get --json-file pack-query.json
 
 
 2026-11-03：新增 readSendControl/changeSendControl 和 outbox send-control/pause/resume，按项目持久暂停后续领取，原 generation 比较防止陈旧覆盖；首次显式暂停同事务初始化可选控制表，常规读取/构造不初始化。发送领取每次读取，暂停项目不占跨项目窗口；已领取批次仍可能发送和结算。只读状态有界统计发送中记录，过期/缺令牌或超限不声明发送已停止；提交未知保留原查询和候选generation。旧进程协调、档案恢复与运行证据仍待补。见 [发送控制契约](../../docs/design/01-contracts/outbox-send-control-runtime.md)。仅源码文档，未编译、类型检查、测试、执行CLI、打开库、初始化schema或发布。
+
+
+
+2026-11-03：新增 restoreArchive/readRestoreReceipt 与 outbox restore/restore-receipt。完整原档案恢复到已暂停的空项目，绑定原档案摘要/恢复ID/控制generation，预检全库事件和键冲突；未完成行改为failed待处理并清除租约，原正文/身份/摘要/尝试/调度保持。完整原档案、原查询与恢复回执同事务持久保存，全部写入后逐行及整回执读回；重复原请求只返回历史，不覆盖后来变化的队列。回执查询不改当前状态，未知提交保留原请求/候选和关闭信息，不自动resume/retry/发送。见 [受控恢复契约](../../docs/design/01-contracts/outbox-restore-runtime.md)。新增可选本地表仅源码，未编译、类型检查、测试、执行CLI、打开库、初始化schema或发布。
 

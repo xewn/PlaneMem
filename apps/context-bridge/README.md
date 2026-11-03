@@ -76,3 +76,7 @@ SqliteSyncInbox 提供显式新库创建、importPage、inspect、readHead、clo
 
 2026-11-03：新增 readSendControl/changeSendControl 和 outbox send-control/pause/resume，按项目持久暂停后续领取，原 generation 比较防止陈旧覆盖；首次显式暂停同事务初始化可选控制表，常规读取/构造不初始化。发送领取每次读取，暂停项目不占跨项目窗口；已领取批次仍可能发送和结算。只读状态有界统计发送中记录，过期/缺令牌或超限不声明发送已停止；提交未知保留原查询和候选generation。旧进程协调、档案恢复与运行证据仍待补。见 [发送控制契约](../../docs/design/01-contracts/outbox-send-control-runtime.md)。仅源码文档，未编译、类型检查、测试、执行CLI、打开库、初始化schema或发布。
 
+
+
+2026-11-03：新增 restoreArchive/readRestoreReceipt 与 outbox restore/restore-receipt。完整原档案恢复到已暂停的空项目，绑定原档案摘要/恢复ID/控制generation，预检全库事件和键冲突；未完成行改为failed待处理并清除租约，原正文/身份/摘要/尝试/调度保持。完整原档案、原查询与恢复回执同事务持久保存，全部写入后逐行及整回执读回；重复原请求只返回历史，不覆盖后来变化的队列。回执查询不改当前状态，未知提交保留原请求/候选和关闭信息，不自动resume/retry/发送。见 [受控恢复契约](../../docs/design/01-contracts/outbox-restore-runtime.md)。新增可选本地表仅源码，未编译、类型检查、测试、执行CLI、打开库、初始化schema或发布。
+

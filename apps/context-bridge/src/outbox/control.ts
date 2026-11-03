@@ -21,6 +21,9 @@ const FIELDS = [
   'trace_id',
 ];
 const GENERATION = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
+export function isOutboxSendControlGeneration(value: unknown): value is string {
+  return typeof value === 'string' && GENERATION.test(value);
+}
 const MAX_SENDING = 1000;
 export interface OutboxSendControl {
   state: 'running' | 'paused';
@@ -78,8 +81,7 @@ export function parseOutboxSendControlChange(
       Object.keys(row).some((key) => !fields.includes(key)) ||
       (row.state !== 'paused' && row.state !== 'running') ||
       !validText(row.reason) ||
-      (row.expected_generation !== null &&
-        (typeof row.expected_generation !== 'string' || !GENERATION.test(row.expected_generation)))
+      (row.expected_generation !== null && !isOutboxSendControlGeneration(row.expected_generation))
     )
       throw new TypeError();
     return {
@@ -151,8 +153,7 @@ function currentControl(
     rows.length !== 1 ||
     row.schema_version !== 1 ||
     (row.state !== 'paused' && row.state !== 'running') ||
-    typeof row.generation !== 'string' ||
-    !GENERATION.test(row.generation) ||
+    !isOutboxSendControlGeneration(row.generation) ||
     !validText(row.reason) ||
     !canonicalTime(row.changed_at) ||
     !validText(row.trace_id)
@@ -170,6 +171,11 @@ function currentControl(
     changed_at: row.changed_at,
     trace_id: row.trace_id,
   };
+}
+
+/** Internal read for callers that already own the current SQLite transaction. */
+export function outboxStoredSendControl(db: DatabaseSync, scope: OutboxScope, trace: string) {
+  return currentControl(db, scope, trace, controlTable(db, trace));
 }
 
 /** One claim transaction sees one gate state. Previously claimed work may still publish and settle. */

@@ -959,6 +959,30 @@ requirements:
         - "Offline routing without token/environment/SQLite, argument restrictions, output traces, provenance and exits"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, sample file generation, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_outbox_restore_development_increment:
+      date: "2026-11-03"
+      status: "Source-only complete archive restore into an empty paused project with durable original receipts; R-005 remains incomplete."
+      artifacts:
+        - "apps/context-bridge/src/outbox/restore.ts"
+        - "apps/context-bridge/src/outbox/sqlite.ts"
+        - "apps/context-bridge/src/outbox/control.ts"
+        - "apps/context-bridge/src/outbox/reading.ts"
+        - "apps/workctx-cli/src/outbox-restore.ts"
+        - "apps/workctx-cli/src/outbox-archive.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/outbox-restore-runtime.md"
+      behavior: "Full archive validation and exact original restore query bind scope, restore ID, source document hash, observed paused generation and reason. A new restore requires an empty target project and no event/key conflicts anywhere in that queue. One immediate transaction preserves original event content/identity/key/checksums/scheduling and terminal history, maps all nonterminal originals to failed review-required state with null leases, and stores the complete original archive/query in optional local_outbox_restore_receipts v1. After every write, all restored columns/counts, both document hashes, the full receipt and unchanged pause record are read back before commit. Exact repeated requests return historical receipts without rewriting changed rows. Read-only original receipt lookup verifies all persisted archive content and the immutable v1 mapping; missing receipt is not proof of failure. CLI explicitly names existing target storage, validates scope/files before open and retains uncertain commit/candidate/history/close details."
+      remaining_scope: "No automatic resume/retry/send, sender shutdown proof, remote reconciliation, nonempty merge, new database initialization, cross-project/unknown-column/physical backup, cancellation or batch activation. Latest controls and restore receipts remain excluded from archive v1. Per-row restore provenance, receipt listing/archive re-export/retention and runtime evidence remain pending. Existing retry is an independent explicit action; restored failed state is not a remote failure conclusion."
+      pending_evidence:
+        - "Every original status, held mapping, raw text/identity/trace/attempt/schedule/checksum preservation and old lease rejection"
+        - "Empty/nonempty targets, paused generation races, cross-project key/ID collisions, optional extension initialization and zero-record restore"
+        - "Full post-write readback, record counts, immutable mapping digest, exact receipt replay after current queue changes and same-ID different-query rejection"
+        - "Corrupt/oversized/duplicate receipt rows, absent table/receipt, complete original archive verification and historical/current trace separation"
+        - "Statement/readback failures, owned rollback, commit uncertainty, unconfirmed candidate versus recorded history, close failures and fixed deadline"
+        - "CLI main/embedded routing, required explicit target, stable bounded UTF-8 inputs, scope/digest matching before open and no automatic publisher calls"
+      evidence: []
+      execution: "Source and documentation only; no builds, typechecks, tests, CLI/Bridge/API execution, database opens, extension initialization, migrations, sample generation or release. Added explicit optional local receipt table initialization source; no dependency or Gateway API changes. Earlier SQLite upgrades and PostgreSQL 016-049 remain unexecuted. Independent task commit/push targets main with skip-ci."
     sync_outbox_send_control_development_increment:
       date: "2026-11-03"
       status: "Source-only persistent project claim control and bounded sending diagnostics; R-005 remains incomplete."

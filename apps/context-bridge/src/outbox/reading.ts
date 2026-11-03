@@ -100,12 +100,14 @@ const numbers: [string, number, boolean][] = [
   ['client_cursor', 1, true],
   ['server_cursor', 1, true],
 ];
+export const OUTBOX_STORED_COLUMNS: readonly string[] = Object.freeze(
+  [...text, ...numbers].map(([name]) => name).concat(['payload', 'source_refs']),
+);
 
 /** Preserve all known stored columns; derived read flags are not part of an archive. */
 export function outboxStoredColumns(row: Record<string, unknown>): Record<string, unknown> {
   const result: Record<string, unknown> = {};
-  for (const name of [...text, ...numbers].map(([name]) => name).concat(['payload', 'source_refs']))
-    result[name] = row[name];
+  for (const name of OUTBOX_STORED_COLUMNS) result[name] = row[name];
   return result;
 }
 
@@ -115,7 +117,7 @@ export function parseOutboxStoredRow(input: unknown, trace: string): Record<stri
     const value: unknown = JSON.parse(syncJsonSnapshot(input, 4 * MAX_SYNC_BATCH_BYTES + 65536));
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError();
     const row = value as Record<string, unknown>;
-    const names = [...text, ...numbers].map(([name]) => name).concat(['payload', 'source_refs']);
+    const names = OUTBOX_STORED_COLUMNS;
     if (
       Object.keys(row).length !== names.length ||
       Object.keys(row).some((name) => !names.includes(name))

@@ -337,3 +337,7 @@ T1.2 责任范围扩展至连接器公共导出、README、兼容性说明和需
 
 2026-11-03 发送队列持久暂停协接（ADR-015）：跨 T3.4/T4.3 新增按项目持久发送控制及 outbox send-control/pause/resume。显式暂停在同一写事务创建可选 local_outbox_send_control 表并保存新 generation、原因/时间/trace；变更绑定原 scope 与 expected_generation，拒绝陈旧操作。发送领取事务每次读取控制，指定项目暂停报错，无范围 drain 跳过暂停项目；已领取批次仍可能完成，过期租约不证明发送已停止。只读状态提供有界 sending 元数据统计，暂停不停止入队/显式重排/回执结算，不取消在途请求、不改原行或自动恢复。CLI 只打开已有队列，缺控制表读为未配置、正常构造/读取/领取不初始化该表。范围 Bridge outbox/CLI/README/契约/TODO/R005，新增可选本地表的源码，不执行schema或迁移；不编译、类型检查、测试、执行CLI/服务、打开数据库、生成样本或发布。按任务提交并推送main，使用[skip ci]。旧发送器不认识控制，跨版本协调、原发送者确认停止及档案恢复仍待补。
 
+
+
+2026-11-03 发送队列受控档案恢复协接（ADR-015）：跨 T3.4/T4.3 新增 restoreArchive/readRestoreReceipt 与 outbox restore/restore-receipt。完整重核原档案/原查询，首次恢复要求目标项目为空且持久暂停 generation 精确匹配，预检全库事件ID/键冲突后整事务写入原内容与持久回执。sent/conflict 保留历史终态；pending/sending/failed 转为 failed、清空租约并标 OUTBOX_RESTORED_REVIEW_REQUIRED，原正文/引用字符串、身份/键/摘要/尝试/调度/trace保持；完整原档案同事务保存，保留被替换的诊断/租约历史。显式本地扩展表记录原查询/原档案、恢复时间trace及归一后摘要；同恢复ID相同原查询仅返回既有历史回执，不重灌已变化队列。只读原回执用于处理提交未知，缺失不解释为原操作失败。恢复不自动发送/resume/retry，不证明旧发送者已停止，非空合并/跨版本协调另待补。范围 Bridge outbox/CLI/README/契约/TODO/R005；只写可选本地表初始化源码，不打开数据库、不执行schema/迁移，不编译、类型检查、测试、运行CLI/服务、生成样本或发布。按任务提交推送main并带[skip ci]。
+

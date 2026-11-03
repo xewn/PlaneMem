@@ -78,7 +78,7 @@ function argumentsFor(argv: string[], trace: string) {
     );
   }
 }
-async function readArchive(path: string, trace: string) {
+export async function readOutboxArchiveFile(path: string, trace: string) {
   let bytes: Uint8Array;
   try {
     bytes = await readBoundedArtifactFile(path, OUTBOX_ARCHIVE_FILE_BYTES, trace);
@@ -123,7 +123,7 @@ async function saveArchive(saved: OutboxArchiveFile, output: ArtifactOutput, tra
   const file_sha256 = hash(bytes);
   const local = await saveArtifactOutput(output, bytes, file_sha256, trace);
   try {
-    const stored = await readArchive(local.path, trace);
+    const stored = await readOutboxArchiveFile(local.path, trace);
     if (
       stored.file_bytes !== bytes.byteLength ||
       stored.file_sha256 !== file_sha256 ||
@@ -179,7 +179,7 @@ export async function runOutboxArchiveArguments(
 ) {
   const args = argumentsFor(argv, trace);
   if (args.command === 'outbox inspect-archive') {
-    const stored = await readArchive(args.file!, trace);
+    const stored = await readOutboxArchiveFile(args.file!, trace);
     return envelope(stored.saved, trace, {
       local: {
         state: 'read-and-verified',

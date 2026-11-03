@@ -59,6 +59,9 @@ export { parseOutboxReadScope, parseOutboxListQuery } from './reading.js';
 export type { OutboxListQuery } from './reading.js';
 import { parseOutboxAuditQuery, auditOutboxRecords } from './audit.js';
 import { readOutboxSendControl, changeOutboxSendControl, outboxClaimGuard } from './control.js';
+import { restoreOutboxArchive, readOutboxRestoreReceipt } from './restore.js';
+export { parseOutboxRestoreQuery } from './restore.js';
+export type { OutboxRestoreQuery, OutboxRestoreReceipt } from './restore.js';
 export { parseOutboxSendControlChange } from './control.js';
 export type { OutboxSendControl, OutboxSendControlChange } from './control.js';
 export { parseOutboxAuditQuery } from './audit.js';
@@ -384,6 +387,15 @@ export class SqliteOutbox {
   /** Explicit compare-and-change; affects future claims, never cancels an existing publisher. */
   changeSendControl(input: unknown, trace: string) {
     return changeOutboxSendControl(this.db, input, trace);
+  }
+
+  /** Explicit empty-project restore; nonterminal originals remain held until separately reviewed. */
+  restoreArchive(archive: unknown, query: unknown, trace: string) {
+    return restoreOutboxArchive(this.db, archive, query, trace);
+  }
+
+  readRestoreReceipt(query: unknown, trace: string) {
+    return readOutboxRestoreReceipt(this.db, query, trace);
   }
 
   /** Collect only the fully audited snapshot; file publication is the caller's explicit action. */
