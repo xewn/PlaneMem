@@ -21,6 +21,8 @@ import { SYNC_INBOX_SCHEMA_V1, SYNC_INBOX_SCHEMA_VERSION } from './schema.js';
 import { InboxApplications } from './applications.js';
 export { parseInboxApplicationAuditQuery } from './application-audit.js';
 export type { SyncInboxApplicationAuditQuery } from './application-audit.js';
+export { parseInboxApplicationCatalogQuery } from './application-catalog.js';
+export type { SyncInboxApplicationCatalogQuery } from './application-catalog.js';
 export { parseInboxBuiltInApplicationReplayQuery } from './application-replay.js';
 export type { SyncInboxApplicationReplayQuery } from './application-replay.js';
 export {
@@ -972,6 +974,9 @@ export class SqliteSyncInbox {
   }
   readApplicationState(input: unknown, trace: string) {
     return this.applications().read(input, trace);
+  }
+  readApplicationCatalog(input: unknown, trace: string) {
+    return this.applications().catalog(input, trace);
   }
   readApplicationHistory(input: unknown, trace: string) {
     return this.applications().history(input, trace);

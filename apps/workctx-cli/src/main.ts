@@ -72,6 +72,8 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
                                  JSON: expected_identity/application; optional max_pages/max_events/max_bytes/timeout_ms
   inbox application-replay       Recompute every saved context-item-lifecycle/1 projection without writing
                                  Same audit JSON budgets plus optional max_replay_bytes; --inbox required
+  inbox application-list         List saved applications and checkpoint summaries for the original identity
+                                 JSON: expected_identity; optional limit (1–50), after_application_key, timeout_ms
   inbox application-history      Page application summaries with fixed sequence/page/projection boundaries
   inbox application-get          Read a saved projection selected by document_sha256; optional expected_projection_sha256
                                  Both require --inbox and original identity/application JSON; history accepts limit 1–50
@@ -322,6 +324,7 @@ export async function main(args: string[]): Promise<number> {
       'inbox enable-ack-recovery',
       'inbox enable-applications',
       'inbox application-status',
+      'inbox application-list',
       'inbox application-apply',
       'inbox application-audit',
       'inbox application-replay',

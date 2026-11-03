@@ -9,6 +9,7 @@ import {
 import type {
   SqliteSyncInbox,
   SyncInboxApplicationQuery,
+  SyncInboxApplicationCatalogQuery,
   SyncInboxApplicationApplyQuery,
   SyncInboxApplicationAuditQuery,
   SyncInboxApplicationReplayQuery,
@@ -34,6 +35,7 @@ export function isInboxCommand(command: string) {
     'inbox head',
     'inbox enable-applications',
     'inbox application-status',
+    'inbox application-list',
     'inbox application-apply',
     'inbox application-audit',
     'inbox application-replay',
@@ -49,7 +51,7 @@ export function isInboxCommand(command: string) {
 function invalid(trace: string) {
   return new ContractError(
     'USAGE_ERROR',
-    'Use local inbox init/import/status/consumers/audit-pages/page-history/page-get/head/enable-applications/application-status/application-apply/application-audit/application-replay/application-history/application-get/enable-ack/enable-ack-dispatch/enable-ack-recovery/ack-status/ack-dispatch-status with --inbox FILE. Init and enable commands accept only --inbox. Import requires --page-file. Reads and application-apply require --json or --json-file: consumers accepts {} or limit/after_consumer_key; other queries require expected_identity and selection parameters. Application reads require application name/version; history accepts limit and saved sequence/page/projection boundaries; get requires document_sha256 with optional expected_projection_sha256; application-apply selects context-item-lifecycle/1 and also requires document_sha256 and expected_previous_sha256 (root null). Application queries permit timeout_ms in JSON; application-audit also permits max_pages/max_events/max_bytes and never executes reducers; application-replay selects context-item-lifecycle/1, adds max_replay_bytes and recomputes saved history without writing. Head requires --output NEW_PAGE; page-get optionally exports to --output NEW_PAGE. No stdin, key, --timeout-ms or repeated options',
+    'Use local inbox init/import/status/consumers/audit-pages/page-history/page-get/head/enable-applications/application-list/application-status/application-apply/application-audit/application-replay/application-history/application-get/enable-ack/enable-ack-dispatch/enable-ack-recovery/ack-status/ack-dispatch-status with --inbox FILE. Init and enable commands accept only --inbox. Import requires --page-file. Reads and application-apply require --json or --json-file: consumers accepts {} or limit/after_consumer_key; other queries require expected_identity and selection parameters. Application-list requires only original expected_identity and optional limit/after_application_key/timeout_ms; other application reads require application name/version; history accepts limit and saved sequence/page/projection boundaries; get requires document_sha256 with optional expected_projection_sha256; application-apply selects context-item-lifecycle/1 and also requires document_sha256 and expected_previous_sha256 (root null). Application queries permit timeout_ms in JSON; application-audit also permits max_pages/max_events/max_bytes and never executes reducers; application-replay selects context-item-lifecycle/1, adds max_replay_bytes and recomputes saved history without writing. Head requires --output NEW_PAGE; page-get optionally exports to --output NEW_PAGE. No stdin, key, --timeout-ms or repeated options',
     { trace_id: trace, retryable: false, acknowledgement_dispatch_state: 'not-sent' },
   );
 }
@@ -183,6 +185,7 @@ export async function runInboxArguments(argv: string[], trace: string) {
       ? await readIdentity(args, trace)
       : undefined;
   const queryInput = [
+    'inbox application-list',
     'inbox application-replay',
     'inbox application-history',
     'inbox application-get',
@@ -201,6 +204,7 @@ export async function runInboxArguments(argv: string[], trace: string) {
   let historyQuery: SyncInboxPageHistoryQuery | undefined;
   let detailQuery: SyncInboxPageDetailQuery | undefined;
   let applicationQuery: SyncInboxApplicationQuery | undefined;
+  let applicationCatalogQuery: SyncInboxApplicationCatalogQuery | undefined;
   let applicationApplyQuery: SyncInboxApplicationApplyQuery | undefined;
   let applicationAuditQuery: SyncInboxApplicationAuditQuery | undefined;
   let applicationReplayQuery: SyncInboxApplicationReplayQuery | undefined;
@@ -211,7 +215,10 @@ export async function runInboxArguments(argv: string[], trace: string) {
   let inbox: SqliteSyncInbox;
   try {
     const bridge = await import('@planemem/context-bridge');
-    if (args.command === 'inbox application-replay') {
+    if (args.command === 'inbox application-list') {
+      applicationCatalogQuery = bridge.parseInboxApplicationCatalogQuery(queryInput, trace);
+      identity = applicationCatalogQuery.expected_identity;
+    } else if (args.command === 'inbox application-replay') {
       applicationReplayQuery = bridge.parseInboxBuiltInApplicationReplayQuery(queryInput, trace);
       identity = applicationReplayQuery.expected_identity;
     } else if (args.command === 'inbox application-history') {
@@ -244,6 +251,7 @@ export async function runInboxArguments(argv: string[], trace: string) {
     inbox = new bridge.SqliteSyncInbox(args.path, {
       create: args.command === 'inbox init',
       readonly:
+        args.command === 'inbox application-list' ||
         args.command === 'inbox application-replay' ||
         args.command === 'inbox application-history' ||
         args.command === 'inbox application-get' ||
@@ -286,6 +294,12 @@ export async function runInboxArguments(argv: string[], trace: string) {
         local_commit_state: 'committed',
         acknowledgement_dispatch_state: 'not-sent',
       });
+    } else if (applicationCatalogQuery) {
+      result = envelope(
+        trace,
+        { ...inbox.readApplicationCatalog(applicationCatalogQuery, trace), inbox: args.path },
+        applicationCatalogQuery.expected_identity,
+      );
     } else if (applicationReplayQuery) {
       result = envelope(
         trace,
@@ -459,6 +473,7 @@ export async function runInboxArguments(argv: string[], trace: string) {
         'inbox page-get',
         'inbox enable-applications',
         'inbox application-status',
+        'inbox application-list',
         'inbox application-apply',
         'inbox application-audit',
         'inbox application-replay',

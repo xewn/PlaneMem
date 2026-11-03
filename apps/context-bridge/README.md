@@ -1,5 +1,7 @@
 # Context Bridge 本地同步存储
 
+2026-11-03 应用目录增补：`readApplicationCatalog(input,trace)` 按完整原 expected_identity 分页读取已保存应用名称/版本和头摘要。默认 20/最多 50，按应用摘要键 BINARY 顺序，用 next_query 显式续页；每项及前瞻完整核验描述/键、头快照、原页和该页 ledger。结果含 application_query、固定本次头上界的 history_query 和精确 snapshot_query，不输出投影正文；目录跨调用读取当前成员/头，不冻结成员或核查缺描述的孤立行。固定 64 MiB 逐应用原文/投影预算、512 KiB 响应，沿用本地期限；CLI application-list 已接只读入口。见 [应用目录契约](../../docs/design/01-contracts/sync-application-catalog-runtime.md)。无 schema/依赖变化，仅源码文档，未编译、测试、运行或打开库。
+
 2026-11-03 内置应用重放增补：`replayBuiltInApplicationHistory(input,trace)` 在同一只读事务先完整结构审计，再从 null 按原页/事件正序重算 context-item-lifecycle/1，逐页比较完整保存投影。首个不匹配页返回原页/投影摘要，规则拒绝保留具体事件位置；不回写快照或应用头。沿用审计页/事件/源字节/时间预算，新增 max_replay_bytes（默认 64 MiB、最多 512 MiB），单页处理仍限 64 MiB、投影 1 MiB。成功仅证明本次历史与当前固定内置代码重算相符，来源和服务端状态未认证；CLI application-replay 只读接入。见 [重放核对契约](../../docs/design/01-contracts/sync-application-replay-runtime.md)。无 schema/依赖变化，仅源码与文档，未运行 reducer、CLI、数据库、编译或测试。
 
 2026-11-03 应用历史浏览增补：`readApplicationHistory(input,trace)` 返回固定双边界的步骤摘要分页，默认 20/最多 50，每个边界绑定序号/原页摘要/投影摘要；完整核验选中步骤、ledger 与一条前瞻，返回 next_query 和每项 selection_query。`readApplicationSnapshot(input,trace)` 按原页摘要读取完整历史投影，可绑定 expected_projection_sha256；缺步骤返回 found=false/snapshot=null，当前头以独立摘要返回。均要求原 expected_identity/application，可选 timeout_ms；只读事务，64 MiB 不同选中源文档/投影预算，列表摘要 512 KiB/详情 2 MiB 响应限额，不自动导出、恢复、重放或确认。CLI application-history/application-get 同步接入；范围及局限见 [历史浏览契约](../../docs/design/01-contracts/sync-application-history-runtime.md)。无新 schema/依赖，仅源码文档，未编译、测试、运行或打开数据库。

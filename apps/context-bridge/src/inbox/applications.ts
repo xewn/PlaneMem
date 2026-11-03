@@ -24,6 +24,10 @@ import {
 import { SYNC_INBOX_APPLICATION_SCHEMA_V1 } from './application-schema.js';
 import { InboxApplicationRejection } from './application-rejection.js';
 import {
+  parseInboxApplicationCatalogQuery,
+  readInboxApplicationCatalog,
+} from './application-catalog.js';
+import {
   parseInboxBuiltInApplicationReplayQuery,
   replayInboxApplicationHistory,
 } from './application-replay.js';
@@ -447,6 +451,19 @@ export class InboxApplications {
     return this.run(trace, query.timeout_ms, false, (check) => {
       this.require(trace);
       return this.state(query, this.head(query, trace, check), trace);
+    });
+  }
+  catalog(input: unknown, trace: string) {
+    const query = parseInboxApplicationCatalogQuery(input, trace);
+    return this.run(trace, query.timeout_ms, false, (check) => {
+      this.require(trace);
+      return readInboxApplicationCatalog(
+        this.db,
+        query,
+        (selection) => this.head(selection, trace, check),
+        trace,
+        check,
+      );
     });
   }
   private historyReads(query: SyncInboxApplicationQuery, trace: string, check: () => void) {

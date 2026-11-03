@@ -52,7 +52,9 @@ CLI 主程序和嵌入入口共用本地参数解析：必须显式 --inbox 和 
 
 业务拒绝只传播内部固定诊断，不透传任意 handler 异常正文：INBOX_CONTEXT_ITEM_EVENT_INVALID、PROJECTION_INVALID、BASELINE_REQUIRED、VERSION_GAP、TRANSITION_INVALID、LIMIT_REACHED。普通自定义 handler 失败继续归类 INBOX_APPLICATION_REDUCER_FAILED。事务提交/回滚不明仍优先返回 INBOX_APPLICATION_COMMIT_UNKNOWN/ROLLBACK_UNKNOWN，并在 cause_code 保留拒绝原因；local_commit_state=unknown 不能改为未提交。
 
-校验不是全历史重放，也不证明投影中的每个历史事件属于所有原页面。应用名称版本依旧是调用方声明，不是代码认证；通用 API 或直接改库不能靠固定名字获得可信执行证明。application-status 是原通用读取，保留投影而不重跑本适配器；精确原页重复 apply 会执行上述内置结构校验，但仍不会重放历史 reducer。完整历史审计、投影目录/导出恢复、正文同步、旧条目基线和权限变化重建仍待补。
+校验不是全历史重放，也不证明投影中的每个历史事件属于所有原页面。应用名称版本依旧是调用方声明，不是代码认证；通用 API 或直接改库不能靠固定名字获得可信执行证明。application-status 是原通用读取，保留投影而不重跑本适配器；精确原页重复 apply 会执行上述内置结构校验，但仍不会重放历史 reducer。完整历史审计与应用目录由后续独立入口补充；投影导出恢复、正文同步、旧条目基线和权限变化重建仍待补。
 2026-11-03 后续结构审计增补：通用 auditApplicationHistory 与 CLI application-audit 已完整遍历所选应用历史，核对全部快照摘要、原页与事件 ledger 及实际行数；不会重跑本适配器或验证历史状态迁移语义。详见 [应用历史结构审计](sync-application-audit-runtime.md)。该审计入口仅核对结构，内置历史重放由下方后续增量补充；备份恢复及运行证据仍缺。
 
 2026-11-03 后续重放增补：replayBuiltInApplicationHistory 与只读 CLI application-replay 在同一事务先完整结构审计，再从 null 按原页/事件正序运行当前固定适配器并逐页比较完整保存投影。结果仅证明与当前代码重算相符，遇到类型/生命周期/预算或快照差异明确失败，保留具体页/事件与安全诊断；不修复或写回状态。详见 [内置应用历史重放核对](sync-application-replay-runtime.md)。无新 schema/依赖，仅源码文档，未运行 reducer、CLI 或数据库。
+
+2026-11-03 后续目录增补：readApplicationCatalog 与 CLI application-list 可按原身份发现保存的应用名称/版本和头摘要，返回状态、固定历史上界及精确快照查询。目录可包含任意已保存描述，不代表其有内置可执行适配器，也不认证历史代码；见 [应用目录](sync-application-catalog-runtime.md)。仅源码未执行。

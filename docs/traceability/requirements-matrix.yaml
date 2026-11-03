@@ -978,6 +978,26 @@ requirements:
         - "CLI primary/embedded local routing, old output migration, read/rollback/close failures and complete result retention"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_application_catalog_development_increment:
+      date: "2026-11-03"
+      status: "Source-only discovery of saved application descriptors and validated checkpoint summaries for one original consumer; R-005 remains incomplete."
+      artifacts:
+        - "apps/context-bridge/src/inbox/application-catalog.ts"
+        - "apps/context-bridge/src/inbox/applications.ts"
+        - "apps/context-bridge/src/inbox/sqlite.ts"
+        - "apps/workctx-cli/src/inbox.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/sync-application-catalog-runtime.md"
+      behavior: "Original-identity queries are parsed before readonly opening. Default-20/max-50 BINARY application-key pages validate bounded canonical descriptors/digests and complete selected heads/source pages/event ledgers, including one lookahead. Summaries omit projections and supply original application queries, history queries bound to the observed head, and exact snapshot queries. A 64 MiB per-application selected document/projection budget, 512 KiB response bound and shared local deadline reject oversized results without partial success."
+      remaining_scope: "No cross-call frozen membership or checkpoints, orphan records without descriptors, complete application-history or physical-database audit, reducer replay, source/code authentication, application export/restore or runtime evidence. An empty directory does not establish consumer existence or absence of orphan rows."
+      pending_evidence:
+        - "Strict original identity, unknown-field/range rejection, canonical descriptor/key mismatch and primary/embedded readonly CLI routing"
+        - "Empty/one/multiple pages, malformed first keys, corrupt selected head or lookahead and BINARY continuation"
+        - "Head advances, newly inserted keys before/after continuation, current application query versus fixed history/snapshot selections"
+        - "Same-page multiple applications charged separately, selected-byte/response/deadline limits and rollback/close failures"
+      evidence: []
+      execution: "Source and documentation only; no builds, typechecks, tests, CLI/Bridge/API/service runs, database opens, schema initialization, migrations, sample artifacts or release. No new schema/dependencies; SQLite extensions and PostgreSQL 016-049 remain unexecuted. Tasks are committed and pushed individually to main with skip-ci messages."
     sync_application_replay_development_increment:
       date: "2026-11-03"
       status: "Source-only full saved-history recomputation with the current fixed context-item-lifecycle/1 adapter; R-005 remains incomplete."

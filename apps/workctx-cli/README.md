@@ -1,5 +1,13 @@
 # workctx 开发入口
 
+新增已保存应用目录（仅源码，示例未执行）：
+
+```text
+workctx inbox application-list --inbox local-inbox.sqlite --json-file application-catalog-query.json
+```
+
+JSON 要求完整 expected_identity，不要求预先知道应用名；可选 limit（默认 20、最多 50）、after_application_key、timeout_ms。next_query 可继续当前目录；每项含名称/版本、当前头摘要、可交给 status/audit 的 application_query，以及固定本次头上界的 history_query 和指定快照 snapshot_query。先完整核验成员/前瞻，再返回摘要，不输出投影正文。只读打开已有库，不自动启用、翻页、创建应用、重放或请求网络；不冻结跨调用目录或扫描缺描述的孤立记录。见 [应用目录契约](../../docs/design/01-contracts/sync-application-catalog-runtime.md)。无新 schema/依赖，未运行命令或数据库。
+
 新增内置应用历史重放核对（仅源码，示例未执行）：
 
 ```text

@@ -108,6 +108,7 @@ export async function runWorkctx(
     'inbox enable-ack-recovery': 'inbox.enable-ack-recovery',
     'inbox enable-applications': 'inbox.enable-applications',
     'inbox application-status': 'inbox.application-status',
+    'inbox application-list': 'inbox.application-list',
     'inbox application-apply': 'inbox.application-apply',
     'inbox application-audit': 'inbox.application-audit',
     'inbox application-replay': 'inbox.application-replay',
