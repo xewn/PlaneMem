@@ -3452,6 +3452,24 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_generation_catalog_development_increment:
+      date: "2026-11-04"
+      status: "Source-only read-only generation request discovery and scoped pagination; R-009 remains incomplete."
+      artifacts:
+        - "workers/intelligence/src/generation-catalog.ts"
+        - "workers/intelligence/src/generation-journal-read.ts"
+        - "workers/intelligence/src/generation-journal.ts"
+        - "workers/intelligence/src/main.ts"
+        - "docs/design/01-contracts/proposal-generation-request-runtime.md"
+      behavior: "Enumerates canonical request filenames in key-digest order, validates each scanned request and matching-binding state, then returns metadata under an optional state filter. Cursors bind directory identity, original gateway/project/actor/client and filter. Directory count, candidate count and byte budgets are bounded; continuation advances only through completed candidates, including filtered rows. Corruption rejects the whole page. Shared reads verify identity/size and reuse the loaded request; no index, queue open or model dispatch."
+      evidence: []
+      pending_evidence:
+        - "Mixed bindings, state filtering, filename/key mismatch and no foreign metadata/body output"
+        - "Cursor range rejection, empty continuation pages, byte-budget partial candidate and count limits"
+        - "Directory changes, request deletion, concurrent completion, malformed files and no partial success"
+        - "Shared read refactor preserves existing request/run/status/recovery semantics and immutable file checks"
+      remaining_scope: "Provider-side reconciliation, full journal backup/retention, orphan/global audit, missing-prerequisite restoration and runtime evidence. Listing is a per-request observation, not a snapshot or authorization proof."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/model/Gateway calls, database opens or release. No dependency/schema changes; separate task commit/push to main with skip-ci."
     proposal_generation_recovery_development_increment:
       date: "2026-11-04"
       status: "Source-only retained-result recovery with read-only preview; R-009 remains incomplete."
@@ -3467,7 +3485,7 @@ requirements:
         - "Missing/wrong request or losing attempt, corrupted targets, same-result replay and failed/successful conflicts"
         - "Concurrent original completion/recovery, unknown publication readback, retained content and no model invocation"
         - "Read-only preview, reconstructed timestamps, preserved original generation and subsequent export/enqueue"
-      remaining_scope: "Provider-side unknown-call reconciliation, restoration of missing request/attempt files, journal discovery/backup/retention, global audit, authenticity, cost/quality evaluation and runtime evidence. Recovery requires retained complete local work and does not authenticate it."
+      remaining_scope: "Provider-side unknown-call reconciliation, restoration of missing request/attempt files, journal backup/retention, global audit, authenticity, cost/quality evaluation and runtime evidence. Discovery is added separately. Recovery requires retained complete local work and does not authenticate it."
       execution: "Source/docs and manual source review only; no build, typecheck, tests, CLI/model/Gateway execution, database opens or release. No dependency/schema changes; separate commit/push to main with skip-ci."
     proposal_generation_request_development_increment:
       date: "2026-11-04"
@@ -3485,7 +3503,7 @@ requirements:
         - "Same-key replay/conflicts, binding mismatch, missing prerequisites, corrupt/oversized files and concurrent outcome reads"
         - "Saved-result replay without credentials, canceled invocations, failed outcomes and recovery without raw errors"
         - "File identity/readback, hard-link support, retained markers and power-loss directory metadata limitations"
-      remaining_scope: "Provider-side unknown-call reconciliation, restoration of missing prerequisites, journal discovery/backup/retention, global audit, authenticity, cost/quality evaluation and runtime evidence. Retained-result recovery is added separately. Duplicate prevention assumes original markers remain; no parent-directory power-loss durability or exactly-once provider execution guarantee."
+      remaining_scope: "Provider-side unknown-call reconciliation, restoration of missing prerequisites, journal backup/retention, global audit, authenticity, cost/quality evaluation and runtime evidence. Retained-result recovery and discovery are added separately. Duplicate prevention assumes original markers remain; no parent-directory power-loss durability or exactly-once provider execution guarantee."
       execution: "Source/docs and manual source review only; no build, typecheck, tests, CLI/model/Gateway execution, database opens, migrations or release. No new dependency/schema. Separate task commit/push to main with skip-ci."
     proposal_generation_history_development_increment:
       date: "2026-11-04"

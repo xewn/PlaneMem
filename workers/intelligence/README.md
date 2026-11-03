@@ -6,6 +6,8 @@
 
 ## 配置与命令
 
+新增请求目录：`generation-requests --journal EXISTING_DIR --binding binding.json [--state all|prepared|attempted|generated|failed] [--after CURSOR] [--limit 10]` 按原绑定发现请求，返回状态、原键和摘要，不输出正文。默认 10、最多 20 条；每页最多扫描 64 个候选并使用 32 MiB 读取预算，空页仍可能有 next_cursor，须继续续页。游标绑定原目录/绑定/状态，改变条件从首页开始；并发新增或状态变化需要重新查询。目录总项数上限 10,000，损坏拒绝，详见 [目录边界](../../docs/design/01-contracts/proposal-generation-request-runtime.md#请求发现与分页目录)。本命令不打开队列、不调用模型、不修改日志。
+
 新增生成结果补存：`generation-recover --journal EXISTING_DIR --binding binding.json --key KEY --file RETAINED_ERROR.json [--preview]` 读取保存失败的完整错误 JSON 或 recovery 对象。预览只读，正式补存只写缺失 outcome，须与目标的原请求和实际领取完全匹配；相同结果保留，矛盾结果拒绝，不重建领取、不调用模型。可从保留的完整 generation/failure 重建结果封套，原生成时间不变；退出码 0 表示本地恢复操作完成，失败的模型结果仍为 failed。输入上限 8 MiB，原记录限制保持，详见 [恢复规则](../../docs/design/01-contracts/proposal-generation-request-runtime.md#已保留结果的预览与补存)。
 
 新增 [生成调用持久请求](../../docs/design/01-contracts/proposal-generation-request-runtime.md)：`generation-request --journal EXISTING_DIR --binding binding.json --key KEY --file PREPARATION_RECORD.json --provider provider.json` 保存原请求；`generation-run --journal EXISTING_DIR --binding binding.json --key KEY` 先独占保存领取标记再调用模型。`generation-status` 使用相同 journal/binding/key 查看状态；`generation-result` 再加 `--output NEW_RECORD.json` 导出完整成功记录，可沿原绑定 enqueue-generated。四个命令不打开队列。已有领取标记永不再次派发，成功结果可直接重放；失败或中断保留原标记，没有自动重试、过期回收或覆盖恢复。目录须预先存在，文件系统须支持硬链接，原文件须持续保留；不保证断电后的目录元数据持久性或供应商恰好执行一次。

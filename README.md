@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [生成请求目录](docs/design/01-contracts/proposal-generation-request-runtime.md#请求发现与分页目录)：按原项目和身份发现保存的请求，支持状态筛选、分页及原请求键取回，可继续查看或导出结果。目录只读且限制扫描量，不输出来源正文。仅源码文档，未编译、测试、运行或发布。
+
 新增 [生成结果补存与预览](docs/design/01-contracts/proposal-generation-request-runtime.md)：保存失败后可用保留的完整结果先预览，再补入原请求日志；核对原请求和实际领取记录，相同结果保留、冲突拒绝，全程不重新调用模型。仅源码文档，未编译、测试、运行或发布。
 
 新增 [生成调用持久请求](docs/design/01-contracts/proposal-generation-request-runtime.md)：调用前保存原请求并独占领取，已有领取标记的请求不再次调用模型；可查看状态、取回已保存结果，保存失败保留恢复内容。仅源码文档，未编译、测试、调用模型或发布。

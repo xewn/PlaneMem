@@ -1,7 +1,3 @@
-import { createHash } from 'node:crypto';
-import type { Stats } from 'node:fs';
-import { lstat, open, realpath, stat } from 'node:fs/promises';
-import { join } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { ContractError, isUlid } from '@planemem/contracts';
 import {
@@ -12,6 +8,7 @@ import {
 import { createGeneratedProposalRecord } from './generation-record.js';
 import { prepareGenerationOutput, saveGenerationFile } from './generation-output.js';
 import type { ProposalQueueBinding } from './queue-binding.js';
+import { directory, paths, readOptional, readState, failure } from './generation-journal-read.js';
 import {
   inspectGenerationRecovery,
   matchesGenerationRecovery,
@@ -19,12 +16,8 @@ import {
 } from './generation-recovery.js';
 import {
   createGenerationRequest,
-  inspectGenerationRequest,
   createGenerationAttempt,
-  inspectGenerationAttempt,
   createGenerationOutcome,
-  inspectGenerationOutcome,
-  validateGenerationRequestKey,
   GENERATION_REQUEST_BYTES,
   type ProposalGenerationRequestRecord,
   type ProposalGenerationRequestState,
@@ -33,20 +26,6 @@ import {
   type ProposalGenerationFailure,
 } from './generation-request.js';
 
-function failure(code: string, message: string, request?: ProposalGenerationRequestRecord) {
-  return new ContractError(
-    code,
-    message,
-    request
-      ? {
-          request_id: request.request_id,
-          request_key: request.request_key,
-          request_sha256: request.sha256,
-          trace_id: 'trace_generation_request_' + request.request_id,
-        }
-      : {},
-  );
-}
 /** Recovery contains only validated local work, never options, credentials or raw provider errors. */
 export class GenerationJournalWriteError extends ContractError {
   constructor(
@@ -88,65 +67,6 @@ export class GenerationJournalWriteError extends ContractError {
     );
   }
 }
-async function directory(value: string) {
-  if (typeof value !== 'string' || !value.trim() || /[\u0000-\u001f]/.test(value))
-    throw new TypeError('Use an existing journal directory');
-  const root = await realpath(value);
-  if (!(await stat(root)).isDirectory()) throw new TypeError('Use an existing journal directory');
-  return root;
-}
-function paths(root: string, key: string) {
-  validateGenerationRequestKey(key);
-  const name = 'generation-' + createHash('sha256').update(key, 'utf8').digest('hex');
-  return {
-    request: join(root, name + '.request.json'),
-    attempt: join(root, name + '.attempt.json'),
-    outcome: join(root, name + '.outcome.json'),
-  };
-}
-async function readOptional(path: string, maximum: number): Promise<unknown | undefined> {
-  let before: Stats;
-  try {
-    before = await lstat(path);
-  } catch (error) {
-    if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT')
-      return undefined;
-    throw error;
-  }
-  if (!before.isFile() || before.size < 1 || before.size > maximum)
-    throw new TypeError('Invalid journal file');
-  const file = await open(path, 'r');
-  try {
-    const identity = await file.stat();
-    if (
-      !identity.isFile() ||
-      identity.ino !== before.ino ||
-      identity.dev !== before.dev ||
-      identity.size > maximum
-    )
-      throw new TypeError();
-    const buffer = Buffer.alloc(maximum + 1);
-    let length = 0;
-    while (length < buffer.length) {
-      const { bytesRead } = await file.read(buffer, length, buffer.length - length, null);
-      if (!bytesRead) break;
-      length += bytesRead;
-    }
-    const after = await lstat(path);
-    if (
-      length > maximum ||
-      !after.isFile() ||
-      after.ino !== identity.ino ||
-      after.dev !== identity.dev ||
-      after.size !== length ||
-      identity.size !== length
-    )
-      throw new TypeError();
-    return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(buffer.subarray(0, length)));
-  } finally {
-    await file.close();
-  }
-}
 async function publish(
   path: string,
   value: unknown,
@@ -161,58 +81,6 @@ async function publish(
     'trace_generation_request_' + request.request_id,
     'PROPOSAL_GENERATION_REQUEST_FILE_SAVE_FAILED',
   );
-}
-async function readState(
-  root: string,
-  binding: ProposalQueueBinding,
-  key: string,
-): Promise<ProposalGenerationRequestState> {
-  const files = paths(root, key);
-  let request: ProposalGenerationRequestRecord | undefined;
-  try {
-    const input = await readOptional(files.request, GENERATION_REQUEST_BYTES);
-    if (input === undefined)
-      throw failure(
-        'PROPOSAL_GENERATION_REQUEST_NOT_FOUND',
-        'No saved generation request has this key',
-      );
-    request = inspectGenerationRequest(input, binding, key);
-    let attempted = await readOptional(files.attempt, 8192);
-    const completed = await readOptional(files.outcome, GENERATION_REQUEST_BYTES);
-    // Immutable publication order is request -> attempt -> outcome. A concurrent completion may
-    // appear between reads; re-read its prerequisite instead of reporting false corruption.
-    if (completed !== undefined && attempted === undefined)
-      attempted = await readOptional(files.attempt, 8192);
-    const attempt = attempted === undefined ? null : inspectGenerationAttempt(attempted, request);
-    if (completed !== undefined && !attempt) throw new TypeError();
-    const outcome =
-      completed === undefined ? null : inspectGenerationOutcome(completed, request, attempt!);
-    return {
-      request,
-      attempt,
-      outcome,
-      state: outcome
-        ? outcome.record
-          ? 'generated'
-          : 'failed'
-        : attempt
-          ? 'attempted'
-          : 'prepared',
-    };
-  } catch (error) {
-    if (
-      error instanceof ContractError &&
-      ['PROPOSAL_GENERATION_REQUEST_NOT_FOUND', 'PROPOSAL_GENERATION_BINDING_MISMATCH'].includes(
-        error.envelope.code,
-      )
-    )
-      throw error;
-    throw failure(
-      'PROPOSAL_GENERATION_REQUEST_INVALID',
-      'The complete original journal files could not be verified; do not replace an attempt marker',
-      request,
-    );
-  }
 }
 export async function readGenerationRequest(
   directoryPath: string,

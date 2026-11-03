@@ -42,6 +42,7 @@ import {
 } from './generation-journal.js';
 import { generationRequestSummary, validateGenerationRequestKey } from './generation-request.js';
 import { GENERATION_RECOVERY_BYTES } from './generation-recovery.js';
+import { listGenerationRequests, parseGenerationCatalogQuery } from './generation-catalog.js';
 
 const help = `Proposal submission queue (Node.js 24)
   proposal-worker prepare-generation --binding binding.json --file selection.json --output NEW_SOURCES.json [--record]
@@ -53,6 +54,7 @@ const help = `Proposal submission queue (Node.js 24)
   proposal-worker generation-status --journal EXISTING_DIR --binding binding.json --key KEY
   proposal-worker generation-result --journal EXISTING_DIR --binding binding.json --key KEY --output NEW_RECORD.json
   proposal-worker generation-recover --journal EXISTING_DIR --binding binding.json --key KEY --file RETAINED_ERROR.json [--preview]
+  proposal-worker generation-requests --journal EXISTING_DIR --binding binding.json [--state all|prepared|attempted|generated|failed] [--after CURSOR] [--limit 10]
   proposal-worker enqueue-generated --queue queue.sqlite --binding binding.json --file GENERATION_RECORD.json --key KEY
   proposal-worker generation-list --queue queue.sqlite --binding binding.json --id JOB_ID [--after SHA256] [--limit 10]
   proposal-worker generation-get --queue queue.sqlite --binding binding.json --id JOB_ID --sha256 SHA256 [--output NEW_RECORD.json]
@@ -71,6 +73,7 @@ enqueue-generated stores the record with the job atomically; generation-list/get
 generation-request saves immutable input; generation-run claims it once before calling the model. Existing attempts never resend.
 generation-status/result read saved journal files without model calls; a generated request can replay its saved result.
 generation-recover imports retained outcomes for the original existing attempt; --preview only reads. It never calls the model.
+generation-requests discovers requests for the original binding; follow next_cursor even when a filtered page is empty.
 prepare-generation reads pinned sources from the gateway; flush submits drafts. Both use PROPOSAL_WORKER_ACCESS_TOKEN.
 retry schedules the original draft/key; it does not send or regenerate content.
 Exit codes: 0 completed, 1 command/storage failure, 2 flush had retry/blocked/lost-lease jobs.
@@ -103,6 +106,7 @@ export async function main(args: string[]): Promise<number> {
         sha256: { type: 'string' },
         journal: { type: 'string' },
         preview: { type: 'boolean' },
+        state: { type: 'string' },
       },
     });
     const command = positionals[0];
@@ -116,6 +120,7 @@ export async function main(args: string[]): Promise<number> {
       'generation-status': ['journal', 'binding', 'key'],
       'generation-result': ['journal', 'binding', 'key', 'output'],
       'generation-recover': ['journal', 'binding', 'key', 'file', 'preview'],
+      'generation-requests': ['journal', 'binding', 'state', 'after', 'limit'],
       'enqueue-generated': ['file', 'key'],
       'generation-list': ['id', 'after', 'limit'],
       'generation-get': ['id', 'sha256', 'output'],
@@ -140,6 +145,7 @@ export async function main(args: string[]): Promise<number> {
             'generation-status',
             'generation-result',
             'generation-recover',
+            'generation-requests',
           ].includes(command)
             ? []
             : ['queue', 'binding']),
@@ -161,6 +167,19 @@ export async function main(args: string[]): Promise<number> {
         throw new TypeError('--' + name + ' is required');
       return value;
     };
+    if (command === 'generation-requests') {
+      if (values.limit !== undefined && !/^[1-9]\d?$/.test(values.limit))
+        throw new TypeError('Use a request limit between 1 and 20');
+      const query = parseGenerationCatalogQuery({
+        ...(values.limit === undefined ? {} : { limit: Number(values.limit) }),
+        ...(values.state === undefined ? {} : { state: values.state }),
+        ...(values.after === undefined ? {} : { after: values.after }),
+      });
+      const binding = (await readJson(required('binding'), 16_384)) as ProposalQueueBinding;
+      const page = await listGenerationRequests(required('journal'), binding, query);
+      process.stdout.write(JSON.stringify(page, null, 2) + '\n');
+      return 0;
+    }
     if (
       [
         'generation-request',

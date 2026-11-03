@@ -7,3 +7,4 @@ export * from './generation-record.js';
 export * from './generation-request.js';
 export * from './generation-journal.js';
 export * from './generation-recovery.js';
+export * from './generation-catalog.js';

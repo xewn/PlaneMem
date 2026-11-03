@@ -1,6 +1,6 @@
 # 生成调用持久请求 v1
 
-更新：2026-11-04。仅源码与文档；未编译、类型检查、测试、执行 CLI、调用模型/网关、打开数据库或发布。实现位于 `workers/intelligence/src/generation-request.ts`、`generation-journal.ts`、`generation-recovery.ts` 和 `main.ts`，不增加依赖或数据库结构。
+更新：2026-11-04。仅源码与文档；未编译、类型检查、测试、执行 CLI、调用模型/网关、打开数据库或发布。实现位于 `workers/intelligence/src/generation-request.ts`、`generation-journal.ts`、`generation-journal-read.ts`、`generation-recovery.ts`、`generation-catalog.ts` 和 `main.ts`，不增加依赖或数据库结构。
 
 ## 使用与状态
 
@@ -84,4 +84,28 @@ recovery 必须含完整 request 和 attempt，只允许附加 outcome、generat
 
 库入口为 inspectGenerationRecovery(value, binding, key) 和 recoverGenerationRequest(directory, binding, key, value, { preview? })。本功能只补存已经保留的本地结果，没有供应商调用、队列提交或人工审核。输入摘要与绑定核验不认证来源；应使用自己保留并审阅过的输出。恢复无法判定原生成进程是否仍在运行，不撤销原进程；若它随后完成，将与恢复争用同一个不可覆盖 outcome，异文保留冲突而不是丢弃原有结果。
 
-仍缺供应商未知调用对账/结果取回、缺失请求/领取的整套恢复、目录浏览/备份/保留策略、全局审计、费用与质量评估、真实并发/故障和文件系统运行证据。没有保留完整结果时不能靠此命令推断或重造模型输出。P7-01 与 R-009 保持未完成。
+## 请求发现与分页目录
+
+不知道原请求键时，可用 generation-requests 只读浏览。这里查询 journal 内生成请求；generation-list 仍查询提交队列中某个任务关联的生成记录，二者范围不同。以下仅为命令说明，本轮未执行：
+
+```text
+pnpm proposal-worker generation-requests --journal journal --binding binding.json --limit 10
+pnpm proposal-worker generation-requests --journal journal --binding binding.json --state attempted --limit 10
+pnpm proposal-worker generation-requests --journal journal --binding binding.json --state attempted --after RETURNED_CURSOR --limit 10
+```
+
+库入口为 listGenerationRequests(directory, binding, { state?, after?, limit? })；parseGenerationCatalogQuery 校验输入。state 为 all/prepared/attempted/generated/failed，默认 all；limit 默认 10，范围 1–20。游标只接受返回的有界 base64url 格式，绑定规范目录路径、当前目录设备/文件标识、原 gateway/project/actor/client 及状态筛选；改变范围或状态须从首页查询，limit 可以调整。游标用于查询一致性，不是认证签名或权限证明。
+
+目录按请求键 SHA-256 升序扫描，不按创建时间。只发现规范小写 `generation-<64 hex>.request.json` 文件，逐份检查完整请求字段、内层记录、原绑定、摘要以及文件名与原键的对应关系。其他绑定的有效请求不返回，且不读取其 attempt/outcome；同绑定候选则复用按键状态查询的完整核验，再应用状态筛选。只有单独 attempt/outcome、临时文件或不规范文件名时不会被发现；本功能不是全目录孤立文件审计。绑定仅过滤本地记录，不代替操作系统访问控制或网关授权。
+
+返回 schema_version、binding、state_filter、limit、items、scanned、read_budget_used、next_cursor、stopped 和 consistency=per-request。items 是已有状态摘要加 key_sha256，含原 request_key/ID、请求及记录摘要、原绑定/provider、领取/完成时间和筛选后的失败信息，不含来源摘录或草稿正文。可用返回的原键继续 generation-status/result/recover；查询不会自动生成或提交。
+
+每次最多枚举 10,000 个目录项，包含无关文件及临时文件；超过时整页报 PROPOSAL_GENERATION_REQUEST_CATALOG_LIMIT，可用已知键直接查询，不要求删除日志。分页正文读取最多处理 64 个候选，累计预算 32 MiB；每次读取前按文件大小加一个增长探测字节预留，缓冲也按该大小有界分配，文件身份/长度变化拒绝。request/outcome 各 3 MiB、attempt 8 KiB 和全部内层限制仍有效。目录页复用已完整读取的请求，避免为状态核验再次读取正文。
+
+达到条数、候选或字节上限时，stopped 分别为 limit/scan-limit/byte-limit；没有更多已枚举候选时为 end。字节不足以完成当前候选时不推进该候选，游标停在上一份已完整检查的请求，下一页重新读取。scanned 包含其他绑定和状态不匹配的请求；read_budget_used 是读取预留量，包含探测字节和本页未完成候选已读取的部分。items 可以为空但 next_cursor 非空，应继续续页；只有 next_cursor=null 才表示本次枚举位置已经到末尾。
+
+所扫描候选损坏、请求消失、文件名与键不一致、同绑定结果损坏或目录访问失败时，报 PROPOSAL_GENERATION_REQUEST_CATALOG_INVALID，不返回已积累的部分页，也不暴露其他绑定的原键/正文。游标格式或范围不匹配报 CATALOG_CURSOR_INVALID（同前缀）。不创建目录、索引或队列表，不修复原文件、覆盖标记、调用模型或自动领取；成功目录查询退出 0，失败退出 1。
+
+目录枚举和逐请求读取不是事务快照，跨页也没有快照：并发新增且排序在已过游标之前的请求需要从首页发现，已经越过游标的请求后来改变状态也需要重新查询。每条结果仅反映该次读取观察，不证明未知调用完成、不提供全量总数、也不保证未扫描部分完整。已有标记的重发保护保持不变。
+
+仍缺供应商未知调用对账/结果取回、缺失请求/领取的整套恢复、完整备份/保留策略、全局审计、费用与质量评估、真实并发/故障和文件系统运行证据。没有保留完整结果时不能靠恢复命令推断或重造模型输出。P7-01 与 R-009 保持未完成。

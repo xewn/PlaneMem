@@ -1,5 +1,7 @@
 # 架构决策记录摘要
 
+2026-11-04 生成请求目录协接（ADR-015）：T7.2 新增 generation-requests --journal --binding [--state] [--after] [--limit]，在已有日志目录按键摘要排序发现原请求，完整核验本页请求与同绑定结果，只返回状态/原键/摘要等元数据。游标绑定规范目录和原绑定/状态条件，跨页无快照；目录枚举、候选扫描与累计字节均有上限，空页可续扫，损坏拒绝不部分返回。抽出共享只读文件读取与状态核验，供原按键查询和新目录复用，不增加索引文件或数据库。范围 workers/intelligence 源码/README、持久请求契约、README/TODO/R009 与本协调记录；只开发源码文档，不编译、类型检查、测试、执行CLI/模型/网关/数据库或发布，无依赖/schema变化；按任务独立提交 push main 带 [skip ci]。
+
 2026-11-04 生成结果受控补存协接（ADR-015）：T7.2 增加 generation-recover --file [--preview]，读取有界保存失败封套或其 recovery 对象，完整核验原 request/attempt 和成功/失败结果；目标须保留完全相同的请求与领取，只补缺失 outcome，同内容保留已有结果，异文拒绝。无 outcome 时可由保留的完整 generation 或筛选失败重建，保留原生成时间并明确新的结果封装时间；预览只读，独占发布竞争后重新比较，保存未知保留规范恢复内容。全程不调用模型、不创建/替换领取或提交审核。范围 workers/intelligence 源码/README、持久请求契约、README/TODO/R009 和本协调记录；无依赖/schema变化，仅源码文档，不编译、类型检查、测试、执行CLI/服务/数据库或发布；独立提交 push main 带 [skip ci]。
 
 2026-11-04 生成调用持久请求协接（ADR-015）：T7.2 增加基于明确本地目录的不可变 v1 请求日志，保存原键、绑定、完整准备记录及无凭据 provider 配置；单次运行须先独占发布并完整核对 attempt 标记，任何已有标记均不再次派发，成功/已知失败单独保存并按原请求关联读取。新增 generation-request/run/status/result，成功结果可独占导出并沿用原绑定入队；进程中断或提交未知保留 attempted，不按时间重试，保存失败保留完整已生成结果。复用有界 JSON 与新文件发布，不新增 SQLite/schema/依赖或改变供应商协议，旧直接生成流程兼容。范围 workers/intelligence 源码/README、持久请求契约、README/TODO/R009 与本协调记录；仅源码文档，不执行 CLI/模型/网关、编译、类型检查、测试、数据库或发布，独立提交 push main 带 [skip ci]。
