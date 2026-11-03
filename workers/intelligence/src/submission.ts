@@ -354,28 +354,41 @@ export class SqliteProposalQueue {
       throw new TypeError('dueBefore must be a non-negative timestamp');
     return this.transaction<ClaimedProposalJob | QuarantinedProposalJob | undefined>(() => {
       const now = Date.now();
-      const row = this.db
+      const candidate = this.db
         .prepare(
-          `SELECT * FROM proposal_jobs WHERE
+          `SELECT substr(job_id,1,27) AS job_id FROM proposal_jobs WHERE
         (status IN ('queued','retry') AND next_attempt_ms <= ?) OR (status = 'sending' AND lease_until_ms <= ?)
         ORDER BY next_attempt_ms, job_id LIMIT 1`,
         )
-        .get(Math.min(now, dueBefore), Math.min(now, dueBefore)) as unknown as JobRow | undefined;
-      if (!row) return undefined;
+        .get(Math.min(now, dueBefore), Math.min(now, dueBefore));
+      if (!candidate) return undefined;
+      if (!isUlid(candidate.job_id))
+        throw new ContractError('PROPOSAL_QUEUE_CORRUPT', 'The due task identifier is invalid');
+      const id = candidate.job_id;
+      let row: JobRow;
       let draft: ReturnType<typeof parseCreateProposal>;
       try {
-        draft = readDraft(row);
-      } catch {
+        const original = readProposalReceiptTarget(this.db, this.binding, id);
+        row = this.row(id);
+        if (row.attempts >= Number.MAX_SAFE_INTEGER)
+          throw new ContractError(
+            'PROPOSAL_QUEUE_CORRUPT',
+            'The task attempt counter is exhausted',
+          );
+        draft = original.original.draft;
+      } catch (error) {
+        if (!(error instanceof ContractError) || error.envelope.code !== 'PROPOSAL_QUEUE_CORRUPT')
+          throw error;
         this.db
           .prepare(
             `UPDATE proposal_jobs SET
-          uncertain = CASE WHEN status = 'sending' THEN 1 ELSE uncertain END,
+          uncertain = 1,
           status = 'blocked', error_code = 'PROPOSAL_QUEUE_CORRUPT', lease_token = NULL,
           lease_until_ms = NULL WHERE job_id = ?`,
           )
-          .run(row.job_id);
+          .run(id);
         // Commit quarantine so the corrupted draft is never sent or silently rewritten.
-        return { job_id: row.job_id, quarantined: true, error_code: 'PROPOSAL_QUEUE_CORRUPT' };
+        return { job_id: id, quarantined: true, error_code: 'PROPOSAL_QUEUE_CORRUPT' };
       }
       const lease = randomUUID();
       this.db
@@ -404,9 +417,18 @@ export class SqliteProposalQueue {
         .prepare(
           `UPDATE proposal_jobs SET status = 'submitted', receipt = ?, trace_id = ?,
       error_code = NULL, uncertain = 0, lease_token = NULL, lease_until_ms = NULL
-      WHERE job_id = ? AND status = 'sending' AND lease_token = ?`,
+      WHERE job_id = ? AND status = 'sending' AND lease_token = ? AND request_key = ? AND payload = ? AND payload_hash = ? AND attempts = ?`,
         )
-        .run(JSON.stringify(parsed), trace_id, job.job_id, job.lease_token).changes === 1
+        .run(
+          JSON.stringify(parsed),
+          trace_id,
+          job.job_id,
+          job.lease_token,
+          job.idempotency_key,
+          JSON.stringify(job.draft),
+          hash(JSON.stringify(job.draft)),
+          job.attempts,
+        ).changes === 1
     );
   }
 
@@ -421,7 +443,7 @@ export class SqliteProposalQueue {
         .prepare(
           `UPDATE proposal_jobs SET status = ?, next_attempt_ms = ?, error_code = ?, trace_id = ?,
       uncertain = ?, lease_token = NULL, lease_until_ms = NULL
-      WHERE job_id = ? AND status = 'sending' AND lease_token = ?`,
+      WHERE job_id = ? AND status = 'sending' AND lease_token = ? AND request_key = ? AND payload = ? AND payload_hash = ? AND attempts = ?`,
         )
         .run(
           error.retryable ? 'retry' : 'blocked',
@@ -431,12 +453,36 @@ export class SqliteProposalQueue {
           job.uncertain || error.uncertain ? 1 : 0,
           job.job_id,
           job.lease_token,
+          job.idempotency_key,
+          JSON.stringify(job.draft),
+          hash(JSON.stringify(job.draft)),
+          job.attempts,
         ).changes === 1
     );
   }
 
   close() {
     this.db.close();
+  }
+  /** A pre-dispatch observation, not an extension or proof that the lease cannot expire afterward. */
+  ownsClaim(job: ClaimedProposalJob): boolean {
+    const payload = JSON.stringify(job.draft);
+    return (
+      this.db
+        .prepare(
+          `SELECT 1 AS owned FROM proposal_jobs WHERE job_id = ? AND status = 'sending'
+      AND lease_token = ? AND lease_until_ms > ? AND request_key = ? AND payload = ? AND payload_hash = ? AND attempts = ?`,
+        )
+        .get(
+          job.job_id,
+          job.lease_token,
+          Date.now(),
+          job.idempotency_key,
+          payload,
+          hash(payload),
+          job.attempts,
+        )?.owned === 1
+    );
   }
   private requireWritable() {
     if (this.readOnly)

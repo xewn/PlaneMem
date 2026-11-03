@@ -202,7 +202,7 @@ worker 的 `prepare-generation` 可按明确条目 ID/revision 取得当前可�
 | PROPOSAL_INVALID | 500 |
 | PROPOSAL_STORAGE_UNAVAILABLE | 503 |
 
-worker 已增加 SQLite 持久提交队列和显式 enqueue/list/get/retry/flush 命令，使用真实 HTTP 提交已有草稿，详见 [worker 使用说明](../../../workers/intelligence/README.md)。发送前通过 `GET /v1/proposals/submission-context` 核对协议及已认证身份；随后使用相同令牌和固定请求键提交。`X-Expected-Actor-Id` / `X-Expected-Client-Id` 是已验证身份的前置条件，不是身份来源；不匹配返回 DENIED。队列绑定网关、项目、actor/client，未知结果只重试原草稿和请求键，保留 uncertain 标记。
+worker 已增加 SQLite 持久提交队列和显式 enqueue/list/get/retry/flush 命令，使用真实 HTTP 提交已有草稿，详见 [worker 使用说明](../../../workers/intelligence/README.md)。没有未知标记的任务发送前通过 `GET /v1/proposals/submission-context` 核对协议及已认证身份；随后使用相同令牌和固定请求键提交。`X-Expected-Actor-Id` / `X-Expected-Client-Id` 是已验证身份的前置条件，不是身份来源；不匹配返回 DENIED。队列绑定网关、项目、actor/client；未知及回收 sending 的任务只查询原创建回执，not-observed 不重提，retry 不解除 uncertain。完整领取检查、有界响应和失去租约后的行为见 [flush 门禁](proposal-queue-reconciliation-runtime.md#flush-未知结果门禁)。
 
 2026-11-04：worker 的 `list/get` 改为原生只读打开已有队列，缺失文件不会创建；读取事务检查 v1 必需表/列及唯一绑定，绑定文本最多 16 KiB，并与规范化的网关/项目/身份精确匹配。只读分支不初始化结构、绑定或更改 journal_mode/synchronous，不回退可写；库接口可传 `{ readonly: true }`，所有写入入口报 `PROPOSAL_QUEUE_READ_ONLY`，flush 在获取令牌前拒绝认领。默认可写模式保留，结构/绑定检查不等于全队列完整性审计。无 schema 或依赖变更，仅源码文档，未编译、测试、运行 CLI、打开数据库或发布。
 

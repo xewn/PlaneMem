@@ -3452,6 +3452,24 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_worker_unknown_gate_development_increment:
+      date: "2026-11-04"
+      status: "Source-only unknown proposal submission gate; R-009 remains incomplete."
+      artifacts:
+        - "workers/intelligence/src/publisher.ts"
+        - "workers/intelligence/src/submission.ts"
+        - "workers/intelligence/src/main.ts"
+        - "workers/intelligence/README.md"
+        - "docs/design/01-contracts/proposal-queue-reconciliation-runtime.md"
+      behavior: "Flush only queries original creation receipts for uncertain or reclaimed sending jobs. Recorded results settle under the current claim; not-observed backs off without resubmission. All failures retain the original draft/key and prior uncertainty. Normal creation uses bounded preflight and creation responses, with claim ownership observed before requests and again before creation. Complete bounded row validation precedes claims; settlement matches the original key, payload/hash, attempt count and lease. Reports distinguish creation calls, receipt queries and no dispatch."
+      evidence: []
+      pending_evidence:
+        - "Unknown/reclaimed jobs never create, including not-observed, permission failures and explicit retry"
+        - "Bounded preflight/create/receipt responses, stalled bodies, token deadlines and late network results"
+        - "Complete row corruption, exhausted attempts, changed content/leases and failed local settlement"
+        - "Creation/query report counters, due-pass isolation and unchanged historical creation semantics"
+      remaining_scope: "Old sender coordination, explicit unknown-state release, queue backup, persistent receipt history and runtime evidence. No guarantee that old processes stop or that remote effects execute exactly once."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, product/API/model/database execution, migrations or release. No new schema or dependencies."
     proposal_worker_reconciliation_development_increment:
       date: "2026-11-04"
       status: "Source-only original queue receipt reads and explicit local settlement; R-009 remains incomplete."

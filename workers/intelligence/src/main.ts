@@ -82,7 +82,8 @@ generation-request saves immutable input; generation-run claims it once before c
 generation-status/result read saved journal files without model calls; a generated request can replay its saved result.
 generation-recover imports retained outcomes for the original existing attempt; --preview only reads. It never calls the model.
 generation-requests discovers requests for the original binding; follow next_cursor even when a filtered page is empty.
-prepare-generation reads pinned sources from the gateway; flush submits drafts. Both use PROPOSAL_WORKER_ACCESS_TOKEN.
+prepare-generation reads pinned sources; flush submits known-unsent drafts or reads receipts for unknown outcomes.
+Both use PROPOSAL_WORKER_ACCESS_TOKEN. retry preserves unknown outcomes and never clears uncertainty.
 retry schedules the original draft/key; it does not send or regenerate content.
 receipt only queries the original creation. reconcile explicitly settles unchanged non-sending jobs from a recorded receipt; neither submits.
 Exit codes: 0 completed (receipt may be not-observed), 1 command/storage failure, 2 flush had unsettled jobs or reconciliation did not settle.

@@ -53,7 +53,7 @@ pnpm proposal-worker flush --queue workers/intelligence/.local/queue.sqlite --bi
 
 可选 derived_from 记录原建议 ID/revision，由网关在提交时核对同项目可见性、版本及关联深度。原版本冲突进入 blocked，worker 不自行刷新关联或来源；如需修改，先处理原任务的未知结果，再用新草稿和请求键入队。未使用关联的旧草稿保持原规范化输出字段顺序，不注入额外默认值；本轮未运行队列迁移或验证。
 
-队列命令 `flush` 提交、`receipt/reconcile` 只读查询网关，独立 `prepare-generation` 也会只读访问网关；这些命令从环境变量 `PROPOSAL_WORKER_ACCESS_TOKEN` 读取凭据。独立 `generate`/`generate-prepared` 和首次 `generation-run` 通过 `PROPOSAL_GENERATION_API_KEY` 调用配置模型，其他命令和已成功的 generation-run 重放不需要令牌。`retry` 只将原提交任务置为可重试，随后显式 flush 才会发送，不重置生成请求。`get` 会输出完整草稿，`list` 仅输出任务摘要和最小回执。列表按 job_id 倒序，默认 25、最多 100 条；下一页将 `next_before` 传为 `--before`。
+队列命令 `flush` 提交已知未成功的草稿或查询未知结果，`receipt/reconcile` 只读查询网关，独立 `prepare-generation` 也会只读访问网关；这些命令从环境变量 `PROPOSAL_WORKER_ACCESS_TOKEN` 读取凭据。独立 `generate`/`generate-prepared` 和首次 `generation-run` 通过 `PROPOSAL_GENERATION_API_KEY` 调用配置模型，其他命令和已成功的 generation-run 重放不需要令牌。`retry` 只重新安排原任务；随后显式 flush 根据原 uncertain 标记决定创建或只查回执，不重置生成请求。`get` 会输出完整草稿，`list` 仅输出任务摘要和最小回执。列表按 job_id 倒序，默认 25、最多 100 条；下一页将 `next_before` 传为 `--before`。
 
 返回值是 JSON。退出码 0 表示命令完成，1 表示参数/本地存储等命令失败，2 表示本次 flush 有 retry/blocked/lease_lost，或 reconcile 因 not-observed/sending/local-changed 未结算。receipt 退出0只表示查询完成，不证明原创建成功。flush 的成功退出不代表整库清空：它只处理开始时已经到期的最多 limit 个任务；未来重试、已有 blocked 和其他进程占用的任务不计入本次结果。
 
@@ -67,12 +67,16 @@ pnpm proposal-worker flush --queue workers/intelligence/.local/queue.sqlite --bi
 
 ## 提交协议
 
-worker 在每次尝试中取得一次令牌，并用同一令牌依次请求：
+worker 每次领取取得一次令牌。对于没有未知结果标记的任务，用同一令牌依次请求：
 
 1. `GET /v1/proposals/submission-context`：验证响应的协议版本、trace 和网关确认的 actor/client/项目范围；不支持此协议的旧网关不会进入写入步骤。
 2. `POST /v1/proposals`：发送数据库中的原始规范化草稿及固定 `Idempotency-Key`。网关继续执行权限、来源和持久命令校验。
 
 两个请求均发送 `X-Expected-Actor-Id` / `X-Expected-Client-Id`。网关只将它们与已验证身份比较，不用它们建立身份；不一致返回 DENIED。submission-context 仅返回调用者自己的身份、范围和 `identity_preconditions: 1`，要求有效客户端身份，不表明 proposal.write 已授权或数据库已就绪。实际提交仍需 proposal.write 和对应来源可见性。
+
+对于 `uncertain=true` 或回收的过期 sending 任务，flush 只调用原创建回执查询，携带完整原身份、键和草稿。只有 recorded 才凭本次领取结算；not-observed 进入 retry 并保留未知标记，下次仍只查询，不回退创建。权限或内容冲突可进入 blocked，但未知标记保持；显式 retry 也不会解除它。详见 [未知结果门禁](../../docs/design/01-contracts/proposal-queue-reconciliation-runtime.md#flush-未知结果门禁)。
+
+预检成功响应最多16 KiB，创建回执最多64 KiB，原回执查询最多2 MiB；错误响应最多16 KiB。全部使用完整有界 JSON 读取、严格 trace/内容类型核验和每请求20秒期限，禁止重定向；令牌最多等待5秒。取得令牌后核对原领取，创建前再核对一次，失去领取时不开始新的请求。这些检查不保证旧进程已停止或远端恰好执行一次。
 
 所有网关副本需要更新到支持此协议的代码；原 Proposal 的 018 及依赖迁移仍须由后续运维流程执行。本轮没有升级运行环境。
 
@@ -80,12 +84,14 @@ worker 在每次尝试中取得一次令牌，并用同一令牌依次请求：
 
 ## 重试与本地存储
 
-状态为 queued → sending → submitted，失败进入 retry 或 blocked。可写模式的 SQLite 使用 WAL、FULL 同步和事务认领，租约 60 秒。令牌获取最多等待 5 秒，每个 HTTP 请求超时 20 秒；每次尝试有独立 trace。过期租约可由下一次 flush 回收；旧进程只能凭原租约令牌结算，失去租约后报告 lease_lost。并发请求仍携带同一个远端请求键。
+状态为 queued → sending → submitted，失败进入 retry 或 blocked。可写模式的 SQLite 使用 WAL、FULL 同步和事务认领，租约60秒；每次尝试有独立 trace。过期租约由下一次 flush 回收后只查询回执。结算匹配原租约令牌、键、规范正文/摘要和尝试次数，失去领取报告 lease_lost。旧版本进程不受新门禁约束，需另外协调停止。
 
-临时/未知错误按 5 秒起的指数退避，最高 1 小时；flush 不驻留等待、不循环重发本次失败任务。权限、来源冲突、参数和请求键冲突等确定错误进入 blocked，修复外部条件后可显式 retry 原任务。无法修改已有任务正文或来源：需要新内容时创建独立草稿及请求键，并先处理原任务的不确定结果。
+临时/未知错误按5秒起的指数退避，最高1小时；flush 不驻留等待、不循环处理本次失败任务。未知任务的重试仅查询回执。权限、来源冲突、参数和请求键冲突等确定错误进入 blocked，修复外部条件后可显式 retry 原任务。无法修改已有任务正文或来源：需要新内容时创建独立草稿及请求键，并先处理原任务的不确定结果。
 
 网络中断、无效 JSON/回执和其他未知写入结果设置 uncertain；回收 sending 任务也视为结果未知。此标记会跨重启及后续权限错误保留，直到收到有效创建回执。它不等于已成功，也不允许据此更换请求键。
 
-草稿在入队时规范化并保存 SHA-256，读取/提交时重新检查；损坏或不再符合契约的草稿隔离为 `PROPOSAL_QUEUE_CORRUPT`，不重写、不发送，并继续处理本批其他任务。同键同草稿返回已有任务，同键不同草稿拒绝。校验和用于发现损坏，不是防篡改认证。
+领取前检查完整原绑定和14个已知任务列，先限制正文1 MiB、其他列合计16 KiB，再核对规范草稿、SHA-256、状态、时间、租约和计数。可定位的损坏任务隔离为 blocked/`PROPOSAL_QUEUE_CORRUPT` 并保守保留未知标记，不重写原草稿或发送；无法定位的无效任务 ID 终止本次操作。同键同草稿返回已有任务，同键不同草稿拒绝。校验和用于发现损坏，不是防篡改认证。
+
+`processed` 统计本次领取或隔离的任务；`creation_attempts` 和 `receipt_queries` 分别统计进入创建、原回执查询调用的次数，不证明请求已到达远端。每项 `action` 为 create、receipt 或 none；none 可包含已做身份预检但未创建的情况。持久 attempts 是领取次数，包含查询、凭据失败及后续失去领取的尝试，不等于创建次数。没有自动解除未知标记或强制重提入口。
 
 SQLite 文件及 WAL/SHM 包含完整建议内容和来源，不含令牌。使用适当的本地目录权限和一致性备份方式；当前没有加密、远端队列、后台调度或队列清理，模型生成适配器也没有运行验证。不要直接复制活跃数据库主文件后丢弃 WAL，或删除未知结果任务后另键重发。

@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [worker 未知提交结果门禁](docs/design/01-contracts/proposal-queue-reconciliation-runtime.md#flush-未知结果门禁)：未知结果及回收的发送任务只查询原创建回执，未查到不会重提；首次提交增加有界响应和发送前领取复查。仅源码文档，未编译、测试、运行或发布。
+
 新增 [worker 原创建结果核对](docs/design/01-contracts/proposal-queue-reconciliation-runtime.md)：可只读查询队列任务的原创建回执，也可明确将远端已记录、内容未变且不在发送中的任务标记为已提交；未知结果和并发变化保留原状态。仅源码文档，未编译、测试、运行或发布。
 
 新增 [提案创建回执 CLI/MCP 入口](docs/design/01-contracts/proposal-runtime.md#cli-与-mcp-原创建回执)：命令行读取完整原请求文件，MCP 按原身份查询同一历史创建结果；有界读取、完整回执校验，未知结果不触发重提。仅源码文档，未编译、测试、运行或发布。

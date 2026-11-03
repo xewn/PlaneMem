@@ -34,4 +34,18 @@ SDK错误或本地结算错误由 `ProposalQueueReceiptError.recovery` 保留原
 
 新增 `{existing:true}` 打开选项，要求已有普通文件并验证原 v1布局/绑定，不建表、补绑定或改变 journal_mode；可写连接设置同步级别 FULL，receipt 额外原生 readOnly/query_only。默认 enqueue/retry/flush 行为保持。文件预检和 SQLite 打开并非原子绑定：须使用自己控制的目录，不能声称防御并发路径替换；若替换或删除后产生不完整文件，结构验证拒绝而不初始化。WAL/SHM、底层文件和旧发送者协调限制继续适用。
 
-没有自动拦截旧 flush 重试、强制停止旧进程、过期 sending 接管、队列完整备份、持久对账历史或离线回执认证。无 schema/迁移/依赖变化；运行证据仍缺。
+显式 reconcile 不接管 sending。更新后的 flush 门禁见下节；已经运行的旧版本进程不会自动获得门禁。强制停止旧进程、显式解除未知状态、队列完整备份、持久对账历史和离线回执认证仍缺。无 schema/迁移/依赖变化；运行证据仍缺。
+
+## flush 未知结果门禁
+
+2026-11-04：`flushProposalQueue` 在领取前复用完整原任务校验，正文上限1 MiB、其他已知列合计16 KiB，核对原绑定、规范正文/摘要、原键唯一性、状态、时间、计数和租约。可定位的损坏行隔离为 blocked/PROPOSAL_QUEUE_CORRUPT，uncertain 保守置1，保留原文/键；无效任务 ID 无法安全定位时直接拒绝本次操作。attempts 到达安全整数上限也隔离，不继续递增。
+
+未知任务（uncertain=true）和回收的过期 sending 任务只调用 SDK 原创建回执入口，不预检后重发创建。recorded 经完整身份/键/草稿/历史回执校验后，使用本次租约保存既有最小历史回执，replayed=true；not-observed 以 PROPOSAL_SUBMISSION_NOT_OBSERVED 进入退避 retry，保留 uncertain。权限或内容冲突进入 blocked；临时、损坏响应或存储不可用可再次查询。任何失败都不清除已有未知标记、不替换草稿/键、不回退创建。retry 只重新安排原任务，未知状态不解除。
+
+没有未知标记的任务保持原身份预检和创建流程，改用完整有界 JSON：预检成功16 KiB、创建成功64 KiB、错误16 KiB，每请求20秒。查询使用 SDK 成功2 MiB/错误16 KiB和20秒期限。令牌每次领取只获取一次、最多等待5秒，同次请求共用；整个网络和读取过程受期限约束，不重定向。同步数据库操作和事件循环阻塞不受该期限保证。
+
+取得令牌后在发起任何请求前检查原 job_id/状态/租约未过期/键/正文/摘要/attempts；创建前再次检查。失去领取时返回 lease_lost，停止本次派发，不改他人领取。complete/fail 在单条更新中比较原状态、租约令牌、键、正文/摘要和 attempts；租约过期但尚未被他人回收时仍允许原持有者结算。数据库结算失败向上传播，原 sending 可由后续 flush 回收并查询，不把远端成功改称确定失败。这与显式 reconcile 拒绝所有 sending 的规则分别适用。
+
+结果新增 creation_attempts/receipt_queries，表示进入相应调用的次数，不证明请求已经到达服务端；每项 action 为 none/create/receipt，none 可能已经做过身份预检。processed 含领取/隔离任务，持久 attempts 是领取次数，也含查询、令牌失败及后续失去领取。单次只处理开始时到期任务，不等待退避；后续 flush 对未知任务仍只查回执。
+
+门禁不撤销已发送请求，也不能证明旧进程已退出。旧版本 flush 仍可能创建，已过期但未停止的发送也可能迟到；需在外部协调停止旧发送者。not-observed 永远不授权重提；目前没有显式解除未知或强制重提命令。没有新增表/迁移/依赖，只有源码和人工审阅，无运行验证。
