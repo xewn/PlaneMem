@@ -1,13 +1,18 @@
 'use client';
 
 import Link from 'next/link';
+import {
+  parseProposalReviewReceiptEnvelope,
+  type ProposalReviewRecordedReceipt,
+} from '@planemem/contracts';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { backupOperation } from '../sync/receipt/backup-operation';
-import { submitSavedProposalReview } from './review-actions';
+import { submitSavedProposalReview, checkSavedProposalReview } from './review-actions';
 import {
   decodeReviewOriginal,
   encodeReviewOriginal,
   parseReviewReceipt,
+  reviewReceiptQuery,
   type ProposalReviewOriginal,
   type ProposalReviewReceipt,
 } from './review-model';
@@ -24,6 +29,7 @@ export function OriginalProposalReview({
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [receipt, setReceipt] = useState<ProposalReviewReceipt>();
+  const [observed, setObserved] = useState<ProposalReviewRecordedReceipt>();
   const [message, setMessage] = useState(
     'The original decision is fixed. Save or export it, then review it before explicitly sending.',
   );
@@ -62,7 +68,7 @@ export function OriginalProposalReview({
     };
   }, [save, saveOnMount]);
   async function send() {
-    if (!mounted.current || operation.current || !confirmed || receipt) return;
+    if (!mounted.current || operation.current || !confirmed || receipt || observed) return;
     const controller = new AbortController();
     operation.current = controller;
     setBusy(true);
@@ -100,6 +106,55 @@ export function OriginalProposalReview({
           dispatched
             ? 'The review result remains unknown. The request may still complete. Keep the saved original and retry only this same decision, reason, version and key.'
             : 'The original could not be saved and verified, so this attempt did not send a review. Keep or export the original, then retry saving.',
+        );
+    } finally {
+      if (operation.current === controller) {
+        operation.current = undefined;
+        if (mounted.current) setBusy(false);
+      }
+    }
+  }
+  async function checkReceipt() {
+    if (!mounted.current || operation.current) return;
+    const controller = new AbortController();
+    operation.current = controller;
+    setBusy(true);
+    setConfirmed(false);
+    setMessage('Checking the original review receipt…');
+    try {
+      const result = await backupOperation(controller.signal, async (_signal, check) => {
+        const data = new FormData();
+        data.set('original', encodeReviewOriginal(request));
+        check();
+        const result = await checkSavedProposalReview(data);
+        check();
+        return result;
+      });
+      if (!mounted.current || operation.current !== controller) return;
+      if (result.original !== encodeReviewOriginal(request)) throw new TypeError();
+      if (result.status === 'unavailable') {
+        setMessage(result.message);
+        return;
+      }
+      const checked = parseProposalReviewReceiptEnvelope(
+        result.receipt,
+        reviewReceiptQuery(request),
+        result.receipt.trace_id,
+      );
+      if (checked.data.status === 'recorded') {
+        setObserved(checked.data.receipt);
+        setMessage(
+          'The gateway found the original historical review receipt. Open the proposal for current details. No review was sent by this lookup.',
+        );
+      } else {
+        setMessage(
+          'No matching receipt was observed in this read. This does not prove the original failed or cancel an in-flight request. Keep the original; this lookup did not send a review.',
+        );
+      }
+    } catch {
+      if (mounted.current && operation.current === controller)
+        setMessage(
+          'The original review receipt could not be confirmed. Keep the complete original. This lookup did not send or retry a review.',
         );
     } finally {
       if (operation.current === controller) {
@@ -164,6 +219,14 @@ export function OriginalProposalReview({
           type="button"
           className="secondary-button"
           disabled={busy}
+          onClick={() => void checkReceipt()}
+        >
+          Check original review result
+        </button>
+        <button
+          type="button"
+          className="secondary-button"
+          disabled={busy}
           onClick={() => void save()}
         >
           Save original review in this browser
@@ -192,9 +255,10 @@ export function OriginalProposalReview({
         Saving and loading do not send a decision or confirm its outcome. Browser data can be
         cleared; keep a separate file. The gateway requires the original account and client, a human
         identity and review permission for every send or retry. A retry can record the decision if
-        the original never arrived. It is not a read-only status check.
+        the original never arrived. Use “Check original review result” for a read-only lookup; it
+        works without a saved browser copy and never sends the review.
       </p>
-      {!receipt && (
+      {!receipt && !observed && (
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -218,10 +282,16 @@ export function OriginalProposalReview({
           </button>
         </form>
       )}
-      {receipt && (
+      {receipt && !observed && (
         <p>
           Confirmed historical result · {receipt.data.status} · revision {receipt.data.revision} ·{' '}
           {receipt.data.occurred_at}
+        </p>
+      )}
+      {observed && (
+        <p>
+          Observed historical receipt · {observed.status} · revision {observed.revision} ·{' '}
+          {observed.occurred_at} · event {observed.event_id}
         </p>
       )}
       <p role="status">{message}</p>

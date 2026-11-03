@@ -138,7 +138,7 @@ export class ApiGateway {
       context: request.context,
     };
     if (
-      route.operation === 'proposal.create.receipt' &&
+      ['proposal.create.receipt', 'proposal.review.receipt'].includes(route.operation) &&
       Object.entries(request.headers).some(
         ([name, value]) =>
           value !== undefined &&
@@ -152,13 +152,14 @@ export class ApiGateway {
             'range',
             'if-range',
             'content-encoding',
+            ...(route.operation === 'proposal.review.receipt' ? ['x-expected-version'] : []),
           ].includes(name.toLowerCase()),
       )
     )
       return this.errorResponse(
         new ContractError(
           'INVALID_INPUT',
-          'Creation receipt queries do not accept write or cache conditions',
+          'Proposal receipt queries do not accept write or cache conditions',
           { trace_id },
         ),
         trace_id,

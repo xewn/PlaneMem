@@ -3,6 +3,7 @@ import {
   isUlid,
   proposalReceiptJson,
   proposalText,
+  parseProposalReviewReceiptQuery,
   syncJsonSnapshot,
   validateIdempotencyKey,
   type ProposalMutationReceipt,
@@ -71,6 +72,17 @@ export function parseReviewOriginal(value: unknown): ProposalReviewOriginal {
 }
 export function encodeReviewOriginal(value: unknown) {
   return proposalReceiptJson(parseReviewOriginal(value), REVIEW_ORIGINAL_BYTES);
+}
+export function reviewReceiptQuery(value: unknown) {
+  const original = parseReviewOriginal(value);
+  return parseProposalReviewReceiptQuery({
+    identity: original.binding.identity,
+    request_key: original.request_key,
+    proposal_id: original.proposal_id,
+    expected_revision: original.expected_revision,
+    decision: original.decision,
+    reason: original.reason,
+  });
 }
 export function decodeReviewOriginal(raw: unknown) {
   if (

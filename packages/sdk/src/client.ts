@@ -204,6 +204,11 @@ import {
 } from './proposal-create-receipt.js';
 import type { ProposalCreateReceiptQuery } from '@planemem/contracts';
 import {
+  readProposalReviewReceipt,
+  type WcpProposalReviewReceiptOptions,
+} from './proposal-review-receipt.js';
+import type { ProposalReviewReceiptQuery } from '@planemem/contracts';
+import {
   submitConflictDecision,
   type WcpConflictSubmissionOptions,
 } from './conflict-submission.js';
@@ -373,6 +378,12 @@ export class WcpClient {
     options: WcpProposalCreateReceiptOptions = {},
   ) {
     return readProposalCreateReceipt(this.transport, this.context, input, options);
+  }
+  getProposalReviewReceipt(
+    input: ProposalReviewReceiptQuery,
+    options: WcpProposalReviewReceiptOptions = {},
+  ) {
+    return readProposalReviewReceipt(this.transport, this.context, input, options);
   }
   listProposals(input: ProposalListQuery = {}) {
     let filters: ProposalListQuery;

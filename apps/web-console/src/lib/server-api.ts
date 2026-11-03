@@ -2,7 +2,11 @@ import { readWorkbenchAuditResponse } from './audit-response';
 import { readWorkbenchJsonResponse } from './workbench-response';
 import { readConflictResponse } from './conflict-read-response';
 import { validateProposalReceipt } from './mutation-receipts';
-import { parseReviewOriginal, parseReviewReceipt } from '../app/proposals/review-model';
+import {
+  parseReviewOriginal,
+  parseReviewReceipt,
+  reviewReceiptQuery,
+} from '../app/proposals/review-model';
 import {
   assertProposalSubmissionBinding,
   parseProposalSubmissionBinding,
@@ -13,6 +17,8 @@ import {
   buildEtag,
   parseProposalCreateReceiptQuery,
   parseProposalCreateReceiptEnvelope,
+  parseProposalReviewReceiptEnvelope,
+  type ProposalReviewReceiptEnvelope,
   PROPOSAL_CREATE_RECEIPT_RESPONSE_BYTES,
   type ProposalCreateReceiptEnvelope,
   ContractError,
@@ -1810,6 +1816,19 @@ export async function submitWorkbenchProposalReviewOriginal(value: unknown) {
     (response, _scope, trace) => parseReviewReceipt(response, original, trace),
   );
 }
+export async function readWorkbenchProposalReviewReceipt(value: unknown) {
+  const original = parseReviewOriginal(value);
+  await getWorkbenchProposalSubmissionBinding(original.binding);
+  const query = reviewReceiptQuery(original);
+  return gatewayRequest<ProposalReviewReceiptEnvelope['data']>(
+    '/v1/proposals/review-receipt',
+    { ...query },
+    undefined,
+    'POST',
+    original.binding.identity,
+    (response, _scope, trace) => parseProposalReviewReceiptEnvelope(response, query, trace),
+  );
+}
 export function reviewWorkbenchProposal(
   id: string,
   choice: 'confirm' | 'reject',
@@ -1893,7 +1912,9 @@ async function gatewayRequest<T>(
     ].includes(path) && method === 'GET';
   const proposalOriginalRequest =
     method === 'POST' &&
-    (['/v1/proposals', '/v1/proposals/creation-receipt'].includes(path) ||
+    (['/v1/proposals', '/v1/proposals/creation-receipt', '/v1/proposals/review-receipt'].includes(
+      path,
+    ) ||
       /^\/v1\/proposals\/[0-9A-HJKMNP-TV-Z]{26}\/(confirm|reject)$/.test(path)) &&
     expectedIdentity !== undefined;
   const checkpointDetailRequest =

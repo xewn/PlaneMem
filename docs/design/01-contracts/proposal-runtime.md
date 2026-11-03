@@ -10,6 +10,7 @@ Web未准备的编辑内容可显式保存浏览器快照或完整文件，并�
 | --- | --- | --- |
 | POST | `/v1/proposals` | `proposal.write` |
 | POST | `/v1/proposals/creation-receipt` | 未过期的已验证原客户端及 `proposal.write`（或 admin） |
+| POST | `/v1/proposals/review-receipt` | 未过期的已验证原 human 客户端及 `proposal.review`（或 admin） |
 | GET | `/v1/proposals` | `context.read` |
 | GET | `/v1/proposals/submission-context` | 有效客户端身份；仅返回自身身份及范围 |
 | GET | `/v1/proposals/{proposal_id}` | `context.read` |
@@ -21,6 +22,8 @@ Web未准备的编辑内容可显式保存浏览器快照或完整文件，并�
 身份提供方需给真实交互式用户签发 human 声明，给受信审核角色授予 `proposal.review`；应防止服务账户自行取得该声明。当前代码不修改外部身份提供方，也不把普通登录或 Base scope 自动升级成审核权限。网关记录审核权限拒绝审计，具体审核决定在持久化 Proposal 与同步事件中保留。
 
 ## 提交
+
+原审核请求可独立[只读查询历史回执](proposal-review-receipt-runtime.md)，完整核对原身份、键、决定、理由、版本和审核事件；not-observed不证明失败，不触发审核重试。SDK、Mock与Web原请求恢复已接入，CLI/MCP审核专用适配和持久回执历史仍缺。
 
 ```json
 {

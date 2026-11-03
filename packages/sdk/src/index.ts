@@ -54,6 +54,12 @@ export type { WcpConflictReadOptions } from './conflict-read.js';
 export type { WcpConflictRegistryOptions } from './conflict-registry.js';
 export type { WcpConflictReceiptOptions } from './conflict-receipt.js';
 export type { WcpProposalCreateReceiptOptions } from './proposal-create-receipt.js';
+export type { WcpProposalReviewReceiptOptions } from './proposal-review-receipt.js';
+export type {
+  ProposalReviewReceiptQuery,
+  ProposalReviewReceiptEnvelope,
+  ProposalReviewRecordedReceipt,
+} from '@planemem/contracts';
 export type {
   ProposalCreateReceiptQuery,
   ProposalCreateReceiptEnvelope,

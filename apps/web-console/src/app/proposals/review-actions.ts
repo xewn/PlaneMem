@@ -4,6 +4,7 @@ import { proposalText } from '@planemem/contracts';
 import {
   getWorkbenchProposalSubmissionBinding,
   submitWorkbenchProposalReviewOriginal,
+  readWorkbenchProposalReviewReceipt,
 } from '../../lib/server-api';
 import { decodeReviewOriginal, encodeReviewOriginal, parseReviewOriginal } from './review-model';
 
@@ -50,6 +51,21 @@ export async function submitSavedProposalReview(data: FormData) {
       original: raw,
       message:
         'The original review outcome is not confirmed. Keep the original decision, reason, revision and key. Restore its gateway, account, client and project before an explicit retry.',
+    };
+  }
+}
+export async function checkSavedProposalReview(data: FormData) {
+  const original = decodeReviewOriginal(data.get('original'));
+  const raw = encodeReviewOriginal(original);
+  try {
+    const receipt = await readWorkbenchProposalReviewReceipt(original);
+    return { status: 'checked' as const, original: raw, receipt };
+  } catch {
+    return {
+      status: 'unavailable' as const,
+      original: raw,
+      message:
+        'The original review receipt could not be checked. Keep the complete original request. This lookup did not send or retry a review.',
     };
   }
 }

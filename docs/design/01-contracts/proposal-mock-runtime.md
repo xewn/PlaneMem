@@ -11,6 +11,7 @@
 | GET | `/v1/proposals/submission-context` | 返回当前配置身份及 `identity_preconditions: 1` |
 | POST | `/v1/proposals` | 创建 proposed/revision 1 建议 |
 | POST | `/v1/proposals/creation-receipt` | 只读核对原创建回执，不创建或重放命令 |
+| POST | `/v1/proposals/review-receipt` | 只读核对原人工审核回执，不发送决定 |
 | GET | `/v1/proposals` | 按状态、类型、直接原建议及 before 分页 |
 | GET | `/v1/proposals/{id}` | 读取正文、来源、审核结果及 sources_current |
 | POST | `/v1/proposals/{id}/confirm` | 人工确认，版本匹配后变为 verified/revision 2 |
@@ -74,6 +75,8 @@ await writer.getProposal(created.data.proposal_id);
 创建时固定本地来源版本和配置快照；同一 ID 的冲突版本拒绝。分类至少等于草稿、来源和直接原建议的最高分类。derived_from 要求原建议可读且 revision 匹配，最多 32 次派生；不会继承原审核结果。外部来源仍只保留引用，不进行真实性检查。内容中的共享注入模式会记录 provenance warning。
 
 ## 请求和状态
+
+`getProposalReviewReceipt({identity,request_key,proposal_id,decision,expected_revision,reason}, options?)` 已接入独立只读查询。完整规范原请求限32 KiB、响应64 KiB，原human会话需review_proposals且未过期，不要求read_proposals/create_proposals；项目、目标及来源/派生链可见性在缺记录前核对。同键异文拒绝，已有审核命令必须与建议中的原审核身份、理由、时间、状态和版本一致，not-observed不证明失败。查询不分配事件/游标或修改内存，拒绝查询参数、写入/版本/缓存/范围头及正文编码条件。没有真实同步事件账本或审计，见[原审核回执](proposal-review-receipt-runtime.md)。
 
 `getProposalCreateReceipt({identity,request_key,draft}, options?)` 通过只读 POST 查询既有创建命令，直接连接和 MockWcpServer 转发均适用。draft 必须是完整规范原草稿，包含默认分类/TTL等字段；不能用当前建议详情重建，因为分类可能被来源提高，审核状态也可能改变。查询接受共享1 MiB原请求/2 MiB完整响应限制，transport 的 max_response_bytes 可进一步缩小；拒绝 URL 查询参数、Idempotency-Key、If-Match、X-Expected-Version 和未知正文参数，不继承创建条件。
 

@@ -8,6 +8,8 @@ import {
   parseProposalListQuery,
   parseProposalCreateReceiptQuery,
   parseProposalCreateReceiptEnvelope,
+  parseProposalReviewReceiptQuery,
+  parseProposalReviewReceiptEnvelope,
   assertProposalReceiptIdentity,
   proposalReceiptJson,
   proposalText,
@@ -92,6 +94,11 @@ export function mayReviewProposal(context: RequestContext): boolean {
   );
 }
 
+export function canReadProposalReviewReceipt(context: RequestContext): boolean {
+  const expires = Date.parse(context.token_expires_at ?? '');
+  return mayReviewProposal(context) && Number.isFinite(expires) && expires > Date.now();
+}
+
 /** A historical proposal is hidden when a linked local source is no longer visible. */
 export function proposalVisibility(context: RequestContext, alias = 'p'): string {
   return `EXISTS (SELECT 1 FROM wcp_projects visible_project
@@ -143,6 +150,138 @@ function proposalLineage(alias: string): string {
 }
 
 export function registerProposals(router: CommandRouter, database: RuntimeSql | undefined) {
+  router.register('proposal.review.receipt', async (request) => {
+    const context = structuredClone(request.context);
+    if (!canReadProposalReviewReceipt(context))
+      throw fail(context, 'DENIED', 'A verified unexpired human reviewer is required');
+    let original;
+    try {
+      if (context.idempotency_key !== undefined || context.expected_version !== undefined)
+        throw new TypeError();
+      original = parseProposalReviewReceiptQuery(request.input);
+    } catch {
+      throw fail(
+        context,
+        'INVALID_INPUT',
+        'Supply the complete original review without write conditions',
+      );
+    }
+    try {
+      assertProposalReceiptIdentity(original.identity, context);
+    } catch {
+      throw fail(context, 'DENIED', 'Use the original reviewer account, client and project');
+    }
+    const receiptKey = commandReceipt({ ...request, context }, original.request_key).key;
+    // Keep the same positional fingerprint as confirm/reject, including the absent create input.
+    const requestHash = fingerprint([
+      original.decision,
+      original.proposal_id,
+      original.expected_revision,
+      original.reason,
+      undefined,
+    ]);
+    return storage(database, context, (db) =>
+      db.begin('isolation level repeatable read read only', async (tx) => {
+        // The target is known even when no command has been recorded. Check visibility first.
+        const row = await read(tx, context, original.proposal_id);
+        const [saved] = await tx<
+          ReceiptRow[]
+        >`SELECT fingerprint, proposal_id, status, revision, event_id, server_cursor, occurred_at
+          FROM wcp_proposal_commands WHERE tenant_id = ${context.tenant_id} AND workspace_id = ${context.workspace_id}
+          AND project_id = ${context.project_id} AND request_key = ${receiptKey}`;
+        if (!saved) {
+          if (!canReadProposalReviewReceipt(context))
+            throw fail(context, 'DENIED', 'The verified session expired');
+          return parseProposalReviewReceiptEnvelope(
+            {
+              schema_version: 1,
+              trace_id: context.trace_id,
+              source_refs: [],
+              data: { ...original, status: 'not-observed' },
+            },
+            original,
+            context.trace_id,
+          );
+        }
+        if (saved.fingerprint !== requestHash)
+          throw fail(
+            context,
+            'IDEMPOTENCY_KEY_REUSED',
+            'This original key belongs to different parameters',
+          );
+        try {
+          const recorded = result(saved, context, true);
+          const revision = original.expected_revision + 1;
+          const status = original.decision === 'confirm' ? 'verified' : 'rejected';
+          if (
+            saved.proposal_id !== original.proposal_id ||
+            recorded.data.status !== status ||
+            recorded.data.revision !== revision ||
+            row.status !== status ||
+            Number(row.revision) !== revision ||
+            row.reviewed_by !== original.identity.actor_id ||
+            row.reviewed_by_client !== original.identity.client_id ||
+            row.review_reason !== original.reason ||
+            row.reviewed_at === null ||
+            iso(row.reviewed_at) !== recorded.data.occurred_at
+          )
+            throw new TypeError();
+          const sources = [{ type: 'proposal', id: original.proposal_id, revision }];
+          const [event] = await tx<{ valid: boolean }[]>`SELECT (
+            e.event_type = 'ApprovalCompleted' AND e.trace_id = ${row.trace_id} AND e.trace_id <> ''
+            AND e.payload->>'trace_id' = e.trace_id AND e.payload->'schema_version' = '1'::jsonb
+            AND e.payload->>'event_type' = 'ApprovalCompleted' AND e.payload->>'event_id' = e.event_id
+            AND e.payload->>'tenant_id' = e.tenant_id AND e.payload->>'workspace_id' = e.workspace_id
+            AND e.payload->>'project_id' = e.project_id AND e.payload->>'aggregate_type' = 'Proposal'
+            AND e.payload->>'aggregate_id' = ${original.proposal_id}
+            AND e.payload->'aggregate_version' = ${JSON.stringify(revision)}::jsonb
+            AND e.payload->>'client_id' = ${context.client_id}
+            AND (${isUlid(context.actor_id)} AND e.payload->>'actor_id' = ${context.actor_id}
+              OR NOT ${isUlid(context.actor_id)} AND NOT (e.payload ? 'actor_id'))
+            AND e.payload->>'occurred_at' = ${recorded.data.occurred_at}
+            AND e.payload->>'sensitivity' = ${row.classification}
+            AND e.source_refs = ${JSON.stringify(sources)}::jsonb AND e.payload->'source_refs' = ${JSON.stringify(sources)}::jsonb
+            AND e.payload->'payload' = ${JSON.stringify({ proposal_id: original.proposal_id, status, revision, kind: row.kind })}::jsonb
+          ) IS TRUE AS valid FROM wcp_sync_events e WHERE e.tenant_id = ${context.tenant_id}
+            AND e.workspace_id = ${context.workspace_id} AND e.project_id = ${context.project_id}
+            AND e.event_id = ${saved.event_id} AND e.server_cursor = ${recorded.server_cursor}`;
+          if (event?.valid !== true) throw new TypeError();
+          const response = parseProposalReviewReceiptEnvelope(
+            {
+              schema_version: 1,
+              trace_id: context.trace_id,
+              source_refs: sources,
+              data: {
+                ...original,
+                status: 'recorded',
+                receipt: {
+                  proposal_id: original.proposal_id,
+                  status,
+                  revision,
+                  event_id: recorded.data.event_id,
+                  occurred_at: recorded.data.occurred_at,
+                  server_cursor: recorded.server_cursor,
+                  current_state: 'not-checked',
+                },
+              },
+            },
+            original,
+            context.trace_id,
+          );
+          if (!canReadProposalReviewReceipt(context))
+            throw fail(context, 'DENIED', 'The verified session expired');
+          return response;
+        } catch (error) {
+          if (error instanceof ContractError) throw error;
+          throw fail(
+            context,
+            'PROPOSAL_INVALID',
+            'The historical review receipt could not be verified',
+          );
+        }
+      }),
+    );
+  });
   router.register('proposal.create.receipt', async (request) => {
     const context = structuredClone(request.context);
     if (!canReadProposalCreateReceipt(context))

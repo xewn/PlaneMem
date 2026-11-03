@@ -25,6 +25,7 @@ import {
   AUDIT_EXPORT_REQUEST_BYTES,
   SYNC_EVENT_RECEIPT_REQUEST_BYTES,
   PROPOSAL_CREATE_RECEIPT_REQUEST_BYTES,
+  PROPOSAL_REVIEW_RECEIPT_REQUEST_BYTES,
 } from '@planemem/contracts';
 import { validateEvent } from '@planemem/events';
 import { PolicyService } from '@planemem/policy-service';
@@ -121,7 +122,11 @@ import {
 import { registerSessionCommandReceipts } from './session-command-receipts.js';
 import { registerSessionActivity } from './session-activity.js';
 import { registerContextItems } from './context-items.js';
-import { registerProposals, canReadProposalCreateReceipt } from './proposals.js';
+import {
+  registerProposals,
+  canReadProposalCreateReceipt,
+  canReadProposalReviewReceipt,
+} from './proposals.js';
 import { recordContextIndex } from './context-index.js';
 import { registerContextIndexLifecycle } from './context-index-lifecycle.js';
 import { PostgresObservedState } from './observed-state.js';
@@ -462,6 +467,11 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
         !canReadProposalCreateReceipt(request.context)
       )
         return { allowed: false, reason: 'verified_proposal_writer_required' };
+      if (
+        request.operation === 'proposal.review.receipt' &&
+        !canReadProposalReviewReceipt(request.context)
+      )
+        return { allowed: false, reason: 'verified_human_proposal_reviewer_required' };
       if (
         ['sync.command-context', 'sync.event.receipt'].includes(request.operation) &&
         !canReadSyncCommandContext(request.context)
@@ -1445,6 +1455,7 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
   api.route('POST', '/v1/context-items', 'context.item.create');
   api.route('POST', '/v1/proposals', 'proposal.create');
   api.route('POST', '/v1/proposals/creation-receipt', 'proposal.create.receipt');
+  api.route('POST', '/v1/proposals/review-receipt', 'proposal.review.receipt');
   api.route('GET', '/v1/proposals', 'proposal.list');
   api.routeTemplate('GET', '/v1/proposals/{proposal_id}', 'proposal.read');
   api.routeTemplate('POST', '/v1/proposals/{proposal_id}/confirm', 'proposal.confirm');
@@ -1677,7 +1688,9 @@ function policyAction(request: CommandRequest): string {
   if (['proposal.create', 'proposal.create.receipt'].includes(request.operation))
     return 'proposal.write';
   if (request.operation === 'context.item.confirm') return 'context.review';
-  if (request.operation === 'proposal.confirm' || request.operation === 'proposal.reject')
+  if (
+    ['proposal.confirm', 'proposal.reject', 'proposal.review.receipt'].includes(request.operation)
+  )
     return 'proposal.review';
   if (
     [
@@ -1878,6 +1891,7 @@ async function handleRequest(
   const auditExportRoute = request.method === 'POST' && url.pathname === '/v1/audit/export';
   const syncEventReceiptRoute = url.pathname === '/v1/sync/events/receipt';
   const proposalCreateReceiptRoute = url.pathname === '/v1/proposals/creation-receipt';
+  const proposalReviewReceiptRoute = url.pathname === '/v1/proposals/review-receipt';
   const artifactDownload =
     request.method === 'GET' &&
     /^\/v1\/artifacts\/[^/]+\/versions\/[^/]+\/content$/.test(url.pathname);
@@ -1890,7 +1904,8 @@ async function handleRequest(
     artifactDownload ||
     auditExportRoute ||
     syncEventReceiptRoute ||
-    proposalCreateReceiptRoute
+    proposalCreateReceiptRoute ||
+    proposalReviewReceiptRoute
   ) {
     response.setHeader('connection', 'close');
     response.setHeader('x-trace-id', traceId);
@@ -1900,7 +1915,8 @@ async function handleRequest(
     !artifactUpload &&
     !auditExportRoute &&
     !syncEventReceiptRoute &&
-    !proposalCreateReceiptRoute
+    !proposalCreateReceiptRoute &&
+    !proposalReviewReceiptRoute
   ) {
     try {
       body = await readJson(request);
@@ -2043,7 +2059,7 @@ async function handleRequest(
           'Sync acknowledgement takes original identity/cursor JSON without query, key, version or cache conditions',
           { trace_id: traceId },
         );
-      if (proposalCreateReceiptRoute) {
+      if (proposalCreateReceiptRoute || proposalReviewReceiptRoute) {
         if (
           request.method !== 'POST' ||
           url.searchParams.size ||
@@ -2060,19 +2076,27 @@ async function handleRequest(
             'range',
             'if-range',
             'content-encoding',
+            ...(proposalReviewReceiptRoute ? ['x-expected-version'] : []),
           ].some((name) => header(request, name) !== undefined)
         )
           throw new ContractError(
             'INVALID_INPUT',
-            'Proposal receipt takes original identity/key/draft JSON without query or write/cache conditions',
+            'Proposal receipt takes the complete original request JSON without query or write/cache conditions',
             { trace_id: traceId },
           );
         try {
-          body = await readJson(request, PROPOSAL_CREATE_RECEIPT_REQUEST_BYTES);
+          body = await readJson(
+            request,
+            proposalReviewReceiptRoute
+              ? PROPOSAL_REVIEW_RECEIPT_REQUEST_BYTES
+              : PROPOSAL_CREATE_RECEIPT_REQUEST_BYTES,
+          );
         } catch {
           throw new ContractError(
             'INVALID_INPUT',
-            'Supply complete original proposal receipt JSON within 1 MiB',
+            proposalReviewReceiptRoute
+              ? 'Supply complete original review receipt JSON within 32 KiB'
+              : 'Supply complete original proposal receipt JSON within 1 MiB',
             { trace_id: traceId },
           );
         }

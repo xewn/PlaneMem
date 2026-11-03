@@ -9,6 +9,8 @@ import {
   parseProposalListQuery,
   parseProposalCreateReceiptQuery,
   parseProposalCreateReceiptEnvelope,
+  parseProposalReviewReceiptQuery,
+  parseProposalReviewReceiptEnvelope,
   proposalReceiptJson,
   parseSyncCommandIdentity,
   proposalText,
@@ -392,6 +394,72 @@ export class MockProposalStore {
     });
   }
 
+  private reviewReceipt(input: unknown, session: Session, trace: string) {
+    const query = checked('INVALID_INPUT', trace, () => parseProposalReviewReceiptQuery(input));
+    checked('DENIED', trace, () => assertProposalReceiptIdentity(query.identity, session.identity));
+    const doc = this.read(query.proposal_id, session, trace).document;
+    const key = JSON.stringify([
+      query.identity.actor_id,
+      query.identity.client_id,
+      query.request_key,
+    ]);
+    const saved = this.#receipts.get(key);
+    if (!saved)
+      return parseProposalReviewReceiptEnvelope(
+        {
+          schema_version: 1,
+          trace_id: trace,
+          source_refs: [],
+          data: { ...query, status: 'not-observed' },
+        },
+        query,
+        trace,
+      );
+    if (
+      saved.fingerprint !==
+      canonical([query.decision, query.proposal_id, query.expected_revision, query.reason, null])
+    )
+      fail('IDEMPOTENCY_KEY_REUSED', trace);
+    return checked('PROPOSAL_INVALID', trace, () => {
+      const status = query.decision === 'confirm' ? 'verified' : 'rejected';
+      const revision = query.expected_revision + 1;
+      if (
+        saved.data.proposal_id !== query.proposal_id ||
+        saved.data.status !== status ||
+        saved.data.revision !== revision ||
+        doc.status !== status ||
+        doc.revision !== revision ||
+        doc.reviewed_by !== query.identity.actor_id ||
+        doc.reviewed_by_client !== query.identity.client_id ||
+        doc.review_reason !== query.reason ||
+        doc.reviewed_at !== saved.data.occurred_at
+      )
+        throw new TypeError();
+      return parseProposalReviewReceiptEnvelope(
+        {
+          schema_version: 1,
+          trace_id: trace,
+          source_refs: [{ type: 'proposal', id: query.proposal_id, revision }],
+          data: {
+            ...query,
+            status: 'recorded',
+            receipt: {
+              proposal_id: query.proposal_id,
+              status,
+              revision,
+              event_id: saved.data.event_id,
+              occurred_at: saved.data.occurred_at,
+              server_cursor: saved.cursor,
+              current_state: 'not-checked',
+            },
+          },
+        },
+        query,
+        trace,
+      );
+    });
+  }
+
   private respond(request: WcpRequest, session: Session): unknown {
     let trace = 'trace_unknown';
     const headers = checked('INVALID_INPUT', trace, () => {
@@ -442,12 +510,13 @@ export class MockProposalStore {
     );
     const identity = path === '/v1/proposals/submission-context';
     const creationReceipt = path === '/v1/proposals/creation-receipt';
+    const reviewReceipt = path === '/v1/proposals/review-receipt';
     const collection = path === '/v1/proposals';
     const match = /^\/v1\/proposals\/([0-9A-HJKMNP-TV-Z]{26})(?:\/(confirm|reject))?$/.exec(path!);
     if (
-      (!identity && !creationReceipt && !collection && !match) ||
+      (!identity && !creationReceipt && !reviewReceipt && !collection && !match) ||
       (identity && request.method !== 'GET') ||
-      (creationReceipt && request.method !== 'POST') ||
+      ((creationReceipt || reviewReceipt) && request.method !== 'POST') ||
       (match && request.method !== (match[2] ? 'POST' : 'GET'))
     )
       fail('MOCK_ROUTE_NOT_FOUND', trace);
@@ -456,8 +525,21 @@ export class MockProposalStore {
     if ((!collection || write) && query.size) fail('INVALID_INPUT', trace);
     if (
       (!write && request.body !== undefined) ||
-      ((!write || creationReceipt) &&
+      ((!write || creationReceipt || reviewReceipt) &&
         ['idempotency-key', 'if-match', 'x-expected-version'].some((name) => headers.has(name)))
+    )
+      fail('INVALID_INPUT', trace);
+    if (
+      reviewReceipt &&
+      [
+        'if-match-version',
+        'if-none-match',
+        'if-modified-since',
+        'if-unmodified-since',
+        'range',
+        'if-range',
+        'content-encoding',
+      ].some((name) => headers.has(name))
     )
       fail('INVALID_INPUT', trace);
     const maximum = request.max_response_bytes ?? RESPONSE_BYTES;
@@ -491,6 +573,7 @@ export class MockProposalStore {
       fail('DENIED', trace);
     if (!session.project_readable) fail('PROPOSAL_NOT_FOUND', trace);
     if (creationReceipt) return finish(this.creationReceipt(request.body, session, trace));
+    if (reviewReceipt) return finish(this.reviewReceipt(request.body, session, trace));
     const now = Date.now();
     if (!write && collection) {
       const filters = checked('INVALID_INPUT', trace, () => {

@@ -1,5 +1,7 @@
 # 架构决策记录摘要
 
+2026-11-04 原审核回执只读查询协接（ADR-015）：T0.5/T5.1/T7.2 新增共享严格契约、proposal.review.receipt / POST /v1/proposals/review-receipt、SDK及Mock、Web恢复页显式只读查询。完整原身份/键/建议/决定/版本/规范理由不可变；真实网关要求未过期human及review权限，以只读一致快照核对当前可见性、原命令指纹、审核记录及ApprovalCompleted事件；未观察到不推断失败或重发。Web查询不依赖浏览器保存、不自动审核，Mock只模拟已有内存记录。范围contracts/Gateway/SDK/Web及契约/README/TODO/R009，无schema/依赖变化；仅源码文档人工审阅，不编译/类型检查/测试/运行产品接口数据库或发布，独立提交并push main带[skip ci]。
+
 2026-11-04 Web 原审核请求恢复协接（ADR-015）：T5.1/T7.2 将建议审核改为先准备完整原决定、保存并审阅、明确发送；原网关/完整身份/建议ID/expected_revision/决定/规范理由/键冻结。独立review-submission v1、浏览器原文/目录双槽不可变保存与20条分页、文件导出及独立恢复页，载入不写不发，每次发前核对完整保存并等待提交；错误均保留原请求，不换键或解锁。服务器复用submission-context原身份预检和expected身份头，既有confirm/reject路由继续强制human及review权限，增加有界完整回执校验。范围Web form/page/server-api、新review模块/恢复路由及契约/README/TODO/R009，无Gateway/schema/依赖变化；只有开发人工审阅，不编译/类型检查/测试/执行浏览器接口数据库/发布，独立提交push main带[skip ci]。
 
 2026-11-04 Web 编辑草稿整批备份协接（ADR-015）：T5.1/T7.2 增加当前原网关/完整身份范围的独立编辑草稿备份v1、规范摘要、有界文件加载、只读比较和确认后原子补入。单读事务核对双槽计数及全部内容，最多100份/16 MiB文档，超限拒绝且不截断；恢复仅补缺失，包含saved_at的同文保留，异文/损坏整批拒绝，全部内容读回后提交。独立文件含原绑定/完整草稿及摘要，不含未保存编辑器、已准备原请求或服务器回执；载入/比较不写入，导入不自动编辑或发送。范围新增editing-backup model/adapter/panel、编辑store/panel及契约/README/TODO/R009，无服务端schema/依赖变化，仅开发人工审阅，不编译/类型检查/测试/运行产品/数据库/发布，独立提交push main带[skip ci]。

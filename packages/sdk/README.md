@@ -303,6 +303,9 @@ FetchWcpTransport 支持原生 FormData：request 为 application/json 文件部
 
 2026-11-03：新增 `getConflictReceipt(original, options?)`，original 是保存的 `{identity, request_key, command}`，command 包含原有效 conflict_id/expected_version/resolution/适用 merged_value 与全部额外原字段。SDK 必须匹配原三层范围以及上下文已提供的 actor/client 约束；普通字符串账号可使用仅含范围和 trace 的 SDK 上下文，原完整 actor/client 仍用于预期身份头。Gateway 对可信 token 核对全部五字段，要求未过期 resolver。查询不继承写条件，默认本地 30 秒、成功 2 MiB/错误 16 KiB，有完整原请求和结果校验，不重试。recorded 只确认原决定及事件，not-observed/legacy 仍保持未知，不证明源实体应用。调用方必须在写入前自行保存原请求；旧 resolveConflict 接口未自动创建恢复记录。见 [冲突原请求回执](../../docs/design/01-contracts/conflict-receipt-runtime.md)，仅源码，未运行验证。
 
+
+`getProposalReviewReceipt({identity,request_key,proposal_id,decision,expected_revision,reason}, {timeout_ms?,signal?})` 只读核对完整原审核请求，不发送决定、不继承写条件、不自动重试。需原未过期human及review权限，完整身份/原决定/规范理由/版本/键不得重建或修改。请求32 KiB、成功64 KiB、Fetch错误16 KiB，默认本地30秒；recorded核对完整历史回执，not-observed不证明失败。Mock同步支持原内存命令核对，无真实事件账本/审计/持久化；Web已接入独立恢复查询，CLI/MCP审核适配仍缺。见[原审核回执查询](../../docs/design/01-contracts/proposal-review-receipt-runtime.md)，仅源码、未执行。
+
 ## 离线原事件回执文件（源码接口，未执行）
 
 `prepareSyncEventReceiptFile(receipt, { trace_id, timeout_ms?, signal? })` 从完整历史回执准备既有 `workctx.sync-event-receipt` v1 文件，返回 `state: 'prepared-not-saved'`、`file`、完整 `bytes`、独立原 `query`、`file_bytes` 和 `file_sha256`。文件中的 `document_sha256` 对规范文档计算，`file_sha256` 对返回的实际 UTF-8 字节计算。函数不打开路径或写文件；调用方负责显式保存、确认最终路径和读回。传入回执在首次异步等待前完整解析为独立副本。

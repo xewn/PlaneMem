@@ -3452,6 +3452,31 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_review_receipt_development_increment:
+      date: "2026-11-04"
+      status: "Source-only original review receipt lookup across Gateway, SDK, Mock and Web; R-009 remains incomplete."
+      artifacts:
+        - "packages/contracts/src/proposal-review-receipt.ts"
+        - "apps/api-gateway/src/proposals.ts"
+        - "apps/api-gateway/src/server.ts"
+        - "apps/api-gateway/src/http.ts"
+        - "packages/sdk/src/proposal-review-receipt.ts"
+        - "packages/sdk/src/client.ts"
+        - "packages/sdk/src/mock-proposals.ts"
+        - "apps/web-console/src/app/proposals/review-model.ts"
+        - "apps/web-console/src/app/proposals/review-actions.ts"
+        - "apps/web-console/src/app/proposals/review-submission.tsx"
+        - "apps/web-console/src/lib/server-api.ts"
+        - "docs/design/01-contracts/proposal-review-receipt-runtime.md"
+      behavior: "An unexpired verified human reviewer can query the complete original identity/key/proposal/decision/revision/reason. A read-only repeatable snapshot checks current target visibility before absence, the original command fingerprint, persisted review fields and immutable ApprovalCompleted event. Strict query echo and bounded historical receipts preserve unknown outcomes. Web lookup needs no browser save and sends no review; recorded results hide the send form. Mock checks simulated memory only."
+      evidence: []
+      pending_evidence:
+        - "Human/reviewer/admin and expiry gates, exact original identity, source/lineage visibility before absence"
+        - "Command fingerprint parity, same-key different review, command/document/event corruption and storage errors"
+        - "Strict 32 KiB query/64 KiB envelope, HTTP and embedded condition rejection, SDK deadlines and cancellation"
+        - "Web save failure independence, no automatic dispatch, late results, retained historical results and Mock parity"
+      remaining_scope: "CLI/MCP review lookup, unprepared review drafts, review batch backups/cleanup, durable receipt history and runtime evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, product/Mock/API execution, database access or release; no schema or dependency changes."
     proposal_web_review_recovery_development_increment:
       date: "2026-11-04"
       status: "Source-only original review preparation, persistence and explicit recovery; R-009 remains incomplete."
@@ -3474,7 +3499,7 @@ requirements:
         - "Atomic pair save/readback, conflicting or partial slots, directory and selected reload"
         - "File bounds/UTF-8, loading without writing/sending, save-before-send and old-tab compatibility"
         - "Human/review permission enforcement, explicit same-key replay, cancellation and late action results"
-      remaining_scope: "Unprepared review drafts, original-review batch backups/cleanup, read-only review receipt lookup, durable receipt history, old missing records and cross-device coordination."
+      remaining_scope: "Unprepared review drafts, original-review batch backups/cleanup, CLI/MCP review lookup, durable receipt history, old missing records and cross-device coordination. Gateway/SDK/Mock/Web read-only lookup is covered by the subsequent increment."
       execution: "Source/docs and manual review only; no build, typecheck, tests, browser/API/database execution or release. New browser v1 structure is source only; no Gateway/server schema/dependency changes."
     proposal_web_editing_draft_backup_development_increment:
       date: "2026-11-04"
