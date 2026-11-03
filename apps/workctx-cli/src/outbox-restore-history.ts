@@ -10,6 +10,7 @@ export function isOutboxRestoreHistoryCommand(command: string) {
   return [
     'outbox restore-history',
     'outbox restore-audit',
+    'outbox restore-compare',
     'outbox restore-get',
     'outbox restore-export',
   ].includes(command);
@@ -39,7 +40,11 @@ function argumentsFor(argv: string[], trace: string) {
     }
     const { outbox, output, json } = args.values;
     const file = args.values['json-file'];
-    const queryBased = command === 'outbox restore-history' || command === 'outbox restore-audit';
+    const queryBased = [
+      'outbox restore-history',
+      'outbox restore-audit',
+      'outbox restore-compare',
+    ].includes(command);
     if (
       !isOutboxRestoreHistoryCommand(command) ||
       args.positionals.length !== (queryBased ? 2 : 3) ||
@@ -48,6 +53,7 @@ function argumentsFor(argv: string[], trace: string) {
       [outbox, output, file].some((path) => path !== undefined && (!path.trim() || path === '-')) ||
       json === '-' ||
       (json !== undefined && file !== undefined) ||
+      (command === 'outbox restore-compare' && json === undefined && file === undefined) ||
       (!queryBased && (json !== undefined || file !== undefined)) ||
       (command === 'outbox restore-export' ? output === undefined : output !== undefined)
     )
@@ -56,7 +62,7 @@ function argumentsFor(argv: string[], trace: string) {
   } catch {
     throw fail(
       'USAGE_ERROR',
-      'Use outbox restore-history or outbox restore-audit --outbox EXISTING_FILE [--json/--json-file QUERY], outbox restore-get RESTORE_ID --outbox EXISTING_FILE, or outbox restore-export RESTORE_ID --outbox EXISTING_FILE --output NEW_FILE. No other/repeated options, stdin or extra positionals',
+      'Use outbox restore-history or outbox restore-audit --outbox EXISTING_FILE [--json/--json-file QUERY], outbox restore-compare --outbox EXISTING_FILE --json/--json-file QUERY, outbox restore-get RESTORE_ID --outbox EXISTING_FILE, or outbox restore-export RESTORE_ID --outbox EXISTING_FILE --output NEW_FILE. No other/repeated options, stdin or extra positionals',
       trace,
     );
   }
@@ -124,7 +130,9 @@ export async function runOutboxRestoreHistoryArguments(
       ? bridge.parseOutboxRestoreHistoryQuery(scopedInput, trace)
       : args.command === 'outbox restore-audit'
         ? bridge.parseOutboxRestoreAuditQuery(scopedInput, trace)
-        : bridge.parseOutboxRestoreSelection({ scope, restore_id: args.restore_id }, trace);
+        : args.command === 'outbox restore-compare'
+          ? bridge.parseOutboxRestoreComparisonQuery(scopedInput, trace)
+          : bridge.parseOutboxRestoreSelection({ scope, restore_id: args.restore_id }, trace);
   if (
     query.scope.tenant_id !== scope.tenant_id ||
     query.scope.workspace_id !== scope.workspace_id ||
@@ -172,6 +180,7 @@ export async function runOutboxRestoreHistoryArguments(
   let data:
     | ReturnType<typeof queue.listRestoreReceipts>
     | ReturnType<typeof queue.auditRestoreReceipts>
+    | ReturnType<typeof queue.compareRestoreRecord>
     | ReturnType<typeof queue.readRestoreRecord>
     | Omit<ReturnType<typeof queue.readRestoreArchive>, 'source'>;
   let source: OutboxArchiveFile | undefined;
@@ -179,6 +188,8 @@ export async function runOutboxRestoreHistoryArguments(
     if (args.command === 'outbox restore-history') data = queue.listRestoreReceipts(query, trace);
     else if (args.command === 'outbox restore-audit')
       data = queue.auditRestoreReceipts(query, trace);
+    else if (args.command === 'outbox restore-compare')
+      data = queue.compareRestoreRecord(query, trace);
     else if (args.command === 'outbox restore-get') data = queue.readRestoreRecord(query, trace);
     else {
       const archived = queue.readRestoreArchive(query, trace);

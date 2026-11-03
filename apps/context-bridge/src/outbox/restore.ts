@@ -106,19 +106,20 @@ export function parseOutboxRestoreQuery(input: unknown, trace: string): OutboxRe
 }
 
 /** Immutable v1 mapping: later format versions must not reinterpret an existing restore receipt. */
+export function outboxRestoreRecordV1(record: Record<string, unknown>) {
+  const terminal = record.status === 'sent' || record.status === 'conflict';
+  return outboxStoredColumns({
+    ...record,
+    lease_token: null,
+    ...(!terminal ? { status: 'failed', last_error: HOLD } : {}),
+  });
+}
 export function outboxRestoreRecords(
   source: OutboxArchiveFile,
   restored_at: string,
   trace: string,
 ) {
-  const records = source.document.records.map((record) => {
-    const terminal = record.status === 'sent' || record.status === 'conflict';
-    return outboxStoredColumns({
-      ...record,
-      lease_token: null,
-      ...(!terminal ? { status: 'failed', last_error: HOLD } : {}),
-    });
-  });
+  const records = source.document.records.map(outboxRestoreRecordV1);
   return createOutboxArchive(
     { ...source.document, observed_at: restored_at, export_trace_id: trace, records },
     trace,

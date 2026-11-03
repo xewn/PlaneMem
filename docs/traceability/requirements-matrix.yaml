@@ -959,6 +959,25 @@ requirements:
         - "Offline routing without token/environment/SQLite, argument restrictions, output traces, provenance and exits"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, sample file generation, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_outbox_restore_comparison_development_increment:
+      date: "2026-11-03"
+      status: "Source-only single restored-event comparison; R-005 remains incomplete. No builds, typechecks, tests, CLI/Bridge execution, database opens, schema/migrations or release."
+      artifacts:
+        - "apps/context-bridge/src/outbox/restore-comparison.ts"
+        - "apps/context-bridge/src/outbox/restore.ts"
+        - "apps/context-bridge/src/outbox/sqlite.ts"
+        - "apps/workctx-cli/src/outbox-restore-history.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/outbox-restore-comparison-runtime.md"
+      behavior: "Strict scope/restore_id/event_id query within 16 KiB. One read snapshot fully verifies selected history and source archive, reconstructs the immutable v1 event baseline, validates the exact current original using bounded SQL and LIMIT 2, then compares all 23 stored primitive values including raw JSON strings. Returns archived/baseline/current summaries and changed column names, with identical/changed/current-not-observed states and provenance=not-proven. Fixed 90-second stage-checked budget, 128 KiB Bridge result. Errors preserve query/stage/requested event and underlying archive event/rollback/close details. CLI requires explicit existing native-readonly storage and one JSON input, with no output files, network or mutation."
+      evidence: []
+      pending_evidence:
+        - "Strict identifiers/fields/scope, mandatory exclusive JSON, stable query files and both CLI routes"
+        - "All 23 columns, raw JSON ordering/whitespace, archived time versus current lease summary and immutable v1 normalization"
+        - "Missing history, missing archived event, current absence, malformed/duplicate/oversized originals and checksum or identity failures"
+        - "Single snapshot, timeout/result limits, full-history failure locations and transaction/close detail preservation"
+      remaining_scope: "Content comparison does not prove causal provenance, deletion or remote delivery. Cross-project discovery/audit, complete historical receipt backups, retention, sender coordination and runtime evidence remain pending. Existing SQLite upgrades and PostgreSQL 016-049 remain unexecuted."
     sync_outbox_restore_audit_development_increment:
       date: "2026-11-03"
       status: "Source-only complete selected-project restore history audit; R-005 remains incomplete. No builds, typechecks, tests, audit/CLI/Bridge execution, database opens, schema/migrations or release."

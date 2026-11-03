@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+新增 `outbox restore-compare --outbox EXISTING_FILE --json/--json-file QUERY`，必须明确 restore_id/event_id，scope 可补入已固定的配置范围；只读展示原档案、恢复基线和当前摘要及变化列，保留底层定位和关闭状态。见 [恢复记录对照](../../docs/design/01-contracts/outbox-restore-comparison-runtime.md)。仅源码文档，未执行命令、编译、测试或发布。
+
 新增 `outbox restore-audit --outbox EXISTING_FILE`，可选 `--json/--json-file` 指定max_receipts/max_bytes/timeout_ms与scope；只读核验整个项目的恢复历史，拒绝输出文件、游标和原档案输入。目录audit_query可直接使用默认预算，失败保留进度/位置/关闭状态。见 [恢复历史核验](../../docs/design/01-contracts/outbox-restore-audit-runtime.md)。仅源码文档，未执行命令、编译、测试或发布。
 
 2026-11-03：已有本地只读命令统一继承Bridge的原生SQLite只读打开，包括收发队列查询/审计、导出、历史查看与预览。参数保持不变；读取无法打开时直接保留错误，不改为可写连接或初始化主库。文件导出仍是显式新文件操作。仅源码文档，未编译、测试、执行CLI或打开数据库。
@@ -520,6 +522,7 @@ observed-item.json 示例：`{"work_item_id":"plane-item-42"}`。CLI 核对返�
 | `outbox restore-receipt` | 必须 --outbox EXISTING_FILE、--json/--json-file 同一原恢复查询；无档案文件 | 无；只读完整历史恢复回执，不代表当前队列状态 |
 | `outbox restore-history` | 必须 --outbox EXISTING_FILE；可选 --json/--json-file scope/limit/after_restore_id | 无；只读元数据分页，原档案正文未核验 |
 | `outbox restore-audit` | 必须 --outbox EXISTING_FILE；可选 --json/--json-file scope/max_receipts/max_bytes/timeout_ms | 无；单次只读事务完整核验项目恢复历史，超限或损坏不返回部分通过 |
+| `outbox restore-compare` | 必须 --outbox EXISTING_FILE 和 --json/--json-file restore_id/event_id；可选同项目 scope | 无；单次只读事务核验历史和当前原行，返回摘要及相对恢复基线的变化列，不证明来源 |
 | `outbox restore-get ID` | 必须 --outbox EXISTING_FILE；不接受 JSON | 无；完整核验历史回执及原查询 |
 | `outbox restore-export ID` | 必须 --outbox EXISTING_FILE、--output NEW_FILE；不接受 JSON | 独占保存历史中的完整原档案，不改当前队列 |
 | `sync ack` | 保存的五字段 `expected_identity` 和非负安全整数 `cursor` | 不接受键/版本 |

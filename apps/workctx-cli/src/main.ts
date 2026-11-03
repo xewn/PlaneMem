@@ -146,6 +146,7 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   outbox restore-receipt         Read the saved local restore receipt using --outbox and original JSON query
   outbox restore-history         Browse restore metadata using explicit --outbox; optional limit/after_restore_id JSON
   outbox restore-audit           Verify all project restore receipts/archives using --outbox; optional max_receipts/max_bytes/timeout_ms JSON
+  outbox restore-compare         Compare one restored event with its current row using --outbox and restore_id/event_id JSON
   outbox restore-get ID          Read the verified original restore receipt using explicit --outbox
   outbox restore-export ID       Save its verified original archive using --outbox and --output NEW_FILE
   outbox retry EVENT_ID          Schedule another attempt for a pending or failed event
@@ -426,6 +427,7 @@ export async function main(args: string[]): Promise<number> {
       'outbox restore-receipt',
       'outbox restore-history',
       'outbox restore-audit',
+      'outbox restore-compare',
       'outbox restore-get',
       'outbox restore-export',
       'outbox retry',

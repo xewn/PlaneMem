@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [发送队列单条恢复记录对照](docs/design/01-contracts/outbox-restore-comparison-runtime.md)，`outbox restore-compare` 按恢复 ID 和事件 ID 只读核验历史与当前记录，展示原档案、恢复基线和当前摘要及变化字段；内容相同不作为来源证明。仅源码文档，未编译、测试、执行或发布。
+
 新增 [发送队列恢复历史全范围核验](docs/design/01-contracts/outbox-restore-audit-runtime.md)，`outbox restore-audit` 在一个只读快照中逐份核验项目全部恢复回执、原档案和恢复摘要，支持数量/字节/时间预算，失败保留定位与进度。仅源码文档，未编译、测试、执行核验或发布。
 
 完善本地 SQLite 只读打开：收件箱和发送队列在建立连接时指定 `readOnly`，查询、审计、导出和预览继续使用已有只读入口；打开失败不会自动切换为可写连接。仅源码文档，未编译、测试、运行或发布。

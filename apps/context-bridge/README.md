@@ -1,5 +1,7 @@
 # Context Bridge 本地同步存储
 
+新增 `compareRestoreRecord`，按项目/恢复 ID/事件 ID 在单次只读事务完整核验历史，并对照全部23个当前存储列，返回原档案、恢复基线和当前摘要及变化列。固定90秒、结果128 KiB；内容相同不证明因果来源，当前缺失不推断删除或投递。见 [恢复记录对照](../../docs/design/01-contracts/outbox-restore-comparison-runtime.md)。无 schema/依赖变化，仅源码文档，未运行、编译或测试。
+
 新增 `auditRestoreReceipts`，完整核验原项目恢复历史，默认100份/64 MiB/30秒，上限1000份/512 MiB/90秒；先有界计数，再分批读取元数据、逐份完整验证原查询/档案及v1恢复摘要。预算在正文加载前检查，不留存全部档案；失败保留进度且不返回部分通过。目录新增全项目audit_query。见 [恢复历史核验](../../docs/design/01-contracts/outbox-restore-audit-runtime.md)。无schema/依赖变化，仅源码文档，未运行、编译或测试。
 
 2026-11-03：`SqliteOutbox` 与 `SqliteSyncInbox` 的 `{readonly:true}` 现于 `DatabaseSync` 打开时传入原生 `readOnly:true`，并继续启用 `query_only`、核对已有结构。只读连接不因文件在预检后消失而按默认模式创建主库，也不在失败时回退可写；未添加初始化/升级或修复。Outbox严格检查existing/readonly布尔选项，readonly优先要求已有文件。普通写入和Inbox显式create规则保持；这是数据库连接模式，不是整个文件系统的只读隔离，显式导出仍可写新输出文件，文件身份原子绑定/日志环境兼容性仍待验证。使用现有Node 24和本地类型定义，无依赖变化；仅源码文档，未编译、类型检查、测试或打开库。
