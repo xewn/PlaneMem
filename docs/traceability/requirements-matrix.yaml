@@ -3452,6 +3452,23 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_review_history_selection_cleanup_development_increment:
+      date: "2026-11-04"
+      status: "Source-only bounded selected-history inspection, subset export and atomic confirmed cleanup; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/review-history-cleanup-panel.tsx"
+        - "apps/web-console/src/app/proposals/review-history-store.ts"
+        - "apps/web-console/src/app/proposals/review-history-backup.ts"
+        - "apps/web-console/src/app/proposals/review-history-panel.tsx"
+        - "docs/design/01-contracts/proposal-review-history-runtime.md"
+      behavior: "Select up to 20 observations from one directory page, including explicit select-page/clear actions. One read transaction matches every selected directory row and full body; inner digests are checked after completion. A retained subset archive can be exported for recovery and is not described as complete-scope backup. Explicit confirmation binds to the exact inspected subset and page/storage revision. Removal revalidates outer/inner digests, preflights all targets in one write transaction, rejects any different/corrupt pair, deletes only exact matches, counts absence separately and verifies every target absent before commit confirmation. Failed reads, selection/page/storage changes and unknown removal revoke eligibility while retaining exportable contents. Shared locks and invalidation cover single history, backup and original-review actions."
+      evidence: []
+      pending_evidence:
+        - "Selected-summary snapshot, duplicates/limits, full body and inner/outer digest validation, partial subset recovery"
+        - "All-target preflight before any deletion, conflicting/partial targets, missing-store behavior, committed readback and unselected records"
+        - "Selection/page/epoch changes, shared locks, failed reads, timeout/unmount, unknown-result retention and fresh reinspection"
+      remaining_scope: "Automatic cleanup and retention, automatic save/backup, cross-scope sync, server archival and runtime evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, product/browser/API/database execution or release; no schema or dependency changes."
     proposal_review_history_removal_development_increment:
       date: "2026-11-04"
       status: "Source-only inspected single browser history removal with independent confirmation; R-009 remains incomplete."

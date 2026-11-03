@@ -14,6 +14,9 @@ import {
   readReviewHistoryBackup,
   restoreReviewHistoryBackup,
   verifyReviewHistoryBackup,
+  readReviewHistorySelection,
+  removeReviewHistorySelection,
+  type ReviewHistorySummary,
 } from './review-history-store';
 
 export interface ReviewHistoryBackupCandidate {
@@ -103,6 +106,41 @@ export function restoreReviewHistoryArchive(
     if (reviewed.file.document_sha256 !== reviewedDigest) throw new TypeError();
     check();
     const result = await restoreReviewHistoryBackup(reviewed.file.document, operationSignal, check);
+    check();
+    return result;
+  });
+}
+
+/** The returned archive contains only the explicitly selected observations, not the whole scope. */
+export function prepareReviewHistorySelection(
+  binding: ProposalSubmissionBinding,
+  selection: ReviewHistorySummary[],
+  signal: AbortSignal,
+) {
+  return backupOperation(signal, async (operationSignal, check) => {
+    const document = await readReviewHistorySelection(binding, selection, operationSignal, check);
+    check();
+    const document_sha256 = await backupHash(reviewHistoryBackupDocumentJson(document));
+    check();
+    const file = parseReviewHistoryBackupFile({ document, document_sha256 });
+    return { file, raw: reviewHistoryBackupFileJson(file) };
+  });
+}
+export function removeReviewedHistorySelection(
+  raw: string,
+  binding: ProposalSubmissionBinding,
+  reviewedDigest: string,
+  signal: AbortSignal,
+) {
+  return backupOperation(signal, async (operationSignal, check) => {
+    const reviewed = await inspect(raw, binding, check);
+    if (reviewed.file.document_sha256 !== reviewedDigest) throw new TypeError();
+    check();
+    const result = await removeReviewHistorySelection(
+      reviewed.file.document,
+      operationSignal,
+      check,
+    );
     check();
     return result;
   });

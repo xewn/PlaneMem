@@ -6,6 +6,7 @@ import { backupOperation } from '../sync/receipt/backup-operation';
 import type { BrowserRemovalResult } from '../sync/receipt/browser-store';
 import type { ProposalSubmissionBinding } from './original-model';
 import { ReviewHistoryBackupPanel } from './review-history-backup-panel';
+import { ReviewHistoryCleanupPanel } from './review-history-cleanup-panel';
 import {
   REVIEW_HISTORY_FILE_BYTES,
   reviewObservationStatus,
@@ -510,6 +511,15 @@ export function ReviewHistoryPanel({
           </p>
         </div>
       )}
+      <ReviewHistoryCleanupPanel
+        binding={binding}
+        page={page}
+        disabled={locked}
+        storageEpoch={storageEpoch}
+        begin={beginStorage}
+        end={endStorage}
+        onStorageChange={storageChanged}
+      />
       <ReviewHistoryBackupPanel
         binding={binding}
         disabled={locked}

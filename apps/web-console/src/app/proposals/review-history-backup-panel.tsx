@@ -182,6 +182,10 @@ export function ReviewHistoryBackupPanel({
           received result in the history panel first if you want it included. Up to 100 observations
           and a 16 MiB document are supported; larger collections are rejected as a whole.
         </p>
+        <p>
+          Imported backups restore only the entries they contain. A selected-history backup may
+          contain just a subset of the saved history.
+        </p>
         <button
           type="button"
           className="secondary-button"
