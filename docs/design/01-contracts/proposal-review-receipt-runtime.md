@@ -31,4 +31,18 @@ SDK `getProposalReviewReceipt(original, {timeout_ms?,signal?})` 不继承构造�
 
 Web原审核页面及恢复页面中的 Check original review result 可独立执行，不要求浏览器先保存，也不要求发送确认。服务器先核对原网关与可信submission-context，再发送完整查询；每个网络请求30秒，浏览器动作等待30秒，超时不取消此前的在途审核。查询前撤销发送确认，查询期间锁定同一组件操作；迟到结果不应用。recorded 显示历史回执并收起发送表单；not-observed、拒绝或读取异常保留完整原请求，既有已确认历史回执不被后一次失败清除。不自动保存/清理原请求、持久化回执、导航或重发。
 
-CLI/MCP审核专用查询适配、持久审核回执历史、审核原请求整批备份/清理、未准备审核草稿和运行权限/兼容证据仍未补齐。现有创建回执入口保持独立。
+持久审核回执历史、审核原请求整批备份/清理、未准备审核草稿和运行权限/兼容证据仍未补齐。现有创建回执入口保持独立。
+
+## CLI 与 MCP 原审核查询
+
+`workctx proposals review-receipt --json-file original-review-query.json --timeout-ms 30000` 接收保存的完整 `{identity,request_key,proposal_id,decision,expected_revision,reason}`，也可用 `--json` 提供同一对象。两种输入必须且只能选一；拒绝标准输入 `-`、重复选项、额外位置参数、`--key`、版本条件和其他选项。文件最多32 KiB，按打开的句柄核验普通文件、长度、读取前后元数据和EOF，严格UTF-8解码，读取或关闭失败不派发。内联JSON也先按实际UTF-8字节限制后解析，不截断或重新规范化原理由。
+
+使用原 WORKCTX_URL、原账号令牌及匹配的 WORKCTX_TENANT_ID/WORKSPACE_ID/PROJECT_ID；查询文件不包含网关地址，调用方需单独保留原配置。Web的proposal-review-submission包装文件不直接作为query接受，不能默默忽略其网关绑定。网络调用复用SDK，预期actor/client头与查询原身份一致，由网关检查可信human/review权限；嵌入runWorkctx先检查未过期可信human及proposal.review/admin、匹配完整原身份，清除继承写条件，只调用proposal.review.receipt，返回前重查期限。
+
+`--timeout-ms` 为1–2147483647整数，默认30000，作用于文件校验后的查询等待，不是文件系统操作超时。成功stdout为完整已核验封套，退出0只表示本次查询完成，须查看data.status；recorded确认历史审核，not-observed不证明审核成功或失败。读取失败/超时均保留原请求文件，不写结果文件、不删除或更换原键、不发送决定或自动重试；取消本地等待不保证底层查询已停止。
+
+MCP `get_proposal_review_receipt` 使用同一六字段query。工具目录和直接调用都要求原未过期、已验证human及proposal.review/admin，管理员不能绕过人工身份，继承的写入条件不会带到查询，正文额外字段仍拒绝。工具标为只读，返回text是完整已核验历史封套；理由仅是非可信参考数据，不将其作为指令。
+
+每个ApiGateway对审核查询独立限制两笔准备工作，第三笔立即返回MCP_PROPOSAL_REVIEW_RECEIPT_BUSY，没有等待队列。30秒本地等待过期返回MCP_PROPOSAL_REVIEW_RECEIPT_TIMEOUT，但名额持续占用到底层完成，防止超时后反复叠加查询。输入32 KiB、成功正文64 KiB、错误正文16 KiB、二次JSON转义后的工具结果最多128 KiB+4096字节；返回前完整核对200、JSON类型、trace头、原query和全部历史结果。未知错误转换为固定失败说明，不返回部分结果或底层正文。
+
+MCP HTTP仍使用普通1 MiB封套预算；审核查询不获得创建回执或Artifact的大正文额度，内层query仍限32 KiB。既有HTTP解析/发送期限继续适用，工具30秒约束只覆盖本地准备等待，不声称整条网络响应已交付。没有实际运行CLI/MCP、编译、类型检查或测试证据。

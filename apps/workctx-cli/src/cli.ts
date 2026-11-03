@@ -93,6 +93,7 @@ import { runConflictRead } from './conflict-read.js';
 import { runConflictRegistry } from './conflict-registry.js';
 import { runConflictReceipt } from './conflict-receipt.js';
 import { runProposalCreateReceipt } from './proposal-create-receipt.js';
+import { runProposalReviewReceipt } from './proposal-review-receipt.js';
 import { runHandoffRegistry } from './handoff-registry.js';
 import { parseCheckpointListArguments, runCheckpointRegistry } from './checkpoint-registry.js';
 import {
@@ -277,6 +278,7 @@ export async function runWorkctx(
     'context version': 'context.item.version.read',
     'proposals create': 'proposal.create',
     'proposals receipt': 'proposal.create.receipt',
+    'proposals review-receipt': 'proposal.review.receipt',
     'proposals list': 'proposal.list',
     'proposals get': 'proposal.read',
     'proposals confirm': 'proposal.confirm',
@@ -577,6 +579,10 @@ export async function runWorkctx(
     }
     if (command === 'proposals receipt') {
       const result = await runProposalCreateReceipt(argv, router, context);
+      return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
+    }
+    if (command === 'proposals review-receipt') {
+      const result = await runProposalReviewReceipt(argv, router, context);
       return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
     }
     if (command === 'conflicts') {

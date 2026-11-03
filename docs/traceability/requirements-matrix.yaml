@@ -3452,6 +3452,27 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_review_receipt_clients_development_increment:
+      date: "2026-11-04"
+      status: "Source-only CLI and MCP original human review receipt adapters; R-009 remains incomplete."
+      artifacts:
+        - "apps/workctx-cli/src/proposal-review-receipt.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "apps/workctx-cli/src/remote.ts"
+        - "apps/api-gateway/src/mcp/proposal-review-receipt.ts"
+        - "apps/api-gateway/src/mcp/catalog.ts"
+        - "apps/api-gateway/src/mcp/protocol.ts"
+        - "docs/design/01-contracts/proposal-review-receipt-runtime.md"
+      behavior: "proposals review-receipt reads a stable bounded UTF-8 original query file or inline JSON through network and embedded adapters. get_proposal_review_receipt discovery and direct invocation require the original unexpired verified human reviewer/admin. Both reuse exact query/envelope validation without sending a decision, persisting outcomes or changing the original. MCP reserves two preparation slots per Gateway, retains timed-out slots until underlying work settles and bounds full success/error output. not-observed and successful query exit do not prove the original review outcome."
+      evidence: []
+      pending_evidence:
+        - "CLI routing, strict options and files, original scope/actor/client, human/reviewer/expiry gates"
+        - "MCP discovery and direct invocation, inherited condition removal, forbidden extra fields and unchanged HTTP body allowance"
+        - "Original query/trace/receipt matching, complete output bounds, deadlines/cancellation and retained preparation capacity"
+        - "No automatic review, retries, file mutation, partial output or promotion of not-observed to review success"
+      remaining_scope: "Unprepared review drafts, review batch backups/cleanup, durable receipt history and runtime evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/MCP/API execution, database access or release; no schema or dependency changes."
     proposal_review_receipt_development_increment:
       date: "2026-11-04"
       status: "Source-only original review receipt lookup across Gateway, SDK, Mock and Web; R-009 remains incomplete."
@@ -3475,7 +3496,7 @@ requirements:
         - "Command fingerprint parity, same-key different review, command/document/event corruption and storage errors"
         - "Strict 32 KiB query/64 KiB envelope, HTTP and embedded condition rejection, SDK deadlines and cancellation"
         - "Web save failure independence, no automatic dispatch, late results, retained historical results and Mock parity"
-      remaining_scope: "CLI/MCP review lookup, unprepared review drafts, review batch backups/cleanup, durable receipt history and runtime evidence."
+      remaining_scope: "Unprepared review drafts, review batch backups/cleanup, durable receipt history and runtime evidence. CLI/MCP lookup is covered by the subsequent client increment."
       execution: "Source/docs and manual review only; no build, typecheck, tests, product/Mock/API execution, database access or release; no schema or dependency changes."
     proposal_web_review_recovery_development_increment:
       date: "2026-11-04"
@@ -3499,7 +3520,7 @@ requirements:
         - "Atomic pair save/readback, conflicting or partial slots, directory and selected reload"
         - "File bounds/UTF-8, loading without writing/sending, save-before-send and old-tab compatibility"
         - "Human/review permission enforcement, explicit same-key replay, cancellation and late action results"
-      remaining_scope: "Unprepared review drafts, original-review batch backups/cleanup, CLI/MCP review lookup, durable receipt history, old missing records and cross-device coordination. Gateway/SDK/Mock/Web read-only lookup is covered by the subsequent increment."
+      remaining_scope: "Unprepared review drafts, original-review batch backups/cleanup, durable receipt history, old missing records and cross-device coordination. Gateway/SDK/Mock/Web and CLI/MCP read-only lookup are covered by subsequent increments."
       execution: "Source/docs and manual review only; no build, typecheck, tests, browser/API/database execution or release. New browser v1 structure is source only; no Gateway/server schema/dependency changes."
     proposal_web_editing_draft_backup_development_increment:
       date: "2026-11-04"

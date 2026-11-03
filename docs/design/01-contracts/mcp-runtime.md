@@ -1,5 +1,7 @@
 # MCP HTTP 运行时开发说明
 
+2026-11-04 原审核回执增补：get_proposal_review_receipt接收完整原identity/request_key/proposal_id/decision/expected_revision/reason，发现/调用都要求未过期可信human及proposal.review/admin。复用原审核只读路由和严格封套，不发送决定；not-observed不证明失败。每Gateway独立两笔准备名额、30秒本地等待，超时保留名额到底层结束；输入32 KiB、成功64 KiB、错误16 KiB、二次转义结果128 KiB+4096字节。保持普通HTTP 1 MiB，无大正文扩容权限；继承写条件清除，不保存结果或重试。见[CLI/MCP原审核查询](proposal-review-receipt-runtime.md#cli-与-mcp-原审核查询)，仅源码文档，未编译/类型检查/测试/运行或发布。
+
 2026-11-04 提案创建回执增补：新增 `get_proposal_create_receipt({identity,request_key,draft})`，发现/调用要求可信未过期 proposal.write/admin，并核对原账号/客户端/项目。复用只读创建回执路由，完整原规范草稿必含分类/TTL，未知结果不触发创建/审核。每 Gateway 独立两笔准备名额、30秒本地期限，超时保留名额到底层结束；成功2 MiB、错误16 KiB、二次转义结果4 MiB+4096字节。普通 HTTP 1 MiB 不变，可信 proposal writer 可使用1 MiB+64 KiB封套额度，最终工具名必须匹配且内层原请求仍限1 MiB；Artifact 自身扩容预留保持。清除继承写条件，不生成键或保存回执；见 [CLI/MCP 原创建回执](proposal-runtime.md#cli-与-mcp-原创建回执)。仅源码文档，未编译、类型检查、测试、执行接口/数据库或发布。
 
 2026-11-03 原消费者确认增补：迁移 acknowledge_sync 为保存的 expected_identity/cursor，新增 get_sync_cursor({expected_identity?}) 只读当前位点，区分无记录与明确确认到 0。当前位点不是原请求历史回执。二者要求可信未过期 sync.read/admin，读写各自两笔准备名额与 30 秒期限，超时保留底层名额；成功 32 KiB、错误 16 KiB、二次转义结果 64 KiB + 4096 字节，确认错误由适配器标明 not-sent/unknown。get_sync_changes 新增可选原身份前置条件。没有自动确认/查询/重试或本地保存，见 [原消费者确认](sync-cursor-runtime.md)，未运行验证。

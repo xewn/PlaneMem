@@ -23,7 +23,7 @@ Web未准备的编辑内容可显式保存浏览器快照或完整文件，并�
 
 ## 提交
 
-原审核请求可独立[只读查询历史回执](proposal-review-receipt-runtime.md)，完整核对原身份、键、决定、理由、版本和审核事件；not-observed不证明失败，不触发审核重试。SDK、Mock与Web原请求恢复已接入，CLI/MCP审核专用适配和持久回执历史仍缺。
+原审核请求可独立[只读查询历史回执](proposal-review-receipt-runtime.md)，完整核对原身份、键、决定、理由、版本和审核事件；not-observed不证明失败，不触发审核重试。SDK、Mock、Web原请求恢复及CLI/MCP审核专用只读查询已接入，持久回执历史仍缺。
 
 ```json
 {

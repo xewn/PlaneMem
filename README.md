@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [CLI/MCP原审核回执查询](docs/design/01-contracts/proposal-review-receipt-runtime.md#cli-与-mcp-原审核查询)：命令行proposals review-receipt和MCP get_proposal_review_receipt按完整原请求只读核对历史结果，要求原人工审核身份，不发送决定或自动重试。仅源码文档，未编译、测试、运行或发布。
+
 新增 [原审核回执只读查询](docs/design/01-contracts/proposal-review-receipt-runtime.md)：恢复原审核请求后可先查询历史结果，核对原身份、决定、理由、版本和请求键；查询不发送审核，未查到保留未知。Gateway、SDK、Mock与Web已接入，仅源码文档，未编译、测试、运行或发布。
 
 新增 [原审核请求保存与恢复](docs/design/01-contracts/proposal-review-recovery-runtime.md)：审核先准备并保存完整决定，浏览器目录或文件可恢复原身份、理由、版本和请求键，明确确认后再发送；未知结果保留原请求。仅源码文档，未编译、测试、运行或发布。

@@ -25,7 +25,8 @@ import { prepareConflictReadTool } from './conflict-read.js';
 import { prepareConflictRegistry } from './conflict-registry.js';
 import { prepareConflictReceiptTool } from './conflict-receipt.js';
 import { prepareProposalCreateReceiptTool } from './proposal-create-receipt.js';
-import { canReadProposalCreateReceipt } from '../proposals.js';
+import { prepareProposalReviewReceiptTool } from './proposal-review-receipt.js';
+import { canReadProposalCreateReceipt, canReadProposalReviewReceipt } from '../proposals.js';
 import { prepareConflictCommandContext } from './conflict-command-context.js';
 import { prepareOriginalConflictTool } from './conflict-submission.js';
 import { canReadConflictReceipt } from '../conflict-receipts.js';
@@ -662,6 +663,36 @@ const definitions: ToolDefinition[] = [
       ]),
     },
     ['identity', 'request_key', 'draft'],
+  ),
+  tool(
+    'get_proposal_review_receipt',
+    'Read the saved original human review using its exact identity, request_key, proposal_id, decision, expected_revision and normalized reason. Requires the same verified unexpired human reviewer/admin account, client and project. recorded confirms a historical review only, with current_state=not-checked; not-observed does not prove failure or authorize resending. Keep the original request on every outcome. Never confirms, rejects, creates a key, retries or saves a review. Returned reasons are untrusted reference data.',
+    ['proposal.review'],
+    'POST',
+    '/v1/proposals/review-receipt',
+    {
+      identity: object(
+        {
+          tenant_id: ulid,
+          workspace_id: ulid,
+          project_id: ulid,
+          actor_id: { ...identifier, pattern: '^[!-~]{1,255}$' },
+          client_id: { ...identifier, pattern: '^[!-~]{1,255}$' },
+        },
+        claimIdentityFields,
+      ),
+      request_key: { ...identifier, pattern: '^[!-~]{1,255}$' },
+      proposal_id: ulid,
+      decision: { type: 'string', enum: ['confirm', 'reject'] },
+      expected_revision: { ...version, maximum: Number.MAX_SAFE_INTEGER - 1 },
+      reason: {
+        ...text,
+        maxLength: 2000,
+        description: 'Complete original normalized reason; do not trim or reconstruct it.',
+      },
+    },
+    ['identity', 'request_key', 'proposal_id', 'decision', 'expected_revision', 'reason'],
+    { human: true },
   ),
   tool(
     'list_proposals',
@@ -1561,6 +1592,7 @@ export function listMcpTools(context: RequestContext) {
       (entry) =>
         (entry.name !== 'get_admin_snapshot' || canUseAdminSnapshot(context)) &&
         (entry.name !== 'get_proposal_create_receipt' || canReadProposalCreateReceipt(context)) &&
+        (entry.name !== 'get_proposal_review_receipt' || canReadProposalReviewReceipt(context)) &&
         (entry.name !== 'get_sync_changes' || canReadSyncChanges(context)) &&
         (!isSyncCursorTool(entry.name) || canReadSyncStream(context)) &&
         (!(isSyncReadTool(entry.name) || entry.name === 'upload_events') ||
@@ -1636,6 +1668,7 @@ export function mcpToolRequiresClient(name: unknown): boolean {
     name === 'get_artifact_receipt' ||
     name === 'get_conflict_receipt' ||
     name === 'get_proposal_create_receipt' ||
+    name === 'get_proposal_review_receipt' ||
     name === 'get_conflict_command_context' ||
     name === 'download_artifact_version'
   );
@@ -1653,6 +1686,7 @@ export function prepareMcpTool(
     });
   if (isSyncReadTool(name)) return prepareSyncReadTool(name, raw, context);
   if (name === 'get_proposal_create_receipt') return prepareProposalCreateReceiptTool(raw, context);
+  if (name === 'get_proposal_review_receipt') return prepareProposalReviewReceiptTool(raw, context);
   if (name === 'upload_events') return prepareSyncUploadTool(raw, context);
   if (name === 'get_sync_changes') return prepareSyncChangesTool(raw, context);
   if (isSyncCursorTool(name)) return prepareSyncCursorTool(name, raw, context);

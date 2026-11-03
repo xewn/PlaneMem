@@ -19,6 +19,7 @@ import { executeAdminSnapshot } from './admin.js';
 import { isSyncReadTool, executeSyncReadTool } from './sync-reads.js';
 import { executeSyncUploadTool } from './sync-upload.js';
 import { executeProposalCreateReceiptTool } from './proposal-create-receipt.js';
+import { executeProposalReviewReceiptTool } from './proposal-review-receipt.js';
 import { executeSyncChangesTool } from './sync-changes.js';
 import { isSyncCursorTool, executeSyncCursorTool } from './sync-cursor.js';
 import { sessionRegistryToolResult } from './session-registry.js';
@@ -169,6 +170,10 @@ export async function dispatchMcp(
         try {
           if (params.name === 'get_proposal_create_receipt') {
             result = await executeProposalCreateReceiptTool(api, params.arguments ?? {}, context);
+            break;
+          }
+          if (params.name === 'get_proposal_review_receipt') {
+            result = await executeProposalReviewReceiptTool(api, params.arguments ?? {}, context);
             break;
           }
           if (isSyncCursorTool(params.name)) {

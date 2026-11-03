@@ -1,5 +1,7 @@
 # 架构决策记录摘要
 
+2026-11-04 CLI/MCP原审核回执协接（ADR-015）：T4.2/T4.3新增proposals review-receipt与get_proposal_review_receipt，接收完整原identity/request_key/proposal_id/decision/expected_revision/reason，只读复用现有Gateway及SDK严格封套。CLI稳定普通文件/内联JSON限32 KiB，拒绝标准输入/重复/写选项，网络与嵌入要求原身份及未过期human/review权限；MCP发现/调用同门禁，成功64 KiB/错误16 KiB、两路容量/30秒本地期限，超时保留名额至底层结束，不扩张普通HTTP预算。not-observed不证明失败或重发，查询不改文件/键/决定。范围CLI/MCP源码、契约/README/TODO/R009及协调记录，无schema/依赖变化；只开发人工审阅，不编译/类型检查/测试/运行CLI/MCP/网关/数据库或发布，独立提交并push main带[skip ci]。
+
 2026-11-04 原审核回执只读查询协接（ADR-015）：T0.5/T5.1/T7.2 新增共享严格契约、proposal.review.receipt / POST /v1/proposals/review-receipt、SDK及Mock、Web恢复页显式只读查询。完整原身份/键/建议/决定/版本/规范理由不可变；真实网关要求未过期human及review权限，以只读一致快照核对当前可见性、原命令指纹、审核记录及ApprovalCompleted事件；未观察到不推断失败或重发。Web查询不依赖浏览器保存、不自动审核，Mock只模拟已有内存记录。范围contracts/Gateway/SDK/Web及契约/README/TODO/R009，无schema/依赖变化；仅源码文档人工审阅，不编译/类型检查/测试/运行产品接口数据库或发布，独立提交并push main带[skip ci]。
 
 2026-11-04 Web 原审核请求恢复协接（ADR-015）：T5.1/T7.2 将建议审核改为先准备完整原决定、保存并审阅、明确发送；原网关/完整身份/建议ID/expected_revision/决定/规范理由/键冻结。独立review-submission v1、浏览器原文/目录双槽不可变保存与20条分页、文件导出及独立恢复页，载入不写不发，每次发前核对完整保存并等待提交；错误均保留原请求，不换键或解锁。服务器复用submission-context原身份预检和expected身份头，既有confirm/reject路由继续强制human及review权限，增加有界完整回执校验。范围Web form/page/server-api、新review模块/恢复路由及契约/README/TODO/R009，无Gateway/schema/依赖变化；只有开发人工审阅，不编译/类型检查/测试/执行浏览器接口数据库/发布，独立提交push main带[skip ci]。
