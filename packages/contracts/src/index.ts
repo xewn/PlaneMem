@@ -63,4 +63,5 @@ export * from './sync-saved-page.js';
 export * from './sync-ack-evidence.js';
 export * from './sync-ack-result.js';
 export * from './sync-page-chain.js';
+export * from './sync-application-archive.js';
 export * from './sync-event-receipt-file.js';

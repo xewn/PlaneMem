@@ -4,6 +4,12 @@ import {
   ContractError,
   syncJsonSnapshot,
   SYNC_CHANGES_RESPONSE_BYTES,
+  parseSyncApplicationArchiveDocument,
+  syncApplicationArchiveDocumentJson,
+  SYNC_APPLICATION_ARCHIVE_DOCUMENT_BYTES,
+  SYNC_APPLICATION_ARCHIVE_MAX_PAGES,
+  type SyncApplicationArchiveStep,
+  type SyncApplicationArchiveFile,
   type SyncCommandIdentity,
   type SyncSavedPageFile,
   type SyncChange,
@@ -451,6 +457,79 @@ export class InboxApplications {
     return this.run(trace, query.timeout_ms, false, (check) => {
       this.require(trace);
       return this.state(query, this.head(query, trace, check), trace);
+    });
+  }
+  archive(input: unknown, trace: string) {
+    const query = parseInboxApplicationQuery(input, trace);
+    return this.run(trace, query.timeout_ms, false, (check) => {
+      this.require(trace);
+      const steps: SyncApplicationArchiveStep[] = [];
+      const document = {
+        schema_version: 1 as const,
+        kind: 'workctx.sync-application-history' as const,
+        expected_identity: query.expected_identity,
+        application: query.application,
+        steps,
+      };
+      let bytes = Buffer.byteLength(JSON.stringify(document), 'utf8');
+      const collect = (step: Step | undefined) => {
+        check();
+        if (step) {
+          const saved: SyncApplicationArchiveStep = {
+            page: step.page,
+            projection: JSON.parse(step.projectionJson) as unknown,
+            projection_sha256: step.projectionHash,
+            application_trace_id: step.trace,
+          };
+          bytes += Buffer.byteLength(JSON.stringify(saved), 'utf8') + (steps.length ? 1 : 0);
+          if (
+            steps.length >= SYNC_APPLICATION_ARCHIVE_MAX_PAGES ||
+            bytes > SYNC_APPLICATION_ARCHIVE_DOCUMENT_BYTES
+          )
+            throw applicationFailure(
+              'INBOX_APPLICATION_ARCHIVE_LIMIT_REACHED',
+              'The complete application archive exceeds 1000 pages or 16 MiB; no partial archive was produced',
+              trace,
+            );
+          steps.push(saved);
+        }
+        return step;
+      };
+      auditInboxApplicationHistory(
+        this.db,
+        keys(query),
+        {
+          ...query,
+          max_pages: SYNC_APPLICATION_ARCHIVE_MAX_PAGES,
+          max_events: SYNC_APPLICATION_ARCHIVE_MAX_PAGES * 500,
+          max_bytes: SYNC_APPLICATION_ARCHIVE_DOCUMENT_BYTES,
+        },
+        trace,
+        check,
+        {
+          head: () => collect(this.head(query, trace, check)),
+          step: (digest) => collect(this.step(query, digest, trace)),
+          events: (step) => this.verifyEvents(query, step, trace, check),
+        },
+      );
+      steps.reverse();
+      check();
+      let archive: SyncApplicationArchiveFile;
+      try {
+        const parsed = parseSyncApplicationArchiveDocument(document);
+        archive = {
+          document: parsed,
+          document_sha256: hash(syncApplicationArchiveDocumentJson(parsed)),
+        };
+      } catch {
+        throw applicationFailure(
+          'INBOX_APPLICATION_ARCHIVE_INVALID',
+          'The complete application history cannot be represented by its archive contract',
+          trace,
+        );
+      }
+      check();
+      return archive;
     });
   }
   catalog(input: unknown, trace: string) {

@@ -978,6 +978,29 @@ requirements:
         - "CLI primary/embedded local routing, old output migration, read/rollback/close failures and complete result retention"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_application_archive_development_increment:
+      date: "2026-11-03"
+      status: "Source-only complete application-history archive export and offline browsing; R-005 remains incomplete."
+      artifacts:
+        - "packages/contracts/src/sync-application-archive.ts"
+        - "packages/contracts/src/index.ts"
+        - "apps/context-bridge/src/inbox/applications.ts"
+        - "apps/context-bridge/src/inbox/sqlite.ts"
+        - "apps/workctx-cli/src/inbox-application-archive.ts"
+        - "apps/workctx-cli/src/inbox-application-archive-file.ts"
+        - "apps/workctx-cli/src/inbox-application-archive-selection.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/sync-application-archive-runtime.md"
+      behavior: "A separate strict v1 archive preserves original identity/application, complete root-to-applied-head pages, every projection/hash and original application trace. Export audits the complete stored structure/ledger in one readonly transaction before collection is returned. CLI publishes exclusively after transaction completion and attempted close, then fully rereads the final file. Offline inspection pages summaries with content-bound continuations and exact archive/page selections return projections without loading Bridge. Every nested page/projection and outer document digest is checked; empty-page invariance and unique event IDs are structural requirements."
+      remaining_scope: "No archive import/restore or target comparison/merge, received suffix or acknowledgement/dispatch logs, physical database backup, old-code/source/semantic authentication, cross-device recovery or runtime evidence. Fixed 1000-page/16 MiB document/1 MiB projection and shared JSON-complexity limits do not bound exact process memory or disk IO."
+      pending_evidence:
+        - "Empty/multiple-page archives, complete ledger coverage, original identity/traces and all nested/outer hash layers"
+        - "Duplicate event IDs/pages, empty-page projection changes, foreign identity, unknown fields and JSON byte/node/depth limits"
+        - "Readonly export preflight, exclusive publication, readback/cleanup/close failures and immutable original paths"
+        - "Offline primary/embedded routing, fixed archive pagination, exact missing/changed snapshot selection and response limits without database loading"
+      evidence: []
+      execution: "Source and documentation only; no builds, typechecks, tests, CLI/Bridge/API/service runs, database opens, schema initialization, migrations, sample archives or release. No new schema/dependencies; SQLite extensions and PostgreSQL 016-049 remain unexecuted. Task commits/pushes target main with skip-ci messages."
     sync_application_catalog_development_increment:
       date: "2026-11-03"
       status: "Source-only discovery of saved application descriptors and validated checkpoint summaries for one original consumer; R-005 remains incomplete."

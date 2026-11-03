@@ -42,4 +42,4 @@ workctx inbox application-list --inbox local-inbox.sqlite --json-file applicatio
 
 查询错误为 `INBOX_APPLICATION_CATALOG_QUERY_INVALID`，应用键/描述/目录缺头不一致为 `INBOX_APPLICATION_CATALOG_CORRUPT`；头、原页、ledger、schema 和存储错误保留既有类别。复用应用事务的单调期限/回滚/关闭处理，单次同步 SQL/JSON 不能硬实时抢占。成功关闭失败保留完整结果及 close_pending；失败关闭时保留原错误与关闭标记。
 
-响应明确 application_scope=local-reducer、server_application/source_authenticity/projection_semantics=not-verified、full_application_history_audit/orphan_application_audit/physical_database_audit=not-performed、acknowledgement_dispatch_state=not-sent。选中头检查不替代单应用全历史结构审计、内置历史重放、其他消费者/应用或孤立记录的全库核查。目录不写入、修复、迁移或备份；完整应用导出/恢复、其他业务适配器、正文和真实运行证据仍待补。
+响应明确 application_scope=local-reducer、server_application/source_authenticity/projection_semantics=not-verified、full_application_history_audit/orphan_application_audit/physical_database_audit=not-performed、acknowledgement_dispatch_state=not-sent。选中头检查不替代单应用全历史结构审计、内置历史重放、其他消费者/应用或孤立记录的全库核查。目录不写入、修复、迁移或备份；独立应用导出与离线读取已由 [应用历史归档](sync-application-archive-runtime.md) 补充；导入恢复、其他业务适配器、正文和真实运行证据仍待补。

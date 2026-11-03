@@ -978,6 +978,10 @@ export class SqliteSyncInbox {
   readApplicationCatalog(input: unknown, trace: string) {
     return this.applications().catalog(input, trace);
   }
+  /** Complete structurally audited history, including original pages and per-page projections. */
+  readApplicationArchive(input: unknown, trace: string) {
+    return this.applications().archive(input, trace);
+  }
   readApplicationHistory(input: unknown, trace: string) {
     return this.applications().history(input, trace);
   }

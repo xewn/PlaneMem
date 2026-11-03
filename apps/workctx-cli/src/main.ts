@@ -33,6 +33,10 @@ import { isInboxAckResultCommand, runSyncAckResultArguments } from './inbox-ack-
 import { isInboxCommand, runInboxArguments } from './inbox.js';
 import { isInboxPageChainCommand, runInboxPageChainArguments } from './inbox-page-chain.js';
 import {
+  isInboxApplicationArchiveCommand,
+  runInboxApplicationArchiveArguments,
+} from './inbox-application-archive.js';
+import {
   isInboxAcknowledgementCommand,
   callInboxAcknowledgementArguments,
 } from './inbox-acknowledgement.js';
@@ -74,6 +78,9 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
                                  Same audit JSON budgets plus optional max_replay_bytes; --inbox required
   inbox application-list         List saved applications and checkpoint summaries for the original identity
                                  JSON: expected_identity; optional limit (1–50), after_application_key, timeout_ms
+  inbox application-export       Save full audited application history to --output NEW_FILE using --inbox and original application JSON
+  inbox application-inspect      Inspect --archive-file offline; optional JSON limit/after_sequence/archive_document_sha256
+  inbox application-archive-get  Read an archived projection using --archive-file and archive/page digest JSON
   inbox application-history      Page application summaries with fixed sequence/page/projection boundaries
   inbox application-get          Read a saved projection selected by document_sha256; optional expected_projection_sha256
                                  Both require --inbox and original identity/application JSON; history accepts limit 1–50
@@ -325,6 +332,9 @@ export async function main(args: string[]): Promise<number> {
       'inbox enable-applications',
       'inbox application-status',
       'inbox application-list',
+      'inbox application-export',
+      'inbox application-inspect',
+      'inbox application-archive-get',
       'inbox application-apply',
       'inbox application-audit',
       'inbox application-replay',
@@ -448,13 +458,17 @@ export async function main(args: string[]): Promise<number> {
         : positionals.length > 2)
     )
       usage('Unknown or incomplete command. Run workctx --help');
+    if (isInboxApplicationArchiveCommand(name)) {
+      print(await runInboxApplicationArchiveArguments(args, trace));
+      return 0;
+    }
     if (isInboxPageChainCommand(name)) {
       print(await runInboxPageChainArguments(args, trace));
       return 0;
     }
     if (values['archive-file'] !== undefined)
       usage(
-        '--archive-file is only for inbox inspect-pages/archive-history/archive-page/restore-pages/compare-pages/append-pages',
+        '--archive-file is only for inbox inspect-pages/archive-history/archive-page/restore-pages/compare-pages/append-pages/application-inspect/application-archive-get',
       );
     if (isInboxAckResultCommand(name)) {
       print(await runSyncAckResultArguments(args, trace));

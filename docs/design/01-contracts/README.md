@@ -21,6 +21,7 @@
 - [收件箱应用历史浏览与指定快照](sync-application-history-runtime.md)
 - [收件箱内置应用历史重放核对](sync-application-replay-runtime.md)
 - [收件箱已保存应用目录](sync-application-catalog-runtime.md)
+- [收件箱应用历史归档与离线读取](sync-application-archive-runtime.md)
 - [上下文条目生命周期同步投影](sync-context-item-application-runtime.md)
 - [收件箱原确认日志、显式观察与重试](sync-inbox-ack-runtime.md)
 - [本地确认凭据文件与页面恢复](sync-ack-evidence-runtime.md)

@@ -35,6 +35,10 @@ import { isInboxAckHistoryCommand, runInboxAckHistoryArguments } from './inbox-a
 import { isInboxAckResultCommand, runSyncAckResultArguments } from './inbox-ack-result-file.js';
 import { isInboxCommand, runInboxArguments } from './inbox.js';
 import { isInboxPageChainCommand, runInboxPageChainArguments } from './inbox-page-chain.js';
+import {
+  isInboxApplicationArchiveCommand,
+  runInboxApplicationArchiveArguments,
+} from './inbox-application-archive.js';
 import { isInboxAcknowledgementCommand, runInboxAcknowledgement } from './inbox-acknowledgement.js';
 import { runOutboxReconcile } from './outbox-reconcile.js';
 import { inspectOutboxReceiptArguments } from './outbox-receipt-file.js';
@@ -109,6 +113,9 @@ export async function runWorkctx(
     'inbox enable-applications': 'inbox.enable-applications',
     'inbox application-status': 'inbox.application-status',
     'inbox application-list': 'inbox.application-list',
+    'inbox application-export': 'inbox.application-export',
+    'inbox application-inspect': 'inbox.application-inspect',
+    'inbox application-archive-get': 'inbox.application-archive-get',
     'inbox application-apply': 'inbox.application-apply',
     'inbox application-audit': 'inbox.application-audit',
     'inbox application-replay': 'inbox.application-replay',
@@ -237,13 +244,17 @@ export async function runWorkctx(
       }),
     };
   try {
+    if (command && isInboxApplicationArchiveCommand(command)) {
+      const result = await runInboxApplicationArchiveArguments(argv, context.trace_id);
+      return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
+    }
     if (command && isInboxPageChainCommand(command)) {
       const result = await runInboxPageChainArguments(argv, context.trace_id);
       return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
     }
     if (argv.some((arg) => arg === '--archive-file' || arg.startsWith('--archive-file=')))
       usage(
-        '--archive-file is only for inbox inspect-pages/archive-history/archive-page/restore-pages/compare-pages/append-pages',
+        '--archive-file is only for inbox inspect-pages/archive-history/archive-page/restore-pages/compare-pages/append-pages/application-inspect/application-archive-get',
       );
     if (command && isInboxAckResultCommand(command)) {
       const result = await runSyncAckResultArguments(argv, context.trace_id);
