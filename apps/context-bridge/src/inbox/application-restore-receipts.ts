@@ -175,6 +175,14 @@ export class InboxApplicationRestoreReceipts {
     selection: SyncInboxApplicationRestoreReceiptSelection,
     trace: string,
   ): SyncInboxApplicationRestoreReceipt | undefined {
+    return this.getByKey(key, selection.restore_request_id, trace);
+  }
+  /** Internal discovery path: recover identity only after verifying its canonical key. */
+  getByKey(
+    key: { consumer: string; application: string },
+    requestId: string,
+    trace: string,
+  ): SyncInboxApplicationRestoreReceipt | undefined {
     this.require(trace);
     const rows = this.db
       .prepare(
@@ -188,7 +196,7 @@ export class InboxApplicationRestoreReceipts {
       FROM sync_inbox_application_restore_receipts
       WHERE consumer_key = ? AND application_key = ? AND restore_request_id = ? LIMIT 2`,
       )
-      .all(key.consumer, key.application, selection.restore_request_id);
+      .all(key.consumer, key.application, requestId);
     if (rows.length === 0) return undefined;
     let receipt: SyncInboxApplicationRestoreReceipt;
     try {
@@ -199,7 +207,7 @@ export class InboxApplicationRestoreReceipts {
         typeof row.receipt_json !== 'string' ||
         row.consumer_key !== key.consumer ||
         row.application_key !== key.application ||
-        row.restore_request_id !== selection.restore_request_id
+        row.restore_request_id !== requestId
       )
         throw new TypeError();
       receipt = parseReceipt(
@@ -210,7 +218,7 @@ export class InboxApplicationRestoreReceipts {
         JSON.stringify(receipt) !== row.receipt_json ||
         hash(row.receipt_json) !== row.receipt_sha256 ||
         receipt.request_sha256 !== row.request_sha256 ||
-        receipt.query.restore_request_id !== selection.restore_request_id ||
+        receipt.query.restore_request_id !== requestId ||
         hash(JSON.stringify(receipt.query.expected_identity)) !== key.consumer ||
         hash(JSON.stringify(receipt.query.application)) !== key.application
       )

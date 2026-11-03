@@ -76,6 +76,7 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   inbox application-restore-receipt  Read a historical receipt using --inbox and the complete original restore query including restore_request_id (--json or --json-file); no archive required
   inbox application-restore-receipt-get  Find the original query by expected_identity/application/restore_request_id JSON; optional read timeout_ms and --output NEW_QUERY_FILE
   inbox application-restore-receipt-list  Discover historical receipt IDs using --inbox and original identity/application JSON; optional limit (1–50), after_request_id and timeout_ms
+  inbox application-restore-receipt-scopes  Discover original consumer/application scopes directly from receipts using --inbox and --json '{}'; optional limit/timeout_ms and paired after_consumer_key/after_application_key
   inbox application-restore-receipt-inspect  Inspect a complete historical --receipt-file offline
   inbox application-restore-receipt-query  Extract its original query using --receipt-file and --output NEW_QUERY
                                  Receipt get accepts --receipt-output NEW_FILE instead of --output to export the complete historical receipt
@@ -352,6 +353,7 @@ export async function main(args: string[]): Promise<number> {
       'inbox application-restore-receipt',
       'inbox application-restore-receipt-get',
       'inbox application-restore-receipt-list',
+      'inbox application-restore-receipt-scopes',
       'inbox application-restore-receipt-inspect',
       'inbox application-restore-receipt-query',
       'inbox application-status',

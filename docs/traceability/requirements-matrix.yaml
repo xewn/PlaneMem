@@ -978,6 +978,28 @@ requirements:
         - "CLI primary/embedded local routing, old output migration, read/rollback/close failures and complete result retention"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_application_restore_receipt_scopes_development_increment:
+      date: "2026-11-03"
+      status: "Source-only cross-consumer/application restore receipt scope discovery, including empty restores without heads; R-005 remains incomplete."
+      artifacts:
+        - "apps/context-bridge/src/inbox/application-restore-receipt-scopes.ts"
+        - "apps/context-bridge/src/inbox/application-restore-receipts.ts"
+        - "apps/context-bridge/src/inbox/applications.ts"
+        - "apps/context-bridge/src/inbox/sqlite.ts"
+        - "apps/workctx-cli/src/inbox.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/sync-application-restore-receipt-scopes-runtime.md"
+      behavior: "Strict limit/read timeout and paired digest boundary query. One readonly transaction selects distinct receipt scopes directly, fully verifies the first BINARY request-ID representative for each selected scope and lookahead, and recovers canonical original identity/application with existing list/get selections. Null outer scope, last returned pair continuation, bounded SQL output and 512 KiB complete Bridge/CLI results; read/open/response failures retain query and close state."
+      remaining_scope: "Representative validation does not audit all receipts in a scope. No chronological or cross-page snapshot guarantee, database-instance binding, source authentication, history merging or real concurrent/crash/cross-device recovery evidence. SQL output bounds do not bound grouping/scan work."
+      pending_evidence:
+        - "Strict defaults, unknown fields, paired digest boundaries, empty/single/multiple scopes and same-consumer application ordering"
+        - "Empty restore receipts without consumer/application rows; missing/partial extensions without initialization"
+        - "Invalid raw scope keys and representative IDs, full hash/identity/outcome validation including lookahead; non-representative coverage limits"
+        - "Last returned pair continuation, concurrent insertion/database replacement, independent read budgets and lossless list/get handoff"
+        - "Primary/embedded readonly routing, rejected output/file flags, open/read/rollback/close errors and complete response size limits"
+      evidence: []
+      execution: "Source and documentation only; no builds, typechecks, tests, CLI/Bridge/reducer/API/service runs, sample artifacts, database opens, schema initialization, migrations or release. No new schema/dependencies; existing SQLite extensions and PostgreSQL 016-049 remain unexecuted. Task commit/push targets main with skip-ci."
     sync_application_restore_receipt_file_development_increment:
       date: "2026-11-03"
       status: "Source-only complete restore receipt export, offline inspection and original-query extraction; R-005 remains incomplete."

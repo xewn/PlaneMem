@@ -4,6 +4,8 @@
 
 > 当前实现缺口与待办项见：[TODO.md](TODO.md)。该清单按 P0–P8 对照本文件、运行时代码和验证证据整理。
 
+新增 [跨消费者、跨应用恢复回执目录](docs/design/01-contracts/sync-application-restore-receipt-scopes-runtime.md)，可从回执找回原身份与应用，包含没有应用头的空恢复记录，并衔接已有请求 ID 分页读取。仅源码文档，未编译、测试、运行或发布。
+
 新增 [应用恢复回执文件](docs/design/01-contracts/sync-application-restore-receipt-file-runtime.md)，支持独占导出、离线完整核验和原查询提取。仅源码文档，未编译、测试、运行或发布。
 
 新增 [应用恢复回执目录](docs/design/01-contracts/sync-application-restore-receipt-catalog-runtime.md)，请求 ID 遗失后可按原消费者/应用分页发现，再找回原查询。仅源码文档，未运行或发布。

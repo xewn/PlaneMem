@@ -51,4 +51,4 @@ workctx inbox application-restore-receipt-get --inbox local-inbox.sqlite --json-
 
 失败保留 catalog_query、catalog_completed=false、不写入标记和关闭状态。若读取已完成，仅 CLI 最终响应超限，保留 catalog_completed=true、response_completed=false 和 close_pending，仍不返回不完整续页。数据库读取期限不覆盖模块加载、打开/关闭连接，不能硬实时中断同步 SQL/磁盘等待。来源不认证，既有回执不证明当前业务状态。
 
-仍缺跨应用回执发现、数据库实例绑定、不同历史合并、完整跨设备恢复及并发/崩溃运行证据。本次仅开发并人工审阅源码，R-005 保持未完成。
+原身份或应用也遗失时，可先使用[跨范围回执目录](sync-application-restore-receipt-scopes-runtime.md)，再将条目的 receipt_list_query 交给本接口。仍缺数据库实例绑定、不同历史合并、完整跨设备恢复及并发/崩溃运行证据。本次仅开发并人工审阅源码，R-005 保持未完成。

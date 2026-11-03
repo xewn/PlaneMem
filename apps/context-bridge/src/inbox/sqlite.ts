@@ -36,6 +36,8 @@ export type {
 } from './application-restore-receipts.js';
 export { parseInboxApplicationRestoreReceiptCatalogQuery } from './application-restore-receipt-catalog.js';
 export type { SyncInboxApplicationRestoreReceiptCatalogQuery } from './application-restore-receipt-catalog.js';
+export { parseInboxApplicationRestoreReceiptScopesQuery } from './application-restore-receipt-scopes.js';
+export type { SyncInboxApplicationRestoreReceiptScopesQuery } from './application-restore-receipt-scopes.js';
 export { parseInboxApplicationCatalogQuery } from './application-catalog.js';
 export type { SyncInboxApplicationCatalogQuery } from './application-catalog.js';
 export { parseInboxBuiltInApplicationReplayQuery } from './application-replay.js';
@@ -1126,6 +1128,10 @@ export class SqliteSyncInbox {
   /** Bounded current-snapshot discovery; request ID order is not a restore timeline. */
   listApplicationRestoreReceipts(input: unknown, trace: string) {
     return this.applications().listRestoreReceipts(input, trace);
+  }
+  /** Discover original scopes directly from receipts, including empty restores without heads. */
+  listApplicationRestoreReceiptScopes(input: unknown, trace: string) {
+    return this.applications().listRestoreReceiptScopes(input, trace);
   }
   readApplicationState(input: unknown, trace: string) {
     return this.applications().read(input, trace);

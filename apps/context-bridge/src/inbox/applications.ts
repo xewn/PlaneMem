@@ -49,6 +49,10 @@ import {
   readInboxApplicationRestoreReceiptCatalog,
 } from './application-restore-receipt-catalog.js';
 import {
+  parseInboxApplicationRestoreReceiptScopesQuery,
+  readInboxApplicationRestoreReceiptScopes,
+} from './application-restore-receipt-scopes.js';
+import {
   parseInboxApplicationCatalogQuery,
   readInboxApplicationCatalog,
 } from './application-catalog.js';
@@ -653,6 +657,60 @@ export class InboxApplications {
           ...(observedReceipt === undefined
             ? {}
             : { observed_receipt: observedReceipt, receipt_scope: 'historical-local-transaction' }),
+          local_write_state: 'not-performed',
+          acknowledgement_dispatch_state: 'not-sent',
+        },
+      });
+    }
+  }
+  listRestoreReceiptScopes(input: unknown, trace: string) {
+    const query = parseInboxApplicationRestoreReceiptScopesQuery(input, trace);
+    try {
+      return this.run(trace, query.timeout_ms, false, (check) => {
+        this.require(trace);
+        const receipts = new InboxApplicationRestoreReceipts(this.db);
+        receipts.require(trace);
+        const catalog = readInboxApplicationRestoreReceiptScopes(
+          this.db,
+          query,
+          (key, id) => receipts.getByKey(key, id, trace),
+          trace,
+          check,
+        );
+        const result = {
+          schema_version: 1 as const,
+          trace_id: trace,
+          source_refs: [],
+          scope: null,
+          application_scope: 'local-reducer' as const,
+          server_application: 'not-verified' as const,
+          source_authenticity: 'not-verified' as const,
+          projection_semantics: 'not-verified' as const,
+          full_application_history_audit: 'not-performed' as const,
+          acknowledgement_dispatch_state: 'not-sent' as const,
+          ...catalog,
+        };
+        try {
+          syncJsonSnapshot(result, 512 * 1024);
+        } catch {
+          throw applicationFailure(
+            'INBOX_APPLICATION_RESTORE_RECEIPT_SCOPES_TOO_LARGE',
+            'The complete restore receipt scope catalog exceeds 512 KiB; request a smaller limit',
+            trace,
+          );
+        }
+        check();
+        return result;
+      });
+    } catch (error) {
+      if (!(error instanceof ContractError)) throw error;
+      throw new ContractError(error.envelope.code, error.envelope.message, {
+        trace_id: trace,
+        retryable: false,
+        details: {
+          ...error.envelope.details,
+          catalog_query: query,
+          catalog_completed: false,
           local_write_state: 'not-performed',
           acknowledgement_dispatch_state: 'not-sent',
         },

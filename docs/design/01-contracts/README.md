@@ -30,6 +30,7 @@
 - [按请求 ID 找回应用恢复原查询](sync-application-restore-receipt-selection-runtime.md)
 - [应用恢复回执目录](sync-application-restore-receipt-catalog-runtime.md)
 - [应用恢复回执文件与离线原查询提取](sync-application-restore-receipt-file-runtime.md)
+- [跨消费者、跨应用的恢复回执目录](sync-application-restore-receipt-scopes-runtime.md)
 - [上下文条目生命周期同步投影](sync-context-item-application-runtime.md)
 - [收件箱原确认日志、显式观察与重试](sync-inbox-ack-runtime.md)
 - [本地确认凭据文件与页面恢复](sync-ack-evidence-runtime.md)
