@@ -3452,6 +3452,27 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_web_original_submission_development_increment:
+      date: "2026-11-04"
+      status: "Source-only original web proposal preparation, saving and recovery; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/original-model.ts"
+        - "apps/web-console/src/app/proposals/original-submission.tsx"
+        - "apps/web-console/src/app/proposals/recover/page.tsx"
+        - "apps/web-console/src/app/proposals/recover/loader.tsx"
+        - "apps/web-console/src/app/proposals/create-form.tsx"
+        - "apps/web-console/src/app/proposals/actions.ts"
+        - "apps/web-console/src/lib/server-api.ts"
+        - "docs/design/01-contracts/proposal-runtime.md"
+      behavior: "Prepare freezes the original gateway, verified scope/actor/client, key and complete normalized draft before an explicit send. Same-tab exact-slot saving compares existing content and reads it back before dispatch. Full file export and an independent recovery page retain originals without sending on load. Every resend rechecks the original destination/identity and uses expected-identity headers. Bounded complete receipts are checked before showing success; errors never replace keys, drafts or review status."
+      evidence: []
+      pending_evidence:
+        - "Identity/project/gateway changes between preparation, recovery, preflight and mutation"
+        - "Storage denial/corruption, export/import bounds, tab closing and preserved original content"
+        - "Unknown outcomes, expired/changed sources, repeated same-key creates and complete receipt rejection"
+        - "Duplicate clicks, navigation/unmount and normal/revised proposal form integration"
+      remaining_scope: "Unprepared draft persistence, cross-tab durable storage/discovery, read-only create receipt lookup, review request recovery, explicit abandonment and runtime evidence. No model invocation or automatic review/materialization."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, browser/API/database execution or release. No new protocol/schema/dependency; separate commit/push to main with skip-ci."
     proposal_generation_catalog_development_increment:
       date: "2026-11-04"
       status: "Source-only read-only generation request discovery and scoped pagination; R-009 remains incomplete."

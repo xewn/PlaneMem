@@ -10,7 +10,64 @@ import {
   WorkbenchApiError,
   reviewWorkbenchProposal,
   createWorkbenchProposal,
+  getWorkbenchProposalSubmissionBinding,
+  submitWorkbenchProposalOriginal,
 } from '../../lib/server-api';
+import {
+  decodeProposalOriginal,
+  encodeProposalOriginal,
+  PROPOSAL_ORIGINAL_BYTES,
+} from './original-model';
+
+export async function prepareProposalSubmission(data: FormData) {
+  try {
+    const key = field(data, 'key');
+    validateIdempotencyKey(key);
+    if (field(data, 'acknowledged') !== 'yes') throw new TypeError();
+    const raw = data.get('draft');
+    if (
+      typeof raw !== 'string' ||
+      new TextEncoder().encode(raw).byteLength > PROPOSAL_ORIGINAL_BYTES
+    )
+      throw new TypeError();
+    const draft = parseCreateProposal(JSON.parse(raw));
+    const binding = await getWorkbenchProposalSubmissionBinding();
+    return {
+      status: 'prepared' as const,
+      original: encodeProposalOriginal({
+        schema_version: 1,
+        kind: 'proposal-submission',
+        binding,
+        request_key: key,
+        draft,
+      }),
+    };
+  } catch {
+    return {
+      status: 'error' as const,
+      message:
+        'The original request could not be prepared. Check the draft and sign in to the intended project, then try again. No proposal was submitted.',
+    };
+  }
+}
+
+export async function submitSavedProposal(data: FormData) {
+  const original = decodeProposalOriginal(data.get('original'));
+  const raw = encodeProposalOriginal(original);
+  try {
+    if (field(data, 'confirmed') !== 'yes') throw new TypeError();
+    const result = await submitWorkbenchProposalOriginal(original);
+    revalidatePath('/proposals');
+    return { status: 'saved' as const, original: raw, receipt: result.data };
+  } catch {
+    return {
+      status: 'unknown' as const,
+      original: raw,
+      message:
+        'The original submission is not confirmed. Keep this request unchanged. Restore the original gateway, account, client and project before retrying.',
+    };
+  }
+}
 
 export interface ReviewFeedback {
   status: 'idle' | 'error';

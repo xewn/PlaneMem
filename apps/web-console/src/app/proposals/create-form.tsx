@@ -1,14 +1,20 @@
 'use client';
 
 import Link from 'next/link';
-import { useActionState, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   parseCreateProposal,
   proposalKinds,
   type Classification,
   type ProposalDocument,
 } from '@planemem/contracts';
-import { submitProposal, type ReviewFeedback } from './actions';
+import { prepareProposalSubmission } from './actions';
+import {
+  decodeProposalOriginal,
+  encodeProposalOriginal,
+  type ProposalOriginal,
+} from './original-model';
+import { OriginalProposalSubmission } from './original-submission';
 
 export interface ProposalSourceSeed {
   id: string;
@@ -37,7 +43,6 @@ interface SourceDraft {
   revision: string;
   uri: string;
 }
-const idle: ReviewFeedback = { status: 'idle' };
 const emptySource = (key: number): SourceDraft => ({
   key,
   type: 'document',
@@ -57,7 +62,17 @@ export function ProposalCreateForm({
   source?: ProposalSourceSeed;
   origin?: ProposalDraftSeed;
 }) {
-  const [state, submit, pending] = useActionState(submitProposal, idle);
+  const [pending, setPending] = useState(false);
+  const [original, setOriginal] = useState<ProposalOriginal>();
+  const [message, setMessage] = useState('');
+  const active = useRef(false);
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const [base] = useState(initialKey);
   const [startingSource] = useState(source);
   const [startingOrigin] = useState(origin);
@@ -96,9 +111,7 @@ export function ProposalCreateForm({
   );
   const [nextSourceKey, setNextSourceKey] = useState(sources.length);
   const key = base + '-' + sequence;
-  const current = state.key === key;
-  const uncertain = current && state.uncertain === true;
-  const locked = pending || uncertain;
+  const locked = pending;
   const draft = {
     ...values,
     ttl_seconds: Number(values.ttl_seconds),
@@ -126,6 +139,7 @@ export function ProposalCreateForm({
   function edited() {
     setSequence((value) => value + 1);
     setAcknowledged(false);
+    setMessage('');
   }
   function change(name: keyof typeof values, value: string) {
     if (locked) return;
@@ -139,11 +153,45 @@ export function ProposalCreateForm({
     );
     edited();
   }
+  async function prepare(data: FormData) {
+    if (active.current || original || !acknowledged || validation !== undefined) return;
+    active.current = true;
+    setPending(true);
+    try {
+      const result = await prepareProposalSubmission(data);
+      if (!mounted.current) return;
+      if (result.status === 'prepared') {
+        const parsed = decodeProposalOriginal(result.original);
+        if (
+          parsed.request_key !== key ||
+          encodeProposalOriginal({ ...parsed, draft: parseCreateProposal(draft) }) !==
+            encodeProposalOriginal(parsed)
+        )
+          throw new TypeError();
+        setOriginal(parsed);
+      } else setMessage(result.message);
+    } catch {
+      if (mounted.current)
+        setMessage(
+          'The original request could not be prepared. Your draft is preserved; no proposal was submitted.',
+        );
+    } finally {
+      active.current = false;
+      if (mounted.current) setPending(false);
+    }
+  }
+  if (original) return <OriginalProposalSubmission original={original} />;
   return (
-    <form action={submit} className="handoff-form context-item-form">
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        void prepare(new FormData(event.currentTarget));
+      }}
+      className="handoff-form context-item-form"
+    >
       <p>
-        Submit a sourced suggestion for review. The submitted content and sources cannot be edited
-        afterward.
+        Prepare a sourced suggestion for review. Next, save and review its original request before
+        explicitly submitting it.
       </p>
       {startingSource && (
         <p className="muted">
@@ -395,33 +443,19 @@ export function ProposalCreateForm({
           disabled={locked}
           onChange={(event) => setAcknowledged(event.target.checked)}
         />
-        I checked the content, sources and provenance and want to submit this proposal for review.
+        I checked the content, sources and provenance and want to prepare the original submission.
       </label>
       {validation && sequence > 0 && <p className="muted">{validation}</p>}
       <button
         className="primary-button"
         disabled={pending || !acknowledged || validation !== undefined}
       >
-        {pending ? 'Submitting…' : uncertain ? 'Retry original submission' : 'Submit for review'}
+        {pending ? 'Preparing original request…' : 'Prepare original submission'}
       </button>
-      {current && state.message && (
-        <div role="status">
-          <p>{state.message}</p>
-          {state.trace && <small>Trace · {state.trace}</small>}
-        </div>
-      )}
-      {uncertain && (
-        <p role="status">
-          Keep this page open and retry the original submission to check its result. The draft stays
-          locked until the gateway confirms the saved proposal.
-        </p>
-      )}
-      {current && state.status === 'error' && !uncertain && (
-        <p className="muted">
-          Your draft is preserved. For a changed source, open its current version and update the
-          source fields before submitting again.
-        </p>
-      )}
+      {message && <p role="status">{message}</p>}
+      <Link href="/proposals/recover" prefetch={false} target="_blank" rel="noopener noreferrer">
+        Recover an original submission ↗
+      </Link>
     </form>
   );
 }

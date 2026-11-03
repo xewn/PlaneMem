@@ -133,6 +133,16 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
           </div>
           <Badge tone="cyan">{page.proposals.length} on this page</Badge>
         </div>
+        <p>
+          <Link
+            href="/proposals/recover"
+            prefetch={false}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Recover an original proposal submission ↗
+          </Link>
+        </p>
         {page.create_allowed && (
           <Panel title="Submit a proposal" icon="decision">
             <details
@@ -492,6 +502,9 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
           <h1>Proposals</h1>
         </div>
         <PageError error={error} />
+        <Link className="panel-link" href="/proposals/recover" prefetch={false}>
+          Recover an original submission
+        </Link>
         <Link className="panel-link" href="/proposals">
           Return to proposals without filters
         </Link>

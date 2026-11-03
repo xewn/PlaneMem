@@ -1,6 +1,13 @@
 import { readWorkbenchAuditResponse } from './audit-response';
 import { readWorkbenchJsonResponse } from './workbench-response';
 import { readConflictResponse } from './conflict-read-response';
+import { validateProposalReceipt } from './mutation-receipts';
+import {
+  assertProposalSubmissionBinding,
+  parseProposalSubmissionBinding,
+  parseProposalOriginal,
+  type ProposalSubmissionBinding,
+} from '../app/proposals/original-model';
 import {
   buildEtag,
   ContractError,
@@ -1703,6 +1710,72 @@ export function readWorkbenchProposal(id: string) {
 export function createWorkbenchProposal(input: CreateProposalRequest, key: string) {
   return gatewayPost<ProposalMutationReceipt>('/v1/proposals', { ...input }, key);
 }
+export async function getWorkbenchProposalSubmissionBinding(expected?: ProposalSubmissionBinding) {
+  if (expected)
+    assertProposalSubmissionBinding(
+      { gateway_url: runtimeConfig.apiUrl, identity: expected.identity },
+      expected,
+    );
+  const result = await gatewayRequest<ProposalSubmissionBinding>(
+    '/v1/proposals/submission-context',
+    {},
+    undefined,
+    'GET',
+    expected?.identity,
+    (response, scope, trace) => {
+      if (!response.data || typeof response.data !== 'object' || Array.isArray(response.data))
+        throw new TypeError('Proposal submission identity is unavailable');
+      const { identity_preconditions, ...identity } = response.data as Record<string, unknown>;
+      const binding = parseProposalSubmissionBinding({
+        gateway_url: runtimeConfig.apiUrl,
+        identity,
+      });
+      if (
+        identity_preconditions !== 1 ||
+        response.trace_id !== trace ||
+        response.source_refs.length !== 0 ||
+        binding.identity.tenant_id !== scope.tenant_id ||
+        binding.identity.workspace_id !== scope.workspace_id ||
+        binding.identity.project_id !== scope.project_id
+      )
+        throw new TypeError('Proposal submission identity does not match this project');
+      if (expected) assertProposalSubmissionBinding(binding, expected);
+      return { ...response, data: binding };
+    },
+  );
+  return result.data;
+}
+export async function submitWorkbenchProposalOriginal(value: unknown) {
+  const original = parseProposalOriginal(value);
+  await getWorkbenchProposalSubmissionBinding(original.binding);
+  return gatewayRequest<ProposalMutationReceipt>(
+    '/v1/proposals',
+    { ...original.draft },
+    original.request_key,
+    'POST',
+    original.binding.identity,
+    (response, _scope, trace) => {
+      validateProposalReceipt(response.data, { status: 'proposed', revision: 1 });
+      const receipt = response.data as ProposalMutationReceipt;
+      const envelope = response as unknown as Record<string, unknown>;
+      const source = response.source_refs[0] as Record<string, unknown> | undefined;
+      if (
+        response.trace_id !== trace ||
+        envelope.revision !== 1 ||
+        envelope.etag !== buildEtag(1) ||
+        typeof envelope.server_cursor !== 'number' ||
+        !Number.isSafeInteger(envelope.server_cursor) ||
+        envelope.server_cursor < 1 ||
+        response.source_refs.length !== 1 ||
+        source?.type !== 'proposal' ||
+        source.id !== receipt.proposal_id ||
+        source.revision !== 1
+      )
+        throw new TypeError('The complete proposal receipt could not be confirmed');
+      return { ...response, data: receipt };
+    },
+  );
+}
 export function reviewWorkbenchProposal(
   id: string,
   choice: 'confirm' | 'reject',
@@ -1779,8 +1852,13 @@ async function gatewayRequest<T>(
   const adminRequest =
     path === '/v1/workbench/query' && method === 'POST' && body.operation === 'admin';
   const commandContextRequest =
-    ['/v1/sessions/command-context', '/v1/conflicts/commands/context'].includes(path) &&
-    method === 'GET';
+    [
+      '/v1/sessions/command-context',
+      '/v1/conflicts/commands/context',
+      '/v1/proposals/submission-context',
+    ].includes(path) && method === 'GET';
+  const proposalOriginalRequest =
+    method === 'POST' && path === '/v1/proposals' && expectedIdentity !== undefined;
   const checkpointDetailRequest =
     method === 'GET' &&
     /^\/v1\/sessions\/[0-9A-HJKMNP-TV-Z]{26}\/checkpoints\/[0-9A-HJKMNP-TV-Z]{26}$/.test(path);
@@ -1876,6 +1954,7 @@ async function gatewayRequest<T>(
   if (response.status === 401) {
     if (
       conflictOriginalRequest ||
+      proposalOriginalRequest ||
       conflictRequest ||
       auditRequest ||
       adminRequest ||
@@ -1909,6 +1988,7 @@ async function gatewayRequest<T>(
           );
         })
       : conflictOriginalRequest ||
+          proposalOriginalRequest ||
           adminRequest ||
           registryRequest ||
           commandContextRequest ||
@@ -1916,25 +1996,27 @@ async function gatewayRequest<T>(
         ? await readWorkbenchJsonResponse(
             response,
             requestSignal,
-            conflictOriginalRequest
-              ? CONFLICT_RECEIPT_RESPONSE_BYTES
-              : checkpointRequest
-                ? checkpointDetailRequest
-                  ? CHECKPOINT_DETAIL_RESPONSE_BYTES
-                  : CHECKPOINT_HISTORY_RESPONSE_BYTES
-                : registryRequest
-                  ? body.operation === 'conflicts'
-                    ? CONFLICT_REGISTRY_RESPONSE_BYTES
-                    : body.operation === 'handoffs'
-                      ? HANDOFF_REGISTRY_RESPONSE_BYTES
-                      : body.operation === 'checkpoints'
-                        ? CHECKPOINT_REGISTRY_RESPONSE_BYTES
-                        : SESSION_REGISTRY_RESPONSE_BYTES
-                  : commandContextRequest
-                    ? path === '/v1/conflicts/commands/context'
-                      ? CONFLICT_COMMAND_CONTEXT_BYTES
-                      : SESSION_COMMAND_CONTEXT_BYTES
-                    : WORKBENCH_ADMIN_RESPONSE_BYTES,
+            proposalOriginalRequest
+              ? 65_536
+              : conflictOriginalRequest
+                ? CONFLICT_RECEIPT_RESPONSE_BYTES
+                : checkpointRequest
+                  ? checkpointDetailRequest
+                    ? CHECKPOINT_DETAIL_RESPONSE_BYTES
+                    : CHECKPOINT_HISTORY_RESPONSE_BYTES
+                  : registryRequest
+                    ? body.operation === 'conflicts'
+                      ? CONFLICT_REGISTRY_RESPONSE_BYTES
+                      : body.operation === 'handoffs'
+                        ? HANDOFF_REGISTRY_RESPONSE_BYTES
+                        : body.operation === 'checkpoints'
+                          ? CHECKPOINT_REGISTRY_RESPONSE_BYTES
+                          : SESSION_REGISTRY_RESPONSE_BYTES
+                    : commandContextRequest
+                      ? path === '/v1/conflicts/commands/context'
+                        ? CONFLICT_COMMAND_CONTEXT_BYTES
+                        : SESSION_COMMAND_CONTEXT_BYTES
+                      : WORKBENCH_ADMIN_RESPONSE_BYTES,
             checkpointRequest ? CHECKPOINT_READ_ERROR_BYTES : undefined,
           ).catch(() => {
             if (conflictOriginalRequest && (requestSignal.aborted || Date.now() >= requestDeadline))
@@ -2074,7 +2156,11 @@ async function gatewayRequest<T>(
       response.status,
     );
   if (
-    (conflictOriginalRequest || adminRequest || registryRequest || commandContextRequest) &&
+    (conflictOriginalRequest ||
+      proposalOriginalRequest ||
+      adminRequest ||
+      registryRequest ||
+      commandContextRequest) &&
     response.headers.get('x-trace-id') !== trace_id
   )
     throw new WorkbenchApiError(
@@ -2138,6 +2224,7 @@ async function gatewayRequest<T>(
     : (payload as WorkbenchResponse<T>);
   if (
     (conflictOriginalRequest ||
+      proposalOriginalRequest ||
       conflictRequest ||
       auditRequest ||
       adminRequest ||
