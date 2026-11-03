@@ -3452,6 +3452,22 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_web_editing_draft_removal_development_increment:
+      date: "2026-11-04"
+      status: "Source-only reviewed single-copy removal; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/editing-store.ts"
+        - "apps/web-console/src/app/proposals/editing-panel.tsx"
+        - "docs/design/01-contracts/proposal-editing-draft-runtime.md"
+      behavior: "A fully loaded browser copy offers complete field review, selected-copy export and a separate removal confirmation. One existing-database transaction revalidates scope, canonical full content, saved time and directory, deletes only the matching pair and confirms absence before commit. Missing pairs report current absence; changed or partial pairs reject. File candidates cannot directly remove browser records. Every attempt clears the directory and confirmations; retained reviewed content stays exportable on success or unknown outcome, and another removal requires a fresh selection. Current editor fields, prepared originals and server proposals are preserved."
+      evidence: []
+      pending_evidence:
+        - "Exact pair deletion, missing database without initialization and already absent records"
+        - "Cross-tab content/time changes, partial pairs, transaction failure and unknown commit"
+        - "Separate confirmations, file candidate restriction, retained selected export and fresh review after attempts"
+        - "Cancellation, late results and unchanged current editor/prepared originals"
+      remaining_scope: "Batch cleanup, quota and retention management, full editing-store backup, remote sync and runtime evidence. Later saves may recreate a removed slot."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, browser/API/database execution or release. No schema or dependency changes."
     proposal_web_editing_draft_development_increment:
       date: "2026-11-04"
       status: "Source-only incomplete editing draft persistence and explicit resume; R-009 remains incomplete."

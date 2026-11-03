@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [编辑草稿逐份移除](docs/design/01-contracts/proposal-editing-draft-runtime.md#逐份移除浏览器副本)：审阅完整浏览器副本后独立确认删除，保留当前编辑内容及可导出的所选副本；删除前重新核对原文与保存时间，变化时拒绝。仅源码文档，未编译、测试、运行或发布。
+
 新增 [建议编辑草稿保存](docs/design/01-contracts/proposal-editing-draft-runtime.md)：未填写完整的建议也可保存到浏览器或导出文件，之后查找、预览并确认继续编辑；已准备原请求仍进入原恢复流程。仅源码文档，未编译、测试、运行或发布。
 
 新增 [回执文件离线补存](docs/design/01-contracts/proposal-queue-reconciliation-runtime.md#已保留回执记录的补存)：保存失败后可从保留的完整记录或错误JSON预览并另存新文件，保持原时间、摘要和结算状态，无需重新查询或结算队列。仅源码文档，未编译、测试、运行或发布。

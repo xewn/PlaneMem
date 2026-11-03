@@ -1,6 +1,11 @@
 'use client';
 
-import { inBrowserStores, readBrowserPair } from '../sync/receipt/browser-store';
+import {
+  inBrowserStores,
+  readBrowserPair,
+  removeBrowserPair,
+  type BrowserRemovalResult,
+} from '../sync/receipt/browser-store';
 import {
   assertProposalSubmissionBinding,
   parseProposalSubmissionBinding,
@@ -104,6 +109,38 @@ export function loadProposalEditingDraft(
     },
   );
 }
+/** Remove only the complete immutable browser copy reviewed under the current binding. */
+export function removeProposalEditingDraft(
+  bindingInput: ProposalSubmissionBinding,
+  reviewed: ProposalEditingDraft,
+  signal: AbortSignal,
+) {
+  const binding = parseProposalSubmissionBinding(bindingInput);
+  const expectedRaw = encodeProposalEditingDraft(reviewed);
+  const draft = decodeProposalEditingDraft(expectedRaw);
+  assertProposalSubmissionBinding(draft.binding, binding);
+  const slot = key(binding, draft.request_key);
+  const expectedIndex = JSON.stringify(summary(draft));
+  return inBrowserStores<BrowserRemovalResult>(
+    layout,
+    'readwrite',
+    signal,
+    () => 'not-present',
+    (context) => {
+      readBrowserPair(context, slot, (raw, index, exists) => {
+        if (!exists) {
+          context.accept('not-present');
+          return;
+        }
+        pair(raw, index, binding, slot);
+        if (raw !== expectedRaw || index !== expectedIndex) throw new TypeError();
+        removeBrowserPair(context, slot);
+      });
+    },
+    { create: false },
+  );
+}
+
 export function listProposalEditingDrafts(
   bindingInput: ProposalSubmissionBinding,
   after: string | null,

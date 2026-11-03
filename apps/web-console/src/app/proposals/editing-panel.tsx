@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { proposalReceiptJson } from '@planemem/contracts';
 import { backupOperation } from '../sync/receipt/backup-operation';
+import type { BrowserRemovalResult } from '../sync/receipt/browser-store';
 import {
   assertProposalSubmissionBinding,
   encodeProposalOriginal,
@@ -22,6 +23,7 @@ import {
 import {
   listProposalEditingDrafts,
   loadProposalEditingDraft,
+  removeProposalEditingDraft,
   saveProposalEditingDraft,
   type ProposalEditingPage,
 } from './editing-store';
@@ -48,7 +50,13 @@ export function ProposalEditingPanel({
   onOriginal: (original: ProposalOriginal) => void;
 }) {
   const [page, setPage] = useState<ProposalEditingPage>();
-  const [candidate, setCandidate] = useState<ProposalEditingDraft>();
+  const [reviewed, setReviewed] = useState<{
+    draft: ProposalEditingDraft;
+    source: 'browser' | 'file';
+  }>();
+  const candidate = reviewed?.draft;
+  const [removeConfirmed, setRemoveConfirmed] = useState(false);
+  const [removalStatus, setRemovalStatus] = useState<BrowserRemovalResult | 'unknown'>();
   const [replace, setReplace] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const operation = useRef<AbortController | undefined>(undefined);
@@ -85,7 +93,7 @@ export function ProposalEditingPanel({
     if (disabled || operation.current || !begin()) return;
     const controller = new AbortController();
     operation.current = controller;
-    setMessage('Reading or saving the complete editing draft…');
+    setMessage('Reading or updating the saved editing draft…');
     try {
       const result = await backupOperation(controller.signal, work);
       if (mounted.current && operation.current === controller && !controller.signal.aborted)
@@ -93,7 +101,7 @@ export function ProposalEditingPanel({
     } catch {
       if (mounted.current && operation.current === controller)
         setMessage(
-          'The draft operation could not be confirmed. Keep your current text and any exported file. Reload saved drafts before retrying a save.',
+          'The draft operation could not be confirmed. Keep your current text and any reviewed copy or exported file. Reload saved drafts before another storage change.',
         );
     } finally {
       if (operation.current === controller) {
@@ -102,14 +110,33 @@ export function ProposalEditingPanel({
       }
     }
   }
-  function review(draft: ProposalEditingDraft) {
+  function review(draft: ProposalEditingDraft, source: 'browser' | 'file') {
     assertProposalSubmissionBinding(draft.binding, binding);
     if (draft.fields.values.classification === 'restricted' && !restricted) throw new TypeError();
-    setCandidate(draft);
+    setReviewed({ draft, source });
     setReplace(null);
+    setRemoveConfirmed(false);
+    setRemovalStatus(undefined);
     setMessage(
       'Review this saved editing copy, then confirm before replacing your current fields. Sources and submission results have not been checked.',
     );
+  }
+  function download(draft: ProposalEditingDraft) {
+    const raw = JSON.stringify(
+      decodeProposalEditingDraft(encodeProposalEditingDraft(draft)),
+      null,
+      2,
+    );
+    const url = URL.createObjectURL(new Blob([raw], { type: 'application/json' }));
+    try {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'proposal-editing-draft.json';
+      link.click();
+      setMessage('Draft file download requested. Check that the file was saved before leaving.');
+    } finally {
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
   }
   async function readPage(after: string | null) {
     await run(
@@ -154,30 +181,7 @@ export function ProposalEditingPanel({
           type="button"
           className="secondary-button"
           disabled={disabled}
-          onClick={() =>
-            void run(
-              async () => snapshot(),
-              (draft) => {
-                const raw = JSON.stringify(
-                  decodeProposalEditingDraft(encodeProposalEditingDraft(draft)),
-                  null,
-                  2,
-                );
-                const url = URL.createObjectURL(new Blob([raw], { type: 'application/json' }));
-                try {
-                  const link = document.createElement('a');
-                  link.href = url;
-                  link.download = 'proposal-editing-draft.json';
-                  link.click();
-                  setMessage(
-                    'Draft file download requested. Check that the file was saved before leaving.',
-                  );
-                } finally {
-                  setTimeout(() => URL.revokeObjectURL(url), 1000);
-                }
-              },
-            )
-          }
+          onClick={() => void run(async () => snapshot(), download)}
         >
           Export editing draft
         </button>
@@ -210,16 +214,19 @@ export function ProposalEditingPanel({
             const file = event.target.files?.[0];
             event.target.value = '';
             if (!file) return;
-            void run(async (_signal, check) => {
-              if (file.size < 1 || file.size > PROPOSAL_EDITING_BYTES) throw new TypeError();
-              const raw = new TextDecoder('utf-8', { fatal: true }).decode(
-                await file.arrayBuffer(),
-              );
-              check();
-              const draft = decodeProposalEditingDraft(raw);
-              assertProposalSubmissionBinding(draft.binding, binding);
-              return draft;
-            }, review);
+            void run(
+              async (_signal, check) => {
+                if (file.size < 1 || file.size > PROPOSAL_EDITING_BYTES) throw new TypeError();
+                const raw = new TextDecoder('utf-8', { fatal: true }).decode(
+                  await file.arrayBuffer(),
+                );
+                check();
+                const draft = decodeProposalEditingDraft(raw);
+                assertProposalSubmissionBinding(draft.binding, binding);
+                return draft;
+              },
+              (draft) => review(draft, 'file'),
+            );
           }}
         />
       </label>
@@ -235,7 +242,10 @@ export function ProposalEditingPanel({
                 className="secondary-button"
                 disabled={disabled}
                 onClick={() =>
-                  void run((signal) => loadProposalEditingDraft(binding, entry, signal), review)
+                  void run(
+                    (signal) => loadProposalEditingDraft(binding, entry, signal),
+                    (draft) => review(draft, 'browser'),
+                  )
                 }
               >
                 Review editing draft
@@ -257,12 +267,91 @@ export function ProposalEditingPanel({
               {candidate.fields.values.content || '(No content yet)'}
             </pre>
           </details>
+          <details>
+            <summary>Review or copy all saved fields</summary>
+            <label>
+              Complete selected editing copy
+              <textarea
+                rows={10}
+                readOnly
+                spellCheck={false}
+                value={JSON.stringify(candidate, null, 2)}
+              />
+            </label>
+          </details>
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={disabled}
+            onClick={() => void run(async () => candidate, download)}
+          >
+            Export selected copy
+          </button>
+          {reviewed?.source === 'browser' && (
+            <div>
+              <p>
+                You can remove this saved editing copy from this browser. Your current editor,
+                prepared requests and submitted proposals are kept. Export the selected copy first
+                if you want to keep it after leaving this page.
+              </p>
+              {removalStatus === undefined ? (
+                <>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={removeConfirmed}
+                      disabled={disabled}
+                      onChange={(event) => {
+                        if (!operation.current) setRemoveConfirmed(event.target.checked);
+                      }}
+                    />{' '}
+                    I want to remove this selected editing copy from this browser.
+                  </label>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    disabled={disabled || !removeConfirmed}
+                    onClick={() => {
+                      if (!removeConfirmed || removalStatus !== undefined) return;
+                      void run(
+                        (signal) => {
+                          setRemoveConfirmed(false);
+                          setReplace(null);
+                          setRemovalStatus('unknown');
+                          setPage(undefined);
+                          return removeProposalEditingDraft(binding, candidate, signal);
+                        },
+                        (result) => {
+                          setRemovalStatus(result);
+                          setMessage(
+                            'The storage check finished. The selected copy remains below for export or continued editing. Find saved drafts again to refresh the directory.',
+                          );
+                        },
+                      );
+                    }}
+                  >
+                    Remove selected browser copy
+                  </button>
+                </>
+              ) : (
+                <p role="status">
+                  {removalStatus === 'removed'
+                    ? 'The reviewed editing copy was removed from browser storage.'
+                    : removalStatus === 'not-present'
+                      ? 'The selected editing copy was already absent when checked.'
+                      : 'Removal is not confirmed. Keep or export the reviewed copy. If this operation does not complete, find saved drafts and review the current entry before another removal attempt.'}
+                </p>
+              )}
+            </div>
+          )}
           <label>
             <input
               type="checkbox"
               checked={replace === requestKey}
               disabled={disabled}
-              onChange={(event) => setReplace(event.target.checked ? requestKey : null)}
+              onChange={(event) => {
+                if (!operation.current) setReplace(event.target.checked ? requestKey : null);
+              }}
             />{' '}
             I want to replace the current editor fields with this saved copy.
           </label>
@@ -305,7 +394,9 @@ export function ProposalEditingPanel({
                   }
                   retained.current = draft;
                   onLoad(draft);
-                  setCandidate(undefined);
+                  setReviewed(undefined);
+                  setRemoveConfirmed(false);
+                  setRemovalStatus(undefined);
                   setReplace(null);
                   setMessage(
                     'Editing draft loaded. Review its fields and sources before preparing a submission.',
