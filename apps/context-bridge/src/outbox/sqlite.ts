@@ -61,6 +61,9 @@ import { parseOutboxAuditQuery, auditOutboxRecords } from './audit.js';
 import { readOutboxSendControl, changeOutboxSendControl, outboxClaimGuard } from './control.js';
 import { restoreOutboxArchive, readOutboxRestoreReceipt } from './restore.js';
 import { previewOutboxArchiveRestore } from './restore-preview.js';
+import { auditOutboxRestoreReceipts } from './restore-audit.js';
+export { parseOutboxRestoreAuditQuery } from './restore-audit.js';
+export type { OutboxRestoreAuditQuery } from './restore-audit.js';
 import {
   listOutboxRestoreReceipts,
   readOutboxRestoreRecord,
@@ -425,6 +428,10 @@ export class SqliteOutbox {
 
   listRestoreReceipts(query: unknown, trace: string) {
     return listOutboxRestoreReceipts(this.db, query, trace);
+  }
+
+  auditRestoreReceipts(query: unknown, trace: string) {
+    return auditOutboxRestoreReceipts(this.db, query, trace);
   }
 
   readRestoreRecord(query: unknown, trace: string) {

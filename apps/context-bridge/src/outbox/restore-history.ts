@@ -221,6 +221,7 @@ export function listOutboxRestoreReceipts(db: DatabaseSync, input: unknown, trac
       query,
       records,
       has_more,
+      audit_query: { scope: query.scope },
       next_query: has_more
         ? { ...query, after_restore_id: records[records.length - 1]!.restore_id }
         : null,

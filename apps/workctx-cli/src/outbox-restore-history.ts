@@ -7,9 +7,12 @@ import { prepareArtifactOutput } from './artifact-output.js';
 import { saveOutboxArchiveFile } from './outbox-archive.js';
 
 export function isOutboxRestoreHistoryCommand(command: string) {
-  return ['outbox restore-history', 'outbox restore-get', 'outbox restore-export'].includes(
-    command,
-  );
+  return [
+    'outbox restore-history',
+    'outbox restore-audit',
+    'outbox restore-get',
+    'outbox restore-export',
+  ].includes(command);
 }
 function fail(code: string, message: string, trace: string, details: Record<string, unknown> = {}) {
   return new ContractError(code, message, { trace_id: trace, retryable: false, details });
@@ -36,16 +39,16 @@ function argumentsFor(argv: string[], trace: string) {
     }
     const { outbox, output, json } = args.values;
     const file = args.values['json-file'];
-    const list = command === 'outbox restore-history';
+    const queryBased = command === 'outbox restore-history' || command === 'outbox restore-audit';
     if (
       !isOutboxRestoreHistoryCommand(command) ||
-      args.positionals.length !== (list ? 2 : 3) ||
+      args.positionals.length !== (queryBased ? 2 : 3) ||
       outbox === undefined ||
       outbox === ':memory:' ||
       [outbox, output, file].some((path) => path !== undefined && (!path.trim() || path === '-')) ||
       json === '-' ||
       (json !== undefined && file !== undefined) ||
-      (!list && (json !== undefined || file !== undefined)) ||
+      (!queryBased && (json !== undefined || file !== undefined)) ||
       (command === 'outbox restore-export' ? output === undefined : output !== undefined)
     )
       throw new TypeError();
@@ -53,7 +56,7 @@ function argumentsFor(argv: string[], trace: string) {
   } catch {
     throw fail(
       'USAGE_ERROR',
-      'Use outbox restore-history --outbox EXISTING_FILE [--json/--json-file QUERY], outbox restore-get RESTORE_ID --outbox EXISTING_FILE, or outbox restore-export RESTORE_ID --outbox EXISTING_FILE --output NEW_FILE. No other/repeated options, stdin or extra positionals',
+      'Use outbox restore-history or outbox restore-audit --outbox EXISTING_FILE [--json/--json-file QUERY], outbox restore-get RESTORE_ID --outbox EXISTING_FILE, or outbox restore-export RESTORE_ID --outbox EXISTING_FILE --output NEW_FILE. No other/repeated options, stdin or extra positionals',
       trace,
     );
   }
@@ -115,13 +118,13 @@ export async function runOutboxRestoreHistoryArguments(
     );
   }
   const scope = bridge.parseOutboxReadScope(snapshot, trace);
+  const scopedInput = { ...input, scope: Object.hasOwn(input, 'scope') ? input.scope : scope };
   const query =
     args.command === 'outbox restore-history'
-      ? bridge.parseOutboxRestoreHistoryQuery(
-          { ...input, scope: Object.hasOwn(input, 'scope') ? input.scope : scope },
-          trace,
-        )
-      : bridge.parseOutboxRestoreSelection({ scope, restore_id: args.restore_id }, trace);
+      ? bridge.parseOutboxRestoreHistoryQuery(scopedInput, trace)
+      : args.command === 'outbox restore-audit'
+        ? bridge.parseOutboxRestoreAuditQuery(scopedInput, trace)
+        : bridge.parseOutboxRestoreSelection({ scope, restore_id: args.restore_id }, trace);
   if (
     query.scope.tenant_id !== scope.tenant_id ||
     query.scope.workspace_id !== scope.workspace_id ||
@@ -168,11 +171,14 @@ export async function runOutboxRestoreHistoryArguments(
   }
   let data:
     | ReturnType<typeof queue.listRestoreReceipts>
+    | ReturnType<typeof queue.auditRestoreReceipts>
     | ReturnType<typeof queue.readRestoreRecord>
     | Omit<ReturnType<typeof queue.readRestoreArchive>, 'source'>;
   let source: OutboxArchiveFile | undefined;
   try {
     if (args.command === 'outbox restore-history') data = queue.listRestoreReceipts(query, trace);
+    else if (args.command === 'outbox restore-audit')
+      data = queue.auditRestoreReceipts(query, trace);
     else if (args.command === 'outbox restore-get') data = queue.readRestoreRecord(query, trace);
     else {
       const archived = queue.readRestoreArchive(query, trace);
