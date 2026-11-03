@@ -19,6 +19,10 @@ export interface ProposalQueueBinding {
   actor_id: string;
   client_id: string;
 }
+export interface ProposalQueueOptions {
+  /** Inspect an existing v1 queue without creating it, changing its journal or initializing tables. */
+  readonly?: boolean;
+}
 export type ProposalJobStatus = 'queued' | 'sending' | 'retry' | 'blocked' | 'submitted';
 export interface ProposalJobSummary {
   job_id: string;
@@ -112,13 +116,30 @@ export function normalizeQueueBinding(input: ProposalQueueBinding): ProposalQueu
 export class SqliteProposalQueue {
   readonly binding: Readonly<ProposalQueueBinding>;
   private readonly db: DatabaseSync;
+  private readonly readOnly: boolean;
 
-  constructor(path: string, binding: ProposalQueueBinding) {
-    if (!path.trim() || path === ':memory:') throw new TypeError('Use a persistent queue file');
+  constructor(path: string, binding: ProposalQueueBinding, options: ProposalQueueOptions = {}) {
+    if (typeof path !== 'string' || !path.trim() || path === ':memory:')
+      throw new TypeError('Use a persistent queue file');
+    if (
+      !options ||
+      typeof options !== 'object' ||
+      Array.isArray(options) ||
+      Object.keys(options).some((key) => key !== 'readonly') ||
+      (options.readonly !== undefined && typeof options.readonly !== 'boolean')
+    )
+      throw new TypeError('Supply a boolean readonly queue option');
+    this.readOnly = options.readonly === true;
     this.binding = Object.freeze(normalizeQueueBinding(binding));
-    this.db = new DatabaseSync(path);
+    // query_only is defense in depth; the file must already be opened natively read-only.
+    this.db = new DatabaseSync(path, { readOnly: this.readOnly });
     try {
       this.db.exec('PRAGMA busy_timeout = 5000');
+      if (this.readOnly) {
+        this.db.exec('PRAGMA query_only = ON');
+        this.validateExistingQueue();
+        return;
+      }
       this.db.exec('PRAGMA journal_mode = WAL');
       this.db.exec('PRAGMA synchronous = FULL');
       this.transaction(() => {
@@ -145,12 +166,17 @@ export class SqliteProposalQueue {
           this.db.prepare('INSERT INTO proposal_queue_binding VALUES (1, 1, ?)').run(serialized);
       });
     } catch (error) {
-      this.db.close();
+      try {
+        this.db.close();
+      } catch {
+        /* Preserve the original opening/schema/binding failure. */
+      }
       throw error;
     }
   }
 
   enqueue(input: CreateProposalRequest, key: string): ProposalJobSummary {
+    this.requireWritable();
     validateQueueKey(key);
     const payload = JSON.stringify(parseCreateProposal(input));
     const checksum = hash(payload);
@@ -207,6 +233,7 @@ export class SqliteProposalQueue {
   }
 
   retry(id: string): ProposalJobSummary {
+    this.requireWritable();
     return this.transaction(() => {
       const row = this.row(id);
       if (row.status === 'submitted') return summary(row);
@@ -224,6 +251,7 @@ export class SqliteProposalQueue {
   }
 
   claim(dueBefore = Date.now()): ClaimedProposalJob | QuarantinedProposalJob | undefined {
+    this.requireWritable();
     if (!Number.isSafeInteger(dueBefore) || dueBefore < 0)
       throw new TypeError('dueBefore must be a non-negative timestamp');
     return this.transaction<ClaimedProposalJob | QuarantinedProposalJob | undefined>(() => {
@@ -271,6 +299,7 @@ export class SqliteProposalQueue {
   }
 
   complete(job: ClaimedProposalJob, receipt: ProposalMutationReceipt, trace_id: string): boolean {
+    this.requireWritable();
     const parsed = parseSubmissionReceipt(receipt);
     return (
       this.db
@@ -287,6 +316,7 @@ export class SqliteProposalQueue {
     job: ClaimedProposalJob,
     error: { code: string; trace_id: string; retryable: boolean; uncertain: boolean },
   ): boolean {
+    this.requireWritable();
     const delay = Math.min(3_600_000, 5_000 * 2 ** Math.min(job.attempts - 1, 10));
     return (
       this.db
@@ -310,6 +340,75 @@ export class SqliteProposalQueue {
   close() {
     this.db.close();
   }
+  private requireWritable() {
+    if (this.readOnly)
+      throw new ContractError(
+        'PROPOSAL_QUEUE_READ_ONLY',
+        'This proposal queue was opened for inspection only',
+      );
+  }
+  private validateExistingQueue() {
+    this.db.exec('BEGIN');
+    try {
+      const tables = this.db
+        .prepare(
+          "SELECT name, type FROM sqlite_schema WHERE name IN ('proposal_queue_binding', 'proposal_jobs')",
+        )
+        .all();
+      if (tables.length !== 2 || tables.some((table) => table.type !== 'table'))
+        throw new ContractError(
+          'PROPOSAL_QUEUE_SCHEMA_INVALID',
+          'An initialized v1 proposal queue is required',
+        );
+      // Prepare a zero-row read to check every v1 column without fetching job bodies or changing schema.
+      this.db
+        .prepare(
+          `SELECT job_id, request_key, payload, payload_hash, status, attempts,
+        next_attempt_ms, uncertain, error_code, trace_id, receipt, created_at, lease_token,
+        lease_until_ms FROM proposal_jobs LIMIT 0`,
+        )
+        .all();
+      const bindings = this.db
+        .prepare(
+          `SELECT singleton, schema_version,
+        typeof(binding) AS binding_type, length(CAST(binding AS BLOB)) AS binding_bytes
+        FROM proposal_queue_binding LIMIT 2`,
+        )
+        .all();
+      const stored = bindings[0];
+      if (
+        bindings.length !== 1 ||
+        !stored ||
+        stored.singleton !== 1 ||
+        stored.schema_version !== 1 ||
+        stored.binding_type !== 'text' ||
+        typeof stored.binding_bytes !== 'number' ||
+        !Number.isSafeInteger(stored.binding_bytes) ||
+        stored.binding_bytes < 1 ||
+        stored.binding_bytes > 16 * 1024
+      )
+        throw new ContractError(
+          'PROPOSAL_QUEUE_SCHEMA_INVALID',
+          'The original v1 proposal queue binding is unavailable',
+        );
+      const binding = this.db
+        .prepare('SELECT binding FROM proposal_queue_binding WHERE singleton = 1')
+        .get();
+      if (binding?.binding !== JSON.stringify(this.binding))
+        throw new ContractError(
+          'PROPOSAL_QUEUE_BINDING_MISMATCH',
+          'This queue belongs to another gateway, project or identity',
+        );
+      this.db.exec('COMMIT');
+    } catch (error) {
+      try {
+        this.db.exec('ROLLBACK');
+      } catch {
+        /* Preserve the read failure. */
+      }
+      throw error;
+    }
+  }
   private row(id: string): JobRow {
     if (!isUlid(id)) throw new TypeError('job_id must be a ULID');
     const row = this.db
@@ -320,6 +419,7 @@ export class SqliteProposalQueue {
     return row;
   }
   private transaction<T>(run: () => T): T {
+    this.requireWritable();
     this.db.exec('BEGIN IMMEDIATE');
     try {
       const result = run();

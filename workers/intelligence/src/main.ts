@@ -12,6 +12,7 @@ const help = `Proposal submission queue (Node.js 24)
   proposal-worker flush   --queue queue.sqlite --binding binding.json [--limit 25]
 
 binding.json contains gateway_url, tenant_id, workspace_id, project_id, actor_id, client_id.
+list/get open an existing initialized queue read-only; missing files are never created.
 Only flush contacts the gateway. It reads PROPOSAL_WORKER_ACCESS_TOKEN from the environment.
 retry schedules the original draft/key; it does not send or regenerate content.
 Exit codes: 0 completed, 1 command/storage failure, 2 flush had retry/blocked/lost-lease jobs.
@@ -83,7 +84,9 @@ export async function main(args: string[]): Promise<number> {
         'UNAUTHENTICATED',
         'Set PROPOSAL_WORKER_ACCESS_TOKEN before flushing',
       );
-    queue = new SqliteProposalQueue(path, binding);
+    queue = new SqliteProposalQueue(path, binding, {
+      readonly: command === 'list' || command === 'get',
+    });
     let output: unknown;
     let exitCode = 0;
     switch (command) {

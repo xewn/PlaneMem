@@ -1,6 +1,6 @@
 # Intelligence worker：持久建议提交队列
 
-更新：2026-11-01。本轮仅开发代码与说明，未编译、类型检查、测试、安装依赖、启动服务、迁移、部署或发布。
+更新：2026-11-04。本轮仅开发代码与说明，未编译、类型检查、测试、安装依赖、启动服务、迁移、部署或发布。
 
 `SqliteProposalQueue` 把已经生成或人工撰写的建议保存到本地 SQLite，`flushProposalQueue` 再使用真实 HTTP 网关提交。这里尚未接入模型提供方；提交不会重新生成正文、改写来源、确认或拒绝建议。原 `ProposalService` 保留为离线兼容辅助类，已标记 deprecated，不是网关的存储。
 
@@ -23,7 +23,7 @@
 
 gateway_url 必须是 HTTP(S) origin，不包含账号密码、路径前缀、查询或片段；三个范围 ID 必须为 ULID。actor_id 对应已验证令牌的 sub，client_id 对应 azp（或 client_id）；二者及请求键使用 1–255 个可见 ASCII 字符。不要把令牌放进绑定 JSON。
 
-首次打开将规范化后的网关、范围、actor/client 固定到数据库；以后任何一项不同都会报 `PROPOSAL_QUEUE_BINDING_MISMATCH`。刷新令牌可以继续使用原库，但身份不能改变。换项目或身份需要独立队列，不能用换库/换键来掩盖未知的提交结果。
+默认可写模式首次打开将规范化后的网关、范围、actor/client 固定到数据库；以后任何一项不同都会报 `PROPOSAL_QUEUE_BINDING_MISMATCH`。刷新令牌可以继续使用原库，但身份不能改变。换项目或身份需要独立队列，不能用换库/换键来掩盖未知的提交结果。`list/get` 只读打开已有队列，不负责初始化；新队列可通过首次 `enqueue` 创建。
 
 以下仅为使用示例，本轮未执行。先准备绑定 JSON、草稿 JSON 和本地父目录：
 
@@ -43,6 +43,14 @@ pnpm proposal-worker flush --queue workers/intelligence/.local/queue.sqlite --bi
 
 返回值是 JSON。退出码 0 表示命令完成，1 表示参数/本地存储等命令失败，2 表示本次 flush 有 retry/blocked/lease_lost。flush 的成功退出不代表整库清空：它只处理开始时已经到期的最多 limit 个任务；未来重试、已有 blocked 和其他进程占用的任务不计入本次结果。
 
+## 只读查询
+
+`list/get` 使用 SQLite 原生只读打开方式，路径不存在时失败，不会创建空数据库。已有文件还须包含 v1 的两个必需表、任务列和唯一原绑定；在同一读取事务内检查 schema_version=1 及最多 16 KiB 的绑定文本，并精确比较规范化后的网关、项目和身份。缺表、无绑定或版本错误明确拒绝，绑定不符返回 `PROPOSAL_QUEUE_BINDING_MISMATCH`；缺列、文件损坏或读取权限问题也会失败，不回退到可写模式。
+
+库调用可显式使用 `new SqliteProposalQueue(path, binding, { readonly: true })`。该模式只设置连接级 busy_timeout/query_only，不修改 journal_mode/synchronous、不创建表或索引、不补写绑定。SQLite 读取 WAL 队列仍可能需要访问 WAL/SHM 文件，不能据此保证目录完全没有文件系统活动。
+
+只读实例调用 `enqueue/retry/claim/complete/fail` 返回 `PROPOSAL_QUEUE_READ_ONLY`；`flushProposalQueue` 在首次认领时拒绝，尚未取得令牌或发送请求。默认构造方式及 CLI `enqueue/retry/flush` 仍使用可写模式。只读打开检查结构和绑定，不扫描或认证全部任务；`list/get` 保持原分页、草稿及回执读取语义。本轮未打开 SQLite、执行命令或验证运行结果。
+
 ## 提交协议
 
 worker 在每次尝试中取得一次令牌，并用同一令牌依次请求：
@@ -58,7 +66,7 @@ worker 在每次尝试中取得一次令牌，并用同一令牌依次请求：
 
 ## 重试与本地存储
 
-状态为 queued → sending → submitted，失败进入 retry 或 blocked。SQLite 使用 WAL、FULL 同步和事务认领，租约 60 秒。令牌获取最多等待 5 秒，每个 HTTP 请求超时 20 秒；每次尝试有独立 trace。过期租约可由下一次 flush 回收；旧进程只能凭原租约令牌结算，失去租约后报告 lease_lost。并发请求仍携带同一个远端请求键。
+状态为 queued → sending → submitted，失败进入 retry 或 blocked。可写模式的 SQLite 使用 WAL、FULL 同步和事务认领，租约 60 秒。令牌获取最多等待 5 秒，每个 HTTP 请求超时 20 秒；每次尝试有独立 trace。过期租约可由下一次 flush 回收；旧进程只能凭原租约令牌结算，失去租约后报告 lease_lost。并发请求仍携带同一个远端请求键。
 
 临时/未知错误按 5 秒起的指数退避，最高 1 小时；flush 不驻留等待、不循环重发本次失败任务。权限、来源冲突、参数和请求键冲突等确定错误进入 blocked，修复外部条件后可显式 retry 原任务。无法修改已有任务正文或来源：需要新内容时创建独立草稿及请求键，并先处理原任务的不确定结果。
 

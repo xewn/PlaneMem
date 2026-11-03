@@ -855,6 +855,23 @@ requirements:
     design: ["canonical-event", "sync-outbox"]
     subprojects: ["P0", "P1", "P3", "P8"]
     tests: ["unit.event_dedup", "integration.event_replay", "resilience.network_loss", "resilience.service_restart"]
+    proposal_queue_readonly_development_increment:
+      date: "2026-11-04"
+      status: "Source-only existing proposal queue inspection; R-005 remains incomplete."
+      artifacts:
+        - "workers/intelligence/src/submission.ts"
+        - "workers/intelligence/src/main.ts"
+        - "workers/intelligence/README.md"
+        - "docs/design/01-contracts/proposal-runtime.md"
+      behavior: "CLI list/get use native read-only opening without file creation or writable fallback. A read transaction checks required v1 tables/columns and a unique bounded original binding. Read-only instances reject every mutation entry point; flush fails at claim before token acquisition. Writable construction and submission semantics remain unchanged."
+      evidence: []
+      pending_evidence:
+        - "Missing paths, empty/incompatible schemas, missing columns, binding cardinality/version/size and identity mismatch"
+        - "Existing WAL queues, filesystem permissions, connection cleanup and concurrent writers"
+        - "Read-only mutation rejection before token acquisition/network access and unchanged list/get output"
+        - "Default writable initialization, submission, lease settlement and retry compatibility"
+      remaining_scope: "No full queue integrity audit, model generation, retention management, durability or runtime completion claim."
+      execution: "Source/docs only; no builds, typechecks, tests, worker/CLI/API execution, SQLite opens, PRAGMA execution, migrations or release. No schema/dependency changes."
     sync_consumer_mock_development_increment:
       date: "2026-11-04"
       status: "Source-only in-memory development model; no durability or runtime evidence."

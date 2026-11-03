@@ -131,4 +131,6 @@ GET 列表接受 status、kind、before、limit，以及可选的 derived_from�
 
 worker 已增加 SQLite 持久提交队列和显式 enqueue/list/get/retry/flush 命令，使用真实 HTTP 提交已有草稿，详见 [worker 使用说明](../../../workers/intelligence/README.md)。发送前通过 `GET /v1/proposals/submission-context` 核对协议及已认证身份；随后使用相同令牌和固定请求键提交。`X-Expected-Actor-Id` / `X-Expected-Client-Id` 是已验证身份的前置条件，不是身份来源；不匹配返回 DENIED。队列绑定网关、项目、actor/client，未知结果只重试原草稿和请求键，保留 uncertain 标记。
 
+2026-11-04：worker 的 `list/get` 改为原生只读打开已有队列，缺失文件不会创建；读取事务检查 v1 必需表/列及唯一绑定，绑定文本最多 16 KiB，并与规范化的网关/项目/身份精确匹配。只读分支不初始化结构、绑定或更改 journal_mode/synchronous，不回退可写；库接口可传 `{ readonly: true }`，所有写入入口报 `PROPOSAL_QUEUE_READ_ONLY`，flush 在获取令牌前拒绝认领。默认可写模式保留，结构/绑定检查不等于全队列完整性审计。无 schema 或依赖变更，仅源码文档，未编译、测试、运行 CLI、打开数据库或发布。
+
 真实模型生成尚未接入；原内存 ProposalService 已标记为 deprecated，仍保留离线兼容，不是上述 HTTP 接口的存储。外部证据验证、建议正文编辑历史、重开审核、审核结果物化到 ContextItem/ContextPack、后台调度、规模化保留清理和运行验证仍待后续工作。

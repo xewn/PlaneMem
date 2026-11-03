@@ -1,5 +1,7 @@
 # PlaneMem
 
+建议提交队列现支持只读查询：`proposal-worker list/get` 只打开已有且绑定匹配的队列，路径写错不会创建空库；只读实例拒绝写入。见 [worker 使用说明](workers/intelligence/README.md)。仅源码文档，未编译、测试、运行或发布。
+
 工作项详情现可返回原筛选结果：保留筛选条件、分页位置、看板/列表视图和所选项，刷新或读取失败时也能重试原目标。返回地址限定为已验证的内部工作项页面。见 [工作项投影](docs/design/01-contracts/work-item-projection-runtime.md)。仅源码文档，未编译、测试、运行或发布。
 
 新增工作项优先级与负责人筛选：网页看板/列表、SDK、CLI 和 MCP 可按 P0–P3 及负责人完整名称精确筛选；翻页和切换视图保留条件。服务端先筛选再分页，并核对返回条目；无新增筛选时兼容旧游标。见 [工作项投影](docs/design/01-contracts/work-item-projection-runtime.md)。仅源码文档，未编译、测试、运行或发布。
