@@ -75,33 +75,85 @@ export function parseOutboxListQuery(value: unknown, trace: string): OutboxListQ
   }
 }
 
+const text: [string, number, boolean][] = [
+  ['event_id', 1020, false],
+  ['tenant_id', 26, false],
+  ['workspace_id', 26, false],
+  ['project_id', 26, false],
+  ['event_type', 1020, false],
+  ['idempotency_key', 4096, false],
+  ['next_retry_at', 64, false],
+  ['checksum', 71, false],
+  ['status', 16, false],
+  ['trace_id', 4096, false],
+  ['lease_token', 1020, true],
+  ['sensitivity', 16, true],
+  ['server_event_id', 1020, true],
+  ['conflict_id', 1020, true],
+  ['last_error', 4096, true],
+  ['expected_actor_id', 4096, true],
+  ['expected_client_id', 4096, true],
+  ['command_checksum', 71, true],
+];
+const numbers: [string, number, boolean][] = [
+  ['attempt', 0, false],
+  ['client_cursor', 1, true],
+  ['server_cursor', 1, true],
+];
+
+/** Preserve all known stored columns; derived read flags are not part of an archive. */
+export function outboxStoredColumns(row: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const name of [...text, ...numbers].map(([name]) => name).concat(['payload', 'source_refs']))
+    result[name] = row[name];
+  return result;
+}
+
+/** Offline equivalent of the complete SQL projection; no validity flags are trusted from files. */
+export function parseOutboxStoredRow(input: unknown, trace: string): Record<string, unknown> {
+  try {
+    const value: unknown = JSON.parse(syncJsonSnapshot(input, 4 * MAX_SYNC_BATCH_BYTES + 65536));
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError();
+    const row = value as Record<string, unknown>;
+    const names = [...text, ...numbers].map(([name]) => name).concat(['payload', 'source_refs']);
+    if (
+      Object.keys(row).length !== names.length ||
+      Object.keys(row).some((name) => !names.includes(name))
+    )
+      throw new TypeError();
+    for (const [name, maximum, nullable] of [
+      ...text,
+      ['payload', MAX_SYNC_BATCH_BYTES, false],
+      ['source_refs', MAX_SYNC_BATCH_BYTES, false],
+    ] as [string, number, boolean][]) {
+      const field = row[name];
+      if (nullable && field === null) continue;
+      if (typeof field !== 'string' || Buffer.byteLength(field, 'utf8') > maximum)
+        throw new TypeError();
+    }
+    for (const [name, minimum, nullable] of numbers) {
+      const field = row[name];
+      if (nullable && field === null) continue;
+      if (typeof field !== 'number' || !Number.isSafeInteger(field) || field < minimum)
+        throw new TypeError();
+    }
+    return {
+      ...outboxStoredColumns(row),
+      metadata_valid: 1,
+      payload_bytes: Buffer.byteLength(row.payload as string, 'utf8'),
+      source_refs_bytes: Buffer.byteLength(row.source_refs as string, 'utf8'),
+    };
+  } catch {
+    throw fail(
+      'OUTBOX_ARCHIVE_RECORD_INVALID',
+      'An archived original has missing, invalid or oversized columns',
+      trace,
+    );
+  }
+}
+
 /** Only fixed column names enter SQL. Oversized values never cross into JavaScript. */
 export function outboxReadProjection(content: boolean): string {
-  const text: [string, number, boolean][] = [
-    ['event_id', 1020, false],
-    ['tenant_id', 26, false],
-    ['workspace_id', 26, false],
-    ['project_id', 26, false],
-    ['event_type', 1020, false],
-    ['idempotency_key', 4096, false],
-    ['next_retry_at', 64, false],
-    ['checksum', 71, false],
-    ['status', 16, false],
-    ['trace_id', 4096, false],
-    ['lease_token', 1020, true],
-    ['sensitivity', 16, true],
-    ['server_event_id', 1020, true],
-    ['conflict_id', 1020, true],
-    ['last_error', 4096, true],
-    ['expected_actor_id', 4096, true],
-    ['expected_client_id', 4096, true],
-    ['command_checksum', 71, true],
-  ];
-  const numbers: [string, number, boolean][] = [
-    ['attempt', 0, false],
-    ['client_cursor', 1, true],
-    ['server_cursor', 1, true],
-  ];
   const valid: string[] = [];
   const fields: string[] = [];
   for (const [name, maximum, nullable] of text) {

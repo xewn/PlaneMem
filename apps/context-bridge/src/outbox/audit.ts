@@ -65,6 +65,7 @@ export function auditOutboxRecords(
   query: OutboxAuditQuery,
   trace: string,
   decode: (row: Record<string, unknown>, trace: string) => LocalEvent,
+  collect?: (row: Record<string, unknown>) => void,
 ) {
   const deadline = performance.now() + query.timeout_ms;
   const observed = Date.now();
@@ -164,6 +165,8 @@ export function auditOutboxRecords(
                 'The selected queue contains ambiguous original IDs or idempotency keys',
                 trace,
               );
+            collect?.(row);
+            check();
             ids.add(event.event_id);
             keys.add(event.idempotency_key);
             statuses[summary.status] += 1;

@@ -47,6 +47,7 @@ import {
 import { callOutboxReconcileArguments } from './outbox-reconcile.js';
 import { inspectOutboxReceiptArguments } from './outbox-receipt-file.js';
 import { isOutboxReadCommand, runOutboxReadArguments } from './outbox-read.js';
+import { isOutboxArchiveCommand, runOutboxArchiveArguments } from './outbox-archive.js';
 import { callConflictSubmission } from './conflict-submission.js';
 import { callConflictPreparation } from './conflict-preparation.js';
 import { callConflictReceiptArguments } from './conflict-receipt.js';
@@ -129,6 +130,8 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   outbox list                    Read a metadata page from an existing queue; optional JSON status/limit/after_event_id
   outbox get EVENT_ID            Read and validate one complete original record without sending
   outbox audit                   Audit every original in the configured project; optional JSON budgets
+  outbox export                  Save a complete project archive to --output NEW_FILE; optional JSON budgets
+  outbox inspect-archive         Verify --archive-file offline without a queue, token or project configuration
   outbox retry EVENT_ID          Schedule another attempt for a pending or failed event
   outbox reconcile EVENT_ID      Confirm original delivery and settle this local row
                                  Optional --result-output NEW_FILE saves the complete validated receipt
@@ -397,6 +400,8 @@ export async function main(args: string[]): Promise<number> {
       'outbox list',
       'outbox get',
       'outbox audit',
+      'outbox export',
+      'outbox inspect-archive',
       'outbox retry',
       'outbox reconcile',
       'outbox inspect-result',
@@ -506,6 +511,22 @@ export async function main(args: string[]): Promise<number> {
       usage('--receipt-output is only for application-restore-receipt-get');
     if (isInboxApplicationArchiveCommand(name)) {
       print(await runInboxApplicationArchiveArguments(args, trace));
+      return 0;
+    }
+    if (isOutboxArchiveCommand(name)) {
+      print(
+        await runOutboxArchiveArguments(
+          args,
+          trace,
+          name === 'outbox export'
+            ? {
+                tenant_id: envId('WORKCTX_TENANT_ID'),
+                workspace_id: envId('WORKCTX_WORKSPACE_ID'),
+                project_id: envId('WORKCTX_PROJECT_ID'),
+              }
+            : undefined,
+        ),
+      );
       return 0;
     }
     if (isInboxPageChainCommand(name)) {

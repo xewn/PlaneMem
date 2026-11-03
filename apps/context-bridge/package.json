@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./outbox-archive": "./src/outbox/archive.ts"
   },
   "scripts": {
     "build": "tsc --outDir dist",

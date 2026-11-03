@@ -959,6 +959,30 @@ requirements:
         - "Offline routing without token/environment/SQLite, argument restrictions, output traces, provenance and exits"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, sample file generation, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_outbox_archive_development_increment:
+      date: "2026-11-03"
+      status: "Source-only complete project outbox archive export and offline verification; R-005 remains incomplete."
+      artifacts:
+        - "apps/context-bridge/src/outbox/archive.ts"
+        - "apps/context-bridge/src/outbox/original.ts"
+        - "apps/context-bridge/src/outbox/reading.ts"
+        - "apps/context-bridge/src/outbox/audit.ts"
+        - "apps/context-bridge/src/outbox/sqlite.ts"
+        - "apps/context-bridge/package.json"
+        - "apps/workctx-cli/src/outbox-archive.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/outbox-archive-runtime.md"
+      behavior: "workctx.sync-outbox-archive v1 retains all 23 known original columns including raw payload/reference JSON strings, sender/checksums and historical lease/scheduling/delivery diagnostics. readArchive collects through the complete single-transaction audit, caps 1000 records/32 MiB document plus shared JSON limits and rejects partial output. Strict offline record parsing derives metadata flags from shared column limits and reuses extracted original command/payload integrity checks; UTF-8 event ordering, event/key uniqueness and canonical document SHA are verified. CLI export validates configured scope/new destination before opening readonly existing storage, attempts close before exclusive file publication and full final readback. inspect-archive uses a SQLite-free package subpath and no current project/token. Preserve original query/progress/file paths/digest and close state on failures."
+      remaining_scope: "Logical history only; unknown future columns, schema/indexes/physical database and other projects are excluded. Archived lease tokens grant no ownership or retry permission; no restore/merge, sender coordination, identity reconstruction, mutation, server observation or acknowledgement. Larger streaming archives, archive record selection/original-query extraction, controlled recovery and runtime evidence remain pending. Synchronous work cannot be preempted; Bridge preparation timeout excludes CLI file/open/close/save phases."
+      pending_evidence:
+        - "Strict document/row fields, raw JSON text/ordering/null preservation, all states/leases, missing sender, legacy checksum and full command integrity"
+        - "Single snapshot count/collection, duplicate IDs/keys, Unicode file ordering, empty/missing queues, byte/complexity/deadline limits and no partial file"
+        - "Shared original function/projection compatibility across enqueue/send/get/audit/reconcile and offline import graph without SQLite loading"
+        - "CLI main/embedded command recognition, configured scope binding, offline no-env behavior, repeated/prohibited options and bounded stable UTF-8 file input"
+        - "Existing-path refusal, exclusive publication, final file/digest readback, rollback/close/save failures and retained uncertain output paths"
+      evidence: []
+      execution: "Source and documentation only; no builds, typechecks, tests, CLI/Bridge/API execution, database opens, sample generation, schema initialization, migrations or release. New logical file format and package subpath only; no database schema, dependency version or Gateway API changes. Prior SQLite upgrades and PostgreSQL 016-049 remain unexecuted. Task commit/push targets main with skip-ci."
     sync_outbox_audit_development_increment:
       date: "2026-11-03"
       status: "Source-only complete original-content audit for one selected queue project; R-005 remains incomplete."

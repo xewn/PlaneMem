@@ -47,6 +47,7 @@ import { isInboxAcknowledgementCommand, runInboxAcknowledgement } from './inbox-
 import { runOutboxReconcile } from './outbox-reconcile.js';
 import { inspectOutboxReceiptArguments } from './outbox-receipt-file.js';
 import { isOutboxReadCommand, runOutboxReadArguments } from './outbox-read.js';
+import { isOutboxArchiveCommand, runOutboxArchiveArguments } from './outbox-archive.js';
 import { runConflictSubmission } from './conflict-submission.js';
 import { runConflictPreparation } from './conflict-preparation.js';
 import { runSessionRegistry } from './session-registry.js';
@@ -163,6 +164,8 @@ export async function runWorkctx(
     'outbox list': 'outbox.list',
     'outbox get': 'outbox.get',
     'outbox audit': 'outbox.audit',
+    'outbox export': 'outbox.export',
+    'outbox inspect-archive': 'outbox.inspect-archive',
     'conflicts submit': 'conflict.resolve',
     'conflicts prepare': 'conflict.command-context',
     'audit list': 'workbench.query',
@@ -256,7 +259,7 @@ export async function runWorkctx(
       stderr: JSON.stringify({
         code: 'USAGE_ERROR',
         message:
-          'Expected admin snapshot, audit, artifacts, plane-events, observed, search, index, overview, work-items, sessions, runs, tool-calls, handoffs, checkpoints, context, resume, checkpoint, handoff, sync, inbox, outbox list/get/audit/reconcile/inspect-result, conflicts or doctor',
+          'Expected admin snapshot, audit, artifacts, plane-events, observed, search, index, overview, work-items, sessions, runs, tool-calls, handoffs, checkpoints, context, resume, checkpoint, handoff, sync, inbox, outbox list/get/audit/export/inspect-archive/reconcile/inspect-result, conflicts or doctor',
         trace_id: context.trace_id,
       }),
     };
@@ -274,6 +277,20 @@ export async function runWorkctx(
       usage('--receipt-output is only for application-restore-receipt-get');
     if (command && isInboxApplicationArchiveCommand(command)) {
       const result = await runInboxApplicationArchiveArguments(argv, context.trace_id);
+      return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
+    }
+    if (command && isOutboxArchiveCommand(command)) {
+      const result = await runOutboxArchiveArguments(
+        argv,
+        context.trace_id,
+        command === 'outbox export'
+          ? {
+              tenant_id: context.tenant_id,
+              workspace_id: context.workspace_id,
+              project_id: context.project_id,
+            }
+          : undefined,
+      );
       return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
     }
     if (command && isInboxPageChainCommand(command)) {

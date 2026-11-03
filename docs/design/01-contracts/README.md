@@ -45,6 +45,7 @@
 - [确认调用结果文件与离线查看](sync-ack-result-runtime.md)
 - [原同步身份与离线队列](sync-identity-runtime.md)
 - [原同步事件回执查询](sync-event-receipt-runtime.md)
+- [发送队列完整档案与离线检查](outbox-archive-runtime.md)
 - [发送队列完整原记录核验](outbox-audit-runtime.md)
 - [离线队列原投递核对与结算](outbox-reconciliation-runtime.md)
 - [MCP 原同步身份与事件回执](sync-mcp-runtime.md)
