@@ -180,7 +180,7 @@ export function ProposalCreateForm({
       if (mounted.current) setPending(false);
     }
   }
-  if (original) return <OriginalProposalSubmission original={original} />;
+  if (original) return <OriginalProposalSubmission original={original} saveOnMount />;
   return (
     <form
       onSubmit={(event) => {

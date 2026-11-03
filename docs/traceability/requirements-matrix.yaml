@@ -3452,6 +3452,27 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_web_browser_originals_development_increment:
+      date: "2026-11-04"
+      status: "Source-only persistent browser original requests and scoped recovery directory; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/original-store.ts"
+        - "apps/web-console/src/app/proposals/original-model.ts"
+        - "apps/web-console/src/app/proposals/original-submission.tsx"
+        - "apps/web-console/src/app/proposals/create-form.tsx"
+        - "apps/web-console/src/app/proposals/recover/loader.tsx"
+        - "apps/web-console/src/app/proposals/recover/saved-originals.tsx"
+        - "apps/web-console/src/app/sync/receipt/browser-store.ts"
+        - "docs/design/01-contracts/proposal-runtime.md"
+      behavior: "A dedicated version-1 browser database stores the complete original and its summary atomically, reusing the existing bounded transaction helper. Saves compare both slots and any exact legacy tab copy, only add absent pairs, read back complete data and await commit before sending. Recovery lists 20 metadata rows within the original gateway and full identity, binds continuation to that scope, and verifies selected full content against its summary. Reads never migrate or submit; files and legacy slots remain available."
+      evidence: []
+      pending_evidence:
+        - "Closing/reopening tabs, same-profile directory discovery and cross-scope cursor rejection"
+        - "Concurrent identical/different saves, partial/corrupt pairs and legacy disagreement"
+        - "Blocked/denied storage, cancellation, deadline expiry and unknown commit preservation"
+        - "Selected-summary drift, missing originals, page reload and import without saving or sending"
+      remaining_scope: "Unprepared draft persistence, whole-store backup/cleanup/capacity management, read-only create receipts, review recovery and runtime evidence. Browser copies are not cloud backups or evidence of server outcomes."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, browser/API/database execution or release. New browser schema is source only; no Gateway/server schema/dependency change. Separate commit/push to main with skip-ci."
     proposal_web_original_submission_development_increment:
       date: "2026-11-04"
       status: "Source-only original web proposal preparation, saving and recovery; R-009 remains incomplete."

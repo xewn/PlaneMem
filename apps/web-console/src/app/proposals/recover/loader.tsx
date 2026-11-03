@@ -5,37 +5,83 @@ import { OriginalProposalSubmission } from '../original-submission';
 import {
   assertProposalSubmissionBinding,
   decodeProposalOriginal,
-  proposalOriginalStorageKey,
   PROPOSAL_ORIGINAL_BYTES,
   type ProposalOriginal,
   type ProposalSubmissionBinding,
 } from '../original-model';
+import {
+  loadBrowserProposalOriginal,
+  loadLegacyProposalOriginal,
+  type SavedProposalOriginal,
+} from '../original-store';
+import { SavedProposalOriginals } from './saved-originals';
 
 export function ProposalRecoveryLoader({ binding }: { binding: ProposalSubmissionBinding }) {
   const [key, setKey] = useState('');
   const [raw, setRaw] = useState('');
   const [original, setOriginal] = useState<ProposalOriginal>();
   const [message, setMessage] = useState(
-    'Load an original from this tab or import a complete exported file. Nothing is sent on load.',
+    'Find a saved browser request, read an old tab copy, or import a complete file. Loading does not save, replace or send a request.',
   );
   const [busy, setBusy] = useState(false);
   const active = useRef(false);
   const mounted = useRef(false);
+  const loaded = useRef(false);
+  const operation = useRef<AbortController | undefined>(undefined);
   useEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
+      operation.current?.abort();
+      operation.current = undefined;
     };
   }, []);
   function load(value: unknown) {
     const parsed = decodeProposalOriginal(value);
     assertProposalSubmissionBinding(parsed.binding, binding);
+    if (!mounted.current) return;
+    loaded.current = true;
     setOriginal(parsed);
   }
-  async function importFile(file: File | undefined) {
-    if (!file || active.current) return;
+  async function loadStored(source: 'browser' | 'legacy', selection?: SavedProposalOriginal) {
+    if (active.current || loaded.current || !mounted.current) return;
+    const controller = new AbortController();
+    operation.current = controller;
     active.current = true;
     setBusy(true);
+    setMessage('Reading the complete original request…');
+    try {
+      const requestKey = selection?.metadata.request_key ?? key;
+      const result =
+        source === 'browser'
+          ? await loadBrowserProposalOriginal(binding, requestKey, controller.signal, selection)
+          : loadLegacyProposalOriginal(binding, requestKey);
+      if (!mounted.current || operation.current !== controller || controller.signal.aborted) return;
+      if (!result) {
+        setMessage(
+          'No complete original was found in this exact slot. Try another saved copy or the exported file. Missing local data does not confirm the submission outcome.',
+        );
+        return;
+      }
+      load(JSON.stringify(result));
+    } catch {
+      if (mounted.current && operation.current === controller)
+        setMessage(
+          'The complete saved request could not be verified, or its summary changed. Nothing was replaced or sent. Reload the list, read another copy, or import its exported file.',
+        );
+    } finally {
+      if (operation.current === controller) {
+        operation.current = undefined;
+        active.current = false;
+        if (mounted.current) setBusy(false);
+      }
+    }
+  }
+  async function importFile(file: File | undefined) {
+    if (!file || active.current || loaded.current) return;
+    active.current = true;
+    setBusy(true);
+    setMessage('Reading original file…');
     try {
       if (file.size < 1 || file.size > PROPOSAL_ORIGINAL_BYTES) throw new TypeError();
       const value = new TextDecoder('utf-8', { fatal: true }).decode(await file.arrayBuffer());
@@ -60,6 +106,12 @@ export function ProposalRecoveryLoader({ binding }: { binding: ProposalSubmissio
       <p>
         Project · {binding.identity.project_id} · Gateway · {binding.gateway_url}
       </p>
+      <SavedProposalOriginals
+        key={JSON.stringify(binding)}
+        binding={binding}
+        disabled={busy}
+        onSelect={(entry) => void loadStored('browser', entry)}
+      />
       <label>
         Original request key
         <input
@@ -73,18 +125,17 @@ export function ProposalRecoveryLoader({ binding }: { binding: ProposalSubmissio
         type="button"
         className="secondary-button"
         disabled={busy || !key}
-        onClick={() => {
-          if (active.current) return;
-          try {
-            load(sessionStorage.getItem(proposalOriginalStorageKey(binding, key)));
-          } catch {
-            setMessage(
-              'No complete matching original was found in this tab. Keep existing data and import its exported file.',
-            );
-          }
-        }}
+        onClick={() => void loadStored('browser')}
       >
-        Load original from this tab
+        Load original from this browser
+      </button>
+      <button
+        type="button"
+        className="secondary-button"
+        disabled={busy || !key}
+        onClick={() => void loadStored('legacy')}
+      >
+        Read old copy from this tab
       </button>
       <label>
         Import original request file
@@ -114,7 +165,7 @@ export function ProposalRecoveryLoader({ binding }: { binding: ProposalSubmissio
         className="secondary-button"
         disabled={busy || !raw}
         onClick={() => {
-          if (active.current) return;
+          if (active.current || loaded.current) return;
           try {
             load(raw);
           } catch {
@@ -126,7 +177,12 @@ export function ProposalRecoveryLoader({ binding }: { binding: ProposalSubmissio
       >
         Review imported original
       </button>
-      <p role="status">{busy ? 'Reading original file…' : message}</p>
+      <p className="muted">
+        Browser copies can survive closing tabs in this profile. Old tab-only copies must be
+        explicitly saved in the browser or exported before closing that tab. Clearing browser data
+        can remove saved requests; keep a separate file for recovery on another device.
+      </p>
+      <p role="status">{message}</p>
     </div>
   );
 }

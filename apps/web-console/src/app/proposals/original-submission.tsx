@@ -1,18 +1,24 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ProposalMutationReceipt } from '@planemem/contracts';
 import { validateProposalReceipt } from '../../lib/mutation-receipts';
 import { submitSavedProposal } from './actions';
 import {
   decodeProposalOriginal,
   encodeProposalOriginal,
-  preserveProposalOriginal,
   type ProposalOriginal,
 } from './original-model';
+import { preserveBrowserProposalOriginal } from './original-store';
 
-export function OriginalProposalSubmission({ original }: { original: ProposalOriginal }) {
+export function OriginalProposalSubmission({
+  original,
+  saveOnMount = false,
+}: {
+  original: ProposalOriginal;
+  saveOnMount?: boolean;
+}) {
   const [request] = useState(() => decodeProposalOriginal(encodeProposalOriginal(original)));
   const [message, setMessage] = useState(
     'The original request is frozen. Save a copy and review it before sending.',
@@ -22,33 +28,42 @@ export function OriginalProposalSubmission({ original }: { original: ProposalOri
   const [receipt, setReceipt] = useState<ProposalMutationReceipt>();
   const active = useRef(false);
   const mounted = useRef(false);
+  const operation = useRef<AbortController | undefined>(undefined);
+  const save = useCallback(async () => {
+    if (active.current || !mounted.current) return;
+    const controller = new AbortController();
+    operation.current = controller;
+    active.current = true;
+    setBusy(true);
+    try {
+      await preserveBrowserProposalOriginal(request, controller.signal);
+      if (mounted.current && operation.current === controller)
+        setMessage(
+          'The complete original request was saved and read back in this browser. It can be found from recovery after closing this tab.',
+        );
+    } catch {
+      if (mounted.current && operation.current === controller)
+        setMessage(
+          'Browser saving could not be confirmed, or an existing copy is damaged or different. Keep this page open and export the original. Sending is blocked until saving succeeds.',
+        );
+    } finally {
+      if (mounted.current && operation.current === controller) {
+        operation.current = undefined;
+        active.current = false;
+        setBusy(false);
+      }
+    }
+  }, [request]);
   useEffect(() => {
     mounted.current = true;
-    try {
-      preserveProposalOriginal(request);
-      setMessage(
-        'The complete original request is saved in this tab. Export a copy to keep it after closing the tab.',
-      );
-    } catch {
-      setMessage(
-        'Saving in this tab could not be confirmed. Keep this page open and export the original. Sending remains blocked until local saving succeeds.',
-      );
-    }
+    if (saveOnMount) void save();
     return () => {
       mounted.current = false;
+      operation.current?.abort();
+      operation.current = undefined;
+      active.current = false;
     };
-  }, [request]);
-  function save() {
-    if (active.current) return;
-    try {
-      preserveProposalOriginal(request);
-      setMessage('Original request saved and read back in this tab.');
-    } catch {
-      setMessage(
-        'The saved copy is unavailable, damaged or different. Existing data was not overwritten. Keep an exported copy.',
-      );
-    }
-  }
+  }, [save, saveOnMount]);
   function download() {
     if (active.current) return;
     let url: string | undefined;
@@ -78,26 +93,29 @@ export function OriginalProposalSubmission({ original }: { original: ProposalOri
     }
   }
   async function send() {
-    if (active.current || !confirmed || receipt) return;
+    if (active.current || !confirmed || receipt || !mounted.current) return;
+    const controller = new AbortController();
+    operation.current = controller;
     active.current = true;
     setBusy(true);
     setConfirmed(false);
     try {
       try {
-        preserveProposalOriginal(request);
+        await preserveBrowserProposalOriginal(request, controller.signal);
       } catch {
-        setMessage(
-          'The original request could not be saved and read back. No submission was sent. Export it or retry saving; an existing different copy is never replaced.',
-        );
+        if (mounted.current && operation.current === controller)
+          setMessage(
+            'The original request could not be saved and read back. No submission was sent. Export it or retry saving; an existing different copy is never replaced.',
+          );
         return;
       }
-      if (!mounted.current) return;
+      if (!mounted.current || controller.signal.aborted || operation.current !== controller) return;
       setMessage('Waiting for the original submission. Its outcome is not yet confirmed.');
       const form = new FormData();
       form.set('original', encodeProposalOriginal(request));
       form.set('confirmed', 'yes');
       const result = await submitSavedProposal(form);
-      if (!mounted.current) return;
+      if (!mounted.current || operation.current !== controller) return;
       if (result.original !== encodeProposalOriginal(request)) throw new TypeError();
       if (result.status === 'saved') {
         validateProposalReceipt(result.receipt, { status: 'proposed', revision: 1 });
@@ -107,13 +125,16 @@ export function OriginalProposalSubmission({ original }: { original: ProposalOri
         );
       } else setMessage(result.message);
     } catch {
-      if (mounted.current)
+      if (mounted.current && operation.current === controller)
         setMessage(
           'The original submission is not confirmed. Keep its content and key unchanged; explicitly retry this same request when access is restored.',
         );
     } finally {
-      active.current = false;
-      if (mounted.current) setBusy(false);
+      if (mounted.current && operation.current === controller) {
+        operation.current = undefined;
+        active.current = false;
+        setBusy(false);
+      }
     }
   }
   return (
@@ -136,19 +157,25 @@ export function OriginalProposalSubmission({ original }: { original: ProposalOri
         <pre>{JSON.stringify(request, null, 2)}</pre>
       </details>
       <div className="heading-actions">
-        <button type="button" className="secondary-button" disabled={busy} onClick={save}>
-          Save original in this tab
+        <button
+          type="button"
+          className="secondary-button"
+          disabled={busy}
+          onClick={() => void save()}
+        >
+          Save original in this browser
         </button>
         <button type="button" className="secondary-button" disabled={busy} onClick={download}>
           Export original request
         </button>
-        <Link href="/proposals/recover" prefetch={false}>
-          Open recovery in this tab
+        <Link href="/proposals/recover" prefetch={false} target="_blank" rel="noopener noreferrer">
+          Open saved request recovery ↗
         </Link>
       </div>
       <p className="muted">
-        Tab storage can be cleared and does not reliably carry over to other tabs or devices. Keep
-        an exported file before leaving. Loading or saving a request does not submit it.
+        Browser copies can survive closing tabs in this browser profile. Clearing browser data can
+        remove them; other devices need an exported file. Keep a separate export. Loading or saving
+        a request does not submit it, and a saved request does not confirm its outcome.
       </p>
       {!receipt && (
         <form
@@ -167,7 +194,7 @@ export function OriginalProposalSubmission({ original }: { original: ProposalOri
             I reviewed this complete original request and want to send it with the same key.
           </label>
           <button className="primary-button" disabled={busy || !confirmed}>
-            {busy ? 'Waiting for confirmation…' : 'Send or retry original submission'}
+            {busy ? 'Working…' : 'Send or retry original submission'}
           </button>
         </form>
       )}

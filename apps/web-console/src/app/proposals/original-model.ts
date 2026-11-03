@@ -109,19 +109,12 @@ export function decodeProposalOriginal(raw: unknown) {
 export function proposalOriginalStorageKey(binding: ProposalSubmissionBinding, key: string) {
   validateIdempotencyKey(key);
   if (!/^[\x21-\x7e]{1,255}$/.test(key)) throw new TypeError();
+  return proposalOriginalStoragePrefix(binding) + JSON.stringify(key) + ']';
+}
+export function proposalOriginalStoragePrefix(binding: ProposalSubmissionBinding) {
   return (
     'planemem:proposal-original:v1:' +
-    JSON.stringify([parseProposalSubmissionBinding(binding), key])
+    JSON.stringify([parseProposalSubmissionBinding(binding)]).slice(0, -1) +
+    ','
   );
-}
-export function preserveProposalOriginal(original: ProposalOriginal) {
-  const raw = encodeProposalOriginal(original);
-  const key = proposalOriginalStorageKey(original.binding, original.request_key);
-  const existing = sessionStorage.getItem(key);
-  if (existing !== null && encodeProposalOriginal(decodeProposalOriginal(existing)) !== raw)
-    throw new TypeError('This request key already has different or damaged saved content');
-  if (existing === null) sessionStorage.setItem(key, raw);
-  const stored = sessionStorage.getItem(key);
-  if (stored === null || encodeProposalOriginal(decodeProposalOriginal(stored)) !== raw)
-    throw new TypeError('Original request saving could not be confirmed');
 }
