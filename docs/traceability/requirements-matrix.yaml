@@ -959,6 +959,26 @@ requirements:
         - "Offline routing without token/environment/SQLite, argument restrictions, output traces, provenance and exits"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, sample file generation, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_outbox_audit_development_increment:
+      date: "2026-11-03"
+      status: "Source-only complete original-content audit for one selected queue project; R-005 remains incomplete."
+      artifacts:
+        - "apps/context-bridge/src/outbox/audit.ts"
+        - "apps/context-bridge/src/outbox/sqlite.ts"
+        - "apps/workctx-cli/src/outbox-read.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/outbox-audit-runtime.md"
+      behavior: "SqliteOutbox.auditRecords and local outbox audit strictly parse original scope and max_events/max_bytes/timeout_ms before opening CLI storage. One read transaction uses a bounded complete count, BINARY event-ID batches and final count equality; full bounded SQL projection and existing original parser validate identity, payload/command checksums and metadata, with project-local event/idempotency-key uniqueness. Defaults 1000 rows/64 MiB/30 seconds, maxima 10000/512 MiB/90 seconds. Return counts, stored-text byte basis, local status/lease and legacy checksum statistics only after complete validation and read commit. Failures preserve original query, incomplete stage/progress, safe selected event ID, queue path and rollback/close markers. Both CLI surfaces use readonly existing storage without token/router/network operations."
+      remaining_scope: "No cross-project/global physical/schema audit, source authentication, remote-delivery proof, queue backup/restore, identity reconstruction, sender coordination, repair, claim/retry/settlement or automatic-send gate. Active/expired lease statistics use one start-time observation and do not authorize sending. Byte budget covers successfully validated stored text, not disk/memory; a bounded batch may be loaded before rejection. Synchronous SQL/JSON cannot be preempted; CLI file/open/close time is outside the Bridge audit deadline. Runtime evidence remains pending."
+      pending_evidence:
+        - "Strict budgets/scope, wrong project and filtered-query rejection before open; primary/embedded CLI local routing and repeated/prohibited options"
+        - "Empty/full scope, count overrun, invalid first/null IDs, Unicode BINARY continuation and duplicates within/across batch boundaries"
+        - "Original identities/legacy missing sender, payload/command checksums, corrupt JSON, oversized metadata/content and duplicate idempotency keys"
+        - "Text byte accounting, row/byte/deadline budgets, all local statuses/leases, legacy FNV count and no remote-state assertions"
+        - "Single snapshot under concurrent senders, no mutation, read/commit/rollback/open/close failures and retained original query/selected ID/progress"
+      evidence: []
+      execution: "Source and documentation only; no builds, typechecks, tests, CLI/Bridge/API/service execution, sample artifacts, database opens, schema initialization, migrations or release. No shared wire/API/schema/dependency changes; prior SQLite extensions and PostgreSQL 016-049 remain unexecuted. Task commit/push targets main with skip-ci."
     sync_outbox_reading_development_increment:
       date: "2026-11-03"
       status: "Source-only bounded project outbox metadata and strict original record reads; R-005 remains incomplete."

@@ -5,12 +5,12 @@ import { ContractError, isSyncIdentifier } from '@planemem/contracts';
 import { readBoundedArtifactFile } from './artifact-files.js';
 
 export function isOutboxReadCommand(command: string) {
-  return command === 'outbox list' || command === 'outbox get';
+  return command === 'outbox list' || command === 'outbox get' || command === 'outbox audit';
 }
 function usage(trace: string) {
   return new ContractError(
     'USAGE_ERROR',
-    'Use outbox list with optional --json/--json-file (scope/status/limit/after_event_id), or outbox get EVENT_ID; both accept --outbox EXISTING_FILE. No other or repeated options, keys or stdin',
+    'Use outbox list with optional JSON scope/status/limit/after_event_id, outbox audit with optional JSON scope/max_events/max_bytes/timeout_ms, or outbox get EVENT_ID. Use --json or --json-file and --outbox EXISTING_FILE; get accepts no JSON. No other or repeated options, keys or stdin',
     { trace_id: trace, retryable: false },
   );
 }
@@ -48,7 +48,7 @@ function argumentsFor(argv: string[], trace: string) {
       (json !== undefined && file !== undefined) ||
       json === '-' ||
       (file !== undefined && (!file.trim() || file === '-')) ||
-      (command === 'outbox list'
+      (command !== 'outbox get'
         ? args.positionals.length !== 2
         : args.positionals.length !== 3 ||
           !isSyncIdentifier(id) ||
@@ -69,8 +69,10 @@ async function readQuery(args: ReturnType<typeof argumentsFor>, trace: string) {
       raw = new TextDecoder('utf-8', { fatal: true }).decode(bytes).replace(/^\uFEFF/, '');
     } catch {
       throw new ContractError(
-        'OUTBOX_LIST_FILE_UNAVAILABLE',
-        'Read a stable regular UTF-8 list query file within 16 KiB',
+        args.command === 'outbox audit'
+          ? 'OUTBOX_AUDIT_FILE_UNAVAILABLE'
+          : 'OUTBOX_LIST_FILE_UNAVAILABLE',
+        'Read a stable regular UTF-8 queue query file within 16 KiB',
         { trace_id: trace, retryable: false },
       );
     }
@@ -97,10 +99,14 @@ export async function runOutboxReadArguments(
   const input = await readQuery(args, trace);
   const bridge = await import('@planemem/context-bridge');
   const originalScope = bridge.parseOutboxReadScope(scopeSnapshot, trace);
-  const query = bridge.parseOutboxListQuery(
-    { ...input, scope: Object.hasOwn(input, 'scope') ? input.scope : originalScope },
-    trace,
-  );
+  const originalQuery = {
+    ...input,
+    scope: Object.hasOwn(input, 'scope') ? input.scope : originalScope,
+  };
+  const query =
+    args.command === 'outbox audit'
+      ? bridge.parseOutboxAuditQuery(originalQuery, trace)
+      : bridge.parseOutboxListQuery(originalQuery, trace);
   if (
     query.scope.tenant_id !== originalScope.tenant_id ||
     query.scope.workspace_id !== originalScope.workspace_id ||
@@ -108,8 +114,8 @@ export async function runOutboxReadArguments(
   )
     throw new ContractError(
       'OUTBOX_READ_SCOPE_MISMATCH',
-      'The saved list query belongs to a different configured project',
-      { trace_id: trace, retryable: false },
+      'The saved queue query belongs to a different configured project',
+      { trace_id: trace, retryable: false, details: { query } },
     );
   let queue: InstanceType<typeof bridge.SqliteOutbox>;
   try {
@@ -120,7 +126,16 @@ export async function runOutboxReadArguments(
       error instanceof ContractError
         ? error.envelope.message
         : 'The existing queue could not be opened for reading',
-      { trace_id: trace, retryable: false },
+      {
+        trace_id: trace,
+        retryable: false,
+        details: {
+          ...(error instanceof ContractError ? error.envelope.details : {}),
+          ...(args.command === 'outbox audit'
+            ? { query, outbox: args.path, complete: false, stage: 'open' }
+            : {}),
+        },
+      },
     );
   }
   let data;
@@ -128,7 +143,9 @@ export async function runOutboxReadArguments(
     data =
       args.command === 'outbox list'
         ? queue.listRecords(query, trace)
-        : queue.readRecord(originalScope, args.event_id!, trace);
+        : args.command === 'outbox audit'
+          ? queue.auditRecords(query, trace)
+          : queue.readRecord(originalScope, args.event_id!, trace);
   } catch (error) {
     let close_pending = false;
     try {
@@ -146,6 +163,7 @@ export async function runOutboxReadArguments(
         retryable: false,
         details: {
           ...(error instanceof ContractError ? error.envelope.details : {}),
+          ...(args.command === 'outbox audit' ? { outbox: args.path } : {}),
           ...(close_pending ? { close_pending: true } : {}),
         },
       },

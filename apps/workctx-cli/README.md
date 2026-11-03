@@ -501,6 +501,7 @@ observed-item.json 示例：`{"work_item_id":"plane-item-42"}`。CLI 核对返�
 | `outbox inspect-result` | --result-file SAVED.json | 无；完整离线核验并查看回执，不打开队列 |
 | `outbox list` | 可选 --outbox EXISTING_FILE、--json/--json-file（scope/status/limit/after_event_id） | 无；默认 20/最多 50 条本地摘要 |
 | `outbox get EVENT_ID` | 可选 --outbox EXISTING_FILE；无 JSON | 无；完整校验指定本地原记录 |
+| `outbox audit` | 可选 --outbox EXISTING_FILE、--json/--json-file（scope/max_events/max_bytes/timeout_ms） | 无；单次只读快照核验指定项目全部原记录 |
 | `sync ack` | 保存的五字段 `expected_identity` 和非负安全整数 `cursor` | 不接受键/版本 |
 | `context compile` | 可选 `budget_tokens`、`ttl_seconds` | `--key` |
 | `context get` | 可选 `pack_id`、`format` | 无 |
@@ -595,3 +596,5 @@ workctx context get --json-file pack-query.json
 2026-11-03：outbox reconcile 错误输出增加 details.reconciliation，保留已经完整验证的原事件回执，并单列本次本地提交为 not-committed/unknown 及事务阶段、回滚状态。数据库关闭同时失败则补 details.close_pending=true，原错误码和回执仍保留；错误退出 1，不能因嵌套回执 recorded 就认定本地结算成功。无新增选项、离线回执导入或自动重试；仅源码文档，未编译、测试或执行命令。
 2026-11-03：`outbox reconcile` 可选 `--result-output NEW_FILE`，在打开库前预检新路径，核对结束并尝试关闭后独占保存完整已验证回执；本地核对失败时同样保留并保存回执，原错误与本地未知状态不被文件结果覆盖。保存失败保留路径和完整结果，核对成功但文件失败退出 1；无完整回执时不造文件。新增 `outbox inspect-result --result-file SAVED.json`，无需令牌、项目环境或 SQLite，完整读取并核对结构/摘要后返回历史回执及来源标记。文件不是当前本地/远端状态或服务器签名，不能导入结算。见 [回执文件契约](../../docs/design/01-contracts/sync-event-receipt-file-runtime.md)；仅源码文档，未编译、测试、生成样本或执行命令。
 2026-11-03：`outbox list` 改为现有队列的只读摘要分页，默认 20/最多 50，支持 JSON status/limit/after_event_id 与包含原 scope 的 next_query；不再全量读取正文或自动建库/升级。输出 data 已从数组变为 items/has_more/next_query 分页对象，旧消费者需迁移。新增 `outbox get EVENT_ID`，完整读取并校验原身份/命令/摘要，损坏明确报错，缺记录返回 null，活跃发送可查看但不修改。主程序和嵌入入口都不需要令牌/网络，使用已有范围配置；见 [队列读取契约](../../docs/design/01-contracts/outbox-reading-runtime.md)。仅源码文档，未编译、测试、运行或打开库。
+
+2026-11-03：新增 `auditRecords(input,trace)`，严格原项目和 max_events/max_bytes/timeout_ms，在单次只读事务核验全部原身份/正文/命令摘要、事件和幂等键唯一性并对齐实际数量。默认1000行/64 MiB/30秒，超限或损坏明确未完成，保留原查询/定位/进度；不发送、改租约、确认或修复。CLI `outbox audit` 主程序与嵌入均只读已有文件；详见 [完整队列核验契约](../../docs/design/01-contracts/outbox-audit-runtime.md)。仅源码文档，未编译、类型检查、测试、执行 CLI、打开库或发布。

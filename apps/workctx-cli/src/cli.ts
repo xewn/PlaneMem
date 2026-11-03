@@ -162,6 +162,7 @@ export async function runWorkctx(
     'outbox inspect-result': 'outbox.inspect-result',
     'outbox list': 'outbox.list',
     'outbox get': 'outbox.get',
+    'outbox audit': 'outbox.audit',
     'conflicts submit': 'conflict.resolve',
     'conflicts prepare': 'conflict.command-context',
     'audit list': 'workbench.query',
@@ -255,7 +256,7 @@ export async function runWorkctx(
       stderr: JSON.stringify({
         code: 'USAGE_ERROR',
         message:
-          'Expected admin snapshot, audit, artifacts, plane-events, observed, search, index, overview, work-items, sessions, runs, tool-calls, handoffs, checkpoints, context, resume, checkpoint, handoff, sync, inbox, outbox list/get/reconcile/inspect-result, conflicts or doctor',
+          'Expected admin snapshot, audit, artifacts, plane-events, observed, search, index, overview, work-items, sessions, runs, tool-calls, handoffs, checkpoints, context, resume, checkpoint, handoff, sync, inbox, outbox list/get/audit/reconcile/inspect-result, conflicts or doctor',
         trace_id: context.trace_id,
       }),
     };

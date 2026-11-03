@@ -43,6 +43,9 @@ import {
 } from './reading.js';
 export { parseOutboxReadScope, parseOutboxListQuery } from './reading.js';
 export type { OutboxListQuery } from './reading.js';
+import { parseOutboxAuditQuery, auditOutboxRecords } from './audit.js';
+export { parseOutboxAuditQuery } from './audit.js';
+export type { OutboxAuditQuery } from './audit.js';
 export type {
   OutboxReconcileFailure,
   OutboxReceiptReader,
@@ -349,6 +352,12 @@ export class SqliteOutbox {
   listRecords(input: unknown, trace: string) {
     const query = parseOutboxListQuery(input, trace);
     return outboxReadTransaction(this.db, () => readOutboxRecords(this.db, query, trace), trace);
+  }
+
+  /** Complete original-content audit of one project; does not grant permission to retry. */
+  auditRecords(input: unknown, trace: string) {
+    const query = parseOutboxAuditQuery(input, trace);
+    return auditOutboxRecords(this.db, query, trace, checkedOriginalEvent);
   }
 
   /** Exact original lookup, including active senders; this never claims or settles an event. */

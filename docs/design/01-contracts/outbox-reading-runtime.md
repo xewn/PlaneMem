@@ -46,3 +46,5 @@ JSON 损坏报 CORRUPT_RECORD，元数据不符报 OUTBOX_RECORD_CORRUPT，缺�
 CLI list 的 data 从旧全量 LocalEvent 数组改为分页对象，顺序从 rowid 改为 event_id。旧消费者/Mock/fixture 必须显式迁移到 data.items、next_query 和单条 get；没有自动全量翻页或兼容数组回退。新 list/get 成功（包括空页/详情未找到）退出 0，错误退出 1，用法错误退出 2。
 
 读取失败尝试回滚，只回滚本次成功开启的事务；回滚失败保留原错误并标 rollback_pending。原始存储错误正文不直接透传。CLI 总会尝试关闭，已取得完整结果时关闭失败只补 close_pending，不抹去数据；读取错误与关闭错误同时发生时保留原错误和关闭标记。没有执行实际 SQLite/CLI 来证明上述行为，连接清理、锁竞争、旧库、并发成员变化、异常注入和大数据成本均仍缺运行证据。
+
+后续新增独立 [完整原记录核验](outbox-audit-runtime.md) 与本地 outbox audit，在同一只读快照核验所选项目全部记录，超限或损坏不返回部分通过；list/get 仍保留原分页/单条语义，不等同于该完整核验。仅源码文档，无运行证据。

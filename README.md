@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [发送队列完整原记录核验](docs/design/01-contracts/outbox-audit-runtime.md)，`outbox audit` 在同一只读快照中核验指定项目全部记录的原身份、正文和摘要，超限或损坏明确未完成，保留定位与进度。仅源码文档，未编译、测试、运行或发布。
+
 新增 [浏览器历史回执完整备份与恢复](docs/design/01-contracts/sync-browser-receipts-backup-runtime.md)，完整保留历史结果与原查询 trace，核验整份及逐条摘要，审阅后原子补入缺失回执；最多 256 份/32 MiB，失败保留完整文件。仅源码文档，未编译、测试、运行或发布。
 
 新增 [浏览器原查询完整备份与恢复](docs/design/01-contracts/sync-browser-originals-backup-runtime.md)，可完整备份本浏览器已保存原查询，并在审阅后原子补入缺失记录；同槽异文整批拒绝，最多 256 条/32 MiB，超限不截断。仅源码文档，未编译、测试、运行或发布。

@@ -128,6 +128,7 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   outbox enqueue                 Queue event_id, event_type, payload and saved expected_identity offline
   outbox list                    Read a metadata page from an existing queue; optional JSON status/limit/after_event_id
   outbox get EVENT_ID            Read and validate one complete original record without sending
+  outbox audit                   Audit every original in the configured project; optional JSON budgets
   outbox retry EVENT_ID          Schedule another attempt for a pending or failed event
   outbox reconcile EVENT_ID      Confirm original delivery and settle this local row
                                  Optional --result-output NEW_FILE saves the complete validated receipt
@@ -395,6 +396,7 @@ export async function main(args: string[]): Promise<number> {
       'outbox enqueue',
       'outbox list',
       'outbox get',
+      'outbox audit',
       'outbox retry',
       'outbox reconcile',
       'outbox inspect-result',
