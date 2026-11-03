@@ -341,3 +341,6 @@ T1.2 责任范围扩展至连接器公共导出、README、兼容性说明和需
 
 2026-11-03 发送队列受控档案恢复协接（ADR-015）：跨 T3.4/T4.3 新增 restoreArchive/readRestoreReceipt 与 outbox restore/restore-receipt。完整重核原档案/原查询，首次恢复要求目标项目为空且持久暂停 generation 精确匹配，预检全库事件ID/键冲突后整事务写入原内容与持久回执。sent/conflict 保留历史终态；pending/sending/failed 转为 failed、清空租约并标 OUTBOX_RESTORED_REVIEW_REQUIRED，原正文/引用字符串、身份/键/摘要/尝试/调度/trace保持；完整原档案同事务保存，保留被替换的诊断/租约历史。显式本地扩展表记录原查询/原档案、恢复时间trace及归一后摘要；同恢复ID相同原查询仅返回既有历史回执，不重灌已变化队列。只读原回执用于处理提交未知，缺失不解释为原操作失败。恢复不自动发送/resume/retry，不证明旧发送者已停止，非空合并/跨版本协调另待补。范围 Bridge outbox/CLI/README/契约/TODO/R005；只写可选本地表初始化源码，不打开数据库、不执行schema/迁移，不编译、类型检查、测试、运行CLI/服务、生成样本或发布。按任务提交推送main并带[skip ci]。
 
+
+2026-11-03 发送队列恢复历史协接（ADR-015）：T3.4/T4.3 新增 restore-history/restore-get/restore-export，只读已有库。目录按 BINARY restore_id 有界分页，仅校验元数据并明确原档案未核验；单条读取与原档案导出复用完整历史核验，原查询遗失也可按项目/ID找回。导出在读取结束及关闭尝试后独占写新文件，保留历史回执和失败路径；不改变当前队列、暂停状态或发送行为，无新 schema/依赖。仅源码文档，不编译、类型检查、测试、运行 CLI/接口、打开库、迁移或发布；任务独立提交推送 main，使用 [skip ci]。
+

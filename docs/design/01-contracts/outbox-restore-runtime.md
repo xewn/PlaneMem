@@ -60,7 +60,7 @@ Bridge 首先完整脱离并校验输入档案，核对原项目和 archive_sha2
 
 成功回执包含原 query、archive_sha256、restored_document_sha256、总数/待处理数/历史终态数、原档案观察时间/trace、本次恢复时间/trace及当时的暂停版本。observation=committed-local-restore-history，current_queue=not-checked、server_delivery=not-checked、sender_stopped=not-proven；外层 trace 是本次查询，内层 restore_trace_id 保持原调用。查询不会把当前队列或当前控制重新标成历史状态，也不读取完整原事件表进行当前审计。
 
-回执不返回完整正文或租约字符串，完整原档案留在本地扩展表中。摘要证明内部一致性，不认证来源、操作者或不可篡改历史；此扩展不是远端服务器回执或权限系统。当前还没有回执列表、原档案重新导出、清理/压缩或单条恢复来源展示。
+回执不返回完整正文或租约字符串，完整原档案留在本地扩展表中。摘要证明内部一致性，不认证来源、操作者或不可篡改历史；此扩展不是远端服务器回执或权限系统。后续已补 [恢复历史目录、按 ID 查询与原档案重新导出](outbox-restore-history-runtime.md)；目录只核对元数据，单条完整核验历史。清理/压缩及当前队列单条恢复来源关联仍缺。
 
 ## 不确定结果、关闭和预算
 

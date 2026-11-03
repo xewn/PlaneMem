@@ -959,6 +959,25 @@ requirements:
         - "Offline routing without token/environment/SQLite, argument restrictions, output traces, provenance and exits"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, sample file generation, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_outbox_restore_history_development_increment:
+      date: "2026-11-03"
+      status: "Source-only history metadata browsing, verified receipt lookup by ID and original archive re-export; R-005 remains incomplete. No build, typecheck, tests, runtime, database, migration or release execution."
+      artifacts:
+        - "apps/context-bridge/src/outbox/restore-history.ts"
+        - "apps/context-bridge/src/outbox/restore.ts"
+        - "apps/context-bridge/src/outbox/sqlite.ts"
+        - "apps/workctx-cli/src/outbox-restore-history.ts"
+        - "apps/workctx-cli/src/outbox-archive.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/outbox-restore-history-runtime.md"
+      behavior: "Read-only project-scoped BINARY ID pagination defaults to 10/max 20 with bounded metadata and one lookahead, explicitly leaving archive integrity unverified. ID selection reuses full source archive and immutable v1 normalized digest verification without requiring a lost original query. The existing original-query lookup still rejects mismatches. Export retrieves source and receipt in one transaction, preflights a new output before opening storage, closes after reading and exclusively saves/re-reads the original archive. Failures preserve receipt/query/path/digest/rollback/close details. No current queue/control mutation, network calls or new schema/dependencies."
+      evidence: []
+      pending_evidence:
+        - "Metadata bounds, malformed lookahead, duplicate IDs, paging continuity and missing versus malformed extension"
+        - "Original-query recovery, unchanged exact-query rejection, source/normalized digest mismatch and missing-record export refusal"
+        - "Exclusive file output, final-path verification, writer uncertainty, cleanup, rollback and close failures"
+        - "Full-scope archive audit, cross-project discovery, complete receipt backup, cleanup and runtime evidence remain pending"
     sync_outbox_restore_development_increment:
       date: "2026-11-03"
       status: "Source-only complete archive restore into an empty paused project with durable original receipts; R-005 remains incomplete."
@@ -973,7 +992,7 @@ requirements:
         - "apps/workctx-cli/src/cli.ts"
         - "docs/design/01-contracts/outbox-restore-runtime.md"
       behavior: "Full archive validation and exact original restore query bind scope, restore ID, source document hash, observed paused generation and reason. A new restore requires an empty target project and no event/key conflicts anywhere in that queue. One immediate transaction preserves original event content/identity/key/checksums/scheduling and terminal history, maps all nonterminal originals to failed review-required state with null leases, and stores the complete original archive/query in optional local_outbox_restore_receipts v1. After every write, all restored columns/counts, both document hashes, the full receipt and unchanged pause record are read back before commit. Exact repeated requests return historical receipts without rewriting changed rows. Read-only original receipt lookup verifies all persisted archive content and the immutable v1 mapping; missing receipt is not proof of failure. CLI explicitly names existing target storage, validates scope/files before open and retains uncertain commit/candidate/history/close details."
-      remaining_scope: "No automatic resume/retry/send, sender shutdown proof, remote reconciliation, nonempty merge, new database initialization, cross-project/unknown-column/physical backup, cancellation or batch activation. Latest controls and restore receipts remain excluded from archive v1. Per-row restore provenance, receipt listing/archive re-export/retention and runtime evidence remain pending. Existing retry is an independent explicit action; restored failed state is not a remote failure conclusion."
+      remaining_scope: "No automatic resume/retry/send, sender shutdown proof, remote reconciliation, nonempty merge, new database initialization, cross-project/unknown-column/physical backup, cancellation or batch activation. Latest controls and restore receipts remain excluded from archive v1. Receipt listing and original archive re-export are covered by the subsequent restore-history increment. Per-row restore provenance, retention and runtime evidence remain pending. Existing retry is an independent explicit action; restored failed state is not a remote failure conclusion."
       pending_evidence:
         - "Every original status, held mapping, raw text/identity/trace/attempt/schedule/checksum preservation and old lease rejection"
         - "Empty/nonempty targets, paused generation races, cross-project key/ID collisions, optional extension initialization and zero-record restore"

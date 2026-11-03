@@ -117,7 +117,11 @@ function envelope(saved: OutboxArchiveFile, trace: string, extra: Record<string,
     data: { ...outboxArchiveSummary(saved, trace), ...extra },
   };
 }
-async function saveArchive(saved: OutboxArchiveFile, output: ArtifactOutput, trace: string) {
+export async function saveOutboxArchiveFile(
+  saved: OutboxArchiveFile,
+  output: ArtifactOutput,
+  trace: string,
+) {
   const file = verifyOutboxArchive(saved, trace);
   const bytes = new TextEncoder().encode(syncJsonSnapshot(file, OUTBOX_ARCHIVE_FILE_BYTES));
   const file_sha256 = hash(bytes);
@@ -278,7 +282,7 @@ export async function runOutboxArchiveArguments(
   }
   // No file is created until the complete read transaction and attempted database close finish.
   try {
-    const local = await saveArchive(archive, output, trace);
+    const local = await saveOutboxArchiveFile(archive, output, trace);
     return envelope(archive, trace, { outbox: path, local, close_pending });
   } catch (error) {
     throw fail(

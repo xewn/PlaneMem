@@ -1,5 +1,7 @@
 # Context Bridge 本地同步存储
 
+新增 `listRestoreReceipts/readRestoreRecord/readRestoreArchive`，只读浏览项目恢复元数据、按 ID 核验完整历史并取回原档案。列表默认10/最多20条，明确正文未核验；单条复用原档案与不可变恢复映射摘要校验，不依赖调用方保存原查询。见 [恢复历史](../../docs/design/01-contracts/outbox-restore-history-runtime.md)。无 schema/依赖变化，仅源码文档，未编译、测试或执行数据库。
+
 新增 `readBuiltInApplicationPendingPages`，在同一只读事务核对应用与接收检查点，列出紧随应用头的连续原页，返回首待处理页的 `next_apply_query`。默认20/最多50页并完整核验前瞻页，64 MiB原页预算、512 KiB完整响应，不执行 reducer。见 [待应用原页发现](../../docs/design/01-contracts/sync-application-pending-runtime.md)。仅源码文档，未运行、编译或测试。
 
 新增 `previewBuiltInApplicationPage`，复用 apply 的原页/前驱/事件/投影校验与归约，在单次读事务中返回 current_state 和独立 planned_application。已应用页只核验历史、返回当前状态；完整响应上限 3 MiB，不创建步骤或回执。见 [原页应用预览](../../docs/design/01-contracts/sync-application-apply-preview-runtime.md)。仅源码文档，未运行、编译或测试。

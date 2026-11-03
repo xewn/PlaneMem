@@ -50,6 +50,10 @@ import { isOutboxReadCommand, runOutboxReadArguments } from './outbox-read.js';
 import { isOutboxArchiveCommand, runOutboxArchiveArguments } from './outbox-archive.js';
 import { isOutboxControlCommand, runOutboxControlArguments } from './outbox-control.js';
 import { isOutboxRestoreCommand, runOutboxRestoreArguments } from './outbox-restore.js';
+import {
+  isOutboxRestoreHistoryCommand,
+  runOutboxRestoreHistoryArguments,
+} from './outbox-restore-history.js';
 import { callConflictSubmission } from './conflict-submission.js';
 import { callConflictPreparation } from './conflict-preparation.js';
 import { callConflictReceiptArguments } from './conflict-receipt.js';
@@ -139,6 +143,9 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   outbox resume                  Resume new claims with the observed generation and reason; does not flush
   outbox restore                 Restore --archive-file into an empty paused --outbox; requires original JSON query
   outbox restore-receipt         Read the saved local restore receipt using --outbox and original JSON query
+  outbox restore-history         Browse restore metadata using explicit --outbox; optional limit/after_restore_id JSON
+  outbox restore-get ID          Read the verified original restore receipt using explicit --outbox
+  outbox restore-export ID       Save its verified original archive using --outbox and --output NEW_FILE
   outbox retry EVENT_ID          Schedule another attempt for a pending or failed event
   outbox reconcile EVENT_ID      Confirm original delivery and settle this local row
                                  Optional --result-output NEW_FILE saves the complete validated receipt
@@ -414,6 +421,9 @@ export async function main(args: string[]): Promise<number> {
       'outbox resume',
       'outbox restore',
       'outbox restore-receipt',
+      'outbox restore-history',
+      'outbox restore-get',
+      'outbox restore-export',
       'outbox retry',
       'outbox reconcile',
       'outbox inspect-result',
@@ -508,7 +518,13 @@ export async function main(args: string[]): Promise<number> {
     ];
     if (
       !known.includes(name) ||
-      (['outbox retry', 'outbox reconcile', 'outbox get'].includes(name)
+      ([
+        'outbox retry',
+        'outbox reconcile',
+        'outbox get',
+        'outbox restore-get',
+        'outbox restore-export',
+      ].includes(name)
         ? positionals.length !== 3
         : positionals.length > 2)
     )
@@ -523,6 +539,20 @@ export async function main(args: string[]): Promise<number> {
       usage('--receipt-output is only for application-restore-receipt-get');
     if (isInboxApplicationArchiveCommand(name)) {
       print(await runInboxApplicationArchiveArguments(args, trace));
+      return 0;
+    }
+    if (isOutboxRestoreHistoryCommand(name)) {
+      print(
+        await runOutboxRestoreHistoryArguments(
+          args,
+          {
+            tenant_id: envId('WORKCTX_TENANT_ID'),
+            workspace_id: envId('WORKCTX_WORKSPACE_ID'),
+            project_id: envId('WORKCTX_PROJECT_ID'),
+          },
+          trace,
+        ),
+      );
       return 0;
     }
     if (isOutboxRestoreCommand(name)) {

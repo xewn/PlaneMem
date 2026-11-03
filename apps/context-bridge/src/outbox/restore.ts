@@ -158,7 +158,7 @@ function unconfirmedReceipt(receipt: OutboxRestoreReceipt | null) {
 }
 
 /** Optional extension. Only an actual restore initializes it, inside the restoring transaction. */
-function receiptTable(db: DatabaseSync, trace: string): boolean {
+export function outboxRestoreReceiptTable(db: DatabaseSync, trace: string): boolean {
   const entries = db
     .prepare('SELECT type FROM main.sqlite_schema WHERE name = ? COLLATE NOCASE')
     .all(TABLE);
@@ -196,12 +196,12 @@ function receiptTable(db: DatabaseSync, trace: string): boolean {
     );
   return true;
 }
-function readReceipt(
+export function outboxRestoreStoredRecord(
   db: DatabaseSync,
-  query: OutboxRestoreQuery,
+  query: { scope: OutboxScope; restore_id: string },
   trace: string,
   present: boolean,
-): OutboxRestoreReceipt | null {
+): { receipt: OutboxRestoreReceipt; source: OutboxArchiveFile } | null {
   if (!present) return null;
   const fields: [string, number][] = [
     ['query_json', QUERY_BYTES],
@@ -226,6 +226,7 @@ function readReceipt(
   const row = rows[0]!;
   let savedQuery: OutboxRestoreQuery;
   let receipt: OutboxRestoreReceipt;
+  let source: OutboxArchiveFile;
   try {
     if (
       rows.length !== 1 ||
@@ -241,7 +242,7 @@ function readReceipt(
     savedQuery = parseOutboxRestoreQuery(JSON.parse(row.query_json), trace);
     if (savedQuery.restore_id !== query.restore_id || !sameScope(savedQuery.scope, query.scope))
       throw new TypeError();
-    const source = verifyOutboxArchive(JSON.parse(row.archive_json), trace);
+    source = verifyOutboxArchive(JSON.parse(row.archive_json), trace);
     if (
       !sameScope(source.document.scope, savedQuery.scope) ||
       source.document_sha256 !== savedQuery.archive_sha256
@@ -260,13 +261,23 @@ function readReceipt(
         : {},
     );
   }
-  if (syncJsonSnapshot(savedQuery, QUERY_BYTES) !== syncJsonSnapshot(query, QUERY_BYTES))
+  return { receipt, source };
+}
+function readReceipt(
+  db: DatabaseSync,
+  query: OutboxRestoreQuery,
+  trace: string,
+  present: boolean,
+): OutboxRestoreReceipt | null {
+  const stored = outboxRestoreStoredRecord(db, query, trace, present);
+  if (!stored) return null;
+  if (syncJsonSnapshot(stored.receipt.query, QUERY_BYTES) !== syncJsonSnapshot(query, QUERY_BYTES))
     throw fail(
       'OUTBOX_RESTORE_ID_REUSED',
       'This restore ID belongs to another original restore request; preserve the original request',
       trace,
     );
-  return receipt;
+  return stored.receipt;
 }
 
 /** Historical receipt lookup never checks or changes the present rows/control. */
@@ -278,7 +289,7 @@ export function readOutboxRestoreReceipt(db: DatabaseSync, input: unknown, trace
       db,
       () => {
         check();
-        const receipt = readReceipt(db, query, trace, receiptTable(db, trace));
+        const receipt = readReceipt(db, query, trace, outboxRestoreReceiptTable(db, trace));
         check();
         return {
           scope: query.scope,
@@ -345,7 +356,7 @@ export function restoreOutboxArchive(
       (sql) => db.exec(sql),
       () => {
         check();
-        const present = receiptTable(db, trace);
+        const present = outboxRestoreReceiptTable(db, trace);
         const recorded = readReceipt(db, query, trace, present);
         historical_receipt = recorded;
         check();

@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [发送队列恢复历史与原档案找回](docs/design/01-contracts/outbox-restore-history-runtime.md)，可分页浏览恢复记录、按 ID 找回完整原查询/回执，并重新导出保存的原档案。目录只核对元数据，单条查看和导出完整核验历史。仅源码文档，未编译、测试、运行或发布。
+
 新增 [发送队列档案受控恢复](docs/design/01-contracts/outbox-restore-runtime.md)，`outbox restore` 将完整原档案恢复到已暂停的空项目，未完成记录先保留为待人工处理；原档案与恢复回执同事务保存，`outbox restore-receipt` 可查询原结果，重复请求不重灌已变化的队列。仅源码文档，未编译、测试、运行或发布。
 
 新增 [发送队列持久暂停与恢复发送](docs/design/01-contracts/outbox-send-control-runtime.md)，`outbox send-control/pause/resume` 按项目保存控制状态，以原版本标识防止并发覆盖；发送领取每次读取暂停状态，已有在途请求仍可完成。仅源码文档，未编译、测试、运行或发布。

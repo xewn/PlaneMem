@@ -60,6 +60,13 @@ export type { OutboxListQuery } from './reading.js';
 import { parseOutboxAuditQuery, auditOutboxRecords } from './audit.js';
 import { readOutboxSendControl, changeOutboxSendControl, outboxClaimGuard } from './control.js';
 import { restoreOutboxArchive, readOutboxRestoreReceipt } from './restore.js';
+import {
+  listOutboxRestoreReceipts,
+  readOutboxRestoreRecord,
+  readOutboxRestoreArchive,
+} from './restore-history.js';
+export { parseOutboxRestoreSelection, parseOutboxRestoreHistoryQuery } from './restore-history.js';
+export type { OutboxRestoreSelection, OutboxRestoreHistoryQuery } from './restore-history.js';
 export { parseOutboxRestoreQuery } from './restore.js';
 export type { OutboxRestoreQuery, OutboxRestoreReceipt } from './restore.js';
 export { parseOutboxSendControlChange } from './control.js';
@@ -396,6 +403,18 @@ export class SqliteOutbox {
 
   readRestoreReceipt(query: unknown, trace: string) {
     return readOutboxRestoreReceipt(this.db, query, trace);
+  }
+
+  listRestoreReceipts(query: unknown, trace: string) {
+    return listOutboxRestoreReceipts(this.db, query, trace);
+  }
+
+  readRestoreRecord(query: unknown, trace: string) {
+    return readOutboxRestoreRecord(this.db, query, trace);
+  }
+
+  readRestoreArchive(query: unknown, trace: string) {
+    return readOutboxRestoreArchive(this.db, query, trace);
   }
 
   /** Collect only the fully audited snapshot; file publication is the caller's explicit action. */
