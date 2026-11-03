@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [队列备份只读比较](docs/design/01-contracts/proposal-queue-backup-runtime.md#与现有队列只读比较)：完整比较备份与现有队列，区分任务缺失、状态变化、原请求冲突及目标独有项，并核对生成关联；关闭目标后输出差异摘要。仅源码文档，未编译、测试、运行或发布。
+
 新增 [队列快照补存](docs/design/01-contracts/proposal-queue-backup-runtime.md#已保留快照补存)：完整备份或保存失败记录可先预览，再补存至新文件，保持原时间、摘要和全部任务状态；再次失败保留完整快照。仅源码文档，未编译、测试、运行或发布。
 
 新增 [提交队列完整快照](docs/design/01-contracts/proposal-queue-backup-runtime.md)：只读导出全部任务、未知状态、租约和生成关联，保留原绑定并核验摘要；提供离线文件核验，超限或损坏拒绝整份导出。尚未接入队列恢复。仅源码文档，未编译、测试、运行或发布。

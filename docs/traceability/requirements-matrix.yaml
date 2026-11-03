@@ -3452,6 +3452,23 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_queue_backup_comparison_development_increment:
+      date: "2026-11-04"
+      status: "Source-only complete backup versus existing queue comparison; R-009 remains incomplete."
+      artifacts:
+        - "workers/intelligence/src/proposal-queue-backup-comparison.ts"
+        - "workers/intelligence/src/main.ts"
+        - "workers/intelligence/src/index.ts"
+        - "docs/design/01-contracts/proposal-queue-backup-runtime.md"
+      behavior: "queue-backup-compare validates the complete backup and original binding before opening an existing native-readonly queue. The complete bounded snapshot is read and closed before metadata differences are reported. Dual job-id/request-key matching distinguishes identical, missing, changed and original-request conflicts, with independent current-only inventory. Every generation association and optional-table presence is compared, including parent job state. Raw bodies, keys, receipts and lease tokens are not printed. Snapshot capture times do not imply causality; equality excludes capture time but includes every logical field. The public pure comparator revalidates both complete snapshots. No restore, write, lease recovery, receipt query or resend occurs."
+      evidence: []
+      pending_evidence:
+        - "Pre-open original binding checks, native-readonly complete bounded snapshot and close-before-report behavior"
+        - "Same-id/key conflicts, crossed key ownership, missing and target-only inventories, all 14 job fields"
+        - "Association linkage, raw record/time differences, missing/empty optional tables and equal contents with different capture times"
+        - "Metadata-only complete output, CLI option isolation, no mutation or remote access"
+      remaining_scope: "Queue backup import and database recovery, automatic backup/retention, large-queue volumes, joint journal archival and runtime evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/SQL/database execution or release; no schema or dependency changes."
     proposal_queue_backup_recovery_development_increment:
       date: "2026-11-04"
       status: "Source-only retained complete queue snapshot file recovery and preview; R-009 remains incomplete."
@@ -3467,7 +3484,7 @@ requirements:
         - "Preserved capture time, raw payloads/receipts, original binding, hashes, leases, uncertainty and generation associations"
         - "Read-only preview, same-path/collision rejection, publication/readback failures and retained complete content"
         - "CLI option isolation, inert historical paths, no queue access or remote actions"
-      remaining_scope: "Queue backup import/comparison and database recovery, automatic backup/retention, large-queue volumes, joint journal archival and runtime evidence."
+      remaining_scope: "Queue backup import and database recovery, automatic backup/retention, large-queue volumes, joint journal archival and runtime evidence. Read-only comparison is implemented by the separate source-only increment above."
       execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/SQL/database execution or release; no schema or dependency changes."
     proposal_queue_backup_development_increment:
       date: "2026-11-04"
@@ -3485,7 +3502,7 @@ requirements:
         - "Every job state, original raw payload/hash, lease/uncertainty preservation, generation linkage and corruption rejection"
         - "Strict offline shape/order/identity/inner-outer hashes, file bounds, output collision and failure retention"
         - "CLI option isolation, native readonly open/close and no generation, claim, retry, restore or send"
-      remaining_scope: "Backup import/comparison and queue recovery, automatic backup/retention, large-queue volumes, joint journal archival and runtime evidence. Retained-error file recovery is implemented by the separate source-only increment above."
+      remaining_scope: "Backup import and queue recovery, automatic backup/retention, large-queue volumes, joint journal archival and runtime evidence. Retained-error file recovery and read-only comparison are implemented by the separate source-only increments above."
       execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/SQL/database execution or release; no schema or dependency changes."
     proposal_review_history_selection_cleanup_development_increment:
       date: "2026-11-04"

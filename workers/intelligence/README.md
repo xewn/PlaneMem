@@ -6,6 +6,8 @@
 
 ## 配置与命令
 
+新增 [队列备份只读比较](../../docs/design/01-contracts/proposal-queue-backup-runtime.md#与现有队列只读比较)：`queue-backup-compare --queue EXISTING.sqlite --binding binding.json --file BACKUP.json` 打开目标前核对备份原绑定，再读取有界完整只读快照，关闭后显示全部差异摘要。按任务编号与原请求键同时核对一致/缺失/变化/冲突，列出目标独有任务、生成关联及可选表存在差异；不输出正文、回执或租约令牌，不重发或恢复数据库。退出码0表示比较完成，差异另见报告，双方各100任务/100关联/32 MiB限制。
+
 新增 [队列快照补存](../../docs/design/01-contracts/proposal-queue-backup-runtime.md#已保留快照补存)：`queue-backup-recover --file RETAINED_BACKUP_OR_ERROR.json --output NEW_BACKUP.json [--preview]` 完整核验备份或原导出/补存失败JSON，保留原捕获时间、摘要、绑定及任务/租约/生成关联。preview只检查文件及新目标，正式执行独占保存新文件，再次失败保留相同完整backup；旧输出/临时路径不访问，不打开队列或重发任务。输入最多32 MiB+128 KiB，无需凭据，队列数据库恢复仍待开发。
 
 新增 [提交队列完整快照](../../docs/design/01-contracts/proposal-queue-backup-runtime.md)：`queue-backup --queue EXISTING.sqlite --binding binding.json --output NEW_BACKUP.json` 在同一原生只读快照中保留全部已知任务字段及可选生成关联，最多100任务/100关联、32 MiB，超限/损坏/未知结构拒绝整份导出。原sending租约、uncertain和原请求保持不变，关闭队列后独占保存新文件；关闭/保存失败保留已取得完整backup。`inspect-queue-backup --file BACKUP.json` 离线完整校验后只显示数量/状态/摘要，不打开队列或联网，不需要令牌；没有自动恢复/重发，备份导入与未知发送恢复策略尚未实现。

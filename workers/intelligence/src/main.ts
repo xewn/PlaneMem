@@ -1,5 +1,5 @@
 import { open } from 'node:fs/promises';
-import { parseArgs } from 'node:util';
+import { isDeepStrictEqual, parseArgs } from 'node:util';
 import {
   ContractError,
   isUlid,
@@ -13,7 +13,11 @@ import {
   ProposalQueueReceiptError,
   type ProposalQueueReceiptResult,
 } from './proposal-reconciliation.js';
-import { SqliteProposalQueue, type ProposalQueueBinding } from './submission.js';
+import {
+  SqliteProposalQueue,
+  normalizeQueueBinding,
+  type ProposalQueueBinding,
+} from './submission.js';
 import {
   createProposalQueueReceiptRecord,
   proposalQueueReceiptRecordSummary,
@@ -24,6 +28,7 @@ import {
 } from './proposal-receipt-record.js';
 import { readProposalReceiptRecordRecovery } from './proposal-receipt-recovery.js';
 import { readProposalQueueBackupRecovery } from './proposal-queue-backup-recovery.js';
+import { compareProposalQueueBackups } from './proposal-queue-backup-comparison.js';
 import {
   proposalQueueBackupSummary,
   readProposalQueueBackup,
@@ -86,6 +91,7 @@ const help = `Proposal submission queue (Node.js 24)
   proposal-worker queue-backup --queue EXISTING.sqlite --binding binding.json --output NEW_BACKUP.json
   proposal-worker inspect-queue-backup --file BACKUP.json
   proposal-worker queue-backup-recover --file RETAINED_BACKUP_OR_ERROR.json --output NEW_BACKUP.json [--preview]
+  proposal-worker queue-backup-compare --queue EXISTING.sqlite --binding binding.json --file BACKUP.json
   proposal-worker retry   --queue queue.sqlite --binding binding.json --id JOB_ID
   proposal-worker receipt --queue EXISTING.sqlite --binding binding.json --id JOB_ID [--timeout-ms 30000] [--output NEW_RECEIPT.json]
   proposal-worker reconcile --queue EXISTING.sqlite --binding binding.json --id JOB_ID [--timeout-ms 30000] [--output NEW_RECEIPT.json]
@@ -97,6 +103,7 @@ binding.json contains gateway_url, tenant_id, workspace_id, project_id, actor_id
 list/get open an existing initialized queue read-only; missing files are never created.
 queue-backup saves a complete known-v1 logical snapshot after read-only queue close; inspect-queue-backup validates it offline. Neither restores, retries or sends tasks.
 queue-backup-recover saves a retained complete snapshot to a new file; --preview only inspects input and destination. Neither mode opens or restores a queue.
+queue-backup-compare compares a complete backup with a read-only existing queue snapshot, then closes before reporting metadata differences. It never restores or sends; exit 0 also permits differences.
 generate calls the configured model once using PROPOSAL_GENERATION_API_KEY; it saves a new draft, without opening a queue.
 generate-prepared uses the same single call and saves the complete record; it does not refresh sources.
 inspect-generation verifies record consistency offline; enqueue-generated requires the original destination binding.
@@ -166,6 +173,7 @@ export async function main(args: string[]): Promise<number> {
       'queue-backup': ['output'],
       'inspect-queue-backup': ['file'],
       'queue-backup-recover': ['file', 'output', 'preview'],
+      'queue-backup-compare': ['file'],
       retry: ['id'],
       receipt: ['id', 'timeout-ms', 'output'],
       reconcile: ['id', 'timeout-ms', 'output'],
@@ -217,6 +225,28 @@ export async function main(args: string[]): Promise<number> {
     if (command === 'inspect-queue-backup') {
       const backup = await readProposalQueueBackup(required('file'));
       process.stdout.write(JSON.stringify(proposalQueueBackupSummary(backup), null, 2) + '\n');
+      return 0;
+    }
+    if (command === 'queue-backup-compare') {
+      const path = required('queue');
+      const backup = await readProposalQueueBackup(required('file'));
+      const binding = normalizeQueueBinding(
+        (await readJson(required('binding'), 16_384)) as ProposalQueueBinding,
+      );
+      if (!isDeepStrictEqual(binding, backup.binding))
+        throw new ContractError(
+          'PROPOSAL_QUEUE_BINDING_MISMATCH',
+          'Keep the original backup gateway, project and identity when comparing a queue',
+        );
+      queue = new SqliteProposalQueue(path, binding, { readonly: true, existing: true });
+      const current = queue.backup();
+      const reader = queue;
+      queue = undefined;
+      reader.close();
+      const comparison = compareProposalQueueBackups(backup, current);
+      process.stdout.write(
+        JSON.stringify({ ...comparison, close_state: 'closed' }, null, 2) + '\n',
+      );
       return 0;
     }
     if (command === 'queue-backup-recover') {
