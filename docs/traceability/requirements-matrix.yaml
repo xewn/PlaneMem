@@ -3452,6 +3452,27 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_creation_original_selection_cleanup_development_increment:
+      date: "2026-11-04"
+      status: "Source-only selected original-submission inspection, recoverable subset export and atomic confirmed browser-copy removal; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/original-store.ts"
+        - "apps/web-console/src/app/proposals/recover/saved-originals.tsx"
+        - "apps/web-console/src/app/proposals/recover/loader.tsx"
+        - "apps/web-console/src/app/proposals/recover/backup-panel.tsx"
+        - "apps/web-console/src/app/proposals/recover/page.tsx"
+        - "apps/web-console/src/app/proposals/saved-copy-cleanup.ts"
+        - "apps/web-console/src/app/proposals/saved-copy-cleanup-panel.tsx"
+        - "docs/design/01-contracts/proposal-runtime.md"
+      behavior: "Stable mapping of current-page metadata selects 1-20 original submissions. Metadata alone is not full-content evidence: one read transaction verifies selected summaries, complete canonical originals, keys and byte counts before existing-format subset export. Revalidate binding/digest and preflight all targets before atomic exact-pair deletion and complete absence readback; changed/damaged pairs reject the batch and missing pairs are separate. No full collection scan; preserve 1 MiB per original and 16 MiB document limits. Parent lock covers discovery, backups and cleanup; mutation epochs invalidate directory selection and digest-bound backup confirmations. Unknown outcomes retain exportable originals and require fresh discovery/inspection. Old sessionStorage copies are not read or deleted by cleanup; restoration retains legacy-conflict checks. No proposal submission/query/cancellation, draft or review/history mutation."
+      evidence: []
+      pending_evidence:
+        - "Metadata-only directory versus full selection validation, stable rerenders, changed byte counts, duplicate keys and collections above 100"
+        - "Existing fixed-v1 subset encoding, digest confirmation, size budgets, legacy conflict on restoration and no legacy access during removal"
+        - "All-target atomic preflight/absence readback, half pairs, missing database and unknown-outcome retention"
+        - "Shared directory/backup/cleanup lock, refresh failure, epoch invalidation, unmount cancellation and unchanged other stores"
+      remaining_scope: "Automatic/capacity cleanup, retention, cross-scope management, damaged-slot recovery and runtime/compatibility evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, product/browser/database execution or release. Existing v1 store and backup format reused; no schema or dependency changes."
     proposal_review_original_selection_cleanup_development_increment:
       date: "2026-11-04"
       status: "Source-only selected original-review inspection, recoverable subset export and atomic confirmed removal; R-009 remains incomplete."

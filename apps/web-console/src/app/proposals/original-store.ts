@@ -6,6 +6,10 @@ import {
   parseProposalBackupDocument,
   PROPOSAL_BACKUP_MAX_ENTRIES,
   PROPOSAL_BACKUP_DOCUMENT_BYTES,
+  PROPOSAL_BACKUP_FILE_BYTES,
+  parseProposalBackupFile,
+  proposalBackupDocumentJson,
+  proposalBackupFileJson,
   type ProposalBackupDocument,
 } from './backup-model';
 import {
@@ -19,13 +23,14 @@ import {
   type ProposalOriginal,
   type ProposalSubmissionBinding,
 } from './original-model';
+import { createSavedCopyCleanup } from './saved-copy-cleanup';
 
 const database = { databaseName: 'planemem-proposal-originals', contentStore: 'originals' };
 const keyBytes = 16 * 1024;
 const metadataBytes = 4 * 1024;
 const pageSize = 20;
 
-interface OriginalMetadata {
+export interface OriginalMetadata {
   schema_version: 1;
   request_key: string;
   title: string;
@@ -140,6 +145,44 @@ function readOriginal(
     throw unavailable();
   return original;
 }
+
+/** Selected IndexedDB copies only; old tab slots are neither read nor changed here. */
+export const proposalOriginalCleanup = createSavedCopyCleanup<
+  ProposalOriginal,
+  OriginalMetadata,
+  ProposalBackupDocument
+>({
+  layout: database,
+  kind: 'proposal-originals-backup',
+  documentBytes: PROPOSAL_BACKUP_DOCUMENT_BYTES,
+  fileBytes: PROPOSAL_BACKUP_FILE_BYTES,
+  key: (binding, requestKey) =>
+    checkedKey(proposalOriginalStorageKey(binding, requestKey), binding),
+  pair: (raw, index, binding, slot) => readOriginal(raw, index, slot, binding),
+  encode: encodeProposalOriginal,
+  summary: (original) => metadata(original, encodeProposalOriginal(original)),
+  readBudget: () => {
+    let totalBytes = 0;
+    return (raw, index) => {
+      if (
+        typeof raw !== 'string' ||
+        raw.length > PROPOSAL_ORIGINAL_BYTES ||
+        typeof index !== 'string' ||
+        index.length > metadataBytes ||
+        bytes(index) > metadataBytes
+      )
+        throw unavailable();
+      const size = bytes(raw);
+      if (size > PROPOSAL_ORIGINAL_BYTES) throw unavailable();
+      totalBytes += size;
+      if (totalBytes > PROPOSAL_BACKUP_DOCUMENT_BYTES) throw unavailable();
+    };
+  },
+  parseDocument: parseProposalBackupDocument,
+  documentJson: proposalBackupDocumentJson,
+  parseFile: parseProposalBackupFile,
+  fileJson: proposalBackupFileJson,
+});
 
 /** Reading an old exact slot never migrates, overwrites or deletes it. */
 export function loadLegacyProposalOriginal(binding: ProposalSubmissionBinding, requestKey: string) {

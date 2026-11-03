@@ -14,21 +14,33 @@ import {
 export function ProposalBackupPanel({
   binding,
   disabled,
+  storageEpoch,
   begin,
   end,
+  onStorageChange,
 }: {
   binding: ProposalSubmissionBinding;
   disabled: boolean;
+  storageEpoch: number;
   begin: () => boolean;
   end: () => void;
+  onStorageChange: () => void;
 }) {
   const [reviewed, setReviewed] = useState<ReviewedProposalBackup>();
-  const [comparison, setComparison] = useState<ProposalBackupComparison>();
-  const [confirmed, setConfirmed] = useState(false);
+  const [comparison, setComparison] = useState<{
+    digest: string;
+    epoch: number;
+    value: ProposalBackupComparison;
+  }>();
+  const [confirmed, setConfirmed] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(
     'A backup contains complete request content for this gateway and identity. It does not contain submission receipts or old tab-only copies.',
   );
+  useEffect(() => {
+    setComparison(undefined);
+    setConfirmed(null);
+  }, [storageEpoch]);
   const operation = useRef<AbortController | undefined>(undefined);
   useEffect(
     () => () => {
@@ -45,13 +57,21 @@ export function ProposalBackupPanel({
     if (disabled || operation.current) return;
     if (action === 'load' && !source) return;
     if ((action === 'compare' || action === 'restore') && !reviewed) return;
-    if (action === 'restore' && (!confirmed || !comparison?.can_restore || comparison.total === 0))
+    if (
+      action === 'restore' &&
+      (!comparison ||
+        comparison.epoch !== storageEpoch ||
+        comparison.digest !== reviewed?.file.document_sha256 ||
+        confirmed !== comparison.digest ||
+        !comparison.value.can_restore ||
+        comparison.value.total === 0)
+    )
       return;
     if (!begin()) return;
     const controller = new AbortController();
     operation.current = controller;
     setBusy(true);
-    setConfirmed(false);
+    setConfirmed(null);
     setComparison(undefined);
     setMessage(
       action === 'restore'
@@ -75,13 +95,18 @@ export function ProposalBackupPanel({
         const result = await previewProposalBackup(reviewed!.raw, binding, controller.signal);
         if (operation.current !== controller) return;
         setReviewed(result);
-        setComparison(result.comparison);
+        setComparison({
+          digest: result.file.document_sha256,
+          epoch: storageEpoch,
+          value: result.comparison,
+        });
         setMessage(
           result.comparison.can_restore
             ? 'Comparison complete. Only missing copies will be added after confirmation. The target is checked again during import.'
             : 'Different or unreadable existing copies block the entire import. Keep both sources; nothing was replaced.',
         );
       } else {
+        onStorageChange();
         const result = await restoreProposalBackup(
           reviewed!.raw,
           binding,
@@ -109,7 +134,7 @@ export function ProposalBackupPanel({
     }
   }
   function download() {
-    if (!reviewed || disabled || operation.current) return;
+    if (!reviewed || disabled || operation.current || !begin()) return;
     let url: string | undefined;
     try {
       url = URL.createObjectURL(new Blob([reviewed.raw], { type: 'application/json' }));
@@ -126,6 +151,8 @@ export function ProposalBackupPanel({
         'Backup download requested. Check that the complete file was saved, and keep it with the same care as its most sensitive request.',
       );
     } catch {
+      setComparison(undefined);
+      setConfirmed(null);
       setMessage(
         'The backup download could not be started. The retained backup remains available on this page.',
       );
@@ -134,9 +161,17 @@ export function ProposalBackupPanel({
         const savedUrl = url;
         setTimeout(() => URL.revokeObjectURL(savedUrl), 1000);
       }
+      end();
     }
   }
   const locked = disabled || busy;
+  const matching =
+    reviewed &&
+    comparison &&
+    comparison.epoch === storageEpoch &&
+    comparison.digest === reviewed.file.document_sha256
+      ? comparison.value
+      : undefined;
   return (
     <details className="side-detail">
       <summary>Back up or restore saved requests</summary>
@@ -145,6 +180,10 @@ export function ProposalBackupPanel({
           Back up every saved browser request for this gateway, project, account and client. The
           limit is 100 requests and a 16 MiB document; larger collections fail without producing a
           partial backup. Save old tab-only copies separately first.
+        </p>
+        <p>
+          Files exported from selected requests contain only that subset. Comparison and restoration
+          cover the listed requests and still check old tab copies for conflicts.
         </p>
         <button
           type="button"
@@ -210,37 +249,40 @@ export function ProposalBackupPanel({
             </div>
           </>
         )}
-        {comparison && (
+        {matching && (
           <>
             <p>
-              {comparison.missing} missing · {comparison.same} identical · {comparison.different}{' '}
-              different · {comparison.blocked} unreadable or blocked
+              {matching.missing} missing · {matching.same} identical · {matching.different}{' '}
+              different · {matching.blocked} unreadable or blocked
             </p>
             <details>
               <summary>Review comparison for every request</summary>
               <ul>
-                {comparison.entries.map((entry) => (
+                {matching.entries.map((entry) => (
                   <li key={entry.request_key}>
                     {entry.title} · <code>{entry.request_key}</code> · {entry.state}
                   </li>
                 ))}
               </ul>
             </details>
-            {comparison.can_restore && comparison.total > 0 && (
+            {matching.can_restore && matching.total > 0 && (
               <>
                 <label className="context-archive-confirm">
                   <input
                     type="checkbox"
-                    checked={confirmed}
+                    checked={confirmed === reviewed?.file.document_sha256}
                     disabled={locked}
-                    onChange={(event) => setConfirmed(event.target.checked)}
+                    onChange={(event) => {
+                      if (!operation.current)
+                        setConfirmed(event.target.checked ? reviewed!.file.document_sha256 : null);
+                    }}
                   />
                   I reviewed this backup and comparison. Add only its missing local copies.
                 </label>
                 <button
                   type="button"
                   className="primary-button"
-                  disabled={locked || !confirmed}
+                  disabled={locked || confirmed !== reviewed?.file.document_sha256}
                   onClick={() => void run('restore')}
                 >
                   Restore missing browser copies

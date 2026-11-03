@@ -27,7 +27,11 @@ export default async function ProposalRecoveryPage() {
       <div className="page-heading">
         <div>
           <h1>Recover an original proposal submission</h1>
-          <p>Read your current identity, then load the original request for an explicit retry.</p>
+          <p>
+            Load the complete original request to check its result or explicitly retry. You can also
+            inspect, export and remove selected saved browser copies together. Removing copies does
+            not cancel a proposal and keeps old tab copies.
+          </p>
         </div>
       </div>
       {content}

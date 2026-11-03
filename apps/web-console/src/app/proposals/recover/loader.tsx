@@ -25,6 +25,7 @@ export function ProposalRecoveryLoader({ binding }: { binding: ProposalSubmissio
     'Find a saved browser request, read an old tab copy, or import a complete file. Loading does not save, replace or send a request.',
   );
   const [busy, setBusy] = useState(false);
+  const [storageEpoch, setStorageEpoch] = useState(0);
   const active = useRef(false);
   const mounted = useRef(false);
   const loaded = useRef(false);
@@ -38,6 +39,13 @@ export function ProposalRecoveryLoader({ binding }: { binding: ProposalSubmissio
   const endBackup = useCallback(() => {
     active.current = false;
     if (mounted.current) setBusy(false);
+  }, []);
+  const storageChanged = useCallback(() => {
+    if (!mounted.current) return;
+    setStorageEpoch((value) => value + 1);
+    setMessage(
+      'Saved browser requests may have changed. Find saved requests again and compare any backup again before restoring. Retained copies remain available for export.',
+    );
   }, []);
   useEffect(() => {
     mounted.current = true;
@@ -121,14 +129,20 @@ export function ProposalRecoveryLoader({ binding }: { binding: ProposalSubmissio
         key={JSON.stringify(binding)}
         binding={binding}
         disabled={busy}
+        storageEpoch={storageEpoch}
+        begin={beginBackup}
+        end={endBackup}
+        onStorageChange={storageChanged}
         onSelect={(entry) => void loadStored('browser', entry)}
       />
       <ProposalBackupPanel
         key={'backup:' + JSON.stringify(binding)}
         binding={binding}
         disabled={busy}
+        storageEpoch={storageEpoch}
         begin={beginBackup}
         end={endBackup}
+        onStorageChange={storageChanged}
       />
       <label>
         Original request key
