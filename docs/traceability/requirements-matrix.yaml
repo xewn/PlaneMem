@@ -959,6 +959,25 @@ requirements:
         - "Offline routing without token/environment/SQLite, argument restrictions, output traces, provenance and exits"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, sample file generation, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_outbox_restore_backup_import_development_increment:
+      date: "2026-11-03"
+      status: "Source-only atomic missing-history import and read-only preview; R-005 remains incomplete. No builds, typechecks, tests, CLI/Bridge execution, database opens, schema initialization/migrations or release."
+      artifacts:
+        - "apps/context-bridge/src/outbox/restore-backup-import.ts"
+        - "apps/context-bridge/src/outbox/restore.ts"
+        - "apps/context-bridge/src/outbox/sqlite.ts"
+        - "apps/workctx-cli/src/outbox-restore.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/outbox-restore-backup-import-runtime.md"
+      behavior: "Strict scope/backup_sha256 input and complete backup verification precede a single target transaction. Global BINARY restore-ID metadata lookup rejects duplicates, distinguishes missing/exact/different/other-project, and bounds selected target query/archive bytes to 64 MiB before full history checks. Preview reports all selected relations without writes. Import uses BEGIN IMMEDIATE, inserts only missing histories, creates the existing optional table only for nonempty missing input and fully rechecks every selected record before COMMIT. Exact histories and unrelated histories remain unchanged; no current events/control are read or restored. Fixed 90-second preparation/transaction budget and 128 KiB success result, preserved source and target locations plus rollback/close/candidate details. Repeat imports describe current exact content, never prove a previous unknown commit."
+      evidence: []
+      pending_evidence:
+        - "Strict file/query/scope/digest, missing or empty history, same-ID exact/different/other-project and malformed/duplicate destinations"
+        - "Pre-body target byte budgets, complete exact content comparison and immutable original receipt/source preservation"
+        - "Atomic initialization/insertion/readback, concurrent changes, BEGIN/COMMIT/rollback/close failures and unconfirmed candidate results"
+        - "Read-only preview routing, write routing, existing restore/receipt compatibility and no current-event/control/network operations"
+      remaining_scope: "No independent durable import receipt or authenticity/causal proof. Imported restore IDs retain historical idempotency and do not cause current events to reappear. Selective extraction, cross-project recovery, retention/repair and runtime evidence remain pending. Existing optional history schema is reused; SQLite upgrades and PostgreSQL 016-049 remain unexecuted."
     sync_outbox_restore_backup_development_increment:
       date: "2026-11-03"
       status: "Source-only complete project restore history backup and offline verification; R-005 remains incomplete. No builds, typechecks, tests, CLI/Bridge execution, database opens, schema/migrations, sample generation or release."

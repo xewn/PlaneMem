@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [恢复历史备份导入与预览](docs/design/01-contracts/outbox-restore-backup-import-runtime.md)，可先比较目标历史，再整批补入缺失项；同 ID 完全相同则保留，异文或跨项目占用整批拒绝，提交前完整读回。导入只处理历史，不恢复当前事件。仅源码文档，未编译、测试、运行或发布。
+
 新增 [发送队列完整恢复历史备份](docs/design/01-contracts/outbox-restore-backup-runtime.md)，`outbox restore-history-backup` 完整保存项目恢复回执、原查询和原档案，`outbox inspect-restore-history-backup` 离线核验逐份历史及集合摘要；超限不截断，输出只写新文件。仅源码文档，未编译、测试、运行或发布。
 
 新增 [发送队列单条恢复记录对照](docs/design/01-contracts/outbox-restore-comparison-runtime.md)，`outbox restore-compare` 按恢复 ID 和事件 ID 只读核验历史与当前记录，展示原档案、恢复基线和当前摘要及变化字段；内容相同不作为来源证明。仅源码文档，未编译、测试、执行或发布。

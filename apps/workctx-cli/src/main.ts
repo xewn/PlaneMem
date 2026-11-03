@@ -153,6 +153,8 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   outbox restore-compare         Compare one restored event with its current row using --outbox and restore_id/event_id JSON
   outbox restore-history-backup  Save all project restore receipts and source archives using --outbox and --output NEW_FILE
   outbox inspect-restore-history-backup  Verify --archive-file offline without a queue, token or project configuration
+  outbox restore-history-import-preview  Compare --archive-file history backup with --outbox using original scope/backup_sha256 JSON
+  outbox restore-history-import  Add missing histories from --archive-file to --outbox with the same query; does not restore events
   outbox restore-get ID          Read the verified original restore receipt using explicit --outbox
   outbox restore-export ID       Save its verified original archive using --outbox and --output NEW_FILE
   outbox retry EVENT_ID          Schedule another attempt for a pending or failed event
@@ -436,6 +438,8 @@ export async function main(args: string[]): Promise<number> {
       'outbox restore-compare',
       'outbox restore-history-backup',
       'outbox inspect-restore-history-backup',
+      'outbox restore-history-import',
+      'outbox restore-history-import-preview',
       'outbox restore-get',
       'outbox restore-export',
       'outbox retry',

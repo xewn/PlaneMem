@@ -56,7 +56,7 @@ Bridge 首先完整脱离并校验输入档案，核对原项目和 archive_sha2
 
 ## 持久原回执
 
-可选 `main.local_outbox_restore_receipts` v1 保存 schema_version、restore_id、三层 scope、query_json、archive_json、restored_at、restore_trace_id、restored_document_sha256。restore_id 全队列唯一，原查询和完整原档案按既有有界 JSON 规范存储。表只在首次实际恢复的写事务中显式初始化；构造、普通发送/读取、原回执查询均不创建它。
+可选 `main.local_outbox_restore_receipts` v1 保存 schema_version、restore_id、三层 scope、query_json、archive_json、restored_at、restore_trace_id、restored_document_sha256。restore_id 全队列唯一，原查询和完整原档案按既有有界 JSON 规范存储。表只在首次实际事件恢复或首次非空历史备份导入的写事务中显式初始化；构造、普通发送/读取、原回执查询均不创建它。
 
 历史回执读取只检查这个扩展：单个只读事务内按原范围/ID查找，使用有界 SQL 投影，核验整份原查询、全部原档案和重建后的恢复文档摘要，最后比较完整原查询。缺表或无匹配记录返回 not-observed/null；重复范围行、未知版本、缺列、超长/坏JSON/摘要不符或同ID异查询明确拒绝。not-observed 仅表示该次未观察到，不能证明早先请求失败；候选目标状态和原档案必须保留。
 
@@ -79,3 +79,4 @@ CLI 始终尝试关闭已打开的队列，保留 close_pending、目标路径�
 空/非空目标、全部原状态映射/原文本保留、ID/键冲突、generation竞争、旧租约结算、原回执重读/异查询/损坏、整笔回滚/提交未知、大小/复杂度/期限、CLI范围/参数/关闭失败等均未执行验证，不把源码增量等同于运行通过。
 
 2026-11-03 后续已补 [完整恢复历史备份与离线核验](outbox-restore-backup-runtime.md)：原项目全部原查询、历史回执和源档案可完整保存为独立v1文件，并逐份及整体验证摘要；最多100份/64 MiB文档，超限不截断。仅备份历史，不读取或修改当前队列/控制；备份导入、目标比较、选择提取、跨项目备份、清理和来源认证仍待开发，尚无运行证据。
+2026-11-03 后续已补 [历史备份导入与预览](outbox-restore-backup-import-runtime.md)：先比较全局恢复ID，整事务只补缺失历史、相同保留、异文/跨项目占用拒绝，全部读回后提交。导入保留原回执声明，不恢复当前事件/控制，也不证明原恢复在当前目标执行过；导入的restore_id继续遵循历史幂等规则，同ID事件恢复不会重新灌入当前队列。重复导入只描述本次内容已存在，不证明此前未知提交；选择提取/跨项目备份/清理/来源认证和运行证据仍缺。

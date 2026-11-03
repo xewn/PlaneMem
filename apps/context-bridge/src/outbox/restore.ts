@@ -189,7 +189,17 @@ function unconfirmedReceipt(receipt: OutboxRestoreReceipt | null) {
     : { ...receipt, observation: 'unconfirmed-restore-candidate' as const };
 }
 
-/** Optional extension. Only an actual restore initializes it, inside the restoring transaction. */
+/** Explicit history writes only; the caller owns the write transaction and checked table absence. */
+export function createOutboxRestoreReceiptTable(db: DatabaseSync) {
+  db.exec(`CREATE TABLE main.local_outbox_restore_receipts (
+    schema_version INTEGER NOT NULL CHECK (schema_version = 1), restore_id TEXT NOT NULL PRIMARY KEY,
+    tenant_id TEXT NOT NULL, workspace_id TEXT NOT NULL, project_id TEXT NOT NULL,
+    query_json TEXT NOT NULL, archive_json TEXT NOT NULL, restored_at TEXT NOT NULL,
+    restore_trace_id TEXT NOT NULL, restored_document_sha256 TEXT NOT NULL
+  )`);
+}
+
+/** Optional extension inspection never initializes storage. */
 export function outboxRestoreReceiptTable(db: DatabaseSync, trace: string): boolean {
   const entries = db
     .prepare('SELECT type FROM main.sqlite_schema WHERE name = ? COLLATE NOCASE')
@@ -491,13 +501,7 @@ export function restoreOutboxArchive(
         const queryJson = syncJsonSnapshot(query, QUERY_BYTES);
         const archiveJson = syncJsonSnapshot(source, OUTBOX_ARCHIVE_FILE_BYTES);
         check();
-        if (!present)
-          db.exec(`CREATE TABLE main.local_outbox_restore_receipts (
-        schema_version INTEGER NOT NULL CHECK (schema_version = 1), restore_id TEXT NOT NULL PRIMARY KEY,
-        tenant_id TEXT NOT NULL, workspace_id TEXT NOT NULL, project_id TEXT NOT NULL,
-        query_json TEXT NOT NULL, archive_json TEXT NOT NULL, restored_at TEXT NOT NULL,
-        restore_trace_id TEXT NOT NULL, restored_document_sha256 TEXT NOT NULL
-      )`);
+        if (!present) createOutboxRestoreReceiptTable(db);
         stage = 'records';
         const insert = db.prepare(
           `INSERT INTO local_events (${OUTBOX_STORED_COLUMNS.join(',')}) VALUES (${OUTBOX_STORED_COLUMNS.map(() => '?').join(',')})`,

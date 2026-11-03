@@ -64,6 +64,12 @@ import { previewOutboxArchiveRestore } from './restore-preview.js';
 import { auditOutboxRestoreReceipts } from './restore-audit.js';
 import { compareOutboxRestoreRecord } from './restore-comparison.js';
 import { readOutboxRestoreBackup } from './restore-backup-reading.js';
+import {
+  importOutboxRestoreBackup,
+  previewOutboxRestoreBackupImport,
+} from './restore-backup-import.js';
+export { parseOutboxRestoreBackupImportQuery } from './restore-backup-import.js';
+export type { OutboxRestoreBackupImportQuery } from './restore-backup-import.js';
 export { parseOutboxRestoreBackupQuery } from './restore-backup.js';
 export type { OutboxRestoreBackupFile, OutboxRestoreBackupDocument } from './restore-backup.js';
 export { parseOutboxRestoreComparisonQuery } from './restore-comparison.js';
@@ -446,6 +452,14 @@ export class SqliteOutbox {
 
   readRestoreBackup(query: unknown, trace: string) {
     return readOutboxRestoreBackup(this.db, query, trace);
+  }
+
+  importRestoreBackup(backup: unknown, query: unknown, trace: string) {
+    return importOutboxRestoreBackup(this.db, backup, query, trace);
+  }
+
+  previewRestoreBackupImport(backup: unknown, query: unknown, trace: string) {
+    return previewOutboxRestoreBackupImport(this.db, backup, query, trace);
   }
 
   readRestoreRecord(query: unknown, trace: string) {

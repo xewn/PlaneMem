@@ -187,6 +187,8 @@ export async function runWorkctx(
     'outbox restore-compare': 'outbox.restore-compare',
     'outbox restore-history-backup': 'outbox.restore-history-backup',
     'outbox inspect-restore-history-backup': 'outbox.inspect-restore-history-backup',
+    'outbox restore-history-import': 'outbox.restore-history-import',
+    'outbox restore-history-import-preview': 'outbox.restore-history-import-preview',
     'outbox restore-get': 'outbox.restore-get',
     'outbox restore-export': 'outbox.restore-export',
     'conflicts submit': 'conflict.resolve',
@@ -282,7 +284,7 @@ export async function runWorkctx(
       stderr: JSON.stringify({
         code: 'USAGE_ERROR',
         message:
-          'Expected admin snapshot, audit, artifacts, plane-events, observed, search, index, overview, work-items, sessions, runs, tool-calls, handoffs, checkpoints, context, resume, checkpoint, handoff, sync, inbox, outbox list/get/audit/export/inspect-archive/send-control/pause/resume/restore/restore-preview/restore-receipt/restore-history/restore-audit/restore-compare/restore-history-backup/inspect-restore-history-backup/restore-get/restore-export/reconcile/inspect-result, conflicts or doctor',
+          'Expected admin snapshot, audit, artifacts, plane-events, observed, search, index, overview, work-items, sessions, runs, tool-calls, handoffs, checkpoints, context, resume, checkpoint, handoff, sync, inbox, outbox list/get/audit/export/inspect-archive/send-control/pause/resume/restore/restore-preview/restore-receipt/restore-history/restore-audit/restore-compare/restore-history-backup/inspect-restore-history-backup/restore-history-import/restore-history-import-preview/restore-get/restore-export/reconcile/inspect-result, conflicts or doctor',
         trace_id: context.trace_id,
       }),
     };
