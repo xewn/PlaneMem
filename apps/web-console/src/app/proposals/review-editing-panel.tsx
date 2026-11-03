@@ -9,6 +9,14 @@ import { assertProposalSubmissionBinding, type ProposalSubmissionBinding } from 
 import { encodeReviewOriginal, type ProposalReviewOriginal } from './review-model';
 import { loadReviewOriginal } from './review-store';
 import { ReviewEditingBackupPanel } from './review-editing-backup-panel';
+import { useReviewEditingAutosave } from './use-review-editing-autosave';
+import {
+  listReviewEditingAutosaves,
+  loadReviewEditingAutosave,
+  removeReviewEditingAutosave,
+  type ReviewEditingAutosavePage,
+  type ReviewEditingAutosaveSummary,
+} from './review-editing-autosave-store';
 import {
   decodeReviewEditingDraft,
   encodeReviewEditingDraft,
@@ -45,9 +53,11 @@ export function ReviewEditingPanel({
   editor?: ReviewEditor;
 }) {
   const [page, setPage] = useState<ReviewEditingPage>();
+  const [automaticPage, setAutomaticPage] = useState<ReviewEditingAutosavePage>();
   const [reviewed, setReviewed] = useState<{
     draft: ReviewEditingDraft;
-    source: 'browser' | 'file';
+    source: 'browser' | 'file' | 'autosave';
+    session?: string;
     epoch: number;
   }>();
   const candidate = reviewed?.draft;
@@ -57,6 +67,12 @@ export function ReviewEditingPanel({
   const [confirmed, setConfirmed] = useState(false);
   const [requestKey, setRequestKey] = useState('');
   const [busy, setBusy] = useState(false);
+  const autosave = useReviewEditingAutosave({
+    binding,
+    editor,
+    disabled: busy || !!editor?.disabled,
+  });
+  const pauseAutosave = autosave.pause;
   const [storageEpoch, setStorageEpoch] = useState(0);
   const [message, setMessage] = useState(
     'Save unfinished reasons separately from prepared reviews. Loading a draft never sends a decision.',
@@ -70,13 +86,14 @@ export function ReviewEditingPanel({
   const parentEnd = editor?.end;
   const beginStorage = useCallback(() => {
     if (!mounted.current || active.current || (parentBegin && !parentBegin())) return false;
+    pauseAutosave();
     active.current = true;
     release.current = parentEnd;
     setBusy(true);
     setConfirmed(false);
     setRemoveConfirmed(false);
     return true;
-  }, [parentBegin, parentEnd]);
+  }, [parentBegin, parentEnd, pauseAutosave]);
   const endStorage = useCallback(() => {
     active.current = false;
     if (mounted.current) setBusy(false);
@@ -86,12 +103,13 @@ export function ReviewEditingPanel({
   const storageChanged = useCallback(() => {
     if (!mounted.current) return;
     setPage(undefined);
+    setAutomaticPage(undefined);
     setConfirmed(false);
     setRemoveConfirmed(false);
     setRemovalFresh(false);
     setStorageEpoch((value) => value + 1);
     setMessage(
-      'Saved drafts may have changed. Find saved review drafts again. Current text and inspected copies are retained; compare the backup again before restoring.',
+      'Saved drafts may have changed. Find saved or automatic review drafts again. Current text and inspected copies are retained; compare the backup again before restoring.',
     );
   }, []);
   useEffect(() => {
@@ -155,7 +173,7 @@ export function ReviewEditingPanel({
     retained.current = draft;
     return draft;
   }
-  function inspect(draft: ReviewEditingDraft | null, source: 'browser' | 'file') {
+  function inspect(draft: ReviewEditingDraft | null, source: 'browser' | 'file', session?: string) {
     if (!draft) {
       setPage(undefined);
       setMessage(
@@ -164,7 +182,12 @@ export function ReviewEditingPanel({
       return;
     }
     assertProposalSubmissionBinding(draft.binding, binding);
-    setReviewed({ draft, source, epoch: storageEpoch });
+    setReviewed({
+      draft,
+      source: session ? 'autosave' : source,
+      ...(session ? { session } : {}),
+      epoch: storageEpoch,
+    });
     setRemovalFresh(source === 'browser');
     setRemoveConfirmed(false);
     setRemovalStatus(undefined);
@@ -212,21 +235,48 @@ export function ReviewEditingPanel({
       { start: () => setRemovalFresh(false) },
     );
   }
+  function browseAutomatic(after: string | null) {
+    void run(
+      (signal) => listReviewEditingAutosaves(binding, after, signal),
+      (value) => {
+        setAutomaticPage(value);
+        setMessage(
+          value.entries.length
+            ? 'Choose an automatic review copy to inspect. Automatic saving is paused.'
+            : 'No automatic review copies on this page for the current gateway and account.',
+        );
+      },
+      { start: () => setRemovalFresh(false) },
+    );
+  }
+  function readAutomatic(selection: ReviewEditingAutosaveSummary) {
+    void run(
+      (signal) => loadReviewEditingAutosave(binding, selection, signal),
+      (draft) => inspect(draft, 'browser', selection.session_id),
+      { start: () => setRemovalFresh(false) },
+    );
+  }
   const canRemove =
     !!candidate &&
-    reviewed?.source === 'browser' &&
+    (reviewed?.source === 'browser' || reviewed?.source === 'autosave') &&
     reviewed.epoch === storageEpoch &&
     removalFresh &&
     removalStatus === undefined;
   function remove() {
     if (!candidate || !canRemove || !removeConfirmed) return;
     void run(
-      (signal) => removeReviewEditingDraft(binding, candidate, signal),
+      (signal) => {
+        if (reviewed?.source === 'autosave') {
+          if (!reviewed.session) throw new TypeError();
+          return removeReviewEditingAutosave(binding, reviewed.session, candidate, signal);
+        }
+        return removeReviewEditingDraft(binding, candidate, signal);
+      },
       (result) => {
         setRemovalStatus(result);
         setMessage(
           result === 'removed'
-            ? 'The inspected browser draft was removed. Its retained text remains below for export or explicit resumption. Find saved review drafts again to refresh the directory.'
+            ? 'The inspected browser draft was removed. Its retained text remains below for export or explicit resumption. Find saved or automatic review drafts again to refresh the directory.'
             : 'This browser draft was absent when checked. This does not prove an earlier removal completed or a review was never sent. The retained copy remains available for export.',
         );
       },
@@ -292,6 +342,75 @@ export function ReviewEditingPanel({
         Save the decision and reason you are still editing. These copies do not record approval or
         prove that a review was sent. Browser clearing can remove them; keep a separate file.
       </p>
+      {editor && (
+        <div>
+          <label>
+            <input
+              type="checkbox"
+              checked={autosave.enabled}
+              disabled={locked}
+              onChange={(event) => {
+                if (active.current || editor.disabled) return;
+                if (event.target.checked) autosave.start();
+                else autosave.pause();
+              }}
+            />{' '}
+            Automatically save this unfinished review in this browser
+          </label>
+          <p role="status">{autosave.message}</p>
+          <p className="muted">
+            Each start keeps one latest automatic copy after a short pause in typing. Draft actions
+            pause automatic saving. The decision and reason are saved without recording your
+            confirmation or preparing a review.
+          </p>
+        </div>
+      )}
+      <p className="muted">
+        Automatic copies are separate from manual snapshots and their backups. Export an automatic
+        copy, or resume it in the matching review form and save a manual snapshot to include it in a
+        backup.
+      </p>
+      <div className="heading-actions">
+        <button
+          type="button"
+          className="secondary-button"
+          disabled={locked}
+          onClick={() => browseAutomatic(null)}
+        >
+          Find automatic review drafts
+        </button>
+        {automaticPage?.next && (
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={locked}
+            onClick={() => browseAutomatic(automaticPage.next)}
+          >
+            Next automatic review drafts
+          </button>
+        )}
+      </div>
+      {automaticPage && (
+        <ul>
+          {automaticPage.entries.map((entry) => (
+            <li key={entry.session_id}>
+              <p>
+                {entry.proposal_id} · revision {entry.expected_revision} ·{' '}
+                {entry.decision || 'Undecided'} · automatically saved {entry.saved_at} ·{' '}
+                <code>{entry.request_key}</code>
+              </p>
+              <button
+                type="button"
+                className="secondary-button"
+                disabled={locked}
+                onClick={() => readAutomatic(entry)}
+              >
+                Inspect automatic review draft
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
       <ReviewEditingBackupPanel
         binding={binding}
         disabled={locked}
@@ -373,7 +492,7 @@ export function ReviewEditingPanel({
         </ul>
       )}
       <label>
-        Review draft request key
+        Manually saved review draft request key
         <input
           value={requestKey}
           maxLength={255}
@@ -422,6 +541,14 @@ export function ReviewEditingPanel({
         <div className="side-detail">
           <h4>Inspected unfinished review</h4>
           <p>
+            Copy type ·{' '}
+            {reviewed?.source === 'autosave'
+              ? 'Automatic'
+              : reviewed?.source === 'file'
+                ? 'Imported file'
+                : 'Manual'}
+          </p>
+          <p>
             Proposal · {candidate.proposal_id} · reviewed revision {candidate.expected_revision}
           </p>
           <p>
@@ -462,17 +589,28 @@ export function ReviewEditingPanel({
             <p>
               Export the inspected draft first if you want to keep it. Removing a saved copy keeps
               your current editor, prepared original reviews, other tabs, exported files and
-              backups. It does not cancel or withdraw any review. A later explicit save or backup
-              restore can save this draft here again.
+              backups. It does not cancel or withdraw any review. Automatic saving is paused before
+              removal. A later explicit save or backup restore can create a manual copy again.
             </p>
-            <button
-              type="button"
-              className="secondary-button"
-              disabled={locked}
-              onClick={() => read(candidate.request_key)}
-            >
-              Read current browser draft again
-            </button>
+            {reviewed?.source === 'autosave' ? (
+              <button
+                type="button"
+                className="secondary-button"
+                disabled={locked}
+                onClick={() => browseAutomatic(null)}
+              >
+                Find and inspect the current automatic copy again
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="secondary-button"
+                disabled={locked}
+                onClick={() => read(candidate.request_key)}
+              >
+                Read current browser draft again
+              </button>
+            )}
             {canRemove ? (
               <>
                 <label>

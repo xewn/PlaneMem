@@ -3452,6 +3452,29 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_review_editing_autosave_development_increment:
+      date: "2026-11-04"
+      status: "Source-only opt-in unfinished review autosave with guarded discovery, recovery and removal; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/draft-autosave-store.ts"
+        - "apps/web-console/src/app/proposals/use-draft-autosave.ts"
+        - "apps/web-console/src/app/proposals/editing-autosave-store.ts"
+        - "apps/web-console/src/app/proposals/use-editing-autosave.ts"
+        - "apps/web-console/src/app/proposals/review-editing-autosave-store.ts"
+        - "apps/web-console/src/app/proposals/use-review-editing-autosave.ts"
+        - "apps/web-console/src/app/proposals/review-editing-panel.tsx"
+        - "apps/web-console/src/app/proposals/review-editing-backup-panel.tsx"
+        - "apps/web-console/src/app/proposals/recover-review-draft/page.tsx"
+        - "docs/design/01-contracts/proposal-review-editing-runtime.md"
+      behavior: "An explicit start debounces raw review decisions/reasons into one bound UUID session using the existing 32 KiB draft format. Shared serial scheduling and exact last-confirmed pair replacement preserve creation autosave layout/codec/API. Earlier acknowledgements cannot claim newer input saved; manual actions pause, unknown outcomes stop, restart uses a fresh slot. Separate review autosave storage supports twenty-entry discovery, selected full reads, export and independently confirmed exact removal in the review form and standalone recovery page. Resumption requires the same proposal/revision and existing original-review checks. No editor on the recovery page, no implicit confirmation/preparation/submission, and no automatic copies in manual backups."
+      evidence: []
+      pending_evidence:
+        - "Shared-engine creation compatibility, stable callbacks, isolated layouts/codecs and complete dual-store validation"
+        - "Typing during in-flight writes, debounce/serialization, pending preparation, unmount or proposal/version/binding remount, late results and quota/unknown outcomes"
+        - "Incomplete decision/reason preservation, standalone recovery without automatic writes, stale directory reads and matching-proposal/version original-review checks"
+        - "Independent removal confirmation, failed read/storage epoch invalidation, no writer resurrection and explicit manual-backup scope"
+      remaining_scope: "Automatic-copy batch backup/cleanup and capacity retention, remote/cross-scope drafts, runtime and compatibility evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, product/browser/database execution or release. Separate browser v1 source only; no server schema or dependency changes."
     proposal_editing_autosave_development_increment:
       date: "2026-11-04"
       status: "Source-only opt-in automatic creation-draft saving and guarded recovery; R-009 remains incomplete."

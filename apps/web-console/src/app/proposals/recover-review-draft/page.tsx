@@ -28,10 +28,10 @@ export default async function ReviewDraftRecoveryPage() {
         <div>
           <h1>Recover unfinished proposal reviews</h1>
           <p>
-            Find an editing copy, back up saved drafts or restore missing copies. Inspect the
-            complete reason before resuming from the same proposal revision in its review form. You
-            can also inspect and remove individual saved browser copies. Backup restoration and
-            removal do not replace your current fields or send a review.
+            Find manual or automatic editing copies, back up manual drafts or restore missing
+            copies. Inspect the complete reason before resuming from the same proposal revision in
+            its review form. You can also inspect and remove individual saved browser copies. Backup
+            restoration and removal do not replace your current fields or send a review.
           </p>
         </div>
       </div>

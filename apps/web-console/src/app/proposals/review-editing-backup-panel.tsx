@@ -94,7 +94,7 @@ export function ReviewEditingBackupPanel({
         setReviewed(result);
         setMessage(
           action === 'prepare'
-            ? 'The complete review draft backup is ready to download. Unsaved text, prepared original reviews and historical receipts are not included.'
+            ? 'The complete manual review draft backup is ready to download. Automatic copies, unsaved text, prepared original reviews and historical receipts are not included.'
             : 'The review draft backup matches this gateway and account. Compare it with this browser before restoring.',
         );
       } else if (action === 'compare') {
@@ -169,12 +169,13 @@ export function ReviewEditingBackupPanel({
       : undefined;
   return (
     <details className="side-detail">
-      <summary>Back up or restore all saved review drafts</summary>
+      <summary>Back up or restore all manually saved review drafts</summary>
       <div aria-busy={busy} style={{ overflowWrap: 'anywhere' }}>
         <p>
-          Back up all saved review drafts for this gateway, project, account and client. Save your
-          unfinished review draft first if you want it included. Up to 100 drafts and a 4 MiB
-          document are supported; larger collections are rejected as a whole.
+          Back up all manually saved review drafts for this gateway, project, account and client.
+          Automatic copies are separate. Use Save unfinished review in this browser for your current
+          fields first if you want them included. Up to 100 drafts and a 4 MiB document are
+          supported; larger collections are rejected as a whole.
         </p>
         <button
           type="button"
