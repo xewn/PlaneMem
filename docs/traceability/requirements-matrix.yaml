@@ -959,6 +959,27 @@ requirements:
         - "Offline routing without token/environment/SQLite, argument restrictions, output traces, provenance and exits"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, sample file generation, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_outbox_restore_requeue_file_development_increment:
+      date: "2026-11-04"
+      status: "Source-only self-contained batch receipt export, offline verification and original-query extraction; R-005 remains incomplete."
+      artifacts:
+        - "apps/context-bridge/src/outbox/restore-requeue-file.ts"
+        - "apps/context-bridge/src/outbox/restore-requeue-file-reading.ts"
+        - "apps/context-bridge/src/outbox/restore-requeue-receipt.ts"
+        - "apps/context-bridge/src/outbox/sqlite.ts"
+        - "apps/context-bridge/package.json"
+        - "apps/workctx-cli/src/outbox-restore-requeue-file.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/outbox-restore-requeue-file-runtime.md"
+      behavior: "A strict v1 file preserves the full original requeue receipt and parent restore receipt/source archive. Detached verification reconstructs both immutable mappings, compares every receipt field and verifies canonical document SHA. The shared stored reader now exposes its already-verified parent internally without relaxing exact-query/replay semantics. Export captures one read snapshot, attempts close before exclusive output and verifies final bytes/SHA/complete history. Offline inspection/get use a subpath without native SQLite or configured scope, and get requires the original document digest and batch ID; optional output preserves the unchanged original query. Failures retain historical receipt, selection, file publication/cleanup and close states; response overflow preserves saved state."
+      evidence: []
+      pending_evidence:
+        - "Full-file strict shape, parent/query/scope binding, immutable mappings, digest/order/body corruption and size/node/deadline bounds"
+        - "Read snapshot and original-query compatibility, missing/ambiguous history, database close and exclusive final readback failures"
+        - "Offline routing without environment/token/native SQLite, digest/ID mismatch, original-query extraction and response overflow after save"
+      remaining_scope: "Complete project combined backup/cross-device history import, retention, provenance and runtime evidence remain pending. This file covers one historical batch and does not inspect or alter current queue/control/server state."
+      execution: "Source/docs only; no builds, typechecks, tests, CLI/Bridge runs, database opens, schema initialization, sample files, migrations or release. New logical file/subpath only, no database schema or dependency version changes; prior SQLite additions and PostgreSQL 016-049 remain unexecuted."
     sync_outbox_restore_requeue_audit_development_increment:
       date: "2026-11-03"
       status: "Source-only complete selected-project requeue history audit; R-005 remains incomplete."

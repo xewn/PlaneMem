@@ -270,26 +270,31 @@ export function outboxOriginalRequeueReceipt(
   trace: string,
   check: () => void,
 ): { present: boolean; recorded: OutboxRestoreRequeueReceipt | null } {
-  return readRequeueRecord(db, query, trace, check, query);
+  const { present, recorded } = outboxStoredRequeueRecord(db, query, trace, check, query);
+  return { present, recorded };
 }
 
-/** Shared full reader; only explicit selection discovery may omit the expected original query. */
-function readRequeueRecord(
+/** Shared full reader within the caller's transaction, including the verified parent for export. */
+export function outboxStoredRequeueRecord(
   db: DatabaseSync,
   query: OutboxRestoreRequeueSelection,
   trace: string,
   check: () => void,
   expectedQuery?: OutboxRestoreRequeueReceiptQuery,
-): { present: boolean; recorded: OutboxRestoreRequeueReceipt | null } {
+): {
+  present: boolean;
+  recorded: OutboxRestoreRequeueReceipt | null;
+  history: ReturnType<typeof outboxRestoreStoredRecord>;
+} {
   check();
   const present = outboxRequeueReceiptTable(db, trace);
-  if (!present) return { present, recorded: null };
+  if (!present) return { present, recorded: null, history: null };
   const occupied = db
     .prepare(
       'SELECT 1 AS present FROM main.local_outbox_requeue_receipts WHERE requeue_id = ? COLLATE BINARY LIMIT 2',
     )
     .all(query.requeue_id);
-  if (!occupied.length) return { present, recorded: null };
+  if (!occupied.length) return { present, recorded: null, history: null };
   if (occupied.length !== 1)
     throw fail(
       'OUTBOX_REQUEUE_RECEIPT_INVALID',
@@ -351,7 +356,7 @@ function readRequeueRecord(
     )
       throw new TypeError();
     check();
-    return { present, recorded };
+    return { present, recorded, history };
   } catch (error) {
     if (error instanceof ContractError && error.envelope.code === 'OUTBOX_RESTORE_TIMEOUT')
       throw error;
@@ -376,7 +381,7 @@ export function readOutboxRestoreRequeueRecord(db: DatabaseSync, input: unknown,
     return outboxReadTransaction(
       db,
       () => {
-        const { recorded } = readRequeueRecord(db, selection, trace, check);
+        const { recorded } = outboxStoredRequeueRecord(db, selection, trace, check);
         historical_receipt = recorded;
         const result = {
           scope: selection.scope,

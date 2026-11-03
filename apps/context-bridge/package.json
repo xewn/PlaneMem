@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./outbox-archive": "./src/outbox/archive.ts",
-    "./outbox-restore-backup": "./src/outbox/restore-backup.ts"
+    "./outbox-restore-backup": "./src/outbox/restore-backup.ts",
+    "./outbox-restore-requeue-file": "./src/outbox/restore-requeue-file.ts"
   },
   "scripts": {
     "build": "tsc --outDir dist",

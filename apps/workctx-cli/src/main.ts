@@ -46,6 +46,10 @@ import {
 } from './inbox-acknowledgement.js';
 import { callOutboxReconcileArguments } from './outbox-reconcile.js';
 import { inspectOutboxReceiptArguments } from './outbox-receipt-file.js';
+import {
+  isOutboxRestoreRequeueFileCommand,
+  runOutboxRestoreRequeueFileArguments,
+} from './outbox-restore-requeue-file.js';
 import { isOutboxReadCommand, runOutboxReadArguments } from './outbox-read.js';
 import { isOutboxArchiveCommand, runOutboxArchiveArguments } from './outbox-archive.js';
 import {
@@ -163,6 +167,9 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   outbox restore-requeue-get     Recover the original query/receipt by scope/requeue_id JSON; optional --output NEW_QUERY_FILE
   outbox restore-requeue-history Browse project batch metadata with --outbox EXISTING_FILE and optional limit/after_requeue_id JSON
   outbox restore-requeue-audit   Verify all project batch histories with --outbox; optional max_receipts/max_bytes/timeout_ms JSON
+  outbox restore-requeue-export  Save one complete batch/parent history using --outbox, scope/requeue_id JSON and --output NEW_FILE
+  outbox inspect-restore-requeue-receipt  Verify --receipt-file offline without project configuration or a queue
+  outbox restore-requeue-file-get  Recover original query/receipt using --receipt-file and document_sha256/requeue_id JSON; optional --output NEW_QUERY_FILE
   outbox restore-history         Browse restore metadata using explicit --outbox; optional limit/after_restore_id JSON
   outbox restore-audit           Verify all project restore receipts/archives using --outbox; optional max_receipts/max_bytes/timeout_ms JSON
   outbox restore-compare         Compare one restored event with its current row using --outbox and restore_id/event_id JSON
@@ -458,6 +465,9 @@ export async function main(args: string[]): Promise<number> {
       'outbox restore-requeue-get',
       'outbox restore-requeue-history',
       'outbox restore-requeue-audit',
+      'outbox restore-requeue-export',
+      'outbox inspect-restore-requeue-receipt',
+      'outbox restore-requeue-file-get',
       'outbox restore-history',
       'outbox restore-audit',
       'outbox restore-compare',
@@ -575,12 +585,30 @@ export async function main(args: string[]): Promise<number> {
         : positionals.length > 2)
     )
       usage('Unknown or incomplete command. Run workctx --help');
+    if (isOutboxRestoreRequeueFileCommand(name)) {
+      print(
+        await runOutboxRestoreRequeueFileArguments(
+          args,
+          trace,
+          name === 'outbox restore-requeue-export'
+            ? {
+                tenant_id: envId('WORKCTX_TENANT_ID'),
+                workspace_id: envId('WORKCTX_WORKSPACE_ID'),
+                project_id: envId('WORKCTX_PROJECT_ID'),
+              }
+            : undefined,
+        ),
+      );
+      return 0;
+    }
     if (isInboxApplicationRestoreReceiptFileCommand(name)) {
       print(await runInboxApplicationRestoreReceiptFileArguments(args, trace));
       return 0;
     }
     if (values['receipt-file'] !== undefined)
-      usage('--receipt-file is only for application-restore-receipt-inspect/query');
+      usage(
+        '--receipt-file is only for application-restore-receipt-inspect/query or outbox inspect-restore-requeue-receipt/restore-requeue-file-get',
+      );
     if (values['receipt-output'] !== undefined && name !== 'inbox application-restore-receipt-get')
       usage('--receipt-output is only for application-restore-receipt-get');
     if (isInboxApplicationArchiveCommand(name)) {

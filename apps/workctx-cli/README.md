@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+新增 `outbox restore-requeue-export` 独占保存完整单批次回执文件，包含父恢复回执和原档案；`inspect-restore-requeue-receipt` 可离线核验，`restore-requeue-file-get` 按文件摘要/批次ID找回原请求并可显式保存。离线入口不要求配置/令牌或数据库，输出只含元数据或原请求/回执。见 [独立回执文件](../../docs/design/01-contracts/outbox-restore-requeue-file-runtime.md)。仅源码文档，未执行、编译、测试或发布。
+
 新增 `outbox restore-requeue-audit --outbox EXISTING_FILE [--json QUERY | --json-file QUERY_FILE]`，可使用目录返回的audit_query审计整个项目。可选max_receipts/max_bytes/timeout_ms控制完整历史读取预算，原生只读，失败保留批次与恢复ID、已检查计数和关闭状态，不接受output。见 [完整历史审计](../../docs/design/01-contracts/outbox-restore-requeue-audit-runtime.md)。仅源码文档，未执行、编译、测试或发布。
 
 新增 `outbox restore-requeue-history --outbox EXISTING_FILE [--json QUERY | --json-file QUERY_FILE]`，按当前项目浏览批次元数据，默认10最多20，支持after_requeue_id续页。返回get_query用于完整核验和找回原请求，next_query继续目录；关联历史与选中内容明确未核验。原生只读，不接受output。见 [回执目录](../../docs/design/01-contracts/outbox-restore-requeue-history-runtime.md)。仅源码文档，未执行、编译、测试或发布。
@@ -544,6 +546,9 @@ observed-item.json 示例：`{"work_item_id":"plane-item-42"}`。CLI 核对返�
 | `outbox restore-requeue-get` | 必须已有 --outbox、--json/--json-file scope/requeue_id选择；可选 --output NEW_QUERY_FILE | 只读完整核验后发现原请求/回执；显式保存原七字段请求，不覆盖文件或重新排队 |
 | `outbox restore-requeue-history` | 必须已有 --outbox；可选 --json/--json-file scope/limit/after_requeue_id | 只读元数据目录，默认10最多20；返回单条查询及续页参数，不代表完整历史核验 |
 | `outbox restore-requeue-audit` | 必须已有 --outbox；可选 --json/--json-file scope/max_receipts/max_bytes/timeout_ms | 只读核验整个项目批次及完整关联历史/前后摘要；超限或损坏不返回部分通过 |
+| `outbox restore-requeue-export` | 已有 --outbox、--json/--json-file scope/requeue_id、--output NEW_FILE | 只读取得完整批次及父历史，关闭尝试后独占保存并完整读回 |
+| `outbox inspect-restore-requeue-receipt` | --receipt-file FILE | 无配置/数据库/网络的完整文件核验，返回摘要及get_query |
+| `outbox restore-requeue-file-get` | --receipt-file、--json/--json-file document_sha256/requeue_id；可选 --output NEW_QUERY_FILE | 完整核验并匹配原文件和批次，找回原请求/回执；可独占保存原请求 |
 | `outbox restore-receipt` | 必须 --outbox EXISTING_FILE、--json/--json-file 同一原恢复查询；无档案文件 | 无；只读完整历史恢复回执，不代表当前队列状态 |
 | `outbox restore-history` | 必须 --outbox EXISTING_FILE；可选 --json/--json-file scope/limit/after_restore_id | 无；只读元数据分页，原档案正文未核验 |
 | `outbox restore-audit` | 必须 --outbox EXISTING_FILE；可选 --json/--json-file scope/max_receipts/max_bytes/timeout_ms | 无；单次只读事务完整核验项目恢复历史，超限或损坏不返回部分通过 |

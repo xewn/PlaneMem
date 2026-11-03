@@ -46,6 +46,10 @@ import {
 import { isInboxAcknowledgementCommand, runInboxAcknowledgement } from './inbox-acknowledgement.js';
 import { runOutboxReconcile } from './outbox-reconcile.js';
 import { inspectOutboxReceiptArguments } from './outbox-receipt-file.js';
+import {
+  isOutboxRestoreRequeueFileCommand,
+  runOutboxRestoreRequeueFileArguments,
+} from './outbox-restore-requeue-file.js';
 import { isOutboxReadCommand, runOutboxReadArguments } from './outbox-read.js';
 import { isOutboxArchiveCommand, runOutboxArchiveArguments } from './outbox-archive.js';
 import {
@@ -197,6 +201,9 @@ export async function runWorkctx(
     'outbox restore-requeue-get': 'outbox.restore-requeue-get',
     'outbox restore-requeue-history': 'outbox.restore-requeue-history',
     'outbox restore-requeue-audit': 'outbox.restore-requeue-audit',
+    'outbox restore-requeue-export': 'outbox.restore-requeue-export',
+    'outbox inspect-restore-requeue-receipt': 'outbox.inspect-restore-requeue-receipt',
+    'outbox restore-requeue-file-get': 'outbox.restore-requeue-file-get',
     'outbox restore-history': 'outbox.restore-history',
     'outbox restore-audit': 'outbox.restore-audit',
     'outbox restore-compare': 'outbox.restore-compare',
@@ -302,17 +309,33 @@ export async function runWorkctx(
       stderr: JSON.stringify({
         code: 'USAGE_ERROR',
         message:
-          'Expected admin snapshot, audit, artifacts, plane-events, observed, search, index, overview, work-items, sessions, runs, tool-calls, handoffs, checkpoints, context, resume, checkpoint, handoff, sync, inbox, outbox list/get/audit/export/inspect-archive/send-control/pause/resume/restore/restore-preview/restore-prepare/restore-receipt/restore-requeue/restore-requeue-preview/restore-requeue-receipt/restore-requeue-get/restore-requeue-history/restore-requeue-audit/restore-history/restore-audit/restore-compare/restore-history-backup/inspect-restore-history-backup/restore-backup-history/restore-backup-get/restore-backup-export/restore-history-import/restore-history-import-preview/restore-get/restore-export/reconcile/inspect-result, conflicts or doctor',
+          'Expected admin snapshot, audit, artifacts, plane-events, observed, search, index, overview, work-items, sessions, runs, tool-calls, handoffs, checkpoints, context, resume, checkpoint, handoff, sync, inbox, outbox list/get/audit/export/inspect-archive/send-control/pause/resume/restore/restore-preview/restore-prepare/restore-receipt/restore-requeue/restore-requeue-preview/restore-requeue-receipt/restore-requeue-get/restore-requeue-history/restore-requeue-audit/restore-requeue-export/inspect-restore-requeue-receipt/restore-requeue-file-get/restore-history/restore-audit/restore-compare/restore-history-backup/inspect-restore-history-backup/restore-backup-history/restore-backup-get/restore-backup-export/restore-history-import/restore-history-import-preview/restore-get/restore-export/reconcile/inspect-result, conflicts or doctor',
         trace_id: context.trace_id,
       }),
     };
   try {
+    if (command && isOutboxRestoreRequeueFileCommand(command)) {
+      const result = await runOutboxRestoreRequeueFileArguments(
+        argv,
+        context.trace_id,
+        command === 'outbox restore-requeue-export'
+          ? {
+              tenant_id: context.tenant_id,
+              workspace_id: context.workspace_id,
+              project_id: context.project_id,
+            }
+          : undefined,
+      );
+      return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
+    }
     if (command && isInboxApplicationRestoreReceiptFileCommand(command)) {
       const result = await runInboxApplicationRestoreReceiptFileArguments(argv, context.trace_id);
       return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
     }
     if (argv.some((arg) => arg === '--receipt-file' || arg.startsWith('--receipt-file=')))
-      usage('--receipt-file is only for application-restore-receipt-inspect/query');
+      usage(
+        '--receipt-file is only for application-restore-receipt-inspect/query or outbox inspect-restore-requeue-receipt/restore-requeue-file-get',
+      );
     if (
       command !== 'inbox application-restore-receipt-get' &&
       argv.some((arg) => arg === '--receipt-output' || arg.startsWith('--receipt-output='))

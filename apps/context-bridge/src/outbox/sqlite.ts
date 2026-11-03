@@ -65,6 +65,11 @@ import { prepareOutboxArchiveRestore } from './restore-prepare.js';
 import { requeueOutboxRestoreRecords } from './restore-requeue.js';
 import { listOutboxRestoreRequeueReceipts } from './restore-requeue-history.js';
 import { auditOutboxRestoreRequeueReceipts } from './restore-requeue-audit.js';
+import { readOutboxRestoreRequeueFile } from './restore-requeue-file-reading.js';
+export type {
+  OutboxRestoreRequeueFile,
+  OutboxRestoreRequeueDocument,
+} from './restore-requeue-file.js';
 export { parseOutboxRestoreRequeueAuditQuery } from './restore-requeue-audit.js';
 export type { OutboxRestoreRequeueAuditQuery } from './restore-requeue-audit.js';
 import {
@@ -487,6 +492,10 @@ export class SqliteOutbox {
 
   auditRestoreRequeueReceipts(query: unknown, trace: string) {
     return auditOutboxRestoreRequeueReceipts(this.db, query, trace);
+  }
+
+  readRestoreRequeueFile(selection: unknown, trace: string) {
+    return readOutboxRestoreRequeueFile(this.db, selection, trace);
   }
 
   readRestoreReceipt(query: unknown, trace: string) {
