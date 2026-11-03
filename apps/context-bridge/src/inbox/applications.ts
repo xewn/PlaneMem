@@ -593,6 +593,9 @@ export class InboxApplications {
           timeout_ms: query.timeout_ms,
           preview_stage: progress.stage,
           preview_completed: false,
+          ...(query.expected_target === undefined
+            ? {}
+            : { expected_target: query.expected_target }),
           local_write_state: 'not-performed',
           acknowledgement_dispatch_state: 'not-sent',
         },
@@ -634,6 +637,9 @@ export class InboxApplications {
           status: restored.status,
           restore_completed: true,
           archive_document_sha256: prepared.archive.document_sha256,
+          target_precondition: restored.target_precondition,
+          target_before: restored.target_before,
+          target_after: restored.target_after,
           added_application_pages: restored.added_application_pages,
           added_application_events: restored.added_application_events,
           ...restored.sources,
@@ -672,6 +678,9 @@ export class InboxApplications {
           ...error.envelope.details,
           restore_stage: progress.stage,
           restore_completed: false,
+          ...(query.expected_target === undefined
+            ? {}
+            : { expected_target: query.expected_target }),
           expected_identity: query.expected_identity,
           application: query.application,
           archive_document_sha256: query.archive_document_sha256,

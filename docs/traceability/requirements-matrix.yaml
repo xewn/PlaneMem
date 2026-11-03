@@ -978,6 +978,28 @@ requirements:
         - "CLI primary/embedded local routing, old output migration, read/rollback/close failures and complete result retention"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_application_restore_target_development_increment:
+      date: "2026-11-03"
+      status: "Source-only binding of restore queries to complete observed target histories; R-005 remains incomplete."
+      artifacts:
+        - "apps/context-bridge/src/inbox/application-restore-target.ts"
+        - "apps/context-bridge/src/inbox/application-restore-comparison.ts"
+        - "apps/context-bridge/src/inbox/application-restore-preview.ts"
+        - "apps/context-bridge/src/inbox/application-restore.ts"
+        - "apps/context-bridge/src/inbox/applications.ts"
+        - "apps/context-bridge/src/inbox/sqlite.ts"
+        - "apps/workctx-cli/src/inbox-application-restore.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "docs/design/01-contracts/sync-application-restore-target-runtime.md"
+      behavior: "Optional strict expected_target v1 binds domain-separated streaming digests of the complete selected application and received histories. Audited page/projection hashes, original application traces, identity/application keys and counts determine stable target hashes independent of the incoming archive or current trace. Preview restore_query now binds observed_target; stale supplied expectations produce conflict without replacement. Both components are checked inside the write transaction before any insert, and restored readback uses the resulting histories rather than the old expectation. Success returns before/after targets; failures and unknown commits retain the original guard. Legacy unguarded requests retain their compatibility policy."
+      remaining_scope: "No persistent preview/request file or restore receipt, database-instance identity, monotonic generation, cross-call lock, history merge/upgrade, source/semantic authentication, acknowledgement backup or real cross-device/concurrent/crash recovery evidence. Equal logical histories share a digest and a later target mismatch cannot settle a previous unknown commit."
+      pending_evidence:
+        - "Strict complete guard/version/hash parsing before open, legacy omission and original request retention across file/open/operation/close failures"
+        - "Deterministic empty/nonempty history hashes, original trace/projection changes, compatible empty-event source suffix, consumer/application isolation and independence from current trace/archive"
+        - "Guarded preview matching/changed conflicts without automatic rebinding, same-transaction checks before any writes and post-write readback without old guard reuse"
+        - "Repeated guarded restore after changed/unchanged results, unknown commit/rollback recovery and no inference about prior writes from a later mismatch"
+      evidence: []
+      execution: "Source and documentation only; no builds, typechecks, tests, CLI/Bridge/reducer/API/service runs, digest samples, database opens, schema initialization, migrations or release. No new schema/dependencies; SQLite extensions and PostgreSQL 016-049 remain unexecuted. Task commits/pushes target main with skip-ci messages."
     sync_application_restore_preview_development_increment:
       date: "2026-11-03"
       status: "Source-only readonly application archive restore preview; R-005 remains incomplete."

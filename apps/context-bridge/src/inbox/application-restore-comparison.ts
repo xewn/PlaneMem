@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import {
   ContractError,
@@ -40,12 +41,25 @@ export function compareInboxApplicationRestoreHistory(
   reads: InboxApplicationRestoreReads,
 ) {
   const { incoming } = prepared;
+  const historyHash = createHash('sha256').update(
+    JSON.stringify(['workctx.inbox-application-history-target/v1', key.consumer, key.application]) +
+      '\n',
+  );
   const progress: { first_difference: InboxApplicationRestoreDifference | null } = {
     first_difference: null,
   };
   const inspect = (selected: InboxApplicationHistoryStep | undefined) => {
     check();
     if (selected) {
+      historyHash.update(
+        JSON.stringify([
+          'step',
+          selected.sequence,
+          selected.page.document_sha256,
+          selected.projectionHash,
+          selected.trace,
+        ]) + '\n',
+      );
       const expected = incoming[selected.sequence - 1];
       if (expected) {
         const field =
@@ -101,10 +115,13 @@ export function compareInboxApplicationRestoreHistory(
         : audited.checked_pages > incoming.length
           ? ('target-longer' as const)
           : ('identical' as const);
+  historyHash.update(JSON.stringify(['end', audited.checked_pages, audited.checked_events]) + '\n');
+  check();
   return {
     audited,
     comparison: {
       relation,
+      history_sha256: historyHash.digest('hex'),
       compatible: relation === 'empty' || relation === 'identical',
       page_count: audited.checked_pages,
       event_count: audited.checked_events,
@@ -141,6 +158,9 @@ export function compareInboxApplicationRestoreSources(
   reads: { head(): SourcePage | undefined; page(digest: string): SourcePage | undefined },
 ) {
   let bytes = 0;
+  const historyHash = createHash('sha256').update(
+    JSON.stringify(['workctx.inbox-received-history-target/v1', key]) + '\n',
+  );
   let selected_digest: string | null = null;
   const progress: { first_difference: InboxApplicationRestoreDifference | null } = {
     first_difference: null,
@@ -149,6 +169,9 @@ export function compareInboxApplicationRestoreSources(
     const inspect = (selected: SourcePage | undefined) => {
       check();
       if (selected) {
+        historyHash.update(
+          JSON.stringify(['page', selected.sequence, selected.page.document_sha256]) + '\n',
+        );
         selected_digest = selected.page.document_sha256;
         bytes += Buffer.byteLength(selected.json, 'utf8');
         if (bytes > 64 * 1024 * 1024)
@@ -192,8 +215,13 @@ export function compareInboxApplicationRestoreSources(
           : audited.checked_pages > pages.length
             ? ('target-suffix' as const)
             : ('identical' as const);
+    historyHash.update(
+      JSON.stringify(['end', audited.checked_pages, audited.checked_events]) + '\n',
+    );
+    check();
     return {
       relation,
+      history_sha256: historyHash.digest('hex'),
       compatible: relation !== 'diverged',
       page_count: audited.checked_pages,
       event_count: audited.checked_events,

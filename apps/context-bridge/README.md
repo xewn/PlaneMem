@@ -1,5 +1,7 @@
 # Context Bridge 本地同步存储
 
+2026-11-03 恢复目标绑定增补：恢复/预览查询可带完整 expected_target v1 双摘要，分别固定所选应用全部原页/投影/原应用 trace 和原消费者完整接收链。预览生成的 restore_query 默认携带当前目标约束；带旧约束的预览发现变化返回 conflict，实际恢复在同一写事务第一次插入前核对两项，变化报 TARGET_CHANGED，成功返回 target_before/target_after。旧无约束查询保留原行为，未知提交不丢失原约束；摘要只绑定逻辑内容，不认证来源或证明之前操作结果。见 [恢复目标绑定](../../docs/design/01-contracts/sync-application-restore-target-runtime.md)。仅源码文档，未编译、测试、运行接口或打开库。
+
 2026-11-03 应用恢复预览增补：`previewApplicationArchiveRestore(archive,input,trace)` 使用同一原身份/应用/归档摘要查询，在单个只读事务完整审计目标应用与接收链，返回关系、首个正序差异摘要、可恢复性和预计新增页/事件数量。与实际恢复共用比较逻辑；合法不兼容返回 conflict，损坏/超限仍失败。只反映读取时快照，实际恢复重新检查；不输出投影正文或进行写入。CLI application-restore-preview 已接只读打开。见 [恢复预览契约](../../docs/design/01-contracts/sync-application-restore-preview-runtime.md)。仅源码文档，未编译、类型检查、测试、执行接口或打开库。
 
 2026-11-03 应用归档恢复增补：`restoreApplicationArchive(archive,input,trace)` 要求完整原身份/应用/归档摘要，在既有应用扩展上用单个写事务恢复原接收页、逐页投影/原 trace、事件绑定和应用头。仅接受空应用或完整相同历史；兼容接收前缀可补齐，较新接收后缀保留。恢复前后完整结构审计，提交/回滚不明保留 unknown 和原查询/进度。CLI application-restore 已接入；不执行 reducer 或确认服务器，归档不认证来源/业务语义。见 [应用归档恢复契约](../../docs/design/01-contracts/sync-application-restore-runtime.md)。仅源码文档，无新 schema/依赖，未编译、测试、执行恢复或打开库。

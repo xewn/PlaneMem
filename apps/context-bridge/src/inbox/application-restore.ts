@@ -23,9 +23,16 @@ import {
   compareInboxApplicationRestoreHistory,
   type InboxApplicationRestoreReads,
 } from './application-restore-comparison.js';
+import {
+  assertInboxApplicationRestoreTargetHistory,
+  inboxApplicationRestoreTarget,
+  parseInboxApplicationRestoreTarget,
+  type SyncInboxApplicationRestoreTarget,
+} from './application-restore-target.js';
 
 export interface SyncInboxApplicationRestoreQuery extends SyncInboxApplicationQuery {
   archive_document_sha256: string;
+  expected_target?: SyncInboxApplicationRestoreTarget;
 }
 export interface InboxApplicationSourceRestoreResult {
   added_received_pages: number;
@@ -33,12 +40,15 @@ export interface InboxApplicationSourceRestoreResult {
   received_head_sha256: string | null;
   received_cursor: number;
   received_history_audit: 'verified-structure';
+  previous_received_history_sha256: string;
+  received_history_sha256: string;
 }
 export type InboxApplicationSourceRestore = (
   identity: SyncCommandIdentity,
   pages: readonly SyncSavedPageFile[],
   trace: string,
   check: () => void,
+  expectedHistory?: string,
 ) => InboxApplicationSourceRestoreResult;
 export interface InboxApplicationRestoreProgress {
   stage: string;
@@ -55,15 +65,20 @@ export function parseInboxApplicationRestoreQuery(
   try {
     const value: unknown = JSON.parse(syncJsonSnapshot(input, 16384));
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError();
-    const { archive_document_sha256, ...base } = value as Record<string, unknown>;
+    const { archive_document_sha256, expected_target, ...base } = value as Record<string, unknown>;
     return {
       ...parseInboxApplicationQuery(base, trace),
       archive_document_sha256: applicationDigest(archive_document_sha256),
+      ...(expected_target === undefined
+        ? {}
+        : {
+            expected_target: parseInboxApplicationRestoreTarget(expected_target),
+          }),
     };
   } catch {
     throw applicationFailure(
       'INBOX_APPLICATION_RESTORE_QUERY_INVALID',
-      'Supply the complete original identity/application, exact archive_document_sha256 and optional timeout_ms',
+      'Supply the complete original identity/application, exact archive_document_sha256, optional complete v1 expected_target and timeout_ms',
       trace,
     );
   }
@@ -128,7 +143,7 @@ export function restoreInboxApplicationHistory(
   reads: InboxApplicationRestoreReads & { sources: InboxApplicationSourceRestore },
 ) {
   const { incoming } = prepared;
-  const audit = () => {
+  const audit = (expectedHistory?: string) => {
     const compared = compareInboxApplicationRestoreHistory(
       db,
       key,
@@ -137,6 +152,12 @@ export function restoreInboxApplicationHistory(
       trace,
       check,
       reads,
+    );
+    assertInboxApplicationRestoreTargetHistory(
+      expectedHistory,
+      compared.comparison.history_sha256,
+      'application-history',
+      trace,
     );
     const difference = compared.comparison.first_difference;
     if (difference) {
@@ -153,10 +174,10 @@ export function restoreInboxApplicationHistory(
           details: { application_comparison: compared.comparison },
         },
       );
-    return compared.audited;
+    return { ...compared.audited, history_sha256: compared.comparison.history_sha256 };
   };
   progress.stage = 'existing-application';
-  const before = audit();
+  const before = audit(query.expected_target?.application_history_sha256);
   progress.stage = 'source-pages';
   progress.selected_sequence = null;
   progress.selected_document_sha256 = null;
@@ -165,6 +186,7 @@ export function restoreInboxApplicationHistory(
     incoming.map((step) => step.page),
     trace,
     check,
+    query.expected_target?.received_history_sha256,
   );
   progress.prepared_received_pages = sources.added_received_pages;
   check();
@@ -238,5 +260,15 @@ export function restoreInboxApplicationHistory(
     added_application_events: progress.prepared_application_events,
     sources,
     restored,
+    target_precondition:
+      query.expected_target === undefined ? ('not-requested' as const) : ('matched' as const),
+    target_before: inboxApplicationRestoreTarget(
+      before.history_sha256,
+      sources.previous_received_history_sha256,
+    ),
+    target_after: inboxApplicationRestoreTarget(
+      restored.history_sha256,
+      sources.received_history_sha256,
+    ),
   };
 }

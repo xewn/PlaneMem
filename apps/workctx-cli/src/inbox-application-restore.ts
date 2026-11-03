@@ -32,7 +32,34 @@ export async function runInboxApplicationRestore(
     );
   }
   const query = bridge.parseInboxApplicationRestoreQuery(input, trace);
-  const local = await readApplicationArchiveFile(archivePath, trace);
+  const selection = {
+    expected_identity: query.expected_identity,
+    application: query.application,
+    archive_document_sha256: query.archive_document_sha256,
+    timeout_ms: query.timeout_ms,
+    ...(query.expected_target === undefined ? {} : { expected_target: query.expected_target }),
+  };
+  let local: Awaited<ReturnType<typeof readApplicationArchiveFile>>;
+  try {
+    local = await readApplicationArchiveFile(archivePath, trace);
+  } catch (error) {
+    throw fail(
+      error instanceof ContractError
+        ? error.envelope.code
+        : 'INBOX_APPLICATION_ARCHIVE_FILE_UNAVAILABLE',
+      error instanceof ContractError
+        ? error.envelope.message
+        : 'The original archive could not be read',
+      trace,
+      {
+        ...(error instanceof ContractError ? error.envelope.details : {}),
+        ...selection,
+        ...incomplete,
+        source_archive_path: resolve(archivePath),
+        inbox: inboxPath,
+      },
+    );
+  }
   try {
     assertSyncCommandIdentity(local.saved.document.expected_identity, query.expected_identity);
     if (
@@ -47,14 +74,11 @@ export async function runInboxApplicationRestore(
       trace,
       {
         ...incomplete,
-        expected_identity: query.expected_identity,
-        application: query.application,
-        archive_document_sha256: query.archive_document_sha256,
+        ...selection,
         observed_archive_document_sha256: local.saved.document_sha256,
         source_archive_path: resolve(archivePath),
         source_file_bytes: local.file_bytes,
         source_file_sha256: local.file_sha256,
-        timeout_ms: query.timeout_ms,
         inbox: inboxPath,
       },
     );
@@ -82,9 +106,7 @@ export async function runInboxApplicationRestore(
       {
         ...(error instanceof ContractError ? error.envelope.details : {}),
         ...source,
-        expected_identity: query.expected_identity,
-        application: query.application,
-        timeout_ms: query.timeout_ms,
+        ...selection,
         inbox: inboxPath,
         ...incomplete,
       },
@@ -117,9 +139,7 @@ export async function runInboxApplicationRestore(
       {
         ...(error instanceof ContractError ? error.envelope.details : {}),
         ...source,
-        expected_identity: query.expected_identity,
-        application: query.application,
-        timeout_ms: query.timeout_ms,
+        ...selection,
         inbox: inboxPath,
         close_pending,
         ...incomplete,
@@ -151,9 +171,7 @@ export async function runInboxApplicationRestore(
         {
           ...source,
           ...incomplete,
-          expected_identity: query.expected_identity,
-          application: query.application,
-          timeout_ms: query.timeout_ms,
+          ...selection,
           inbox: inboxPath,
           close_pending,
         },

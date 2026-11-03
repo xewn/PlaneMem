@@ -20,6 +20,8 @@ import {
 import { SYNC_INBOX_SCHEMA_V1, SYNC_INBOX_SCHEMA_VERSION } from './schema.js';
 import { InboxApplications } from './applications.js';
 import { compareInboxApplicationRestoreSources } from './application-restore-comparison.js';
+import { assertInboxApplicationRestoreTargetHistory } from './application-restore-target.js';
+export type { SyncInboxApplicationRestoreTarget } from './application-restore-target.js';
 export { parseInboxApplicationAuditQuery } from './application-audit.js';
 export type { SyncInboxApplicationAuditQuery } from './application-audit.js';
 export { parseInboxApplicationRestoreQuery } from './application-restore.js';
@@ -979,12 +981,19 @@ export class SqliteSyncInbox {
     pages: readonly SyncSavedPageFile[],
     trace: string,
     check: () => void,
+    expectedHistory?: string,
   ) {
     let source_stage = 'before';
     let source_selected_digest: string | null = null;
     let prepared_received_pages = 0;
-    const audit = () => {
+    const audit = (expected?: string) => {
       const compared = this.compareApplicationSourcePages(identity, pages, trace, check);
+      assertInboxApplicationRestoreTargetHistory(
+        expected,
+        compared.history_sha256,
+        'received-history',
+        trace,
+      );
       source_selected_digest =
         compared.first_difference?.target_document_sha256 ?? compared.head_sha256;
       if (!compared.compatible)
@@ -996,7 +1005,7 @@ export class SqliteSyncInbox {
       return compared;
     };
     try {
-      const before = audit();
+      const before = audit(expectedHistory);
       source_stage = 'append';
       for (let index = before.page_count; index < pages.length; index += 1) {
         check();
@@ -1038,6 +1047,8 @@ export class SqliteSyncInbox {
         received_head_sha256: after.head_sha256,
         received_cursor: after.received_cursor,
         received_history_audit: 'verified-structure' as const,
+        previous_received_history_sha256: before.history_sha256,
+        received_history_sha256: after.history_sha256,
       };
     } catch (error) {
       throw new ContractError(
@@ -1080,8 +1091,8 @@ export class SqliteSyncInbox {
           );
         return selected;
       },
-      (identity, pages, trace, check) =>
-        this.restoreApplicationSourcePages(identity, pages, trace, check),
+      (identity, pages, trace, check, expectedHistory) =>
+        this.restoreApplicationSourcePages(identity, pages, trace, check, expectedHistory),
       (identity, pages, trace, check) =>
         this.compareApplicationSourcePages(identity, pages, trace, check),
     );

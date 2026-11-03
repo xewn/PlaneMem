@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+恢复预览现返回带 expected_target 的 restore_query，固定本次观察的应用历史和完整接收链。原 JSON 可选 expected_target={schema_version:1,application_history_sha256,received_history_sha256}；两项均须为完整小写 SHA-256。实际恢复在任何插入前核对，目标变化报 INBOX_APPLICATION_RESTORE_TARGET_CHANGED；原约束预览发现变化则返回 conflict 和原/当前摘要，不自动替换查询。成功返回 target_before/target_after；一次有新增内容的恢复后，旧约束将不再匹配，后续变化也不能证明上次未知提交是否写入。见 [目标绑定契约](../../docs/design/01-contracts/sync-application-restore-target-runtime.md)。仅源码文档，未执行命令、编译、测试或发布。
+
 新增只读应用恢复预览（仅源码，示例未执行）：
 
 ```text

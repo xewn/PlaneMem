@@ -81,6 +81,7 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   inbox application-export       Save full audited application history to --output NEW_FILE using --inbox and original application JSON
   inbox application-restore      Restore source pages and an empty/identical application using --inbox, --archive-file and original identity/application/archive digest JSON
   inbox application-restore-preview  Preview compatibility and planned counts readonly using the same inbox/archive/query options
+                                  Preview restore_query binds expected_target; changed histories are rejected before any restore writes
   inbox application-inspect      Inspect --archive-file offline; optional JSON limit/after_sequence/archive_document_sha256
   inbox application-archive-get  Read an archived projection using --archive-file and archive/page digest JSON
   inbox application-history      Page application summaries with fixed sequence/page/projection boundaries

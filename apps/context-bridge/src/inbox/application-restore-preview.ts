@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { syncApplicationArchiveSummary } from '@planemem/contracts';
+import { inboxApplicationRestoreTarget } from './application-restore-target.js';
 import {
   compareInboxApplicationRestoreHistory,
   type InboxApplicationRestoreReads,
@@ -40,8 +41,18 @@ export function previewInboxApplicationRestore(
   );
   check();
   const archive = syncApplicationArchiveSummary(prepared.archive.document);
-  const compatible = application.compatible && received.compatible;
+  const observedTarget = inboxApplicationRestoreTarget(
+    application.history_sha256,
+    received.history_sha256,
+  );
+  const targetMatches =
+    query.expected_target === undefined ||
+    (query.expected_target.application_history_sha256 ===
+      observedTarget.application_history_sha256 &&
+      query.expected_target.received_history_sha256 === observedTarget.received_history_sha256);
+  const compatible = application.compatible && received.compatible && targetMatches;
   const conflicts: string[] = [];
+  if (!targetMatches) conflicts.push('target-state-changed');
   if (!application.compatible) conflicts.push('application-history-policy');
   if (!received.compatible) conflicts.push('received-chain-diverged');
   progress.stage = 'result';
@@ -59,6 +70,14 @@ export function previewInboxApplicationRestore(
     archive,
     target_application: application,
     target_received: received,
+    expected_target: query.expected_target ?? null,
+    observed_target: observedTarget,
+    target_precondition:
+      query.expected_target === undefined
+        ? ('not-requested' as const)
+        : targetMatches
+          ? ('matched' as const)
+          : ('changed' as const),
     conflicts,
     planned_changes: compatible
       ? {
@@ -73,7 +92,7 @@ export function previewInboxApplicationRestore(
           resulting_application_head_sha256: archive.head_sha256,
         }
       : null,
-    restore_query: compatible ? { ...query } : null,
+    restore_query: compatible ? { ...query, expected_target: observedTarget } : null,
     target_snapshot: 'current-read-transaction-only' as const,
     restore_rechecks_target: true,
     application_history_policy: 'empty-or-identical' as const,

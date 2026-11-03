@@ -4,7 +4,7 @@
 
 ## 原查询与只读入口
 
-Bridge 新增 `previewApplicationArchiveRestore(archive,input,trace)`，CLI 主程序和嵌入入口新增 `inbox application-restore-preview`。与[应用归档恢复](sync-application-restore-runtime.md)共用严格查询：完整原 expected_identity、application={name,version}、必填 archive_document_sha256、可选 timeout_ms（默认 30000，范围 1–90000）。不接受目标覆盖、合并或忽略差异的选项。
+Bridge 新增 `previewApplicationArchiveRestore(archive,input,trace)`，CLI 主程序和嵌入入口新增 `inbox application-restore-preview`。与[应用归档恢复](sync-application-restore-runtime.md)共用严格查询：完整原 expected_identity、application={name,version}、必填 archive_document_sha256、可选 timeout_ms（默认 30000，范围 1–90000）和完整 expected_target v1，详见 [目标历史绑定](sync-application-restore-target-runtime.md)。不接受目标覆盖、合并或忽略差异的选项。
 
 以下示例仅说明接口，未执行或创建文件：
 
@@ -38,11 +38,11 @@ target_received 完整检查接收链，包含未应用接收后缀，返回页�
 
 成功表示比较完成，preview_completed=true、local_write_state=not-performed。双方 history_audit、顶层 full_application_history_audit/received_history_audit 均为 verified-structure；不意味着业务投影语义或来源真实。archive 包含已核验归档摘要信息，不包含投影正文。
 
-只有应用和接收链都兼容时 restore_allowed=true。status 为 ready（可恢复非空应用）、already-restored（完整相同应用）或 empty（空归档与空应用）。planned_changes 给出预计新增接收页/应用页/应用事件绑定数、保留较新接收后缀页数，以及预期接收/应用总页数和头摘要；不会产生这些写入。restore_query 返回同一原身份/应用/归档摘要和 timeout_ms，可由调用方另行显式用于 application-restore。
+只有应用和接收链都兼容、且可选原 expected_target 也匹配时 restore_allowed=true。status 为 ready（可恢复非空应用）、already-restored（完整相同应用）或 empty（空归档与空应用）。planned_changes 给出预计新增接收页/应用页/应用事件绑定数、保留较新接收后缀页数，以及预期接收/应用总页数和头摘要；不会产生这些写入。restore_query 返回同一原身份/应用/归档摘要和 timeout_ms，并带 expected_target 固定本次 observed_target，可由调用方另行显式用于 application-restore。
 
-结构合法但任一策略不兼容时 status=conflict、restore_allowed=false、planned_changes=null、restore_query=null，conflicts 包含 application-history-policy 和/或 received-chain-diverged；两侧完整比较仍返回。CLI 这种情况退出码为 0，表示预览成功执行，**调用方必须读取 restore_allowed/status，不能用退出码当作允许恢复的判断**。失败才走现有非零错误路径。
+结构合法但任一策略不兼容或原 expected_target 不符时 status=conflict、restore_allowed=false、planned_changes=null、restore_query=null，conflicts 按原因包含 application-history-policy、received-chain-diverged 和/或 target-state-changed；两侧完整比较仍返回。CLI 这种情况退出码为 0，表示预览成功执行，**调用方必须读取 restore_allowed/status，不能用退出码当作允许恢复的判断**。失败才走现有非零错误路径。
 
-target_snapshot=current-read-transaction-only 和 restore_rechecks_target=true 明确预览不保留锁、不冻结后续目标、不提供跨调用目标版本条件。restore_query 只绑定原归档身份和内容，实际恢复会在自己的写事务重新完整检查；目标变化可能导致冲突、不同预计数量或预算失败。ready 不保证写入权限、磁盘空间、事务完成或应用业务语义正确。
+target_snapshot=current-read-transaction-only 和 restore_rechecks_target=true 明确预览不保留锁、不冻结后续目标。restore_query 现同时绑定原归档身份/内容和本次完整目标历史双摘要；实际恢复会在自己的写事务、任何插入前重新检查，目标变化则拒绝。带旧约束预览发现变化不会自动生成新约束；旧无约束恢复查询仍采用当次目标的兼容性策略。ready 不保证写入权限、磁盘空间、事务完成或应用业务语义正确。
 
 恢复路径也使用共享比较结果。应用/接收历史不兼容分别保留原 INBOX_APPLICATION_RESTORE_CONFLICT/SOURCE_CONFLICT，增加 application_comparison/source_comparison 摘要；只有完整结构核验成功才报告这种差异。损坏、超限等错误可能优先于原来的提前冲突判断，不放宽恢复条件。恢复后完整读回仍重新比较，并保留原提交/回滚 unknown 处理。
 
@@ -54,4 +54,4 @@ target_snapshot=current-read-transaction-only 和 restore_rechecks_target=true �
 
 查询、文件、绑定、schema、历史审计、源链/预算、期限和存储错误沿用对应类别。Bridge 比较失败保留原查询、preview_stage、preview_completed=false、local_write_state=not-performed，以及下层阶段/已审计位置/预算；不返回部分成功结果。CLI 对已取得的原文件补路径、字节数和文件摘要，并对已打开连接补 close_pending。关闭失败保留已完成的预览结果；读取事务回滚失败仍保留原 rollback_pending，不把未知连接状态当成已关闭。所有路径维持 acknowledgement_dispatch_state=not-sent。
 
-仍缺不同应用历史的合并/升级、持久化预览与目标版本绑定、确认/派发日志备份、完整跨设备恢复及真实并发/崩溃证据。本次只开发和人工审阅源码，没有执行预览或恢复；R-005 继续未完成，evidence 为空。
+仍缺不同应用历史的合并/升级、持久化预览/原请求/恢复回执、数据库实例绑定、确认/派发日志备份、完整跨设备恢复及真实并发/崩溃证据。本次只开发和人工审阅源码，没有执行预览或恢复；R-005 继续未完成，evidence 为空。
