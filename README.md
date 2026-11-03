@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [worker 回执记录保存](docs/design/01-contracts/proposal-queue-reconciliation-runtime.md#回执记录保存与离线核对)：查询或结算后可显式保存完整原请求与回执到新文件，并离线核对摘要、身份和状态；文件保存失败保留已取得的结果。仅源码文档，未编译、测试、运行或发布。
+
 新增 [建议 Mock 原创建回执查询](docs/design/01-contracts/proposal-mock-runtime.md#请求和状态)：开发环境可按完整原身份、请求键和草稿查询历史创建结果；查询不重提建议，审核后仍保留原创建语义。仅源码文档，未编译、测试、运行或发布。
 
 新增 [worker 未知提交结果门禁](docs/design/01-contracts/proposal-queue-reconciliation-runtime.md#flush-未知结果门禁)：未知结果及回收的发送任务只查询原创建回执，未查到不会重提；首次提交增加有界响应和发送前领取复查。仅源码文档，未编译、测试、运行或发布。

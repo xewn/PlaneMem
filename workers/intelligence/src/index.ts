@@ -2,6 +2,7 @@ export * from './proposals.js';
 export * from './submission.js';
 export * from './publisher.js';
 export * from './proposal-reconciliation.js';
+export * from './proposal-receipt-record.js';
 export type {
   ProposalReceiptTarget,
   ProposalLocalSettlement,

@@ -6,6 +6,8 @@
 
 ## 配置与命令
 
+新增 [完整回执记录](../../docs/design/01-contracts/proposal-queue-reconciliation-runtime.md#回执记录保存与离线核对)：`receipt` / `reconcile` 可加 `--output NEW_RECEIPT.json`，在队列正常关闭后独占保存原绑定、任务、完整原请求/回执、本地状态与摘要，已有文件不覆盖。`inspect-receipt-record --file RECEIPT_RECORD.json` 离线完整核验并输出元数据，无需令牌、不打开队列或联网。文件和格式化内容均限4 MiB；not-observed也可留档但不证明失败，摘要不认证远端结果。保存失败保留完整result/已构造record及保存阶段，原结算状态不改写；没有自动历史索引或文件导入结算。
+
 新增 [原创建回执与显式结算](../../docs/design/01-contracts/proposal-queue-reconciliation-runtime.md)：`receipt --queue EXISTING.sqlite --binding binding.json --id JOB_ID [--timeout-ms 30000]` 原生只读查询原创建结果；`reconcile` 使用相同参数，只有远端 recorded、完整本地任务未变且非sending时才标记 submitted。not-observed、并发变化、过期发送租约都不据此重提或接管；已submitted须匹配同一历史回执。输出包含完整原建议，未知本地提交/关闭失败保留远端观察和原请求，没有自动保存文件或持久对账历史。两命令需原账号的 PROPOSAL_WORKER_ACCESS_TOKEN，existing模式不初始化缺失结构。仅源码，未执行命令或数据库。
 
 新增请求目录：`generation-requests --journal EXISTING_DIR --binding binding.json [--state all|prepared|attempted|generated|failed] [--after CURSOR] [--limit 10]` 按原绑定发现请求，返回状态、原键和摘要，不输出正文。默认 10、最多 20 条；每页最多扫描 64 个候选并使用 32 MiB 读取预算，空页仍可能有 next_cursor，须继续续页。游标绑定原目录/绑定/状态，改变条件从首页开始；并发新增或状态变化需要重新查询。目录总项数上限 10,000，损坏拒绝，详见 [目录边界](../../docs/design/01-contracts/proposal-generation-request-runtime.md#请求发现与分页目录)。本命令不打开队列、不调用模型、不修改日志。

@@ -3452,6 +3452,24 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_worker_receipt_record_development_increment:
+      date: "2026-11-04"
+      status: "Source-only explicit complete receipt record export and offline inspection; R-009 remains incomplete."
+      artifacts:
+        - "workers/intelligence/src/proposal-receipt-record.ts"
+        - "workers/intelligence/src/main.ts"
+        - "workers/intelligence/src/index.ts"
+        - "workers/intelligence/README.md"
+        - "docs/design/01-contracts/proposal-queue-reconciliation-runtime.md"
+      behavior: "Receipt/reconcile preflight an optional new destination before queue/network work, then record complete original results only after operation completion and confirmed queue close. Versioned records bind the gateway/identity, job and row digest, original query/receipt, local outcome and local assembly time with canonical SHA-256. Exclusive publication reuses bounded write/readback. Export failure retains the complete result and constructed record without changing settlement claims. Offline inspection validates the full bounded regular file and state combinations, emits metadata only, and never opens a queue or contacts a gateway."
+      evidence: []
+      pending_evidence:
+        - "Complete recorded/unobserved results, local outcome combinations, normalized identity/trace/query and digest validation"
+        - "Existing/conflicting paths, concurrent publication, short writes/readback, cleanup and unknown file save outcomes"
+        - "Query/transaction/close failure, preserved mutation and distinct reconciliation versus file-save exit results"
+        - "Offline byte/encoding/file-identity limits, damaged records and no queue/network/file mutation"
+      remaining_scope: "Automatic history/indexes, unknown-operation archival, whole-queue backup, record import/recovery, authenticity signatures and runtime evidence. Checksums cannot authenticate actual past or current remote/local states; stored row digests are not independently recomputable from this file."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/product/API/database execution or release. No new schema, migrations or dependencies."
     proposal_mock_create_receipt_development_increment:
       date: "2026-11-04"
       status: "Source-only original creation receipt Mock adapter; R-009 remains incomplete."

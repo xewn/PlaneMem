@@ -4,7 +4,7 @@
 
 ## 入口
 
-`proposal-worker receipt --queue EXISTING.sqlite --binding binding.json --id JOB_ID [--timeout-ms 30000]` 原生只读打开已有队列，取得指定任务的完整原请求，然后只调用 `POST /v1/proposals/creation-receipt`。不发送创建命令，不保存查询结果或更改本地任务。
+`proposal-worker receipt --queue EXISTING.sqlite --binding binding.json --id JOB_ID [--timeout-ms 30000] [--output NEW_RECEIPT.json]` 原生只读打开已有队列，取得指定任务的完整原请求，然后只调用 `POST /v1/proposals/creation-receipt`。不发送创建命令或更改本地任务；只有明确提供 output 才独立保存完整回执记录，见下节。
 
 `proposal-worker reconcile` 使用相同参数，明确请求在远端返回 recorded 后结算本地任务；没有独立新请求键、草稿、版本或重试参数。仍使用 `PROPOSAL_WORKER_ACCESS_TOKEN`，读取时必须是原账号/客户端并具备当前 proposal.write/admin。可选 timeout-ms 为1–2147483647，默认30000，用于 SDK/Fetch 查询等待；不涵盖同步 SQLite 打开、读取、写事务或最终输出。库入口为 `readProposalQueueReceipt` / `reconcileProposalQueueJob`，支持固定 access_token、可选 timeout_ms/signal/fetch。
 
@@ -34,7 +34,25 @@ SDK错误或本地结算错误由 `ProposalQueueReceiptError.recovery` 保留原
 
 新增 `{existing:true}` 打开选项，要求已有普通文件并验证原 v1布局/绑定，不建表、补绑定或改变 journal_mode；可写连接设置同步级别 FULL，receipt 额外原生 readOnly/query_only。默认 enqueue/retry/flush 行为保持。文件预检和 SQLite 打开并非原子绑定：须使用自己控制的目录，不能声称防御并发路径替换；若替换或删除后产生不完整文件，结构验证拒绝而不初始化。WAL/SHM、底层文件和旧发送者协调限制继续适用。
 
-显式 reconcile 不接管 sending。更新后的 flush 门禁见下节；已经运行的旧版本进程不会自动获得门禁。强制停止旧进程、显式解除未知状态、队列完整备份、持久对账历史和离线回执认证仍缺。无 schema/迁移/依赖变化；运行证据仍缺。
+显式 reconcile 不接管 sending。更新后的 flush 门禁见下节；已经运行的旧版本进程不会自动获得门禁。强制停止旧进程、显式解除未知状态、队列完整备份、自动持久对账历史和离线回执认证仍缺；显式单次文件留档见“回执记录保存与离线核对”。无 schema/迁移/依赖变化；运行证据仍缺。
+
+## 回执记录保存与离线核对
+
+2026-11-04：receipt/reconcile 均支持 `--output NEW_RECEIPT.json`，在打开队列和调用网关前检查目标是已有目录中的新文件。正常取得远端结果、完成本地操作并确认队列关闭后，才构造和保存记录。recorded、not-observed、sending、local-changed 等正常结果都可留档；reconcile 保存完成仍保留原退出码0/2，文件存在不表示本地已结算。查询、本地事务或关闭异常仍输出既有 recovery，不自动生成“完成”记录。
+
+v1记录含 `schema_version:1`、`kind:'proposal-queue-receipt'`、`operation:'receipt'|'reconcile'`、`recorded_at`、完整 `result` 和 `sha256`。result保留原网关/五项身份、job_id、原行snapshot_sha256、trace、完整原query/回执、local状态/mutation和close_state=closed。recorded_at只是本机封装时间，不能替代远端创建时间或精确查询时间。SHA-256覆盖除sha256外全部字段的规范JSON，递归对象键按JavaScript UTF-16顺序排序、数组顺序保持；紧凑输入及格式化记录均限4 MiB，原query1 MiB/回执2 MiB限制保持。
+
+检查拒绝未知/缺失字段、不规范绑定、错任务ID/trace/摘要、身份或回执内容不匹配以及不可能的状态组合。receipt只能是not-requested/none；reconcile在not-observed时只能是not-observed/none，recorded时仅submitted/committed、already-submitted/none、sending/none或local-changed/none。不会补默认字段、改写时间、修复摘要或把未观察到解释为失败。
+
+`proposal-worker inspect-receipt-record --file RECEIPT_RECORD.json` 原生读取有界普通文件，核对打开前后身份/长度与严格UTF-8 JSON，完整核验记录后只输出元数据、历史创建回执和本地状态，不输出草稿正文。拒绝标准输入、最终路径符号链接、缺失/超限/读取期间长度或身份变化及损坏内容。命令不需要令牌，不打开队列、不联网、不保存、不创建或结算任务；退出0仅表示文件内部一致。输出明确标记 verification=file-consistency-only、current_queue/current_remote=not-checked。
+
+保存复用既有新文件发布工具：同目录独占临时文件、同步并完整读回，再以硬链接占用新目标并核对发布内容，不覆盖已有目标；目录须受调用者控制，文件系统须支持硬链接。临时文件清理失败仍保留已核验目标并报告cleanup_pending及临时路径，不删除其他文件；没有断电后的目录元数据持久性或恶意路径替换保证。
+
+构造或保存失败返回PROPOSAL_RECEIPT_RECORD_EXPORT_FAILED与完整已关闭result、已经构造出的完整record（若有）、输出路径/阶段和可用的发布信息，退出1。保留原local.mutation，不能把已提交改称回滚。发布确认失败时目标可能已存在，应先离线核对现有文件，不覆盖或重新执行结算来弥补文件保存；完整record可由受信调用方另存新文件。缺少网关回执、未知本地事务和关闭失败仍沿用原错误恢复输出。
+
+库导出createProposalQueueReceiptRecord、inspectProposalQueueReceiptRecord、proposalQueueReceiptRecordSummary、readProposalQueueReceiptRecord、prepareProposalReceiptRecordOutput、saveProposalQueueReceiptRecord及对应类型。创建函数的受信调用方须提供已关闭的完整原结果；函数不能认证调用者声明的数据库状态。摘要只检查所载内容一致性，不是签名或服务器证明，snapshot_sha256未包含原完整行，离线无法重新计算它。文件不认证现在或过去的实际提交、不授权重提，也不能直接传入本地结算；需要新结果时仍调用可信网关入口。
+
+本轮只新增显式单次文件记录，没有自动历史索引、留存清理、整库备份、恢复导入或签名验证。无新表/迁移/依赖，仅源码人工审阅，未运行命令、文件导出、数据库或测试。
 
 ## flush 未知结果门禁
 

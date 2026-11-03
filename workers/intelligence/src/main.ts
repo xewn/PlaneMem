@@ -15,6 +15,14 @@ import {
 } from './proposal-reconciliation.js';
 import { SqliteProposalQueue, type ProposalQueueBinding } from './submission.js';
 import {
+  createProposalQueueReceiptRecord,
+  proposalQueueReceiptRecordSummary,
+  readProposalQueueReceiptRecord,
+  prepareProposalReceiptRecordOutput,
+  saveProposalQueueReceiptRecord,
+  type ProposalQueueReceiptRecord,
+} from './proposal-receipt-record.js';
+import {
   generateProposalDraft,
   parseProposalGenerationProvider,
   parseProposalGenerationRequest,
@@ -68,8 +76,9 @@ const help = `Proposal submission queue (Node.js 24)
   proposal-worker list    --queue queue.sqlite --binding binding.json [--before JOB_ID] [--limit 25]
   proposal-worker get     --queue queue.sqlite --binding binding.json --id JOB_ID
   proposal-worker retry   --queue queue.sqlite --binding binding.json --id JOB_ID
-  proposal-worker receipt --queue EXISTING.sqlite --binding binding.json --id JOB_ID [--timeout-ms 30000]
-  proposal-worker reconcile --queue EXISTING.sqlite --binding binding.json --id JOB_ID [--timeout-ms 30000]
+  proposal-worker receipt --queue EXISTING.sqlite --binding binding.json --id JOB_ID [--timeout-ms 30000] [--output NEW_RECEIPT.json]
+  proposal-worker reconcile --queue EXISTING.sqlite --binding binding.json --id JOB_ID [--timeout-ms 30000] [--output NEW_RECEIPT.json]
+  proposal-worker inspect-receipt-record --file RECEIPT_RECORD.json
   proposal-worker flush   --queue queue.sqlite --binding binding.json [--limit 25]
 
 binding.json contains gateway_url, tenant_id, workspace_id, project_id, actor_id, client_id.
@@ -86,6 +95,7 @@ prepare-generation reads pinned sources; flush submits known-unsent drafts or re
 Both use PROPOSAL_WORKER_ACCESS_TOKEN. retry preserves unknown outcomes and never clears uncertainty.
 retry schedules the original draft/key; it does not send or regenerate content.
 receipt only queries the original creation. reconcile explicitly settles unchanged non-sending jobs from a recorded receipt; neither submits.
+Optional receipt/reconcile output saves a new full record after queue close. inspect-receipt-record checks file consistency offline, not authenticity or current state.
 Exit codes: 0 completed (receipt may be not-observed), 1 command/storage failure, 2 flush had unsettled jobs or reconciliation did not settle.
 `;
 
@@ -139,8 +149,9 @@ export async function main(args: string[]): Promise<number> {
       list: ['before', 'limit'],
       get: ['id'],
       retry: ['id'],
-      receipt: ['id', 'timeout-ms'],
-      reconcile: ['id', 'timeout-ms'],
+      receipt: ['id', 'timeout-ms', 'output'],
+      reconcile: ['id', 'timeout-ms', 'output'],
+      'inspect-receipt-record': ['file'],
       flush: ['limit'],
     };
     if (!command || !Object.hasOwn(allowed, command) || positionals.length !== 1)
@@ -153,6 +164,7 @@ export async function main(args: string[]): Promise<number> {
             'prepare-generation',
             'generate-prepared',
             'inspect-generation',
+            'inspect-receipt-record',
             'generation-request',
             'generation-run',
             'generation-status',
@@ -180,6 +192,13 @@ export async function main(args: string[]): Promise<number> {
         throw new TypeError('--' + name + ' is required');
       return value;
     };
+    if (command === 'inspect-receipt-record') {
+      const record = await readProposalQueueReceiptRecord(required('file'));
+      process.stdout.write(
+        JSON.stringify(proposalQueueReceiptRecordSummary(record), null, 2) + '\n',
+      );
+      return 0;
+    }
     if (command === 'generation-requests') {
       if (values.limit !== undefined && !/^[1-9]\d?$/.test(values.limit))
         throw new TypeError('Use a request limit between 1 and 20');
@@ -478,6 +497,10 @@ export async function main(args: string[]): Promise<number> {
         ? await prepareGenerationOutput(required('output'))
         : undefined;
     const receiptCommand = command === 'receipt' || command === 'reconcile';
+    const receiptOutput =
+      receiptCommand && values.output !== undefined
+        ? await prepareProposalReceiptRecordOutput(required('output'))
+        : undefined;
     const receiptTimeout =
       values['timeout-ms'] === undefined ? 30000 : Number(values['timeout-ms']);
     if (
@@ -614,6 +637,39 @@ export async function main(args: string[]): Promise<number> {
         });
       }
       output = { ...(output as ProposalQueueReceiptResult), close_state: 'closed' };
+      if (receiptOutput) {
+        const result = output as ProposalQueueReceiptRecord['result'];
+        let record: ProposalQueueReceiptRecord | undefined;
+        let exportPhase = 'record';
+        try {
+          record = createProposalQueueReceiptRecord(
+            command === 'receipt' ? 'receipt' : 'reconcile',
+            result,
+          );
+          exportPhase = 'save';
+          const saved = await saveProposalQueueReceiptRecord(receiptOutput, record);
+          output = { ...result, record_sha256: record.sha256, output: saved };
+        } catch (error) {
+          process.stderr.write(
+            JSON.stringify(
+              {
+                code: 'PROPOSAL_RECEIPT_RECORD_EXPORT_FAILED',
+                trace_id: result.trace_id,
+                result,
+                ...(record ? { record } : {}),
+                output: {
+                  output_path: receiptOutput.path,
+                  export_phase: exportPhase,
+                  ...(error instanceof ContractError ? error.envelope.details : {}),
+                },
+              },
+              null,
+              2,
+            ) + '\n',
+          );
+          return 1;
+        }
+      }
     }
     process.stdout.write(JSON.stringify(output, null, 2) + '\n');
     return exitCode;

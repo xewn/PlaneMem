@@ -1,5 +1,7 @@
 # 架构决策记录摘要
 
+2026-11-04 worker 回执记录导出协接（ADR-015）：T7.2 receipt/reconcile 增加显式 --output 新文件，查询及本地操作正常完成且队列关闭后保存完整v1原绑定/任务/快照摘要/原查询回执/本地结算状态与封装时间、SHA-256。输出预检在打开库和网络前，复用有界独占文件写入/读回；保存失败保留完整结果和已构造记录，不把已提交状态改称回滚。新增 inspect-receipt-record 离线核验严格字段、原身份/内容/trace、结果状态组合及摘要，只输出元数据，不打开库或联网，不信任文件为远端认证。范围worker新记录模块/main/index/README、队列契约/README/TODO/R009；无新表/依赖/迁移，仅源码文档人工审阅，不编译/类型检查/测试/执行产品或数据库/发布，独立提交push main带[skip ci]。
+
 2026-11-04 建议 Mock 原创建回执协接（ADR-015）：T4.3/T7.2 在 MockProposalStore 增加 creation-receipt 只读入口，使用既有原 actor/client 键空间与创建指纹，完整校验原身份/规范草稿/回执和可见建议的不可变字段；缺记录返回not-observed，审核、过期及来源变旧不改历史创建语义。要求未过期模拟创建能力和当前项目/来源/派生链可见性，拒绝写条件；查询不创建建议、命令或游标，无新持久数据。范围 SDK Mock 源码/README、Proposal Mock契约、README/TODO/R009与协调记录；仅开发和人工审阅，不编译/类型检查/测试/运行Mock或产品/数据库/发布，无依赖/schema变化，独立提交 push main 带 [skip ci]。
 
 2026-11-04 worker 未知结果发送门禁协接（ADR-015）：T7.2 将 flush 中 uncertain 任务及回收 sending 的任务改为只查询原创建回执，recorded 后凭本次租约结算，not-observed/不可用继续保留未知，不自动重发。首次/已知未提交任务保留原身份预检和创建，二者改用有界 JSON 响应与期限，写前重查原领取。认领复用完整任务/绑定/草稿校验，结算增加原键/正文/尝试约束；结果报告区分创建尝试与回执查询。范围 worker publisher/submission/README、队列契约及README/TODO/R009，无schema/依赖变化，不编译、类型检查、测试、运行CLI/网关/数据库或发布；独立提交 push main 带 [skip ci]。旧版本进程不受新代码约束，显式解除未知/放弃仍留后续。
