@@ -800,6 +800,28 @@ requirements:
     design: ["canonical-event", "sync-outbox"]
     subprojects: ["P0", "P1", "P3", "P8"]
     tests: ["unit.event_dedup", "integration.event_replay", "resilience.network_loss", "resilience.service_restart"]
+    sync_client_event_application_development_increment:
+      date: "2026-11-04"
+      status: "Source-only complete recorded-client-content history adapter and shared parser; R-005 remains incomplete."
+      artifacts:
+        - "packages/contracts/src/client-event-sync.ts"
+        - "packages/contracts/src/index.ts"
+        - "apps/context-bridge/src/inbox/client-event-application.ts"
+        - "apps/context-bridge/src/inbox/application-rejection.ts"
+        - "apps/context-bridge/src/inbox/built-in-applications.ts"
+        - "apps/context-bridge/src/inbox/sqlite.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/inbox.ts"
+        - "docs/design/01-contracts/sync-client-event-application-runtime.md"
+      behavior: "Fixed client-event-history/1 consumes existing ClientEventRecorded envelopes, preserving complete content and sources. Strict scope/aggregate/actor/source bindings and field proposal base/observed-version rules match current producer behavior. Projection sorts original actor/client/event tuples, rejects duplicate origins/server IDs/cursors and cursor regression, and caps 512 records/1 MiB. Existing apply/preview/pending/replay and generic history/archive flows select the new adapter; known unrelated outer types are ignored and unknown types reject the page. No source mutation, outbox settlement, acknowledgement or reconstruction of omitted original upload fields."
+      evidence: []
+      pending_evidence:
+        - "Canonical scope/actor/client/aggregate identity, strict payload shape, complete JSON and appended source bindings"
+        - "Ordinary uploads, field proposals with equal or later observed version, null values and preserved extra content"
+        - "Distinct producers with same client event IDs, tuple ordering, duplicate identities/events/cursors, cursor regression and limits"
+        - "Apply/preview/pending/replay routing, mixed/unknown streams, current/repeated/historical snapshot validation and restored-history replay"
+      remaining_scope: "Complete current-source replication, other domain adapters, permission-change rebuild/cleanup, larger history storage, broader recovery and runtime evidence remain pending. Recorded acceptance is not source application or original receipt binding."
+      execution: "Source/docs only; no builds, typechecks, tests, reducer/CLI/Bridge/API execution, database opens, extensions, migrations, samples or release. No schema/dependency or Gateway wire-format changes."
     sync_upload_receipt_development_increment:
       date: "2026-11-03"
       status: "Source-only bounded Bridge publishing and complete original-batch receipt validation; R-005 remains incomplete."

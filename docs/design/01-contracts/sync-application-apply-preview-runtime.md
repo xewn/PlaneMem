@@ -47,3 +47,5 @@ CLI 打开失败保留原查询、`stage=open` 和未写入状态；打开成功
 ## 待完成范围
 
 预览不修复历史、补建业务基线、合并其他应用、更新 Gateway 源实体或替代完整重放/审计。缺失基线引导、其他业务适配器、权限变化重建、跨设备恢复及运行证据仍缺；本文没有运行通过的声明。
+
+2026-11-04 后续新增 [客户端事件完整内容历史](sync-client-event-application-runtime.md) 固定适配器client-event-history/1，沿用本流程并接入apply/preview/pending/replay选择器。保存ClientEventRecorded原content和来源，按原账号/客户端/事件ID区分，最多512条/1 MiB；接收不表示源实体应用，不重建缺失的原上传命令。旧适配器规则不变，仅源码文档，未执行reducer、数据库、编译或测试。

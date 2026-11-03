@@ -9,6 +9,7 @@
 - [项目重新排队历史完整备份](outbox-restore-requeue-backup-runtime.md)
 - [重新排队备份离线目录与批次提取](outbox-restore-requeue-backup-access-runtime.md)
 - [重新排队联合备份原子导入与预览](outbox-restore-requeue-backup-import-runtime.md)
+- [客户端事件完整内容同步历史](sync-client-event-application-runtime.md)
 - [浏览器历史同步回执完整备份与恢复](sync-browser-receipts-backup-runtime.md)
 - [浏览器原同步查询完整备份与恢复](sync-browser-originals-backup-runtime.md)
 - [浏览器同步保存副本移除](sync-browser-storage-removal-runtime.md)

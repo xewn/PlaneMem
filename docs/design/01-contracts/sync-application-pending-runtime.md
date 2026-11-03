@@ -49,3 +49,5 @@ Bridge 输出完整原身份、application、scope、本次 trace、`status=list
 `local_write_state=not-performed`、`acknowledgement_dispatch_state=not-sent`、`received_history_audit/full_application_history_audit=not-performed`、`server_application/source_authenticity/projection_semantics=not-verified` 保留检查范围。列表不写页面/投影/ledger/回执，不确认或自动应用，也不替代完整原页链审计、应用历史审计或重放。
 
 缺基线恢复、其他业务适配器、权限变化重建、跨设备恢复以及运行证据仍缺；本增量不代表完整同步闭环已通过验证。
+
+2026-11-04 后续新增 [客户端事件完整内容历史](sync-client-event-application-runtime.md) 固定适配器client-event-history/1，沿用本流程并接入apply/preview/pending/replay选择器。保存ClientEventRecorded原content和来源，按原账号/客户端/事件ID区分，最多512条/1 MiB；接收不表示源实体应用，不重建缺失的原上传命令。旧适配器规则不变，仅源码文档，未执行reducer、数据库、编译或测试。

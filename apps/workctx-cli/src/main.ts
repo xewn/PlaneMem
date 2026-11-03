@@ -122,7 +122,7 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
                                  Receipt get accepts --receipt-output NEW_FILE instead of --output to export the complete historical receipt
   inbox application-status       Read a local projection using --inbox and --json/--json-file
                                  Requires expected_identity and application name/version; optional JSON timeout_ms
-  inbox application-apply        Apply one imported page with context-item-lifecycle/1, proposal-lifecycle/1 or conflict-lifecycle/1
+  inbox application-apply        Apply one imported page with context-item-lifecycle/1, proposal-lifecycle/1, conflict-lifecycle/1 or client-event-history/1
                                  JSON also requires document_sha256 and expected_previous_sha256 (null for root)
   inbox application-apply-preview Preview one original page with a built-in adapter without saving its projection
                                  Uses the same application-apply JSON; actual application checks again
@@ -130,7 +130,7 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
                                  JSON: expected_identity/application; optional limit (1–50) and timeout_ms
   inbox application-audit        Audit the selected application's entire saved history without running reducers
                                  JSON: expected_identity/application; optional max_pages/max_events/max_bytes/timeout_ms
-  inbox application-replay       Recompute every saved context-item-lifecycle/1, proposal-lifecycle/1 or conflict-lifecycle/1 projection without writing
+  inbox application-replay       Recompute every saved context-item-lifecycle/1, proposal-lifecycle/1, conflict-lifecycle/1 or client-event-history/1 projection without writing
                                  Same audit JSON budgets plus optional max_replay_bytes; --inbox required
   inbox application-list         List saved applications and checkpoint summaries for the original identity
                                  JSON: expected_identity; optional limit (1–50), after_application_key, timeout_ms

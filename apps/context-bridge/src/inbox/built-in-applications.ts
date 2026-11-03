@@ -10,6 +10,10 @@ import {
 } from './context-item-application.js';
 import { PROPOSAL_APPLICATION, proposalApplicationAdapter } from './proposal-application.js';
 import { CONFLICT_APPLICATION, conflictApplicationAdapter } from './conflict-application.js';
+import {
+  CLIENT_EVENT_APPLICATION,
+  clientEventApplicationAdapter,
+} from './client-event-application.js';
 
 function matches(application: SyncInboxApplication, known: SyncInboxApplication) {
   return application.name === known.name && application.version === known.version;
@@ -18,11 +22,12 @@ export function requireBuiltInApplication(application: SyncInboxApplication, tra
   if (
     !matches(application, CONTEXT_ITEM_APPLICATION) &&
     !matches(application, PROPOSAL_APPLICATION) &&
-    !matches(application, CONFLICT_APPLICATION)
+    !matches(application, CONFLICT_APPLICATION) &&
+    !matches(application, CLIENT_EVENT_APPLICATION)
   )
     throw applicationFailure(
       'INBOX_APPLICATION_ADAPTER_UNSUPPORTED',
-      'Select context-item-lifecycle, proposal-lifecycle or conflict-lifecycle at version 1',
+      'Select context-item-lifecycle, proposal-lifecycle, conflict-lifecycle or client-event-history at version 1',
       trace,
     );
 }
@@ -33,6 +38,8 @@ export function builtInApplicationAdapter(
   trace: string,
 ) {
   requireBuiltInApplication(application, trace);
+  if (matches(application, CLIENT_EVENT_APPLICATION))
+    return clientEventApplicationAdapter(identity);
   if (matches(application, CONFLICT_APPLICATION)) return conflictApplicationAdapter(identity);
   return matches(application, PROPOSAL_APPLICATION)
     ? proposalApplicationAdapter(identity)

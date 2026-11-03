@@ -1,5 +1,7 @@
 # Context Bridge 本地同步存储
 
+新增固定应用 `client-event-history/1`：消费ClientEventRecorded，完整保存content和来源，按原actor/client/event三元组排序去重，核对字段建议的原来源和base/observed版本。最多512条/1 MiB，重复身份、游标回退、未知类型拒绝整页；接入apply/preview/pending/replay和通用历史归档。见 [客户端事件历史](../../docs/design/01-contracts/sync-client-event-application-runtime.md)。不结算outbox或应用源字段，无schema/依赖变化，仅源码文档，未编译、测试或运行。
+
 新增 `previewRestoreRequeueBackupImport/importRestoreRequeueBackup`：scope/backup_sha256绑定完整备份，复用单批次目标比较器，每轮按不同父ID读取一次；整事务仅补缺失父历史/批次，相同保留、冲突拒绝，写前复查及最终完整关联读回。目标每轮64 MiB/总256 MiB、90秒、128 KiB结果；空备份不建表。见 [联合备份导入](../../docs/design/01-contracts/outbox-restore-requeue-backup-import-runtime.md)。只恢复历史，无schema/依赖变化，仅源码文档，未运行、编译或测试。
 
 离线备份子路径新增 `listOutboxRestoreRequeueBackupHistory/readOutboxRestoreRequeueBackupEntry`：先完整验证全部历史，再按backup_sha256绑定分页/批次；默认10最多20，返回next_query/get_query。单条返回完整原查询/回执及可导出的独立文件，保留备份观察时间/trace，缺项明确not-found。见 [备份离线取用](../../docs/design/01-contracts/outbox-restore-requeue-backup-access-runtime.md)。仅源码文档，无数据库结构或依赖变化，未编译、测试或运行。

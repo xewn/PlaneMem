@@ -22,10 +22,19 @@ const conflictReasons: Record<keyof typeof reasons, string> = {
   TRANSITION_INVALID: 'The conflict decision contradicts its original detection or prior state',
   LIMIT_REACHED: 'The conflict lifecycle projection reached its conflict limit',
 };
+const clientEventReasons: Record<keyof typeof reasons, string> = {
+  EVENT_INVALID: 'The client event does not match its recorded-content contract',
+  PROJECTION_INVALID: 'The saved client event history is inconsistent',
+  BASELINE_REQUIRED: 'The client event history requires a complete recorded event',
+  VERSION_GAP: 'The client event cursor must advance beyond its saved history',
+  TRANSITION_INVALID: 'The original client event identity or server event already exists',
+  LIMIT_REACHED: 'The client event history reached its event limit',
+};
 const diagnostics = {
   'context-item': { messages: reasons, prefix: 'INBOX_CONTEXT_ITEM' },
   proposal: { messages: proposalReasons, prefix: 'INBOX_PROPOSAL' },
   conflict: { messages: conflictReasons, prefix: 'INBOX_CONFLICT' },
+  'client-event': { messages: clientEventReasons, prefix: 'INBOX_CLIENT_EVENT' },
 };
 /** Internal, fixed diagnostics from built-in reducers; no payload or arbitrary exception text. */
 export class InboxApplicationRejection extends Error {

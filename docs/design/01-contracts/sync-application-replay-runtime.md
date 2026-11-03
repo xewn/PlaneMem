@@ -54,3 +54,5 @@ workctx inbox application-replay --inbox local-inbox.sqlite --json-file applicat
 事务内失败 details 包含 replay_completed=false、原身份/应用/预算、可用的结构/重算进度、阶段和所选页/事件；计数只表示已处理前缀，不表示部分通过。schema/BEGIN 之前失败可能没有进度。replayed_pages 只统计已逐页匹配的页，replayed_events 可包含尚未完成整页比较的事件。业务拒绝使用固定诊断，不回显任意异常正文。复用单调期限及事务/回滚处理，同步 SQL、JSON 或 reducer 无法硬实时抢占；结束读取事务失败仍返回失败并保留计数。CLI 关闭失败保留原错误或完整成功结果与 close_pending。
 
 本轮未实际执行任何重放或数据库操作，尚需将来取得空历史、多页、旧快照自洽但语义不符、未知类型、版本断档、预算/超时及关闭失败的运行证据。上下文、建议和冲突以外的业务适配器、完整正文、权限变化重建及真实恢复证据继续待补；既有通用应用归档/恢复不认证 reducer 语义。
+
+2026-11-04 后续新增 [客户端事件完整内容历史](sync-client-event-application-runtime.md) 固定适配器client-event-history/1，沿用本流程并接入apply/preview/pending/replay选择器。保存ClientEventRecorded原content和来源，按原账号/客户端/事件ID区分，最多512条/1 MiB；接收不表示源实体应用，不重建缺失的原上传命令。旧适配器规则不变，仅源码文档，未执行reducer、数据库、编译或测试。
