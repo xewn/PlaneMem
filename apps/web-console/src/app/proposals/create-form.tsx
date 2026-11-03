@@ -12,9 +12,13 @@ import { prepareProposalSubmission } from './actions';
 import {
   decodeProposalOriginal,
   encodeProposalOriginal,
+  assertProposalSubmissionBinding,
+  type ProposalSubmissionBinding,
   type ProposalOriginal,
 } from './original-model';
 import { OriginalProposalSubmission } from './original-submission';
+import { ProposalEditingPanel } from './editing-panel';
+import { proposalEditingInput, type ProposalEditingFields } from './editing-model';
 
 export interface ProposalSourceSeed {
   id: string;
@@ -56,14 +60,17 @@ export function ProposalCreateForm({
   restricted,
   source,
   origin,
+  binding,
 }: {
   initialKey: string;
   restricted: boolean;
   source?: ProposalSourceSeed;
   origin?: ProposalDraftSeed;
+  binding: ProposalSubmissionBinding;
 }) {
   const [pending, setPending] = useState(false);
   const [original, setOriginal] = useState<ProposalOriginal>();
+  const [saveOriginal, setSaveOriginal] = useState(false);
   const [message, setMessage] = useState('');
   const active = useRef(false);
   const mounted = useRef(false);
@@ -73,13 +80,15 @@ export function ProposalCreateForm({
       mounted.current = false;
     };
   }, []);
-  const [base] = useState(initialKey);
+  const [key, setKey] = useState(initialKey);
   const [startingSource] = useState(source);
   const [startingOrigin] = useState(origin);
   const [originRevision, setOriginRevision] = useState(String(origin?.revision ?? ''));
+  const [originId, setOriginId] = useState(origin?.proposal_id);
+  const [restored, setRestored] = useState(false);
   const [sequence, setSequence] = useState(0);
   const [acknowledged, setAcknowledged] = useState(false);
-  const [values, setValues] = useState({
+  const [values, setValues] = useState<ProposalEditingFields['values']>({
     kind: origin?.kind ?? 'next_step',
     title: origin?.title ?? '',
     content: origin?.content ?? '',
@@ -110,26 +119,13 @@ export function ProposalCreateForm({
         : [emptySource(0)],
   );
   const [nextSourceKey, setNextSourceKey] = useState(sources.length);
-  const key = base + '-' + sequence;
   const locked = pending;
-  const draft = {
-    ...values,
-    ttl_seconds: Number(values.ttl_seconds),
-    source_refs: sources.map(({ type, id, revision, uri }) => ({
-      type: type.trim(),
-      id: id.trim(),
-      ...(revision.trim() ? { revision: Number(revision) } : {}),
-      ...(uri.trim() ? { uri: uri.trim() } : {}),
-    })),
-    ...(startingOrigin
-      ? {
-          derived_from: {
-            proposal_id: startingOrigin.proposal_id,
-            revision: Number(originRevision),
-          },
-        }
-      : {}),
+  const editingFields: ProposalEditingFields = {
+    values,
+    sources: sources.map(({ key: _key, ...source }) => source),
+    origin: originId ? { proposal_id: originId, revision: originRevision } : null,
   };
+  const draft = proposalEditingInput(editingFields);
   let validation: string | undefined;
   try {
     parseCreateProposal(draft);
@@ -137,17 +133,18 @@ export function ProposalCreateForm({
     validation = error instanceof Error ? error.message : 'Check the proposal fields.';
   }
   function edited() {
+    setKey('proposal-create-' + crypto.randomUUID());
     setSequence((value) => value + 1);
     setAcknowledged(false);
     setMessage('');
   }
   function change(name: keyof typeof values, value: string) {
-    if (locked) return;
+    if (locked || active.current) return;
     setValues((previous) => ({ ...previous, [name]: value }));
     edited();
   }
   function changeSource(sourceKey: number, name: Exclude<keyof SourceDraft, 'key'>, value: string) {
-    if (locked) return;
+    if (locked || active.current) return;
     setSources((previous) =>
       previous.map((entry) => (entry.key === sourceKey ? { ...entry, [name]: value } : entry)),
     );
@@ -162,12 +159,14 @@ export function ProposalCreateForm({
       if (!mounted.current) return;
       if (result.status === 'prepared') {
         const parsed = decodeProposalOriginal(result.original);
+        assertProposalSubmissionBinding(parsed.binding, binding);
         if (
           parsed.request_key !== key ||
           encodeProposalOriginal({ ...parsed, draft: parseCreateProposal(draft) }) !==
             encodeProposalOriginal(parsed)
         )
           throw new TypeError();
+        setSaveOriginal(true);
         setOriginal(parsed);
       } else setMessage(result.message);
     } catch {
@@ -180,7 +179,8 @@ export function ProposalCreateForm({
       if (mounted.current) setPending(false);
     }
   }
-  if (original) return <OriginalProposalSubmission original={original} saveOnMount />;
+  if (original)
+    return <OriginalProposalSubmission original={original} saveOnMount={saveOriginal} />;
   return (
     <form
       onSubmit={(event) => {
@@ -193,34 +193,74 @@ export function ProposalCreateForm({
         Prepare a sourced suggestion for review. Next, save and review its original request before
         explicitly submitting it.
       </p>
-      {startingSource && (
+      <ProposalEditingPanel
+        binding={binding}
+        requestKey={key}
+        fields={editingFields}
+        disabled={locked}
+        restricted={restricted}
+        begin={() => {
+          if (active.current || original || !mounted.current) return false;
+          active.current = true;
+          setPending(true);
+          return true;
+        }}
+        end={() => {
+          active.current = false;
+          if (mounted.current) setPending(false);
+        }}
+        onOriginal={(saved) => {
+          setSaveOriginal(false);
+          setOriginal(saved);
+        }}
+        onLoad={(saved) => {
+          setValues(saved.fields.values);
+          setSources(saved.fields.sources.map((entry, key) => ({ ...entry, key })));
+          setNextSourceKey(saved.fields.sources.length);
+          setOriginId(saved.fields.origin?.proposal_id);
+          setOriginRevision(saved.fields.origin?.revision ?? '');
+          setKey(saved.request_key);
+          setSequence(1);
+          setRestored(true);
+          setAcknowledged(false);
+          setMessage('');
+        }}
+      />
+      {startingSource && !restored && (
         <p className="muted">
           Started from {startingSource.title} · revision {startingSource.version}. Check the sources
           below before submitting.
         </p>
       )}
-      {startingOrigin && (
+      {originId && (
         <div>
-          <p>
-            New draft based on “{startingOrigin.title}” ({startingOrigin.status}). This will create
-            a separate proposal for a new review. The original decision is preserved.
-          </p>
-          {!startingOrigin.sources_current && (
-            <p role="status">
-              The original evidence is stale. Review and repair the copied sources before
-              submitting.
+          {startingOrigin && !restored ? (
+            <>
+              <p>
+                New draft based on “{startingOrigin.title}” ({startingOrigin.status}). This will
+                create a separate proposal for a new review. The original decision is preserved.
+              </p>
+              {!startingOrigin.sources_current && (
+                <p role="status">
+                  The original evidence is stale. Review and repair the copied sources before
+                  submitting.
+                </p>
+              )}
+              <p className="muted">
+                The original expires at {startingOrigin.expires_at}. Choose a new lifetime below and
+                enter the actual model and authoring process for this revision; the original
+                provenance is not reused automatically.
+              </p>
+            </>
+          ) : (
+            <p>
+              This editing copy refers to an original proposal. Open its current details and check
+              the revision before preparing a new submission.
             </p>
           )}
-          <p className="muted">
-            The original expires at {startingOrigin.expires_at}. Choose a new lifetime below and
-            enter the actual model and authoring process for this revision; the original provenance
-            is not reused automatically.
-          </p>
           <Link
             className="panel-link"
-            href={
-              '/proposals?status=all&proposal=' + encodeURIComponent(startingOrigin.proposal_id)
-            }
+            href={'/proposals?status=all&proposal=' + encodeURIComponent(originId)}
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -237,7 +277,7 @@ export function ProposalCreateForm({
               value={originRevision}
               readOnly={locked}
               onChange={(event) => {
-                if (locked) return;
+                if (locked || active.current) return;
                 setOriginRevision(event.target.value);
                 edited();
               }}
@@ -250,6 +290,7 @@ export function ProposalCreateForm({
         </div>
       )}
       <input type="hidden" name="key" value={key} />
+      <input type="hidden" name="binding" value={JSON.stringify(binding)} />
       <input type="hidden" name="draft" value={JSON.stringify(draft)} />
       <input type="hidden" name="acknowledged" value={acknowledged ? 'yes' : ''} />
       <label>
@@ -411,7 +452,7 @@ export function ProposalCreateForm({
                 type="button"
                 className="secondary-button"
                 onClick={() => {
-                  if (locked) return;
+                  if (locked || active.current) return;
                   setSources((previous) => previous.filter((source) => source.key !== entry.key));
                   edited();
                 }}
@@ -427,7 +468,7 @@ export function ProposalCreateForm({
         className="secondary-button"
         disabled={locked || sources.length >= 32}
         onClick={() => {
-          if (locked || sources.length >= 32) return;
+          if (locked || active.current || sources.length >= 32) return;
           setSources((previous) => [...previous, emptySource(nextSourceKey)]);
           setNextSourceKey((value) => value + 1);
           edited();
@@ -441,7 +482,9 @@ export function ProposalCreateForm({
           required
           checked={acknowledged}
           disabled={locked}
-          onChange={(event) => setAcknowledged(event.target.checked)}
+          onChange={(event) => {
+            if (!active.current) setAcknowledged(event.target.checked);
+          }}
         />
         I checked the content, sources and provenance and want to prepare the original submission.
       </label>

@@ -18,6 +18,7 @@ import {
   decodeProposalOriginal,
   encodeProposalOriginal,
   PROPOSAL_ORIGINAL_BYTES,
+  parseProposalSubmissionBinding,
 } from './original-model';
 
 export async function prepareProposalSubmission(data: FormData) {
@@ -32,7 +33,11 @@ export async function prepareProposalSubmission(data: FormData) {
     )
       throw new TypeError();
     const draft = parseCreateProposal(JSON.parse(raw));
-    const binding = await getWorkbenchProposalSubmissionBinding();
+    const bindingText = field(data, 'binding');
+    if (new TextEncoder().encode(bindingText).byteLength > 16384) throw new TypeError();
+    const binding = await getWorkbenchProposalSubmissionBinding(
+      parseProposalSubmissionBinding(JSON.parse(bindingText)),
+    );
     return {
       status: 'prepared' as const,
       original: encodeProposalOriginal({

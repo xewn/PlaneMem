@@ -11,9 +11,11 @@ import {
   listWorkbenchProposals,
   readWorkbenchProposal,
   readWorkbenchContextItem,
+  getWorkbenchProposalSubmissionBinding,
 } from '../../lib/server-api';
 import { ProposalReviewForm } from './form';
 import { ProposalCreateForm, type ProposalSourceSeed, type ProposalDraftSeed } from './create-form';
+import type { ProposalSubmissionBinding } from './original-model';
 
 type Params = Record<string, string | string[] | undefined>;
 export default async function ProposalsPage({ searchParams }: { searchParams: Promise<Params> }) {
@@ -35,6 +37,15 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
       ...(derivedFrom ? { derived_from: derivedFrom } : {}),
     });
     const page = (await listWorkbenchProposals(query)).data;
+    let creationBinding: ProposalSubmissionBinding | undefined;
+    let bindingError: unknown;
+    if (page.create_allowed) {
+      try {
+        creationBinding = await getWorkbenchProposalSubmissionBinding();
+      } catch (error) {
+        bindingError = error;
+      }
+    }
     const sourceId = typeof params.source === 'string' ? params.source : undefined;
     const originId = typeof params.from === 'string' ? params.from : undefined;
     let originSeed: ProposalDraftSeed | undefined;
@@ -151,11 +162,14 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
             >
               <summary>Prepare a sourced suggestion for review</summary>
               {sourceError !== undefined && <PageError error={sourceError} />}
+              {bindingError !== undefined && <PageError error={bindingError} />}
               {sourceMessage && <p role="status">{sourceMessage}</p>}
-              {sourceError === undefined && sourceMessage === undefined ? (
+              {sourceError === undefined && sourceMessage === undefined && creationBinding ? (
                 <ProposalCreateForm
                   key={
                     'new:' +
+                    JSON.stringify(creationBinding) +
+                    ':' +
                     (sourceId ?? '') +
                     ':' +
                     (originId ?? '') +
@@ -163,6 +177,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
                     (typeof params.proposal === 'string' ? params.proposal : '')
                   }
                   initialKey={'proposal-create-' + crypto.randomUUID()}
+                  binding={creationBinding}
                   restricted={page.restricted_read === true}
                   {...(sourceSeed ? { source: sourceSeed } : {})}
                   {...(originSeed ? { origin: originSeed } : {})}

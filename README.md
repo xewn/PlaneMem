@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [建议编辑草稿保存](docs/design/01-contracts/proposal-editing-draft-runtime.md)：未填写完整的建议也可保存到浏览器或导出文件，之后查找、预览并确认继续编辑；已准备原请求仍进入原恢复流程。仅源码文档，未编译、测试、运行或发布。
+
 新增 [回执文件离线补存](docs/design/01-contracts/proposal-queue-reconciliation-runtime.md#已保留回执记录的补存)：保存失败后可从保留的完整记录或错误JSON预览并另存新文件，保持原时间、摘要和结算状态，无需重新查询或结算队列。仅源码文档，未编译、测试、运行或发布。
 
 新增 [worker 回执记录保存](docs/design/01-contracts/proposal-queue-reconciliation-runtime.md#回执记录保存与离线核对)：查询或结算后可显式保存完整原请求与回执到新文件，并离线核对摘要、身份和状态；文件保存失败保留已取得的结果。仅源码文档，未编译、测试、运行或发布。
