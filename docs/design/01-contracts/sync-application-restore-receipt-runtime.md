@@ -49,4 +49,6 @@ CLI 保留操作错误、完整原查询和 close_pending；成功后关闭失�
 
 若已完整读到既有回执，随后预算或事务结束失败，错误 details 仍附 observed_receipt 与历史范围标记；不丢失已观察的原结果，也不把此次事务错误改成成功。首次恢复尚未提交的新回执不作为 observed_receipt 返回，提交未知仍需用原查询重新查回执。
 
-仍缺回执独立文件导出/离线查看、按 ID 发现原查询、数据库实例绑定、不同历史合并、完整跨设备恢复及并发/崩溃运行证据。本增量仅人工审阅源码，R-005 保持未完成。
+已增补 [按请求 ID 找回原查询](sync-application-restore-receipt-selection-runtime.md)：getApplicationRestoreReceipt/CLI application-restore-receipt-get 只需原身份/应用/请求 ID，可单独指定本次读取预算，并可独占保存原查询文件。此发现入口不比较调用方的完整原请求；上文精确核对入口和重复恢复规则保持不变。
+
+仍缺回执独立文件导出/离线查看、请求 ID 目录、数据库实例绑定、不同历史合并、完整跨设备恢复及并发/崩溃运行证据。本增量仅人工审阅源码，R-005 保持未完成。

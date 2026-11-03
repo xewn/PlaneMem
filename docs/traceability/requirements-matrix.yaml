@@ -978,6 +978,28 @@ requirements:
         - "CLI primary/embedded local routing, old output migration, read/rollback/close failures and complete result retention"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_application_restore_receipt_selection_development_increment:
+      date: "2026-11-03"
+      status: "Source-only discovery and exclusive file recovery of the original restore query by consumer/application/request ID; R-005 remains incomplete."
+      artifacts:
+        - "apps/context-bridge/src/inbox/application-restore-receipts.ts"
+        - "apps/context-bridge/src/inbox/applications.ts"
+        - "apps/context-bridge/src/inbox/sqlite.ts"
+        - "apps/workctx-cli/src/inbox-application-restore-receipt-get.ts"
+        - "apps/workctx-cli/src/inbox-application-restore-request.ts"
+        - "apps/workctx-cli/src/inbox.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/sync-application-restore-receipt-selection-runtime.md"
+      behavior: "Strict ID selection has a separate read deadline and reuses full bounded receipt validation without claiming a full caller-query match. The existing exact-query receipt, restore and preview paths retain their ID-reuse comparison. Optional output preflights a new path before readonly open, then saves the original canonical query only after a successful read and attempted close, preserving the recorded timeout, optional target, archive hash and ID. Missing records create no file and do not prove rollback; file/response failures preserve historical receipt, original query and confirmed or unconfirmed publication state."
+      remaining_scope: "No complete receipt file export/offline format, request ID listing, database-instance identity, history merging or real concurrent/crash/cross-device evidence. Discovery is not a fresh restore plan or full request-content comparison."
+      pending_evidence:
+        - "Strict selection/unknown-field rejection before open, consumer/application isolation, missing/partial extensions and corrupt receipts"
+        - "Separate read timeout with unchanged original canonical query/guard presence, ID-reuse checks on exact-query/restore/preview paths"
+        - "Primary/embedded routing, missing receipt/no output, invalid or existing output before database open, independent original-query reuse"
+        - "File write/sync/readback/publication failures, retained published-unconfirmed state, close/rollback failures and pre/post-save response limits"
+      evidence: []
+      execution: "Source and documentation only; no builds, typechecks, tests, CLI/Bridge/reducer/API/service runs, generated samples, database opens, schema initialization, migrations or release. No new schema/dependencies; existing SQLite extensions and PostgreSQL 016-049 remain unexecuted. Task commits/pushes target main with skip-ci."
     sync_application_restore_receipt_development_increment:
       date: "2026-11-03"
       status: "Source-only atomic historical application restore receipts and exact readonly lookup; R-005 remains incomplete."

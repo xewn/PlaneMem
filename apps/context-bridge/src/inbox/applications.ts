@@ -40,6 +40,7 @@ import { previewInboxApplicationRestore } from './application-restore-preview.js
 import {
   InboxApplicationRestoreReceipts,
   parseInboxApplicationRestoreReceiptQuery,
+  parseInboxApplicationRestoreReceiptSelection,
   type SyncInboxApplicationRestoreReceipt,
 } from './application-restore-receipts.js';
 import type { InboxApplicationSourceCompare } from './application-restore-comparison.js';
@@ -589,6 +590,62 @@ export class InboxApplications {
         details: {
           ...error.envelope.details,
           restore_query: query,
+          ...(observedReceipt === undefined
+            ? {}
+            : { observed_receipt: observedReceipt, receipt_scope: 'historical-local-transaction' }),
+          local_write_state: 'not-performed',
+          acknowledgement_dispatch_state: 'not-sent',
+        },
+      });
+    }
+  }
+  getRestoreReceipt(input: unknown, trace: string) {
+    const selection = parseInboxApplicationRestoreReceiptSelection(input, trace);
+    let observedReceipt: SyncInboxApplicationRestoreReceipt | undefined;
+    try {
+      return this.run(trace, selection.timeout_ms, false, (check) => {
+        this.require(trace);
+        const receipt = new InboxApplicationRestoreReceipts(this.db).get(
+          keys(selection),
+          selection,
+          trace,
+        );
+        observedReceipt = receipt;
+        const result = {
+          ...this.historyEnvelope(selection, trace),
+          selection,
+          status: receipt ? ('recorded' as const) : ('not-observed' as const),
+          receipt_lookup_completed: true,
+          receipt: receipt ?? null,
+          restore_query: receipt?.query ?? null,
+          query_match: 'not-requested' as const,
+          receipt_scope: 'historical-local-transaction' as const,
+          current_state: 'not-read' as const,
+          observation_scope: 'current-database-read-snapshot' as const,
+          absence_proves_rollback: false,
+          local_write_state: 'not-performed' as const,
+        };
+        try {
+          syncJsonSnapshot(result, 256 * 1024);
+        } catch {
+          throw applicationFailure(
+            'INBOX_APPLICATION_RESTORE_RECEIPT_GET_TOO_LARGE',
+            'The complete restore receipt lookup exceeds 256 KiB',
+            trace,
+          );
+        }
+        check();
+        return result;
+      });
+    } catch (error) {
+      if (!(error instanceof ContractError)) throw error;
+      throw new ContractError(error.envelope.code, error.envelope.message, {
+        trace_id: trace,
+        retryable: false,
+        details: {
+          ...error.envelope.details,
+          selection,
+          receipt_lookup_completed: false,
           ...(observedReceipt === undefined
             ? {}
             : { observed_receipt: observedReceipt, receipt_scope: 'historical-local-transaction' }),

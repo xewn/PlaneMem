@@ -1,7 +1,13 @@
 import { createHash } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
-import { ContractError, syncJsonSnapshot } from '@planemem/contracts';
-import { applicationDigest, applicationFailure, applicationTrace } from './application-model.js';
+import { ContractError, isSyncIdentifier, syncJsonSnapshot } from '@planemem/contracts';
+import {
+  applicationDigest,
+  applicationFailure,
+  applicationTrace,
+  parseInboxApplicationQuery,
+  type SyncInboxApplicationQuery,
+} from './application-model.js';
 import {
   parseInboxApplicationRestoreQuery,
   type SyncInboxApplicationRestoreQuery,
@@ -37,6 +43,29 @@ export function parseInboxApplicationRestoreReceiptQuery(input: unknown, trace: 
       trace,
     );
   return { ...query, restore_request_id: query.restore_request_id };
+}
+
+export interface SyncInboxApplicationRestoreReceiptSelection extends SyncInboxApplicationQuery {
+  restore_request_id: string;
+}
+/** Discovery uses a fresh read budget, never a reconstructed original restore query. */
+export function parseInboxApplicationRestoreReceiptSelection(
+  input: unknown,
+  trace: string,
+): SyncInboxApplicationRestoreReceiptSelection {
+  try {
+    const value: unknown = JSON.parse(syncJsonSnapshot(input, 16384));
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError();
+    const { restore_request_id, ...base } = value as Record<string, unknown>;
+    if (!isSyncIdentifier(restore_request_id)) throw new TypeError();
+    return { ...parseInboxApplicationQuery(base, trace), restore_request_id };
+  } catch {
+    throw applicationFailure(
+      'INBOX_APPLICATION_RESTORE_RECEIPT_SELECTION_INVALID',
+      'Supply only the original identity/application, restore_request_id and optional read timeout_ms',
+      trace,
+    );
+  }
 }
 
 function record(value: unknown, fields: readonly string[]) {
@@ -194,54 +223,12 @@ export class InboxApplicationRestoreReceipts {
     trace: string,
   ): SyncInboxApplicationRestoreReceipt | undefined {
     if (query.restore_request_id === undefined) return undefined;
-    this.require(trace);
-    const rows = this.db
-      .prepare(
-        `SELECT
-      CASE WHEN typeof(consumer_key) = 'text' AND length(CAST(consumer_key AS BLOB)) = 64 THEN consumer_key END AS consumer_key,
-      CASE WHEN typeof(application_key) = 'text' AND length(CAST(application_key AS BLOB)) = 64 THEN application_key END AS application_key,
-      CASE WHEN typeof(restore_request_id) = 'text' AND length(CAST(restore_request_id AS BLOB)) <= 1020 THEN restore_request_id END AS restore_request_id,
-      CASE WHEN typeof(request_sha256) = 'text' AND length(CAST(request_sha256 AS BLOB)) = 64 THEN request_sha256 END AS request_sha256,
-      CASE WHEN typeof(receipt_sha256) = 'text' AND length(CAST(receipt_sha256 AS BLOB)) = 64 THEN receipt_sha256 END AS receipt_sha256,
-      CASE WHEN typeof(receipt_json) = 'text' AND length(CAST(receipt_json AS BLOB)) <= 65536 THEN receipt_json END AS receipt_json
-      FROM sync_inbox_application_restore_receipts
-      WHERE consumer_key = ? AND application_key = ? AND restore_request_id = ? LIMIT 2`,
-      )
-      .all(key.consumer, key.application, query.restore_request_id);
-    if (rows.length === 0) return undefined;
-    let receipt: SyncInboxApplicationRestoreReceipt;
-    try {
-      const row = rows[0];
-      if (
-        rows.length !== 1 ||
-        !row ||
-        typeof row.receipt_json !== 'string' ||
-        row.consumer_key !== key.consumer ||
-        row.application_key !== key.application ||
-        row.restore_request_id !== query.restore_request_id
-      )
-        throw new TypeError();
-      receipt = parseReceipt(
-        JSON.parse(syncJsonSnapshot(JSON.parse(row.receipt_json), 65536)),
-        trace,
-      );
-      if (
-        JSON.stringify(receipt) !== row.receipt_json ||
-        hash(row.receipt_json) !== row.receipt_sha256 ||
-        receipt.request_sha256 !== row.request_sha256 ||
-        receipt.query.restore_request_id !== query.restore_request_id ||
-        hash(JSON.stringify(receipt.query.expected_identity)) !== key.consumer ||
-        hash(JSON.stringify(receipt.query.application)) !== key.application
-      )
-        throw new TypeError();
-    } catch {
-      throw applicationFailure(
-        'INBOX_APPLICATION_RESTORE_RECEIPT_CORRUPT',
-        'The selected historical restore receipt is inconsistent; preserve the inbox',
-        trace,
-      );
-    }
-    if (JSON.stringify(receipt.query) !== JSON.stringify(query))
+    const receipt = this.get(
+      key,
+      { ...query, restore_request_id: query.restore_request_id },
+      trace,
+    );
+    if (receipt && JSON.stringify(receipt.query) !== JSON.stringify(query))
       throw new ContractError(
         'INBOX_APPLICATION_RESTORE_REQUEST_ID_REUSED',
         'This restore_request_id already belongs to a different original query; use its complete original query to inspect the receipt',
@@ -255,6 +242,61 @@ export class InboxApplicationRestoreReceipts {
           },
         },
       );
+    return receipt;
+  }
+  /** Reads and verifies the original record without comparing a caller-supplied restore query. */
+  get(
+    key: { consumer: string; application: string },
+    selection: SyncInboxApplicationRestoreReceiptSelection,
+    trace: string,
+  ): SyncInboxApplicationRestoreReceipt | undefined {
+    this.require(trace);
+    const rows = this.db
+      .prepare(
+        `SELECT
+      CASE WHEN typeof(consumer_key) = 'text' AND length(CAST(consumer_key AS BLOB)) = 64 THEN consumer_key END AS consumer_key,
+      CASE WHEN typeof(application_key) = 'text' AND length(CAST(application_key AS BLOB)) = 64 THEN application_key END AS application_key,
+      CASE WHEN typeof(restore_request_id) = 'text' AND length(CAST(restore_request_id AS BLOB)) <= 1020 THEN restore_request_id END AS restore_request_id,
+      CASE WHEN typeof(request_sha256) = 'text' AND length(CAST(request_sha256 AS BLOB)) = 64 THEN request_sha256 END AS request_sha256,
+      CASE WHEN typeof(receipt_sha256) = 'text' AND length(CAST(receipt_sha256 AS BLOB)) = 64 THEN receipt_sha256 END AS receipt_sha256,
+      CASE WHEN typeof(receipt_json) = 'text' AND length(CAST(receipt_json AS BLOB)) <= 65536 THEN receipt_json END AS receipt_json
+      FROM sync_inbox_application_restore_receipts
+      WHERE consumer_key = ? AND application_key = ? AND restore_request_id = ? LIMIT 2`,
+      )
+      .all(key.consumer, key.application, selection.restore_request_id);
+    if (rows.length === 0) return undefined;
+    let receipt: SyncInboxApplicationRestoreReceipt;
+    try {
+      const row = rows[0];
+      if (
+        rows.length !== 1 ||
+        !row ||
+        typeof row.receipt_json !== 'string' ||
+        row.consumer_key !== key.consumer ||
+        row.application_key !== key.application ||
+        row.restore_request_id !== selection.restore_request_id
+      )
+        throw new TypeError();
+      receipt = parseReceipt(
+        JSON.parse(syncJsonSnapshot(JSON.parse(row.receipt_json), 65536)),
+        trace,
+      );
+      if (
+        JSON.stringify(receipt) !== row.receipt_json ||
+        hash(row.receipt_json) !== row.receipt_sha256 ||
+        receipt.request_sha256 !== row.request_sha256 ||
+        receipt.query.restore_request_id !== selection.restore_request_id ||
+        hash(JSON.stringify(receipt.query.expected_identity)) !== key.consumer ||
+        hash(JSON.stringify(receipt.query.application)) !== key.application
+      )
+        throw new TypeError();
+    } catch {
+      throw applicationFailure(
+        'INBOX_APPLICATION_RESTORE_RECEIPT_CORRUPT',
+        'The selected historical restore receipt is inconsistent; preserve the inbox',
+        trace,
+      );
+    }
     return receipt;
   }
   save(

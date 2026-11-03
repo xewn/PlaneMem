@@ -22,6 +22,7 @@ import type {
   SyncInboxPageHistoryQuery,
 } from '@planemem/context-bridge';
 import { readBoundedArtifactFile } from './artifact-files.js';
+import { runInboxApplicationRestoreReceiptGet } from './inbox-application-restore-receipt-get.js';
 import { readSyncPageFile, prepareSyncPageOutput, saveSyncPageArchive } from './sync-page-file.js';
 
 export function isInboxCommand(command: string) {
@@ -37,6 +38,7 @@ export function isInboxCommand(command: string) {
     'inbox enable-applications',
     'inbox enable-application-restore-receipts',
     'inbox application-restore-receipt',
+    'inbox application-restore-receipt-get',
     'inbox application-status',
     'inbox application-list',
     'inbox application-apply',
@@ -54,7 +56,7 @@ export function isInboxCommand(command: string) {
 function invalid(trace: string) {
   return new ContractError(
     'USAGE_ERROR',
-    'Use local inbox init/import/status/consumers/audit-pages/page-history/page-get/head/enable-applications/enable-application-restore-receipts/application-restore-receipt/application-list/application-status/application-apply/application-audit/application-replay/application-history/application-get/enable-ack/enable-ack-dispatch/enable-ack-recovery/ack-status/ack-dispatch-status with --inbox FILE. Init and enable commands accept only --inbox. Import requires --page-file. Reads and application-apply require --json or --json-file: consumers accepts {} or limit/after_consumer_key; other queries require expected_identity and selection parameters. Application-restore-receipt requires the complete original restore query including restore_request_id and never reads an archive. Application-list requires only original expected_identity and optional limit/after_application_key/timeout_ms; other application reads require application name/version; history accepts limit and saved sequence/page/projection boundaries; get requires document_sha256 with optional expected_projection_sha256; application-apply selects context-item-lifecycle/1 and also requires document_sha256 and expected_previous_sha256 (root null). Application queries permit timeout_ms in JSON; application-audit also permits max_pages/max_events/max_bytes and never executes reducers; application-replay selects context-item-lifecycle/1, adds max_replay_bytes and recomputes saved history without writing. Head requires --output NEW_PAGE; page-get optionally exports to --output NEW_PAGE. No stdin, key, --timeout-ms or repeated options',
+    'Use local inbox init/import/status/consumers/audit-pages/page-history/page-get/head/enable-applications/enable-application-restore-receipts/application-restore-receipt/application-restore-receipt-get/application-list/application-status/application-apply/application-audit/application-replay/application-history/application-get/enable-ack/enable-ack-dispatch/enable-ack-recovery/ack-status/ack-dispatch-status with --inbox FILE. Init and enable commands accept only --inbox. Import requires --page-file. Reads and application-apply require --json or --json-file: consumers accepts {} or limit/after_consumer_key; other queries require expected_identity and selection parameters. Application-restore-receipt requires the complete original restore query including restore_request_id and never reads an archive. Application-restore-receipt-get requires only original expected_identity/application/restore_request_id and optional read timeout_ms; --output optionally saves its recorded original query to a new file. Application-list requires only original expected_identity and optional limit/after_application_key/timeout_ms; other application reads require application name/version; history accepts limit and saved sequence/page/projection boundaries; get requires document_sha256 with optional expected_projection_sha256; application-apply selects context-item-lifecycle/1 and also requires document_sha256 and expected_previous_sha256 (root null). Application queries permit timeout_ms in JSON; application-audit also permits max_pages/max_events/max_bytes and never executes reducers; application-replay selects context-item-lifecycle/1, adds max_replay_bytes and recomputes saved history without writing. Head requires --output NEW_PAGE; page-get optionally exports to --output NEW_PAGE. No stdin, key, --timeout-ms or repeated options',
     { trace_id: trace, retryable: false, acknowledgement_dispatch_state: 'not-sent' },
   );
 }
@@ -109,7 +111,10 @@ function argumentsFor(argv: string[], trace: string) {
           : file !== undefined ||
             (json === undefined) === (jsonFile === undefined) ||
             (command === 'inbox head' && output === undefined) ||
-            (command !== 'inbox head' && command !== 'inbox page-get' && output !== undefined)
+            (command !== 'inbox head' &&
+              command !== 'inbox page-get' &&
+              command !== 'inbox application-restore-receipt-get' &&
+              output !== undefined)
     )
       throw new TypeError();
     return { command, path: resolve(path), file, json, jsonFile, output };
@@ -179,6 +184,13 @@ function envelope(trace: string, data: unknown, identity?: SyncCommandIdentity) 
 /** Explicit local commands: they never need a gateway, token, or current account. */
 export async function runInboxArguments(argv: string[], trace: string) {
   const args = argumentsFor(argv, trace);
+  if (args.command === 'inbox application-restore-receipt-get')
+    return runInboxApplicationRestoreReceiptGet(
+      args.path,
+      await readQuery(args, trace),
+      trace,
+      args.output,
+    );
   const page =
     args.command === 'inbox import' ? await readSyncPageFile(args.file!, trace) : undefined;
   let identity =

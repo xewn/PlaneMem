@@ -1,5 +1,7 @@
 # Context Bridge 本地同步存储
 
+新增 `getApplicationRestoreReceipt` 按原身份/应用/restore_request_id 找回历史回执及完整原查询；本次读取 timeout_ms 不覆盖记录中的原期限。复用既有完整回执校验，原完整查询精确核对仍保留。见 [原查询找回](../../docs/design/01-contracts/sync-application-restore-receipt-selection-runtime.md)。仅源码，未打开数据库、编译或测试。
+
 2026-11-03 新增应用恢复持久回执源码：显式 enableApplicationRestoreReceipts 启用独立扩展；带 restore_request_id 的恢复在原事务内保存并读回紧凑历史回执，相同请求返回原回执，ID 复用不同查询拒绝。readApplicationRestoreReceipt 按完整原查询只读查回执，不读取当前投影；查无记录不证明此前回滚。见 [持久回执契约](../../docs/design/01-contracts/sync-application-restore-receipt-runtime.md)。仅源码文档，未启用扩展、打开库、编译或测试。
 
 2026-11-03 恢复目标绑定增补：恢复/预览查询可带完整 expected_target v1 双摘要，分别固定所选应用全部原页/投影/原应用 trace 和原消费者完整接收链。预览生成的 restore_query 默认携带当前目标约束；带旧约束的预览发现变化返回 conflict，实际恢复在同一写事务第一次插入前核对两项，变化报 TARGET_CHANGED，成功返回 target_before/target_after。旧无约束查询保留原行为，未知提交不丢失原约束；摘要只绑定逻辑内容，不认证来源或证明之前操作结果。见 [恢复目标绑定](../../docs/design/01-contracts/sync-application-restore-target-runtime.md)。仅源码文档，未编译、测试、运行接口或打开库。

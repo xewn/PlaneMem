@@ -1,5 +1,7 @@
 # 应用恢复预览的原请求文件保存
 
+保存实现也供 [按请求 ID 找回原查询](sync-application-restore-receipt-selection-runtime.md) 使用：后者从完整校验的历史回执保存原查询，保留原 expected_target 是否存在，不补造新的预览约束。下文预览入口仍要求带本次 observed_target 的查询，不因复用保存实现而放宽。
+
 2026-11-03 回执增补：恢复查询现可显式携带 restore_request_id，最终预览查询及保存文件保留同一 ID。需先显式启用可选扩展；相同完整查询命中已登记回执时仅返回历史结果，不检查当前目标或生成新计划。完整原查询可独立只读查询回执，缺记录不推断回滚。下文目标比较/首次恢复流程适用于未命中回执的请求，详见 [持久回执契约](sync-application-restore-receipt-runtime.md)。仅源码，扩展未执行。
 
 2026-11-03 开发增量，仅源码和文档；未编译、类型检查、测试、执行 CLI/Bridge/reducer、打开数据库、执行 schema/迁移、生成样本文件或发布。无新 schema/依赖，既有 SQLite 扩展和 PostgreSQL 016–049 未执行。关联 ADR-015、T4.3、R-005，运行证据为空。

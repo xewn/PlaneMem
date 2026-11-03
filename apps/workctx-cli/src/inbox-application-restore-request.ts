@@ -1,20 +1,13 @@
 import { createHash } from 'node:crypto';
-import type {
-  SyncInboxApplicationRestoreQuery,
-  SyncInboxApplicationRestoreTarget,
-} from '@planemem/context-bridge';
+import type { SyncInboxApplicationRestoreQuery } from '@planemem/context-bridge';
 import { ContractError, syncJsonSnapshot } from '@planemem/contracts';
 import { readBoundedArtifactFile } from './artifact-files.js';
 import { saveArtifactOutput, type ArtifactOutput } from './artifact-output.js';
 import { applicationArchiveFailure as fail } from './inbox-application-archive-file.js';
 
-type BoundRestoreQuery = SyncInboxApplicationRestoreQuery & {
-  expected_target: SyncInboxApplicationRestoreTarget;
-};
-
-/** Caller has parsed/bound the query and ended the readonly preview transaction before publication. */
+/** Caller has parsed and bound the original query and ended its read transaction before publication. */
 export async function saveInboxApplicationRestoreRequest(
-  input: BoundRestoreQuery,
+  input: SyncInboxApplicationRestoreQuery,
   output: ArtifactOutput,
   trace: string,
 ) {
@@ -26,7 +19,7 @@ export async function saveInboxApplicationRestoreRequest(
   } catch {
     throw fail(
       'INBOX_APPLICATION_RESTORE_REQUEST_INVALID',
-      'The complete bound restore query cannot be saved within 16 KiB',
+      'The complete original restore query cannot be saved within 16 KiB',
       trace,
       { output_path: destination.path, local_state: 'not-saved' },
     );

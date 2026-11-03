@@ -26,8 +26,14 @@ export { parseInboxApplicationAuditQuery } from './application-audit.js';
 export type { SyncInboxApplicationAuditQuery } from './application-audit.js';
 export { parseInboxApplicationRestoreQuery } from './application-restore.js';
 export type { SyncInboxApplicationRestoreQuery } from './application-restore.js';
-export { parseInboxApplicationRestoreReceiptQuery } from './application-restore-receipts.js';
-export type { SyncInboxApplicationRestoreReceipt } from './application-restore-receipts.js';
+export {
+  parseInboxApplicationRestoreReceiptQuery,
+  parseInboxApplicationRestoreReceiptSelection,
+} from './application-restore-receipts.js';
+export type {
+  SyncInboxApplicationRestoreReceipt,
+  SyncInboxApplicationRestoreReceiptSelection,
+} from './application-restore-receipts.js';
 export { parseInboxApplicationCatalogQuery } from './application-catalog.js';
 export type { SyncInboxApplicationCatalogQuery } from './application-catalog.js';
 export { parseInboxBuiltInApplicationReplayQuery } from './application-replay.js';
@@ -1110,6 +1116,10 @@ export class SqliteSyncInbox {
   /** Exact historical receipt lookup, without reading an archive or current projection. */
   readApplicationRestoreReceipt(input: unknown, trace: string) {
     return this.applications().readRestoreReceipt(input, trace);
+  }
+  /** Finds the original query and historical receipt by original consumer/application/request ID. */
+  getApplicationRestoreReceipt(input: unknown, trace: string) {
+    return this.applications().getRestoreReceipt(input, trace);
   }
   readApplicationState(input: unknown, trace: string) {
     return this.applications().read(input, trace);

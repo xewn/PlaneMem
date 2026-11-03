@@ -70,6 +70,7 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   inbox enable-applications      Explicitly add local projection storage to an existing --inbox
   inbox enable-application-restore-receipts  Explicitly add optional durable restore receipts to an existing application inbox
   inbox application-restore-receipt  Read a historical receipt using --inbox and the complete original restore query including restore_request_id (--json or --json-file); no archive required
+  inbox application-restore-receipt-get  Find the original query by expected_identity/application/restore_request_id JSON; optional read timeout_ms and --output NEW_QUERY_FILE
   inbox application-status       Read a local projection using --inbox and --json/--json-file
                                  Requires expected_identity and application name/version; optional JSON timeout_ms
   inbox application-apply        Apply one imported page with the built-in context-item-lifecycle/1 adapter
@@ -339,6 +340,7 @@ export async function main(args: string[]): Promise<number> {
       'inbox enable-applications',
       'inbox enable-application-restore-receipts',
       'inbox application-restore-receipt',
+      'inbox application-restore-receipt-get',
       'inbox application-status',
       'inbox application-list',
       'inbox application-export',
