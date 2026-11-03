@@ -33,12 +33,23 @@ import {
   type GeneratedProposalRecord,
 } from './generation-record.js';
 import { parseGenerationHistoryQuery, validateGenerationDigest } from './generation-history.js';
+import {
+  prepareGenerationRequest,
+  readGenerationRequest,
+  runGenerationRequest,
+  GenerationJournalWriteError,
+} from './generation-journal.js';
+import { generationRequestSummary, validateGenerationRequestKey } from './generation-request.js';
 
 const help = `Proposal submission queue (Node.js 24)
   proposal-worker prepare-generation --binding binding.json --file selection.json --output NEW_SOURCES.json [--record]
   proposal-worker generate --provider provider.json --file sources.json --output NEW_DRAFT.json
   proposal-worker generate-prepared --provider provider.json --file PREPARATION_RECORD.json --output NEW_GENERATION_RECORD.json
   proposal-worker inspect-generation --file RECORD.json
+  proposal-worker generation-request --journal EXISTING_DIR --binding binding.json --key KEY --file PREPARATION_RECORD.json --provider provider.json
+  proposal-worker generation-run --journal EXISTING_DIR --binding binding.json --key KEY
+  proposal-worker generation-status --journal EXISTING_DIR --binding binding.json --key KEY
+  proposal-worker generation-result --journal EXISTING_DIR --binding binding.json --key KEY --output NEW_RECORD.json
   proposal-worker enqueue-generated --queue queue.sqlite --binding binding.json --file GENERATION_RECORD.json --key KEY
   proposal-worker generation-list --queue queue.sqlite --binding binding.json --id JOB_ID [--after SHA256] [--limit 10]
   proposal-worker generation-get --queue queue.sqlite --binding binding.json --id JOB_ID --sha256 SHA256 [--output NEW_RECORD.json]
@@ -54,6 +65,8 @@ generate calls the configured model once using PROPOSAL_GENERATION_API_KEY; it s
 generate-prepared uses the same single call and saves the complete record; it does not refresh sources.
 inspect-generation verifies record consistency offline; enqueue-generated requires the original destination binding.
 enqueue-generated stores the record with the job atomically; generation-list/get open existing queues read-only.
+generation-request saves immutable input; generation-run claims it once before calling the model. Existing attempts never resend.
+generation-status/result read saved journal files without model calls; a generated request can replay its saved result.
 prepare-generation reads pinned sources from the gateway; flush submits drafts. Both use PROPOSAL_WORKER_ACCESS_TOKEN.
 retry schedules the original draft/key; it does not send or regenerate content.
 Exit codes: 0 completed, 1 command/storage failure, 2 flush had retry/blocked/lost-lease jobs.
@@ -84,6 +97,7 @@ export async function main(args: string[]): Promise<number> {
         record: { type: 'boolean' },
         after: { type: 'string' },
         sha256: { type: 'string' },
+        journal: { type: 'string' },
       },
     });
     const command = positionals[0];
@@ -92,6 +106,10 @@ export async function main(args: string[]): Promise<number> {
       generate: ['provider', 'file', 'output'],
       'generate-prepared': ['provider', 'file', 'output'],
       'inspect-generation': ['file'],
+      'generation-request': ['journal', 'binding', 'key', 'file', 'provider'],
+      'generation-run': ['journal', 'binding', 'key'],
+      'generation-status': ['journal', 'binding', 'key'],
+      'generation-result': ['journal', 'binding', 'key', 'output'],
       'enqueue-generated': ['file', 'key'],
       'generation-list': ['id', 'after', 'limit'],
       'generation-get': ['id', 'sha256', 'output'],
@@ -111,6 +129,10 @@ export async function main(args: string[]): Promise<number> {
             'prepare-generation',
             'generate-prepared',
             'inspect-generation',
+            'generation-request',
+            'generation-run',
+            'generation-status',
+            'generation-result',
           ].includes(command)
             ? []
             : ['queue', 'binding']),
@@ -132,6 +154,96 @@ export async function main(args: string[]): Promise<number> {
         throw new TypeError('--' + name + ' is required');
       return value;
     };
+    if (
+      ['generation-request', 'generation-run', 'generation-status', 'generation-result'].includes(
+        command,
+      )
+    ) {
+      const key = required('key');
+      validateGenerationRequestKey(key);
+      const journal = required('journal');
+      const binding = (await readJson(required('binding'), 16_384)) as ProposalQueueBinding;
+      if (command === 'generation-request') {
+        const preparation = await readJson(required('file'), PROPOSAL_GENERATION_RECORD_BYTES);
+        const provider = await readJson(required('provider'), 16_384);
+        const saved = await prepareGenerationRequest(journal, binding, preparation, provider, key);
+        process.stdout.write(
+          JSON.stringify(
+            {
+              ...generationRequestSummary(saved),
+              replayed: saved.replayed,
+              ...('output' in saved ? { output: saved.output } : {}),
+            },
+            null,
+            2,
+          ) + '\n',
+        );
+        return 0;
+      }
+      if (command === 'generation-run') {
+        const result = await runGenerationRequest(journal, binding, key, {
+          api_key: process.env.PROPOSAL_GENERATION_API_KEY ?? '',
+        });
+        process.stdout.write(
+          JSON.stringify(
+            {
+              ...generationRequestSummary(result),
+              replayed: result.replayed,
+              ...('claim' in result ? { claim: result.claim } : {}),
+              ...('output' in result ? { output: result.output } : {}),
+            },
+            null,
+            2,
+          ) + '\n',
+        );
+        return result.state === 'failed' ? 1 : 0;
+      }
+      const output =
+        command === 'generation-result'
+          ? await prepareGenerationOutput(required('output'))
+          : undefined;
+      const state = await readGenerationRequest(journal, binding, key);
+      if (!output) {
+        process.stdout.write(JSON.stringify(generationRequestSummary(state), null, 2) + '\n');
+        return 0;
+      }
+      const record = state.outcome?.record;
+      if (!record)
+        throw new ContractError(
+          'PROPOSAL_GENERATION_REQUEST_RESULT_UNAVAILABLE',
+          'No complete result is saved for this request',
+          {
+            request_id: state.request.request_id,
+            request_key: key,
+            request_sha256: state.request.sha256,
+            state: state.state,
+          },
+        );
+      try {
+        const saved = await saveProposalGenerationRecord(output, record);
+        process.stdout.write(
+          JSON.stringify({ ...generationRequestSummary(state), output: saved }, null, 2) + '\n',
+        );
+      } catch (error) {
+        process.stderr.write(
+          JSON.stringify(
+            {
+              code: 'PROPOSAL_GENERATION_REQUEST_EXPORT_FAILED',
+              ...generationRequestSummary(state),
+              record,
+              output: {
+                output_path: output.path,
+                ...(error instanceof ContractError ? error.envelope.details : {}),
+              },
+            },
+            null,
+            2,
+          ) + '\n',
+        );
+        return 1;
+      }
+      return 0;
+    }
     if (command === 'inspect-generation') {
       const record = inspectProposalGenerationRecord(
         await readJson(required('file'), PROPOSAL_GENERATION_RECORD_BYTES),
@@ -375,6 +487,12 @@ export async function main(args: string[]): Promise<number> {
     process.stdout.write(JSON.stringify(output, null, 2) + '\n');
     return exitCode;
   } catch (error) {
+    if (error instanceof GenerationJournalWriteError) {
+      process.stderr.write(
+        JSON.stringify({ ...error.envelope, recovery: error.recovery }, null, 2) + '\n',
+      );
+      return 1;
+    }
     // Never echo database contents, draft text, raw provider responses or credentials.
     const code =
       error instanceof ContractError
@@ -383,6 +501,26 @@ export async function main(args: string[]): Promise<number> {
           ? 'INVALID_INPUT'
           : 'PROPOSAL_QUEUE_COMMAND_FAILED';
     const sourceDetails: Record<string, unknown> = {};
+    if (error instanceof ContractError && code.startsWith('PROPOSAL_GENERATION_REQUEST_')) {
+      const details = error.envelope.details;
+      for (const field of ['request_id', 'attempt_id'] as const)
+        if (isUlid(details[field])) sourceDetails[field] = details[field];
+      if (
+        typeof details.request_key === 'string' &&
+        /^[\x21-\x7e]{1,255}$/.test(details.request_key)
+      )
+        sourceDetails.request_key = details.request_key;
+      if (
+        typeof details.request_sha256 === 'string' &&
+        /^[a-f0-9]{64}$/.test(details.request_sha256)
+      )
+        sourceDetails.request_sha256 = details.request_sha256;
+      if (
+        typeof details.state === 'string' &&
+        ['prepared', 'attempted', 'generated', 'failed'].includes(details.state)
+      )
+        sourceDetails.state = details.state;
+    }
     if (error instanceof ContractError && code === 'PROPOSAL_GENERATION_ENQUEUE_FAILED') {
       const details = error.envelope.details;
       if (

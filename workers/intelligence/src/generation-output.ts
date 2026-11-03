@@ -94,7 +94,8 @@ export async function saveProposalGenerationRecord(output: Output, value: unknow
   );
 }
 
-async function saveGenerationFile(
+/** Internal shared publisher; callers validate their format before supplying bounded bytes. */
+export async function saveGenerationFile(
   output: Output,
   bytes: Buffer,
   maximum: number,

@@ -1,0 +1,61 @@
+# 生成调用持久请求 v1
+
+更新：2026-11-04。仅源码与文档；未编译、类型检查、测试、执行 CLI、调用模型/网关、打开数据库或发布。实现位于 `workers/intelligence/src/generation-request.ts`、`generation-journal.ts` 和 `main.ts`，不增加依赖或数据库结构。
+
+## 使用与状态
+
+以现有完整 preparation 记录和无凭据 provider 配置保存请求，再显式执行。以下为说明示例，本轮未执行；journal 及输出父目录须已存在：
+
+```text
+pnpm proposal-worker generation-request --journal journal --binding binding.json --key generation-001 --file preparation-record.json --provider provider.json
+pnpm proposal-worker generation-run --journal journal --binding binding.json --key generation-001
+pnpm proposal-worker generation-status --journal journal --binding binding.json --key generation-001
+pnpm proposal-worker generation-result --journal journal --binding binding.json --key generation-001 --output new-generation-record.json
+```
+
+generation-request 不调用模型。相同键、完整准备记录和规范 provider 配置重放保留首次 request_id、created_at 和当前状态；同键异文报 IDEMPOTENCY_KEY_REUSED，绑定不同报 PROPOSAL_GENERATION_BINDING_MISMATCH。键为 1–255 个可见 ASCII 字符，在一个 journal 目录内唯一，不按项目或身份另分空间；不要用凭据作为请求键。创建新键是显式新生成，不能作为未知调用的自动恢复。
+
+| 状态 | 保存内容 | 再次 generation-run |
+| --- | --- | --- |
+| prepared | 原请求，无 attempt | 凭据/参数检查后竞争独占领取 |
+| attempted | 原请求与 attempt，无完整 outcome | 拒绝再次派发 |
+| generated | 原请求、attempt、完整成功 outcome | 返回已有摘要，无需凭据，不调用模型 |
+| failed | 原请求、attempt、完整失败 outcome | 拒绝再次派发 |
+
+attempted 可能是调用仍在执行、进程中断、已保存标记但尚未发送，或结果保存未确认，不能直接判定模型失败。即使 failed 标记 provider_dispatch=not-sent 也不回收领取；当前没有生成重试命令、超时租约、自动重新派发或供应商结果查询。提交队列的 retry 只影响提交草稿，不影响这些文件。
+
+首次 generation-run 从 PROPOSAL_GENERATION_API_KEY 取得凭据；缺失/无效凭据、无效调用选项或已取消的 signal 在领取前拒绝。领取后取消或其他失败保留标记。库调用可传 api_key、fetch、signal，但它们不写入日志。只有领取发布并完整读回成功的调用才能进入单次 generateProposalDraft；竞争失败或发布不确定都不调用模型。其单次期限、分类限制、固定来源、响应边界和不自动重试语义沿用原生成适配器。
+
+generation-status 完整核验三个关联文件后只返回状态、请求/领取 ID、摘要、原绑定、provider、时间及筛选后的失败信息，不输出摘录或草稿正文。它是一次状态观察，不等待正在进行的生成；并发完成时可能仍看到先前状态，稍后可再次读取。缺请求报 PROPOSAL_GENERATION_REQUEST_NOT_FOUND，损坏、孤立结果或读失败报 PROPOSAL_GENERATION_REQUEST_INVALID，不修复原文件。
+
+generation-result 仅允许完整成功结果，导出普通 v1 generation 记录至新文件，可继续 inspect-generation、enqueue-generated 和原提交队列流程；原网关、项目、actor/client 绑定检查继续生效。生成请求键与提交队列键是两个不同操作的标识；提交重放继续沿用其原提交键。旧 generate/generate-prepared 不使用此 journal，重复调用仍会调用模型。
+
+退出码：0 表示命令完成；generation-run 保存失败 outcome 时为 1，其他参数/存储/已有领取拒绝也是 1。generation-status 成功读取 failed 状态仍为 0，表示查询完成。生成 journal 不使用提交 flush 的退出码 2。四个命令都不打开 SQLite、不自动提交或人工确认建议。
+
+## 文件格式与核验
+
+目录使用 realpath 解析。文件前缀为 `generation-` 加原键 UTF-8 SHA-256 小写十六进制；后缀分别为 `.request.json`、`.attempt.json`、`.outcome.json`，顺序只追加，不覆盖。读取拒绝符号链接和非普通文件，检查打开前后文件身份/长度，以有界缓冲读取严格 UTF-8 JSON。
+
+所有格式固定 schema_version=1，必需字段齐全且拒绝未知字段：
+
+- request：kind=proposal-generation-request、request_id、request_key、created_at、完整 preparation、规范 provider、sha256。provider 不含凭据，分类上限须允许输入分类；完整记录内的原 binding 须与调用 binding 相同。
+- attempt：kind=proposal-generation-attempt、request_id、request_sha256、attempt_id、started_at、sha256。
+- outcome：kind=proposal-generation-outcome、request_id、request_sha256、attempt_id、finished_at、record、failure、sha256。成功 record 为完整 generation，failure=null；失败 record=null，failure 只含 code、trace_id、provider_dispatch。二者必须恰有一个非空。
+
+ID 使用 ULID，时间为完整毫秒 UTC，不用时间推断发送、完成次序或过期。失败 trace 只能是 trace_generation_ 加 ULID 或 null，dispatch 为 attempted/not-sent/unknown；只保留本地筛选后的错误代码和这些字段，不保存原供应商正文、错误对象或调用配置。outcome 必须对应原 request 摘要和 attempt；成功记录的 preparation/provider 必须与请求完整一致。
+
+request/outcome 文件最多 3 MiB，attempt 文件最多 8 KiB；格式核验还检查 compact 和两空格缩进加尾换行的 JSON 大小。内层 preparation/generation 继续受 2 MiB 限制，其他原有字段/输入限制不变；超限拒绝，不截断。共享有限 JSON 快照拒绝访问器、循环、非有限值等，限制节点及深度。
+
+每个 sha256 计算该对象移除自身 sha256 后的规范 JSON：对象键按 JavaScript UTF-16 顺序排序，键和标量使用 JSON.stringify，数组顺序保留，没有额外空白。外层包含完整内层记录及摘要。摘要检查一致性，不能证明文件未被主动篡改、供应商实际执行、来源真实性、当前权限或新鲜度。
+
+## 保存失败与持久性边界
+
+复用新文件发布器：同目录独占临时文件、写入、文件同步、完整字节读回、独占硬链接发布、发布后完整读回。无覆盖回退；文件系统不支持硬链接时失败。没有回收 attempt，也不会删除已发布文件。临时清理失败可返回 cleanup_pending/temporary_path，完整目标仍保留。
+
+保存失败报 PROPOSAL_GENERATION_REQUEST_SAVE_FAILED，带 phase=request/attempt/outcome、output_path 和 recovery 中完整原请求、已创建的候选 attempt、可用的完整 outcome/生成结果/筛选后的失败信息。已进入写入器时另有阶段、发布状态与临时路径；封装结果失败也保留已生成正文。恢复输出可能含完整来源与草稿，应按其原分类保管。
+
+错误里的 provider_dispatch_scope=this-invocation 只描述本次调用。attempt 发布失败的 not-sent 不代表其他领取者没有调用模型；recovery.attempt 可能是竞争失败的候选，不能覆盖目录内真正的领取标记。先用原键和绑定查看 journal；成功结果可直接导出。未确认写入不等于未发布，也不能因结果保存失败重新请求模型。导出失败用 PROPOSAL_GENERATION_REQUEST_EXPORT_FAILED 保留完整 record 和目标信息，原 journal 不变。
+
+排重依赖同一目录内原请求及领取文件持续保留。不要删除/替换标记、回滚到旧备份、换目录或新键来重发未知请求。文件同步不保证父目录元数据跨断电/系统崩溃持久化；断电丢失目录项、文件外部删除或备份回滚可能丢失领取。当前仅在原标记保留的前提下保守阻止再次派发，不承诺供应商恰好执行一次，也不提供对外部篡改的排他保护。
+
+仍缺供应商未知调用对账/结果取回、受控恢复导入、目录浏览/备份/保留策略、全局审计、费用与质量评估、真实并发/故障和文件系统运行证据。P7-01 与 R-009 保持未完成。

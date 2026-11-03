@@ -6,6 +6,8 @@
 
 ## 配置与命令
 
+新增 [生成调用持久请求](../../docs/design/01-contracts/proposal-generation-request-runtime.md)：`generation-request --journal EXISTING_DIR --binding binding.json --key KEY --file PREPARATION_RECORD.json --provider provider.json` 保存原请求；`generation-run --journal EXISTING_DIR --binding binding.json --key KEY` 先独占保存领取标记再调用模型。`generation-status` 使用相同 journal/binding/key 查看状态；`generation-result` 再加 `--output NEW_RECORD.json` 导出完整成功记录，可沿原绑定 enqueue-generated。四个命令不打开队列。已有领取标记永不再次派发，成功结果可直接重放；失败或中断保留原标记，没有自动重试、过期回收或覆盖恢复。目录须预先存在，文件系统须支持硬链接，原文件须持续保留；不保证断电后的目录元数据持久性或供应商恰好执行一次。
+
 新增 [完整生成记录与目标绑定](../../docs/design/01-contracts/proposal-generation-record-runtime.md)：`prepare-generation --record` 保存原绑定、选择、观察和完整输入；`generate-prepared` 单次生成并保存含原准备记录的完整结果。`inspect-generation --file RECORD.json` 离线核对后只显示元数据；`enqueue-generated --queue queue.sqlite --binding binding.json --file GENERATION_RECORD.json --key KEY` 在打开队列前检查原网关、项目、账号和客户端，避免误入其他目标。记录均限制 2 MiB，不包含凭据；摘要仅检查一致性，不认证来源或当前权限。
 
 新增 [任务生成记录历史](../../docs/design/01-contracts/proposal-generation-history-runtime.md)：enqueue-generated 在同一事务保存任务和完整记录，相同记录重放保留首次关联时间，同键异草稿拒绝。`generation-list --queue queue.sqlite --binding binding.json --id JOB_ID [--after SHA256] [--limit 10]` 只读分页，默认 10、最多 20 条；`generation-get --queue queue.sqlite --binding binding.json --id JOB_ID --sha256 SHA256 [--output NEW_RECORD.json]` 取回完整记录，可导出新文件。两个命令不需要令牌；缺扩展不建表，损坏不返回部分记录。核心 v1 队列不变，可选关联表只在首次明确写入时初始化；本轮仅新增初始化源码，未执行 SQL 或打开库。
@@ -45,7 +47,7 @@ pnpm proposal-worker flush --queue workers/intelligence/.local/queue.sqlite --bi
 
 可选 derived_from 记录原建议 ID/revision，由网关在提交时核对同项目可见性、版本及关联深度。原版本冲突进入 blocked，worker 不自行刷新关联或来源；如需修改，先处理原任务的未知结果，再用新草稿和请求键入队。未使用关联的旧草稿保持原规范化输出字段顺序，不注入额外默认值；本轮未运行队列迁移或验证。
 
-队列命令中只有 `flush` 联网，独立 `prepare-generation` 也会只读访问网关；两者从环境变量 `PROPOSAL_WORKER_ACCESS_TOKEN` 读取凭据。独立 `generate`/`generate-prepared` 通过 `PROPOSAL_GENERATION_API_KEY` 调用配置模型，其他命令不需要令牌。`retry` 只将原任务置为可重试，随后显式 flush 才会发送。`get` 会输出完整草稿，`list` 仅输出任务摘要和最小回执。列表按 job_id 倒序，默认 25、最多 100 条；下一页将 `next_before` 传为 `--before`。
+队列命令中只有 `flush` 联网，独立 `prepare-generation` 也会只读访问网关；两者从环境变量 `PROPOSAL_WORKER_ACCESS_TOKEN` 读取凭据。独立 `generate`/`generate-prepared` 和首次 `generation-run` 通过 `PROPOSAL_GENERATION_API_KEY` 调用配置模型，其他命令和已成功的 generation-run 重放不需要令牌。`retry` 只将原提交任务置为可重试，随后显式 flush 才会发送，不重置生成请求。`get` 会输出完整草稿，`list` 仅输出任务摘要和最小回执。列表按 job_id 倒序，默认 25、最多 100 条；下一页将 `next_before` 传为 `--before`。
 
 返回值是 JSON。退出码 0 表示命令完成，1 表示参数/本地存储等命令失败，2 表示本次 flush 有 retry/blocked/lease_lost。flush 的成功退出不代表整库清空：它只处理开始时已经到期的最多 limit 个任务；未来重试、已有 blocked 和其他进程占用的任务不计入本次结果。
 

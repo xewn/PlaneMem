@@ -53,4 +53,4 @@ pnpm proposal-worker generation-get --queue queue.sqlite --binding binding.json 
 
 enqueueGenerated 的事务失败返回 `PROPOSAL_GENERATION_ENQUEUE_FAILED`，包含原 request_key、record_sha256、已知 candidate_job_id、phase、rollback 和 mutation，且不自动重试。mutation=not-started 表示未进入该事务，rolled-back 表示在提交阶段之前已回滚；进入 commit 后发生错误统一保留 not-confirmed，不把一次后续回滚尝试当作原提交未发生的证明。可用原任务定位只读核对或显式使用原记录/原键重放，不因结果未知更换键、记录或重新请求模型。
 
-本地记录没有认证签名、加密、保留清理或独立历史备份/导入；包含完整来源及生成文本，应随队列使用一致性备份保留 WAL。生成请求派发前的持久日志、未知模型调用恢复、费用/质量评估、全局审计和真实并发/故障/存储运行证据仍缺。历史关联不会改变 flush 的既有草稿提交协议，也不自动确认建议。
+本地记录没有认证签名、加密、保留清理或独立历史备份/导入；包含完整来源及生成文本，应随队列使用一致性备份保留 WAL。[生成调用持久请求](proposal-generation-request-runtime.md) 已在独立文件目录增加派发前日志、独占领取、失败/成功结果保存和取回；保留的领取标记阻止再次派发，不解决供应商未知调用的对账。受控恢复/备份、费用/质量评估、全局审计和真实并发/故障/存储运行证据仍缺。历史关联不会改变 flush 的既有草稿提交协议，也不自动确认建议。

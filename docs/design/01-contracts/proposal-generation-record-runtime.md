@@ -46,4 +46,4 @@ generation 和 draft 的来源必须与 preparation.input 完整相同；草稿�
 
 `inspectProposalGenerationRecord` 返回完整的独立副本；`createPreparedProposalRecord` 和 `createGeneratedProposalRecord` 封装并核验记录；`readGeneratedProposalDraft` 完整核验并比较目标后返回草稿。它们只处理本地数据，不执行生成、提交或审核。
 
-队列核心 schema 保持 v1，新增 [任务生成记录历史](proposal-generation-history-runtime.md) 可选扩展：enqueue-generated 将完整记录与任务同事务保存，generation-list/get 支持只读核对及取回。普通 enqueue 不保存生成记录；旧任务可明确使用原记录和请求键补充关联。完整记录文件仍可独立保留，记录摘要不成为权限证明。持久生成请求/未知模型调用恢复、全局审计、费用与质量评估、自动调度及真实运行证据仍待后续开发。
+队列核心 schema 保持 v1，新增 [任务生成记录历史](proposal-generation-history-runtime.md) 可选扩展：enqueue-generated 将完整记录与任务同事务保存，generation-list/get 支持只读核对及取回。普通 enqueue 不保存生成记录；旧任务可明确使用原记录和请求键补充关联。完整记录文件仍可独立保留，记录摘要不成为权限证明。[生成调用持久请求](proposal-generation-request-runtime.md) 已增加调用前日志、独占领取和已保存结果取回，不改变本文件记录格式；供应商未知调用对账/受控恢复、全局审计、费用与质量评估、自动调度及真实运行证据仍待后续开发。

@@ -72,4 +72,4 @@ CLI 先确认目标父目录存在且目标文件未占用，再生成。保存�
 
 协议参考入口为官方 Chat Completions API 文档：`https://platform.openai.com/docs/api-reference/chat/create`。本轮尝试读取官方页面，但当前连接未取得完整可用正文，因此上述条目明确描述本适配器要求，不声明供应商兼容验证完成。
 
-指定当前 ContextItem 的权限读取和完整生成输入准备已接独立 prepare-generation 源码；仍缺真实供应商兼容和质量证据、后台来源发现/刷新、持久生成任务及原请求恢复、生成审计、费用记录、自动调度、Embedding 与 Golden 评测。建议提交后的人工审核继续沿用原持久 Gateway 流程；本次不改变审核权限或 verified 状态来源。
+指定当前 ContextItem 的权限读取和完整生成输入准备已接独立 prepare-generation 源码；新增 [生成调用持久请求](proposal-generation-request-runtime.md) 在独立 journal 中保存原请求、领取和结果，保守阻止已有领取再次派发，支持状态查询及成功结果取回。旧 generate/generate-prepared 不自动接入 journal。仍缺真实供应商兼容和质量证据、后台来源发现/刷新、供应商未知调用对账/受控恢复、生成审计、费用记录、自动调度、Embedding 与 Golden 评测。建议提交后的人工审核继续沿用原持久 Gateway 流程；本次不改变审核权限或 verified 状态来源。

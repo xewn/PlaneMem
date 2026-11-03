@@ -3452,6 +3452,24 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_generation_request_development_increment:
+      date: "2026-11-04"
+      status: "Source-only immutable pre-dispatch request journal; R-009 remains incomplete."
+      artifacts:
+        - "workers/intelligence/src/generation-request.ts"
+        - "workers/intelligence/src/generation-journal.ts"
+        - "workers/intelligence/src/generation-output.ts"
+        - "workers/intelligence/src/main.ts"
+        - "docs/design/01-contracts/proposal-generation-request-runtime.md"
+      behavior: "Explicit existing-directory journal retains original key, binding, complete preparation and credential-free provider settings. An exclusive immutable attempt must publish and read back before one model invocation. Existing attempts never resend, including failed/not-sent outcomes; generated requests replay without credentials. Status validates all linked records; result exports a complete ordinary generation record. Bounded files, canonical digests and sanitized failures preserve original content; sealing/publication failures retain completed work and candidate identifiers without overwriting the winner."
+      evidence: []
+      pending_evidence:
+        - "Concurrent claim winner/loser behavior, uncertain publication and process interruption before/after dispatch"
+        - "Same-key replay/conflicts, binding mismatch, missing prerequisites, corrupt/oversized files and concurrent outcome reads"
+        - "Saved-result replay without credentials, canceled invocations, failed outcomes and recovery without raw errors"
+        - "File identity/readback, hard-link support, retained markers and power-loss directory metadata limitations"
+      remaining_scope: "Provider-side unknown-call reconciliation, controlled recovery/import, journal discovery/backup/retention, global audit, authenticity, cost/quality evaluation and runtime evidence. Duplicate prevention assumes original markers remain; no parent-directory power-loss durability or exactly-once provider execution guarantee."
+      execution: "Source/docs and manual source review only; no build, typecheck, tests, CLI/model/Gateway execution, database opens, migrations or release. No new dependency/schema. Separate task commit/push to main with skip-ci."
     proposal_generation_history_development_increment:
       date: "2026-11-04"
       status: "Source-only atomic generation-record/job association and read-only history retrieval; R-009 remains incomplete."
@@ -3468,7 +3486,7 @@ requirements:
         - "Atomic extension initialization, task/record rollback, concurrent same-key replay and unknown commit recovery"
         - "Mismatched bindings/drafts/digests, reordered object keys, malformed/oversized history and preserved first association time"
         - "Native read-only missing extension behavior, bounded digest pagination and export/close failure recovery"
-      remaining_scope: "Persistent pre-dispatch generation requests, unknown model-call recovery, record retention/backup/import, global audit, authenticity, quality/cost evaluation and runtime evidence."
+      remaining_scope: "Provider-side unknown-call reconciliation, record retention/backup/import, global audit, authenticity, quality/cost evaluation and runtime evidence. Pre-dispatch local requests and retained-attempt protection are added by the separate request increment."
       execution: "Source/docs only. Added optional local table initialization source, not executed. No build, typecheck, tests, CLI/model/Gateway calls, database opens, SQL/migration execution or release; no dependency or Gateway schema changes. Separate commit/push to main with skip-ci."
     proposal_generation_record_development_increment:
       date: "2026-11-04"
@@ -3484,7 +3502,7 @@ requirements:
         - "Malformed nested fields, recomputed mismatched records, canonical ordering and size boundaries"
         - "Binding and request-key rejection before database open; original same-key draft replay"
         - "Occupied outputs, incomplete publication and retained preparation/provider/generation recovery"
-      remaining_scope: "Records are consistency checks, not source/provider authentication or current permission/freshness proof. Persistent generation requests, unknown-call recovery, global audit, quality/cost evaluation and runtime evidence remain missing. Local record-to-job association is added by the separate history increment."
+      remaining_scope: "Records are consistency checks, not source/provider authentication or current permission/freshness proof. Provider-side unknown-call reconciliation, global audit, quality/cost evaluation and runtime evidence remain missing. Local job association and pre-dispatch request journals are added by the separate history/request increments."
       execution: "Source/docs only; no builds, typechecks, tests, CLI/model/Gateway execution, database opens or release. No schema/dependency changes; separate task commit/push to main with skip-ci."
     proposal_generation_source_preparation_development_increment:
       date: "2026-11-04"
@@ -3500,7 +3518,7 @@ requirements:
         - "Identity drift, project/classification permissions, hidden/missing/stale sources and version conflicts"
         - "Malformed envelopes, source correspondence, nontext/long content and cumulative limits"
         - "Shared deadline/cancellation across sequential reads and files retained after save failure"
-      remaining_scope: "Cross-source snapshots, background discovery/refresh, persistent generation/audit and real runtime evidence. Destination-bound local artifacts are added by the separate record increment."
+      remaining_scope: "Cross-source snapshots, background discovery/refresh, provider-side reconciliation, global audit and real runtime evidence. Destination-bound artifacts and pre-dispatch local journals are added by the separate record/request increments."
       execution: "Source/docs only; no Gateway/model calls, CLI execution, build, typecheck, tests, database access or release. No Gateway/schema/dependency changes."
     explicit_proposal_generation_development_increment:
       date: "2026-11-04"
@@ -3517,7 +3535,7 @@ requirements:
         - "Timeout/cancellation including ignored abort, large/invalid responses and no credential/raw-body disclosure"
         - "Input classification limits, fixed references, prompt injection resilience and source fidelity"
         - "Exclusive file publication/readback, occupied targets, interrupted save and retained draft recovery"
-      remaining_scope: "Automatic authorized retrieval, persistent generation requests/recovery/audit, quality evaluation, provider authentication and runtime evidence."
+      remaining_scope: "Background authorized discovery/refresh, provider-side unknown-call reconciliation, global audit, quality evaluation, provider authentication and runtime evidence. Explicit source preparation and persistent local request journals are added separately."
       execution: "Source/docs only; no model calls, CLI execution, builds, typechecks, tests, database opens or release. Official documentation retrieval did not yield usable full content; compatibility is not verified."
     gates: ["nightly", "release_candidate", "production"]
 
