@@ -3452,6 +3452,25 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_web_original_backup_development_increment:
+      date: "2026-11-04"
+      status: "Source-only scoped browser originals backup, comparison and atomic restore; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/backup-model.ts"
+        - "apps/web-console/src/app/proposals/original-backup.ts"
+        - "apps/web-console/src/app/proposals/original-store.ts"
+        - "apps/web-console/src/app/proposals/recover/backup-panel.tsx"
+        - "apps/web-console/src/app/proposals/recover/loader.tsx"
+        - "docs/design/01-contracts/proposal-runtime.md"
+      behavior: "Complete current-binding browser backups verify both store counts and every full original/summary pair in one readonly transaction. Up to 100 ordered originals and a 16 MiB document are bound by a canonical SHA-256 digest. File loading verifies every entry and the original binding; readonly comparison reports missing, identical, different or blocked entries. Explicit import rechecks all target/legacy slots in one write transaction, adds only missing pairs, verifies every final original and awaits commit; same copies remain untouched and conflicts reject the whole import. No proposal submission or model invocation."
+      evidence: []
+      pending_evidence:
+        - "Complete scoped export, orphan/mismatched pairs, count/byte limits and empty databases"
+        - "Digest/identity mismatch, reordered or duplicate entries, strict UTF-8 and bounded file reads"
+        - "Readonly comparison versus changed targets, legacy conflict and concurrent identical/different imports"
+        - "Atomic rollback, blocked opens, cancellation/deadline expiry, unknown commit and retained backup retry"
+      remaining_scope: "Cross-binding full-database backup, damaged-store repair, cleanup/capacity management, unprepared drafts, create receipt lookup, review recovery and runtime evidence. Checksums do not prove file origin or server outcomes."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, browser/API/database execution or release. Reuses browser storage/operation helpers without server schema/protocol/dependency changes; separate commit/push to main with skip-ci."
     proposal_web_browser_originals_development_increment:
       date: "2026-11-04"
       status: "Source-only persistent browser original requests and scoped recovery directory; R-009 remains incomplete."

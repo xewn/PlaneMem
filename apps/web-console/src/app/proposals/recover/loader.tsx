@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { OriginalProposalSubmission } from '../original-submission';
 import {
   assertProposalSubmissionBinding,
@@ -15,6 +15,7 @@ import {
   type SavedProposalOriginal,
 } from '../original-store';
 import { SavedProposalOriginals } from './saved-originals';
+import { ProposalBackupPanel } from './backup-panel';
 
 export function ProposalRecoveryLoader({ binding }: { binding: ProposalSubmissionBinding }) {
   const [key, setKey] = useState('');
@@ -28,6 +29,16 @@ export function ProposalRecoveryLoader({ binding }: { binding: ProposalSubmissio
   const mounted = useRef(false);
   const loaded = useRef(false);
   const operation = useRef<AbortController | undefined>(undefined);
+  const beginBackup = useCallback(() => {
+    if (!mounted.current || active.current || loaded.current) return false;
+    active.current = true;
+    setBusy(true);
+    return true;
+  }, []);
+  const endBackup = useCallback(() => {
+    active.current = false;
+    if (mounted.current) setBusy(false);
+  }, []);
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -111,6 +122,13 @@ export function ProposalRecoveryLoader({ binding }: { binding: ProposalSubmissio
         binding={binding}
         disabled={busy}
         onSelect={(entry) => void loadStored('browser', entry)}
+      />
+      <ProposalBackupPanel
+        key={'backup:' + JSON.stringify(binding)}
+        binding={binding}
+        disabled={busy}
+        begin={beginBackup}
+        end={endBackup}
       />
       <label>
         Original request key

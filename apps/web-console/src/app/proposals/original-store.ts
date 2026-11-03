@@ -3,6 +3,12 @@
 import { proposalKinds, type Classification, type ProposalKind } from '@planemem/contracts';
 import { inBrowserStores, readBrowserPair } from '../sync/receipt/browser-store';
 import {
+  parseProposalBackupDocument,
+  PROPOSAL_BACKUP_MAX_ENTRIES,
+  PROPOSAL_BACKUP_DOCUMENT_BYTES,
+  type ProposalBackupDocument,
+} from './backup-model';
+import {
   assertProposalSubmissionBinding,
   decodeProposalOriginal,
   encodeProposalOriginal,
@@ -268,4 +274,245 @@ export function listBrowserProposalOriginals(
       });
     },
   );
+}
+
+/** Complete scoped snapshot: equal counts plus a verified pair for every content key. */
+export function readBrowserProposalBackup(input: ProposalSubmissionBinding, signal: AbortSignal) {
+  const binding = parseProposalSubmissionBinding(input);
+  checkedKey(proposalOriginalStorageKey(binding, 'a'), binding);
+  const prefix = proposalOriginalStoragePrefix(binding);
+  const empty = (): ProposalBackupDocument => ({
+    schema_version: 1,
+    kind: 'proposal-originals-backup',
+    binding,
+    entries: [],
+  });
+  return inBrowserStores<ProposalBackupDocument>(database, 'readonly', signal, empty, (context) => {
+    const range = IDBKeyRange.bound(prefix, prefix + '\uffff', false, true);
+    const originals = context.content.count(range);
+    const directory = context.directory.count(range);
+    directory.onsuccess = context.guard(() => {
+      const count = originals.result;
+      if (
+        !Number.isSafeInteger(count) ||
+        count < 0 ||
+        count > PROPOSAL_BACKUP_MAX_ENTRIES ||
+        directory.result !== count
+      )
+        throw unavailable();
+      const entries: ProposalOriginal[] = [];
+      let totalBytes = 0;
+      const request = context.content.openKeyCursor(range);
+      request.onsuccess = context.guard(() => {
+        const cursor = request.result;
+        if (!cursor) {
+          if (entries.length !== count) throw unavailable();
+          context.accept(parseProposalBackupDocument({ ...empty(), entries }));
+          return;
+        }
+        if (entries.length >= count) throw unavailable();
+        const key = checkedKey(cursor.primaryKey, binding);
+        readBrowserPair(context, key, (raw, summary, present) => {
+          if (!present || typeof raw !== 'string' || raw.length > PROPOSAL_ORIGINAL_BYTES)
+            throw unavailable();
+          totalBytes += bytes(raw);
+          if (totalBytes > PROPOSAL_BACKUP_DOCUMENT_BYTES) throw unavailable();
+          entries.push(readOriginal(raw, summary, key, binding));
+          cursor.continue();
+        });
+      });
+    });
+  });
+}
+
+type BackupEntryState = 'missing' | 'same' | 'different' | 'blocked';
+export interface ProposalBackupComparison {
+  entries: Array<{ request_key: string; title: string; state: BackupEntryState }>;
+  total: number;
+  missing: number;
+  same: number;
+  different: number;
+  blocked: number;
+  can_restore: boolean;
+}
+export interface ProposalBackupRestoreResult {
+  total: number;
+  added: number;
+  already_present: number;
+}
+function backupEntries(document: ProposalBackupDocument) {
+  return document.entries.map((original) => {
+    const raw = encodeProposalOriginal(original);
+    const key = proposalOriginalStorageKey(document.binding, original.request_key);
+    const summary = JSON.stringify(metadata(original, raw));
+    readMetadata(summary, key, document.binding);
+    return { original, raw, key, summary };
+  });
+}
+type BackupEntry = ReturnType<typeof backupEntries>[number];
+function legacyBackupState(item: BackupEntry): 'different' | 'blocked' | null {
+  try {
+    const legacy = loadLegacyProposalOriginal(item.original.binding, item.original.request_key);
+    return legacy && encodeProposalOriginal(legacy) !== item.raw ? 'different' : null;
+  } catch {
+    return 'blocked';
+  }
+}
+function compareBackupEntry(
+  item: BackupEntry,
+  raw: unknown,
+  summary: unknown,
+  present: boolean,
+): BackupEntryState {
+  const legacy = legacyBackupState(item);
+  if (legacy) return legacy;
+  if (!present) return 'missing';
+  try {
+    return encodeProposalOriginal(readOriginal(raw, summary, item.key, item.original.binding)) ===
+      item.raw
+      ? 'same'
+      : 'different';
+  } catch {
+    return 'blocked';
+  }
+}
+function comparison(entries: ProposalBackupComparison['entries']): ProposalBackupComparison {
+  const missing = entries.filter((entry) => entry.state === 'missing').length;
+  const same = entries.filter((entry) => entry.state === 'same').length;
+  const different = entries.filter((entry) => entry.state === 'different').length;
+  const blocked = entries.filter((entry) => entry.state === 'blocked').length;
+  return {
+    entries,
+    total: entries.length,
+    missing,
+    same,
+    different,
+    blocked,
+    can_restore: different === 0 && blocked === 0,
+  };
+}
+/** Advisory comparison only. No database initialization, migration or writes. */
+export function previewBrowserProposalBackup(
+  input: ProposalBackupDocument,
+  signal: AbortSignal,
+  check: () => void,
+) {
+  check();
+  const prepared = backupEntries(parseProposalBackupDocument(input));
+  check();
+  const missing = () =>
+    comparison(
+      prepared.map((item) => ({
+        request_key: item.original.request_key,
+        title: item.original.draft.title,
+        state: compareBackupEntry(item, undefined, undefined, false),
+      })),
+    );
+  if (!prepared.length) return Promise.resolve(comparison([]));
+  return inBrowserStores<ProposalBackupComparison>(
+    database,
+    'readonly',
+    signal,
+    missing,
+    (context) => {
+      const entries: ProposalBackupComparison['entries'] = [];
+      const inspectNext = () => {
+        check();
+        const item = prepared[entries.length];
+        if (!item) {
+          context.accept(comparison(entries));
+          return;
+        }
+        readBrowserPair(context, item.key, (raw, summary, present) => {
+          entries.push({
+            request_key: item.original.request_key,
+            title: item.original.draft.title,
+            state: compareBackupEntry(item, raw, summary, present),
+          });
+          inspectNext();
+        });
+      };
+      inspectNext();
+    },
+  );
+}
+
+/** File adapter verifies the digest. Entire preflight and all writes share one transaction. */
+export async function restoreBrowserProposalBackup(
+  input: ProposalBackupDocument,
+  signal: AbortSignal,
+  check: () => void,
+) {
+  check();
+  const prepared = backupEntries(parseProposalBackupDocument(input));
+  check();
+  for (const item of prepared) if (legacyBackupState(item) !== null) throw unavailable();
+  if (!prepared.length) return { total: 0, added: 0, already_present: 0 };
+  const result = await inBrowserStores<ProposalBackupRestoreResult>(
+    database,
+    'readwrite',
+    signal,
+    () => {
+      throw unavailable();
+    },
+    (context) => {
+      const missing: BackupEntry[] = [];
+      let inspected = 0;
+      let written = 0;
+      let verified = 0;
+      const verifyNext = () => {
+        check();
+        const item = prepared[verified];
+        if (!item) {
+          context.accept({
+            total: prepared.length,
+            added: missing.length,
+            already_present: prepared.length - missing.length,
+          });
+          return;
+        }
+        readBrowserPair(context, item.key, (raw, summary, present) => {
+          if (compareBackupEntry(item, raw, summary, present) !== 'same') throw unavailable();
+          verified += 1;
+          verifyNext();
+        });
+      };
+      const writeNext = () => {
+        check();
+        const item = missing[written];
+        if (!item) {
+          verifyNext();
+          return;
+        }
+        if (legacyBackupState(item) !== null) throw unavailable();
+        context.content.add(item.raw, item.key);
+        context.directory.add(item.summary, item.key);
+        // Queued synchronously after add; failure anywhere aborts the entire import.
+        readBrowserPair(context, item.key, (raw, summary, present) => {
+          if (compareBackupEntry(item, raw, summary, present) !== 'same') throw unavailable();
+          written += 1;
+          writeNext();
+        });
+      };
+      const inspectNext = () => {
+        check();
+        const item = prepared[inspected];
+        if (!item) {
+          writeNext();
+          return;
+        }
+        readBrowserPair(context, item.key, (raw, summary, present) => {
+          const state = compareBackupEntry(item, raw, summary, present);
+          if (state === 'missing') missing.push(item);
+          else if (state !== 'same') throw unavailable();
+          inspected += 1;
+          inspectNext();
+        });
+      };
+      inspectNext();
+    },
+  );
+  check();
+  for (const item of prepared) if (legacyBackupState(item) !== null) throw unavailable();
+  return result;
 }
