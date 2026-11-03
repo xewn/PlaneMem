@@ -3452,6 +3452,24 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_queue_backup_development_increment:
+      date: "2026-11-04"
+      status: "Source-only complete known-v1 queue snapshot export and offline inspection; R-009 remains incomplete."
+      artifacts:
+        - "workers/intelligence/src/proposal-queue-backup.ts"
+        - "workers/intelligence/src/submission.ts"
+        - "workers/intelligence/src/main.ts"
+        - "workers/intelligence/src/index.ts"
+        - "docs/design/01-contracts/proposal-queue-backup-runtime.md"
+      behavior: "Native-readonly queue-backup captures the original binding, all 14 job columns and optional generation-history rows in one transaction. Counts and byte bounds precede body reads; unknown structures, corruption or limits reject the complete export without truncation. Up to 100 jobs/100 associations and 32 MiB, exact payload hashes, full historical receipts, raw generation records, parent-draft/binding linkage, ordering and unique original keys are validated. Sending leases and uncertainty remain unchanged. An outer SHA-256 covers the complete logical snapshot. The queue closes before exclusive new-file saving; close/save failures retain the captured backup. inspect-queue-backup reads a bounded regular UTF-8 file offline and emits metadata only, with no queue or network access."
+      evidence: []
+      pending_evidence:
+        - "Known schema and optional-table distinction, count/size preflight, complete read snapshot and concurrent writers"
+        - "Every job state, original raw payload/hash, lease/uncertainty preservation, generation linkage and corruption rejection"
+        - "Strict offline shape/order/identity/inner-outer hashes, file bounds, output collision and failure retention"
+        - "CLI option isolation, native readonly open/close and no generation, claim, retry, restore or send"
+      remaining_scope: "Backup import/comparison and queue recovery, retained-error export recovery, automatic backup/retention, large-queue volumes, joint journal archival and runtime evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/SQL/database execution or release; no schema or dependency changes."
     proposal_review_history_selection_cleanup_development_increment:
       date: "2026-11-04"
       status: "Source-only bounded selected-history inspection, subset export and atomic confirmed cleanup; R-009 remains incomplete."

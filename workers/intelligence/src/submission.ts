@@ -19,6 +19,7 @@ import {
 } from './proposal-reconciliation-state.js';
 import { parseSubmissionReceipt } from './receipt.js';
 import { normalizeQueueBinding, type ProposalQueueBinding } from './queue-binding.js';
+import { captureProposalQueueBackup } from './proposal-queue-backup.js';
 import {
   inspectProposalGenerationRecord,
   readGeneratedProposalDraft,
@@ -233,6 +234,16 @@ export class SqliteProposalQueue {
 
   getGeneration(id: string, sha256: string) {
     return this.readTransaction(() => getGenerationHistory(this.db, id, sha256, this.binding));
+  }
+
+  /** Complete known-v1 logical snapshot; never acquire, recover or change a sending lease. */
+  backup() {
+    if (!this.readOnly)
+      throw new ContractError(
+        'PROPOSAL_QUEUE_BACKUP_REQUIRES_READONLY',
+        'Open an existing queue read-only before exporting its snapshot',
+      );
+    return this.readTransaction(() => captureProposalQueueBackup(this.db, this.binding));
   }
 
   private enqueuePayload(

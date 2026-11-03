@@ -4,6 +4,19 @@ export * from './publisher.js';
 export * from './proposal-reconciliation.js';
 export * from './proposal-receipt-record.js';
 export * from './proposal-receipt-recovery.js';
+export {
+  inspectProposalQueueBackup,
+  proposalQueueBackupSummary,
+  readProposalQueueBackup,
+  prepareProposalQueueBackupOutput,
+  saveProposalQueueBackup,
+  PROPOSAL_QUEUE_BACKUP_BYTES,
+  PROPOSAL_QUEUE_BACKUP_MAX_JOBS,
+  PROPOSAL_QUEUE_BACKUP_MAX_GENERATIONS,
+  type ProposalQueueBackup,
+  type ProposalQueueBackupJob,
+  type ProposalQueueBackupGeneration,
+} from './proposal-queue-backup.js';
 export type {
   ProposalReceiptTarget,
   ProposalLocalSettlement,

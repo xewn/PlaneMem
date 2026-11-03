@@ -24,6 +24,12 @@ import {
 } from './proposal-receipt-record.js';
 import { readProposalReceiptRecordRecovery } from './proposal-receipt-recovery.js';
 import {
+  proposalQueueBackupSummary,
+  readProposalQueueBackup,
+  prepareProposalQueueBackupOutput,
+  saveProposalQueueBackup,
+} from './proposal-queue-backup.js';
+import {
   generateProposalDraft,
   parseProposalGenerationProvider,
   parseProposalGenerationRequest,
@@ -76,6 +82,8 @@ const help = `Proposal submission queue (Node.js 24)
   proposal-worker enqueue --queue queue.sqlite --binding binding.json --file draft.json --key KEY
   proposal-worker list    --queue queue.sqlite --binding binding.json [--before JOB_ID] [--limit 25]
   proposal-worker get     --queue queue.sqlite --binding binding.json --id JOB_ID
+  proposal-worker queue-backup --queue EXISTING.sqlite --binding binding.json --output NEW_BACKUP.json
+  proposal-worker inspect-queue-backup --file BACKUP.json
   proposal-worker retry   --queue queue.sqlite --binding binding.json --id JOB_ID
   proposal-worker receipt --queue EXISTING.sqlite --binding binding.json --id JOB_ID [--timeout-ms 30000] [--output NEW_RECEIPT.json]
   proposal-worker reconcile --queue EXISTING.sqlite --binding binding.json --id JOB_ID [--timeout-ms 30000] [--output NEW_RECEIPT.json]
@@ -85,6 +93,7 @@ const help = `Proposal submission queue (Node.js 24)
 
 binding.json contains gateway_url, tenant_id, workspace_id, project_id, actor_id, client_id.
 list/get open an existing initialized queue read-only; missing files are never created.
+queue-backup saves a complete known-v1 logical snapshot after read-only queue close; inspect-queue-backup validates it offline. Neither restores, retries or sends tasks.
 generate calls the configured model once using PROPOSAL_GENERATION_API_KEY; it saves a new draft, without opening a queue.
 generate-prepared uses the same single call and saves the complete record; it does not refresh sources.
 inspect-generation verifies record consistency offline; enqueue-generated requires the original destination binding.
@@ -151,6 +160,8 @@ export async function main(args: string[]): Promise<number> {
       enqueue: ['file', 'key'],
       list: ['before', 'limit'],
       get: ['id'],
+      'queue-backup': ['output'],
+      'inspect-queue-backup': ['file'],
       retry: ['id'],
       receipt: ['id', 'timeout-ms', 'output'],
       reconcile: ['id', 'timeout-ms', 'output'],
@@ -169,6 +180,7 @@ export async function main(args: string[]): Promise<number> {
             'generate-prepared',
             'inspect-generation',
             'inspect-receipt-record',
+            'inspect-queue-backup',
             'receipt-record-recover',
             'generation-request',
             'generation-run',
@@ -197,6 +209,48 @@ export async function main(args: string[]): Promise<number> {
         throw new TypeError('--' + name + ' is required');
       return value;
     };
+    if (command === 'inspect-queue-backup') {
+      const backup = await readProposalQueueBackup(required('file'));
+      process.stdout.write(JSON.stringify(proposalQueueBackupSummary(backup), null, 2) + '\n');
+      return 0;
+    }
+    if (command === 'queue-backup') {
+      const path = required('queue');
+      const binding = (await readJson(required('binding'), 16_384)) as ProposalQueueBinding;
+      const destination = await prepareProposalQueueBackupOutput(required('output'));
+      queue = new SqliteProposalQueue(path, binding, { readonly: true, existing: true });
+      const backup = queue.backup();
+      const reader = queue;
+      queue = undefined;
+      let exportPhase = 'close';
+      let report: unknown;
+      try {
+        reader.close();
+        exportPhase = 'save';
+        const saved = await saveProposalQueueBackup(destination, backup);
+        report = { ...proposalQueueBackupSummary(backup), close_state: 'closed', output: saved };
+      } catch (error) {
+        process.stderr.write(
+          JSON.stringify(
+            {
+              code: 'PROPOSAL_QUEUE_BACKUP_EXPORT_FAILED',
+              backup,
+              output: {
+                output_path: destination.path,
+                export_phase: exportPhase,
+                close_state: exportPhase === 'close' ? 'not-confirmed' : 'closed',
+                ...(error instanceof ContractError ? error.envelope.details : {}),
+              },
+            },
+            null,
+            2,
+          ) + '\n',
+        );
+        return 1;
+      }
+      process.stdout.write(JSON.stringify(report, null, 2) + '\n');
+      return 0;
+    }
     if (command === 'receipt-record-recover') {
       const target = required('output');
       const recovery = await readProposalReceiptRecordRecovery(required('file'));
