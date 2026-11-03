@@ -35,6 +35,22 @@ requirements:
     design: ["plane-connector", "authority-boundary"]
     subprojects: ["P1"]
     tests: ["integration.plane_api", "integration.plane_webhook", "integration.permission_propagation"]
+    work_item_detail_navigation_development_increment:
+      date: "2026-11-04"
+      status: "Source-only preservation of work item browsing context; no browser or runtime evidence."
+      artifacts:
+        - "apps/web-console/src/app/work-items/navigation.ts"
+        - "apps/web-console/src/app/work-items/page.tsx"
+        - "apps/web-console/src/app/work-items/detail/page.tsx"
+        - "docs/design/01-contracts/work-item-projection-runtime.md"
+      behavior: "List detail links preserve filters, cursor, view and selection. Shared parsing rebuilds only fixed internal work-item URLs, rejects invalid/duplicate return fields and mismatched selections, and retains navigation on detail refresh or read failure. Legacy direct detail links still work. No arbitrary redirects, stored snapshots, identity inference or changed data access."
+      evidence: []
+      pending_evidence:
+        - "Later pages, board/list switches, implicit and out-of-page selections, exact owner and Unicode round trips"
+        - "Detail refresh, 404/denied/network failures, explicit retry and legacy direct links"
+        - "External/other return paths, fragments, duplicate/unknown parameters, mismatched IDs and size bounds"
+        - "Scope/permission changes still reject stale cursors and reauthorize each data read"
+      execution: "Source/docs only; no builds, typechecks, tests, browser/service/API execution, database access or release."
     work_item_filter_development_increment:
       date: "2026-11-04"
       status: "Source-only priority and exact-owner filters on local projections; no authority or runtime completion claim."

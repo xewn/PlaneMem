@@ -1,19 +1,23 @@
 import Link from 'next/link';
-import { parseWorkItemProjectionQuery } from '@planemem/contracts';
 import { PageError, toneFor } from '../../../components/page-state';
 import { Badge, EmptyState, Panel, Progress } from '../../../components/ui';
 import { getWorkbenchWorkItem, WorkbenchApiError } from '../../../lib/server-api';
+import {
+  parseWorkItemDetailParams,
+  workItemBrowseHref,
+  type WorkItemDetailNavigation,
+  type WorkItemSearchParams,
+} from '../navigation';
 
 export default async function WorkItemDetailPage({
   searchParams,
 }: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
+  searchParams: Promise<WorkItemSearchParams>;
 }) {
+  let navigation: WorkItemDetailNavigation | undefined;
   try {
-    const params = await searchParams;
-    if (Object.keys(params).some((key) => key !== 'item'))
-      throw new Error('Select one work item to read its details.');
-    const { item_id } = parseWorkItemProjectionQuery({ item_id: params.item });
+    navigation = parseWorkItemDetailParams(await searchParams);
+    const { item_id, browse, return_href } = navigation;
     const result = await getWorkbenchWorkItem(item_id);
     const item = result.data;
     return (
@@ -25,12 +29,16 @@ export default async function WorkItemDetailPage({
           </div>
           <form action="/work-items/detail" method="get">
             <input type="hidden" name="item" value={item_id} />
+            <input type="hidden" name="return_to" value={return_href} />
             <button className="secondary-button" type="submit">
               Refresh details
             </button>
           </form>
         </div>
         <nav className="heading-actions" aria-label="Work item navigation">
+          <Link className="panel-link" href={return_href} prefetch={false}>
+            Back to results
+          </Link>
           <Link
             className="panel-link"
             href={{ pathname: '/work-items/observed', query: { item: item.external_id } }}
@@ -38,12 +46,17 @@ export default async function WorkItemDetailPage({
           >
             Look up Plane observation by this reference
           </Link>
-          <Link className="panel-link" href={{ pathname: '/work-items', query: { item: item_id } }}>
+          <Link
+            className="panel-link"
+            href={workItemBrowseHref({ ...browse, view: 'board' })}
+            prefetch={false}
+          >
             Open in board
           </Link>
           <Link
             className="panel-link"
-            href={{ pathname: '/work-items', query: { item: item_id, view: 'list' } }}
+            href={workItemBrowseHref({ ...browse, view: 'list' })}
+            prefetch={false}
           >
             Open in list
           </Link>
@@ -137,10 +150,23 @@ export default async function WorkItemDetailPage({
       <>
         <div className="page-heading">
           <h1>Work item details</h1>
-          <Link className="panel-link" href="/work-items">
-            Back to work items
+          <Link
+            className="panel-link"
+            href={navigation?.return_href ?? '/work-items'}
+            prefetch={false}
+          >
+            {navigation ? 'Back to results' : 'Back to work items'}
           </Link>
         </div>
+        {navigation && (
+          <form action="/work-items/detail" method="get">
+            <input type="hidden" name="item" value={navigation.item_id} />
+            <input type="hidden" name="return_to" value={navigation.return_href} />
+            <button className="secondary-button" type="submit">
+              Retry details
+            </button>
+          </form>
+        )}
         {error instanceof WorkbenchApiError && error.status === 404 ? (
           <Panel title="Work item unavailable" icon="work">
             <EmptyState

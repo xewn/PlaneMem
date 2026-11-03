@@ -1,13 +1,15 @@
 import Link from 'next/link';
-import {
-  WORK_ITEM_PRIORITIES,
-  parseWorkItemListQuery,
-  type WorkItemProjection,
-} from '@planemem/contracts';
+import { WORK_ITEM_PRIORITIES, type WorkItemProjection } from '@planemem/contracts';
 import { Icon } from '../../components/icons';
 import { PageError, numberValue, textValue, toneFor } from '../../components/page-state';
 import { Badge, Panel, Progress } from '../../components/ui';
 import { listWorkbenchWorkItems } from '../../lib/server-api';
+import {
+  parseWorkItemBrowseParams,
+  workItemBrowseHref,
+  workItemDetailHref,
+  type WorkItemSearchParams,
+} from './navigation';
 
 type WorkItem = WorkItemProjection;
 const columns = [
@@ -19,65 +21,43 @@ const columns = [
   ['cancelled', 'Cancelled', 'neutral'],
 ] as const;
 
-type SearchParams = Record<string, string | string[] | undefined>;
-
 export default async function WorkItemsPage({
   searchParams,
 }: {
-  searchParams: Promise<SearchParams>;
+  searchParams: Promise<WorkItemSearchParams>;
 }) {
   try {
-    const params = await searchParams;
-    if (
-      Object.keys(params).some(
-        (key) => !['q', 'status', 'priority', 'owner', 'cursor', 'view', 'item'].includes(key),
-      ) ||
-      Object.values(params).some((value) => Array.isArray(value)) ||
-      (params.view !== undefined && params.view !== 'board' && params.view !== 'list')
-    )
-      throw new Error('Use one value per work item filter and select the board or list view.');
-    const filters = parseWorkItemListQuery({
-      query: params.q ?? '',
-      status: params.status ?? '',
-      priority: params.priority ?? '',
-      owner: params.owner ?? '',
-      limit: 25,
-      ...(params.cursor === undefined ? {} : { cursor: params.cursor }),
-    });
+    const browse = parseWorkItemBrowseParams(await searchParams);
+    const { filters, item: requestedId } = browse;
     const query = filters.query ?? '';
     const status = filters.status ?? '';
     const priority = filters.priority ?? '';
     const owner = filters.owner ?? '';
     const hasFilters = Boolean(query || status || priority || owner);
     const cursor = filters.cursor;
-    const list = params.view === 'list';
+    const list = browse.view === 'list';
     const response = await listWorkbenchWorkItems(filters);
     const items = response.data ?? [];
-    const requestedId = typeof params.item === 'string' ? params.item : undefined;
     const selected =
-      params.item === undefined ? items[0] : items.find((item) => item.id === requestedId);
+      requestedId === undefined ? items[0] : items.find((item) => item.id === requestedId);
     const visibleColumns = columns.filter(([value]) =>
       status
         ? value === status
         : value !== 'cancelled' || items.some((item) => item.status === value),
     );
     function href(
-      view: string,
+      view: 'board' | 'list',
       item?: WorkItem,
       pageCursor: string | null = cursor ?? null,
       keepSelected = true,
     ) {
-      const search = new URLSearchParams();
-      if (query) search.set('q', query);
-      if (status) search.set('status', status);
-      if (priority) search.set('priority', priority);
-      if (owner) search.set('owner', owner);
-      if (view === 'list') search.set('view', view);
-      if (pageCursor) search.set('cursor', pageCursor);
-      if (item) search.set('item', String(item.id));
-      else if (keepSelected && requestedId !== undefined) search.set('item', requestedId);
-      const suffix = search.toString();
-      return suffix ? '/work-items?' + suffix : '/work-items';
+      const { cursor: _cursor, ...originalFilters } = filters;
+      const selection = item?.id ?? (keepSelected ? requestedId : undefined);
+      return workItemBrowseHref({
+        filters: { ...originalFilters, ...(pageCursor === null ? {} : { cursor: pageCursor }) },
+        view,
+        ...(selection === undefined ? {} : { item: selection }),
+      });
     }
     return (
       <>
@@ -285,7 +265,7 @@ export default async function WorkItemsPage({
                   </h2>
                   <Link
                     className="panel-link"
-                    href={{ pathname: '/work-items/detail', query: { item: String(selected.id) } }}
+                    href={workItemDetailHref(selected.id, browse)}
                     prefetch={false}
                   >
                     Open full details and sources
@@ -335,7 +315,7 @@ export default async function WorkItemsPage({
               ) : (
                 <div className="empty-state">
                   <h3>
-                    {params.item === undefined
+                    {requestedId === undefined
                       ? 'No item selected'
                       : 'Selected item is outside this result'}
                   </h3>
@@ -347,14 +327,12 @@ export default async function WorkItemsPage({
                       </p>
                       <Link
                         className="panel-link"
-                        href={{ pathname: '/work-items/detail', query: { item: requestedId } }}
+                        href={workItemDetailHref(requestedId, browse)}
                         prefetch={false}
                       >
                         Read selected item
                       </Link>
                     </>
-                  ) : params.item !== undefined ? (
-                    <p>Select one work item from the list or board.</p>
                   ) : null}
                 </div>
               )}
