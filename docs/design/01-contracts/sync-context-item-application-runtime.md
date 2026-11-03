@@ -60,3 +60,5 @@ CLI 主程序和嵌入入口共用本地参数解析：必须显式 --inbox 和 
 2026-11-03 后续目录增补：readApplicationCatalog 与 CLI application-list 可按原身份发现保存的应用名称/版本和头摘要，返回状态、固定历史上界及精确快照查询。目录可包含任意已保存描述，不代表其有内置可执行适配器，也不认证历史代码；见 [应用目录](sync-application-catalog-runtime.md)。仅源码未执行。
 
 2026-11-03 后续归档增补：独立应用历史归档 v1 可保存完整原页面和逐页投影/摘要/原应用 trace，CLI 支持显式导出与离线分页/指定快照读取。导出前完整结构审计，文件适配器逐层验证摘要；不包含服务端全文或认证业务语义，不自动导入/恢复。见 [应用历史归档](sync-application-archive-runtime.md)。仅源码文档，未运行或生成样本。
+
+2026-11-03 建议适配器增补：内置名称选择已移入共同选择器，apply/replay 现支持本 context-item-lifecycle/1 和独立 proposal-lifecycle/1。本文上下文 v1 的五种处理类型、九种忽略类型、投影规则和错误码不变；建议使用独立应用键和自己的创建基线，详见[建议生命周期](sync-proposal-application-runtime.md)。仅源码，未执行。

@@ -978,6 +978,31 @@ requirements:
         - "CLI primary/embedded local routing, old output migration, read/rollback/close failures and complete result retention"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_proposal_lifecycle_application_development_increment:
+      date: "2026-11-03"
+      status: "Source-only Proposal lifecycle metadata consumption and full saved-history replay through the second fixed built-in adapter; R-005 remains incomplete."
+      artifacts:
+        - "packages/contracts/src/proposal-sync.ts"
+        - "packages/contracts/src/index.ts"
+        - "apps/context-bridge/src/inbox/proposal-application.ts"
+        - "apps/context-bridge/src/inbox/built-in-applications.ts"
+        - "apps/context-bridge/src/inbox/context-item-application.ts"
+        - "apps/context-bridge/src/inbox/application-rejection.ts"
+        - "apps/context-bridge/src/inbox/application-replay.ts"
+        - "apps/context-bridge/src/inbox/sqlite.ts"
+        - "apps/workctx-cli/src/inbox.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "docs/design/01-contracts/sync-proposal-application-runtime.md"
+      behavior: "Strict parsing of the existing Gateway Proposal ApprovalRequested/Completed envelopes and four-field payload, original scope/source/revision binding, fixed kind set and historical classification. Proposal-lifecycle/1 retains original request/latest events with proposed revision 1 to verified/rejected revision 2, rejects missing baselines/repeated final decisions/kind or classification changes, and caps proposals at 512 under existing byte budgets. Twelve explicit out-of-scope event types retain projection; unknown types reject. Apply/replay use one fixed selector while existing context adapter behavior remains unchanged. Replay still audits structure first and compares every saved projection without writing."
+      remaining_scope: "No proposal body/reason/expiry/source manifest or current review authorization, missing-history baseline recovery, permission-change rebuild, other business adapters or actual concurrent/crash/cross-device execution evidence. Application labels and historical verified status do not authenticate execution or current business validity."
+      pending_evidence:
+        - "Existing Gateway producer envelopes, strict IDs/scope/source/payload/status/revision/kind metadata and other aggregate approval rejection"
+        - "Null/mixed pages, independent application histories, request/verified/rejected transitions, missing baselines and repeated terminal events"
+        - "Projection scope/sort/duplicate event and cursor checks, saved-boundary validation and 512-count/1-MiB/64-MiB limits"
+        - "Shared apply/replay adapter selection, unknown names/versions before open, context canonical snapshot and diagnostic compatibility"
+        - "Every-page replay equality and mismatch positions, duplicate-page handling, transaction/rollback/close failure and unknown commit preservation"
+      evidence: []
+      execution: "Source and documentation only; no builds, typechecks, tests, reducer/CLI/Bridge/API/service runs, sample artifacts, database opens, schema initialization, migrations or release. No new schema/dependencies or Gateway wire changes; existing SQLite extensions and PostgreSQL 016-049 remain unexecuted. Task commit/push targets main with skip-ci."
     sync_application_restore_receipt_audit_development_increment:
       date: "2026-11-03"
       status: "Source-only complete selected-consumer/application restore receipt audit in one bounded read transaction; R-005 remains incomplete."

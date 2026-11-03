@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+`inbox application-apply` 和 `application-replay` 新增 `application:{name:"proposal-lifecycle",version:"1"}`，显式处理原建议创建/确认/拒绝事件，并可只读重算完整保存历史。与 context-item-lifecycle/1 使用独立应用进度，不能替换已有应用头；缺原创建事件会拒绝。输入仍要求原身份和对应页/预算参数，见 [建议生命周期](../../docs/design/01-contracts/sync-proposal-application-runtime.md)。仅源码文档，未运行命令、编译或测试。
+
 新增 `inbox application-restore-receipt-audit --inbox FILE --json-file QUERY`，按原身份/应用检查全部历史恢复回执。支持 max_receipts/max_bytes/timeout_ms，目录返回的 receipt_audit_query 可直接使用默认预算；超限明确未完成，不输出部分通过或续页。见 [回执完整范围审计](../../docs/design/01-contracts/sync-application-restore-receipt-audit-runtime.md)。仅源码文档，未执行命令、编译或测试。
 
 新增 `inbox application-restore-receipt-scopes --inbox FILE --json '{}'`，从回执找回原身份与应用；支持 limit/timeout_ms 和成对的 after_consumer_key/after_application_key。返回的 receipt_list_query 可继续发现该范围的请求 ID，也可用 receipt_get_query 读取代表回执。见 [跨范围目录](../../docs/design/01-contracts/sync-application-restore-receipt-scopes-runtime.md)。只读、不输出文件；仅源码文档，未运行或测试。
@@ -57,7 +59,7 @@ JSON 要求完整 expected_identity，不要求预先知道应用名；可选 li
 workctx inbox application-replay --inbox local-inbox.sqlite --json-file application-replay-query.json
 ```
 
-查询要求完整 expected_identity 和固定 application={name:"context-item-lifecycle",version:"1"}，接受 application-audit 的 max_pages/max_events/max_bytes/timeout_ms，另加 max_replay_bytes（默认 64 MiB、最多 512 MiB）。只读打开已有库，在同一事务先完整核对结构，再从 null 正序重算每页并严格比较保存快照；成功只表示当前内置规则下所有快照相符，遇到损坏、规则拒绝、差异或超限即报未完成并保留页/事件位置。不改变保存状态或发送确认，也不自动修复、导出或加载自定义模块。详见 [重放核对契约](../../docs/design/01-contracts/sync-application-replay-runtime.md)。未运行命令、reducer 或数据库，无新 schema/依赖。
+查询要求完整 expected_identity 和固定 application（context-item-lifecycle/1 或 proposal-lifecycle/1），接受 application-audit 的 max_pages/max_events/max_bytes/timeout_ms，另加 max_replay_bytes（默认 64 MiB、最多 512 MiB）。只读打开已有库，在同一事务先完整核对结构，再从 null 正序重算每页并严格比较保存快照；成功只表示当前内置规则下所有快照相符，遇到损坏、规则拒绝、差异或超限即报未完成并保留页/事件位置。不改变保存状态或发送确认，也不自动修复、导出或加载自定义模块。详见 [重放核对契约](../../docs/design/01-contracts/sync-application-replay-runtime.md)。未运行命令、reducer 或数据库，无新 schema/依赖。
 
 应用历史新增只读分页和指定快照读取（仅源码，示例未执行）：
 
@@ -82,7 +84,7 @@ workctx inbox application-audit --inbox local-inbox.sqlite --json-file applicati
 workctx inbox application-apply --inbox local-inbox.sqlite --json-file application-page-query.json
 ```
 
-查询必须含完整 expected_identity、`application:{name:"context-item-lifecycle",version:"1"}`、已导入原页 document_sha256 和原预期前驱 expected_previous_sha256（根页为 null），可选 timeout_ms。先使用下述 enable-applications；命令不自动建库/启用、选最新页或发送确认。主程序/嵌入入口均本地执行，仅接受已有内置适配器，不加载外部模块。重复同一已提交原页返回当前状态，不重跑处理。
+查询必须含完整 expected_identity、`application:{name:"context-item-lifecycle",version:"1"}` 或 `application:{name:"proposal-lifecycle",version:"1"}`、已导入原页 document_sha256 和原预期前驱 expected_previous_sha256（根页为 null），可选 timeout_ms。先使用下述 enable-applications；命令不自动建库/启用、选最新页或发送确认。主程序/嵌入入口均本地执行，仅接受已有内置适配器，不加载外部模块。重复同一已提交原页返回当前状态，不重跑处理。
 
 投影只保存上下文创建/更新/确认/归档/恢复的历史状态元数据及创建/最新事件，服务端事件不包含完整正文。必须有版本 1 的原创建事件，后续版本连续；缺基线、断档、非法迁移或分类改变拒绝整页。最多 512 条，另受 1 MiB 投影/单页 64 MiB 处理预算限制。结果 adapter 明确列出处理/范围外类型，未知类型拒绝，applied_cursor 仅对应此本地投影。详情与错误边界见 [上下文生命周期投影契约](../../docs/design/01-contracts/sync-context-item-application-runtime.md)。无新 schema/依赖，未执行命令、数据库操作、编译或测试。
 

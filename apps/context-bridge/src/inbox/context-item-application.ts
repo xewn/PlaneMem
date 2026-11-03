@@ -9,9 +9,6 @@ import {
 } from '@planemem/contracts';
 import {
   INBOX_APPLICATION_STATE_BYTES,
-  applicationFailure,
-  parseInboxApplicationApplyQuery,
-  type SyncInboxApplication,
   type SyncInboxApplicationHandlers,
 } from './application-model.js';
 import { InboxApplicationRejection } from './application-rejection.js';
@@ -179,21 +176,4 @@ export function contextItemApplicationAdapter(identity: SyncCommandIdentity) {
       item_content: 'not-included' as const,
     },
   };
-}
-export function requireBuiltInApplication(application: SyncInboxApplication, trace: string) {
-  if (
-    application.name !== CONTEXT_ITEM_APPLICATION.name ||
-    application.version !== CONTEXT_ITEM_APPLICATION.version
-  )
-    throw applicationFailure(
-      'INBOX_APPLICATION_ADAPTER_UNSUPPORTED',
-      'Select the built-in context-item-lifecycle application at version 1',
-      trace,
-    );
-}
-/** Parse and select before opening storage; no module paths or executable input. */
-export function parseInboxBuiltInApplicationApplyQuery(input: unknown, trace: string) {
-  const query = parseInboxApplicationApplyQuery(input, trace);
-  requireBuiltInApplication(query.application, trace);
-  return query;
 }

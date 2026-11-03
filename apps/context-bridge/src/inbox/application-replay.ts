@@ -19,10 +19,7 @@ import {
   type SyncInboxApplicationAuditQuery,
 } from './application-audit.js';
 import type { InboxApplicationHistoryStep } from './application-history.js';
-import {
-  contextItemApplicationAdapter,
-  requireBuiltInApplication,
-} from './context-item-application.js';
+import { builtInApplicationAdapter, requireBuiltInApplication } from './built-in-applications.js';
 import { InboxApplicationRejection } from './application-rejection.js';
 
 export interface SyncInboxApplicationReplayQuery extends SyncInboxApplicationAuditQuery {
@@ -134,7 +131,7 @@ export function replayInboxApplicationHistory(
       checked_events: audited.checked_events,
       checked_bytes: audited.checked_bytes,
     };
-    const adapter = contextItemApplicationAdapter(query.expected_identity);
+    const adapter = builtInApplicationAdapter(query.application, query.expected_identity, trace);
     const handlers = applicationHandlers(adapter.handlers, trace);
     stage = 'membership';
     check();

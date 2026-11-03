@@ -53,14 +53,15 @@ export type {
   SyncInboxApplicationSnapshotQuery,
 } from './application-history.js';
 import {
-  contextItemApplicationAdapter,
+  builtInApplicationAdapter,
   parseInboxBuiltInApplicationApplyQuery,
-} from './context-item-application.js';
+} from './built-in-applications.js';
+export { parseInboxBuiltInApplicationApplyQuery } from './built-in-applications.js';
 export {
   CONTEXT_ITEM_APPLICATION,
-  parseInboxBuiltInApplicationApplyQuery,
   type ContextItemLifecycleProjection,
 } from './context-item-application.js';
+export { PROPOSAL_APPLICATION, type ProposalLifecycleProjection } from './proposal-application.js';
 import type { SyncInboxApplicationHandlers } from './application-model.js';
 export {
   parseInboxApplicationQuery,
@@ -1178,7 +1179,7 @@ export class SqliteSyncInbox {
   /** Fixed built-in semantics; the complete original page and predecessor remain caller-selected. */
   applyBuiltInApplicationPage(input: unknown, trace: string) {
     const query = parseInboxBuiltInApplicationApplyQuery(input, trace);
-    const adapter = contextItemApplicationAdapter(query.expected_identity);
+    const adapter = builtInApplicationAdapter(query.application, query.expected_identity, trace);
     return {
       ...this.applications().apply(query, adapter.handlers, trace, adapter.validateProjection),
       adapter: adapter.descriptor,

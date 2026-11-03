@@ -10,7 +10,7 @@ Bridge 新增 `replayBuiltInApplicationHistory(input,trace)`、`parseInboxBuiltI
 workctx inbox application-replay --inbox local-inbox.sqlite --json-file application-replay-query.json
 ```
 
-必须提供已有收件箱路径和 `--json`/`--json-file` 二选一；完整原 `expected_identity` 与 `application={name:"context-item-lifecycle",version:"1"}` 必填。严格 JSON 上限 16 KiB，未知字段、重复参数、`--output`、`--page-file`、令牌、写键和命令行 `--timeout-ms` 均拒绝。只支持当前固定内置适配器，其他名称版本报 `INBOX_APPLICATION_ADAPTER_UNSUPPORTED`，不接受自定义 handler 或模块路径。查询/适配器在打开库前确定；只读打开已有库，缺应用扩展明确失败，不自动初始化或升级。
+必须提供已有收件箱路径和 `--json`/`--json-file` 二选一；完整原 `expected_identity` 与 application 必填；支持 `{name:"context-item-lifecycle",version:"1"}` 或 `{name:"proposal-lifecycle",version:"1"}`。严格 JSON 上限 16 KiB，未知字段、重复参数、`--output`、`--page-file`、令牌、写键和命令行 `--timeout-ms` 均拒绝。只支持当前固定内置适配器，其他名称版本报 `INBOX_APPLICATION_ADAPTER_UNSUPPORTED`，不接受自定义 handler 或模块路径。查询/适配器在打开库前确定；只读打开已有库，缺应用扩展明确失败，不自动初始化或升级。
 
 可选预算均为正安全整数：
 
@@ -28,7 +28,7 @@ workctx inbox application-replay --inbox local-inbox.sqlite --json-file applicat
 
 结构阶段完整通过后，只保留有界的步骤序号/原页摘要目录（最多 max_pages），在同一个只读事务内从根正序重新读取各完整步骤。重算初值始终是 JSON null；每个事件的输入是上一个事件的重算输出和原事件的独立 JSON 副本，不采用中间保存快照作为重算基线。每页开始核对序号/前驱/起点/页大小，先确认整页所有事件类型有固定处理器，然后按原事件顺序调用当前内置 reducer。
 
-沿用 [上下文生命周期适配器](sync-context-item-application-runtime.md) 的创建/连续版本/状态迁移/分类与来源规则，以及明确声明的九类范围外事件和 512 条目上限。未知类型明确失败；Promise/thenable、非法 JSON 或超大投影拒绝。每个重算输出仍限 1 MiB，每页重算输入和输出累计仍限 64 MiB；返回异步值时接收其后续 rejection，但结果不参与核对。
+按所选名称/版本使用 [上下文生命周期适配器](sync-context-item-application-runtime.md) 或 [建议生命周期适配器](sync-proposal-application-runtime.md)，沿用各自创建基线、状态迁移、分类/来源规则和 512 实体上限；上下文固定忽略九类范围外事件，建议固定忽略十二类。未知类型明确失败；Promise/thenable、非法 JSON 或超大投影拒绝。每个重算输出仍限 1 MiB，每页重算输入和输出累计仍限 64 MiB；返回异步值时接收其后续 rejection，但结果不参与核对。
 
 每页末校验重算投影与该页游标，再严格比较重算 JSON 文本与保存投影文本，包括空页和只有范围外事件的页。首个正序不匹配页报错，携带该页序号/原页摘要及保存/重算投影摘要，不返回两份业务正文。字节比较有意保留序列化差异，不把“对象看似等价”当作原保存结果一致。最后须核对重算页数/事件数、末页摘要/游标和最终完整投影均等于结构阶段的应用头。
 
@@ -46,11 +46,11 @@ workctx inbox application-replay --inbox local-inbox.sqlite --json-file applicat
 
 - `INBOX_APPLICATION_REPLAY_QUERY_INVALID`：身份/应用/查询字段或预算不合法；适配器不支持保留专用错误。
 - 既有结构/原页/ledger 错误：结构阶段失败，重算尚未开始；保留结构检查进度，另有 structure_stage/structure_selected_digest。
-- `INBOX_APPLICATION_EVENT_UNSUPPORTED` 或固定 `INBOX_CONTEXT_ITEM_*`：当前内置规则不接受指定事件或生命周期。
+- `INBOX_APPLICATION_EVENT_UNSUPPORTED` 或固定 `INBOX_CONTEXT_ITEM_*` / `INBOX_PROPOSAL_*`：当前内置规则不接受指定事件或生命周期。
 - `INBOX_APPLICATION_REPLAY_MISMATCH`：重算与保存快照不同，附两个摘要和首次正序不匹配页。
 - `INBOX_APPLICATION_REPLAY_LIMIT_REACHED`、`INBOX_APPLICATION_TIMEOUT`：累计/单页预算或期限不足，明确未完成。
 - `INBOX_APPLICATION_REPLAY_CORRUPT`、`INBOX_APPLICATION_REPLAY_REDUCER_FAILED`、`INBOX_APPLICATION_REPLAY_RESULT_TOO_LARGE`：重复读取/覆盖异常、处理器返回异常或完整结果过大。
 
 事务内失败 details 包含 replay_completed=false、原身份/应用/预算、可用的结构/重算进度、阶段和所选页/事件；计数只表示已处理前缀，不表示部分通过。schema/BEGIN 之前失败可能没有进度。replayed_pages 只统计已逐页匹配的页，replayed_events 可包含尚未完成整页比较的事件。业务拒绝使用固定诊断，不回显任意异常正文。复用单调期限及事务/回滚处理，同步 SQL、JSON 或 reducer 无法硬实时抢占；结束读取事务失败仍返回失败并保留计数。CLI 关闭失败保留原错误或完整成功结果与 close_pending。
 
-本轮未实际执行任何重放或数据库操作，尚需将来取得空历史、多页、旧快照自洽但语义不符、未知类型、版本断档、预算/超时及关闭失败的运行证据。其他业务适配器、完整正文、应用备份恢复和权限变化重建继续待开发。
+本轮未实际执行任何重放或数据库操作，尚需将来取得空历史、多页、旧快照自洽但语义不符、未知类型、版本断档、预算/超时及关闭失败的运行证据。上下文和建议以外的业务适配器、完整正文、权限变化重建及真实恢复证据继续待补；既有通用应用归档/恢复不认证 reducer 语义。
