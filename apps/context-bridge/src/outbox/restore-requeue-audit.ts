@@ -8,7 +8,7 @@ import {
   outboxRequeueReceiptTable,
   outboxRequeueReceiptProjection,
   outboxRequeueReceiptMetadata,
-  outboxOriginalRequeueReceipt,
+  outboxStoredRequeueRecord,
 } from './restore-requeue-receipt.js';
 
 export type OutboxRestoreRequeueAuditQuery = OutboxRestoreAuditQuery;
@@ -35,8 +35,17 @@ export function parseOutboxRestoreRequeueAuditQuery(
   }
 }
 
-/** Complete selected-project history audit; callers never receive partially verified receipts. */
-export function auditOutboxRestoreRequeueReceipts(db: DatabaseSync, input: unknown, trace: string) {
+export interface OutboxRestoreRequeueHistoryRecord {
+  receipt: NonNullable<ReturnType<typeof outboxStoredRequeueRecord>['recorded']>;
+  parent: NonNullable<ReturnType<typeof outboxStoredRequeueRecord>['history']>;
+}
+/** Collectors are internal to complete export; without one, verified bodies are released per batch. */
+export function auditOutboxRestoreRequeueReceipts(
+  db: DatabaseSync,
+  input: unknown,
+  trace: string,
+  collect?: (record: OutboxRestoreRequeueHistoryRecord) => void,
+) {
   const query = parseOutboxRestoreRequeueAuditQuery(input, trace);
   assertOutboxRestoreTrace(trace);
   const deadline = performance.now() + query.timeout_ms;
@@ -178,8 +187,18 @@ export function auditOutboxRestoreRequeueReceipts(db: DatabaseSync, input: unkno
               // Each batch revalidates its parent: shared parents consume the budget on every appearance.
               reserve(parentQueryBytes + archiveBytes);
               stage = 'receipt';
-              const { recorded } = outboxOriginalRequeueReceipt(db, original, trace, check);
-              if (!recorded) throw corrupt();
+              const { recorded, history } = outboxStoredRequeueRecord(
+                db,
+                original,
+                trace,
+                check,
+                original,
+              );
+              if (!recorded || !history) throw corrupt();
+              if (collect) {
+                stage = 'collect';
+                collect({ receipt: recorded, parent: history });
+              }
               check();
               checked_receipts += 1;
               checked_query_bytes += queryBytes;

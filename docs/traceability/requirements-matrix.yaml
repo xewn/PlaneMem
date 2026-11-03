@@ -959,6 +959,28 @@ requirements:
         - "Offline routing without token/environment/SQLite, argument restrictions, output traces, provenance and exits"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, sample file generation, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_outbox_restore_requeue_backup_development_increment:
+      date: "2026-11-04"
+      status: "Source-only complete project requeue backup with deduplicated parent histories and offline verification; R-005 remains incomplete."
+      artifacts:
+        - "apps/context-bridge/src/outbox/restore-requeue-backup.ts"
+        - "apps/context-bridge/src/outbox/restore-requeue-backup-reading.ts"
+        - "apps/context-bridge/src/outbox/restore-requeue-audit.ts"
+        - "apps/context-bridge/src/outbox/sqlite.ts"
+        - "apps/context-bridge/package.json"
+        - "apps/workctx-cli/src/outbox-restore-requeue-backup.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/outbox-restore-requeue-backup-runtime.md"
+      behavior: "One audited read snapshot collects all project receipts and deduplicates parents by restore_id. Offline verification reconstructs immutable v1 histories, checks complete receipts/digests, strict BINARY order and reference closure; missing or unreferenced parents fail. Maximum 100 receipts/parents and 64 MiB document. Shared parents are charged per batch against the separate default 64 MiB, maximum 512 MiB read budget. No partial backup. Native read-only export closes before exclusive file publication and exact final-byte/full-history readback. Bounded summaries retain file publication/cleanup and close states."
+      evidence: []
+      pending_evidence:
+        - "Empty/missing optional table, shared parent deduplication, ordering, scope and complete reference closure"
+        - "Full original-query/parent/batch digest equality, corruption, global duplicates and separate read/document/node/deadline limits"
+        - "Read transaction failures, collection progress, exclusive file races, published-unconfirmed, cleanup and response/close failures"
+        - "Offline route without configuration, token or native SQLite; strict option and UTF-8 file handling"
+      remaining_scope: "Combined backup import/preview, offline pagination/extraction, cross-project backup, retention management, provenance and runtime evidence remain pending. No current event recovery or server delivery claims."
+      execution: "Source/docs only; no builds, typechecks, tests, CLI/Bridge runs, database opens, optional-table initialization, sample files, migrations or release. No schema/dependency changes; prior SQLite additions and PostgreSQL 016-049 remain unexecuted."
     sync_outbox_restore_requeue_import_development_increment:
       date: "2026-11-04"
       status: "Source-only atomic missing-history import and read-only preview for standalone requeue files; R-005 remains incomplete."
