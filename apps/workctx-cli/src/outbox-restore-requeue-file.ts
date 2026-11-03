@@ -115,7 +115,8 @@ async function readQuery(args: ReturnType<typeof argumentsFor>, trace: string) {
     );
   }
 }
-async function readFile(path: string, trace: string) {
+/** File decoding only; callers must verify the complete logical history before using it. */
+export async function readOutboxRestoreRequeueInputFile(path: string, trace: string) {
   try {
     const bytes = await readBoundedArtifactFile(path, OUTBOX_REQUEUE_FILE_BYTES, trace);
     const input: unknown = JSON.parse(
@@ -242,7 +243,7 @@ export async function runOutboxRestoreRequeueFileArguments(
       file_sha256: string;
     };
     try {
-      const { input, ...metadata } = await readFile(path, trace);
+      const { input, ...metadata } = await readOutboxRestoreRequeueInputFile(path, trace);
       if (query) {
         const selected = readOutboxRestoreRequeueFileEntry(input, query, trace);
         original_query = selected.original_query;

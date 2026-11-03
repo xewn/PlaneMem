@@ -47,6 +47,10 @@ import { isInboxAcknowledgementCommand, runInboxAcknowledgement } from './inbox-
 import { runOutboxReconcile } from './outbox-reconcile.js';
 import { inspectOutboxReceiptArguments } from './outbox-receipt-file.js';
 import {
+  isOutboxRestoreRequeueImportCommand,
+  runOutboxRestoreRequeueImportArguments,
+} from './outbox-restore-requeue-import.js';
+import {
   isOutboxRestoreRequeueFileCommand,
   runOutboxRestoreRequeueFileArguments,
 } from './outbox-restore-requeue-file.js';
@@ -204,6 +208,8 @@ export async function runWorkctx(
     'outbox restore-requeue-export': 'outbox.restore-requeue-export',
     'outbox inspect-restore-requeue-receipt': 'outbox.inspect-restore-requeue-receipt',
     'outbox restore-requeue-file-get': 'outbox.restore-requeue-file-get',
+    'outbox restore-requeue-import-preview': 'outbox.restore-requeue-import-preview',
+    'outbox restore-requeue-import': 'outbox.restore-requeue-import',
     'outbox restore-history': 'outbox.restore-history',
     'outbox restore-audit': 'outbox.restore-audit',
     'outbox restore-compare': 'outbox.restore-compare',
@@ -309,11 +315,19 @@ export async function runWorkctx(
       stderr: JSON.stringify({
         code: 'USAGE_ERROR',
         message:
-          'Expected admin snapshot, audit, artifacts, plane-events, observed, search, index, overview, work-items, sessions, runs, tool-calls, handoffs, checkpoints, context, resume, checkpoint, handoff, sync, inbox, outbox list/get/audit/export/inspect-archive/send-control/pause/resume/restore/restore-preview/restore-prepare/restore-receipt/restore-requeue/restore-requeue-preview/restore-requeue-receipt/restore-requeue-get/restore-requeue-history/restore-requeue-audit/restore-requeue-export/inspect-restore-requeue-receipt/restore-requeue-file-get/restore-history/restore-audit/restore-compare/restore-history-backup/inspect-restore-history-backup/restore-backup-history/restore-backup-get/restore-backup-export/restore-history-import/restore-history-import-preview/restore-get/restore-export/reconcile/inspect-result, conflicts or doctor',
+          'Expected admin snapshot, audit, artifacts, plane-events, observed, search, index, overview, work-items, sessions, runs, tool-calls, handoffs, checkpoints, context, resume, checkpoint, handoff, sync, inbox, outbox list/get/audit/export/inspect-archive/send-control/pause/resume/restore/restore-preview/restore-prepare/restore-receipt/restore-requeue/restore-requeue-preview/restore-requeue-receipt/restore-requeue-get/restore-requeue-history/restore-requeue-audit/restore-requeue-export/inspect-restore-requeue-receipt/restore-requeue-file-get/restore-requeue-import-preview/restore-requeue-import/restore-history/restore-audit/restore-compare/restore-history-backup/inspect-restore-history-backup/restore-backup-history/restore-backup-get/restore-backup-export/restore-history-import/restore-history-import-preview/restore-get/restore-export/reconcile/inspect-result, conflicts or doctor',
         trace_id: context.trace_id,
       }),
     };
   try {
+    if (command && isOutboxRestoreRequeueImportCommand(command)) {
+      const result = await runOutboxRestoreRequeueImportArguments(argv, context.trace_id, {
+        tenant_id: context.tenant_id,
+        workspace_id: context.workspace_id,
+        project_id: context.project_id,
+      });
+      return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
+    }
     if (command && isOutboxRestoreRequeueFileCommand(command)) {
       const result = await runOutboxRestoreRequeueFileArguments(
         argv,
@@ -334,7 +348,7 @@ export async function runWorkctx(
     }
     if (argv.some((arg) => arg === '--receipt-file' || arg.startsWith('--receipt-file=')))
       usage(
-        '--receipt-file is only for application-restore-receipt-inspect/query or outbox inspect-restore-requeue-receipt/restore-requeue-file-get',
+        '--receipt-file is only for application-restore-receipt-inspect/query or outbox inspect-restore-requeue-receipt/restore-requeue-file-get/restore-requeue-import/restore-requeue-import-preview',
       );
     if (
       command !== 'inbox application-restore-receipt-get' &&

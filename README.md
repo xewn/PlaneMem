@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [重新排队回执历史导入](docs/design/01-contracts/outbox-restore-requeue-import-runtime.md)：先只读预览，再显式将单批次回执及父恢复历史原子补入；同内容保留，冲突拒绝，支持从完整文件补回丢失的父历史。仅恢复历史，不恢复或发送事件。仅源码文档，未编译、测试、运行或发布。
+
 新增 [重新排队独立回执文件](docs/design/01-contracts/outbox-restore-requeue-file-runtime.md)：可导出一个批次及完整父恢复历史，离线核验后按文件摘要和批次 ID 找回原请求，并显式保存为新文件。仅源码文档，未编译、测试、运行或发布。
 
 新增 [重新排队完整历史审计](docs/design/01-contracts/outbox-restore-requeue-audit-runtime.md)：`outbox restore-requeue-audit` 在同一只读快照核验项目全部批次、关联恢复历史和事件变更摘要。读取正文前检查数量及累计字节预算，超限或损坏不返回部分通过。仅源码文档，未编译、测试、运行或发布。

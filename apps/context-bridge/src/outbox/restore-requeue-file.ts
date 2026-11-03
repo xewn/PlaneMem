@@ -196,6 +196,7 @@ export function outboxRestoreRequeueFileSummary(file: OutboxRestoreRequeueFile) 
     observed_at: document.observed_at,
     export_trace_id: document.export_trace_id,
     get_query: { document_sha256, requeue_id: receipt.query.requeue_id },
+    import_query: { scope: document.scope, document_sha256, requeue_id: receipt.query.requeue_id },
     observation: 'archived-local-requeue-history' as const,
     archive_integrity: 'verified' as const,
     current_queue: 'not-checked' as const,
@@ -219,6 +220,38 @@ export function parseOutboxRestoreRequeueFileSelection(input: unknown, trace: st
       'OUTBOX_REQUEUE_FILE_SELECTION_INVALID',
       'Supply exactly the original document_sha256 and requeue_id',
       trace,
+    );
+  }
+}
+export interface OutboxRestoreRequeueImportQuery {
+  scope: OutboxScope;
+  document_sha256: string;
+  requeue_id: string;
+}
+export function parseOutboxRestoreRequeueImportQuery(
+  input: unknown,
+  trace: string,
+): OutboxRestoreRequeueImportQuery {
+  try {
+    const row = object(JSON.parse(syncJsonSnapshot(input, 16384)), [
+      'scope',
+      'document_sha256',
+      'requeue_id',
+    ]);
+    if (!digest(row.document_sha256) || !isSyncIdentifier(row.requeue_id)) throw new TypeError();
+    return {
+      scope: parseOutboxReadScope(row.scope, trace),
+      document_sha256: row.document_sha256,
+      requeue_id: row.requeue_id,
+    };
+  } catch (error) {
+    throw fail(
+      'OUTBOX_REQUEUE_IMPORT_QUERY_INVALID',
+      'Supply exactly scope, the original document_sha256 and requeue_id',
+      trace,
+      error instanceof ContractError
+        ? { ...error.envelope.details, cause_code: error.envelope.code }
+        : {},
     );
   }
 }

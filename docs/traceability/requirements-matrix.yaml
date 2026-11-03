@@ -959,6 +959,26 @@ requirements:
         - "Offline routing without token/environment/SQLite, argument restrictions, output traces, provenance and exits"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, sample file generation, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_outbox_restore_requeue_import_development_increment:
+      date: "2026-11-04"
+      status: "Source-only atomic missing-history import and read-only preview for standalone requeue files; R-005 remains incomplete."
+      artifacts:
+        - "apps/context-bridge/src/outbox/restore-requeue-import.ts"
+        - "apps/context-bridge/src/outbox/restore-requeue-file.ts"
+        - "apps/context-bridge/src/outbox/sqlite.ts"
+        - "apps/workctx-cli/src/outbox-restore-requeue-import.ts"
+        - "apps/workctx-cli/src/outbox-restore-requeue-file.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/outbox-restore-requeue-import-runtime.md"
+      behavior: "Strict scope/document_sha256/requeue_id binds a fully verified source file. One transaction checks global parent/batch ID occupancy, bounded stored sizes and canonical history equality. Missing rows are added, identical rows retained, different/cross-project rows refused. A source-matching existing batch with a missing parent can receive only the verified parent. Parent insertion is followed by pre-batch comparison; every write is followed by complete linked-history readback. Optional tables initialize only during actual import. Preview uses native read-only opening. Current events/control remain untouched; original IDs retain historical replay semantics. Unknown commit/rollback states retain source receipt and candidate plans; repeated calls do not prove earlier import commit."
+      evidence: []
+      pending_evidence:
+        - "Strict source/configured-scope binding, missing optional tables, global duplicates and cross-project conflicts"
+        - "Missing-only parent/batch combinations, source-matching orphan parent repair, canonical equality and damaged history refusal"
+        - "Triggers, pre-batch/final readback, transaction/unknown commit and close/output failures; historical replay behavior after import"
+      remaining_scope: "Complete project combined backup/import, retention management, provenance and runtime evidence remain pending. No current event recovery, activation or server delivery claims."
+      execution: "Source/docs only; no builds, typechecks, tests, CLI/Bridge runs, database opens, optional-table initialization, sample files, migrations or release. Existing table definitions reused without schema/dependency changes; prior SQLite additions and PostgreSQL 016-049 remain unexecuted."
     sync_outbox_restore_requeue_file_development_increment:
       date: "2026-11-04"
       status: "Source-only self-contained batch receipt export, offline verification and original-query extraction; R-005 remains incomplete."
