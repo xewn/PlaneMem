@@ -3452,6 +3452,21 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_review_history_removal_development_increment:
+      date: "2026-11-04"
+      status: "Source-only inspected single browser history removal with independent confirmation; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/review-history-store.ts"
+        - "apps/web-console/src/app/proposals/review-history-panel.tsx"
+        - "docs/design/01-contracts/proposal-review-history-runtime.md"
+      behavior: "Only a freshly read, hash-verified browser observation can be confirmed for removal. Live/file candidates, failed reads and storage changes revoke old eligibility. Removal revalidates the complete document and digest, compares exact body and directory in one write transaction, removes both slots and confirms readback plus commit. Missing stores are not initialized; absence is not proof of an earlier removal. Conflicting or damaged content is rejected. Attempts invalidate directory, backup comparison and confirmations while retaining the full exportable candidate. Unknown outcomes require another full browser read before confirming again. History/backup/original-review locks prevent concurrent local actions; removal never changes review results, originals, drafts, files or server state."
+      evidence: []
+      pending_evidence:
+        - "Fresh browser read versus live/file import, failed re-read, missing records and independent confirmation"
+        - "Digest validation before write, exact pair matching, collisions/corruption, no missing-database creation and committed deletion readback"
+        - "Shared locks, stale backup comparison revocation, timeout/unmount, unknown-result retention and explicit re-read"
+      remaining_scope: "Batch/automatic cleanup, capacity retention, automatic save/backup, cross-scope sync, server archival and runtime evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, product/browser/API/database execution or release; no schema or dependency changes."
     proposal_review_history_backup_development_increment:
       date: "2026-11-04"
       status: "Source-only complete scoped review history backup, inspection and explicit missing-only restore; R-009 remains incomplete."

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { backupOperation } from '../sync/receipt/backup-operation';
+import type { BrowserRemovalResult } from '../sync/receipt/browser-store';
 import type { ProposalSubmissionBinding } from './original-model';
 import { ReviewHistoryBackupPanel } from './review-history-backup-panel';
 import {
@@ -15,6 +16,7 @@ import {
   listReviewHistory,
   loadReviewHistory,
   prepareReviewHistory,
+  removeReviewHistory,
   saveReviewHistory,
   type ReviewHistoryCandidate,
   type ReviewHistoryPage,
@@ -39,7 +41,11 @@ export function ReviewHistoryPanel({
   const [selected, setSelected] = useState<{
     value: ReviewHistoryCandidate;
     source: 'live' | 'browser' | 'file';
+    epoch: number;
   }>();
+  const [removalFresh, setRemovalFresh] = useState(false);
+  const [removeConfirmed, setRemoveConfirmed] = useState(false);
+  const [removalStatus, setRemovalStatus] = useState<BrowserRemovalResult | 'unknown'>();
   const [page, setPage] = useState<ReviewHistoryPage>();
   const [digest, setDigest] = useState('');
   const [busy, setBusy] = useState(false);
@@ -56,6 +62,7 @@ export function ReviewHistoryPanel({
     active.current = true;
     release.current = end;
     setBusy(true);
+    setRemoveConfirmed(false);
     return true;
   }, [begin, end]);
   const endStorage = useCallback(() => {
@@ -67,6 +74,8 @@ export function ReviewHistoryPanel({
   const storageChanged = useCallback(() => {
     if (!mounted.current) return;
     setPage(undefined);
+    setRemoveConfirmed(false);
+    setRemovalFresh(false);
     setStorageEpoch((value) => value + 1);
     setMessage(
       'Saved history may have changed. Find saved review history again; compare any retained backup again before restoring. Received results and inspected copies are retained.',
@@ -83,21 +92,27 @@ export function ReviewHistoryPanel({
       release.current = undefined;
     };
   }, []);
+  useEffect(() => {
+    if (disabled) setRemoveConfirmed(false);
+  }, [disabled]);
   async function run<T>(
     work: (signal: AbortSignal, check: () => void) => Promise<T>,
     receive: (value: T) => void,
+    options: { start?: () => void; failureMessage?: string } = {},
   ) {
     if (!mounted.current || disabled || operation.current || !beginStorage()) return;
     const controller = new AbortController();
     operation.current = controller;
     try {
+      options.start?.();
       const result = await backupOperation(controller.signal, work);
       if (mounted.current && operation.current === controller && !controller.signal.aborted)
         receive(result);
     } catch {
       if (mounted.current && operation.current === controller)
         setMessage(
-          'The history operation could not be confirmed. Keep the received result, inspected copy or source file. Browser copies with conflicting or damaged content are never replaced. No review was sent.',
+          options.failureMessage ??
+            'The history operation could not be confirmed. Keep the received result, inspected copy or source file. Browser copies with conflicting or damaged content are never replaced. No review was sent.',
         );
     } finally {
       if (operation.current === controller) {
@@ -114,7 +129,10 @@ export function ReviewHistoryPanel({
       );
       return;
     }
-    setSelected({ value, source });
+    setSelected({ value, source, epoch: storageEpoch });
+    setRemovalFresh(source === 'browser');
+    setRemoveConfirmed(false);
+    setRemovalStatus(undefined);
     setMessage(
       'The complete historical observation is available below for inspection, saving and export. Internal consistency does not prove file authenticity or current proposal state.',
     );
@@ -136,9 +154,40 @@ export function ReviewHistoryPanel({
     void run(
       (signal, check) => loadReviewHistory(binding, value, signal, check, selection),
       (item) => inspect(item, 'browser'),
+      { start: () => setRemovalFresh(false) },
     );
   }
   const locked = disabled || busy;
+  const canRemove =
+    selected?.source === 'browser' &&
+    selected.epoch === storageEpoch &&
+    removalFresh &&
+    removalStatus === undefined;
+  function remove() {
+    if (!selected || !canRemove || !removeConfirmed) return;
+    void run(
+      (signal, check) => removeReviewHistory(selected.value.raw, binding, signal, check),
+      (result) => {
+        setRemovalStatus(result);
+        setMessage(
+          result === 'removed'
+            ? 'The inspected history copy was removed from this browser. Its complete retained content remains available below for export. Find saved review history again to refresh the directory.'
+            : 'This history copy was absent when checked. This does not prove an earlier removal completed or a review was never recorded. The retained copy remains available for export.',
+        );
+      },
+      {
+        start: () => {
+          setRemovalStatus('unknown');
+          storageChanged();
+          setMessage(
+            'Rechecking the complete inspected observation before removing its browser copy…',
+          );
+        },
+        failureMessage:
+          'Removal could not be confirmed and may already have completed. Keep or export the inspected history. Read and inspect the current browser copy again before another removal attempt. No review was sent or cancelled.',
+      },
+    );
+  }
   const document = selected?.value.file.document;
   const historical =
     document?.source === 'submission'
@@ -177,6 +226,7 @@ export function ReviewHistoryPanel({
               void run(
                 (_signal, check) => prepareReviewHistory(value, check),
                 (value) => inspect(value, 'live'),
+                { start: () => setRemovalFresh(false) },
               )
             }
           >
@@ -267,6 +317,7 @@ export function ReviewHistoryPanel({
                 );
               },
               (value) => inspect(value, 'file'),
+              { start: () => setRemovalFresh(false) },
             );
           }}
         />
@@ -393,6 +444,63 @@ export function ReviewHistoryPanel({
             >
               Open current proposal ↗
             </Link>
+          </div>
+          <div className="side-detail" aria-label="Remove inspected browser history copy">
+            <h4>Remove this browser history copy</h4>
+            <p>
+              Export the inspected observation or retain a complete backup before removing it if you
+              want to keep its contents. This removes only the matching saved observation from this
+              browser. Received results, original reviews, editing drafts, other observations,
+              downloaded files and server records remain separate.
+            </p>
+            {canRemove ? (
+              <>
+                <label>
+                  <input
+                    type="checkbox"
+                    disabled={locked}
+                    checked={removeConfirmed}
+                    onChange={(event) => {
+                      if (!active.current && !disabled) setRemoveConfirmed(event.target.checked);
+                    }}
+                  />{' '}
+                  I inspected the complete historical observation and want to remove only this
+                  browser copy.
+                </label>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  disabled={locked || !removeConfirmed}
+                  onClick={remove}
+                >
+                  Remove inspected browser history copy
+                </button>
+              </>
+            ) : (
+              <p>
+                {removalStatus === 'removed'
+                  ? 'Removal of the inspected history copy was confirmed for that operation.'
+                  : removalStatus === 'not-present'
+                    ? 'The history copy was absent at the last removal check.'
+                    : removalStatus === 'unknown'
+                      ? 'Removal is not confirmed. Read and inspect the current browser copy again before another attempt.'
+                      : selected.source !== 'browser'
+                        ? 'A received result or imported file is not a freshly inspected browser copy. Read the browser copy before removing it.'
+                        : 'Storage may have changed or a read failed. Read and inspect the current browser copy again before removing it.'}
+              </p>
+            )}
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={locked}
+              onClick={() => read(selected.value.file.document_sha256)}
+            >
+              Read this history copy from the browser again
+            </button>
+            <p>
+              Removing local history does not undo a review, cancel a request, clear an unknown
+              result or allow a resend. Any retained backup can restore the local copy later.
+            </p>
           </div>
           <p>
             A stored or imported file is historical reference. Its checksum detects content changes

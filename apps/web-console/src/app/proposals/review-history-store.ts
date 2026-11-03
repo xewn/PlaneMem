@@ -1,7 +1,12 @@
 'use client';
 
 import { backupHash } from '../sync/receipt/backup-operation';
-import { inBrowserStores, readBrowserPair } from '../sync/receipt/browser-store';
+import {
+  inBrowserStores,
+  readBrowserPair,
+  removeBrowserPair,
+  type BrowserRemovalResult,
+} from '../sync/receipt/browser-store';
 import {
   assertProposalSubmissionBinding,
   parseProposalSubmissionBinding,
@@ -165,6 +170,40 @@ export async function loadReviewHistory(
   );
   check();
   return candidate ? inspectReviewHistory(candidate.raw, binding, check) : null;
+}
+/** Revalidate the reviewed digest first, then remove only its exact complete stored pair. */
+export async function removeReviewHistory(
+  raw: string,
+  input: ProposalSubmissionBinding,
+  signal: AbortSignal,
+  check: () => void,
+) {
+  check();
+  const binding = parseProposalSubmissionBinding(input);
+  const reviewed = await inspectReviewHistory(raw, binding, check);
+  check();
+  const slot = key(binding, reviewed.file.document_sha256);
+  const expectedIndex = JSON.stringify(summary(reviewed.file));
+  return inBrowserStores<BrowserRemovalResult>(
+    layout,
+    'readwrite',
+    signal,
+    () => 'not-present',
+    (context) => {
+      readBrowserPair(context, slot, (stored, index, exists) => {
+        check();
+        if (!exists) {
+          context.accept('not-present');
+          return;
+        }
+        pair(stored, index, binding, slot);
+        if (stored !== reviewed.raw || index !== expectedIndex) throw new TypeError();
+        check();
+        removeBrowserPair(context, slot);
+      });
+    },
+    { create: false },
+  );
 }
 /** Read a bounded consistent page, then verify every content digest before exposing it. */
 export async function listReviewHistory(
