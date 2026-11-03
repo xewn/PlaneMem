@@ -978,6 +978,26 @@ requirements:
         - "CLI primary/embedded local routing, old output migration, read/rollback/close failures and complete result retention"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_browser_copy_removal_development_increment:
+      date: "2026-11-03"
+      status: "Source-only reviewed single-copy removal for browser sync originals and historical receipts; R-005 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/sync/receipt/browser-store.ts"
+        - "apps/web-console/src/app/sync/receipt/original-store.ts"
+        - "apps/web-console/src/app/sync/receipt/receipt-store.ts"
+        - "apps/web-console/src/app/sync/receipt/storage-removal.tsx"
+        - "apps/web-console/src/app/sync/receipt/form.tsx"
+        - "docs/design/01-contracts/sync-browser-storage-removal-runtime.md"
+      behavior: "Directory selection loads and validates the complete original or historical receipt into a fixed review with download/copy and explicit removal intent. Existing-database readwrite transaction revalidates both original and directory against reviewed full bytes and metadata, deletes both and reads back absence before completion. Receipt SHA is checked outside the transaction; full byte comparison closes the asynchronous gap. Missing databases are not initialized, paired absence is reported, and one-sided/corrupt/changed records reject. Review remains after success or unknown failure until closed, with busy, deadline and unmount protection."
+      remaining_scope: "No bulk cleanup/backup, damaged-storage repair, capacity manager, other workflow request cleanup, server deletion, delivery rollback, local queue reconciliation or cross-device/runtime evidence. Identical re-created copies cannot be distinguished by the existing v1 schema, and other tabs may save again after completion."
+      pending_evidence:
+        - "Directory selection identity and full raw binding, explicit review/confirmation, download/copy and cancellation without writes"
+        - "Exact originals and receipts, digest mismatch, same-metadata changed body, changed directory, one-sided/missing records and no missing-database initialization"
+        - "Atomic paired deletion/readback, cross-tab change during digest work, aborted or unknown completion and preservation of review copies"
+        - "Synchronous click locks, focus and accessible controls, pagination after deletion, unmount/deadline/blocked storage and separate-copy recovery"
+        - "No network calls, other-store changes, automatic deletion/retry or local queue/server-state claims"
+      evidence: []
+      execution: "Source and documentation only; no builds, typechecks, tests, browser/service runs, IndexedDB access, sample artifacts or release. No shared wire/API/schema/dependency changes; existing IndexedDB/SQLite schemas and PostgreSQL 016-049 remain unexecuted. Task commit/push targets main with skip-ci."
     sync_application_pending_development_increment:
       date: "2026-11-03"
       status: "Source-only discovery of the received suffix immediately after a selected built-in application head; R-005 remains incomplete."

@@ -8,7 +8,12 @@ import {
   type SyncEventReceiptQuery,
 } from '@planemem/contracts';
 import { decodeSyncReceiptQuery, encodeSyncReceiptQuery } from './model';
-import { inBrowserStores, readBrowserPair } from './browser-store';
+import {
+  inBrowserStores,
+  readBrowserPair,
+  removeBrowserPair,
+  type BrowserRemovalResult,
+} from './browser-store';
 
 const originalDatabase = { databaseName: 'planemem-sync-originals', contentStore: 'originals' };
 
@@ -172,6 +177,38 @@ export function loadBrowserSyncOriginal(selection: SavedSyncOriginal, signal: Ab
           throw unavailable();
         context.accept(original);
       }),
+  );
+}
+
+/** Only remove the exact original and directory metadata reviewed by the caller. */
+export function removeBrowserSyncOriginal(
+  selection: SavedSyncOriginal,
+  expectedRaw: string,
+  signal: AbortSignal,
+) {
+  const selected = readMetadata(JSON.stringify(selection.metadata), selection.key);
+  const original = readOriginal(expectedRaw, JSON.stringify(selected.metadata), selected.key);
+  if (encodeSyncReceiptQuery(original) !== expectedRaw) throw unavailable();
+  return inBrowserStores<BrowserRemovalResult>(
+    originalDatabase,
+    'readwrite',
+    signal,
+    () => 'not-present',
+    (context) =>
+      readBrowserPair(context, selected.key, (raw, summary, present) => {
+        if (!present) {
+          context.accept('not-present');
+          return;
+        }
+        if (
+          encodeSyncReceiptQuery(readOriginal(raw, summary, selected.key)) !== expectedRaw ||
+          JSON.stringify(readMetadata(summary, selected.key).metadata) !==
+            JSON.stringify(selected.metadata)
+        )
+          throw unavailable();
+        removeBrowserPair(context, selected.key);
+      }),
+    { create: false },
   );
 }
 

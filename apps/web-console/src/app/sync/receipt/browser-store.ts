@@ -116,8 +116,13 @@ export async function inBrowserStores<T>(
   signal: AbortSignal,
   missing: () => T,
   visit: (context: BrowserStoreVisit<T>) => void,
+  options: { create?: boolean } = {},
 ): Promise<T> {
-  const database = await openDatabase(layout, mode === 'readwrite', signal);
+  const database = await openDatabase(
+    layout,
+    mode === 'readwrite' && options.create !== false,
+    signal,
+  );
   if (signal.aborted) {
     database?.close();
     throw unavailable();
@@ -198,5 +203,17 @@ export function readBrowserPair<T>(
     if (present && (typeof original.result !== 'string' || typeof summary.result !== 'string'))
       throw unavailable();
     receive(original.result as unknown, summary.result as unknown, present);
+  });
+}
+
+export type BrowserRemovalResult = 'removed' | 'not-present';
+
+/** The caller must first validate both stored values against the complete reviewed copy. */
+export function removeBrowserPair(context: BrowserStoreVisit<BrowserRemovalResult>, key: string) {
+  context.content.delete(key);
+  context.directory.delete(key);
+  readBrowserPair(context, key, (_original, _summary, present) => {
+    if (present) throw unavailable();
+    context.accept('removed');
   });
 }

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   parseSyncEventReceiptEnvelope,
   parseSyncEventReceiptQuery,
+  syncJsonSnapshot,
   SYNC_EVENT_RECEIPT_RESPONSE_BYTES,
   type SyncEventReceiptEnvelope,
 } from '@planemem/contracts';
@@ -13,6 +14,7 @@ import {
   listBrowserSyncOriginals,
   loadBrowserSyncOriginal,
   preserveBrowserSyncOriginal,
+  removeBrowserSyncOriginal,
   type SavedSyncOriginal,
   type SavedSyncOriginalPage,
 } from './original-store';
@@ -20,9 +22,12 @@ import {
   listBrowserSyncReceipts,
   loadBrowserSyncReceipt,
   preserveBrowserSyncReceipt,
+  removeBrowserSyncReceipt,
   type SavedSyncReceipt,
   type SavedSyncReceiptPage,
 } from './receipt-store';
+import type { BrowserRemovalResult } from './browser-store';
+import { StorageRemovalReview, type SyncStorageRemoval } from './storage-removal';
 import {
   SYNC_EVENT_RECEIPT_FILE_BYTES,
   encodeSyncReceiptQuery,
@@ -61,6 +66,9 @@ export function SyncReceiptForm() {
   const [savedPage, setSavedPage] = useState<SavedSyncOriginalPage>();
   const [receiptPage, setReceiptPage] = useState<SavedSyncReceiptPage>();
   const [historyOrigin, setHistoryOrigin] = useState<'file' | 'browser'>('file');
+  const [removal, setRemoval] = useState<SyncStorageRemoval>();
+  const [removalResult, setRemovalResult] = useState<BrowserRemovalResult>();
+  const removalChosen = useRef(false);
   const originalChosen = useRef(false);
   const active = useRef(false);
   const mounted = useRef(true);
@@ -74,7 +82,8 @@ export function SyncReceiptForm() {
   }, []);
 
   async function load(source: string | File) {
-    if (active.current || originalChosen.current || !mounted.current) return;
+    if (active.current || originalChosen.current || removalChosen.current || !mounted.current)
+      return;
     active.current = true;
     setBusy(true);
     setMessage('');
@@ -131,7 +140,7 @@ export function SyncReceiptForm() {
     }
   }
   function browseSaved(after: string | null) {
-    if (originalChosen.current) return;
+    if (originalChosen.current || removalChosen.current) return;
     void browserStorage(
       (signal) => listBrowserSyncOriginals(after, signal),
       (page) => {
@@ -143,7 +152,7 @@ export function SyncReceiptForm() {
     );
   }
   function loadSaved(selection: SavedSyncOriginal) {
-    if (originalChosen.current) return;
+    if (originalChosen.current || removalChosen.current) return;
     void browserStorage(
       (signal) => loadBrowserSyncOriginal(selection, signal),
       (query) => {
@@ -179,7 +188,7 @@ export function SyncReceiptForm() {
     );
   }
   function browseReceipts(after: string | null) {
-    if (originalChosen.current) return;
+    if (originalChosen.current || removalChosen.current) return;
     void browserStorage(
       (signal) => listBrowserSyncReceipts(after, signal),
       (page) => {
@@ -193,7 +202,7 @@ export function SyncReceiptForm() {
     );
   }
   function loadSavedReceipt(selection: SavedSyncReceipt) {
-    if (originalChosen.current) return;
+    if (originalChosen.current || removalChosen.current) return;
     void browserStorage(
       (signal) => loadBrowserSyncReceipt(selection, signal),
       (saved) => {
@@ -217,6 +226,103 @@ export function SyncReceiptForm() {
       },
       'The saved receipt could not be verified against its digest and selected directory entry. Keep a separate copy; the directory does not confirm delivery.',
     );
+  }
+  function reviewRemoval(kind: 'original', selection: SavedSyncOriginal): void;
+  function reviewRemoval(kind: 'receipt', selection: SavedSyncReceipt): void;
+  function reviewRemoval(
+    kind: 'original' | 'receipt',
+    selection: SavedSyncOriginal | SavedSyncReceipt,
+  ) {
+    if (originalChosen.current || removalChosen.current) return;
+    void browserStorage<SyncStorageRemoval | null>(
+      async (signal) => {
+        if (kind === 'original' && 'key' in selection) {
+          const query = await loadBrowserSyncOriginal(selection, signal);
+          return query ? { kind, selection, raw: encodeSyncReceiptQuery(query) } : null;
+        }
+        if (kind === 'receipt' && 'digest' in selection) {
+          const file = await loadBrowserSyncReceipt(selection, signal);
+          return file
+            ? { kind, selection, raw: syncJsonSnapshot(file, SYNC_EVENT_RECEIPT_FILE_BYTES) }
+            : null;
+        }
+        throw new TypeError();
+      },
+      (reviewed) => {
+        if (!reviewed) {
+          setMessage(
+            'This browser copy is no longer present. Refresh the directory to see current entries.',
+          );
+          return;
+        }
+        removalChosen.current = true;
+        setRemoval(reviewed);
+        setRemovalResult(undefined);
+        setMessage('Complete browser copy loaded for review. Nothing has been removed.');
+      },
+      'The selected browser copy could not be verified for removal. Nothing was removed by this review; refresh the directory or keep a separate copy.',
+    );
+  }
+  function removeReviewedCopy() {
+    if (!removal || removalResult !== undefined || originalChosen.current) return;
+    const selected = removal;
+    void browserStorage(
+      (signal) =>
+        selected.kind === 'original'
+          ? removeBrowserSyncOriginal(selected.selection, selected.raw, signal)
+          : removeBrowserSyncReceipt(selected.selection, selected.raw, signal),
+      (result) => {
+        setRemovalResult(result);
+        if (selected.kind === 'original') {
+          const key = selected.selection.key;
+          setSavedPage((page) =>
+            page
+              ? {
+                  ...page,
+                  entries: page.entries.filter((entry) => entry.key !== key),
+                }
+              : page,
+          );
+        } else {
+          const digest = selected.selection.digest;
+          setReceiptPage((page) =>
+            page
+              ? {
+                  ...page,
+                  entries: page.entries.filter((entry) => entry.digest !== digest),
+                }
+              : page,
+          );
+        }
+        setMessage(
+          result === 'removed'
+            ? 'The selected browser copy was removed. You can still download the reviewed copy before closing the review.'
+            : 'The selected browser copy was already absent. You can still download the reviewed copy before closing the review.',
+        );
+      },
+      'Removal could not be confirmed. The record may have changed, or removal may already have completed. The reviewed copy remains available below; close the review and refresh the directory before deciding what to do next.',
+    );
+  }
+  function closeRemoval() {
+    if (active.current || !mounted.current) return;
+    removalChosen.current = false;
+    setRemoval(undefined);
+    setRemovalResult(undefined);
+    setMessage('Review closed. Refresh the directory to see current browser entries.');
+  }
+  function downloadRemoval() {
+    if (active.current || !removal || !mounted.current) return;
+    try {
+      download(
+        removal.raw,
+        removal.kind === 'original' ? 'sync-original-query.json' : 'sync-event-receipt.json',
+      );
+      setMessage(
+        'Reviewed copy prepared for download. Browser download does not confirm that a file was saved.',
+      );
+    } catch {
+      setMessage('Download could not be prepared. You can copy the complete reviewed JSON below.');
+    }
   }
   function saveReceiptInBrowser(original: SyncEventReceiptEnvelope, expectedDigest?: string) {
     void browserStorage(
@@ -383,7 +489,7 @@ export function SyncReceiptForm() {
                 <input
                   type="file"
                   accept=".json,application/json"
-                  disabled={busy}
+                  disabled={busy || removal !== undefined}
                   onChange={(event) => {
                     const file = event.currentTarget.files?.[0];
                     event.currentTarget.value = '';
@@ -398,17 +504,17 @@ export function SyncReceiptForm() {
                   value={draft}
                   maxLength={SYNC_EVENT_RECEIPT_FILE_BYTES}
                   spellCheck={false}
-                  disabled={busy}
+                  disabled={busy || removal !== undefined}
                   onChange={(event) => setDraft(event.target.value)}
                 />
               </label>
-              <button className="primary-button" disabled={busy || !draft}>
+              <button className="primary-button" disabled={busy || removal !== undefined || !draft}>
                 Review original event
               </button>
               <button
                 type="button"
                 className="secondary-button"
-                disabled={busy}
+                disabled={busy || removal !== undefined}
                 onClick={() => browseSaved(null)}
               >
                 Browse saved originals
@@ -416,7 +522,7 @@ export function SyncReceiptForm() {
               <button
                 type="button"
                 className="secondary-button"
-                disabled={busy}
+                disabled={busy || removal !== undefined}
                 onClick={() => browseReceipts(null)}
               >
                 Browse saved receipts
@@ -444,7 +550,7 @@ export function SyncReceiptForm() {
                 <button
                   type="button"
                   className="primary-button"
-                  disabled={busy}
+                  disabled={busy || removal !== undefined}
                   onClick={() => void lookup()}
                 >
                   {busy ? 'Working…' : 'Check original delivery'}
@@ -452,7 +558,7 @@ export function SyncReceiptForm() {
                 <button
                   type="button"
                   className="secondary-button"
-                  disabled={busy}
+                  disabled={busy || removal !== undefined}
                   onClick={saveOriginal}
                 >
                   Download original query
@@ -460,7 +566,7 @@ export function SyncReceiptForm() {
                 <button
                   type="button"
                   className="secondary-button"
-                  disabled={busy}
+                  disabled={busy || removal !== undefined}
                   onClick={saveInBrowser}
                 >
                   Save original in this browser
@@ -468,7 +574,7 @@ export function SyncReceiptForm() {
                 <button
                   type="button"
                   className="secondary-button"
-                  disabled={busy}
+                  disabled={busy || removal !== undefined}
                   aria-expanded={showOriginal}
                   aria-controls="sync-original-json"
                   onClick={() => setShowOriginal(!showOriginal)}
@@ -495,6 +601,21 @@ export function SyncReceiptForm() {
           {message && <p role="status">{message}</p>}
         </div>
       </Panel>
+      {removal && (
+        <StorageRemovalReview
+          key={
+            removal.kind === 'original'
+              ? `original:${removal.selection.key}`
+              : `receipt:${removal.selection.digest}`
+          }
+          removal={removal}
+          result={removalResult}
+          busy={busy}
+          onRemove={removeReviewedCopy}
+          onClose={closeRemoval}
+          onDownload={downloadRemoval}
+        />
+      )}
       {!loaded && savedPage && (
         <Panel title="Saved originals in this browser" icon="database">
           <div className="side-detail">
@@ -530,11 +651,20 @@ export function SyncReceiptForm() {
                 <button
                   type="button"
                   className="secondary-button"
-                  disabled={busy}
+                  disabled={busy || removal !== undefined}
                   aria-label={`Load complete original ${entry.metadata.event_id}`}
                   onClick={() => loadSaved(entry)}
                 >
                   Load complete original
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  disabled={busy || removal !== undefined}
+                  aria-label={`Review removal of saved original ${entry.metadata.event_id}`}
+                  onClick={() => reviewRemoval('original', entry)}
+                >
+                  Remove browser copy…
                 </button>
               </div>
             ))}
@@ -542,7 +672,7 @@ export function SyncReceiptForm() {
               <button
                 type="button"
                 className="secondary-button"
-                disabled={busy}
+                disabled={busy || removal !== undefined}
                 onClick={() => browseSaved(null)}
               >
                 Refresh from first page
@@ -551,7 +681,7 @@ export function SyncReceiptForm() {
                 <button
                   type="button"
                   className="secondary-button"
-                  disabled={busy}
+                  disabled={busy || removal !== undefined}
                   onClick={() => browseSaved(savedPage.next)}
                 >
                   Next page
@@ -610,11 +740,20 @@ export function SyncReceiptForm() {
                 <button
                   type="button"
                   className="secondary-button"
-                  disabled={busy}
+                  disabled={busy || removal !== undefined}
                   aria-label={`Load saved receipt ${entry.metadata.query_trace}`}
                   onClick={() => loadSavedReceipt(entry)}
                 >
                   Load complete historical receipt
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  disabled={busy || removal !== undefined}
+                  aria-label={`Review removal of saved receipt ${entry.metadata.query_trace}`}
+                  onClick={() => reviewRemoval('receipt', entry)}
+                >
+                  Remove browser copy…
                 </button>
               </div>
             ))}
@@ -622,7 +761,7 @@ export function SyncReceiptForm() {
               <button
                 type="button"
                 className="secondary-button"
-                disabled={busy}
+                disabled={busy || removal !== undefined}
                 onClick={() => browseReceipts(null)}
               >
                 Refresh from first page
@@ -631,7 +770,7 @@ export function SyncReceiptForm() {
                 <button
                   type="button"
                   className="secondary-button"
-                  disabled={busy}
+                  disabled={busy || removal !== undefined}
                   onClick={() => browseReceipts(receiptPage.next)}
                 >
                   Next page
@@ -661,7 +800,7 @@ export function SyncReceiptForm() {
                 <button
                   type="button"
                   className="secondary-button"
-                  disabled={busy}
+                  disabled={busy || removal !== undefined}
                   onClick={() => {
                     const saved = loaded.imported;
                     if (saved) saveReceiptInBrowser(saved.document.receipt, saved.document_sha256);
@@ -672,7 +811,7 @@ export function SyncReceiptForm() {
                 <button
                   type="button"
                   className="secondary-button"
-                  disabled={busy}
+                  disabled={busy || removal !== undefined}
                   onClick={downloadHistory}
                 >
                   Download historical receipt
@@ -715,7 +854,7 @@ export function SyncReceiptForm() {
                 <button
                   type="button"
                   className="secondary-button"
-                  disabled={busy}
+                  disabled={busy || removal !== undefined}
                   onClick={() => void saveReceipt()}
                 >
                   Save receipt file
@@ -723,7 +862,7 @@ export function SyncReceiptForm() {
                 <button
                   type="button"
                   className="secondary-button"
-                  disabled={busy}
+                  disabled={busy || removal !== undefined}
                   onClick={() => saveReceiptInBrowser(receipt)}
                 >
                   Save this lookup in this browser
@@ -731,7 +870,7 @@ export function SyncReceiptForm() {
                 <button
                   type="button"
                   className="secondary-button"
-                  disabled={busy}
+                  disabled={busy || removal !== undefined}
                   aria-expanded={showResponse}
                   aria-controls="sync-response-json"
                   onClick={() => setShowResponse(!showResponse)}

@@ -10,7 +10,12 @@ import {
   type SyncEventReceiptEnvelope,
   type SyncEventReceiptFile,
 } from '@planemem/contracts';
-import { inBrowserStores, readBrowserPair } from './browser-store';
+import {
+  inBrowserStores,
+  readBrowserPair,
+  removeBrowserPair,
+  type BrowserRemovalResult,
+} from './browser-store';
 import { encodeSyncReceiptArchive, loadSyncReceiptInput } from './model';
 
 const receiptDatabase = { databaseName: 'planemem-sync-receipts', contentStore: 'receipts' };
@@ -251,6 +256,43 @@ export function loadBrowserSyncReceipt(selection: SavedSyncReceipt, signal: Abor
       return loaded.imported;
     },
   );
+}
+
+/** Hash the reviewed file before opening a write transaction, then compare the full saved bytes. */
+export function removeBrowserSyncReceipt(
+  selection: SavedSyncReceipt,
+  expectedRaw: string,
+  signal: AbortSignal,
+) {
+  const selected = readMetadata(JSON.stringify(selection.metadata), selection.digest);
+  return receiptOperation<BrowserRemovalResult>(signal, async (operationSignal, checkpoint) => {
+    const expected = readFile(expectedRaw, JSON.stringify(selected.metadata), selected.digest);
+    const loaded = await loadSyncReceiptInput(expected.raw);
+    checkpoint();
+    if (!loaded.imported || loaded.imported.document_sha256 !== selected.digest)
+      throw unavailable();
+    return inBrowserStores<BrowserRemovalResult>(
+      receiptDatabase,
+      'readwrite',
+      operationSignal,
+      () => 'not-present',
+      (context) =>
+        readBrowserPair(context, selected.digest, (raw, summary, present) => {
+          if (!present) {
+            context.accept('not-present');
+            return;
+          }
+          const stored = readFile(raw, summary, selected.digest);
+          if (
+            stored.raw !== expected.raw ||
+            JSON.stringify(metadata(stored.file, stored.raw)) !== JSON.stringify(selected.metadata)
+          )
+            throw unavailable();
+          removeBrowserPair(context, selected.digest);
+        }),
+      { create: false },
+    );
+  });
 }
 
 /** Digest order is stable, not chronological. No full receipt or digest calculation is read here. */
