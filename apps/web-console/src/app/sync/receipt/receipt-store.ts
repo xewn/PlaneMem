@@ -6,6 +6,10 @@ import {
   parseSyncEventReceiptFile,
   syncJsonSnapshot,
   SYNC_EVENT_RECEIPT_FILE_BYTES,
+  parseSyncReceiptsBackupDocument,
+  SYNC_RECEIPTS_BACKUP_MAX_ENTRIES,
+  SYNC_RECEIPTS_BACKUP_DOCUMENT_BYTES,
+  type SyncReceiptsBackupDocument,
   type SyncCommandIdentity,
   type SyncEventReceiptEnvelope,
   type SyncEventReceiptFile,
@@ -293,6 +297,146 @@ export function removeBrowserSyncReceipt(
       { create: false },
     );
   });
+}
+
+/** Complete structural snapshot. The file adapter must verify every digest after this transaction. */
+export function readBrowserSyncReceiptBackup(signal: AbortSignal, check: () => void) {
+  check();
+  const empty = (): SyncReceiptsBackupDocument => ({
+    schema_version: 1,
+    kind: 'workctx.sync-receipts-backup',
+    entries: [],
+  });
+  return inBrowserStores<SyncReceiptsBackupDocument>(
+    receiptDatabase,
+    'readonly',
+    signal,
+    empty,
+    (context) => {
+      check();
+      const receipts = context.content.count();
+      const directory = context.directory.count();
+      directory.onsuccess = context.guard(() => {
+        check();
+        const count = receipts.result;
+        if (
+          !Number.isSafeInteger(count) ||
+          count < 0 ||
+          count > SYNC_RECEIPTS_BACKUP_MAX_ENTRIES ||
+          directory.result !== count
+        )
+          throw unavailable();
+        const entries: SyncEventReceiptFile[] = [];
+        let totalBytes = 0;
+        const request = context.content.openKeyCursor();
+        request.onsuccess = context.guard(() => {
+          check();
+          const cursor = request.result;
+          if (!cursor) {
+            if (entries.length !== count) throw unavailable();
+            context.accept(parseSyncReceiptsBackupDocument({ ...empty(), entries }));
+            return;
+          }
+          if (entries.length >= count) throw unavailable();
+          const key = digestKey(cursor.primaryKey);
+          readBrowserPair(context, key, (raw, summary, present) => {
+            check();
+            if (!present || typeof raw !== 'string' || raw.length > SYNC_EVENT_RECEIPT_FILE_BYTES)
+              throw unavailable();
+            totalBytes += bytes(raw);
+            if (totalBytes > SYNC_RECEIPTS_BACKUP_DOCUMENT_BYTES) throw unavailable();
+            entries.push(readFile(raw, summary, key).file);
+            cursor.continue();
+          });
+        });
+      });
+    },
+  );
+}
+
+export interface ReceiptBackupRestoreResult {
+  status: 'restored' | 'already-present' | 'empty';
+  total: number;
+  restored: number;
+  already_present: number;
+}
+/** Adapter verifies all digests first. Full-byte equality verifies existing pairs without async work. */
+export function restoreBrowserSyncReceiptBackup(
+  input: SyncReceiptsBackupDocument,
+  signal: AbortSignal,
+  check: () => void,
+) {
+  check();
+  const document = parseSyncReceiptsBackupDocument(input);
+  check();
+  if (signal.aborted) throw unavailable();
+  if (!document.entries.length)
+    return Promise.resolve<ReceiptBackupRestoreResult>({
+      status: 'empty',
+      total: 0,
+      restored: 0,
+      already_present: 0,
+    });
+  const prepared = document.entries.map((file) => {
+    check();
+    const key = digestKey(file.document_sha256);
+    const raw = syncJsonSnapshot(file, SYNC_EVENT_RECEIPT_FILE_BYTES);
+    const summary = JSON.stringify(metadata(file, raw));
+    readFile(raw, summary, key);
+    return { key, raw, summary };
+  });
+  check();
+  return inBrowserStores<ReceiptBackupRestoreResult>(
+    receiptDatabase,
+    'readwrite',
+    signal,
+    () => {
+      throw unavailable();
+    },
+    (context) => {
+      const missing: typeof prepared = [];
+      let checked = 0;
+      let written = 0;
+      const writeNext = () => {
+        check();
+        const item = missing[written];
+        if (!item) {
+          context.accept({
+            status: missing.length ? 'restored' : 'already-present',
+            total: prepared.length,
+            restored: missing.length,
+            already_present: prepared.length - missing.length,
+          });
+          return;
+        }
+        context.content.add(item.raw, item.key);
+        context.directory.add(item.summary, item.key);
+        readBrowserPair(context, item.key, (raw, summary, present) => {
+          check();
+          if (!present || readFile(raw, summary, item.key).raw !== item.raw) throw unavailable();
+          written += 1;
+          writeNext();
+        });
+      };
+      const inspectNext = () => {
+        check();
+        const item = prepared[checked];
+        if (!item) {
+          writeNext();
+          return;
+        }
+        readBrowserPair(context, item.key, (raw, summary, present) => {
+          check();
+          if (present) {
+            if (readFile(raw, summary, item.key).raw !== item.raw) throw unavailable();
+          } else missing.push(item);
+          checked += 1;
+          inspectNext();
+        });
+      };
+      inspectNext();
+    },
+  );
 }
 
 /** Digest order is stable, not chronological. No full receipt or digest calculation is read here. */

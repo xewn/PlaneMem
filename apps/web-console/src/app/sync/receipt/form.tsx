@@ -602,6 +602,14 @@ export function SyncReceiptForm() {
           <Link href="/sync/receipt/backup" target="_blank" rel="noreferrer" prefetch={false}>
             Back up or restore saved originals in another tab ↗
           </Link>
+          <Link
+            href="/sync/receipt/receipt-backup"
+            target="_blank"
+            rel="noreferrer"
+            prefetch={false}
+          >
+            Back up or restore historical receipts in another tab ↗
+          </Link>
         </div>
       </Panel>
       {removal && (

@@ -978,6 +978,33 @@ requirements:
         - "CLI primary/embedded local routing, old output migration, read/rollback/close failures and complete result retention"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_browser_receipts_backup_development_increment:
+      date: "2026-11-03"
+      status: "Source-only complete bounded historical receipt backup and explicit atomic restore; R-005 remains incomplete."
+      artifacts:
+        - "packages/contracts/src/sync-receipts-backup.ts"
+        - "packages/contracts/src/index.ts"
+        - "apps/web-console/src/app/sync/receipt/receipt-store.ts"
+        - "apps/web-console/src/app/sync/receipt/receipt-backup.ts"
+        - "apps/web-console/src/app/sync/receipt/receipt-backup/page.tsx"
+        - "apps/web-console/src/app/sync/receipt/receipt-backup/form.tsx"
+        - "apps/web-console/src/app/sync/receipt/backup-operation.ts"
+        - "apps/web-console/src/app/sync/receipt/backup-review.tsx"
+        - "apps/web-console/src/app/sync/receipt/original-backup.ts"
+        - "apps/web-console/src/app/sync/receipt/backup/form.tsx"
+        - "apps/web-console/src/app/sync/receipt/form.tsx"
+        - "docs/design/01-contracts/sync-browser-receipts-backup-runtime.md"
+      behavior: "Strict workctx.sync-receipts-backup v1 with 256 complete historical receipt files, 32 MiB collection document, shared JSON limits and unique ascending receipt digest slots. One readonly transaction counts and structurally validates every content/directory pair; after completion the adapter independently hashes each receipt and the collection before returning a complete file. Import reviews without writes. Explicit restore rechecks both digest layers before storage, preflights all slots in one readwrite transaction, then adds and reads back only missing pairs. Existing full-byte equality preserves exact copies; changed/corrupt/one-sided slots reject the batch. Shared review and overall 30-second helper retain separate original-query format, explicit confirmation, full download/copy and unknown-outcome preservation."
+      remaining_scope: "Historical copies only; no new remote observation, original-query writes, upload, acknowledgement, queue settlement, source authentication, damaged-storage repair, capacity management or cross-database atomic snapshot/restore. Explicit nonempty restore may initialize existing v1 stores in a separate upgrade transaction and leave empty stores after later failure. Aggregate complexity can reject individually valid files; synchronous parsing/structured clone cannot be preempted. Larger streaming archives, other workflow records and cross-device/runtime evidence remain pending."
+      pending_evidence:
+        - "Strict collection/inner schemas, wrong file kind, digest ordering/duplicates, original traces/outcomes, nested event property order and aggregate byte/node/depth limits"
+        - "Correct outer hash with incorrect inner hash, changed receipt documents, full sequential digest checks and late crypto completion without writes"
+        - "Complete snapshot counts, equal-count different-key orphans, noncanonical content/metadata, missing/empty stores and no partial export"
+        - "Atomic full preflight and add/readback, mixed existing/missing slots, changed or one-sided slots, cross-tab writes, quota, abort and unknown commit"
+        - "Shared review compatibility for original backups, full-file download/copy versus summary pagination, explicit confirmation, focus, unmount/click locks and retained files"
+        - "No network, original-query database writes, historical-result promotion or local queue operations"
+      evidence: []
+      execution: "Source and documentation only; no builds, typechecks, tests, browser/service runs, IndexedDB access, sample files or release. New standalone shared file format; no API/schema/dependency changes. Prior IndexedDB/SQLite schemas and PostgreSQL 016-049 remain unexecuted. Task commit/push targets main with skip-ci."
     sync_browser_originals_backup_development_increment:
       date: "2026-11-03"
       status: "Source-only complete bounded browser original-query backup and explicit atomic restore; R-005 remains incomplete."
