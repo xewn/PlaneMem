@@ -68,10 +68,13 @@ import { auditOutboxRestoreRequeueReceipts } from './restore-requeue-audit.js';
 import { readOutboxRestoreRequeueFile } from './restore-requeue-file-reading.js';
 import { importOutboxRestoreRequeueFile } from './restore-requeue-import.js';
 import { readOutboxRestoreRequeueBackup } from './restore-requeue-backup-reading.js';
+import { importOutboxRestoreRequeueBackup } from './restore-requeue-backup-import.js';
 export { parseOutboxRestoreRequeueBackupQuery } from './restore-requeue-backup.js';
+export { parseOutboxRestoreRequeueBackupImportQuery } from './restore-requeue-backup.js';
 export type {
   OutboxRestoreRequeueBackupFile,
   OutboxRestoreRequeueBackupDocument,
+  OutboxRestoreRequeueBackupImportQuery,
 } from './restore-requeue-backup.js';
 export { parseOutboxRestoreRequeueImportQuery } from './restore-requeue-file.js';
 export type {
@@ -517,6 +520,14 @@ export class SqliteOutbox {
 
   readRestoreRequeueBackup(query: unknown, trace: string) {
     return readOutboxRestoreRequeueBackup(this.db, query, trace);
+  }
+
+  previewRestoreRequeueBackupImport(file: unknown, query: unknown, trace: string) {
+    return importOutboxRestoreRequeueBackup(this.db, file, query, trace, true);
+  }
+
+  importRestoreRequeueBackup(file: unknown, query: unknown, trace: string) {
+    return importOutboxRestoreRequeueBackup(this.db, file, query, trace);
   }
 
   readRestoreReceipt(query: unknown, trace: string) {

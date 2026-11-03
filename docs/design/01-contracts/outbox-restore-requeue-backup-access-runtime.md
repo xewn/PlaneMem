@@ -45,3 +45,5 @@ standalone.document_sha256 是独立文档摘要，与 backup_sha256 分开；st
 observation 为 archived-requeue-history-page 或 archived-requeue-history-entry，archive_integrity=verified，local_commit=not-attempted；current_queue/current_control/server_delivery=not-checked，source_authenticity/sender_stopped=not-proven。不对当前事件、控制状态、投递或目标导入作推断。
 
 联合备份整事务导入/预览、跨项目备份、保留管理、来源证明和运行证据仍缺；R-005未完成。正常/空备份、未知ID、游标/摘要变化、页外损坏、父历史重复引用、容量/期限、文件竞争与响应失败场景均未运行验证。
+
+2026-11-04 后续已补 [联合备份原子导入与预览](outbox-restore-requeue-backup-import-runtime.md)：scope/backup_sha256绑定完整源，复用单批次比较器，在同事务只补缺失父历史/批次、同文保留、冲突拒绝；每轮共用父只读一次，写前复查并最终完整关联读回。CLI源完整验证后打开已有库，预览原生只读；保留未知提交/回滚/关闭及候选状态，备份摘要提供import_query。仅导入历史，不恢复事件或发送，原ID继续历史幂等。跨项目备份/保留管理/来源证明和运行证据仍缺；仅源码文档，未编译、测试、运行或初始化表。

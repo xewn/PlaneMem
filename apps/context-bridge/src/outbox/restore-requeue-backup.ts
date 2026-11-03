@@ -37,6 +37,30 @@ export interface OutboxRestoreRequeueBackupFile {
   document: OutboxRestoreRequeueBackupDocument;
   document_sha256: string;
 }
+export interface OutboxRestoreRequeueBackupImportQuery {
+  scope: OutboxScope;
+  backup_sha256: string;
+}
+export function parseOutboxRestoreRequeueBackupImportQuery(
+  input: unknown,
+  trace: string,
+): OutboxRestoreRequeueBackupImportQuery {
+  try {
+    const row = object(JSON.parse(syncJsonSnapshot(input, 16384)), ['scope', 'backup_sha256']);
+    if (typeof row.backup_sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(row.backup_sha256))
+      throw new TypeError();
+    return { scope: parseOutboxReadScope(row.scope, trace), backup_sha256: row.backup_sha256 };
+  } catch (error) {
+    throw fail(
+      'OUTBOX_REQUEUE_BACKUP_IMPORT_QUERY_INVALID',
+      'Supply exactly scope and the original backup_sha256',
+      trace,
+      error instanceof ContractError
+        ? { ...error.envelope.details, cause_code: error.envelope.code }
+        : {},
+    );
+  }
+}
 function fail(code: string, message: string, trace: string, details: Record<string, unknown> = {}) {
   return new ContractError(code, message, { trace_id: trace, retryable: false, details });
 }
@@ -242,6 +266,7 @@ export function outboxRestoreRequeueBackupSummary(file: OutboxRestoreRequeueBack
   return {
     scope: document.scope,
     document_sha256: file.document_sha256,
+    import_query: { scope: document.scope, backup_sha256: file.document_sha256 },
     receipts: document.receipts.length,
     parent_histories: document.parents.length,
     archived_record_appearances: document.parents.reduce(

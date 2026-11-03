@@ -6,14 +6,9 @@ import { outboxReadTransaction } from './reading.js';
 import {
   assertOutboxRestoreTrace,
   outboxRestoreBudget,
-  outboxRestoreReceiptTable,
-  outboxRestoreStoredRecord,
   createOutboxRestoreReceiptTable,
 } from './restore.js';
 import {
-  outboxRequeueReceiptTable,
-  outboxRequeueReceiptProjection,
-  outboxRequeueReceiptMetadata,
   outboxStoredRequeueRecord,
   createOutboxRequeueReceiptTable,
   saveOutboxRequeueReceipt,
@@ -28,8 +23,12 @@ import {
   reconciliationTransaction,
   type ReconciliationTransactionState,
 } from './reconciliation.js';
+import {
+  inspectOutboxRequeueImportParent,
+  inspectOutboxRequeueImportReceipt,
+  outboxRequeueImportParentBinding,
+} from './restore-requeue-import-target.js';
 
-type Relation = 'missing' | 'identical' | 'different' | 'reserved-other-project';
 function fail(code: string, message: string, trace: string, details: Record<string, unknown> = {}) {
   return new ContractError(code, message, { trace_id: trace, retryable: false, details });
 }
@@ -40,122 +39,39 @@ function targetPlan(
   check: () => void,
   select: (kind: 'restore' | 'requeue' | null) => void,
 ) {
-  const { scope, parent, receipt } = source.document;
-  const scopeArgs = [scope.tenant_id, scope.workspace_id, scope.project_id];
-  const invalid = () =>
-    fail(
-      'OUTBOX_REQUEUE_IMPORT_TARGET_INVALID',
-      'Selected destination history is invalid or ambiguous; preserve it',
-      trace,
-    );
-  const bytes = (value: unknown, maximum: number) => {
-    if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 1 || value > maximum)
-      throw invalid();
-    return value;
-  };
-  check();
-  select('restore');
-  const parentPresent = outboxRestoreReceiptTable(db, trace);
-  const parentRows = parentPresent
-    ? db
-        .prepare(
-          `SELECT
-    CASE WHEN tenant_id = ? COLLATE BINARY AND workspace_id = ? COLLATE BINARY AND project_id = ? COLLATE BINARY THEN 1 ELSE 0 END AS in_scope,
-    CASE WHEN typeof(query_json) = 'text' THEN length(CAST(query_json AS BLOB)) ELSE NULL END AS query_bytes,
-    CASE WHEN typeof(archive_json) = 'text' THEN length(CAST(archive_json AS BLOB)) ELSE NULL END AS archive_bytes
-    FROM main.local_outbox_restore_receipts WHERE restore_id = ? COLLATE BINARY LIMIT 2
-  `,
-        )
-        .all(...scopeArgs, receipt.query.restore_id)
-    : [];
-  check();
-  if (parentRows.length > 1) throw invalid();
-  let parent_relation: Relation = 'missing';
   let checked_target_bytes = 0;
-  const parentRow = parentRows[0];
-  if (parentRow) {
-    if (parentRow.in_scope !== 1) parent_relation = 'reserved-other-project';
-    else {
-      checked_target_bytes +=
-        bytes(parentRow.query_bytes, 16384) +
-        bytes(parentRow.archive_bytes, OUTBOX_ARCHIVE_FILE_BYTES);
-      const stored = outboxRestoreStoredRecord(
-        db,
-        { scope, restore_id: receipt.query.restore_id },
-        trace,
-        true,
-      );
-      if (!stored) throw invalid();
-      parent_relation = isDeepStrictEqual(stored, parent) ? 'identical' : 'different';
-      check();
-    }
-  }
+  const reserve = (size: number) => {
+    checked_target_bytes += size;
+  };
+  select('restore');
+  const parent = inspectOutboxRequeueImportParent(
+    db,
+    source.document.parent,
+    trace,
+    check,
+    reserve,
+  );
   select('requeue');
-  const receiptPresent = outboxRequeueReceiptTable(db, trace);
-  const receiptRows = receiptPresent
-    ? db
-        .prepare(
-          `SELECT
-    CASE WHEN tenant_id = ? COLLATE BINARY AND workspace_id = ? COLLATE BINARY AND project_id = ? COLLATE BINARY THEN 1 ELSE 0 END AS in_scope,
-    CASE WHEN typeof(query_json) = 'text' THEN length(CAST(query_json AS BLOB)) ELSE NULL END AS query_bytes
-    FROM main.local_outbox_requeue_receipts WHERE requeue_id = ? COLLATE BINARY LIMIT 2
-  `,
-        )
-        .all(...scopeArgs, receipt.query.requeue_id)
-    : [];
-  check();
-  if (receiptRows.length > 1) throw invalid();
-  let receipt_relation: Relation = 'missing';
-  const receiptRow = receiptRows[0];
-  if (receiptRow) {
-    if (receiptRow.in_scope !== 1) receipt_relation = 'reserved-other-project';
-    else {
-      checked_target_bytes += bytes(receiptRow.query_bytes, 16384);
-      const row = db
-        .prepare(
-          `SELECT ${outboxRequeueReceiptProjection()}
-        FROM main.local_outbox_requeue_receipts WHERE requeue_id = ? COLLATE BINARY LIMIT 1`,
-        )
-        .get(receipt.query.requeue_id);
-      if (!row) throw invalid();
-      const stored = outboxRequeueReceiptMetadata(
-        row,
-        { scope, requeue_id: receipt.query.requeue_id },
-        trace,
-      );
-      receipt_relation = isDeepStrictEqual(stored, {
-        original_query: receipt.query,
-        query_sha256: receipt.query_sha256,
-        restore_document_sha256: receipt.restore_document_sha256,
-        restore_receipt_sha256: receipt.restore_receipt_sha256,
-        before_sha256: receipt.before_sha256,
-        after_sha256: receipt.after_sha256,
-        requeued_at: receipt.requeued_at,
-        requeue_trace_id: receipt.requeue_trace_id,
-      })
-        ? 'identical'
-        : 'different';
-      check();
-    }
-  }
+  const receipt = inspectOutboxRequeueImportReceipt(
+    db,
+    source.document.receipt,
+    trace,
+    check,
+    reserve,
+  );
   select(null);
-  const compatible = [parent_relation, receipt_relation].every(
+  const compatible = [parent.relation, receipt.relation].every(
     (relation) => relation === 'missing' || relation === 'identical',
   );
   return {
-    parent_storage: parentPresent ? ('present' as const) : ('not-present' as const),
-    receipt_storage: receiptPresent ? ('present' as const) : ('not-present' as const),
-    parent_relation,
-    receipt_relation,
+    parent_storage: parent.storage,
+    receipt_storage: receipt.storage,
+    parent_relation: parent.relation,
+    receipt_relation: receipt.relation,
     compatible,
-    missing_restore_histories: parent_relation === 'missing' ? 1 : 0,
-    missing_requeue_receipts: receipt_relation === 'missing' ? 1 : 0,
-    target_parent_binding:
-      parent_relation === 'identical' && receipt_relation === 'identical'
-        ? ('matched' as const)
-        : parent_relation === 'missing' && receipt_relation === 'identical'
-          ? ('verified-against-source-only' as const)
-          : ('not-matched' as const),
+    missing_restore_histories: parent.relation === 'missing' ? 1 : 0,
+    missing_requeue_receipts: receipt.relation === 'missing' ? 1 : 0,
+    target_parent_binding: outboxRequeueImportParentBinding(parent.relation, receipt.relation),
     checked_target_bytes,
     target_byte_basis:
       'selected-stored-requeue-query-and-parent-query-archive-utf8-per-inspection' as const,

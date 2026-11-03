@@ -47,6 +47,10 @@ import {
 import { callOutboxReconcileArguments } from './outbox-reconcile.js';
 import { inspectOutboxReceiptArguments } from './outbox-receipt-file.js';
 import {
+  isOutboxRestoreRequeueBackupImportCommand,
+  runOutboxRestoreRequeueBackupImportArguments,
+} from './outbox-restore-requeue-backup-import.js';
+import {
   isOutboxRestoreRequeueBackupAccessCommand,
   runOutboxRestoreRequeueBackupAccessArguments,
 } from './outbox-restore-requeue-backup-access.js';
@@ -189,6 +193,8 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   outbox restore-requeue-backup-history  Browse verified --archive-file batches; optional limit/backup_sha256/after_requeue_id JSON
   outbox restore-requeue-backup-get  Read original query/receipt using --archive-file and backup_sha256/requeue_id JSON; optional --output NEW_QUERY
   outbox restore-requeue-backup-export  Save the selected batch and parent as a standalone receipt; same file/selection and required --output NEW_RECEIPT
+  outbox restore-requeue-backup-import-preview  Compare all backup histories using --outbox, --archive-file and scope/backup_sha256 JSON
+  outbox restore-requeue-backup-import  Atomically add only missing matching backup histories with the same file/query; does not restore events
   outbox restore-history         Browse restore metadata using explicit --outbox; optional limit/after_restore_id JSON
   outbox restore-audit           Verify all project restore receipts/archives using --outbox; optional max_receipts/max_bytes/timeout_ms JSON
   outbox restore-compare         Compare one restored event with its current row using --outbox and restore_id/event_id JSON
@@ -494,6 +500,8 @@ export async function main(args: string[]): Promise<number> {
       'outbox restore-requeue-backup-history',
       'outbox restore-requeue-backup-get',
       'outbox restore-requeue-backup-export',
+      'outbox restore-requeue-backup-import-preview',
+      'outbox restore-requeue-backup-import',
       'outbox restore-history',
       'outbox restore-audit',
       'outbox restore-compare',
@@ -653,6 +661,16 @@ export async function main(args: string[]): Promise<number> {
     }
     if (isOutboxRestoreBackupAccessCommand(name)) {
       print(await runOutboxRestoreBackupAccessArguments(args, trace));
+      return 0;
+    }
+    if (isOutboxRestoreRequeueBackupImportCommand(name)) {
+      print(
+        await runOutboxRestoreRequeueBackupImportArguments(args, trace, {
+          tenant_id: envId('WORKCTX_TENANT_ID'),
+          workspace_id: envId('WORKCTX_WORKSPACE_ID'),
+          project_id: envId('WORKCTX_PROJECT_ID'),
+        }),
+      );
       return 0;
     }
     if (isOutboxRestoreRequeueBackupAccessCommand(name)) {

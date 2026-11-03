@@ -959,6 +959,29 @@ requirements:
         - "Offline routing without token/environment/SQLite, argument restrictions, output traces, provenance and exits"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, sample file generation, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_outbox_restore_requeue_backup_import_development_increment:
+      date: "2026-11-04"
+      status: "Source-only atomic combined requeue backup import and read-only preview; R-005 remains incomplete."
+      artifacts:
+        - "apps/context-bridge/src/outbox/restore-requeue-backup-import.ts"
+        - "apps/context-bridge/src/outbox/restore-requeue-import-target.ts"
+        - "apps/context-bridge/src/outbox/restore-requeue-import.ts"
+        - "apps/context-bridge/src/outbox/restore-requeue-backup.ts"
+        - "apps/context-bridge/src/outbox/sqlite.ts"
+        - "apps/workctx-cli/src/outbox-restore-requeue-backup-import.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/outbox-restore-requeue-backup-import-runtime.md"
+      behavior: "Strict scope/backup_sha256 binds complete verified source. Shared single-batch target comparators check global ID occupancy and full parent/batch equality; shared parents load once per complete pass. One transaction preserves identical histories, adds missing histories and rejects different/cross-project rows. Pre-parent checks, full post-parent plan comparison, pre-batch checks and final complete parent/batch binding readback precede commit. Missing parents can be repaired from fully matching source; empty backup creates no optional tables. Target reads are limited to 64 MiB per pass, 256 MiB overall; 90-second stages and 128 KiB success metadata. Unknown commits retain source/candidate/progress/transaction state. Current events/control remain untouched; original IDs retain historical idempotency."
+      evidence: []
+      pending_evidence:
+        - "Complete source/query/scope binding, empty/missing tables, shared parents, missing/identical/conflicting combinations and source-only orphan repair"
+        - "Global duplicate/cross-project IDs, damaged stored history, raw target whitespace, read budgets and deadlines"
+        - "Triggers altering prior or subsequent selected rows, all-history final readback, exact insert counts, rollback and unknown commit"
+        - "Native readonly preview, existing writable opening, no current-event activation, close/response failures and retained known outcomes"
+        - "Single-batch comparator extraction preserves full original-query, field equality and linked-readback behavior"
+      remaining_scope: "Cross-project backup, retention, provenance, broader cross-client recovery and runtime evidence remain pending. No current event restoration or server delivery claims."
+      execution: "Source/docs only; no builds, typechecks, tests, CLI/Bridge runs, database opens, optional-table initialization, sample files, migrations or release. No schema/dependency changes; prior SQLite additions and PostgreSQL 016-049 remain unexecuted."
     sync_outbox_restore_requeue_backup_access_development_increment:
       date: "2026-11-04"
       status: "Source-only offline requeue backup pagination, original-query retrieval and standalone batch extraction; R-005 remains incomplete."
