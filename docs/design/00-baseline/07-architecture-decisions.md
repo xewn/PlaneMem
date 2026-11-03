@@ -1,5 +1,7 @@
 # 架构决策记录摘要
 
+2026-11-04 网关来源准备协接（ADR-015）：T7.2 新增 prepareProposalGeneration 与 prepare-generation CLI，复用原 gateway/project/actor/client 绑定，先 GET submission-context 确认身份协议，再按原条目 ID/revision 读取 context-items；同一固定令牌与预期身份头贯穿全部请求。检查完整读取范围/trace/revision/ETag/来源封套及当前有效性，保留完整文本与观察状态，分类只升不降；有界单条/累计输入、整体期限/取消，不自动替换版本、截断或保存部分结果。独占输出兼容 generate 的输入文件，原身份/选择与逐条读取观察保留在结果中；不创建队列、不调用模型、不提交或审核。范围 workers/intelligence 源码/README、来源准备/生成契约、README/TODO/R009 与协调记录；无 Gateway/schema/依赖变化，仅源码文档，不执行接口/CLI/模型、编译、类型检查、测试、数据库或发布；独立提交push main带[skip ci]。
+
 2026-11-04 显式模型草稿生成协接（ADR-015）：T7.2 新增 generateProposalDraft 与 proposal-worker generate --provider --file --output，读取用户明确提供的来源摘录和分类，单次调用配置的 Chat Completions 兼容接口；使用固定版本提示、仅接收 title/content JSON，来源/类型/分类/期限由原输入固定，模型标识取响应，输出复用 CreateProposalRequest。凭据只从调用参数/专用环境变量读取，不入文件；有界正文/响应、统一等待期限/取消、禁止重定向和自动重试。CLI 预检输出后生成，独占保存新草稿，生成成功但保存失败保留结果供恢复；生成不打开队列或自动提交/审核。范围 workers/intelligence 源码/README、生成契约、Proposal说明、README/TODO/R009 与协调记录；不新增依赖/schema。仅源码文档，不调用模型、不执行CLI、编译、类型检查、测试、数据库或发布；独立提交push main带[skip ci]。
 
 2026-11-04 建议生命周期 Mock 协接（ADR-015）：T0.5 在 SDK 新增共享内存 MockProposalStore 与固定模拟会话，接入 submission-context、建议创建/目录/详情/确认/拒绝。使用显式项目/身份/能力和本地来源状态配置，创建固定 proposed，人工审核要求原版本；保存按 actor/client 隔离的原命令回执，重试不重复副作用。来源可见性/当前版本、分类继承及最多 32 层派生链复用真实接口语义，来源依赖变化由开发配置显式模拟，不冒充真实 Policy/数据库/同步事件。范围 SDK 源码/README、Mock 契约、任务/ADR、README/TODO/R001；无新依赖/schema。只开发源码文档，不编译、类型检查、测试、执行 Mock/API/CLI、生成样本或发布；独立提交 push main 带 [skip ci]。

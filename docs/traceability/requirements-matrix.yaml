@@ -3435,6 +3435,22 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_generation_source_preparation_development_increment:
+      date: "2026-11-04"
+      status: "Source-only authenticated selection-to-input workflow; no runtime evidence or R-009 completion."
+      artifacts:
+        - "workers/intelligence/src/generation-sources.ts"
+        - "workers/intelligence/src/generation-output.ts"
+        - "workers/intelligence/src/main.ts"
+        - "docs/design/01-contracts/proposal-generation-sources-runtime.md"
+      behavior: "A fixed token and explicit original gateway/project/actor/client binding preflight identity before reading selected current ContextItem revisions. Scope/trace/version/ETag/source checks and full textual excerpts retain observed status and raise classification as needed. One total deadline, cancellation, per-response and accumulated output bounds prevent partial input publication. The new-file output feeds explicit generation, with identity/observations retained in the result."
+      evidence: []
+      pending_evidence:
+        - "Identity drift, project/classification permissions, hidden/missing/stale sources and version conflicts"
+        - "Malformed envelopes, source correspondence, nontext/long content and cumulative limits"
+        - "Shared deadline/cancellation across sequential reads and files retained after save failure"
+      remaining_scope: "Cross-source snapshots, background discovery/refresh, destination-bound artifacts, persistent generation/audit and real runtime evidence."
+      execution: "Source/docs only; no Gateway/model calls, CLI execution, build, typecheck, tests, database access or release. No Gateway/schema/dependency changes."
     explicit_proposal_generation_development_increment:
       date: "2026-11-04"
       status: "Source-only explicit model generation adapter and draft file workflow; R-009 remains incomplete."

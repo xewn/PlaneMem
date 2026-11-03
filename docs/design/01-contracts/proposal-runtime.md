@@ -119,6 +119,8 @@ GET 列表接受 status、kind、before、limit，以及可选的 derived_from�
 
 ## 错误与后续范围
 
+worker 的 `prepare-generation` 可按明确条目 ID/revision 取得当前可见且有效的来源，输出独立生成输入；身份预检、版本检查、来源状态和失败边界见 [来源准备契约](proposal-generation-sources-runtime.md)。这是逐条读取观察，不锁定未来权限或来源，提交仍执行原来源检查。
+
 | 错误 | HTTP |
 | --- | --- |
 | INVALID_INPUT | 400 |

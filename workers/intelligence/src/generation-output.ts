@@ -6,6 +6,7 @@ import {
   parseCreateProposal,
   type CreateProposalRequest,
 } from '@planemem/contracts';
+import { parseProposalGenerationRequest, type ProposalGenerationRequest } from './generation.js';
 
 interface Output {
   path: string;
@@ -50,15 +51,44 @@ export async function saveGeneratedDraft(
   draft: CreateProposalRequest,
   trace: string,
 ) {
-  const temporary = join(output.directory, '.proposal-' + randomUUID() + '.part');
   const bytes = Buffer.from(JSON.stringify(parseCreateProposal(draft), null, 2) + '\n', 'utf8');
+  return saveGenerationFile(output, bytes, 1024 * 1024, trace, 'PROPOSAL_GENERATION_SAVE_FAILED');
+}
+
+/** Save the complete prepared input for the separate generate command. */
+export async function savePreparedGeneration(
+  output: Output,
+  input: ProposalGenerationRequest,
+  trace: string,
+) {
+  const bytes = Buffer.from(
+    JSON.stringify(parseProposalGenerationRequest(input), null, 2) + '\n',
+    'utf8',
+  );
+  return saveGenerationFile(
+    output,
+    bytes,
+    512 * 1024,
+    trace,
+    'PROPOSAL_SOURCE_PREPARATION_SAVE_FAILED',
+  );
+}
+
+async function saveGenerationFile(
+  output: Output,
+  bytes: Buffer,
+  maximum: number,
+  trace: string,
+  code: string,
+) {
+  const temporary = join(output.directory, '.proposal-' + randomUUID() + '.part');
   let writer: FileHandle | undefined;
   let reader: FileHandle | undefined;
   let created = false;
   let published = false;
   let phase = 'create';
   try {
-    if (bytes.byteLength > 1024 * 1024) throw new TypeError();
+    if (bytes.byteLength > maximum) throw new TypeError();
     writer = await open(temporary, 'wx+', 0o600);
     created = true;
     const identity = await writer.stat({ bigint: true });
@@ -118,8 +148,8 @@ export async function saveGeneratedDraft(
     };
   } catch {
     throw new ContractError(
-      'PROPOSAL_GENERATION_SAVE_FAILED',
-      'Generation completed but saving was not confirmed; retain the returned draft before retrying',
+      code,
+      'File saving was not confirmed; retain the returned content before retrying',
       {
         trace_id: trace,
         output_path: output.path,

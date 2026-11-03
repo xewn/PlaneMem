@@ -8,9 +8,18 @@ import {
   parseProposalGenerationProvider,
   parseProposalGenerationRequest,
 } from './generation.js';
-import { prepareGenerationOutput, saveGeneratedDraft } from './generation-output.js';
+import {
+  prepareGenerationOutput,
+  saveGeneratedDraft,
+  savePreparedGeneration,
+} from './generation-output.js';
+import {
+  prepareProposalGeneration,
+  parseProposalGenerationSelection,
+} from './generation-sources.js';
 
 const help = `Proposal submission queue (Node.js 24)
+  proposal-worker prepare-generation --binding binding.json --file selection.json --output NEW_SOURCES.json
   proposal-worker generate --provider provider.json --file sources.json --output NEW_DRAFT.json
   proposal-worker enqueue --queue queue.sqlite --binding binding.json --file draft.json --key KEY
   proposal-worker list    --queue queue.sqlite --binding binding.json [--before JOB_ID] [--limit 25]
@@ -21,7 +30,7 @@ const help = `Proposal submission queue (Node.js 24)
 binding.json contains gateway_url, tenant_id, workspace_id, project_id, actor_id, client_id.
 list/get open an existing initialized queue read-only; missing files are never created.
 generate calls the configured model once using PROPOSAL_GENERATION_API_KEY; it saves a new draft, without opening a queue.
-Only flush contacts the gateway. It reads PROPOSAL_WORKER_ACCESS_TOKEN from the environment.
+prepare-generation reads pinned sources from the gateway; flush submits drafts. Both use PROPOSAL_WORKER_ACCESS_TOKEN.
 retry schedules the original draft/key; it does not send or regenerate content.
 Exit codes: 0 completed, 1 command/storage failure, 2 flush had retry/blocked/lost-lease jobs.
 `;
@@ -52,6 +61,7 @@ export async function main(args: string[]): Promise<number> {
     });
     const command = positionals[0];
     const allowed: Record<string, string[]> = {
+      'prepare-generation': ['binding', 'file', 'output'],
       generate: ['provider', 'file', 'output'],
       enqueue: ['file', 'key'],
       list: ['before', 'limit'],
@@ -60,12 +70,15 @@ export async function main(args: string[]): Promise<number> {
       flush: ['limit'],
     };
     if (!command || !Object.hasOwn(allowed, command) || positionals.length !== 1)
-      throw new TypeError('Expected generate, enqueue, list, get, retry or flush');
+      throw new TypeError(
+        'Expected prepare-generation, generate, enqueue, list, get, retry or flush',
+      );
     for (const option of Object.keys(values))
       if (
-        ![...(command === 'generate' ? [] : ['queue', 'binding']), ...allowed[command]!].includes(
-          option,
-        )
+        ![
+          ...(['generate', 'prepare-generation'].includes(command) ? [] : ['queue', 'binding']),
+          ...allowed[command]!,
+        ].includes(option)
       )
         throw new TypeError('Unexpected option for ' + command);
     // Duplicate options are rejected instead of silently accepting a later path/key.
@@ -82,6 +95,39 @@ export async function main(args: string[]): Promise<number> {
         throw new TypeError('--' + name + ' is required');
       return value;
     };
+    if (command === 'prepare-generation') {
+      const selection = parseProposalGenerationSelection(
+        await readJson(required('file'), 32 * 1024),
+      );
+      const binding = (await readJson(required('binding'), 16_384)) as ProposalQueueBinding;
+      const output = await prepareGenerationOutput(required('output'));
+      const prepared = await prepareProposalGeneration(selection, binding, {
+        access_token: process.env.PROPOSAL_WORKER_ACCESS_TOKEN ?? '',
+      });
+      let saved: Awaited<ReturnType<typeof savePreparedGeneration>>;
+      try {
+        saved = await savePreparedGeneration(output, prepared.input, prepared.trace_id);
+      } catch (error) {
+        process.stderr.write(
+          JSON.stringify(
+            {
+              code: 'PROPOSAL_SOURCE_PREPARATION_SAVE_FAILED',
+              trace_id: prepared.trace_id,
+              preparation: prepared,
+              output:
+                error instanceof ContractError
+                  ? error.envelope.details
+                  : { output_path: output.path },
+            },
+            null,
+            2,
+          ) + '\n',
+        );
+        return 1;
+      }
+      process.stdout.write(JSON.stringify({ ...prepared, output: saved }, null, 2) + '\n');
+      return 0;
+    }
     if (command === 'generate') {
       const provider = parseProposalGenerationProvider(
         await readJson(required('provider'), 16_384),
@@ -174,9 +220,21 @@ export async function main(args: string[]): Promise<number> {
         : error instanceof TypeError || error instanceof SyntaxError
           ? 'INVALID_INPUT'
           : 'PROPOSAL_QUEUE_COMMAND_FAILED';
+    const sourceDetails: Record<string, unknown> = {};
+    if (error instanceof ContractError && code.startsWith('PROPOSAL_SOURCE_PREPARATION_')) {
+      const details = error.envelope.details;
+      if (typeof details.item_id === 'string' && details.item_id.length <= 255)
+        sourceDetails.item_id = details.item_id;
+      for (const field of ['expected_revision', 'current_revision'] as const) {
+        const value = details[field];
+        if (typeof value === 'number' && Number.isSafeInteger(value) && value > 0)
+          sourceDetails[field] = value;
+      }
+    }
     process.stderr.write(
       JSON.stringify({
         code,
+        ...sourceDetails,
         message:
           'Proposal worker command failed. Check arguments, local file access and provider/gateway configuration; use --help for syntax.',
         ...(error instanceof ContractError
@@ -185,6 +243,10 @@ export async function main(args: string[]): Promise<number> {
               ...(error.envelope.details.provider_dispatch === undefined
                 ? {}
                 : { provider_dispatch: error.envelope.details.provider_dispatch }),
+              ...(typeof error.envelope.details.cause_code === 'string' &&
+              /^[A-Z][A-Z0-9_]{1,127}$/.test(error.envelope.details.cause_code)
+                ? { cause_code: error.envelope.details.cause_code }
+                : {}),
               ...(typeof error.envelope.details.status === 'number' &&
               Number.isInteger(error.envelope.details.status) &&
               error.envelope.details.status >= 100 &&

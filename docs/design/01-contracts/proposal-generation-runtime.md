@@ -6,6 +6,8 @@
 
 ## 配置与操作
 
+来源也可先通过 [prepare-generation](proposal-generation-sources-runtime.md) 从网关按指定条目/版本读取。该独立命令核对原账号/客户端及当前读取权限，保存兼容本节 sources.json 的完整输入；生成步骤本身仍只使用已经准备的文件，不重新读取网关。
+
 提供独立 provider.json，包含完整端点、明确的模型标识及允许发送的数据分类上限。下例只有配置形状，模型值必须替换成部署支持的标识；本轮没有创建或执行示例文件：
 
 ```json
@@ -70,4 +72,4 @@ CLI 先确认目标父目录存在且目标文件未占用，再生成。保存�
 
 协议参考入口为官方 Chat Completions API 文档：`https://platform.openai.com/docs/api-reference/chat/create`。本轮尝试读取官方页面，但当前连接未取得完整可用正文，因此上述条目明确描述本适配器要求，不声明供应商兼容验证完成。
 
-仍缺真实供应商兼容和质量证据、自动来源提取/权限过滤、持久生成任务及原请求恢复、生成审计、费用记录、自动调度、Embedding 与 Golden 评测。建议提交后的人工审核继续沿用原持久 Gateway 流程；本次不改变审核权限或 verified 状态来源。
+指定当前 ContextItem 的权限读取和完整生成输入准备已接独立 prepare-generation 源码；仍缺真实供应商兼容和质量证据、后台来源发现/刷新、持久生成任务及原请求恢复、生成审计、费用记录、自动调度、Embedding 与 Golden 评测。建议提交后的人工审核继续沿用原持久 Gateway 流程；本次不改变审核权限或 verified 状态来源。

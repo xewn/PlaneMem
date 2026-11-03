@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [网关来源准备](docs/design/01-contracts/proposal-generation-sources-runtime.md)：按选定条目和版本读取有权限访问的完整文本，保留来源状态及实际分类，生成可审阅的模型输入文件。任一版本冲突或读取失败均不保存部分结果。仅源码文档，未调用接口、编译、测试或发布。
+
 新增 [显式模型草稿生成](docs/design/01-contracts/proposal-generation-runtime.md)：用户配置模型端点并选择来源摘录，单次生成标题和正文，保留原来源与分类，保存为新草稿后再审阅入队。仅源码文档，未调用模型、编译、测试或发布。
 
 新增 [建议生命周期 Mock](docs/design/01-contracts/proposal-mock-runtime.md)：客户端开发可模拟创建、浏览、人工审核、来源变化和原请求重试，多个模拟账号共享建议数据。仅源码文档，未编译、测试、运行或发布。

@@ -6,9 +6,11 @@
 
 ## 配置与命令
 
+新增 [网关来源准备](../../docs/design/01-contracts/proposal-generation-sources-runtime.md)：`prepare-generation --binding binding.json --file selection.json --output new-sources.json` 先核对原身份，再按明确 ID/revision 读取当前可见且有效的 ContextItem，完整准备 generate 输入。版本冲突或任一来源失败时不保存部分结果；生成和提交仍分别显式执行。
+
 需要仓库约定的 Node.js 24。依赖清单已补充 SDK 和现有版本的 tsx，本轮没有安装或运行。命令入口是根脚本 `pnpm proposal-worker`，包内入口为 `bin/proposal-worker.mjs`。
 
-队列操作明确指定 `--queue` 和 `--binding`；独立 generate 使用 `--provider --file --output`，不打开队列。父目录须已存在，建议使用忽略入库的 `workers/intelligence/.local/`。绑定文件只接受以下字段，示例值需替换为真实配置：
+队列操作明确指定 `--queue` 和 `--binding`；独立 generate 使用 `--provider --file --output`，prepare-generation 使用 `--binding --file --output`，二者不打开队列。父目录须已存在，建议使用忽略入库的 `workers/intelligence/.local/`。绑定文件只接受以下字段，示例值需替换为真实配置：
 
 ```json
 {
@@ -39,7 +41,7 @@ pnpm proposal-worker flush --queue workers/intelligence/.local/queue.sqlite --bi
 
 可选 derived_from 记录原建议 ID/revision，由网关在提交时核对同项目可见性、版本及关联深度。原版本冲突进入 blocked，worker 不自行刷新关联或来源；如需修改，先处理原任务的未知结果，再用新草稿和请求键入队。未使用关联的旧草稿保持原规范化输出字段顺序，不注入额外默认值；本轮未运行队列迁移或验证。
 
-队列命令中只有 `flush` 联网，从环境变量 `PROPOSAL_WORKER_ACCESS_TOKEN` 读取凭据；独立 `generate` 通过 `PROPOSAL_GENERATION_API_KEY` 调用配置模型，其他命令不需要令牌。`retry` 只将原任务置为可重试，随后显式 flush 才会发送。`get` 会输出完整草稿，`list` 仅输出任务摘要和最小回执。列表按 job_id 倒序，默认 25、最多 100 条；下一页将 `next_before` 传为 `--before`。
+队列命令中只有 `flush` 联网，独立 `prepare-generation` 也会只读访问网关；两者从环境变量 `PROPOSAL_WORKER_ACCESS_TOKEN` 读取凭据。独立 `generate` 通过 `PROPOSAL_GENERATION_API_KEY` 调用配置模型，其他命令不需要令牌。`retry` 只将原任务置为可重试，随后显式 flush 才会发送。`get` 会输出完整草稿，`list` 仅输出任务摘要和最小回执。列表按 job_id 倒序，默认 25、最多 100 条；下一页将 `next_before` 传为 `--before`。
 
 返回值是 JSON。退出码 0 表示命令完成，1 表示参数/本地存储等命令失败，2 表示本次 flush 有 retry/blocked/lease_lost。flush 的成功退出不代表整库清空：它只处理开始时已经到期的最多 limit 个任务；未来重试、已有 blocked 和其他进程占用的任务不计入本次结果。
 
