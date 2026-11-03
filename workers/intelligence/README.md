@@ -6,6 +6,8 @@
 
 ## 配置与命令
 
+新增 [原创建回执与显式结算](../../docs/design/01-contracts/proposal-queue-reconciliation-runtime.md)：`receipt --queue EXISTING.sqlite --binding binding.json --id JOB_ID [--timeout-ms 30000]` 原生只读查询原创建结果；`reconcile` 使用相同参数，只有远端 recorded、完整本地任务未变且非sending时才标记 submitted。not-observed、并发变化、过期发送租约都不据此重提或接管；已submitted须匹配同一历史回执。输出包含完整原建议，未知本地提交/关闭失败保留远端观察和原请求，没有自动保存文件或持久对账历史。两命令需原账号的 PROPOSAL_WORKER_ACCESS_TOKEN，existing模式不初始化缺失结构。仅源码，未执行命令或数据库。
+
 新增请求目录：`generation-requests --journal EXISTING_DIR --binding binding.json [--state all|prepared|attempted|generated|failed] [--after CURSOR] [--limit 10]` 按原绑定发现请求，返回状态、原键和摘要，不输出正文。默认 10、最多 20 条；每页最多扫描 64 个候选并使用 32 MiB 读取预算，空页仍可能有 next_cursor，须继续续页。游标绑定原目录/绑定/状态，改变条件从首页开始；并发新增或状态变化需要重新查询。目录总项数上限 10,000，损坏拒绝，详见 [目录边界](../../docs/design/01-contracts/proposal-generation-request-runtime.md#请求发现与分页目录)。本命令不打开队列、不调用模型、不修改日志。
 
 新增生成结果补存：`generation-recover --journal EXISTING_DIR --binding binding.json --key KEY --file RETAINED_ERROR.json [--preview]` 读取保存失败的完整错误 JSON 或 recovery 对象。预览只读，正式补存只写缺失 outcome，须与目标的原请求和实际领取完全匹配；相同结果保留，矛盾结果拒绝，不重建领取、不调用模型。可从保留的完整 generation/failure 重建结果封套，原生成时间不变；退出码 0 表示本地恢复操作完成，失败的模型结果仍为 failed。输入上限 8 MiB，原记录限制保持，详见 [恢复规则](../../docs/design/01-contracts/proposal-generation-request-runtime.md#已保留结果的预览与补存)。
@@ -51,9 +53,9 @@ pnpm proposal-worker flush --queue workers/intelligence/.local/queue.sqlite --bi
 
 可选 derived_from 记录原建议 ID/revision，由网关在提交时核对同项目可见性、版本及关联深度。原版本冲突进入 blocked，worker 不自行刷新关联或来源；如需修改，先处理原任务的未知结果，再用新草稿和请求键入队。未使用关联的旧草稿保持原规范化输出字段顺序，不注入额外默认值；本轮未运行队列迁移或验证。
 
-队列命令中只有 `flush` 联网，独立 `prepare-generation` 也会只读访问网关；两者从环境变量 `PROPOSAL_WORKER_ACCESS_TOKEN` 读取凭据。独立 `generate`/`generate-prepared` 和首次 `generation-run` 通过 `PROPOSAL_GENERATION_API_KEY` 调用配置模型，其他命令和已成功的 generation-run 重放不需要令牌。`retry` 只将原提交任务置为可重试，随后显式 flush 才会发送，不重置生成请求。`get` 会输出完整草稿，`list` 仅输出任务摘要和最小回执。列表按 job_id 倒序，默认 25、最多 100 条；下一页将 `next_before` 传为 `--before`。
+队列命令 `flush` 提交、`receipt/reconcile` 只读查询网关，独立 `prepare-generation` 也会只读访问网关；这些命令从环境变量 `PROPOSAL_WORKER_ACCESS_TOKEN` 读取凭据。独立 `generate`/`generate-prepared` 和首次 `generation-run` 通过 `PROPOSAL_GENERATION_API_KEY` 调用配置模型，其他命令和已成功的 generation-run 重放不需要令牌。`retry` 只将原提交任务置为可重试，随后显式 flush 才会发送，不重置生成请求。`get` 会输出完整草稿，`list` 仅输出任务摘要和最小回执。列表按 job_id 倒序，默认 25、最多 100 条；下一页将 `next_before` 传为 `--before`。
 
-返回值是 JSON。退出码 0 表示命令完成，1 表示参数/本地存储等命令失败，2 表示本次 flush 有 retry/blocked/lease_lost。flush 的成功退出不代表整库清空：它只处理开始时已经到期的最多 limit 个任务；未来重试、已有 blocked 和其他进程占用的任务不计入本次结果。
+返回值是 JSON。退出码 0 表示命令完成，1 表示参数/本地存储等命令失败，2 表示本次 flush 有 retry/blocked/lease_lost，或 reconcile 因 not-observed/sending/local-changed 未结算。receipt 退出0只表示查询完成，不证明原创建成功。flush 的成功退出不代表整库清空：它只处理开始时已经到期的最多 limit 个任务；未来重试、已有 blocked 和其他进程占用的任务不计入本次结果。
 
 ## 只读查询
 
@@ -61,7 +63,7 @@ pnpm proposal-worker flush --queue workers/intelligence/.local/queue.sqlite --bi
 
 库调用可显式使用 `new SqliteProposalQueue(path, binding, { readonly: true })`。该模式只设置连接级 busy_timeout/query_only，不修改 journal_mode/synchronous、不创建表或索引、不补写绑定。SQLite 读取 WAL 队列仍可能需要访问 WAL/SHM 文件，不能据此保证目录完全没有文件系统活动。
 
-只读实例调用 `enqueue/retry/claim/complete/fail` 返回 `PROPOSAL_QUEUE_READ_ONLY`；`flushProposalQueue` 在首次认领时拒绝，尚未取得令牌或发送请求。默认构造方式及 CLI `enqueue/retry/flush` 仍使用可写模式。只读打开检查结构和绑定，不扫描或认证全部任务；`list/get` 保持原分页、草稿及回执读取语义。本轮未打开 SQLite、执行命令或验证运行结果。
+只读实例调用 `enqueue/retry/claim/complete/fail/applyCreationReceipt` 或要求结算的 captureReceiptTarget 返回 `PROPOSAL_QUEUE_READ_ONLY`；`flushProposalQueue` 在首次认领时拒绝，尚未取得令牌或发送请求。默认构造方式及 CLI `enqueue/retry/flush` 仍使用可写模式。只读打开检查结构和绑定，不扫描或认证全部任务；`list/get` 保持原分页、草稿及回执读取语义。本轮未打开 SQLite、执行命令或验证运行结果。
 
 ## 提交协议
 

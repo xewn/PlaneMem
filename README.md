@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [worker 原创建结果核对](docs/design/01-contracts/proposal-queue-reconciliation-runtime.md)：可只读查询队列任务的原创建回执，也可明确将远端已记录、内容未变且不在发送中的任务标记为已提交；未知结果和并发变化保留原状态。仅源码文档，未编译、测试、运行或发布。
+
 新增 [提案创建回执 CLI/MCP 入口](docs/design/01-contracts/proposal-runtime.md#cli-与-mcp-原创建回执)：命令行读取完整原请求文件，MCP 按原身份查询同一历史创建结果；有界读取、完整回执校验，未知结果不触发重提。仅源码文档，未编译、测试、运行或发布。
 
 新增 [建议原创建结果只读查询](docs/design/01-contracts/proposal-runtime.md#原创建回执只读查询)：使用保存的完整原请求核对历史创建回执，网页和 SDK 均可查询；无记录或不可见时保持结果未知，不重提、不换键。仅源码文档，未编译、测试、运行或发布。

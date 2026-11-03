@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { lstatSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { isDeepStrictEqual } from 'node:util';
 import {
@@ -9,7 +10,13 @@ import {
   validateIdempotencyKey,
   type CreateProposalRequest,
   type ProposalMutationReceipt,
+  type ProposalCreateReceiptEnvelope,
 } from '@planemem/contracts';
+import {
+  readProposalReceiptTarget,
+  settleProposalCreationReceipt,
+  type ProposalReceiptTarget,
+} from './proposal-reconciliation-state.js';
 import { parseSubmissionReceipt } from './receipt.js';
 import { normalizeQueueBinding, type ProposalQueueBinding } from './queue-binding.js';
 import {
@@ -30,6 +37,8 @@ export type {
 export interface ProposalQueueOptions {
   /** Inspect an existing v1 queue without creating it, changing its journal or initializing tables. */
   readonly?: boolean;
+  /** Require an existing initialized queue without creating tables or changing journal mode. */
+  existing?: boolean;
 }
 export type ProposalJobStatus = 'queued' | 'sending' | 'retry' | 'blocked' | 'submitted';
 export interface ProposalJobSummary {
@@ -88,19 +97,31 @@ export class SqliteProposalQueue {
       !options ||
       typeof options !== 'object' ||
       Array.isArray(options) ||
-      Object.keys(options).some((key) => key !== 'readonly') ||
+      Object.keys(options).some((key) => !['readonly', 'existing'].includes(key)) ||
+      (options.existing !== undefined && typeof options.existing !== 'boolean') ||
       (options.readonly !== undefined && typeof options.readonly !== 'boolean')
     )
-      throw new TypeError('Supply a boolean readonly queue option');
+      throw new TypeError('Supply boolean readonly/existing queue options');
     this.readOnly = options.readonly === true;
     this.binding = Object.freeze(normalizeQueueBinding(binding));
+    if (options.existing === true) {
+      try {
+        if (!lstatSync(path).isFile()) throw new TypeError();
+      } catch {
+        throw new ContractError(
+          'PROPOSAL_QUEUE_UNAVAILABLE',
+          'Choose an existing regular initialized queue in a directory you control',
+        );
+      }
+    }
     // query_only is defense in depth; the file must already be opened natively read-only.
     this.db = new DatabaseSync(path, { readOnly: this.readOnly });
     try {
       this.db.exec('PRAGMA busy_timeout = 5000');
-      if (this.readOnly) {
-        this.db.exec('PRAGMA query_only = ON');
+      if (this.readOnly || options.existing === true) {
+        if (this.readOnly) this.db.exec('PRAGMA query_only = ON');
         this.validateExistingQueue();
+        if (!this.readOnly) this.db.exec('PRAGMA synchronous = FULL');
         return;
       }
       this.db.exec('PRAGMA journal_mode = WAL');
@@ -296,6 +317,17 @@ export class SqliteProposalQueue {
   get(id: string): ProposalJobSummary & { draft: ReturnType<typeof parseCreateProposal> } {
     const row = this.row(id);
     return { ...summary(row), draft: readDraft(row) };
+  }
+
+  captureReceiptTarget(id: string, forSettlement = false): ProposalReceiptTarget {
+    if (typeof forSettlement !== 'boolean') throw new TypeError('Use a boolean settlement flag');
+    if (forSettlement) this.requireWritable();
+    return this.readTransaction(() => readProposalReceiptTarget(this.db, this.binding, id));
+  }
+
+  applyCreationReceipt(target: ProposalReceiptTarget, receipt: ProposalCreateReceiptEnvelope) {
+    this.requireWritable();
+    return settleProposalCreationReceipt(this.db, this.binding, target, receipt);
   }
 
   retry(id: string): ProposalJobSummary {

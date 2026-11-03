@@ -87,7 +87,7 @@ verified 表示该建议 revision 曾经过明确人工审核，不表示来源�
 
 SDK `getProposalCreateReceipt(original, {timeout_ms?,signal?})` 默认本地等待 30 秒，成功正文最多 2 MiB、错误最多 16 KiB，不继承上下文写条件、不自动重试。原范围和上下文已有 actor/client 约束必须匹配；预期身份头绑定原账号/客户端。Fetch 与方法预算取先到者，自定义 transport 必须支持 bounded-json/signal。调用方需事先保存完整原请求，不能用当前值重建未知原请求。
 
-Web 完整原提交组件增加 “Check original submission result”，先核对原网关和可信身份，再显式查询；无需先成功保存浏览器副本。服务器和浏览器都核验完整原请求对应关系，已确认后提供当前详情入口；未知/不可用时保留原键和正文。查询不自动保存回执、不提交或审核；离开页面忽略过期结果。CLI/MCP 专用入口见下节；Mock、worker 对账和持久历史回执备份仍待开发。复用现有回执/事件表，无新迁移或依赖；仅源码文档，未运行验证。
+Web 完整原提交组件增加 “Check original submission result”，先核对原网关和可信身份，再显式查询；无需先成功保存浏览器副本。服务器和浏览器都核验完整原请求对应关系，已确认后提供当前详情入口；未知/不可用时保留原键和正文。查询不自动保存回执、不提交或审核；离开页面忽略过期结果。CLI/MCP 专用入口见下节；worker 已补显式查询与本地结算，见[队列核对](proposal-queue-reconciliation-runtime.md)；Mock 和持久历史回执备份仍待开发。复用现有回执/事件表，无新迁移或依赖；仅源码文档，未运行验证。
 
 ### CLI 与 MCP 原创建回执
 
@@ -99,7 +99,7 @@ MCP `get_proposal_create_receipt` 参数同一原 query；目录发现和实际�
 
 MCP 每个 ApiGateway 独立两笔准备名额，覆盖参数准备、底层读取、完整校验和结果编码；30秒单调等待，超时只停止等待，名额到底层结束才释放，不能据此推断查询已取消。成功正文2 MiB、错误16 KiB，二次转义工具结果4 MiB+4096字节；完整响应检查200、JSON类型、本次trace、原请求回显及历史回执，只输出固定错误代码/说明。限制不保证底层数据库执行或 HTTP 最终发送期限。普通 HTTP 正文1 MiB，可信 proposal writer 可读取1 MiB+64 KiB封套，读完再次核对工具名/权限；内层仍限1 MiB，其他工具不能借用，Artifact 上传仍按原规则预留名额。
 
-仅源码和人工审阅，未调用 CLI/MCP/API、执行数据库、编译、类型检查、测试或发布。Mock、worker 对账、调用方原请求准备保存、持久回执历史和运行证据仍待补。
+仅源码和人工审阅，未调用 CLI/MCP/API、执行数据库、编译、类型检查、测试或发布。worker 显式核对见[队列核对](proposal-queue-reconciliation-runtime.md)；Mock、调用方原请求准备保存、持久回执历史和运行证据仍待补。
 
 ## 列表和客户端
 

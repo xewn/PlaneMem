@@ -7,6 +7,12 @@ import {
   validateIdempotencyKey,
 } from '@planemem/contracts';
 import { flushProposalQueue } from './publisher.js';
+import {
+  readProposalQueueReceipt,
+  reconcileProposalQueueJob,
+  ProposalQueueReceiptError,
+  type ProposalQueueReceiptResult,
+} from './proposal-reconciliation.js';
 import { SqliteProposalQueue, type ProposalQueueBinding } from './submission.js';
 import {
   generateProposalDraft,
@@ -62,6 +68,8 @@ const help = `Proposal submission queue (Node.js 24)
   proposal-worker list    --queue queue.sqlite --binding binding.json [--before JOB_ID] [--limit 25]
   proposal-worker get     --queue queue.sqlite --binding binding.json --id JOB_ID
   proposal-worker retry   --queue queue.sqlite --binding binding.json --id JOB_ID
+  proposal-worker receipt --queue EXISTING.sqlite --binding binding.json --id JOB_ID [--timeout-ms 30000]
+  proposal-worker reconcile --queue EXISTING.sqlite --binding binding.json --id JOB_ID [--timeout-ms 30000]
   proposal-worker flush   --queue queue.sqlite --binding binding.json [--limit 25]
 
 binding.json contains gateway_url, tenant_id, workspace_id, project_id, actor_id, client_id.
@@ -76,7 +84,8 @@ generation-recover imports retained outcomes for the original existing attempt; 
 generation-requests discovers requests for the original binding; follow next_cursor even when a filtered page is empty.
 prepare-generation reads pinned sources from the gateway; flush submits drafts. Both use PROPOSAL_WORKER_ACCESS_TOKEN.
 retry schedules the original draft/key; it does not send or regenerate content.
-Exit codes: 0 completed, 1 command/storage failure, 2 flush had retry/blocked/lost-lease jobs.
+receipt only queries the original creation. reconcile explicitly settles unchanged non-sending jobs from a recorded receipt; neither submits.
+Exit codes: 0 completed (receipt may be not-observed), 1 command/storage failure, 2 flush had unsettled jobs or reconciliation did not settle.
 `;
 
 export async function main(args: string[]): Promise<number> {
@@ -107,6 +116,7 @@ export async function main(args: string[]): Promise<number> {
         journal: { type: 'string' },
         preview: { type: 'boolean' },
         state: { type: 'string' },
+        'timeout-ms': { type: 'string' },
       },
     });
     const command = positionals[0];
@@ -128,6 +138,8 @@ export async function main(args: string[]): Promise<number> {
       list: ['before', 'limit'],
       get: ['id'],
       retry: ['id'],
+      receipt: ['id', 'timeout-ms'],
+      reconcile: ['id', 'timeout-ms'],
       flush: ['limit'],
     };
     if (!command || !Object.hasOwn(allowed, command) || positionals.length !== 1)
@@ -438,7 +450,14 @@ export async function main(args: string[]): Promise<number> {
       validateIdempotencyKey(key);
       if (!/^[\x21-\x7e]{1,255}$/.test(key)) throw new TypeError('Invalid queue request key');
     }
-    const id = ['get', 'retry', 'generation-list', 'generation-get'].includes(command)
+    const id = [
+      'get',
+      'retry',
+      'generation-list',
+      'generation-get',
+      'receipt',
+      'reconcile',
+    ].includes(command)
       ? required('id')
       : undefined;
     const historyQuery =
@@ -457,13 +476,29 @@ export async function main(args: string[]): Promise<number> {
       command === 'generation-get' && values.output !== undefined
         ? await prepareGenerationOutput(required('output'))
         : undefined;
-    if (command === 'flush' && !process.env.PROPOSAL_WORKER_ACCESS_TOKEN?.trim())
+    const receiptCommand = command === 'receipt' || command === 'reconcile';
+    const receiptTimeout =
+      values['timeout-ms'] === undefined ? 30000 : Number(values['timeout-ms']);
+    if (
+      receiptCommand &&
+      (!isUlid(id) ||
+        !Number.isSafeInteger(receiptTimeout) ||
+        receiptTimeout < 1 ||
+        receiptTimeout > 2147483647 ||
+        (values['timeout-ms'] !== undefined && !/^[1-9][0-9]{0,9}$/.test(values['timeout-ms'])))
+    )
+      throw new TypeError('Use a task ULID and receipt timeout');
+    if (
+      (command === 'flush' || receiptCommand) &&
+      !process.env.PROPOSAL_WORKER_ACCESS_TOKEN?.trim()
+    )
       throw new ContractError(
         'UNAUTHENTICATED',
-        'Set PROPOSAL_WORKER_ACCESS_TOKEN before flushing',
+        'Set PROPOSAL_WORKER_ACCESS_TOKEN before gateway queue operations',
       );
     queue = new SqliteProposalQueue(path, binding, {
-      readonly: ['list', 'get', 'generation-list', 'generation-get'].includes(command),
+      readonly: ['list', 'get', 'generation-list', 'generation-get', 'receipt'].includes(command),
+      ...(receiptCommand ? { existing: true } : {}),
     });
     let output: unknown;
     let exitCode = 0;
@@ -530,6 +565,22 @@ export async function main(args: string[]): Promise<number> {
       case 'retry':
         output = queue.retry(id!);
         break;
+      case 'receipt':
+      case 'reconcile': {
+        const result = await (
+          command === 'receipt' ? readProposalQueueReceipt : reconcileProposalQueueJob
+        )(queue, id!, {
+          access_token: process.env.PROPOSAL_WORKER_ACCESS_TOKEN ?? '',
+          timeout_ms: receiptTimeout,
+        });
+        output = result;
+        exitCode =
+          command === 'reconcile' &&
+          !['submitted', 'already-submitted'].includes(result.local.state)
+            ? 2
+            : 0;
+        break;
+      }
       case 'flush': {
         const report = await flushProposalQueue(queue, {
           limit,
@@ -540,9 +591,51 @@ export async function main(args: string[]): Promise<number> {
         break;
       }
     }
+    if (receiptCommand) {
+      const finished = queue;
+      if (!finished) throw new Error('The receipt queue handle is unavailable');
+      queue = undefined;
+      try {
+        finished.close();
+      } catch {
+        const result = output as ProposalQueueReceiptResult;
+        throw new ProposalQueueReceiptError('PROPOSAL_RECEIPT_CLOSE_UNCONFIRMED', result.trace_id, {
+          binding: result.binding,
+          job_id: result.job_id,
+          snapshot_sha256: result.snapshot_sha256,
+          original: {
+            identity: result.receipt.data.identity,
+            request_key: result.receipt.data.request_key,
+            draft: result.receipt.data.draft,
+          },
+          receipt: result.receipt,
+          local: { mutation: result.local.mutation, phase: 'close' },
+        });
+      }
+      output = { ...(output as ProposalQueueReceiptResult), close_state: 'closed' };
+    }
     process.stdout.write(JSON.stringify(output, null, 2) + '\n');
     return exitCode;
   } catch (error) {
+    if (error instanceof ProposalQueueReceiptError) {
+      let close_state =
+        error.envelope.code === 'PROPOSAL_RECEIPT_CLOSE_UNCONFIRMED' ? 'not-confirmed' : 'not-open';
+      if (queue) {
+        const failed = queue;
+        queue = undefined;
+        try {
+          failed.close();
+          close_state = 'closed';
+        } catch {
+          close_state = 'not-confirmed';
+        }
+      }
+      process.stderr.write(
+        JSON.stringify({ ...error.envelope, recovery: error.recovery, close_state }, null, 2) +
+          '\n',
+      );
+      return 1;
+    }
     if (error instanceof GenerationJournalWriteError) {
       process.stderr.write(
         JSON.stringify({ ...error.envelope, recovery: error.recovery }, null, 2) + '\n',

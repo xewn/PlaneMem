@@ -1,5 +1,7 @@
 # 架构决策记录摘要
 
+2026-11-04 worker 原创建结果核对协接（ADR-015）：T7.2 增加 receipt 只读查询与 reconcile 显式本地结算，使用原队列绑定/键/完整草稿调用 SDK 原创建回执。读取同一快照验证任务元数据/正文和摘要；recorded 后在写事务重新核对完整已知行及绑定，sending 一律不结算，其他并发变化保留，not-observed 不写入。复用既有 submitted/receipt 列，无新表；新增 existing 打开选项用于已初始化队列，拒绝缺失/损坏布局、不建表。未知提交/关闭失败保留完整远端观察与原请求，旧 flush 不改为自动查询或派发。范围 worker 源码/CLI/README、契约/README/TODO/R009，本地文件身份竞态和旧发送者协调仍受已知限制；仅开发与人工审阅，不编译、类型检查、测试、执行产品/数据库/迁移或发布，独立提交 push main 带 [skip ci]。
+
 2026-11-04 建议创建回执客户端协接（ADR-015）：T4.2/T4.3 增加 proposals receipt CLI 网络/嵌入入口和 get_proposal_create_receipt MCP 工具，复用既有原身份/键/完整规范草稿契约。CLI 有界读取明确文件或 JSON、拒绝重复及写选项；MCP 发现/调用校验未过期 writer/admin，完整响应有界核验，限制准备并发与本地期限，HTTP 扩容只允许对应原回执工具。读取不提交、不换键、不持久化结果；Mock、worker 对账及回执历史留后续。范围 CLI/Gateway MCP 源码及使用文档/契约/README/TODO/R009；无新数据库/依赖/迁移，仅开发与人工源码审阅，不编译、类型检查、测试、运行产品命令/服务/数据库或发布，独立提交 push main 带 [skip ci]。
 
 2026-11-04 建议创建回执只读查询协接（ADR-015）：T0.5/T5.1/T7.2 新增完整原身份/原键/规范草稿绑定的 proposal.create.receipt 与 POST /v1/proposals/creation-receipt，复用现有创建命令回执和同步事件，在只读快照核验原指纹、可见提案及历史创建事件；未观察到不推断失败。共享输入/完整响应校验接入 SDK 和 Web 原请求恢复，查询不要求本地保存、不重发创建、不改变原请求或当前审核状态，读取仍受原账号客户端、proposal.write/管理员及当前可见性约束。范围 contracts、Gateway、SDK、Web proposals/server-api、契约及追踪文档；CLI/MCP/Mock 专用适配和历史回执持久备份留后续。不新增迁移/依赖，只源码文档，不编译、类型检查、测试、执行接口/浏览器/数据库或发布；独立提交 push main 带 [skip ci]。

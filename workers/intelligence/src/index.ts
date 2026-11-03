@@ -1,6 +1,11 @@
 export * from './proposals.js';
 export * from './submission.js';
 export * from './publisher.js';
+export * from './proposal-reconciliation.js';
+export type {
+  ProposalReceiptTarget,
+  ProposalLocalSettlement,
+} from './proposal-reconciliation-state.js';
 export * from './generation.js';
 export * from './generation-sources.js';
 export * from './generation-record.js';
