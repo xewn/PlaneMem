@@ -25,6 +25,7 @@
 - [收件箱应用归档原子恢复](sync-application-restore-runtime.md)
 - [收件箱应用归档恢复预览](sync-application-restore-preview-runtime.md)
 - [应用恢复预览的目标历史绑定](sync-application-restore-target-runtime.md)
+- [应用恢复预览的原请求文件保存](sync-application-restore-request-runtime.md)
 - [上下文条目生命周期同步投影](sync-context-item-application-runtime.md)
 - [收件箱原确认日志、显式观察与重试](sync-inbox-ack-runtime.md)
 - [本地确认凭据文件与页面恢复](sync-ack-evidence-runtime.md)

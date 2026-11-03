@@ -30,7 +30,7 @@
 
 完整预览在 target_application/target_received 中各增加 history_sha256，并返回 observed_target（完整 v1 双摘要）、expected_target（原值或 null）、target_precondition（not-requested/matched/changed）。两段历史与归档兼容、且原目标约束若存在也匹配，才返回 restore_allowed=true 和恢复计划。
 
-新生成的 restore_query 始终带 observed_target 作为 expected_target，原身份/应用/归档摘要/timeout_ms 保留。它约束后续恢复要观察到相同目标历史；预览依然结束只读事务，不保留锁或自动保存查询文件。
+新生成的 restore_query 始终带 observed_target 作为 expected_target，原身份/应用/归档摘要/timeout_ms 保留。它约束后续恢复要观察到相同目标历史；预览依然结束只读事务，不保留锁；CLI 可用显式 --output 保存该查询，见 [原请求文件保存](sync-application-restore-request-runtime.md)，不自动保存或执行恢复。
 
 若带原约束预览时发现目标不同，完整检查成功后返回 status=conflict、restore_allowed=false、target_precondition=changed；conflicts 增加 target-state-changed，planned_changes/restore_query 为 null，同时保留原 expected_target 与新 observed_target。即使新目标仍与归档兼容，也不静默生成新的恢复查询。结构损坏或预算不足仍报告未完成，不能从未完成检查生成目标摘要。合法 conflict 的 CLI 退出码仍为 0，调用方必须读取结果字段。
 
@@ -54,4 +54,4 @@ CLI 的文件读取、归档绑定、打开、Bridge 操作及完整响应包装
 
 沿用归档/目标应用 1000 页/16 MiB、单投影 1 MiB、接收链每遍 10000 页/64 MiB、默认 30 秒最多 90 秒本地事务期限，以及 512 KiB 预览/2 MiB Bridge 恢复响应限制。摘要计算在已有遍历内进行，未增加独立数据库读取；同步解析/SQL 不可硬实时抢占，不能据此承诺内存、IO 或严格墙钟上限。
 
-仍缺预览/恢复原请求的显式持久文件、持久恢复回执、跨库实例绑定、不同历史合并/升级、确认/派发日志备份、完整跨设备恢复和真实并发/崩溃证据。本次未执行摘要计算样本、预览或恢复；R-005 继续未完成，evidence 为空。
+带目标约束的恢复查询已接显式文件保存；仍缺完整预览报告/恢复结果归档、持久恢复回执、跨库实例绑定、不同历史合并/升级、确认/派发日志备份、完整跨设备恢复和真实并发/崩溃证据。本次未执行摘要计算样本、预览或恢复；R-005 继续未完成，evidence 为空。

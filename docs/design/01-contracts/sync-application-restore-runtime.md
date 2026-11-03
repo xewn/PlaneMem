@@ -48,4 +48,4 @@ CLI 保留原错误类别/详细字段并补输入文件信息、inbox 和已打
 
 ## 尚未完成
 
-只读恢复预览已补 previewApplicationArchiveRestore/CLI application-restore-preview，见 [恢复预览契约](sync-application-restore-preview-runtime.md)，与实际恢复共用完整结构比较；预览不冻结目标，实际恢复仍独立核对。尚缺不同应用历史合并、旧版本升级、持久预览/原请求/恢复回执、数据库实例绑定、确认日志/派发日志备份、物理库备份、完整跨设备迁移或实际恢复证据。归档未包含的较新接收后缀只保留目标现有内容，不能凭空恢复。源码接入不等于 SQLite 原子性、重复恢复、崩溃/并发、故障诊断或 CLI 路由已经运行通过；R-005 继续未完成，evidence 为空。
+只读恢复预览已补 previewApplicationArchiveRestore/CLI application-restore-preview，见 [恢复预览契约](sync-application-restore-preview-runtime.md)，与实际恢复共用完整结构比较；预览不冻结目标，实际恢复仍独立核对。CLI 预览可显式保存带目标约束的 [原查询文件](sync-application-restore-request-runtime.md)，供 --json-file 使用，不自动恢复。尚缺不同应用历史合并、旧版本升级、完整预览报告/恢复结果归档和持久恢复回执、数据库实例绑定、确认日志/派发日志备份、物理库备份、完整跨设备迁移或实际恢复证据。归档未包含的较新接收后缀只保留目标现有内容，不能凭空恢复。源码接入不等于 SQLite 原子性、重复恢复、崩溃/并发、故障诊断或 CLI 路由已经运行通过；R-005 继续未完成，evidence 为空。

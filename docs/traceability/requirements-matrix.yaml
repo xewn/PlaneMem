@@ -978,6 +978,24 @@ requirements:
         - "CLI primary/embedded local routing, old output migration, read/rollback/close failures and complete result retention"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_application_restore_request_development_increment:
+      date: "2026-11-03"
+      status: "Source-only explicit persistence of a preview-bound restore query; R-005 remains incomplete."
+      artifacts:
+        - "apps/workctx-cli/src/inbox-application-restore-request.ts"
+        - "apps/workctx-cli/src/inbox-application-restore.ts"
+        - "apps/workctx-cli/src/inbox-application-archive.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "docs/design/01-contracts/sync-application-restore-request-runtime.md"
+      behavior: "Optional preview --output preflights a new path before opening the inbox, then saves only an allowed, strictly parsed restore query bound to original selection and observed_target after the read transaction ends and close is attempted. The compact 16 KiB UTF-8 file works directly with existing --json-file. Exclusive temporary write/sync/readback/hard-link publication is followed by bounded final byte/hash verification. Conflicts return not-created without file writes; save/readback failures retain request, paths, cleanup and close state. Post-save response-size failure preserves the confirmed saved state."
+      remaining_scope: "No automatic restore/retry, overwrite, new archive format, full preview/result archive, durable restore receipt, database-instance binding or runtime fault/cross-device evidence. File publication requires existing hard-link support and is outside the database deadline; saved bytes are not a restore receipt or source authentication."
+      pending_evidence:
+        - "Primary/embedded output routing, invalid/existing paths before database open, no output on conflicts and no output accepted by actual restore"
+        - "Exact bound query preservation, 16 KiB encoding, reuse via json-file and stale expected_target after file publication"
+        - "Temporary write/sync/readback/publication/final-read failures, concurrent destination creation, cleanup/close failures and retained published-unconfirmed paths"
+        - "Response limits before and after publication, confirmed file state despite oversized response and no database/network restore effects"
+      evidence: []
+      execution: "Source and documentation only; no builds, typechecks, tests, CLI/Bridge/reducer/API/service runs, sample request files, database opens, schema initialization, migrations or release. No new schema/dependencies; SQLite extensions and PostgreSQL 016-049 remain unexecuted. Task commits/pushes target main with skip-ci messages."
     sync_application_restore_target_development_increment:
       date: "2026-11-03"
       status: "Source-only binding of restore queries to complete observed target histories; R-005 remains incomplete."

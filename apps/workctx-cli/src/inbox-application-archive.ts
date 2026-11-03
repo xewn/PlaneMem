@@ -71,7 +71,12 @@ function argumentsFor(argv: string[], trace: string) {
       command === 'inbox application-restore' ||
       command === 'inbox application-restore-preview'
     ) {
-      if (!inbox || !file || output !== undefined || (json === undefined && jsonFile === undefined))
+      if (
+        !inbox ||
+        !file ||
+        (command === 'inbox application-restore' && output !== undefined) ||
+        (json === undefined && jsonFile === undefined)
+      )
         throw new TypeError();
     } else {
       if (
@@ -95,7 +100,7 @@ function argumentsFor(argv: string[], trace: string) {
   } catch {
     throw fail(
       'USAGE_ERROR',
-      'Use inbox application-export with --inbox, original application JSON and --output NEW_FILE; application-restore or application-restore-preview with --inbox, --archive-file and original identity/application/archive digest JSON; application-inspect with --archive-file and optional pagination JSON; application-archive-get with --archive-file and exact archive/page digest JSON. Use --json or --json-file; no stdin, repeated or other options',
+      'Use inbox application-export with --inbox, original application JSON and --output NEW_FILE; application-restore or application-restore-preview with --inbox, --archive-file and original identity/application/archive digest JSON (preview may save --output NEW_QUERY_FILE); application-inspect with --archive-file and optional pagination JSON; application-archive-get with --archive-file and exact archive/page digest JSON. Use --json or --json-file; no stdin, repeated or other options',
       trace,
     );
   }
@@ -156,7 +161,14 @@ export async function runInboxApplicationArchiveArguments(argv: string[], trace:
   if (args.command === 'inbox application-restore')
     return runInboxApplicationRestore(args.inbox!, args.file!, input, trace);
   if (args.command === 'inbox application-restore-preview')
-    return runInboxApplicationRestore(args.inbox!, args.file!, input, trace, 'preview');
+    return runInboxApplicationRestore(
+      args.inbox!,
+      args.file!,
+      input,
+      trace,
+      'preview',
+      args.output,
+    );
   if (args.file !== undefined) {
     const local = await readApplicationArchiveFile(args.file, trace);
     const selected =

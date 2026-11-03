@@ -1,6 +1,8 @@
 import { resolve } from 'node:path';
 import type { SqliteSyncInbox } from '@planemem/context-bridge';
 import { assertSyncCommandIdentity, ContractError, syncJsonSnapshot } from '@planemem/contracts';
+import { prepareArtifactOutput, type ArtifactOutput } from './artifact-output.js';
+import { saveInboxApplicationRestoreRequest } from './inbox-application-restore-request.js';
 import {
   applicationArchiveFailure as fail,
   readApplicationArchiveFile,
@@ -13,10 +15,13 @@ export async function runInboxApplicationRestore(
   input: unknown,
   trace: string,
   mode: 'restore' | 'preview' = 'restore',
+  outputPath?: string,
 ) {
   if (mode !== 'restore' && mode !== 'preview')
     throw fail('USAGE_ERROR', 'Select an explicit restore or preview operation', trace);
   const preview = mode === 'preview';
+  if (outputPath !== undefined && !preview)
+    throw fail('USAGE_ERROR', 'Only restore preview can save a new restore query file', trace);
   const incomplete = preview
     ? { preview_completed: false, local_write_state: 'not-performed' }
     : { restore_completed: false };
@@ -39,6 +44,25 @@ export async function runInboxApplicationRestore(
     timeout_ms: query.timeout_ms,
     ...(query.expected_target === undefined ? {} : { expected_target: query.expected_target }),
   };
+  let output: ArtifactOutput | undefined;
+  if (outputPath !== undefined) {
+    try {
+      output = await prepareArtifactOutput(outputPath, trace);
+    } catch {
+      throw fail(
+        'INBOX_APPLICATION_RESTORE_REQUEST_OUTPUT_UNAVAILABLE',
+        'Choose a new restore query file in an existing directory; existing files and links are never replaced',
+        trace,
+        {
+          ...selection,
+          ...incomplete,
+          output_path: outputPath,
+          source_archive_path: resolve(archivePath),
+          inbox: inboxPath,
+        },
+      );
+    }
+  }
   let local: Awaited<ReturnType<typeof readApplicationArchiveFile>>;
   try {
     local = await readApplicationArchiveFile(archivePath, trace);
@@ -178,5 +202,85 @@ export async function runInboxApplicationRestore(
       );
     }
   }
-  return response;
+  if (output === undefined) return response;
+  // The preview transaction has ended and closing was attempted before any request file is created.
+  if (!('restore_query' in result))
+    throw fail(
+      'INBOX_APPLICATION_RESTORE_REQUEST_INVALID',
+      'A completed restore preview is required',
+      trace,
+      {
+        ...source,
+        ...selection,
+        output_path: output.path,
+        local_state: 'not-saved',
+        local_write_state: 'not-performed',
+        inbox: inboxPath,
+        close_pending,
+      },
+    );
+  let requestFile:
+    | Awaited<ReturnType<typeof saveInboxApplicationRestoreRequest>>
+    | { state: 'not-created'; path: string; reason: 'restore-not-allowed' };
+  if (!result.restore_allowed) {
+    requestFile = { state: 'not-created', path: output.path, reason: 'restore-not-allowed' };
+  } else {
+    try {
+      const selected = bridge.parseInboxApplicationRestoreQuery(result.restore_query, trace);
+      const expected = { ...query, expected_target: result.observed_target };
+      if (
+        selected.expected_target === undefined ||
+        syncJsonSnapshot(selected, 16384) !== syncJsonSnapshot(expected, 16384)
+      )
+        throw new TypeError();
+      requestFile = await saveInboxApplicationRestoreRequest(
+        { ...selected, expected_target: selected.expected_target },
+        output,
+        trace,
+      );
+    } catch (error) {
+      throw fail(
+        error instanceof ContractError
+          ? error.envelope.code
+          : 'INBOX_APPLICATION_RESTORE_REQUEST_INVALID',
+        error instanceof ContractError
+          ? error.envelope.message
+          : 'The preview did not provide the exact original bound restore query',
+        trace,
+        {
+          ...(error instanceof ContractError ? error.envelope.details : {}),
+          ...source,
+          ...selection,
+          output_path: output.path,
+          restore_query: result.restore_query,
+          preview_completed: true,
+          local_write_state: 'not-performed',
+          inbox: inboxPath,
+          close_pending,
+        },
+      );
+    }
+  }
+  const completed = { ...response, data: { ...response.data, request_file: requestFile } };
+  try {
+    syncJsonSnapshot(completed, 512 * 1024);
+  } catch {
+    throw fail(
+      'INBOX_APPLICATION_RESTORE_PREVIEW_TOO_LARGE',
+      'The complete preview response exceeds 512 KiB; retain the reported request file state',
+      trace,
+      {
+        ...source,
+        ...selection,
+        request_file: requestFile,
+        restore_query: result.restore_query,
+        preview_completed: true,
+        response_completed: false,
+        local_write_state: 'not-performed',
+        inbox: inboxPath,
+        close_pending,
+      },
+    );
+  }
+  return completed;
 }

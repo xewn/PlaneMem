@@ -12,7 +12,7 @@ Bridge 新增 `previewApplicationArchiveRestore(archive,input,trace)`，CLI 主�
 workctx inbox application-restore-preview --inbox local-inbox.sqlite --archive-file application-history.json --json-file restore-query.json
 ```
 
---inbox/--archive-file 和 --json/--json-file 二选一必填；拒绝 stdin、output、重复/未知参数、令牌/写键/远端 timeout-ms。CLI 先解析 16 KiB 查询、有界读取稳定普通 UTF-8 文件、验证全部原页/投影/外层摘要及原身份/应用/归档摘要绑定，再以 create=false/readonly=true 打开已有库。core 和 application 扩展必须已完整启用；不创建、初始化或修复数据库。
+--inbox/--archive-file 和 --json/--json-file 二选一必填；可选 --output NEW_FILE 显式保存允许恢复的原查询，见 [原请求文件保存](sync-application-restore-request-runtime.md)；拒绝 stdin、重复/未知参数、令牌/写键/远端 timeout-ms。CLI 先解析 16 KiB 查询、有界读取稳定普通 UTF-8 文件、验证全部原页/投影/外层摘要及原身份/应用/归档摘要绑定，再以 create=false/readonly=true 打开已有库。core 和 application 扩展必须已完整启用；不创建、初始化或修复数据库。
 
 Bridge 直接调用同样在事务前独立核验并复制完整归档。随后在一个 BEGIN 只读事务中，完整审计目标应用历史和原消费者接收链，返回同一快照中的比较结果。只读回调不调用源页追加或应用写入方法，也不执行 reducer、发送确认、访问网络或自动恢复。
 
@@ -54,4 +54,4 @@ target_snapshot=current-read-transaction-only 和 restore_rechecks_target=true �
 
 查询、文件、绑定、schema、历史审计、源链/预算、期限和存储错误沿用对应类别。Bridge 比较失败保留原查询、preview_stage、preview_completed=false、local_write_state=not-performed，以及下层阶段/已审计位置/预算；不返回部分成功结果。CLI 对已取得的原文件补路径、字节数和文件摘要，并对已打开连接补 close_pending。关闭失败保留已完成的预览结果；读取事务回滚失败仍保留原 rollback_pending，不把未知连接状态当成已关闭。所有路径维持 acknowledgement_dispatch_state=not-sent。
 
-仍缺不同应用历史的合并/升级、持久化预览/原请求/恢复回执、数据库实例绑定、确认/派发日志备份、完整跨设备恢复及真实并发/崩溃证据。本次只开发和人工审阅源码，没有执行预览或恢复；R-005 继续未完成，evidence 为空。
+仍缺不同应用历史的合并/升级、完整预览报告归档/持久恢复回执、数据库实例绑定、确认/派发日志备份、完整跨设备恢复及真实并发/崩溃证据。本次只开发和人工审阅源码，没有执行预览或恢复；R-005 继续未完成，evidence 为空。
