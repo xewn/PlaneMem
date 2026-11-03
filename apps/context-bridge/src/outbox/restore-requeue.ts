@@ -1,9 +1,8 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { isDeepStrictEqual } from 'node:util';
-import { ContractError, isSyncIdentifier, syncJsonSnapshot } from '@planemem/contracts';
-import type { OutboxScope } from './sqlite.js';
+import { ContractError, syncJsonSnapshot } from '@planemem/contracts';
 import { OUTBOX_ARCHIVE_DOCUMENT_BYTES } from './archive.js';
-import { isOutboxSendControlGeneration, outboxStoredSendControl } from './control.js';
+import { outboxStoredSendControl } from './control.js';
 import {
   OUTBOX_STORED_COLUMNS,
   outboxReadProjection,
@@ -16,73 +15,33 @@ import {
   outboxRestoreBudget,
   outboxRestoreReceiptTable,
   outboxRestoreStoredRecord,
-  outboxRestoreRecordV1,
-  parseOutboxRestorePreparation,
 } from './restore.js';
+import {
+  outboxRequeueSelection,
+  outboxOriginalRequeueReceipt,
+  outboxRequeueReceiptCandidate,
+  createOutboxRequeueReceiptTable,
+  saveOutboxRequeueReceipt,
+  type OutboxRestoreRequeueReceipt,
+} from './restore-requeue-receipt.js';
 import {
   reconciliationTransaction,
   type ReconciliationTransactionState,
 } from './reconciliation.js';
 
-export interface OutboxRestoreRequeueQuery {
-  scope: OutboxScope;
-  restore_id: string;
-  archive_sha256: string;
-  expected_control_generation: string;
-  event_ids: string[];
-  reason: string;
-}
+export { parseOutboxRestoreRequeueQuery } from './restore-requeue-query.js';
+export type { OutboxRestoreRequeueQuery } from './restore-requeue-query.js';
+import {
+  parseOutboxRestoreRequeueQuery,
+  parseOutboxRestoreRequeueReceiptQuery,
+} from './restore-requeue-query.js';
 function fail(code: string, message: string, trace: string, details: Record<string, unknown> = {}) {
   return new ContractError(code, message, { trace_id: trace, retryable: false, details });
 }
-export function parseOutboxRestoreRequeueQuery(
-  input: unknown,
-  trace: string,
-): OutboxRestoreRequeueQuery {
-  try {
-    const value: unknown = JSON.parse(syncJsonSnapshot(input, 16384));
-    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError();
-    const row = value as Record<string, unknown>;
-    const fields = [
-      'scope',
-      'restore_id',
-      'archive_sha256',
-      'expected_control_generation',
-      'event_ids',
-      'reason',
-    ];
-    if (
-      Object.keys(row).length !== fields.length ||
-      Object.keys(row).some((key) => !fields.includes(key)) ||
-      typeof row.archive_sha256 !== 'string' ||
-      !/^[a-f0-9]{64}$/.test(row.archive_sha256) ||
-      !isOutboxSendControlGeneration(row.expected_control_generation) ||
-      !Array.isArray(row.event_ids) ||
-      row.event_ids.length < 1 ||
-      row.event_ids.length > 100 ||
-      !row.event_ids.every(isSyncIdentifier) ||
-      new Set(row.event_ids).size !== row.event_ids.length
-    )
-      throw new TypeError();
-    const original = parseOutboxRestorePreparation(
-      { scope: row.scope, restore_id: row.restore_id, reason: row.reason },
-      trace,
-    );
-    return {
-      scope: original.scope,
-      restore_id: original.restore_id,
-      archive_sha256: row.archive_sha256,
-      expected_control_generation: row.expected_control_generation,
-      event_ids: [...row.event_ids] as string[],
-      reason: original.reason,
-    };
-  } catch {
-    throw fail(
-      'OUTBOX_RESTORE_REQUEUE_QUERY_INVALID',
-      'Supply exact scope, restore_id, archive_sha256, paused generation, 1 to 100 unique event_ids and reason within 16 KiB',
-      trace,
-    );
-  }
+function unconfirmedReceipt(receipt: OutboxRestoreRequeueReceipt | null) {
+  return receipt === null
+    ? null
+    : { ...receipt, observation: 'unconfirmed-requeue-candidate' as const };
 }
 
 /** Both paths verify the complete original history and the selected baseline in their own transaction. */
@@ -103,6 +62,10 @@ export function requeueOutboxRestoreRecords(
   let stage = 'transaction';
   let selected_event_id: string | null = null;
   let candidate: ReturnType<typeof prepare>['summary'] | null = null;
+  let candidate_receipt: OutboxRestoreRequeueReceipt | null = null;
+  let historical_receipt: OutboxRestoreRequeueReceipt | null = null;
+  const receiptQuery =
+    query.requeue_id === undefined ? null : parseOutboxRestoreRequeueReceiptQuery(query, trace);
   const select = () =>
     db.prepare(`SELECT ${outboxReadProjection(true)} FROM main.local_events
     WHERE tenant_id = ? COLLATE BINARY AND workspace_id = ? COLLATE BINARY
@@ -149,44 +112,17 @@ export function requeueOutboxRestoreRecords(
     stage = 'control';
     const current_control = control();
     stage = 'selected-events';
-    const originals = new Map(stored.source.document.records.map((row) => [row.event_id, row]));
     const read = select();
-    const changes: {
-      event_id: string;
-      before: Record<string, unknown>;
-      after: Record<string, unknown>;
-    }[] = [];
+    const changes = outboxRequeueSelection(stored.source, query, trace, check, (id) => {
+      selected_event_id = id;
+    });
     const events: { event_id: string; previous_attempt: number; previous_next_retry_at: string }[] =
       [];
     let checked_bytes = 0;
     const now = Date.now();
-    for (const event_id of query.event_ids) {
+    for (const { event_id, before: baseline } of changes) {
       selected_event_id = event_id;
       check();
-      const original = originals.get(event_id);
-      if (!original)
-        throw fail(
-          'OUTBOX_RESTORE_EVENT_NOT_FOUND',
-          'A selected event is absent from the verified original archive',
-          trace,
-        );
-      if (original.status === 'sent' || original.status === 'conflict')
-        throw fail(
-          'OUTBOX_RESTORE_REQUEUE_TERMINAL',
-          'Historical terminal events cannot be requeued through restore review',
-          trace,
-        );
-      const baseline = outboxRestoreRecordV1(original);
-      if (
-        baseline.server_event_id !== null ||
-        baseline.server_cursor !== null ||
-        baseline.conflict_id !== null
-      )
-        throw fail(
-          'OUTBOX_RESTORE_REQUEUE_DELIVERY_EVIDENCE',
-          'The selected original contains delivery metadata; reconcile it explicitly before proceeding',
-          trace,
-        );
       const rows = read.all(...scopeArgs, event_id);
       if (rows.length !== 1)
         throw fail(
@@ -214,17 +150,6 @@ export function requeueOutboxRestoreRecords(
           'The complete selected records exceed 32 MiB',
           trace,
         );
-      changes.push({
-        event_id,
-        before: baseline,
-        after: {
-          ...baseline,
-          status: 'pending',
-          attempt: 0,
-          last_error: null,
-          next_retry_at: new Date(0).toISOString(),
-        },
-      });
       events.push({
         event_id,
         previous_attempt: baseline.attempt as number,
@@ -254,15 +179,52 @@ export function requeueOutboxRestoreRecords(
       automatic_send: false as const,
       control_changed: false as const,
       durable_requeue_receipt: false as const,
+      receipt_requested: receiptQuery !== null,
     };
     syncJsonSnapshot(summary, 128 * 1024);
-    return { summary, changes };
+    return { summary, changes, source: stored.source };
   }
   try {
     const run = () => {
+      stage = 'original-receipt';
+      const existing = receiptQuery
+        ? outboxOriginalRequeueReceipt(db, receiptQuery, trace, check)
+        : null;
+      historical_receipt = existing?.recorded ?? null;
+      if (historical_receipt) {
+        const result = {
+          scope: query.scope,
+          query,
+          mode: preview ? ('preview' as const) : ('requeue' as const),
+          action: 'already-requeued' as const,
+          local_commit: 'historically-confirmed' as const,
+          receipt: historical_receipt,
+          current_queue: 'not-checked' as const,
+          current_control: 'not-checked' as const,
+          server_delivery: 'not-checked' as const,
+          durable_requeue_receipt: true as const,
+          automatic_send: false as const,
+        };
+        syncJsonSnapshot(result, 128 * 1024);
+        check();
+        return result;
+      }
       const prepared = prepare();
       candidate = prepared.summary;
+      if (receiptQuery) {
+        stage = 'prepare-receipt';
+        candidate_receipt = outboxRequeueReceiptCandidate(
+          receiptQuery,
+          prepared.source,
+          prepared.summary.restore_receipt,
+          new Date().toISOString(),
+          trace,
+          trace,
+          check,
+        );
+      }
       if (!preview) {
+        if (receiptQuery && !existing?.present) createOutboxRequeueReceiptTable(db);
         stage = 'write';
         const read = select();
         const update = db.prepare(`UPDATE main.local_events SET status = 'pending', attempt = 0,
@@ -296,6 +258,11 @@ export function requeueOutboxRestoreRecords(
               trace,
             );
         }
+        if (candidate_receipt) {
+          stage = 'save-receipt';
+          saveOutboxRequeueReceipt(db, candidate_receipt, trace);
+        }
+        // Receipt insertion may fire triggers too; read all selected records after every write.
         stage = 'readback';
         for (const change of prepared.changes) {
           selected_event_id = change.event_id;
@@ -321,6 +288,16 @@ export function requeueOutboxRestoreRecords(
             'The original restore history changed during requeue',
             trace,
           );
+        if (receiptQuery) {
+          stage = 'receipt-readback';
+          const saved = outboxOriginalRequeueReceipt(db, receiptQuery, trace, check).recorded;
+          if (!saved || !isDeepStrictEqual(saved, candidate_receipt))
+            throw fail(
+              'OUTBOX_REQUEUE_RECEIPT_READBACK_FAILED',
+              'The complete requeue receipt did not read back exactly',
+              trace,
+            );
+        }
         stage = 'control-readback';
         if (!isDeepStrictEqual(control(), prepared.summary.current_control))
           throw fail(
@@ -339,6 +316,8 @@ export function requeueOutboxRestoreRecords(
           ? ('local-restore-requeue-preview' as const)
           : ('committed-local-restore-requeue' as const),
         future_execution: 'rechecks-required' as const,
+        durable_requeue_receipt: !preview && candidate_receipt !== null,
+        receipt: preview ? null : candidate_receipt,
       };
       syncJsonSnapshot(result, 128 * 1024);
       check();
@@ -358,8 +337,13 @@ export function requeueOutboxRestoreRecords(
         ...(error instanceof ContractError ? error.envelope.details : {}),
         query,
         stage,
-        selected_event_id,
+        selected_event_id:
+          selected_event_id ??
+          (error instanceof ContractError ? error.envelope.details?.selected_event_id : null) ??
+          null,
         candidate,
+        candidate_receipt: unconfirmedReceipt(candidate_receipt),
+        historical_receipt,
         mode: preview ? 'preview' : 'requeue',
         local_commit: preview ? 'not-attempted' : transaction.settlement,
         transaction: preview ? null : { phase: transaction.phase, rollback: transaction.rollback },

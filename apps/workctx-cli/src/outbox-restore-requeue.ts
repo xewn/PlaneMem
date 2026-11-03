@@ -4,7 +4,11 @@ import { ContractError, syncJsonSnapshot } from '@planemem/contracts';
 import { readBoundedArtifactFile } from './artifact-files.js';
 
 export function isOutboxRestoreRequeueCommand(command: string) {
-  return command === 'outbox restore-requeue' || command === 'outbox restore-requeue-preview';
+  return (
+    command === 'outbox restore-requeue' ||
+    command === 'outbox restore-requeue-preview' ||
+    command === 'outbox restore-requeue-receipt'
+  );
 }
 function fail(code: string, message: string, trace: string, details: Record<string, unknown> = {}) {
   return new ContractError(code, message, { trace_id: trace, retryable: false, details });
@@ -45,7 +49,7 @@ function argumentsFor(argv: string[], trace: string) {
   } catch {
     throw fail(
       'USAGE_ERROR',
-      'Use outbox restore-requeue or restore-requeue-preview --outbox EXISTING_FILE --json/--json-file QUERY. No extra/repeated options, positionals or stdin',
+      'Use outbox restore-requeue, restore-requeue-preview or restore-requeue-receipt --outbox EXISTING_FILE --json/--json-file QUERY. Receipt lookup requires the complete original query with requeue_id. No extra/repeated options, positionals or stdin',
       trace,
     );
   }
@@ -83,7 +87,9 @@ export async function runOutboxRestoreRequeueArguments(
 ) {
   const args = argumentsFor(argv, trace);
   const preview = args.command === 'outbox restore-requeue-preview';
-  const unopenedCommit = preview ? 'not-attempted' : 'not-committed';
+  const receipt = args.command === 'outbox restore-requeue-receipt';
+  const reading = preview || receipt;
+  const unopenedCommit = reading ? 'not-attempted' : 'not-committed';
   const scopeSnapshot = { ...configuredScope };
   const input = await inputFor(args, trace);
   let bridge: typeof import('@planemem/context-bridge');
@@ -98,7 +104,10 @@ export async function runOutboxRestoreRequeueArguments(
     );
   }
   const scope = bridge.parseOutboxReadScope(scopeSnapshot, trace);
-  const query = bridge.parseOutboxRestoreRequeueQuery(
+  const parseQuery = receipt
+    ? bridge.parseOutboxRestoreRequeueReceiptQuery
+    : bridge.parseOutboxRestoreRequeueQuery;
+  const query = parseQuery(
     { ...input, scope: Object.hasOwn(input, 'scope') ? input.scope : scope },
     trace,
   );
@@ -115,7 +124,7 @@ export async function runOutboxRestoreRequeueArguments(
     );
   let queue: InstanceType<typeof bridge.SqliteOutbox>;
   try {
-    queue = new bridge.SqliteOutbox(args.path, preview ? { readonly: true } : { existing: true });
+    queue = new bridge.SqliteOutbox(args.path, reading ? { readonly: true } : { existing: true });
   } catch (error) {
     throw fail(
       error instanceof ContractError ? error.envelope.code : 'OUTBOX_STORAGE_UNAVAILABLE',
@@ -132,9 +141,11 @@ export async function runOutboxRestoreRequeueArguments(
   }
   let data;
   try {
-    data = preview
-      ? queue.previewRestoreRequeue(query, trace)
-      : queue.requeueRestoredRecords(query, trace);
+    data = receipt
+      ? queue.readRestoreRequeueReceipt(query, trace)
+      : preview
+        ? queue.previewRestoreRequeue(query, trace)
+        : queue.requeueRestoredRecords(query, trace);
   } catch (error) {
     let close_pending = false;
     try {

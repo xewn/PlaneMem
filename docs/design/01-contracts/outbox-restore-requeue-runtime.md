@@ -11,7 +11,7 @@
 | `workctx outbox restore-requeue-preview --outbox EXISTING_FILE --json-file QUERY` | 原生只读打开已有队列并预览 |
 | `workctx outbox restore-requeue --outbox EXISTING_FILE --json-file QUERY` | 明确要求重新排队；保持暂停控制，不执行发送 |
 
-查询严格六字段：scope、restore_id、archive_sha256、expected_control_generation、event_ids、reason。使用既有项目/同步ID/小写64位SHA/UUIDv4 generation/原因规则；event_ids为1至100个不重复的原事件ID，保留调用方顺序，整份JSON最多16 KiB。不可省略事件列表或以通配符选中全部事件，不自动跳过终态、缺失或已变化事件。
+查询必需六字段：scope、restore_id、archive_sha256、expected_control_generation、event_ids、reason，可另加requeue_id启用[持久原回执](outbox-restore-requeue-receipt-runtime.md)。使用既有项目/同步ID/小写64位SHA/UUIDv4 generation/原因规则；event_ids为1至100个不重复的原事件ID，保留调用方顺序，整份JSON最多16 KiB。不可省略事件列表或以通配符选中全部事件，不自动跳过终态、缺失或已变化事件。
 
 CLI可省略scope，使用调用开始时复制的配置范围；显式scope必须匹配。必须提供已有--outbox文件及一种--json/--json-file；查询文件必须稳定普通UTF-8，可带BOM。拒绝额外/重复选项、额外位置参数、stdin、空路径及内存库。不接受外部档案、回执文件或output选项，不访问Gateway、令牌或当前远端身份。
 
@@ -44,8 +44,10 @@ archive_integrity=verified和comparison=exact-restored-baseline-columns仅证明
 
 Bridge失败保留query、stage、selected_event_id、原错误详情及已经完成的candidate计划。写事务阶段按not-started/begin/body/commit报告；正文失败并回滚成功为not-committed，COMMIT异常或回滚失败为unknown，不能凭随后回滚成功认定提交失败。预览错误始终local_commit=not-attempted，保留读事务回滚信息。CLI在成功/失败路径均尝试关闭并保留close_pending；完整输出超限也保留已知local_commit和result。
 
-本增量没有持久重新排队回执，durable_requeue_receipt=false；reason和本次计划只随结果返回，不存入原恢复回执。输出丢失或提交未知时，应保留原查询并重新查看当前行/控制；不能把再次调用的状态不符视为原提交成功证明。正常成功后同查询再次执行会因pending不再等于恢复基线而拒绝，不静默报告already-requeued，不自动重置重发。
+不带requeue_id的调用没有持久重新排队回执，durable_requeue_receipt=false；reason和本次计划只随结果返回，不存入原恢复回执。此类调用输出丢失或提交未知时，应保留原查询并重新查看当前行/控制；不能把再次调用的状态不符视为原提交成功证明。正常成功后相同六字段查询再次执行会因pending不再等于恢复基线而拒绝，不自动重置重发。带ID的新调用则先核对原持久回执，精确匹配只返回历史，见后续契约。
 
 固定90秒预算覆盖完整历史验证、目标检查、写入及读回，提交前再次检查，成功提交后不追加超时失败。同步SQL/JSON无法硬实时打断；CLI模块/文件I/O、打开/关闭不在该预算内。完整原历史遵守既有1000条/32 MiB档案限制；所选当前原记录的紧凑JSON合计最多32 MiB，逐条读取，不保留另一份全部当前正文。Bridge结果和完整CLI封套分别最多128 KiB。
 
 非空档案合并、旧发送者协调、远端核对后的自动激活、持久批次请求/结果凭据、通用任意队列批量重试及跨端运行证据仍缺。所有参数、原历史损坏、全列变化、投递元数据、暂停竞争、读回/提交未知及关闭失败场景均未运行验证。
+
+2026-11-03 后续增量：新增 [重新排队持久原回执](outbox-restore-requeue-receipt-runtime.md)，原查询可带requeue_id；原请求、完整父恢复回执及选中记录前后摘要与事件更新同事务保存。精确重复只返回历史，另有原查询只读回执入口；不带ID的旧调用保留原语义。可选表仅源码定义，未运行或初始化；现有事件/恢复历史备份不包含该表。

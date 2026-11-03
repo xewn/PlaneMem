@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [重新排队持久回执](docs/design/01-contracts/outbox-restore-requeue-receipt-runtime.md)：批量请求可带 `requeue_id`，与事件更新同事务保存原请求和结果摘要；完整相同请求只返回历史，不再次修改队列。新增 `outbox restore-requeue-receipt` 只读查询。仅源码文档，未编译、测试、运行、初始化表或发布。
+
 新增 [恢复事件批量重新排队](docs/design/01-contracts/outbox-restore-requeue-runtime.md)：可先预览，再显式把审阅过的恢复事件整批设为待发送。要求原档案摘要、暂停版本和全部原记录匹配，任一条变化则拒绝整批；保持项目暂停并完整读回后提交。仅源码文档，未编译、测试、运行或发布。
 
 新增 [发送队列恢复请求准备](docs/design/01-contracts/outbox-restore-prepare-runtime.md)：`outbox restore-prepare` 检查原档案、暂停目标和空队列，拒绝已占用恢复 ID，再把含档案摘要及当前暂停版本的完整新请求保存为文件；实际恢复仍重新检查。仅源码文档，未编译、测试、运行或发布。

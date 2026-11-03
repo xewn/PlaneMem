@@ -959,6 +959,26 @@ requirements:
         - "Offline routing without token/environment/SQLite, argument restrictions, output traces, provenance and exits"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, sample file generation, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_outbox_restore_requeue_receipt_development_increment:
+      date: "2026-11-03"
+      status: "Source-only optional atomic requeue receipts and exact original-query lookup; R-005 remains incomplete."
+      artifacts:
+        - "apps/context-bridge/src/outbox/restore-requeue-query.ts"
+        - "apps/context-bridge/src/outbox/restore-requeue-receipt.ts"
+        - "apps/context-bridge/src/outbox/restore-requeue.ts"
+        - "apps/context-bridge/src/outbox/sqlite.ts"
+        - "apps/workctx-cli/src/outbox-restore-requeue.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/outbox-restore-requeue-receipt-runtime.md"
+      behavior: "Optional requeue_id binds the entire canonical original query including event order/reason and paused generation. A lazily initialized receipt table stores query/parent restore receipt/normalized source/selected before-after digests and original time/trace in the same write transaction as event requeue. Shared immutable v1 selection verifies full original history and exact selected arrays when reading; missing or corrupt dependencies reject. Exact replay/preview returns historical receipt without touching current rows/control; changed query or cross-project ID rejects. Readonly original-query CLI lookup reports recorded/not-observed, preserving absent versus unknown outcomes. No-ID callers retain previous semantics."
+      evidence: []
+      pending_evidence:
+        - "Optional ID strictness, stable canonical fields/order, exact replay after later send/purge/control changes and global ID collision"
+        - "Atomic receipt/event writes, complete post-write readback including receipt triggers, missing schema without readonly initialization"
+        - "Parent history/query/selection/time/trace/digest corruption, missing dependencies, budget and response bounds, unknown commit and historical/candidate separation"
+      remaining_scope: "Original-query discovery, receipt catalog/file/backup, cross-device import and retention, provenance and runtime evidence remain pending. Existing event/restore-history backup formats do not include the new optional table."
+      execution: "Source/docs only; no builds, typechecks, tests, CLI/Bridge runs, database opens, schema initialization, samples, migrations or release. New optional table definition unexecuted; previous SQLite upgrades and PostgreSQL 016-049 unexecuted. No dependency changes."
     sync_outbox_restore_requeue_development_increment:
       date: "2026-11-03"
       status: "Source-only explicit restored-event batch requeue and read-only preview; R-005 remains incomplete."
