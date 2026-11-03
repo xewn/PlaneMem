@@ -14,15 +14,29 @@ item_id 是 `wcp_work_items.id`，不是 Plane external_id；允许非 ULID 标�
 
 ## 列表分页补充
 
-`POST /v1/workbench/query` 的 `operation=work_items` 现支持 query/status/cursor/limit。默认 25 条，每页 1–100 条；query 最多 500 字符，搜索 external_id/title/owner，空 query/status 表示不过滤。共享 `parseWorkItemListQuery` 拒绝未知字段、非法状态和游标；SDK/CLI/Web 使用同一规范化逻辑。
+`POST /v1/workbench/query` 的 `operation=work_items` 现支持 query/status/priority/owner/cursor/limit。默认 25 条，每页 1–100 条；query 最多 500 字符，搜索 external_id/title/owner，空 query/status/priority/owner 表示不过滤。共享 `parseWorkItemListQuery` 拒绝未知字段、非法状态、优先级、负责人和游标；SDK/CLI/Web 使用同一规范化逻辑。
 
-响应 data 仍是数组，条目增加 created_at 并与详情使用相同字段验证。存在后续数据时在外层返回 next_cursor；调用方把它作为下一次 cursor，并保留查询和状态条件。没有 next_cursor 即当前读取结束，不能把单页条数当项目总数。SDK `listWorkItemProjections`、CLI `work-items list`、MCP `list_work_item_projections` 均接入；客户端验证页大小、重复 ID、所选状态和游标形状。
+响应 data 仍是数组，条目增加 created_at 并与详情使用相同字段验证。存在后续数据时在外层返回 next_cursor；调用方把它作为下一次 cursor，并保留查询、状态、优先级和负责人条件。没有 next_cursor 即当前读取结束，不能把单页条数当项目总数。SDK `listWorkItemProjections`、CLI `work-items list`、MCP `list_work_item_projections` 均接入；共享响应解析验证页大小、重复 ID、所选状态/优先级/负责人和游标形状。
 
 按 updated_at 降序、id 升序读取 limit+1 条，游标保留数据库微秒时间，并绑定租户、工作区、项目、restricted 可读权限和规范化筛选。跨范围或换筛选使用旧游标返回 INVALID_INPUT，必须回到第一页；limit 可调整。游标是位置描述，不是授权凭据，每页均重新检查范围和可见性。此分页不是快照：并发更新、删除或权限变化可能使记录移动或当前页为空。
 
 工作台看板/列表标注“当前页”，选中任务和视图切换保留当前位置；翻页清除当前选择，筛选提交从第一页开始。错误页提供重新浏览入口。概览工作项总数、各状态和完成比例使用 overview 汇总，不再按预览页计算；预览最多五项，明确标注最近更新。后续上下文统计、有限预览和页面说明见 [项目概览读取](workbench-overview-runtime.md)。
 
 新增 `030_work_item_pagination.sql` 为有/无状态筛选提供活动记录分页索引，仅新增文件，未执行。未编译、类型检查、测试、启动服务或发布。
+
+### 优先级与负责人筛选（2026-11-04，仅源码）
+
+priority 只接受 `P0/P1/P2/P3`，大小写精确。owner 是本地投影中保存的负责人文本，最多 255 个 JavaScript 字符单位，不是令牌 actor_id 或账号目录查询；空字符串表示不过滤，纯空白、控制字符、DEL、孤立代理字符、数组、null 和超长文本拒绝。非空 owner 保留原文，首尾空格、大小写、Unicode 组合形式均不归一化。使用参数化 `COLLATE "C"` 相等条件，`%`、`_`、引号等是普通文本，没有通配或 SQL 含义。空负责人暂不支持专门筛选。
+
+所有筛选以 AND 组合，在权限过滤后的数据库查询中、LIMIT 和前瞻之前生效。返回的整页再复用共享解析逐项匹配；出现错状态、错优先级或错负责人时整页返回 `WORK_ITEM_PROJECTION_INVALID`，不在客户端静默删项。SDK、网络 CLI、Web 本身也使用共享结果解析；嵌入 CLI/MCP 接收 Gateway 已校验结果。不新增路由、写入、来源检查或权限承诺。
+
+新增筛选非空时，查询摘要使用 `work-item-list-v2` 并包含原 query/status、priority 和完整 owner。没有非空新增筛选时保持原 `work-item-list-v1` 摘要，旧无新增筛选的游标仍可继续；游标外层编码版本、时间精度和位置结构保持。增加、移除或改变任一非空新筛选均不能沿用旧游标；错误提示从第一页重启。limit 仍可调整，不纳入该目录绑定，与原接口一致。
+
+网页新增优先级下拉框、负责人精确输入及匹配说明。首次/下一页、任务选择和看板/列表切换均保留筛选，提交或清空筛选会丢弃旧 cursor 和选择；清空保留当前视图。仅按新字段筛选时也显示“清空筛选”和匹配为空提示。重复/未知 URL 参数和未知视图拒绝，不能通过数组隐式选择另一种筛选。输入使用已有可换行筛选布局。
+
+开发调用形状（未执行）：SDK `listWorkItemProjections({status:'blocked',priority:'P0',owner:'Alice'})`；CLI `workctx work-items list --json-file filters.json`，原文件内容 `{"priority":"P0","owner":"Alice"}`；MCP `list_work_item_projections` 使用相同字段。续读时保留这些字段并带回 next_cursor。
+
+本次只修改源码和文档，没有编译、类型检查、测试、调用 API/CLI/MCP、浏览器检查、数据库访问或发布。没有新增索引/迁移/依赖，原 030 等迁移状态保持未执行。组合筛选在真实数据规模下的性能、大小写/空格/Unicode 边界、旧游标兼容、客户端与网页导航均待运行证据，不宣称已验证。
 
 ## 单条入口与边界
 

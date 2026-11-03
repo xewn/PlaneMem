@@ -3,6 +3,7 @@ import {
   isSyncIdentifier,
   validateIdempotencyKey,
   WORK_ITEM_STATUSES,
+  WORK_ITEM_PRIORITIES,
   SESSION_REGISTRY_STATUSES,
 } from '@planemem/contracts';
 import type { HttpRequest } from '../http.js';
@@ -690,13 +691,21 @@ const definitions: ToolDefinition[] = [
   ),
   tool(
     'list_work_item_projections',
-    'List visible saved work item projections, newest updates first. Pass next_cursor as cursor with the same filters to continue. Counts describe only this page.',
+    'List visible saved work item projections, newest updates first. Filter by status, priority or exact stored owner text (case-sensitive); query searches ID/title/owner. Pass next_cursor as cursor with the same filters to continue. Counts describe only this page.',
     ['context.read'],
     'POST',
     '/v1/workbench/query',
     {
       query: { type: 'string', maxLength: 500 },
       status: { type: 'string', enum: [...WORK_ITEM_STATUSES] },
+      priority: { type: 'string', enum: [...WORK_ITEM_PRIORITIES] },
+      owner: {
+        type: 'string',
+        minLength: 1,
+        maxLength: 255,
+        description:
+          'Exact stored owner text; case and surrounding spaces are significant. Omit for all owners.',
+      },
       cursor: { type: 'string', minLength: 1, maxLength: 2048, pattern: '^[A-Za-z0-9_-]+$' },
       limit: { type: 'integer', minimum: 1, maximum: 100, default: 25 },
     },

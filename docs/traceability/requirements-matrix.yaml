@@ -35,6 +35,28 @@ requirements:
     design: ["plane-connector", "authority-boundary"]
     subprojects: ["P1"]
     tests: ["integration.plane_api", "integration.plane_webhook", "integration.permission_propagation"]
+    work_item_filter_development_increment:
+      date: "2026-11-04"
+      status: "Source-only priority and exact-owner filters on local projections; no authority or runtime completion claim."
+      artifacts:
+        - "packages/contracts/src/work-item-projection.ts"
+        - "apps/api-gateway/src/workbench/repository.ts"
+        - "apps/api-gateway/src/workbench/work-item-pagination.ts"
+        - "apps/api-gateway/src/mcp/catalog.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/remote.ts"
+        - "apps/web-console/src/app/work-items/page.tsx"
+        - "apps/web-console/src/styles.css"
+        - "docs/design/01-contracts/work-item-projection-runtime.md"
+      behavior: "Optional P0-P3 priority and literal stored owner filters combine with existing search/status before pagination. Owner is case/space-sensitive with C equality, not an inferred account. Shared response validation rejects a whole mismatched page. Extended query digests bind new nonempty filters while retaining old keys when absent. Web navigation preserves filters and filter changes restart paging; SDK and CLI reuse shared parsers."
+      evidence: []
+      pending_evidence:
+        - "Combined filtering before limit, restricted/project visibility, response mismatch rejection and real data-scale performance"
+        - "Exact owner case/space/Unicode and wildcard literals, invalid/empty inputs and priority bounds"
+        - "Old unfiltered cursors, extended bindings, changed-filter rejection and adjustable page size"
+        - "REST/SDK/CLI/MCP parity, browser duplicate parameters, navigation, view selection and empty states"
+      remaining_scope: "No new Plane write path, source freshness verification, dedicated unassigned-owner filter or runtime evidence."
+      execution: "Source/docs only; no build, typecheck, tests, product/browser/API execution, database access, migration or release. No dependency/schema change."
     rest_transport_development_increment:
       date: "2026-11-02"
       status: "source-only; no build, typecheck, tests, network requests or runtime validation"

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import {
   ContractError,
+  parseWorkItemListQuery,
   parseWorkItemProjectionQuery,
   type WorkItemListQuery,
 } from '@planemem/contracts';
@@ -12,16 +13,20 @@ interface WorkItemPosition {
 }
 
 export function workItemQueryKey(scope: WorkbenchScope, query: WorkItemListQuery): string {
+  const filters = parseWorkItemListQuery(query);
+  const extended = filters.priority !== undefined || filters.owner !== undefined;
   return createHash('sha256')
     .update(
       JSON.stringify([
-        'work-item-list-v1',
+        extended ? 'work-item-list-v2' : 'work-item-list-v1',
         scope.tenant_id,
         scope.workspace_id,
         scope.project_id,
         scope.read_restricted === true,
-        query.query ?? '',
-        query.status ?? '',
+        filters.query ?? '',
+        filters.status ?? '',
+        // Keep the original v1 key for queries without the new filters.
+        ...(extended ? [filters.priority ?? '', filters.owner ?? ''] : []),
       ]),
     )
     .digest('hex');

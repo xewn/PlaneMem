@@ -6,6 +6,8 @@
 
 ### 2026-11-04 开发补充（未编译、未发布、未测试）
 
+- P4/P5：工作项目录新增 priority=P0..P3 与 owner 精确保存文本筛选，契约/数据库/MCP/CLI 帮助/网页同步接入，SDK 与网络 CLI/Web 复用共享输入及整页结果匹配。owner 区分大小写/空格、不推断账号；参数化 C 相等过滤在分页前生效。新增字段纳入扩展查询摘要，无新筛选时保持旧 v1 游标；网页分页/视图/选择保留筛选，提交与清空回首页。无写入、依赖或 schema/迁移变化，仅源码文档，未编译、类型检查、测试、执行产品/API/CLI/MCP/浏览器、打开库或发布。真实性能/边界/客户端兼容与 UI 运行证据仍缺，按任务提交 push main 带 [skip ci]。
+
 - P0-02：新增 MockSyncStore 与固定模拟会话，MockWcpServer 可配置同步身份、changes、cursor、ack 四个路由。完整有界事件流、显式可见集合先过滤后分页，末页保留高水位；缺省读取原消费者确认，确认按五字段身份隔离、允许重复、拒绝回退/超前。复用完整共享契约、独立副本、trace/来源及响应大小/取消检查；身份来自开发配置，不从预期身份头授权。原项目 Mock 保持，上传/冲突/其他公开路由与真实 Policy/持久化/网络未知结果仍未覆盖，P0-02 不勾选。无依赖/schema/Gateway 变化，仅源码文档，未编译、类型检查、测试、执行 Mock/产品、打开库、生成样本或发布；按任务提交 push main 带 [skip ci]。
 
 - P3/P4：新增共享parseClientEventSyncChange和client-event-history/1固定适配器，保存ClientEventRecorded完整content/来源及原账号、客户端、事件ID；核对规范封套、身份/来源尾项绑定，字段建议保留扩展content并验证字段/base/observed版本。投影按原身份三元组排序去重，最多512条/1 MiB，拒绝重复ID/cursor、回退和未知外层类型；接入现有apply/preview/pending/replay与通用历史归档。明确接收不等于源字段生效，不重建缺失原client_cursor/批次键/分类、不结算队列。无schema/依赖/Gateway格式变化，仅源码文档，未编译、类型检查、测试、执行reducer/产品、打开库、生成样本或发布；源实体完整同步、其他业务适配/容量管理及运行证据仍缺，按任务提交push main带[skip ci]。

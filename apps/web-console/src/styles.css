@@ -992,6 +992,7 @@ button {
   width: 16px;
 }
 .work-item-filters input[type='search'],
+.work-item-filters input[name='owner'],
 .global-search input[type='search'] {
   min-width: 0;
   flex: 1;

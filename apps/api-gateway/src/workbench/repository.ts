@@ -34,6 +34,8 @@ import {
   CHECKPOINT_REGISTRY_SUMMARY_BYTES,
   type CheckpointRegistryQuery,
   parseWorkItemProjection,
+  parseWorkItemListQuery,
+  parseWorkItemProjectionList,
   type WorkItemProjection,
   type WorkItemListQuery,
   type ContextItemListQuery,
@@ -190,6 +192,11 @@ export class WorkbenchRepository {
     trace_id: string,
     query: WorkItemListQuery = {},
   ): Promise<WorkbenchEnvelope<WorkItemProjection[]> & { next_cursor?: string }> {
+    try {
+      query = parseWorkItemListQuery(query);
+    } catch {
+      throw new ContractError('INVALID_INPUT', 'Invalid work item list query', { trace_id });
+    }
     this.ensureDb(trace_id);
     const limit = query.limit ?? 25;
     const queryKey = workItemQueryKey(scope, query);
@@ -198,6 +205,9 @@ export class WorkbenchRepository {
     const filters: string[] = [readableProject(scope, 'w')];
     if (!scope.read_restricted) filters.push("w.classification <> 'restricted'");
     if (query.status) filters.push(`w.status = $${params.push(query.status)}`);
+    if (query.priority) filters.push(`w.priority = $${params.push(query.priority)}`);
+    if (query.owner !== undefined)
+      filters.push(`w.owner COLLATE "C" = $${params.push(query.owner)}::text COLLATE "C"`);
     if (query.query) {
       const position = params.push(query.query);
       filters.push(
@@ -229,13 +239,27 @@ export class WorkbenchRepository {
       rows.length > limit && last
         ? encodeWorkItemCursor({ updated: last.page_updated, id: last.id }, queryKey)
         : undefined;
-    return {
-      schema_version: 1,
-      data: page.map((row) => this.workItem(row, row.id, trace_id)),
-      trace_id,
-      source_refs: source('wcp_work_items'),
-      ...(next_cursor === undefined ? {} : { next_cursor }),
-    };
+    try {
+      const result = parseWorkItemProjectionList(
+        {
+          data: page.map((row) => this.workItem(row, row.id, trace_id)),
+          ...(next_cursor === undefined ? {} : { next_cursor }),
+        },
+        query,
+      );
+      return {
+        schema_version: 1,
+        ...result,
+        trace_id,
+        source_refs: source('wcp_work_items'),
+      };
+    } catch {
+      throw new ContractError(
+        'WORK_ITEM_PROJECTION_INVALID',
+        'Stored work item page does not match its filters',
+        { trace_id },
+      );
+    }
   }
 
   async getWorkItem(

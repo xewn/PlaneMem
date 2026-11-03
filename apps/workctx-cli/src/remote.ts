@@ -656,7 +656,7 @@ export async function callGateway(
           : command === 'work-items get'
             ? ['item_id']
             : command === 'work-items list'
-              ? ['query', 'status', 'cursor', 'limit']
+              ? ['query', 'status', 'priority', 'owner', 'cursor', 'limit']
               : [];
     if (Object.keys(input).some((field) => !allowed.includes(field)))
       usage(command + ' accepts ' + (allowed.join(', ') || 'no JSON fields'));

@@ -9,9 +9,14 @@ export const WORK_ITEM_STATUSES = [
   'cancelled',
 ] as const;
 
+export const WORK_ITEM_PRIORITIES = ['P0', 'P1', 'P2', 'P3'] as const;
+
 export interface WorkItemListQuery {
   query?: string;
   status?: WorkItemProjection['status'];
+  priority?: WorkItemProjection['priority'];
+  /** Exact stored owner text; no case folding, trimming or account-ID inference. */
+  owner?: string;
   cursor?: string;
   limit?: number;
 }
@@ -20,7 +25,11 @@ export function parseWorkItemListQuery(value: unknown): WorkItemListQuery {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new TypeError('Expected a work item list query');
   const input = value as Record<string, unknown>;
-  if (Object.keys(input).some((key) => !['query', 'status', 'cursor', 'limit'].includes(key)))
+  if (
+    Object.keys(input).some(
+      (key) => !['query', 'status', 'priority', 'owner', 'cursor', 'limit'].includes(key),
+    )
+  )
     throw new TypeError('Unknown work item list query field');
   const query: WorkItemListQuery = {};
   if (input.query !== undefined) {
@@ -36,6 +45,21 @@ export function parseWorkItemListQuery(value: unknown): WorkItemListQuery {
     if (!WORK_ITEM_STATUSES.includes(input.status as WorkItemProjection['status']))
       throw new TypeError('Invalid work item status');
     query.status = input.status as WorkItemProjection['status'];
+  }
+  if (input.priority !== undefined && input.priority !== '') {
+    if (!WORK_ITEM_PRIORITIES.includes(input.priority as WorkItemProjection['priority']))
+      throw new TypeError('Invalid work item priority');
+    query.priority = input.priority as WorkItemProjection['priority'];
+  }
+  if (input.owner !== undefined && input.owner !== '') {
+    if (
+      typeof input.owner !== 'string' ||
+      !input.owner.trim() ||
+      input.owner.length > 255 ||
+      /[\u0000-\u001f\u007f\p{Cs}]/u.test(input.owner)
+    )
+      throw new TypeError('owner must be exact non-blank text of at most 255 characters');
+    query.owner = input.owner;
   }
   if (input.cursor !== undefined) {
     if (typeof input.cursor !== 'string' || !/^[A-Za-z0-9_-]{1,2048}$/.test(input.cursor))
@@ -78,6 +102,10 @@ export function parseWorkItemProjectionList(
     const item = parseWorkItemProjection(value, id);
     if (query.status && item.status !== query.status)
       throw new TypeError('Work item does not match status');
+    if (query.priority && item.priority !== query.priority)
+      throw new TypeError('Work item does not match priority');
+    if (query.owner !== undefined && item.owner !== query.owner)
+      throw new TypeError('Work item does not match owner');
     return item;
   });
   if (page.next_cursor === undefined) return { data };
@@ -97,7 +125,7 @@ export interface WorkItemProjection {
   external_id: string;
   title: string;
   status: 'todo' | 'in_progress' | 'in_review' | 'blocked' | 'done' | 'cancelled';
-  priority: 'P0' | 'P1' | 'P2' | 'P3';
+  priority: (typeof WORK_ITEM_PRIORITIES)[number];
   owner: string;
   progress: number;
   description: string;
@@ -138,7 +166,7 @@ export function parseWorkItemProjection(value: unknown, itemId: string): WorkIte
     !['todo', 'in_progress', 'in_review', 'blocked', 'done', 'cancelled'].includes(
       item.status as string,
     ) ||
-    !['P0', 'P1', 'P2', 'P3'].includes(item.priority as string) ||
+    !WORK_ITEM_PRIORITIES.includes(item.priority as WorkItemProjection['priority']) ||
     !['public', 'internal', 'confidential', 'restricted'].includes(item.classification as string) ||
     typeof item.progress !== 'number' ||
     !Number.isInteger(item.progress) ||

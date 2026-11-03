@@ -50,7 +50,7 @@ Plane Webhook 开发补充：`POST /v1/plane/webhook` 已改为持久接收并�
 
 `operation=overview` 已提供同语句项目汇总、上下文分层统计与有限预览，拒绝多余字段；不可见项目返回 404，不能用全零响应表示缺失。SDK/CLI/MCP/Web 入口与口径见 [项目概览读取](workbench-overview-runtime.md)。本批无新增迁移、未运行验证。
 
-工作项列表 `operation=work_items` 已改为默认 25、最多 100 条的游标分页，query/status/cursor/limit 之外字段会被拒绝；响应外层 next_cursor 用于继续。列表不再表示全量工作项，详见 [工作项投影读取](work-item-projection-runtime.md)。030 分页索引仅写入迁移文件。
+工作项列表 `operation=work_items` 已改为默认 25、最多 100 条的游标分页，允许 query/status/priority/owner/cursor/limit；priority=P0..P3，owner 为精确保存文本，区分大小写及空格。其他字段拒绝，响应外层 next_cursor 用于继续且必须保持筛选；无新增筛选时兼容旧游标，添加或改变筛选须回首页。列表不再表示全量工作项，详见 [工作项投影读取](work-item-projection-runtime.md)。030 分页索引仅写入迁移文件，本次未新增/执行迁移、编译或测试。
 
 ```http
 Authorization: Bearer <token>

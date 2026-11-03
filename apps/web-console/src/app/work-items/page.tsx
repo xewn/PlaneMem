@@ -1,5 +1,9 @@
 import Link from 'next/link';
-import { parseWorkItemListQuery, type WorkItemProjection } from '@planemem/contracts';
+import {
+  WORK_ITEM_PRIORITIES,
+  parseWorkItemListQuery,
+  type WorkItemProjection,
+} from '@planemem/contracts';
 import { Icon } from '../../components/icons';
 import { PageError, numberValue, textValue, toneFor } from '../../components/page-state';
 import { Badge, Panel, Progress } from '../../components/ui';
@@ -24,14 +28,27 @@ export default async function WorkItemsPage({
 }) {
   try {
     const params = await searchParams;
+    if (
+      Object.keys(params).some(
+        (key) => !['q', 'status', 'priority', 'owner', 'cursor', 'view', 'item'].includes(key),
+      ) ||
+      Object.values(params).some((value) => Array.isArray(value)) ||
+      (params.view !== undefined && params.view !== 'board' && params.view !== 'list')
+    )
+      throw new Error('Use one value per work item filter and select the board or list view.');
     const filters = parseWorkItemListQuery({
       query: params.q ?? '',
       status: params.status ?? '',
+      priority: params.priority ?? '',
+      owner: params.owner ?? '',
       limit: 25,
       ...(params.cursor === undefined ? {} : { cursor: params.cursor }),
     });
     const query = filters.query ?? '';
     const status = filters.status ?? '';
+    const priority = filters.priority ?? '';
+    const owner = filters.owner ?? '';
+    const hasFilters = Boolean(query || status || priority || owner);
     const cursor = filters.cursor;
     const list = params.view === 'list';
     const response = await listWorkbenchWorkItems(filters);
@@ -53,6 +70,8 @@ export default async function WorkItemsPage({
       const search = new URLSearchParams();
       if (query) search.set('q', query);
       if (status) search.set('status', status);
+      if (priority) search.set('priority', priority);
+      if (owner) search.set('owner', owner);
       if (view === 'list') search.set('view', view);
       if (pageCursor) search.set('cursor', pageCursor);
       if (item) search.set('item', String(item.id));
@@ -81,7 +100,7 @@ export default async function WorkItemsPage({
           className="filters work-item-filters"
           action="/work-items"
           method="get"
-          key={JSON.stringify([query, status])}
+          key={JSON.stringify([query, status, priority, owner])}
         >
           {list && <input type="hidden" name="view" value="list" />}
           <label className="filter-input">
@@ -108,10 +127,34 @@ export default async function WorkItemsPage({
               </option>
             ))}
           </select>
+          <select
+            className="filter-chip"
+            name="priority"
+            aria-label="Work item priority"
+            defaultValue={priority}
+          >
+            <option value="">All priorities</option>
+            {WORK_ITEM_PRIORITIES.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
+          <label className="filter-input">
+            <input
+              type="text"
+              name="owner"
+              defaultValue={owner}
+              aria-label="Exact owner, case-sensitive"
+              placeholder="Exact owner"
+              maxLength={255}
+              aria-describedby="work-item-owner-hint"
+            />
+          </label>
           <button className="secondary-button" type="submit">
             Apply filters
           </button>
-          {(query || status) && (
+          {hasFilters && (
             <Link className="panel-link" href={list ? '/work-items?view=list' : '/work-items'}>
               Clear filters
             </Link>
@@ -133,6 +176,10 @@ export default async function WorkItemsPage({
             </Link>
           </div>
         </form>
+        <p className="muted" id="work-item-owner-hint">
+          Owner matches the saved name exactly, including case and spaces. Leave it blank for all
+          owners.
+        </p>
         <nav className="heading-actions" aria-label="Work item pages">
           <span className="muted">
             Newest updates first · Up to 25 per page. Column counts are for this page.
@@ -163,11 +210,11 @@ export default async function WorkItemsPage({
                 <h3>
                   {cursor
                     ? 'No more work items on this page'
-                    : query || status
+                    : hasFilters
                       ? 'No matching work items'
                       : 'No work items in this project'}
                 </h3>
-                {query || status ? <p>Change or clear the filters to see more items.</p> : null}
+                {hasFilters ? <p>Change or clear the filters to see more items.</p> : null}
               </div>
             ) : list ? (
               <div className="table-wrap">
