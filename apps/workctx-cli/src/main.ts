@@ -89,6 +89,7 @@ import {
 import { callConflictSubmission } from './conflict-submission.js';
 import { callConflictPreparation } from './conflict-preparation.js';
 import { callConflictReceiptArguments } from './conflict-receipt.js';
+import { callProposalCreateReceiptArguments } from './proposal-create-receipt.js';
 
 const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
 
@@ -312,6 +313,7 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   index delete                   Soft-delete manual index: id/expected_revision/reason and --key
   index restore                  Restore manual index without extending expiry; same fields and --key
   proposals create               Submit a sourced proposal with --key
+  proposals receipt              Read original creation using --json-file or --json; optional --timeout-ms, no --key
   proposals list                 List proposals; optional status/kind/before/limit
   proposals get                  Read proposal_id with provenance and source freshness
   proposals confirm              Human review: proposal_id/expected_revision/reason and --key
@@ -601,6 +603,7 @@ export async function main(args: string[]): Promise<number> {
       'context history',
       'context version',
       'proposals create',
+      'proposals receipt',
       'proposals list',
       'proposals get',
       'proposals confirm',
@@ -913,9 +916,13 @@ export async function main(args: string[]): Promise<number> {
       );
       return 0;
     }
-    if (name === 'sync receipt') {
+    if (name === 'sync receipt' || name === 'proposals receipt') {
+      const call =
+        name === 'sync receipt'
+          ? callSyncEventReceiptArguments
+          : callProposalCreateReceiptArguments;
       print(
-        await callSyncEventReceiptArguments(args, {
+        await call(args, {
           base: process.env.WORKCTX_URL ?? 'http://127.0.0.1:3000',
           token: token(),
           trace,

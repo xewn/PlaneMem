@@ -3452,6 +3452,27 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_create_receipt_clients_development_increment:
+      date: "2026-11-04"
+      status: "Source-only CLI and MCP original proposal creation receipt adapters; R-009 remains incomplete."
+      artifacts:
+        - "apps/workctx-cli/src/proposal-create-receipt.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "apps/workctx-cli/src/remote.ts"
+        - "apps/api-gateway/src/mcp/proposal-create-receipt.ts"
+        - "apps/api-gateway/src/mcp/catalog.ts"
+        - "apps/api-gateway/src/mcp/protocol.ts"
+        - "apps/api-gateway/src/server.ts"
+        - "docs/design/01-contracts/proposal-runtime.md"
+      behavior: "CLI accepts a complete original identity/key/normalized-draft query from bounded inline JSON or a stable regular file and uses the SDK for network or verified embedded reads. MCP discovery/calls require an unexpired verified writer/admin, validate complete response envelopes and keep two preparation slots until underlying reads settle, including after the local deadline. HTTP expansion is restricted to the matching authorized tool. No creation, review, retry, key replacement or local persistence."
+      evidence: []
+      pending_evidence:
+        - "CLI repeated/unknown options, file changes/limits, original scope and identity mismatch, timeout and unchanged originals"
+        - "MCP discovery/call parity, expired credentials, final-name HTTP limits and Artifact reservation coexistence"
+        - "Complete response/error bounds, trace/query mismatches, not-observed semantics and capacity after timeout"
+      remaining_scope: "Mock adapter, worker reconciliation, caller original preparation/persistence, historical receipt backup and runtime evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/MCP/API/browser/database execution or release. No schema, migration or dependency changes."
     proposal_create_receipt_development_increment:
       date: "2026-11-04"
       status: "Source-only original creation receipt query across Gateway, SDK and Web; R-009 remains incomplete."

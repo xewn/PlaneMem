@@ -82,6 +82,7 @@ import {
 } from './mcp/artifact-upload.js';
 import { MCP_JSON_BODY_BYTES, readMcpJson } from './mcp/body.js';
 import { MCP_SYNC_HTTP_BYTES } from './mcp/sync-reads.js';
+import { MCP_PROPOSAL_RECEIPT_HTTP_BYTES } from './mcp/proposal-create-receipt.js';
 import { dispatchMcp, rpcError, MCP_PROTOCOL_VERSIONS } from './mcp/protocol.js';
 import { registerMcpReads, resourceKey, type RuntimeResource } from './mcp/reads.js';
 import { registerContextPacks, withSavedContextPack } from './context-packs.js';
@@ -2945,6 +2946,7 @@ async function handleMcpRequest(
   let body: RuntimeBody;
   try {
     const syncWriter = canReadSyncCommandContext(context);
+    const proposalWriter = canReadProposalCreateReceipt(context);
     const reserveUpload = () => {
       if (!canUploadArtifactTool(context))
         throw new ContractError(
@@ -2962,7 +2964,11 @@ async function handleMcpRequest(
     };
     const parsed = await readMcpJson(
       request,
-      syncWriter ? MCP_SYNC_HTTP_BYTES : MCP_JSON_BODY_BYTES,
+      Math.max(
+        MCP_JSON_BODY_BYTES,
+        syncWriter ? MCP_SYNC_HTTP_BYTES : 0,
+        proposalWriter ? MCP_PROPOSAL_RECEIPT_HTTP_BYTES : 0,
+      ),
       traceId,
       canUploadArtifactTool(context)
         ? {
@@ -2979,13 +2985,18 @@ async function handleMcpRequest(
       (params.name === 'get_sync_event_receipt' || params.name === 'upload_events') &&
       canReadSyncCommandContext(context) &&
       parsed.bytes <= MCP_SYNC_HTTP_BYTES;
-    if (parsed.bytes > MCP_JSON_BODY_BYTES && !uploading && !originalSync)
+    const originalProposal =
+      body.method === 'tools/call' &&
+      params.name === 'get_proposal_create_receipt' &&
+      canReadProposalCreateReceipt(context) &&
+      parsed.bytes <= MCP_PROPOSAL_RECEIPT_HTTP_BYTES;
+    if (parsed.bytes > MCP_JSON_BODY_BYTES && !uploading && !originalSync && !originalProposal)
       throw new ContractError(
         'ARTIFACT_TOO_LARGE',
-        'Only authorized artifact uploads or bounded original sync uploads and receipt queries may exceed the ordinary MCP body limit',
+        'Only authorized artifact uploads, bounded original sync uploads or original sync/proposal receipt queries may exceed the ordinary MCP body limit',
         { trace_id: traceId },
       );
-    // Dual-capability callers may buffer the small sync envelope allowance before the tool name is known.
+    // Original-request writers may buffer their small envelope allowance before the tool name is known.
     // Artifact bodies above the ordinary limit still need their own reservation before preparation.
     if (uploading && parsed.bytes > MCP_JSON_BODY_BYTES) reserveUpload();
     if (

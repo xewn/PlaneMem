@@ -594,10 +594,13 @@ observed-item.json 示例：`{"work_item_id":"plane-item-42"}`。CLI 核对返�
 | `context history` | `item_id`，可选 before_version/limit | 无 |
 | `context version` | `item_id`、正整数 version | 无 |
 | `proposals create` | kind/title/content/source_refs/model_version/prompt_version | `--key` |
+| `proposals receipt` | 原 identity/request_key/完整规范 draft | `--json-file` 或 `--json`，可选 `--timeout-ms`；不接受 `--key` |
 | `proposals list` | 可选 status/kind/before/limit | 无 |
 | `proposals get` | proposal_id | 无 |
 | `proposals confirm` | proposal_id/expected_revision/reason | `--key` |
 | `proposals reject` | proposal_id/expected_revision/reason | `--key` |
+
+`proposals receipt --json-file original-query.json --timeout-ms 30000` 显式查询保存的 `{identity,request_key,draft}`，也可提供 `--json`。必须是原五字段身份和完整规范草稿（含分类/TTL/适用派生关系）；使用原网关配置及账号，项目须匹配配置。文件最多1 MiB，严格 UTF-8、稳定普通文件，不接受标准输入 `-`、重复/额外选项或 `--key`，失败不修改原文件。Web 原请求包装文件不直接兼容此 query，不能忽略原网关绑定。默认30秒预算用于文件校验后的查询等待，成功正文2 MiB；网络和嵌入模式共用 SDK 完整校验。退出0只代表查询完成，查看 data.status：recorded 仅确认历史创建，not-observed 不证明失败。没有自动提交/重试、查询结果保存或审核；见 [原创建回执客户端](../../docs/design/01-contracts/proposal-runtime.md#cli-与-mcp-原创建回执)。仅源码，未运行示例、编译或测试。
 
 `sessions end` 的 status 为 `ended`、`abandoned` 或 `failed`；`tool-calls record` 为 `started`、`succeeded` 或 `failed`。检查点的六类数组为 `completed`、`in_progress`、`next_actions`、`decisions`、`risks`、`open_questions`，空项使用 `[]`。
 

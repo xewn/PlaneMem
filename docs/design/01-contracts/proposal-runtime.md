@@ -87,7 +87,19 @@ verified 表示该建议 revision 曾经过明确人工审核，不表示来源�
 
 SDK `getProposalCreateReceipt(original, {timeout_ms?,signal?})` 默认本地等待 30 秒，成功正文最多 2 MiB、错误最多 16 KiB，不继承上下文写条件、不自动重试。原范围和上下文已有 actor/client 约束必须匹配；预期身份头绑定原账号/客户端。Fetch 与方法预算取先到者，自定义 transport 必须支持 bounded-json/signal。调用方需事先保存完整原请求，不能用当前值重建未知原请求。
 
-Web 完整原提交组件增加 “Check original submission result”，先核对原网关和可信身份，再显式查询；无需先成功保存浏览器副本。服务器和浏览器都核验完整原请求对应关系，已确认后提供当前详情入口；未知/不可用时保留原键和正文。查询不自动保存回执、不提交或审核；离开页面忽略过期结果。CLI/MCP/Mock 专用入口、worker 对账和持久历史回执备份仍待开发。复用现有回执/事件表，无新迁移或依赖；仅源码文档，未运行验证。
+Web 完整原提交组件增加 “Check original submission result”，先核对原网关和可信身份，再显式查询；无需先成功保存浏览器副本。服务器和浏览器都核验完整原请求对应关系，已确认后提供当前详情入口；未知/不可用时保留原键和正文。查询不自动保存回执、不提交或审核；离开页面忽略过期结果。CLI/MCP 专用入口见下节；Mock、worker 对账和持久历史回执备份仍待开发。复用现有回执/事件表，无新迁移或依赖；仅源码文档，未运行验证。
+
+### CLI 与 MCP 原创建回执
+
+`workctx proposals receipt --json-file original-query.json`（也可 `--json`）读取保存的 `{identity,request_key,draft}`。必须且只能选择一种输入；拒绝 `-` 标准输入、重复选项、额外位置参数、`--key`、版本及其他选项。普通文件最多1 MiB，按打开的文件句柄核对类型/长度和读取前后元数据，严格 UTF-8 解码；文件读取/关闭失败不派发。原项目须与 WORKCTX_TENANT_ID/WORKSPACE_ID/PROJECT_ID 一致，使用配置的 WORKCTX_URL 和原账号令牌，Gateway 检查原 actor/client。文件没有网关地址字段，调用方必须保留并使用原网关配置；Web 导出的 proposal-submission 包装文件不直接作为本命令的 query 接受，不会自动丢弃其绑定信息。
+
+可选 `--timeout-ms` 为1–2147483647整数，默认30000；该预算用于文件校验后的网络/嵌入查询等待，不是文件系统操作期限。网络模式复用 Fetch 和 SDK 有界读取，嵌入模式检查可信未过期身份/权限、原五字段和精确请求后只执行 proposal.create.receipt，清除继承写条件；结束前重查有效期。成功 stdout 为完整回执封套，退出0表示查询完成，必须查看 data.status，不能将 not-observed 当作原提交失败或成功。错误不删除文件，不持久化或自动重试。
+
+MCP `get_proposal_create_receipt` 参数同一原 query；目录发现和实际调用都要求可信未过期 proposal.write/admin。标注只读，显式解析完整规范草稿，不用当前值补原参数；清除外层继承写条件，正文未知字段仍拒绝。返回 text 内容为完整已校验封套，recorded 只确认历史创建，当前详情须另读；不创建/审核建议、不换键、不保存本地历史。
+
+MCP 每个 ApiGateway 独立两笔准备名额，覆盖参数准备、底层读取、完整校验和结果编码；30秒单调等待，超时只停止等待，名额到底层结束才释放，不能据此推断查询已取消。成功正文2 MiB、错误16 KiB，二次转义工具结果4 MiB+4096字节；完整响应检查200、JSON类型、本次trace、原请求回显及历史回执，只输出固定错误代码/说明。限制不保证底层数据库执行或 HTTP 最终发送期限。普通 HTTP 正文1 MiB，可信 proposal writer 可读取1 MiB+64 KiB封套，读完再次核对工具名/权限；内层仍限1 MiB，其他工具不能借用，Artifact 上传仍按原规则预留名额。
+
+仅源码和人工审阅，未调用 CLI/MCP/API、执行数据库、编译、类型检查、测试或发布。Mock、worker 对账、调用方原请求准备保存、持久回执历史和运行证据仍待补。
 
 ## 列表和客户端
 

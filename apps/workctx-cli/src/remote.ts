@@ -44,6 +44,7 @@ import { callCheckpointRead } from './checkpoint-reads.js';
 import { callConflictRead } from './conflict-read.js';
 import { callConflictRegistry } from './conflict-registry.js';
 import { callConflictReceipt } from './conflict-receipt.js';
+import { callProposalCreateReceipt } from './proposal-create-receipt.js';
 import { callSyncConsumer, isSyncConsumerCommand } from './sync-consumer.js';
 import { prepareHandoffRead, handoffReadResult } from './handoff-read.js';
 import { prepareArtifactRead, artifactReadResult } from './artifact-read.js';
@@ -557,6 +558,7 @@ export async function callGateway(
   if (command === 'sessions list') return callSessionRegistry(input, options);
   if (command === 'conflicts get') return callConflictRead(input, options);
   if (command === 'conflicts receipt') return callConflictReceipt(input, options);
+  if (command === 'proposals receipt') return callProposalCreateReceipt(input, options);
   if (command === 'conflicts') return callConflictRegistry(input, options);
   if (command === 'handoffs list') return callHandoffRegistry(input, options);
   if (command === 'checkpoints list' && options.key !== undefined)
