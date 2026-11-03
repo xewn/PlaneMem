@@ -26,6 +26,8 @@ export { parseInboxApplicationAuditQuery } from './application-audit.js';
 export type { SyncInboxApplicationAuditQuery } from './application-audit.js';
 export { parseInboxApplicationRestoreQuery } from './application-restore.js';
 export type { SyncInboxApplicationRestoreQuery } from './application-restore.js';
+export { parseInboxApplicationRestoreReceiptQuery } from './application-restore-receipts.js';
+export type { SyncInboxApplicationRestoreReceipt } from './application-restore-receipts.js';
 export { parseInboxApplicationCatalogQuery } from './application-catalog.js';
 export type { SyncInboxApplicationCatalogQuery } from './application-catalog.js';
 export { parseInboxBuiltInApplicationReplayQuery } from './application-replay.js';
@@ -1100,6 +1102,14 @@ export class SqliteSyncInbox {
   /** Explicit optional schema initialization; constructor/import do not enable applications. */
   enableApplications(trace: string) {
     return this.applications().enable(trace);
+  }
+  /** Explicit independent extension; never initialized by restore or preview. */
+  enableApplicationRestoreReceipts(trace: string) {
+    return this.applications().enableRestoreReceipts(trace);
+  }
+  /** Exact historical receipt lookup, without reading an archive or current projection. */
+  readApplicationRestoreReceipt(input: unknown, trace: string) {
+    return this.applications().readRestoreReceipt(input, trace);
   }
   readApplicationState(input: unknown, trace: string) {
     return this.applications().read(input, trace);

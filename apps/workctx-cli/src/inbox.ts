@@ -9,6 +9,7 @@ import {
 import type {
   SqliteSyncInbox,
   SyncInboxApplicationQuery,
+  SyncInboxApplicationRestoreQuery,
   SyncInboxApplicationCatalogQuery,
   SyncInboxApplicationApplyQuery,
   SyncInboxApplicationAuditQuery,
@@ -34,6 +35,8 @@ export function isInboxCommand(command: string) {
     'inbox page-get',
     'inbox head',
     'inbox enable-applications',
+    'inbox enable-application-restore-receipts',
+    'inbox application-restore-receipt',
     'inbox application-status',
     'inbox application-list',
     'inbox application-apply',
@@ -51,7 +54,7 @@ export function isInboxCommand(command: string) {
 function invalid(trace: string) {
   return new ContractError(
     'USAGE_ERROR',
-    'Use local inbox init/import/status/consumers/audit-pages/page-history/page-get/head/enable-applications/application-list/application-status/application-apply/application-audit/application-replay/application-history/application-get/enable-ack/enable-ack-dispatch/enable-ack-recovery/ack-status/ack-dispatch-status with --inbox FILE. Init and enable commands accept only --inbox. Import requires --page-file. Reads and application-apply require --json or --json-file: consumers accepts {} or limit/after_consumer_key; other queries require expected_identity and selection parameters. Application-list requires only original expected_identity and optional limit/after_application_key/timeout_ms; other application reads require application name/version; history accepts limit and saved sequence/page/projection boundaries; get requires document_sha256 with optional expected_projection_sha256; application-apply selects context-item-lifecycle/1 and also requires document_sha256 and expected_previous_sha256 (root null). Application queries permit timeout_ms in JSON; application-audit also permits max_pages/max_events/max_bytes and never executes reducers; application-replay selects context-item-lifecycle/1, adds max_replay_bytes and recomputes saved history without writing. Head requires --output NEW_PAGE; page-get optionally exports to --output NEW_PAGE. No stdin, key, --timeout-ms or repeated options',
+    'Use local inbox init/import/status/consumers/audit-pages/page-history/page-get/head/enable-applications/enable-application-restore-receipts/application-restore-receipt/application-list/application-status/application-apply/application-audit/application-replay/application-history/application-get/enable-ack/enable-ack-dispatch/enable-ack-recovery/ack-status/ack-dispatch-status with --inbox FILE. Init and enable commands accept only --inbox. Import requires --page-file. Reads and application-apply require --json or --json-file: consumers accepts {} or limit/after_consumer_key; other queries require expected_identity and selection parameters. Application-restore-receipt requires the complete original restore query including restore_request_id and never reads an archive. Application-list requires only original expected_identity and optional limit/after_application_key/timeout_ms; other application reads require application name/version; history accepts limit and saved sequence/page/projection boundaries; get requires document_sha256 with optional expected_projection_sha256; application-apply selects context-item-lifecycle/1 and also requires document_sha256 and expected_previous_sha256 (root null). Application queries permit timeout_ms in JSON; application-audit also permits max_pages/max_events/max_bytes and never executes reducers; application-replay selects context-item-lifecycle/1, adds max_replay_bytes and recomputes saved history without writing. Head requires --output NEW_PAGE; page-get optionally exports to --output NEW_PAGE. No stdin, key, --timeout-ms or repeated options',
     { trace_id: trace, retryable: false, acknowledgement_dispatch_state: 'not-sent' },
   );
 }
@@ -96,6 +99,7 @@ function argumentsFor(argv: string[], trace: string) {
     if (
       command === 'inbox init' ||
       command === 'inbox enable-applications' ||
+      command === 'inbox enable-application-restore-receipts' ||
       command === 'inbox enable-ack' ||
       command === 'inbox enable-ack-dispatch' ||
       command === 'inbox enable-ack-recovery'
@@ -185,6 +189,7 @@ export async function runInboxArguments(argv: string[], trace: string) {
       ? await readIdentity(args, trace)
       : undefined;
   const queryInput = [
+    'inbox application-restore-receipt',
     'inbox application-list',
     'inbox application-replay',
     'inbox application-history',
@@ -204,6 +209,7 @@ export async function runInboxArguments(argv: string[], trace: string) {
   let historyQuery: SyncInboxPageHistoryQuery | undefined;
   let detailQuery: SyncInboxPageDetailQuery | undefined;
   let applicationQuery: SyncInboxApplicationQuery | undefined;
+  let applicationRestoreReceiptQuery: SyncInboxApplicationRestoreQuery | undefined;
   let applicationCatalogQuery: SyncInboxApplicationCatalogQuery | undefined;
   let applicationApplyQuery: SyncInboxApplicationApplyQuery | undefined;
   let applicationAuditQuery: SyncInboxApplicationAuditQuery | undefined;
@@ -215,7 +221,13 @@ export async function runInboxArguments(argv: string[], trace: string) {
   let inbox: SqliteSyncInbox;
   try {
     const bridge = await import('@planemem/context-bridge');
-    if (args.command === 'inbox application-list') {
+    if (args.command === 'inbox application-restore-receipt') {
+      applicationRestoreReceiptQuery = bridge.parseInboxApplicationRestoreReceiptQuery(
+        queryInput,
+        trace,
+      );
+      identity = applicationRestoreReceiptQuery.expected_identity;
+    } else if (args.command === 'inbox application-list') {
       applicationCatalogQuery = bridge.parseInboxApplicationCatalogQuery(queryInput, trace);
       identity = applicationCatalogQuery.expected_identity;
     } else if (args.command === 'inbox application-replay') {
@@ -251,6 +263,7 @@ export async function runInboxArguments(argv: string[], trace: string) {
     inbox = new bridge.SqliteSyncInbox(args.path, {
       create: args.command === 'inbox init',
       readonly:
+        args.command === 'inbox application-restore-receipt' ||
         args.command === 'inbox application-list' ||
         args.command === 'inbox application-replay' ||
         args.command === 'inbox application-history' ||
@@ -268,11 +281,33 @@ export async function runInboxArguments(argv: string[], trace: string) {
       trace_id: trace,
     });
   } catch (error) {
-    if (error instanceof ContractError) throw error;
+    if (error instanceof ContractError) {
+      if (!applicationRestoreReceiptQuery) throw error;
+      throw new ContractError(error.envelope.code, error.envelope.message, {
+        trace_id: trace,
+        retryable: false,
+        details: {
+          ...error.envelope.details,
+          restore_query: applicationRestoreReceiptQuery,
+          inbox: args.path,
+          local_write_state: 'not-performed',
+          acknowledgement_dispatch_state: 'not-sent',
+        },
+      });
+    }
     throw new ContractError('INBOX_STORAGE_UNAVAILABLE', 'The local inbox could not be opened', {
       trace_id: trace,
       retryable: false,
-      acknowledgement_dispatch_state: 'not-sent',
+      details: {
+        acknowledgement_dispatch_state: 'not-sent',
+        ...(applicationRestoreReceiptQuery
+          ? {
+              restore_query: applicationRestoreReceiptQuery,
+              inbox: args.path,
+              local_write_state: 'not-performed',
+            }
+          : {}),
+      },
     });
   }
   let result;
@@ -294,6 +329,22 @@ export async function runInboxArguments(argv: string[], trace: string) {
         local_commit_state: 'committed',
         acknowledgement_dispatch_state: 'not-sent',
       });
+    } else if (args.command === 'inbox enable-application-restore-receipts') {
+      result = envelope(trace, {
+        ...inbox.enableApplicationRestoreReceipts(trace),
+        inbox: args.path,
+        local_commit_state: 'committed',
+        acknowledgement_dispatch_state: 'not-sent',
+      });
+    } else if (applicationRestoreReceiptQuery) {
+      result = envelope(
+        trace,
+        {
+          ...inbox.readApplicationRestoreReceipt(applicationRestoreReceiptQuery, trace),
+          inbox: args.path,
+        },
+        applicationRestoreReceiptQuery.expected_identity,
+      );
     } else if (applicationCatalogQuery) {
       result = envelope(
         trace,
@@ -472,6 +523,8 @@ export async function runInboxArguments(argv: string[], trace: string) {
         'inbox page-history',
         'inbox page-get',
         'inbox enable-applications',
+        'inbox enable-application-restore-receipts',
+        'inbox application-restore-receipt',
         'inbox application-status',
         'inbox application-list',
         'inbox application-apply',
@@ -488,6 +541,9 @@ export async function runInboxArguments(argv: string[], trace: string) {
         details: {
           ...error.envelope.details,
           inbox: args.path,
+          ...(applicationRestoreReceiptQuery
+            ? { restore_query: applicationRestoreReceiptQuery, local_write_state: 'not-performed' }
+            : {}),
           ...(applicationApplyQuery
             ? {
                 expected_identity: applicationApplyQuery.expected_identity,

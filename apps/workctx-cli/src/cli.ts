@@ -111,6 +111,8 @@ export async function runWorkctx(
     'inbox enable-ack-dispatch': 'inbox.enable-ack-dispatch',
     'inbox enable-ack-recovery': 'inbox.enable-ack-recovery',
     'inbox enable-applications': 'inbox.enable-applications',
+    'inbox enable-application-restore-receipts': 'inbox.enable-application-restore-receipts',
+    'inbox application-restore-receipt': 'inbox.application-restore-receipt',
     'inbox application-status': 'inbox.application-status',
     'inbox application-list': 'inbox.application-list',
     'inbox application-export': 'inbox.application-export',

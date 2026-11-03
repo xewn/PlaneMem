@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import {
   ContractError,
+  isSyncIdentifier,
   assertSyncCommandIdentity,
   parseSyncApplicationArchiveFile,
   syncApplicationArchiveDocumentJson,
@@ -33,6 +34,7 @@ import {
 export interface SyncInboxApplicationRestoreQuery extends SyncInboxApplicationQuery {
   archive_document_sha256: string;
   expected_target?: SyncInboxApplicationRestoreTarget;
+  restore_request_id?: string;
 }
 export interface InboxApplicationSourceRestoreResult {
   added_received_pages: number;
@@ -65,10 +67,16 @@ export function parseInboxApplicationRestoreQuery(
   try {
     const value: unknown = JSON.parse(syncJsonSnapshot(input, 16384));
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError();
-    const { archive_document_sha256, expected_target, ...base } = value as Record<string, unknown>;
+    const { archive_document_sha256, expected_target, restore_request_id, ...base } =
+      value as Record<string, unknown>;
+    if (restore_request_id !== undefined && !isSyncIdentifier(restore_request_id))
+      throw new TypeError();
     return {
       ...parseInboxApplicationQuery(base, trace),
       archive_document_sha256: applicationDigest(archive_document_sha256),
+      ...(restore_request_id === undefined
+        ? {}
+        : { restore_request_id: restore_request_id as string }),
       ...(expected_target === undefined
         ? {}
         : {
@@ -78,7 +86,7 @@ export function parseInboxApplicationRestoreQuery(
   } catch {
     throw applicationFailure(
       'INBOX_APPLICATION_RESTORE_QUERY_INVALID',
-      'Supply the complete original identity/application, exact archive_document_sha256, optional complete v1 expected_target and timeout_ms',
+      'Supply the complete original identity/application, exact archive_document_sha256, optional restore_request_id, complete v1 expected_target and timeout_ms',
       trace,
     );
   }

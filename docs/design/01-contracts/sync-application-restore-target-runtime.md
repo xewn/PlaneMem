@@ -1,5 +1,7 @@
 # 应用恢复预览的目标历史绑定
 
+2026-11-03 回执增补：恢复查询现可显式携带 restore_request_id，最终预览查询及保存文件保留同一 ID。需先显式启用可选扩展；相同完整查询命中已登记回执时仅返回历史结果，不检查当前目标或生成新计划。完整原查询可独立只读查询回执，缺记录不推断回滚。下文目标比较/首次恢复流程适用于未命中回执的请求，详见 [持久回执契约](sync-application-restore-receipt-runtime.md)。仅源码，扩展未执行。
+
 2026-11-03 开发增量，仅源码和文档；未编译、类型检查、测试、执行 CLI/Bridge/reducer、打开数据库、执行 schema/迁移、生成样本或发布。无新 schema/依赖，既有 SQLite 扩展和 PostgreSQL 016–049 未执行。关联 ADR-015、T3.4/T4.3、R-005，运行证据为空。
 
 ## 可选目标约束
@@ -40,7 +42,7 @@
 
 摘要不同报 INBOX_APPLICATION_RESTORE_TARGET_CHANGED，保留 target_component=application-history/received-history、expected_history_sha256/observed_history_sha256、完整原 expected_target 和原归档查询。该次操作在任何插入前失败，回滚可确认时 local_commit_state=not-committed；已有未知事务状态的包装优先级不变。完整结构损坏/预算不足可先于目标不同报错，不用无效内容伪造 observed 摘要。
 
-恢复后的源链/应用读回照常完整审计和与归档比较，不再拿恢复前 expected_target 约束合法新增内容。成功增加 target_precondition=matched/not-requested、target_before 和 target_after；后两项都是完整 v1 双摘要。接收结果另含 previous_received_history_sha256/received_history_sha256。这些只是已完成事务中的前后逻辑观察，不持久保存恢复回执或目标租约。
+恢复后的源链/应用读回照常完整审计和与归档比较，不再拿恢复前 expected_target 约束合法新增内容。成功增加 target_precondition=matched/not-requested、target_before 和 target_after；后两项都是完整 v1 双摘要。接收结果另含 previous_received_history_sha256/received_history_sha256。这些只是已完成事务中的前后逻辑观察，未带 restore_request_id 时不持久保存恢复回执；不提供目标租约。
 
 ## 重复调用与未知提交
 
@@ -54,4 +56,4 @@ CLI 的文件读取、归档绑定、打开、Bridge 操作及完整响应包装
 
 沿用归档/目标应用 1000 页/16 MiB、单投影 1 MiB、接收链每遍 10000 页/64 MiB、默认 30 秒最多 90 秒本地事务期限，以及 512 KiB 预览/2 MiB Bridge 恢复响应限制。摘要计算在已有遍历内进行，未增加独立数据库读取；同步解析/SQL 不可硬实时抢占，不能据此承诺内存、IO 或严格墙钟上限。
 
-带目标约束的恢复查询已接显式文件保存；仍缺完整预览报告/恢复结果归档、持久恢复回执、跨库实例绑定、不同历史合并/升级、确认/派发日志备份、完整跨设备恢复和真实并发/崩溃证据。本次未执行摘要计算样本、预览或恢复；R-005 继续未完成，evidence 为空。
+带目标约束的恢复查询已接显式文件保存；仍缺完整预览报告/恢复结果归档、回执独立文件导出、跨库实例绑定、不同历史合并/升级、确认/派发日志备份、完整跨设备恢复和真实并发/崩溃证据。本次未执行摘要计算样本、预览或恢复；R-005 继续未完成，evidence 为空。

@@ -42,6 +42,9 @@ export async function runInboxApplicationRestore(
     application: query.application,
     archive_document_sha256: query.archive_document_sha256,
     timeout_ms: query.timeout_ms,
+    ...(query.restore_request_id === undefined
+      ? {}
+      : { restore_request_id: query.restore_request_id }),
     ...(query.expected_target === undefined ? {} : { expected_target: query.expected_target }),
   };
   let output: ArtifactOutput | undefined;

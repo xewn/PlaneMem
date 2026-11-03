@@ -4,6 +4,8 @@
 
 > 当前实现缺口与待办项见：[TODO.md](TODO.md)。该清单按 P0–P8 对照本文件、运行时代码和验证证据整理。
 
+2026-11-03 开发补充：应用恢复增加显式可选持久回执，保留原请求 ID、目标约束与历史结果；支持原查询只读查回执及重复请求返回原结果。见 [应用恢复持久回执](docs/design/01-contracts/sync-application-restore-receipt-runtime.md)。仅源码和文档，未编译、测试、启用数据库扩展或发布。
+
 ## 核心结论
 
 你要建设的不是一个“把 Codex、Claude Code、DeepSeek、WorkBuddy 放在一起的聊天聚合器”，而是一套独立于任何 AI 客户端的：

@@ -37,6 +37,11 @@ import {
   type InboxApplicationSourceRestore,
 } from './application-restore.js';
 import { previewInboxApplicationRestore } from './application-restore-preview.js';
+import {
+  InboxApplicationRestoreReceipts,
+  parseInboxApplicationRestoreReceiptQuery,
+  type SyncInboxApplicationRestoreReceipt,
+} from './application-restore-receipts.js';
 import type { InboxApplicationSourceCompare } from './application-restore-comparison.js';
 import {
   parseInboxApplicationCatalogQuery,
@@ -544,14 +549,91 @@ export class InboxApplications {
       return archive;
     });
   }
+  enableRestoreReceipts(trace: string) {
+    return this.run(trace, 30_000, true, (check) => {
+      this.require(trace);
+      check();
+      return new InboxApplicationRestoreReceipts(this.db).enable(trace);
+    });
+  }
+  readRestoreReceipt(input: unknown, trace: string) {
+    const query = parseInboxApplicationRestoreReceiptQuery(input, trace);
+    let observedReceipt: SyncInboxApplicationRestoreReceipt | undefined;
+    try {
+      return this.run(trace, query.timeout_ms, false, (check) => {
+        this.require(trace);
+        const receipt = new InboxApplicationRestoreReceipts(this.db).read(
+          keys(query),
+          query,
+          trace,
+        );
+        observedReceipt = receipt;
+        check();
+        return {
+          ...this.historyEnvelope(query, trace),
+          query,
+          status: receipt ? ('recorded' as const) : ('not-observed' as const),
+          receipt: receipt ?? null,
+          receipt_scope: 'historical-local-transaction' as const,
+          current_state: 'not-read' as const,
+          observation_scope: 'current-database-read-snapshot' as const,
+          absence_proves_rollback: false,
+          local_write_state: 'not-performed' as const,
+        };
+      });
+    } catch (error) {
+      if (!(error instanceof ContractError)) throw error;
+      throw new ContractError(error.envelope.code, error.envelope.message, {
+        trace_id: trace,
+        retryable: false,
+        details: {
+          ...error.envelope.details,
+          restore_query: query,
+          ...(observedReceipt === undefined
+            ? {}
+            : { observed_receipt: observedReceipt, receipt_scope: 'historical-local-transaction' }),
+          local_write_state: 'not-performed',
+          acknowledgement_dispatch_state: 'not-sent',
+        },
+      });
+    }
+  }
   previewRestore(value: unknown, input: unknown, trace: string) {
     const query = parseInboxApplicationRestoreQuery(input, trace);
     const progress = { stage: 'archive' };
+    let observedReceipt: SyncInboxApplicationRestoreReceipt | undefined;
     try {
       const prepared = prepareInboxApplicationRestore(value, query, trace);
       progress.stage = 'transaction';
       return this.run(trace, query.timeout_ms, false, (check) => {
         this.require(trace);
+        const receipt = new InboxApplicationRestoreReceipts(this.db).read(
+          keys(query),
+          query,
+          trace,
+        );
+        if (receipt) {
+          observedReceipt = receipt;
+          check();
+          return {
+            ...this.historyEnvelope(query, trace),
+            status: 'already-recorded' as const,
+            preview_completed: true,
+            restore_allowed: false as const,
+            restore_query: null,
+            planned_changes: null,
+            target_application: null,
+            target_received: null,
+            expected_target: query.expected_target ?? null,
+            observed_target: null,
+            target_precondition: 'not-read' as const,
+            receipt,
+            receipt_scope: 'historical-local-transaction' as const,
+            current_state: 'not-read' as const,
+            local_write_state: 'not-performed' as const,
+            archive_document_sha256: query.archive_document_sha256,
+          };
+        }
         const preview = previewInboxApplicationRestore(
           this.db,
           keys(query),
@@ -593,6 +675,10 @@ export class InboxApplications {
           timeout_ms: query.timeout_ms,
           preview_stage: progress.stage,
           preview_completed: false,
+          restore_query: query,
+          ...(observedReceipt === undefined
+            ? {}
+            : { observed_receipt: observedReceipt, receipt_scope: 'historical-local-transaction' }),
           ...(query.expected_target === undefined
             ? {}
             : { expected_target: query.expected_target }),
@@ -604,6 +690,7 @@ export class InboxApplications {
   }
   restore(value: unknown, input: unknown, trace: string) {
     const query = parseInboxApplicationRestoreQuery(input, trace);
+    let observedReceipt: SyncInboxApplicationRestoreReceipt | undefined;
     const progress: InboxApplicationRestoreProgress = {
       stage: 'archive',
       prepared_received_pages: 0,
@@ -617,6 +704,25 @@ export class InboxApplications {
       progress.stage = 'transaction';
       return this.run(trace, query.timeout_ms, true, (check) => {
         this.require(trace);
+        const receipts = new InboxApplicationRestoreReceipts(this.db);
+        progress.stage = 'receipt';
+        const recorded = receipts.read(keys(query), query, trace);
+        if (recorded) {
+          observedReceipt = recorded;
+          check();
+          return {
+            ...this.historyEnvelope(query, trace),
+            status: 'already-recorded' as const,
+            restore_completed: true,
+            receipt: recorded,
+            receipt_scope: 'historical-local-transaction' as const,
+            current_state: 'not-read' as const,
+            state: null,
+            local_write_state: 'not-performed' as const,
+            local_commit_state: 'committed' as const,
+            archive_document_sha256: query.archive_document_sha256,
+          };
+        }
         const restored = restoreInboxApplicationHistory(
           this.db,
           keys(query),
@@ -632,9 +738,14 @@ export class InboxApplications {
             sources: this.restorePages,
           },
         );
+        progress.stage = 'receipt-save';
+        const receipt = receipts.save(keys(query), query, restored, trace);
         const result = {
           ...this.historyEnvelope(query, trace),
           status: restored.status,
+          ...(receipt === undefined
+            ? {}
+            : { receipt, receipt_scope: 'historical-local-transaction' as const }),
           restore_completed: true,
           archive_document_sha256: prepared.archive.document_sha256,
           target_precondition: restored.target_precondition,
@@ -678,6 +789,10 @@ export class InboxApplications {
           ...error.envelope.details,
           restore_stage: progress.stage,
           restore_completed: false,
+          restore_query: query,
+          ...(observedReceipt === undefined
+            ? {}
+            : { observed_receipt: observedReceipt, receipt_scope: 'historical-local-transaction' }),
           ...(query.expected_target === undefined
             ? {}
             : { expected_target: query.expected_target }),

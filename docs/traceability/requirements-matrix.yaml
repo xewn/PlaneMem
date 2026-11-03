@@ -978,6 +978,30 @@ requirements:
         - "CLI primary/embedded local routing, old output migration, read/rollback/close failures and complete result retention"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_application_restore_receipt_development_increment:
+      date: "2026-11-03"
+      status: "Source-only atomic historical application restore receipts and exact readonly lookup; R-005 remains incomplete."
+      artifacts:
+        - "apps/context-bridge/src/inbox/application-restore-receipt-schema.ts"
+        - "apps/context-bridge/src/inbox/application-restore-receipts.ts"
+        - "apps/context-bridge/src/inbox/application-restore.ts"
+        - "apps/context-bridge/src/inbox/applications.ts"
+        - "apps/context-bridge/src/inbox/sqlite.ts"
+        - "apps/workctx-cli/src/inbox.ts"
+        - "apps/workctx-cli/src/inbox-application-restore.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/sync-application-restore-receipt-runtime.md"
+      behavior: "Explicit optional SQLite receipt extension v1; optional restore_request_id binds the complete canonical query including target guard and timeout. Restore writes and verifies a bounded immutable historical receipt in the same transaction as source/application restoration. Exact duplicates return the historical outcome without reading current projections or rerunning restoration; different queries reuse neither IDs nor target guards. Readonly exact query needs no archive and distinguishes recorded from not-observed without inferring rollback. Preview preserves request IDs in saved queries and suppresses new plans on exact receipt hits."
+      remaining_scope: "No receipt export/offline file format, original-query discovery by ID, database-instance identity, history merging or real concurrent/crash/cross-device recovery evidence. Existing unkeyed restores do not retrospectively gain receipts; hashes do not authenticate records."
+      pending_evidence:
+        - "Explicit enable, missing/partial/malformed schemas, legacy unkeyed queries and readonly open/close behavior"
+        - "Canonical identity/application/request/timeout/target binding, ID reuse conflicts and final preview query reuse"
+        - "Atomic restore and receipt readback failures, empty/identical histories, rollback/commit uncertainty and concurrent duplicate requests"
+        - "Bounded corrupt receipts, changed current histories, absent receipts after database replacement and no false current-history audit claims"
+        - "Primary/embedded command routing, saved request ID preservation and no new output on recorded previews"
+      evidence: []
+      execution: "Source and documentation only; no builds, typechecks, tests, CLI/Bridge/reducer/API/service runs, sample artifacts, database opens, extension initialization, migrations or release. New receipt extension v1 and existing SQLite/PostgreSQL 016-049 sources remain unexecuted. Each task is committed and pushed to main with skip-ci."
     sync_application_restore_request_development_increment:
       date: "2026-11-03"
       status: "Source-only explicit persistence of a preview-bound restore query; R-005 remains incomplete."

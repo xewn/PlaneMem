@@ -68,6 +68,8 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   inbox enable-ack-dispatch      Explicitly add the dispatch journal after enable-ack
   inbox enable-ack-recovery      Explicitly add recovery provenance after enable-ack-dispatch
   inbox enable-applications      Explicitly add local projection storage to an existing --inbox
+  inbox enable-application-restore-receipts  Explicitly add optional durable restore receipts to an existing application inbox
+  inbox application-restore-receipt  Read a historical receipt using --inbox and the complete original restore query including restore_request_id (--json or --json-file); no archive required
   inbox application-status       Read a local projection using --inbox and --json/--json-file
                                  Requires expected_identity and application name/version; optional JSON timeout_ms
   inbox application-apply        Apply one imported page with the built-in context-item-lifecycle/1 adapter
@@ -80,6 +82,7 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
                                  JSON: expected_identity; optional limit (1–50), after_application_key, timeout_ms
   inbox application-export       Save full audited application history to --output NEW_FILE using --inbox and original application JSON
   inbox application-restore      Restore source pages and an empty/identical application using --inbox, --archive-file and original identity/application/archive digest JSON
+                                 Optional JSON restore_request_id records an atomic historical receipt after explicit extension enablement; reuse the exact saved query
   inbox application-restore-preview  Preview compatibility and planned counts readonly using the same inbox/archive/query options
                                   Preview restore_query binds expected_target; changed histories are rejected before any restore writes
                                   Optional --output NEW_QUERY_FILE saves the bound query for a later explicit restore --json-file
@@ -334,6 +337,8 @@ export async function main(args: string[]): Promise<number> {
       'inbox enable-ack-dispatch',
       'inbox enable-ack-recovery',
       'inbox enable-applications',
+      'inbox enable-application-restore-receipts',
+      'inbox application-restore-receipt',
       'inbox application-status',
       'inbox application-list',
       'inbox application-export',
