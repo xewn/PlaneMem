@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [项目搜索返回导航](docs/design/01-contracts/project-search-runtime.md)：打开工作项或上下文条目后可返回原搜索，保留关键词、筛选、分页和所选结果；读取失败时可按原条件重试。仅源码文档，未编译、测试、运行页面或发布。
+
 新增 [任务生成记录历史](docs/design/01-contracts/proposal-generation-history-runtime.md)：生成记录随提交任务一并保存，可按任务只读查看和取回完整文件，重复入队保留原关联。仅源码文档，未编译、测试、打开数据库或发布。
 
 新增 [完整生成记录与目标绑定](docs/design/01-contracts/proposal-generation-record-runtime.md)：保存来源准备、模型配置和生成结果，支持离线核对，并在入队前检查原网关、项目、账号和客户端。保存失败保留已完成结果供恢复。仅源码文档，未编译、测试、调用服务或发布。

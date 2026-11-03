@@ -3,6 +3,7 @@ import {
   parseWorkItemProjectionQuery,
   type WorkItemListQuery,
 } from '@planemem/contracts';
+import { parseProjectSearchReturn } from '../search/navigation';
 
 export type WorkItemSearchParams = Record<string, string | string[] | undefined>;
 export interface WorkItemBrowseState {
@@ -88,6 +89,12 @@ export function parseWorkItemDetailParams(params: WorkItemSearchParams): WorkIte
   let browse: WorkItemBrowseState;
   if (input === undefined) {
     browse = { filters: { limit: 25 }, view: 'board', item: item_id };
+  } else if (typeof input === 'string' && input.startsWith('/search?')) {
+    return {
+      item_id,
+      browse: { filters: { limit: 25 }, view: 'board', item: item_id },
+      return_href: parseProjectSearchReturn(input, { type: 'work_item', id: item_id }),
+    };
   } else {
     if (
       typeof input !== 'string' ||

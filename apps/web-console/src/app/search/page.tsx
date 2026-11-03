@@ -1,58 +1,28 @@
 import Link from 'next/link';
-import { parseProjectSearchQuery } from '@planemem/contracts';
 import { PageError, toneFor } from '../../components/page-state';
 import { Badge, Panel } from '../../components/ui';
 import { searchWorkbenchProject } from '../../lib/server-api';
+import {
+  parseProjectSearchParams,
+  projectSearchHref,
+  projectSearchResultHref,
+  type ProjectSearchNavigation,
+} from './navigation';
 
 export default async function ProjectSearchPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  let navigation: ProjectSearchNavigation | undefined;
   try {
-    const params = await searchParams;
-    if (
-      Object.keys(params).some(
-        (key) => !['q', 'type', 'mode', 'inactive', 'cursor'].includes(key),
-      ) ||
-      Object.values(params).some((value) => Array.isArray(value))
-    )
-      throw new Error('Use one value per search filter.');
-    const text = typeof params.q === 'string' ? params.q : '';
-    if (text.length > 500 || /[\u0000\p{Cs}]/u.test(text))
-      throw new Error('Search text must be at most 500 characters.');
-    const type = params.type ?? 'all',
-      mode = params.mode ?? 'fts';
-    if (
-      !['all', 'work_item', 'context_item'].includes(String(type)) ||
-      !['fts', 'substring'].includes(String(mode)) ||
-      (params.inactive !== undefined && params.inactive !== 'true')
-    )
-      throw new Error('Invalid search filters.');
-    const inactive = params.inactive === 'true';
-    const query = text.trim()
-      ? parseProjectSearchQuery({
-          query: text,
-          type,
-          mode,
-          include_inactive_context: inactive,
-          limit: 20,
-          ...(params.cursor === undefined ? {} : { cursor: params.cursor }),
-        })
-      : undefined;
-    if (!query && params.cursor !== undefined)
-      throw new Error('Enter a search query before continuing a page.');
+    navigation = parseProjectSearchParams(await searchParams);
+    const state = navigation;
+    const { query, selection } = state;
     const result = query ? await searchWorkbenchProject(query) : undefined;
     const page = result?.data;
     function pageHref(cursor?: string) {
-      const search = new URLSearchParams({
-        q: query?.query ?? '',
-        type: String(type),
-        mode: String(mode),
-      });
-      if (inactive) search.set('inactive', 'true');
-      if (cursor) search.set('cursor', cursor);
-      return '/search?' + search.toString();
+      return projectSearchHref(state, { cursor: cursor ?? null, selection: null });
     }
     return (
       <>
@@ -62,51 +32,7 @@ export default async function ProjectSearchPage({
             <p>Find saved work items and context in the current project.</p>
           </div>
         </div>
-        <form
-          className="filters work-item-filters"
-          role="search"
-          action="/search"
-          method="get"
-          key={JSON.stringify([text, type, mode, inactive])}
-        >
-          <label className="filter-input">
-            <input
-              type="search"
-              name="q"
-              defaultValue={text}
-              required
-              maxLength={500}
-              placeholder="Search project records…"
-              aria-label="Search text"
-            />
-          </label>
-          <select
-            className="filter-chip"
-            name="type"
-            defaultValue={String(type)}
-            aria-label="Record type"
-          >
-            <option value="all">Work items and context</option>
-            <option value="work_item">Work items</option>
-            <option value="context_item">Context</option>
-          </select>
-          <select
-            className="filter-chip"
-            name="mode"
-            defaultValue={String(mode)}
-            aria-label="Search method"
-          >
-            <option value="fts">Match words</option>
-            <option value="substring">Contains text</option>
-          </select>
-          <label>
-            <input type="checkbox" name="inactive" value="true" defaultChecked={inactive} /> Include
-            expired and excluded context
-          </label>
-          <button className="primary-button" type="submit">
-            Search
-          </button>
-        </form>
+        <SearchFilters state={state} />
         <p className="muted">
           Use Contains text for partial names or text that word matching misses. Archived records
           stay out of results.
@@ -125,6 +51,15 @@ export default async function ProjectSearchPage({
                 Saved record matches do not confirm source freshness or review readiness. Open a
                 result to read its current details.
               </p>
+              {selection &&
+                !page.hits.some(
+                  (hit) => hit.type === selection.type && hit.id === selection.id,
+                ) && (
+                  <p role="status">
+                    The previously selected result is not on this page. Results may have changed or
+                    access may differ. No other result has been selected in its place.
+                  </p>
+                )}
               {page.hits.length === 0 ? (
                 <div className="empty-state">
                   <h3>{query?.cursor ? 'No more matches on this page' : 'No matching records'}</h3>
@@ -137,13 +72,16 @@ export default async function ProjectSearchPage({
                     <Badge tone="cyan">{hit.type === 'work_item' ? 'Work item' : 'Context'}</Badge>
                     <Badge tone={toneFor(hit.status)}>{hit.status}</Badge>
                     <Badge>{hit.classification}</Badge>
+                    {selection?.type === hit.type && selection.id === hit.id && (
+                      <Badge tone="cyan">Previously selected</Badge>
+                    )}
                   </div>
                   <h2>
                     <Link
-                      href={{
-                        pathname: hit.type === 'work_item' ? '/work-items/detail' : '/context',
-                        query: { item: hit.id },
-                      }}
+                      href={projectSearchResultHref(state, hit)}
+                      aria-current={
+                        selection?.type === hit.type && selection.id === hit.id ? 'true' : undefined
+                      }
                       prefetch={false}
                     >
                       {hit.title}
@@ -199,10 +137,75 @@ export default async function ProjectSearchPage({
           <h1>Project Search</h1>
         </div>
         <PageError error={error} />
-        <Link className="panel-link" href="/search">
+        {navigation && <SearchFilters state={navigation} />}
+        {navigation?.query && (
+          <nav className="heading-actions" aria-label="Search recovery">
+            <form action="/search" method="get">
+              {[...new URLSearchParams(projectSearchHref(navigation).slice('/search?'.length))].map(
+                ([name, value]) => (
+                  <input key={name} type="hidden" name={name} value={value} />
+                ),
+              )}
+              <button className="secondary-button" type="submit">
+                Retry this search page
+              </button>
+            </form>
+            {navigation.query.cursor && (
+              <Link
+                className="panel-link"
+                href={projectSearchHref(navigation, { cursor: null, selection: null })}
+                prefetch={false}
+              >
+                First page with these filters
+              </Link>
+            )}
+          </nav>
+        )}
+        <Link className="panel-link" href="/search" prefetch={false}>
           Start a new search
         </Link>
       </>
     );
   }
+}
+
+function SearchFilters({ state }: { state: ProjectSearchNavigation }) {
+  const { text, type, mode, inactive } = state;
+  return (
+    <form
+      className="filters work-item-filters"
+      role="search"
+      action="/search"
+      method="get"
+      key={JSON.stringify([text, type, mode, inactive])}
+    >
+      <label className="filter-input">
+        <input
+          type="search"
+          name="q"
+          defaultValue={text}
+          required
+          maxLength={500}
+          placeholder="Search project records…"
+          aria-label="Search text"
+        />
+      </label>
+      <select className="filter-chip" name="type" defaultValue={type} aria-label="Record type">
+        <option value="all">Work items and context</option>
+        <option value="work_item">Work items</option>
+        <option value="context_item">Context</option>
+      </select>
+      <select className="filter-chip" name="mode" defaultValue={mode} aria-label="Search method">
+        <option value="fts">Match words</option>
+        <option value="substring">Contains text</option>
+      </select>
+      <label>
+        <input type="checkbox" name="inactive" value="true" defaultChecked={inactive} /> Include
+        expired and excluded context
+      </label>
+      <button className="primary-button" type="submit">
+        Search
+      </button>
+    </form>
+  );
 }

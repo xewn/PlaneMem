@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { parseWorkItemProjectionQuery } from '@planemem/contracts';
 import type {
   ContextPackReceipt,
   ContextItemConfirmation,
@@ -26,6 +27,7 @@ import {
   ConfirmContextItem,
   ContextItemEditor,
 } from './item-form';
+import { parseProjectSearchReturn } from '../search/navigation';
 
 type ContextItem = Record<string, unknown> & {
   confirmation?: ContextItemConfirmation | null;
@@ -37,6 +39,7 @@ type ContextItem = Record<string, unknown> & {
   confirmation_readiness?: ContextConfirmationReadiness;
 };
 type SearchParams = Record<string, string | string[] | undefined>;
+type SearchReturn = { item_id: string; return_href: string };
 const layers = [
   ['L0', 'Project Brief', 'cyan'],
   ['L1', 'Current Work State', 'green'],
@@ -52,8 +55,23 @@ export default async function ContextPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
+  let searchReturn: SearchReturn | undefined;
   try {
     const params = await searchParams;
+    if (params.return_to !== undefined) {
+      if (Object.keys(params).some((key) => !['item', 'return_to'].includes(key)))
+        throw new Error(
+          'Open the selected search result before changing the context browser filters.',
+        );
+      const { item_id } = parseWorkItemProjectionQuery({ item_id: params.item });
+      searchReturn = {
+        item_id,
+        return_href: parseProjectSearchReturn(params.return_to, {
+          type: 'context_item',
+          id: item_id,
+        }),
+      };
+    }
     const query = typeof params.q === 'string' ? params.q.trim().slice(0, 500) : '';
     const layer = layers.find(([value]) => value === params.layer)?.[0] ?? '';
     const classification = classifications.find((value) => value === params.classification) ?? '';
@@ -117,6 +135,8 @@ export default async function ContextPage({
         view: archived ? 'archived' : '',
       }))
         if (value) search.set(key, value);
+      if (searchReturn && id === searchReturn.item_id && pageCursor === undefined)
+        search.set('return_to', searchReturn.return_href);
       return '/context?' + search;
     }
     const source = selected ? sourceUrl(selected) : undefined;
@@ -138,6 +158,7 @@ export default async function ContextPage({
             <Badge tone="cyan">{items.length} on this page</Badge>
           </div>
         </div>
+        {searchReturn && <SearchContextReturn navigation={searchReturn} />}
         {response.context_permissions?.write && (
           <Panel title="Add project knowledge" icon="context">
             <details className="side-detail">
@@ -632,12 +653,36 @@ export default async function ContextPage({
           <h1>Context</h1>
         </div>
         <PageError error={error} />
+        {searchReturn && <SearchContextReturn navigation={searchReturn} retry />}
         <Link className="panel-link" href="/context">
           Return to the first page
         </Link>
       </>
     );
   }
+}
+
+function SearchContextReturn({
+  navigation,
+  retry = false,
+}: {
+  navigation: SearchReturn;
+  retry?: boolean;
+}) {
+  return (
+    <nav className="heading-actions" aria-label="Context search navigation">
+      <Link className="panel-link" href={navigation.return_href} prefetch={false}>
+        Back to search results
+      </Link>
+      <form action="/context" method="get">
+        <input type="hidden" name="item" value={navigation.item_id} />
+        <input type="hidden" name="return_to" value={navigation.return_href} />
+        <button className="secondary-button" type="submit">
+          {retry ? 'Retry item' : 'Refresh item'}
+        </button>
+      </form>
+    </nav>
+  );
 }
 
 function sourceUrl(item: ContextItem): string | undefined {

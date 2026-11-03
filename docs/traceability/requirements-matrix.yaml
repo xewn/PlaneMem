@@ -128,6 +128,23 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    project_search_return_navigation_development_increment:
+      date: "2026-11-04"
+      status: "Source-only search/detail navigation and read-failure recovery; no runtime evidence or R-003 completion."
+      artifacts:
+        - "apps/web-console/src/app/search/navigation.ts"
+        - "apps/web-console/src/app/search/page.tsx"
+        - "apps/web-console/src/app/work-items/navigation.ts"
+        - "apps/web-console/src/app/context/page.tsx"
+        - "docs/design/01-contracts/project-search-runtime.md"
+      behavior: "Shared search parsing preserves query/type/mode/inactive/cursor and an exact result type/ID in fixed internal return URLs. Work-item details and Context entries validate matching returns before reads and preserve explicit refresh/retry targets. Search read failures retain editable filters, original-page retry and filter-preserving restart. Returning highlights the original selection only when still present; changed results never silently select another record. Navigation carries no record content or authorization claims."
+      evidence: []
+      pending_evidence:
+        - "Later-page detail/back/refresh/retry for both record types, empty/changed results and filter restarts"
+        - "Unicode and reserved characters, duplicate/unknown parameters, wrong selection/type and external return targets"
+        - "Current project/permission changes, stale cursors and browser accessibility/navigation behavior"
+      remaining_scope: "No result snapshots, saved searches, browser storage, source freshness proof or changes to ContextPack compilation/review. Runtime navigation and permission evidence remain missing."
+      execution: "Source/docs only; no builds, typechecks, tests, browser/service/API execution, database access or release. No API/schema/dependency changes; independent task commit/push to main with skip-ci."
     gates: ["merge", "nightly", "release_candidate", "production"]
 
   - id: R-004
