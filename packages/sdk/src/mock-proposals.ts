@@ -1,11 +1,15 @@
 import {
   ContractError,
+  assertProposalReceiptIdentity,
   buildEtag,
   createUlid,
   isUlid,
   parseCreateProposal,
   parseEtag,
   parseProposalListQuery,
+  parseProposalCreateReceiptQuery,
+  parseProposalCreateReceiptEnvelope,
+  proposalReceiptJson,
   parseSyncCommandIdentity,
   proposalText,
   proposalWarnings,
@@ -312,6 +316,82 @@ export class MockProposalStore {
     });
   }
 
+  /** Inspect existing mock creation history only; never dispatch or allocate a command. */
+  private creationReceipt(input: unknown, session: Session, trace: string) {
+    const query = checked('INVALID_INPUT', trace, () => parseProposalCreateReceiptQuery(input));
+    checked('DENIED', trace, () => assertProposalReceiptIdentity(query.identity, session.identity));
+    const key = JSON.stringify([
+      query.identity.actor_id,
+      query.identity.client_id,
+      query.request_key,
+    ]);
+    const saved = this.#receipts.get(key);
+    if (!saved)
+      return parseProposalCreateReceiptEnvelope(
+        {
+          schema_version: 1,
+          trace_id: trace,
+          source_refs: [],
+          data: { ...query, status: 'not-observed' },
+        },
+        query,
+        trace,
+      );
+    if (saved.fingerprint !== canonical(['create', null, null, null, query.draft]))
+      fail('IDEMPOTENCY_KEY_REUSED', trace);
+    const doc = this.read(saved.data.proposal_id, session, trace).document;
+    return checked('PROPOSAL_INVALID', trace, () => {
+      if (
+        saved.data.status !== 'proposed' ||
+        saved.data.revision !== 1 ||
+        doc.created_by !== query.identity.actor_id ||
+        doc.created_by_client !== query.identity.client_id ||
+        doc.created_at !== saved.data.occurred_at ||
+        Date.parse(doc.expires_at) - Date.parse(doc.created_at) !==
+          query.draft.ttl_seconds * 1000 ||
+        classes.indexOf(doc.classification) < classes.indexOf(query.draft.classification)
+      )
+        throw new TypeError();
+      const persisted = {
+        kind: doc.kind,
+        title: doc.title,
+        content: doc.content,
+        source_refs: doc.source_refs,
+        model_version: doc.provenance.model_version,
+        prompt_version: doc.provenance.prompt_version,
+        classification: query.draft.classification,
+        ttl_seconds: query.draft.ttl_seconds,
+        ...(doc.provenance.derived_from === undefined
+          ? {}
+          : { derived_from: doc.provenance.derived_from }),
+      };
+      if (proposalReceiptJson(persisted) !== proposalReceiptJson(query.draft))
+        throw new TypeError();
+      return parseProposalCreateReceiptEnvelope(
+        {
+          schema_version: 1,
+          trace_id: trace,
+          source_refs: [{ type: 'proposal', id: saved.data.proposal_id, revision: 1 }],
+          data: {
+            ...query,
+            status: 'recorded',
+            receipt: {
+              proposal_id: saved.data.proposal_id,
+              status: saved.data.status,
+              revision: saved.data.revision,
+              event_id: saved.data.event_id,
+              occurred_at: saved.data.occurred_at,
+              server_cursor: saved.cursor,
+              current_state: 'not-checked',
+            },
+          },
+        },
+        query,
+        trace,
+      );
+    });
+  }
+
   private respond(request: WcpRequest, session: Session): unknown {
     let trace = 'trace_unknown';
     const headers = checked('INVALID_INPUT', trace, () => {
@@ -361,11 +441,13 @@ export class MockProposalStore {
       request.path.includes('?') ? request.path.slice(request.path.indexOf('?') + 1) : '',
     );
     const identity = path === '/v1/proposals/submission-context';
+    const creationReceipt = path === '/v1/proposals/creation-receipt';
     const collection = path === '/v1/proposals';
     const match = /^\/v1\/proposals\/([0-9A-HJKMNP-TV-Z]{26})(?:\/(confirm|reject))?$/.exec(path!);
     if (
-      (!identity && !collection && !match) ||
+      (!identity && !creationReceipt && !collection && !match) ||
       (identity && request.method !== 'GET') ||
+      (creationReceipt && request.method !== 'POST') ||
       (match && request.method !== (match[2] ? 'POST' : 'GET'))
     )
       fail('MOCK_ROUTE_NOT_FOUND', trace);
@@ -373,8 +455,8 @@ export class MockProposalStore {
     if (request.method !== 'GET' && !write) fail('MOCK_ROUTE_NOT_FOUND', trace);
     if ((!collection || write) && query.size) fail('INVALID_INPUT', trace);
     if (
-      !write &&
-      (request.body !== undefined ||
+      (!write && request.body !== undefined) ||
+      ((!write || creationReceipt) &&
         ['idempotency-key', 'if-match', 'x-expected-version'].some((name) => headers.has(name)))
     )
       fail('INVALID_INPUT', trace);
@@ -404,10 +486,11 @@ export class MockProposalStore {
     const review = session.actor_type === 'human' && session.review_proposals;
     if (
       (!write && !session.read_proposals) ||
-      (write && !(collection ? session.create_proposals : review))
+      (write && !(collection || creationReceipt ? session.create_proposals : review))
     )
       fail('DENIED', trace);
     if (!session.project_readable) fail('PROPOSAL_NOT_FOUND', trace);
+    if (creationReceipt) return finish(this.creationReceipt(request.body, session, trace));
     const now = Date.now();
     if (!write && collection) {
       const filters = checked('INVALID_INPUT', trace, () => {

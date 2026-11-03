@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [建议 Mock 原创建回执查询](docs/design/01-contracts/proposal-mock-runtime.md#请求和状态)：开发环境可按完整原身份、请求键和草稿查询历史创建结果；查询不重提建议，审核后仍保留原创建语义。仅源码文档，未编译、测试、运行或发布。
+
 新增 [worker 未知提交结果门禁](docs/design/01-contracts/proposal-queue-reconciliation-runtime.md#flush-未知结果门禁)：未知结果及回收的发送任务只查询原创建回执，未查到不会重提；首次提交增加有界响应和发送前领取复查。仅源码文档，未编译、测试、运行或发布。
 
 新增 [worker 原创建结果核对](docs/design/01-contracts/proposal-queue-reconciliation-runtime.md)：可只读查询队列任务的原创建回执，也可明确将远端已记录、内容未变且不在发送中的任务标记为已提交；未知结果和并发变化保留原状态。仅源码文档，未编译、测试、运行或发布。

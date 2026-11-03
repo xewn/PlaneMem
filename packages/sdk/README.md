@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-04：`MockProposalStore` 已补 `getProposalCreateReceipt` 原创建回执只读适配，按原身份/键/完整规范草稿核对既有创建命令与当前可见建议。缺记录返回 not-observed，审核或过期后仍可返回历史 proposed/revision1；查询不重提、不更改模拟存储或游标。复用共享输入/响应限制，拒绝写条件，见 [Mock 原创建查询](../../docs/design/01-contracts/proposal-mock-runtime.md#请求和状态)。仅源码人工审阅，未编译、类型检查、测试、调用 Mock 或发布。
+
 2026-11-04：新增 `MockProposalStore` 与显式模拟会话，接入建议身份读取、创建、列表、详情、确认和拒绝。支持原账号/客户端隔离的命令回放、人工版本审核、来源变化、分类继承和直接修订筛选；可直接用现有五个建议 SDK 方法。见 [建议生命周期 Mock](../../docs/design/01-contracts/proposal-mock-runtime.md) 的接线示例与边界。只修改源码文档，未编译、测试、运行 Mock 或发布。
 
 2026-11-04：新增 `MockSyncStore`、`MockSyncSeed` 和 `MockSyncSession`。`new MockWcpServer({sync:{store,session}})` 可模拟同步身份读取、变化分页、当前确认查询与显式确认，衔接现有 `getSyncCommandContext/getSyncChanges/syncPages/getSyncCursor/acknowledgeSync`。固定有界事件流和显式可见集合，多个模拟账号可共享 store，确认按完整原身份隔离、禁止回退和超前；读取不自动确认。构造/连接/返回复制数据，共享契约校验完整响应，支持取消及响应字节限制。无配置时保留原项目创建 Mock；其余路由、真实权限与持久化仍未覆盖。见 [同步消费 Mock](../../docs/design/01-contracts/sync-mock-runtime.md) 的配置、接线示例与限制。本轮仅源码文档，未编译、测试、调用 Mock 或发布。

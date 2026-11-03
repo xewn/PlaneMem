@@ -3452,6 +3452,22 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_mock_create_receipt_development_increment:
+      date: "2026-11-04"
+      status: "Source-only original creation receipt Mock adapter; R-009 remains incomplete."
+      artifacts:
+        - "packages/sdk/src/mock-proposals.ts"
+        - "packages/sdk/README.md"
+        - "docs/design/01-contracts/proposal-mock-runtime.md"
+      behavior: "Direct and MockWcpServer transports accept the shared complete original query, require the original live configured writer and readable project, reject write conditions, and read existing actor/client-key command history. Recorded results verify visible proposal lineage and immutable draft/creation fields while preserving historical proposed/revision-1 receipts after review, expiry or visible source staleness. Missing commands return not-observed without creation, reservation, receipt/cursor changes or resubmission."
+      evidence: []
+      pending_evidence:
+        - "SDK/direct routing, complete normalized drafts, identity mismatch and cross-account key isolation"
+        - "Missing keys, changed payload/review-command conflicts and immutable receipt/query echo"
+        - "Review/expiry/staleness versus source or lineage visibility and current writer permissions"
+        - "Cancellation, session expiry, write headers, response byte limits and unchanged mock state"
+      remaining_scope: "Real Gateway historical event/audit authentication, durable recovery, network uncertainty and runtime compatibility evidence are not simulated."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, Mock/product/API/database execution or release. No schema or dependency changes."
     proposal_worker_unknown_gate_development_increment:
       date: "2026-11-04"
       status: "Source-only unknown proposal submission gate; R-009 remains incomplete."

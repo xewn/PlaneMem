@@ -10,6 +10,7 @@
 | --- | --- | --- |
 | GET | `/v1/proposals/submission-context` | 返回当前配置身份及 `identity_preconditions: 1` |
 | POST | `/v1/proposals` | 创建 proposed/revision 1 建议 |
+| POST | `/v1/proposals/creation-receipt` | 只读核对原创建回执，不创建或重放命令 |
 | GET | `/v1/proposals` | 按状态、类型、直接原建议及 before 分页 |
 | GET | `/v1/proposals/{id}` | 读取正文、来源、审核结果及 sources_current |
 | POST | `/v1/proposals/{id}/confirm` | 人工确认，版本匹配后变为 verified/revision 2 |
@@ -20,7 +21,7 @@
 以下为未执行的接线示例。`createUlid` 只在使用者实际运行示例时生成开发标识：
 
 ```ts
-import { createUlid } from '@planemem/contracts';
+import { createUlid, parseCreateProposal } from '@planemem/contracts';
 import { MockProposalStore, MockWcpServer, WcpClient } from '@planemem/sdk';
 import type { MockProposalSession } from '@planemem/sdk';
 
@@ -46,7 +47,8 @@ const draft = {
   source_refs: [{ type: 'context-item', id: source.id, revision: 1 }],
   model_version: 'manual', prompt_version: 'development-example',
 };
-const created = await writer.createProposal(draft, { idempotency_key: 'create-001' });
+const originalDraft = parseCreateProposal(draft);
+const created = await writer.createProposal(originalDraft, { idempotency_key: 'create-001' });
 const reviewer = new WcpClient(store.connect({
   ...author, identity: { ...scope, actor_id: 'human-reviewer', client_id: 'dev-console' },
   actor_type: 'human', create_proposals: false, review_proposals: true,
@@ -55,7 +57,9 @@ await reviewer.confirmProposal(created.data.proposal_id, 'Reviewed the pinned so
   expected_revision: 1, idempotency_key: 'review-001',
 });
 // The original create receipt remains proposed/revision 1; current detail is verified/revision 2.
-await writer.createProposal(draft, { idempotency_key: 'create-001' });
+await writer.getProposalCreateReceipt({
+  identity: author.identity, request_key: 'create-001', draft: originalDraft,
+});
 await writer.getProposal(created.data.proposal_id);
 ```
 
@@ -70,6 +74,14 @@ await writer.getProposal(created.data.proposal_id);
 创建时固定本地来源版本和配置快照；同一 ID 的冲突版本拒绝。分类至少等于草稿、来源和直接原建议的最高分类。derived_from 要求原建议可读且 revision 匹配，最多 32 次派生；不会继承原审核结果。外部来源仍只保留引用，不进行真实性检查。内容中的共享注入模式会记录 provenance warning。
 
 ## 请求和状态
+
+`getProposalCreateReceipt({identity,request_key,draft}, options?)` 通过只读 POST 查询既有创建命令，直接连接和 MockWcpServer 转发均适用。draft 必须是完整规范原草稿，包含默认分类/TTL等字段；不能用当前建议详情重建，因为分类可能被来源提高，审核状态也可能改变。查询接受共享1 MiB原请求/2 MiB完整响应限制，transport 的 max_response_bytes 可进一步缩小；拒绝 URL 查询参数、Idempotency-Key、If-Match、X-Expected-Version 和未知正文参数，不继承创建条件。
+
+查询要求配置会话尚未过期、create_proposals=true、项目可读，原五项身份必须与会话相同；不额外要求 read_proposals 或人工审核权限。模拟身份仍来自 connect 配置，不能由请求头授予。按原 actor/client/键读取既有命令，缺失返回完整原 query 和 not-observed、无来源引用，不分配键或游标，也不证明原创建失败。已有键属于不同正文或审核命令时返回 IDEMPOTENCY_KEY_REUSED。
+
+recorded 还核对当前建议及全部派生链/来源可见性、创建账号/客户端、创建时间/TTL、分类下限和不可变草稿字段；返回原 proposed/revision1、事件ID/时间/游标及 current_state=not-checked。来源仍可见但变旧、建议过期或后来已审核不改变历史创建语义；来源不可见或受限能力不足则拒绝。共享封套校验与完整返回复制继续生效，取消、会话到期、大小限制和其他错误均不修改建议、回执、容量计数或游标。查询本身不创建、审核、重提或把当前状态改回 proposed。
+
+Mock 的事件ID/游标来自原内存创建回执，没有真实同步事件日志；因此这里只核对模拟存储的内部一致性，不提供 Gateway 历史事件、审计、JWT 或持久化证明。SDK 的等待期限/取消可用于此 transport，但同步内存计算不模拟网络等待及服务端取消。
 
 创建及审核共用按原 actor/client 隔离的请求键空间；项目由 store 隔离。相同规范命令和键返回原回执、原事件 ID/游标，replayed=true，响应 trace 使用本次请求。JSON 对象字段顺序不影响比较，数组顺序保留。不同内容、操作、目标或版本复用键报 IDEMPOTENCY_KEY_REUSED。重放仍重新检查当前能力、项目及整条来源可见性，但不会因为原建议后来审核、过期或来源变旧而重新执行命令。
 
