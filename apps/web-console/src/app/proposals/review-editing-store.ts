@@ -21,10 +21,15 @@ import {
 } from './review-editing-model';
 import {
   REVIEW_EDITING_BACKUP_DOCUMENT_BYTES,
+  REVIEW_EDITING_BACKUP_FILE_BYTES,
   REVIEW_EDITING_BACKUP_MAX_ENTRIES,
+  reviewEditingBackupDocumentJson,
+  reviewEditingBackupFileJson,
+  parseReviewEditingBackupFile,
   parseReviewEditingBackupDocument,
   type ReviewEditingBackupDocument,
 } from './review-editing-backup-model';
+import { createManualDraftCleanup } from './manual-draft-cleanup';
 
 const layout = { databaseName: 'planemem-proposal-review-editing-drafts', contentStore: 'drafts' };
 const summary = (draft: ReviewEditingDraft) => ({
@@ -283,6 +288,25 @@ function backupReadBudget() {
     if (bytes > REVIEW_EDITING_BACKUP_DOCUMENT_BYTES) throw new TypeError();
   };
 }
+export const reviewEditingDraftCleanup = createManualDraftCleanup<
+  ReviewEditingDraft,
+  ReviewEditingSummary,
+  ReviewEditingBackupDocument
+>({
+  layout,
+  kind: 'proposal-review-editing-drafts-backup',
+  documentBytes: REVIEW_EDITING_BACKUP_DOCUMENT_BYTES,
+  fileBytes: REVIEW_EDITING_BACKUP_FILE_BYTES,
+  key,
+  pair,
+  encode: encodeReviewEditingDraft,
+  summary,
+  readBudget: backupReadBudget,
+  parseDocument: parseReviewEditingBackupDocument,
+  documentJson: reviewEditingBackupDocumentJson,
+  parseFile: parseReviewEditingBackupFile,
+  fileJson: reviewEditingBackupFileJson,
+});
 type ReviewEditingBackupState = 'missing' | 'same' | 'different';
 export interface ReviewEditingBackupComparison {
   entries: Array<{

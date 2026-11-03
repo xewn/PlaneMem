@@ -9,6 +9,7 @@ import { assertProposalSubmissionBinding, type ProposalSubmissionBinding } from 
 import { encodeReviewOriginal, type ProposalReviewOriginal } from './review-model';
 import { loadReviewOriginal } from './review-store';
 import { ReviewEditingBackupPanel } from './review-editing-backup-panel';
+import { ManualDraftCleanupPanel } from './manual-draft-cleanup-panel';
 import { useReviewEditingAutosave } from './use-review-editing-autosave';
 import { DraftAutosaveBackupPanel } from './draft-autosave-backup-panel';
 import { DraftAutosaveCleanupPanel } from './draft-autosave-cleanup-panel';
@@ -33,6 +34,7 @@ import {
   loadReviewEditingDraft,
   saveReviewEditingDraft,
   removeReviewEditingDraft,
+  reviewEditingDraftCleanup,
   type ReviewEditingPage,
   type ReviewEditingSummary,
 } from './review-editing-store';
@@ -221,7 +223,11 @@ export function ReviewEditingPanel({
   }
   function browse(after: string | null) {
     void run(
-      (signal) => listReviewEditingDrafts(binding, after, signal),
+      (signal) => {
+        setPage(undefined);
+        setRemovalFresh(false);
+        return listReviewEditingDrafts(binding, after, signal);
+      },
       (value) => {
         setPage(value);
         setMessage(
@@ -419,6 +425,22 @@ export function ReviewEditingPanel({
           ))}
         </ul>
       )}
+      <ManualDraftCleanupPanel<ReviewEditingDraft, ReviewEditingSummary>
+        binding={binding}
+        cleanup={reviewEditingDraftCleanup}
+        entries={page?.entries}
+        summaryLabel={(entry) =>
+          `${entry.proposal_id} · revision ${entry.expected_revision} · ${entry.decision || 'Undecided'} · ${entry.saved_at}`
+        }
+        draftLabel={(draft) =>
+          `${draft.proposal_id} · revision ${draft.expected_revision} · ${draft.decision || 'Undecided'}`
+        }
+        disabled={locked}
+        storageEpoch={storageEpoch}
+        begin={beginStorage}
+        end={endStorage}
+        onStorageChange={storageChanged}
+      />
       <ReviewEditingBackupPanel
         binding={binding}
         disabled={locked}

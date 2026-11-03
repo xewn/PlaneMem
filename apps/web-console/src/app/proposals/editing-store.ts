@@ -21,10 +21,15 @@ import {
 } from './editing-model';
 import {
   EDITING_BACKUP_DOCUMENT_BYTES,
+  EDITING_BACKUP_FILE_BYTES,
   EDITING_BACKUP_MAX_ENTRIES,
+  editingBackupDocumentJson,
+  editingBackupFileJson,
+  parseEditingBackupFile,
   parseEditingBackupDocument,
   type EditingBackupDocument,
 } from './editing-backup-model';
+import { createManualDraftCleanup } from './manual-draft-cleanup';
 
 const layout = { databaseName: 'planemem-proposal-editing-drafts', contentStore: 'drafts' };
 export interface ProposalEditingSummary {
@@ -270,6 +275,25 @@ function backupReadBudget() {
     if (bytes > EDITING_BACKUP_DOCUMENT_BYTES) throw new TypeError();
   };
 }
+export const editingDraftCleanup = createManualDraftCleanup<
+  ProposalEditingDraft,
+  ProposalEditingSummary,
+  EditingBackupDocument
+>({
+  layout,
+  kind: 'proposal-editing-drafts-backup',
+  documentBytes: EDITING_BACKUP_DOCUMENT_BYTES,
+  fileBytes: EDITING_BACKUP_FILE_BYTES,
+  key,
+  pair,
+  encode: encodeProposalEditingDraft,
+  summary,
+  readBudget: backupReadBudget,
+  parseDocument: parseEditingBackupDocument,
+  documentJson: editingBackupDocumentJson,
+  parseFile: parseEditingBackupFile,
+  fileJson: editingBackupFileJson,
+});
 type EditingBackupState = 'missing' | 'same' | 'different';
 export interface EditingBackupComparison {
   entries: Array<{ request_key: string; title: string; state: EditingBackupState }>;

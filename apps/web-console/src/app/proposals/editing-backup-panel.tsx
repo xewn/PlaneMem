@@ -14,12 +14,14 @@ import {
 export function EditingBackupPanel({
   binding,
   disabled,
+  storageEpoch,
   begin,
   end,
   onStorageChange,
 }: {
   binding: ProposalSubmissionBinding;
   disabled: boolean;
+  storageEpoch: number;
   begin: () => boolean;
   end: () => void;
   onStorageChange: () => void;
@@ -27,6 +29,7 @@ export function EditingBackupPanel({
   const [reviewed, setReviewed] = useState<ReviewedEditingBackup>();
   const [comparison, setComparison] = useState<{
     digest: string;
+    epoch: number;
     value: EditingBackupComparison;
   }>();
   const [confirmed, setConfirmed] = useState<string | null>(null);
@@ -42,6 +45,10 @@ export function EditingBackupPanel({
       operation.current = undefined;
     };
   }, []);
+  useEffect(() => {
+    setComparison(undefined);
+    setConfirmed(null);
+  }, [storageEpoch]);
 
   async function run(
     action: 'prepare' | 'load' | 'compare' | 'restore' | 'download',
@@ -53,6 +60,7 @@ export function EditingBackupPanel({
     if (
       action === 'restore' &&
       (!comparison?.value.can_restore ||
+        comparison.epoch !== storageEpoch ||
         !comparison.value.entries.length ||
         comparison.digest !== reviewed?.file.document_sha256 ||
         confirmed !== comparison.digest)
@@ -90,7 +98,11 @@ export function EditingBackupPanel({
         const result = await compareEditingDraftBackup(reviewed!.raw, binding, controller.signal);
         if (!isCurrent()) return;
         setReviewed({ file: result.file, raw: result.raw });
-        setComparison({ digest: result.file.document_sha256, value: result.comparison });
+        setComparison({
+          digest: result.file.document_sha256,
+          epoch: storageEpoch,
+          value: result.comparison,
+        });
         setMessage(
           'Comparison completed without saving. Restore checks every copy again; any changed or damaged copy blocks the whole import.',
         );
@@ -142,7 +154,10 @@ export function EditingBackupPanel({
   }
   const locked = disabled || busy;
   const matching =
-    reviewed && comparison && comparison.digest === reviewed.file.document_sha256
+    reviewed &&
+    comparison &&
+    comparison.epoch === storageEpoch &&
+    comparison.digest === reviewed.file.document_sha256
       ? comparison.value
       : undefined;
   return (
@@ -154,6 +169,10 @@ export function EditingBackupPanel({
           Automatic copies are separate. Use Save editing draft for your current edits first if you
           want them included. Up to 100 drafts and a 16 MiB document are supported; larger
           collections are rejected as a whole.
+        </p>
+        <p>
+          A file exported from selected drafts contains only that subset. Compare and restore act
+          only on the copies listed in the loaded file.
         </p>
         <button
           type="button"

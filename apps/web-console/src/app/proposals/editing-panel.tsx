@@ -5,6 +5,7 @@ import { proposalReceiptJson } from '@planemem/contracts';
 import { backupOperation } from '../sync/receipt/backup-operation';
 import type { BrowserRemovalResult } from '../sync/receipt/browser-store';
 import { EditingBackupPanel } from './editing-backup-panel';
+import { ManualDraftCleanupPanel } from './manual-draft-cleanup-panel';
 import { useEditingAutosave } from './use-editing-autosave';
 import { DraftAutosaveBackupPanel } from './draft-autosave-backup-panel';
 import { DraftAutosaveCleanupPanel } from './draft-autosave-cleanup-panel';
@@ -38,6 +39,8 @@ import {
   loadProposalEditingDraft,
   removeProposalEditingDraft,
   saveProposalEditingDraft,
+  editingDraftCleanup,
+  type ProposalEditingSummary,
   type ProposalEditingPage,
 } from './editing-store';
 
@@ -63,6 +66,7 @@ export function ProposalEditingPanel({
   onOriginal: (original: ProposalOriginal) => void;
 }) {
   const [page, setPage] = useState<ProposalEditingPage>();
+  const [manualEpoch, setManualEpoch] = useState(0);
   const [automaticPage, setAutomaticPage] = useState<EditingAutosavePage>();
   const [automaticEpoch, setAutomaticEpoch] = useState(0);
   const autosave = useEditingAutosave({ binding, requestKey, fields, disabled, restricted });
@@ -71,12 +75,19 @@ export function ProposalEditingPanel({
     source: 'browser' | 'file' | 'autosave';
     session?: string;
     automaticEpoch?: number;
+    manualEpoch?: number;
   }>();
   const candidate = reviewed?.draft;
   const [removeConfirmed, setRemoveConfirmed] = useState(false);
   const [removalStatus, setRemovalStatus] = useState<BrowserRemovalResult | 'unknown'>();
   const [replace, setReplace] = useState<string | null>(null);
   const [message, setMessage] = useState('');
+  const manualStorageChanged = useCallback(() => {
+    setPage(undefined);
+    setManualEpoch((value) => value + 1);
+    setRemoveConfirmed(false);
+    setReplace(null);
+  }, []);
   const automaticStorageChanged = useCallback(() => {
     setAutomaticPage(undefined);
     setAutomaticEpoch((value) => value + 1);
@@ -147,7 +158,7 @@ export function ProposalEditingPanel({
     assertProposalSubmissionBinding(draft.binding, binding);
     if (draft.fields.values.classification === 'restricted' && !restricted) throw new TypeError();
     if (source === 'autosave' && !session) throw new TypeError();
-    setReviewed({ draft, source, ...(session ? { session, automaticEpoch } : {}) });
+    setReviewed({ draft, source, manualEpoch, ...(session ? { session, automaticEpoch } : {}) });
     setReplace(null);
     setRemoveConfirmed(false);
     setRemovalStatus(undefined);
@@ -174,7 +185,10 @@ export function ProposalEditingPanel({
   }
   async function readPage(after: string | null) {
     await run(
-      (signal) => listProposalEditingDrafts(binding, after, signal),
+      (signal) => {
+        manualStorageChanged();
+        return listProposalEditingDrafts(binding, after, signal);
+      },
       (result) => {
         setPage(result);
         setMessage(
@@ -311,7 +325,10 @@ export function ProposalEditingPanel({
           disabled={disabled}
           onClick={() =>
             void run(
-              async (signal) => saveProposalEditingDraft(snapshot(), signal),
+              async (signal) => {
+                manualStorageChanged();
+                return saveProposalEditingDraft(snapshot(), signal);
+              },
               (saved) => {
                 retained.current = saved;
                 setMessage(
@@ -447,7 +464,8 @@ export function ProposalEditingPanel({
                 if you want to keep it after leaving this page.
               </p>
               {removalStatus === undefined &&
-              (reviewed.source !== 'autosave' || reviewed.automaticEpoch === automaticEpoch) ? (
+              (reviewed.source !== 'autosave' || reviewed.automaticEpoch === automaticEpoch) &&
+              (reviewed.source !== 'browser' || reviewed.manualEpoch === manualEpoch) ? (
                 <>
                   <label>
                     <input
@@ -468,6 +486,7 @@ export function ProposalEditingPanel({
                       if (
                         !removeConfirmed ||
                         removalStatus !== undefined ||
+                        (reviewed.source === 'browser' && reviewed.manualEpoch !== manualEpoch) ||
                         (reviewed.source === 'autosave' &&
                           reviewed.automaticEpoch !== automaticEpoch)
                       )
@@ -489,6 +508,7 @@ export function ProposalEditingPanel({
                               signal,
                             );
                           }
+                          manualStorageChanged();
                           return removeProposalEditingDraft(binding, candidate, signal);
                         },
                         (result) => {
@@ -581,16 +601,27 @@ export function ProposalEditingPanel({
           </button>
         </div>
       )}
+      <ManualDraftCleanupPanel<ProposalEditingDraft, ProposalEditingSummary>
+        binding={binding}
+        cleanup={editingDraftCleanup}
+        entries={page?.entries}
+        summaryLabel={(entry) =>
+          `${entry.title || 'Untitled draft'} · ${entry.classification} · ${entry.saved_at}`
+        }
+        draftLabel={(draft) => draft.fields.values.title || 'Untitled draft'}
+        disabled={disabled}
+        storageEpoch={manualEpoch}
+        begin={beginManual}
+        end={end}
+        onStorageChange={manualStorageChanged}
+      />
       <EditingBackupPanel
         binding={binding}
         disabled={disabled}
+        storageEpoch={manualEpoch}
         begin={beginManual}
         end={end}
-        onStorageChange={() => {
-          setPage(undefined);
-          setRemoveConfirmed(false);
-          setReplace(null);
-        }}
+        onStorageChange={manualStorageChanged}
       />
       {message && <p role="status">{message}</p>}
     </section>

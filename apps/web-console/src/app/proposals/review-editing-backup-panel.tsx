@@ -177,6 +177,10 @@ export function ReviewEditingBackupPanel({
           fields first if you want them included. Up to 100 drafts and a 4 MiB document are
           supported; larger collections are rejected as a whole.
         </p>
+        <p>
+          A file exported from selected drafts contains only that subset. Compare and restore act
+          only on the copies listed in the loaded file.
+        </p>
         <button
           type="button"
           className="secondary-button"
