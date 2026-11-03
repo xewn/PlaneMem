@@ -10,7 +10,7 @@ import {
   type SourceRef,
 } from '@planemem/contracts';
 import { FetchWcpTransport } from '@planemem/sdk';
-import { normalizeQueueBinding, type ProposalQueueBinding } from './submission.js';
+import { normalizeQueueBinding, type ProposalQueueBinding } from './queue-binding.js';
 import {
   parseProposalGenerationRequest,
   type ProposalGenerationRequest,

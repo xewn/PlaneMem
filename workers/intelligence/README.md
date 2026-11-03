@@ -6,7 +6,9 @@
 
 ## 配置与命令
 
-新增 [完整生成记录与目标绑定](../../docs/design/01-contracts/proposal-generation-record-runtime.md)：`prepare-generation --record` 保存原绑定、选择、观察和完整输入；`generate-prepared` 单次生成并保存含原准备记录的完整结果。`inspect-generation --file RECORD.json` 离线核对后只显示元数据；`enqueue-generated --queue queue.sqlite --binding binding.json --file GENERATION_RECORD.json --key KEY` 在打开队列前检查原网关、项目、账号和客户端，避免误入其他目标。记录均限制 2 MiB，不包含凭据；摘要仅检查一致性，不认证来源或当前权限。完整记录独立保留，队列仍只存原草稿/请求键，尚无持久记录与任务关联。
+新增 [完整生成记录与目标绑定](../../docs/design/01-contracts/proposal-generation-record-runtime.md)：`prepare-generation --record` 保存原绑定、选择、观察和完整输入；`generate-prepared` 单次生成并保存含原准备记录的完整结果。`inspect-generation --file RECORD.json` 离线核对后只显示元数据；`enqueue-generated --queue queue.sqlite --binding binding.json --file GENERATION_RECORD.json --key KEY` 在打开队列前检查原网关、项目、账号和客户端，避免误入其他目标。记录均限制 2 MiB，不包含凭据；摘要仅检查一致性，不认证来源或当前权限。
+
+新增 [任务生成记录历史](../../docs/design/01-contracts/proposal-generation-history-runtime.md)：enqueue-generated 在同一事务保存任务和完整记录，相同记录重放保留首次关联时间，同键异草稿拒绝。`generation-list --queue queue.sqlite --binding binding.json --id JOB_ID [--after SHA256] [--limit 10]` 只读分页，默认 10、最多 20 条；`generation-get --queue queue.sqlite --binding binding.json --id JOB_ID --sha256 SHA256 [--output NEW_RECORD.json]` 取回完整记录，可导出新文件。两个命令不需要令牌；缺扩展不建表，损坏不返回部分记录。核心 v1 队列不变，可选关联表只在首次明确写入时初始化；本轮仅新增初始化源码，未执行 SQL 或打开库。
 
 新增 [网关来源准备](../../docs/design/01-contracts/proposal-generation-sources-runtime.md)：`prepare-generation --binding binding.json --file selection.json --output new-sources.json` 先核对原身份，再按明确 ID/revision 读取当前可见且有效的 ContextItem，完整准备 generate 输入。版本冲突或任一来源失败时不保存部分结果；生成和提交仍分别显式执行。
 

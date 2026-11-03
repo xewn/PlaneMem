@@ -16,7 +16,7 @@ pnpm proposal-worker enqueue-generated --queue queue.sqlite --binding binding.js
 
 prepare-generation 使用 `PROPOSAL_WORKER_ACCESS_TOKEN` 读取明确选择的当前来源；`--record` 将完整准备结果保存成 v1 文件。generate-prepared 完整检查准备记录，再使用 `PROPOSAL_GENERATION_API_KEY` 单次生成并保存完整生成记录，不重新读取网关来源。inspect-generation 不需要凭据、网络或打开队列，完整检查后只输出摘要、绑定、来源观察、模型配置与标识，不输出任务、摘录、标题或正文。
 
-enqueue-generated 在打开队列前完整核验记录，并比较规范化后的 gateway_url、tenant_id、workspace_id、project_id、actor_id、client_id，任一不符返回 `PROPOSAL_GENERATION_BINDING_MISMATCH`，不创建目标库。准备记录不能直接入队；参数错误和非法请求键也在打开前拒绝。通过后复用原 enqueue 的草稿和请求键语义，输出 `{ job, record_sha256 }`。同键同草稿返回原任务，同键异草稿仍拒绝。只有后续显式 flush 才提交到网关，人工审核流程保持原有规则。
+enqueue-generated 在打开队列前完整核验记录，并比较规范化后的 gateway_url、tenant_id、workspace_id、project_id、actor_id、client_id，任一不符返回 `PROPOSAL_GENERATION_BINDING_MISMATCH`，不创建目标库。准备记录不能直接入队；参数错误和非法请求键也在打开前拒绝。通过后保存原草稿任务及完整记录，返回 job、record_sha256、attached_at 和关联 replayed。同键同草稿返回原任务，同键异草稿仍拒绝。只有后续显式 flush 才提交到网关，人工审核流程保持原有规则。
 
 旧 prepare-generation 不带 `--record` 时仍仅保存生成输入；旧 generate 保存普通草稿，旧 enqueue 接受普通草稿。这条旧流程不包含记录绑定保护。不能将完整记录直接作为普通输入或草稿使用；完整记录流程不提供更换目标、修改原文本或自动重试选项。
 
@@ -46,4 +46,4 @@ generation 和 draft 的来源必须与 preparation.input 完整相同；草稿�
 
 `inspectProposalGenerationRecord` 返回完整的独立副本；`createPreparedProposalRecord` 和 `createGeneratedProposalRecord` 封装并核验记录；`readGeneratedProposalDraft` 完整核验并比较目标后返回草稿。它们只处理本地数据，不执行生成、提交或审核。
 
-队列 schema 保持 v1，只保存原草稿/键及原有任务信息；命令返回的 record_sha256 没有新增数据库关联列。不同完整记录可能含相同草稿，不能凭相同任务推断保存了哪一份记录。完整记录文件应单独保留；持久生成请求/未知调用恢复、记录与任务的审计关联、费用与质量评估、自动调度及真实运行证据仍待后续开发。
+队列核心 schema 保持 v1，新增 [任务生成记录历史](proposal-generation-history-runtime.md) 可选扩展：enqueue-generated 将完整记录与任务同事务保存，generation-list/get 支持只读核对及取回。普通 enqueue 不保存生成记录；旧任务可明确使用原记录和请求键补充关联。完整记录文件仍可独立保留，记录摘要不成为权限证明。持久生成请求/未知模型调用恢复、全局审计、费用与质量评估、自动调度及真实运行证据仍待后续开发。

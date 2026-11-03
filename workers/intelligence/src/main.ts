@@ -1,6 +1,11 @@
 import { open } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
-import { ContractError, parseCreateProposal, validateIdempotencyKey } from '@planemem/contracts';
+import {
+  ContractError,
+  isUlid,
+  parseCreateProposal,
+  validateIdempotencyKey,
+} from '@planemem/contracts';
 import { flushProposalQueue } from './publisher.js';
 import { SqliteProposalQueue, type ProposalQueueBinding } from './submission.js';
 import {
@@ -27,6 +32,7 @@ import {
   type ProposalGenerationRecord,
   type GeneratedProposalRecord,
 } from './generation-record.js';
+import { parseGenerationHistoryQuery, validateGenerationDigest } from './generation-history.js';
 
 const help = `Proposal submission queue (Node.js 24)
   proposal-worker prepare-generation --binding binding.json --file selection.json --output NEW_SOURCES.json [--record]
@@ -34,6 +40,8 @@ const help = `Proposal submission queue (Node.js 24)
   proposal-worker generate-prepared --provider provider.json --file PREPARATION_RECORD.json --output NEW_GENERATION_RECORD.json
   proposal-worker inspect-generation --file RECORD.json
   proposal-worker enqueue-generated --queue queue.sqlite --binding binding.json --file GENERATION_RECORD.json --key KEY
+  proposal-worker generation-list --queue queue.sqlite --binding binding.json --id JOB_ID [--after SHA256] [--limit 10]
+  proposal-worker generation-get --queue queue.sqlite --binding binding.json --id JOB_ID --sha256 SHA256 [--output NEW_RECORD.json]
   proposal-worker enqueue --queue queue.sqlite --binding binding.json --file draft.json --key KEY
   proposal-worker list    --queue queue.sqlite --binding binding.json [--before JOB_ID] [--limit 25]
   proposal-worker get     --queue queue.sqlite --binding binding.json --id JOB_ID
@@ -45,6 +53,7 @@ list/get open an existing initialized queue read-only; missing files are never c
 generate calls the configured model once using PROPOSAL_GENERATION_API_KEY; it saves a new draft, without opening a queue.
 generate-prepared uses the same single call and saves the complete record; it does not refresh sources.
 inspect-generation verifies record consistency offline; enqueue-generated requires the original destination binding.
+enqueue-generated stores the record with the job atomically; generation-list/get open existing queues read-only.
 prepare-generation reads pinned sources from the gateway; flush submits drafts. Both use PROPOSAL_WORKER_ACCESS_TOKEN.
 retry schedules the original draft/key; it does not send or regenerate content.
 Exit codes: 0 completed, 1 command/storage failure, 2 flush had retry/blocked/lost-lease jobs.
@@ -73,6 +82,8 @@ export async function main(args: string[]): Promise<number> {
         provider: { type: 'string' },
         output: { type: 'string' },
         record: { type: 'boolean' },
+        after: { type: 'string' },
+        sha256: { type: 'string' },
       },
     });
     const command = positionals[0];
@@ -82,6 +93,8 @@ export async function main(args: string[]): Promise<number> {
       'generate-prepared': ['provider', 'file', 'output'],
       'inspect-generation': ['file'],
       'enqueue-generated': ['file', 'key'],
+      'generation-list': ['id', 'after', 'limit'],
+      'generation-get': ['id', 'sha256', 'output'],
       enqueue: ['file', 'key'],
       list: ['before', 'limit'],
       get: ['id'],
@@ -233,7 +246,8 @@ export async function main(args: string[]): Promise<number> {
       );
       return 0;
     }
-    const limit = values.limit === undefined ? 25 : Number(values.limit);
+    const limit =
+      values.limit === undefined ? (command === 'generation-list' ? 10 : 25) : Number(values.limit);
     if (values.limit !== undefined && (!/^[1-9]\d{0,2}$/.test(values.limit) || limit > 100))
       throw new TypeError('--limit must be between 1 and 100');
     // Validate inputs before creating/opening the queue file.
@@ -256,14 +270,32 @@ export async function main(args: string[]): Promise<number> {
       validateIdempotencyKey(key);
       if (!/^[\x21-\x7e]{1,255}$/.test(key)) throw new TypeError('Invalid queue request key');
     }
-    const id = command === 'get' || command === 'retry' ? required('id') : undefined;
+    const id = ['get', 'retry', 'generation-list', 'generation-get'].includes(command)
+      ? required('id')
+      : undefined;
+    const historyQuery =
+      command === 'generation-list'
+        ? parseGenerationHistoryQuery({
+            limit,
+            ...(values.after === undefined ? {} : { after: values.after }),
+          })
+        : undefined;
+    const digest = command === 'generation-get' ? required('sha256') : undefined;
+    if (command === 'generation-get' || command === 'generation-list') {
+      if (!isUlid(id)) throw new TypeError('Use a job ULID');
+      if (digest !== undefined) validateGenerationDigest(digest);
+    }
+    const historyOutput =
+      command === 'generation-get' && values.output !== undefined
+        ? await prepareGenerationOutput(required('output'))
+        : undefined;
     if (command === 'flush' && !process.env.PROPOSAL_WORKER_ACCESS_TOKEN?.trim())
       throw new ContractError(
         'UNAUTHENTICATED',
         'Set PROPOSAL_WORKER_ACCESS_TOKEN before flushing',
       );
     queue = new SqliteProposalQueue(path, binding, {
-      readonly: command === 'list' || command === 'get',
+      readonly: ['list', 'get', 'generation-list', 'generation-get'].includes(command),
     });
     let output: unknown;
     let exitCode = 0;
@@ -272,8 +304,52 @@ export async function main(args: string[]): Promise<number> {
         output = queue.enqueue(draft!, key!);
         break;
       case 'enqueue-generated':
-        output = { job: queue.enqueue(draft!, key!), record_sha256: generatedRecord!.sha256 };
+        output = queue.enqueueGenerated(generatedRecord!, key!);
         break;
+      case 'generation-list':
+        output = queue.listGenerations(id!, historyQuery!);
+        break;
+      case 'generation-get': {
+        const found = queue.getGeneration(id!, digest!);
+        if (!historyOutput) {
+          output = found;
+          break;
+        }
+        const reader = queue;
+        queue = undefined;
+        let exportPhase = 'close';
+        try {
+          reader.close();
+          exportPhase = 'save';
+          const saved = await saveProposalGenerationRecord(historyOutput, found.record);
+          output = {
+            job_id: found.job_id,
+            request_key: found.request_key,
+            attached_at: found.attached_at,
+            record_sha256: found.record.sha256,
+            output: saved,
+          };
+        } catch (error) {
+          process.stderr.write(
+            JSON.stringify(
+              {
+                code: 'PROPOSAL_GENERATION_HISTORY_EXPORT_FAILED',
+                ...found,
+                output: {
+                  output_path: historyOutput.path,
+                  export_phase: exportPhase,
+                  close_state: exportPhase === 'close' ? 'not-confirmed' : 'closed',
+                  ...(error instanceof ContractError ? error.envelope.details : {}),
+                },
+              },
+              null,
+              2,
+            ) + '\n',
+          );
+          return 1;
+        }
+        break;
+      }
       case 'list':
         output = queue.list({
           limit,
@@ -307,6 +383,27 @@ export async function main(args: string[]): Promise<number> {
           ? 'INVALID_INPUT'
           : 'PROPOSAL_QUEUE_COMMAND_FAILED';
     const sourceDetails: Record<string, unknown> = {};
+    if (error instanceof ContractError && code === 'PROPOSAL_GENERATION_ENQUEUE_FAILED') {
+      const details = error.envelope.details;
+      if (
+        typeof details.request_key === 'string' &&
+        /^[\x21-\x7e]{1,255}$/.test(details.request_key)
+      )
+        sourceDetails.request_key = details.request_key;
+      if (typeof details.record_sha256 === 'string' && /^[a-f0-9]{64}$/.test(details.record_sha256))
+        sourceDetails.record_sha256 = details.record_sha256;
+      if (isUlid(details.candidate_job_id))
+        sourceDetails.candidate_job_id = details.candidate_job_id;
+      for (const [field, allowed] of [
+        ['phase', ['begin', 'job', 'record', 'commit']],
+        ['rollback', ['not-started', 'completed', 'not-confirmed']],
+        ['mutation', ['not-started', 'rolled-back', 'not-confirmed']],
+      ] as const) {
+        const value = details[field];
+        if (typeof value === 'string' && (allowed as readonly string[]).includes(value))
+          sourceDetails[field] = value;
+      }
+    }
     if (error instanceof ContractError && code.startsWith('PROPOSAL_SOURCE_PREPARATION_')) {
       const details = error.envelope.details;
       if (typeof details.item_id === 'string' && details.item_id.length <= 255)

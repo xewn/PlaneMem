@@ -17,7 +17,7 @@ import {
   parseProposalGenerationSelection,
   type PreparedProposalGeneration,
 } from './generation-sources.js';
-import { normalizeQueueBinding, type ProposalQueueBinding } from './submission.js';
+import { normalizeQueueBinding, type ProposalQueueBinding } from './queue-binding.js';
 
 export const PROPOSAL_GENERATION_RECORD_BYTES = 2 * 1024 * 1024;
 export interface PreparedProposalRecord {
@@ -235,6 +235,10 @@ function seal(body: unknown): ProposalGenerationRecord {
   >;
   return inspectProposalGenerationRecord({ ...detached, sha256: digest(detached) });
 }
+/** Stable storage encoding; inspection and all nested bounds still apply. */
+export function serializeProposalGenerationRecord(value: unknown): string {
+  return canonical(inspectProposalGenerationRecord(value));
+}
 export function createPreparedProposalRecord(
   prepared: PreparedProposalGeneration,
 ): PreparedProposalRecord {
@@ -274,5 +278,13 @@ export function readGeneratedProposalDraft(value: unknown, binding: ProposalQueu
       'PROPOSAL_GENERATION_BINDING_MISMATCH',
       'The destination must match the original gateway, project and identity',
     );
-  return record.generation.draft;
+  // Record digests ignore object key order. Keep that property when deriving queue payloads.
+  return parseCreateProposal({
+    ...record.generation.draft,
+    source_refs: record.generation.draft.source_refs.map((ref) => ({
+      type: ref.type,
+      id: ref.id,
+      revision: ref.revision,
+    })),
+  });
 }

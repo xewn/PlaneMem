@@ -1,5 +1,7 @@
 # 架构决策记录摘要
 
+2026-11-04 生成记录随任务持久化协接（ADR-015）：T7.2 增加按 job_id/record_sha256 关联的可选本地 v1 记录表，只在 enqueue-generated 明确写入时按事务初始化；草稿任务和完整记录同事务保存并读回，原队列核心 v1 和普通 enqueue 保持。记录与原绑定、任务草稿/来源/模型必须对应，同键同文可保留多个不同生成记录，同记录重放保留首次关联时间，不覆盖历史。新增 generation-list/get 原生只读分页及完整记录取回，缺扩展不建表，有界读取且损坏拒绝；未知提交保留原键/摘要/候选任务定位，不自动发送或重生成。抽出原绑定归一模块避免记录与队列依赖循环。范围 workers/intelligence 源码/README、记录持久契约、README/TODO/R009 与本协调记录；新增本地表仅初始化源码，未执行 SQL/迁移、打开库、运行 CLI/模型/网关、编译、类型检查、测试或发布，无依赖/Gateway 变化；独立提交 push main 带 [skip ci]。
+
 2026-11-04 生成记录与目标绑定协接（ADR-015）：T7.2 增加 preparation/generation 两类 v1 完整记录和规范 SHA-256，保存原绑定、选择、观察、输入、无凭据 provider 配置及生成结果；离线核验全部字段和跨记录来源/分类/版本/模型关联，摘要仅用于一致性检查、不认证来源。prepare-generation 可显式保存记录，generate-prepared 读取完整准备记录单次生成并保存完整结果，inspect-generation 离线查看元数据，enqueue-generated 在打开队列前核对原网关/项目/actor/client 绑定再复用原入队逻辑。旧纯输入/草稿流程保留；有界新文件输出、失败保留已完成结果，无自动重试/提交/审核。范围 workers/intelligence 源码/README、生成记录/来源/生成契约、README/TODO/R009 与协调记录，无数据库/schema/依赖变化；仅源码文档，不执行CLI/模型/网关、编译、类型检查、测试、数据库或发布；独立提交push main带[skip ci]。
 
 2026-11-04 网关来源准备协接（ADR-015）：T7.2 新增 prepareProposalGeneration 与 prepare-generation CLI，复用原 gateway/project/actor/client 绑定，先 GET submission-context 确认身份协议，再按原条目 ID/revision 读取 context-items；同一固定令牌与预期身份头贯穿全部请求。检查完整读取范围/trace/revision/ETag/来源封套及当前有效性，保留完整文本与观察状态，分类只升不降；有界单条/累计输入、整体期限/取消，不自动替换版本、截断或保存部分结果。独占输出兼容 generate 的输入文件，原身份/选择与逐条读取观察保留在结果中；不创建队列、不调用模型、不提交或审核。范围 workers/intelligence 源码/README、来源准备/生成契约、README/TODO/R009 与协调记录；无 Gateway/schema/依赖变化，仅源码文档，不执行接口/CLI/模型、编译、类型检查、测试、数据库或发布；独立提交push main带[skip ci]。

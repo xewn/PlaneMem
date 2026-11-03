@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
+import { isDeepStrictEqual } from 'node:util';
 import {
   ContractError,
   createUlid,
@@ -10,15 +11,22 @@ import {
   type ProposalMutationReceipt,
 } from '@planemem/contracts';
 import { parseSubmissionReceipt } from './receipt.js';
-
-export interface ProposalQueueBinding {
-  gateway_url: string;
-  tenant_id: string;
-  workspace_id: string;
-  project_id: string;
-  actor_id: string;
-  client_id: string;
-}
+import { normalizeQueueBinding, type ProposalQueueBinding } from './queue-binding.js';
+import {
+  inspectProposalGenerationRecord,
+  readGeneratedProposalDraft,
+} from './generation-record.js';
+import {
+  attachGenerationRecord,
+  getGenerationHistory,
+  listGenerationHistory,
+  type ProposalGenerationHistoryQuery,
+} from './generation-history.js';
+export { normalizeQueueBinding, type ProposalQueueBinding } from './queue-binding.js';
+export type {
+  ProposalGenerationHistoryQuery,
+  ProposalGenerationHistoryEntry,
+} from './generation-history.js';
 export interface ProposalQueueOptions {
   /** Inspect an existing v1 queue without creating it, changing its journal or initializing tables. */
   readonly?: boolean;
@@ -65,51 +73,6 @@ export interface ClaimedProposalJob {
   lease_token: string;
   attempts: number;
   uncertain: boolean;
-}
-
-export function normalizeQueueBinding(input: ProposalQueueBinding): ProposalQueueBinding {
-  if (
-    !input ||
-    typeof input !== 'object' ||
-    Array.isArray(input) ||
-    Object.keys(input).some(
-      (key) =>
-        ![
-          'gateway_url',
-          'tenant_id',
-          'workspace_id',
-          'project_id',
-          'actor_id',
-          'client_id',
-        ].includes(key),
-    )
-  )
-    throw new TypeError(
-      'Queue binding must contain only gateway, project scope and identity fields',
-    );
-  const url = new URL(input.gateway_url);
-  if (
-    !['http:', 'https:'].includes(url.protocol) ||
-    url.username ||
-    url.password ||
-    url.search ||
-    url.hash ||
-    url.pathname !== '/'
-  )
-    throw new TypeError('gateway_url must be an HTTP(S) origin without credentials or a path');
-  for (const field of ['tenant_id', 'workspace_id', 'project_id'] as const)
-    if (!isUlid(input[field])) throw new TypeError(field + ' must be a ULID');
-  for (const field of ['actor_id', 'client_id'] as const)
-    if (typeof input[field] !== 'string' || !/^[\x21-\x7e]{1,255}$/.test(input[field]))
-      throw new TypeError(field + ' must contain 1-255 visible ASCII characters');
-  return {
-    gateway_url: url.origin,
-    tenant_id: input.tenant_id,
-    workspace_id: input.workspace_id,
-    project_id: input.project_id,
-    actor_id: input.actor_id,
-    client_id: input.client_id,
-  };
 }
 
 /** Durable, single-identity submission queue. It never generates or approves proposals. */
@@ -179,29 +142,132 @@ export class SqliteProposalQueue {
     this.requireWritable();
     validateQueueKey(key);
     const payload = JSON.stringify(parseCreateProposal(input));
-    const checksum = hash(payload);
-    return this.transaction(() => {
-      const existing = this.db
-        .prepare('SELECT * FROM proposal_jobs WHERE request_key = ?')
-        .get(key) as unknown as JobRow | undefined;
-      if (existing) {
-        if (existing.payload_hash !== checksum || existing.payload !== payload)
-          throw new ContractError(
-            'IDEMPOTENCY_KEY_REUSED',
-            'This queue key belongs to another proposal draft',
-          );
-        return summary(existing);
+    return this.transaction(() => this.enqueuePayload(payload, key));
+  }
+
+  /** Preserve the complete generation record and its job in one explicit transaction. */
+  enqueueGenerated(value: unknown, key: string) {
+    this.requireWritable();
+    validateQueueKey(key);
+    const record = inspectProposalGenerationRecord(value);
+    const draft = readGeneratedProposalDraft(record, this.binding);
+    if (record.kind !== 'proposal-generation')
+      throw new TypeError('A generation record is required');
+    const payload = JSON.stringify(draft);
+    let candidate: string | undefined;
+    let begun = false;
+    let phase = 'begin';
+    try {
+      this.db.exec('BEGIN IMMEDIATE');
+      begun = true;
+      phase = 'job';
+      const queued = this.enqueuePayload(payload, key, true);
+      candidate = queued.job_id;
+      phase = 'record';
+      const association = attachGenerationRecord(this.db, queued.job_id, record, this.binding);
+      const current = this.row(queued.job_id);
+      if (current.request_key !== key || !isDeepStrictEqual(readDraft(current), draft))
+        throw new ContractError(
+          'PROPOSAL_GENERATION_HISTORY_CORRUPT',
+          'The task changed while attaching its generation record',
+        );
+      const result = { job: summary(current), record_sha256: record.sha256, ...association };
+      phase = 'commit';
+      this.db.exec('COMMIT');
+      return result;
+    } catch (error) {
+      let rollback = 'not-started';
+      if (begun) {
+        try {
+          this.db.exec('ROLLBACK');
+          rollback = 'completed';
+        } catch {
+          rollback = 'not-confirmed';
+        }
       }
-      const id = createUlid();
-      this.db
+      throw new ContractError(
+        'PROPOSAL_GENERATION_ENQUEUE_FAILED',
+        'Generation enqueue was not confirmed; retain the original record and request key',
+        {
+          request_key: key,
+          record_sha256: record.sha256,
+          ...(candidate ? { candidate_job_id: candidate } : {}),
+          phase,
+          rollback,
+          mutation: !begun
+            ? 'not-started'
+            : phase !== 'commit' && rollback === 'completed'
+              ? 'rolled-back'
+              : 'not-confirmed',
+          retryable: false,
+          ...(error instanceof ContractError ? { cause_code: error.envelope.code } : {}),
+        },
+      );
+    }
+  }
+
+  listGenerations(id: string, options: ProposalGenerationHistoryQuery = {}) {
+    return this.readTransaction(() => listGenerationHistory(this.db, id, this.binding, options));
+  }
+
+  getGeneration(id: string, sha256: string) {
+    return this.readTransaction(() => getGenerationHistory(this.db, id, sha256, this.binding));
+  }
+
+  private enqueuePayload(
+    payload: string,
+    key: string,
+    ignoreObjectKeyOrder = false,
+  ): ProposalJobSummary {
+    const checksum = hash(payload);
+    if (ignoreObjectKeyOrder) {
+      const sizes = this.db
         .prepare(
-          `INSERT INTO proposal_jobs
+          `SELECT typeof(payload) AS payload_type,
+        length(CAST(payload AS BLOB)) AS payload_bytes,
+        length(CAST(coalesce(job_id,'') || coalesce(request_key,'') || coalesce(payload_hash,'') ||
+          coalesce(status,'') || coalesce(error_code,'') || coalesce(trace_id,'') || coalesce(receipt,'') ||
+          coalesce(created_at,'') || coalesce(lease_token,'') AS BLOB)) AS metadata_bytes
+        FROM proposal_jobs WHERE request_key = ?`,
+        )
+        .get(key);
+      if (
+        sizes &&
+        (sizes.payload_type !== 'text' ||
+          typeof sizes.payload_bytes !== 'number' ||
+          sizes.payload_bytes < 1 ||
+          sizes.payload_bytes > 1024 * 1024 ||
+          typeof sizes.metadata_bytes !== 'number' ||
+          sizes.metadata_bytes > 16 * 1024)
+      )
+        throw new ContractError(
+          'PROPOSAL_GENERATION_HISTORY_CORRUPT',
+          'The stored task exceeds generation history limits',
+        );
+    }
+    const existing = this.db
+      .prepare('SELECT * FROM proposal_jobs WHERE request_key = ?')
+      .get(key) as unknown as JobRow | undefined;
+    if (existing) {
+      if (
+        (existing.payload_hash !== checksum || existing.payload !== payload) &&
+        (!ignoreObjectKeyOrder || !isDeepStrictEqual(readDraft(existing), JSON.parse(payload)))
+      )
+        throw new ContractError(
+          'IDEMPOTENCY_KEY_REUSED',
+          'This queue key belongs to another proposal draft',
+        );
+      return summary(existing);
+    }
+    const id = createUlid();
+    this.db
+      .prepare(
+        `INSERT INTO proposal_jobs
         (job_id,request_key,payload,payload_hash,status,next_attempt_ms,created_at)
         VALUES (?,?,?,?,'queued',?,?)`,
-        )
-        .run(id, key, payload, checksum, Date.now(), new Date().toISOString());
-      return summary(this.row(id));
-    });
+      )
+      .run(id, key, payload, checksum, Date.now(), new Date().toISOString());
+    return summary(this.row(id));
   }
 
   list(options: { before?: string; limit?: number } = {}): {
@@ -417,6 +483,21 @@ export class SqliteProposalQueue {
     if (!row)
       throw new ContractError('PROPOSAL_JOB_NOT_FOUND', 'Proposal submission job is unavailable');
     return row;
+  }
+  private readTransaction<T>(run: () => T): T {
+    this.db.exec('BEGIN');
+    try {
+      const result = run();
+      this.db.exec('COMMIT');
+      return result;
+    } catch (error) {
+      try {
+        this.db.exec('ROLLBACK');
+      } catch {
+        /* Preserve the original read failure. */
+      }
+      throw error;
+    }
   }
   private transaction<T>(run: () => T): T {
     this.requireWritable();

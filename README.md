@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [任务生成记录历史](docs/design/01-contracts/proposal-generation-history-runtime.md)：生成记录随提交任务一并保存，可按任务只读查看和取回完整文件，重复入队保留原关联。仅源码文档，未编译、测试、打开数据库或发布。
+
 新增 [完整生成记录与目标绑定](docs/design/01-contracts/proposal-generation-record-runtime.md)：保存来源准备、模型配置和生成结果，支持离线核对，并在入队前检查原网关、项目、账号和客户端。保存失败保留已完成结果供恢复。仅源码文档，未编译、测试、调用服务或发布。
 
 新增 [网关来源准备](docs/design/01-contracts/proposal-generation-sources-runtime.md)：按选定条目和版本读取有权限访问的完整文本，保留来源状态及实际分类，生成可审阅的模型输入文件。任一版本冲突或读取失败均不保存部分结果。仅源码文档，未调用接口、编译、测试或发布。

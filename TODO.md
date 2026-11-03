@@ -6,6 +6,8 @@
 
 ### 2026-11-04 开发补充（未编译、未发布、未测试）
 
+- P7：新增 enqueueGenerated 与可选 proposal_generation_records v1，草稿任务/完整生成记录同事务保存并读回，原键同文重放保留首次关联时间，一个任务可保留多份生成记录。generation-list/get 原生只读分页及新文件导出，缺扩展不建表，逐条核验原绑定/草稿/记录摘要，损坏拒绝且有单条/整页字节上限。未知提交保留原键/摘要/候选任务，导出失败保留完整记录；对象键顺序不改变记录重放。新增本地表仅初始化源码，无依赖/Gateway 变化；未编译、类型检查、测试、执行 CLI/模型/网关、打开库、运行 SQL/迁移或发布。持久生成请求/未知模型调用恢复、保留/备份及全局审计和运行证据仍缺，P7-01 未完成；独立提交 push main 带 [skip ci]。
+
 - P7：新增 preparation/generation v1 完整记录及规范 SHA-256，保存原绑定、选择、来源观察、输入、无凭据模型配置和完整结果。prepare-generation --record、generate-prepared、inspect-generation、enqueue-generated 接入完整核验；打开队列前比较原网关/项目/actor/client，保存失败保留已完成结果。2 MiB 有界新文件输出，旧普通草稿流程兼容。摘要不认证来源/模型执行/当前权限，队列尚无记录关联列，持久生成任务/未知调用恢复/审计与运行证据仍缺，P7-01 保持未完成。无 schema/依赖变化，仅源码文档，未编译、类型检查、测试、执行 CLI、调用模型/网关、打开库或发布；独立提交 push main 带 [skip ci]。
 
 - P7：新增 prepareProposalGeneration/prepare-generation，从原 gateway/project/actor/client 绑定读取明确选择的 ContextItem ID/revision。先核对身份协议，再以同一令牌/预期身份头逐条读取，检查范围/trace/版本/ETag/来源封套和当前有效性；完整摘录保留观察状态，分类只升不降，超限/冲突/失败不保存部分输入。全程期限/取消、有界读取，独占输出直接兼容 generate，完整身份/观察保留命令结果。无 Gateway/schema/依赖变化，仅源码文档，未调用网关/模型、执行CLI、编译、类型检查、测试或发布；后台发现/版本刷新、目的地绑定、持久生成任务/审计及运行证据仍缺。独立提交push main带[skip ci]。
@@ -486,7 +488,7 @@
 
 ## P7：搜索和智能能力
 
-- [ ] **[P7-01][缺实现] 完善 Proposal 提交与审核链路。** 已开发持久化路由、来源/provenance、人工 expected_revision 确认及 MCP/SDK/CLI/UI，worker 已有持久提交队列与真实 HTTP 入口；显式模型生成适配器/CLI 已补源码，配置端点/模型从指定摘录生成并保存可审阅草稿，不自动入队。指定当前 ContextItem 的身份/权限读取、版本核对及完整生成输入准备亦已补独立命令。完整准备/生成记录、离线一致性核验和入队前原目的地绑定已补源码，旧普通草稿流程保持兼容。仍缺后台来源发现/刷新、持久生成任务/未知调用恢复/任务审计关联、真实供应商兼容和运行质量证据，原内存服务仅保留离线兼容。完成条件：默认 `proposed`，带 source/provenance，人工 expected_revision 确认后才可进入 verified。
+- [ ] **[P7-01][缺实现] 完善 Proposal 提交与审核链路。** 已开发持久化路由、来源/provenance、人工 expected_revision 确认及 MCP/SDK/CLI/UI，worker 已有持久提交队列与真实 HTTP 入口；显式模型生成适配器/CLI 已补源码，配置端点/模型从指定摘录生成并保存可审阅草稿，不自动入队。指定当前 ContextItem 的身份/权限读取、版本核对及完整生成输入准备亦已补独立命令。完整准备/生成记录、离线一致性核验、入队前原目的地绑定及任务记录原子关联/只读查询/导出已补源码，旧普通草稿流程保持兼容，可选关联表尚未初始化。仍缺后台来源发现/刷新、持久生成任务/未知模型调用恢复/全局审计、真实供应商兼容和运行质量证据，原内存服务仅保留离线兼容。完成条件：默认 `proposed`，带 source/provenance，人工 expected_revision 确认后才可进入 verified。
 - [ ] **[P7-02][待外部环境] 接入真实模型/Embedding 与 Golden 评测。** 当前评测和建议主要是 deterministic fixture；需要固定模型、prompt、embedding/index 版本，执行 source fidelity、next action、stale content、injection 和人工抽样回归，并保存阈值报告。
 - [ ] **[P7-03][缺实现] 实现阻塞/依赖/进度分析的可消费输出。** 将 blocker、dependency、progress suggestion 接入 ContextPack、REST/MCP/UI，始终区分 desired/observed/verified，禁止智能结果直接提升权威状态。
 

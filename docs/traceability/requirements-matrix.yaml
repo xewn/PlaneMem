@@ -3435,6 +3435,24 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_generation_history_development_increment:
+      date: "2026-11-04"
+      status: "Source-only atomic generation-record/job association and read-only history retrieval; R-009 remains incomplete."
+      artifacts:
+        - "workers/intelligence/src/generation-history.ts"
+        - "workers/intelligence/src/queue-binding.ts"
+        - "workers/intelligence/src/submission.ts"
+        - "workers/intelligence/src/generation-record.ts"
+        - "workers/intelligence/src/main.ts"
+        - "docs/design/01-contracts/proposal-generation-history-runtime.md"
+      behavior: "Explicit enqueueGenerated initializes the optional v1 extension and saves a task plus full record in one transaction with readback. Original binding, complete normalized draft, references and both record digests must match; same-key record replay preserves original task state and first association time, while distinct matching records may coexist. Native read-only list/get validates selected records under one snapshot with 2 MiB/record and 32 MiB/page bounds; absent extensions are never initialized by reads. Export closes storage before exclusive new-file publication and retains full content on failure. Unknown enqueue commits retain the original key, digest and candidate job."
+      evidence: []
+      pending_evidence:
+        - "Atomic extension initialization, task/record rollback, concurrent same-key replay and unknown commit recovery"
+        - "Mismatched bindings/drafts/digests, reordered object keys, malformed/oversized history and preserved first association time"
+        - "Native read-only missing extension behavior, bounded digest pagination and export/close failure recovery"
+      remaining_scope: "Persistent pre-dispatch generation requests, unknown model-call recovery, record retention/backup/import, global audit, authenticity, quality/cost evaluation and runtime evidence."
+      execution: "Source/docs only. Added optional local table initialization source, not executed. No build, typecheck, tests, CLI/model/Gateway calls, database opens, SQL/migration execution or release; no dependency or Gateway schema changes. Separate commit/push to main with skip-ci."
     proposal_generation_record_development_increment:
       date: "2026-11-04"
       status: "Source-only complete preparation/generation records and destination-bound enqueue; R-009 remains incomplete."
@@ -3449,7 +3467,7 @@ requirements:
         - "Malformed nested fields, recomputed mismatched records, canonical ordering and size boundaries"
         - "Binding and request-key rejection before database open; original same-key draft replay"
         - "Occupied outputs, incomplete publication and retained preparation/provider/generation recovery"
-      remaining_scope: "Records are consistency checks, not source/provider authentication or current permission/freshness proof. Persistent generation requests, unknown-call recovery, record-to-job audit association, quality/cost evaluation and runtime evidence remain missing."
+      remaining_scope: "Records are consistency checks, not source/provider authentication or current permission/freshness proof. Persistent generation requests, unknown-call recovery, global audit, quality/cost evaluation and runtime evidence remain missing. Local record-to-job association is added by the separate history increment."
       execution: "Source/docs only; no builds, typechecks, tests, CLI/model/Gateway execution, database opens or release. No schema/dependency changes; separate task commit/push to main with skip-ci."
     proposal_generation_source_preparation_development_increment:
       date: "2026-11-04"
