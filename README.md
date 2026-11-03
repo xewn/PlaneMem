@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [队列快照补存](docs/design/01-contracts/proposal-queue-backup-runtime.md#已保留快照补存)：完整备份或保存失败记录可先预览，再补存至新文件，保持原时间、摘要和全部任务状态；再次失败保留完整快照。仅源码文档，未编译、测试、运行或发布。
+
 新增 [提交队列完整快照](docs/design/01-contracts/proposal-queue-backup-runtime.md)：只读导出全部任务、未知状态、租约和生成关联，保留原绑定并核验摘要；提供离线文件核验，超限或损坏拒绝整份导出。尚未接入队列恢复。仅源码文档，未编译、测试、运行或发布。
 
 新增 [审核历史所选批量清理](docs/design/01-contracts/proposal-review-history-runtime.md#所选历史批量审阅与移除)：按目录页选择最多20份记录，完整审阅后可导出所选恢复文件并独立确认统一移除；全部目标重查通过才删除，冲突拒绝整批，结果未知保留副本。仅源码文档，未编译、测试、运行或发布。

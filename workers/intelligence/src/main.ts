@@ -23,6 +23,7 @@ import {
   type ProposalQueueReceiptRecord,
 } from './proposal-receipt-record.js';
 import { readProposalReceiptRecordRecovery } from './proposal-receipt-recovery.js';
+import { readProposalQueueBackupRecovery } from './proposal-queue-backup-recovery.js';
 import {
   proposalQueueBackupSummary,
   readProposalQueueBackup,
@@ -84,6 +85,7 @@ const help = `Proposal submission queue (Node.js 24)
   proposal-worker get     --queue queue.sqlite --binding binding.json --id JOB_ID
   proposal-worker queue-backup --queue EXISTING.sqlite --binding binding.json --output NEW_BACKUP.json
   proposal-worker inspect-queue-backup --file BACKUP.json
+  proposal-worker queue-backup-recover --file RETAINED_BACKUP_OR_ERROR.json --output NEW_BACKUP.json [--preview]
   proposal-worker retry   --queue queue.sqlite --binding binding.json --id JOB_ID
   proposal-worker receipt --queue EXISTING.sqlite --binding binding.json --id JOB_ID [--timeout-ms 30000] [--output NEW_RECEIPT.json]
   proposal-worker reconcile --queue EXISTING.sqlite --binding binding.json --id JOB_ID [--timeout-ms 30000] [--output NEW_RECEIPT.json]
@@ -94,6 +96,7 @@ const help = `Proposal submission queue (Node.js 24)
 binding.json contains gateway_url, tenant_id, workspace_id, project_id, actor_id, client_id.
 list/get open an existing initialized queue read-only; missing files are never created.
 queue-backup saves a complete known-v1 logical snapshot after read-only queue close; inspect-queue-backup validates it offline. Neither restores, retries or sends tasks.
+queue-backup-recover saves a retained complete snapshot to a new file; --preview only inspects input and destination. Neither mode opens or restores a queue.
 generate calls the configured model once using PROPOSAL_GENERATION_API_KEY; it saves a new draft, without opening a queue.
 generate-prepared uses the same single call and saves the complete record; it does not refresh sources.
 inspect-generation verifies record consistency offline; enqueue-generated requires the original destination binding.
@@ -162,6 +165,7 @@ export async function main(args: string[]): Promise<number> {
       get: ['id'],
       'queue-backup': ['output'],
       'inspect-queue-backup': ['file'],
+      'queue-backup-recover': ['file', 'output', 'preview'],
       retry: ['id'],
       receipt: ['id', 'timeout-ms', 'output'],
       reconcile: ['id', 'timeout-ms', 'output'],
@@ -181,6 +185,7 @@ export async function main(args: string[]): Promise<number> {
             'inspect-generation',
             'inspect-receipt-record',
             'inspect-queue-backup',
+            'queue-backup-recover',
             'receipt-record-recover',
             'generation-request',
             'generation-run',
@@ -212,6 +217,55 @@ export async function main(args: string[]): Promise<number> {
     if (command === 'inspect-queue-backup') {
       const backup = await readProposalQueueBackup(required('file'));
       process.stdout.write(JSON.stringify(proposalQueueBackupSummary(backup), null, 2) + '\n');
+      return 0;
+    }
+    if (command === 'queue-backup-recover') {
+      const target = required('output');
+      const recovery = await readProposalQueueBackupRecovery(required('file'));
+      const summary = proposalQueueBackupSummary(recovery.backup);
+      let outputPath = target;
+      let exportPhase = 'prepare';
+      let report: unknown;
+      try {
+        const destination = await prepareProposalQueueBackupOutput(target);
+        outputPath = destination.path;
+        if (values.preview) {
+          report = {
+            ...summary,
+            recovery_source: recovery.source,
+            queue_access: 'none',
+            output: { state: 'preview', path: destination.path },
+          };
+        } else {
+          exportPhase = 'save';
+          const saved = await saveProposalQueueBackup(destination, recovery.backup);
+          report = {
+            ...summary,
+            recovery_source: recovery.source,
+            queue_access: 'none',
+            output: saved,
+          };
+        }
+      } catch (error) {
+        process.stderr.write(
+          JSON.stringify(
+            {
+              code: 'PROPOSAL_QUEUE_BACKUP_RECOVERY_FAILED',
+              backup: recovery.backup,
+              output: {
+                output_path: outputPath,
+                export_phase: exportPhase,
+                close_state: 'not-opened',
+                ...(error instanceof ContractError ? error.envelope.details : {}),
+              },
+            },
+            null,
+            2,
+          ) + '\n',
+        );
+        return 1;
+      }
+      process.stdout.write(JSON.stringify(report, null, 2) + '\n');
       return 0;
     }
     if (command === 'queue-backup') {

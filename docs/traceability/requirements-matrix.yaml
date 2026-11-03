@@ -3452,6 +3452,23 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_queue_backup_recovery_development_increment:
+      date: "2026-11-04"
+      status: "Source-only retained complete queue snapshot file recovery and preview; R-009 remains incomplete."
+      artifacts:
+        - "workers/intelligence/src/proposal-queue-backup-recovery.ts"
+        - "workers/intelligence/src/main.ts"
+        - "workers/intelligence/src/index.ts"
+        - "docs/design/01-contracts/proposal-queue-backup-runtime.md"
+      behavior: "queue-backup-recover accepts complete backups or consistent original export/recovery failures through a bounded ordinary UTF-8 file. It validates complete inner/outer hashes, original binding/jobs/associations and strict error metadata, preserving capture time, raw bodies, leases and uncertainty. Preview checks input and a fresh destination without writing. Saving exclusively publishes and reads back a new file. Prepare/save failure retains the same full backup for a later explicit attempt. Historical paths are inert; no queue, credential, network, lease recovery, receipt settlement or resend is involved."
+      evidence: []
+      pending_evidence:
+        - "Direct backup, close/save export failures and repeated recovery failure; strict fields, stage/close/publication combinations and bounds"
+        - "Preserved capture time, raw payloads/receipts, original binding, hashes, leases, uncertainty and generation associations"
+        - "Read-only preview, same-path/collision rejection, publication/readback failures and retained complete content"
+        - "CLI option isolation, inert historical paths, no queue access or remote actions"
+      remaining_scope: "Queue backup import/comparison and database recovery, automatic backup/retention, large-queue volumes, joint journal archival and runtime evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/SQL/database execution or release; no schema or dependency changes."
     proposal_queue_backup_development_increment:
       date: "2026-11-04"
       status: "Source-only complete known-v1 queue snapshot export and offline inspection; R-009 remains incomplete."
@@ -3468,7 +3485,7 @@ requirements:
         - "Every job state, original raw payload/hash, lease/uncertainty preservation, generation linkage and corruption rejection"
         - "Strict offline shape/order/identity/inner-outer hashes, file bounds, output collision and failure retention"
         - "CLI option isolation, native readonly open/close and no generation, claim, retry, restore or send"
-      remaining_scope: "Backup import/comparison and queue recovery, retained-error export recovery, automatic backup/retention, large-queue volumes, joint journal archival and runtime evidence."
+      remaining_scope: "Backup import/comparison and queue recovery, automatic backup/retention, large-queue volumes, joint journal archival and runtime evidence. Retained-error file recovery is implemented by the separate source-only increment above."
       execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/SQL/database execution or release; no schema or dependency changes."
     proposal_review_history_selection_cleanup_development_increment:
       date: "2026-11-04"

@@ -4,6 +4,7 @@ export * from './publisher.js';
 export * from './proposal-reconciliation.js';
 export * from './proposal-receipt-record.js';
 export * from './proposal-receipt-recovery.js';
+export * from './proposal-queue-backup-recovery.js';
 export {
   inspectProposalQueueBackup,
   proposalQueueBackupSummary,
