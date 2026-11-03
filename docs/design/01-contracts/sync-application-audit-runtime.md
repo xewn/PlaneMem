@@ -44,4 +44,4 @@ workctx inbox application-audit --inbox local-inbox.sqlite --json-file applicati
 
 查询错误为 INBOX_APPLICATION_AUDIT_QUERY_INVALID；预算不足为 INBOX_APPLICATION_AUDIT_LIMIT_REACHED；遍历结构/行数/空页异常为 INBOX_APPLICATION_AUDIT_CORRUPT；下层原页或快照/ledger 错误保留原代码。失败 details 标记 audit_completed=false，遍历内失败还含已完整检查计数、stage、selected_digest 和预算。schema/事务开始前失败可能尚无检查计数。事务结束失败保留已检查计数但不声称成功；回滚失败保留 rollback_pending。CLI 尝试关闭连接，成功保留完整结果与 close_pending，失败保留原诊断并补关闭状态。
 
-审计不改写任何页面、投影或应用头，不修复、不重放业务 handler、不导出文件、不解除派发占用、不发送 ack。其他消费者/应用、确认日志、物理数据库完整性和完整历史业务重放需独立开发。真实并发、损坏数据库、超限、超时与关闭失败证据仍为空，源码完成不代表执行通过。
+审计不改写任何页面、投影或应用头，不修复、不重放业务 handler、不导出文件、不解除派发占用、不发送 ack。其他消费者/应用、确认日志和物理数据库完整性仍需独立覆盖。固定内置适配器的历史重放另由 [application-replay](sync-application-replay-runtime.md) 提供，本审计入口保持不执行 reducer。真实并发、损坏数据库、超限、超时与关闭失败证据仍为空，源码完成不代表执行通过。

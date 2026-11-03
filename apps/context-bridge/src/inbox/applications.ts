@@ -24,6 +24,10 @@ import {
 import { SYNC_INBOX_APPLICATION_SCHEMA_V1 } from './application-schema.js';
 import { InboxApplicationRejection } from './application-rejection.js';
 import {
+  parseInboxBuiltInApplicationReplayQuery,
+  replayInboxApplicationHistory,
+} from './application-replay.js';
+import {
   applicationHistoryBudget,
   inboxApplicationStepSummary,
   parseInboxApplicationHistoryQuery,
@@ -604,6 +608,99 @@ export class InboxApplications {
           max_events: query.max_events,
           max_bytes: query.max_bytes,
           timeout_ms: query.timeout_ms,
+          acknowledgement_dispatch_state: 'not-sent',
+        },
+      });
+    }
+  }
+  replay(input: unknown, trace: string) {
+    const query = parseInboxBuiltInApplicationReplayQuery(input, trace);
+    let progress: Record<string, unknown> | undefined;
+    try {
+      return this.run(trace, query.timeout_ms, false, (check) => {
+        this.require(trace);
+        const replayed = replayInboxApplicationHistory(this.db, keys(query), query, trace, check, {
+          head: () => this.head(query, trace, check),
+          step: (digest) => this.step(query, digest, trace),
+          events: (step) => this.verifyEvents(query, step, trace, check),
+        });
+        const audited = replayed.audited;
+        progress = {
+          structure_completed: true,
+          checked_pages: audited.checked_pages,
+          checked_events: audited.checked_events,
+          checked_bytes: audited.checked_bytes,
+          replayed_pages: replayed.replayed_pages,
+          replayed_events: replayed.replayed_events,
+          replayed_bytes: replayed.replayed_bytes,
+          stage: 'completion',
+        };
+        const result = {
+          ...this.historyEnvelope(query, trace),
+          status: 'complete' as const,
+          replay_scope: 'current-built-in-application-history' as const,
+          replay_completed: true,
+          structure_completed: true,
+          checked_pages: audited.checked_pages,
+          checked_events: audited.checked_events,
+          checked_bytes: audited.checked_bytes,
+          replayed_pages: replayed.replayed_pages,
+          replayed_events: replayed.replayed_events,
+          replayed_bytes: replayed.replayed_bytes,
+          replayed_projection_sha256: replayed.replayed_projection_sha256,
+          root_sha256: audited.root_sha256,
+          adapter: replayed.adapter,
+          budgets: {
+            max_pages: query.max_pages,
+            max_events: query.max_events,
+            max_bytes: query.max_bytes,
+            max_replay_bytes: query.max_replay_bytes,
+            max_page_replay_bytes: INBOX_APPLICATION_REDUCTION_BYTES,
+            timeout_ms: query.timeout_ms,
+          },
+          state: {
+            ...this.state(query, audited.head, trace),
+            full_application_history_audit: 'verified-structure' as const,
+            projection_semantics: 'matches-current-built-in-replay' as const,
+          },
+          full_application_history_audit: 'verified-structure' as const,
+          reducer_replay: 'verified-current-built-in' as const,
+          projection_semantics: 'matches-current-built-in-replay' as const,
+          received_suffix_audit: 'not-performed' as const,
+          acknowledgement_audit: 'not-performed' as const,
+          physical_database_audit: 'not-performed' as const,
+          history_update: 'not-performed' as const,
+        };
+        try {
+          syncJsonSnapshot(result, 2 * 1024 * 1024);
+        } catch {
+          throw applicationFailure(
+            'INBOX_APPLICATION_REPLAY_RESULT_TOO_LARGE',
+            'The complete replay response exceeds 2 MiB',
+            trace,
+          );
+        }
+        check();
+        return result;
+      });
+    } catch (error) {
+      if (!(error instanceof ContractError)) throw error;
+      throw new ContractError(error.envelope.code, error.envelope.message, {
+        trace_id: trace,
+        retryable: false,
+        details: {
+          ...progress,
+          ...error.envelope.details,
+          replay_scope: 'current-built-in-application-history',
+          replay_completed: false,
+          expected_identity: query.expected_identity,
+          application: query.application,
+          max_pages: query.max_pages,
+          max_events: query.max_events,
+          max_bytes: query.max_bytes,
+          max_replay_bytes: query.max_replay_bytes,
+          timeout_ms: query.timeout_ms,
+          history_update: 'not-performed',
           acknowledgement_dispatch_state: 'not-sent',
         },
       });

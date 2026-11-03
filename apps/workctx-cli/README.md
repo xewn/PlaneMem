@@ -1,5 +1,13 @@
 # workctx 开发入口
 
+新增内置应用历史重放核对（仅源码，示例未执行）：
+
+```text
+workctx inbox application-replay --inbox local-inbox.sqlite --json-file application-replay-query.json
+```
+
+查询要求完整 expected_identity 和固定 application={name:"context-item-lifecycle",version:"1"}，接受 application-audit 的 max_pages/max_events/max_bytes/timeout_ms，另加 max_replay_bytes（默认 64 MiB、最多 512 MiB）。只读打开已有库，在同一事务先完整核对结构，再从 null 正序重算每页并严格比较保存快照；成功只表示当前内置规则下所有快照相符，遇到损坏、规则拒绝、差异或超限即报未完成并保留页/事件位置。不改变保存状态或发送确认，也不自动修复、导出或加载自定义模块。详见 [重放核对契约](../../docs/design/01-contracts/sync-application-replay-runtime.md)。未运行命令、reducer 或数据库，无新 schema/依赖。
+
 应用历史新增只读分页和指定快照读取（仅源码，示例未执行）：
 
 ```text

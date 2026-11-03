@@ -1,5 +1,7 @@
 # Context Bridge 本地同步存储
 
+2026-11-03 内置应用重放增补：`replayBuiltInApplicationHistory(input,trace)` 在同一只读事务先完整结构审计，再从 null 按原页/事件正序重算 context-item-lifecycle/1，逐页比较完整保存投影。首个不匹配页返回原页/投影摘要，规则拒绝保留具体事件位置；不回写快照或应用头。沿用审计页/事件/源字节/时间预算，新增 max_replay_bytes（默认 64 MiB、最多 512 MiB），单页处理仍限 64 MiB、投影 1 MiB。成功仅证明本次历史与当前固定内置代码重算相符，来源和服务端状态未认证；CLI application-replay 只读接入。见 [重放核对契约](../../docs/design/01-contracts/sync-application-replay-runtime.md)。无 schema/依赖变化，仅源码与文档，未运行 reducer、CLI、数据库、编译或测试。
+
 2026-11-03 应用历史浏览增补：`readApplicationHistory(input,trace)` 返回固定双边界的步骤摘要分页，默认 20/最多 50，每个边界绑定序号/原页摘要/投影摘要；完整核验选中步骤、ledger 与一条前瞻，返回 next_query 和每项 selection_query。`readApplicationSnapshot(input,trace)` 按原页摘要读取完整历史投影，可绑定 expected_projection_sha256；缺步骤返回 found=false/snapshot=null，当前头以独立摘要返回。均要求原 expected_identity/application，可选 timeout_ms；只读事务，64 MiB 不同选中源文档/投影预算，列表摘要 512 KiB/详情 2 MiB 响应限额，不自动导出、恢复、重放或确认。CLI application-history/application-get 同步接入；范围及局限见 [历史浏览契约](../../docs/design/01-contracts/sync-application-history-runtime.md)。无新 schema/依赖，仅源码文档，未编译、测试、运行或打开数据库。
 
 现有 SqliteOutbox 保存待上传事件。新增 SqliteSyncInbox 保存已下载的完整页面和按原消费者隔离的连续 received_cursor，两者使用独立文件与 schema。

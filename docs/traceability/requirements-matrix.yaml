@@ -978,6 +978,27 @@ requirements:
         - "CLI primary/embedded local routing, old output migration, read/rollback/close failures and complete result retention"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_application_replay_development_increment:
+      date: "2026-11-03"
+      status: "Source-only full saved-history recomputation with the current fixed context-item-lifecycle/1 adapter; R-005 remains incomplete."
+      artifacts:
+        - "apps/context-bridge/src/inbox/application-replay.ts"
+        - "apps/context-bridge/src/inbox/context-item-application.ts"
+        - "apps/context-bridge/src/inbox/applications.ts"
+        - "apps/context-bridge/src/inbox/sqlite.ts"
+        - "apps/workctx-cli/src/inbox.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/sync-application-replay-runtime.md"
+      behavior: "Pre-open strict parsing selects only the current built-in adapter. A single readonly transaction completes structural audit before recomputing from JSON null in original forward page/event order; every saved full projection must match. Fixed per-page reduction and projection limits are preserved, with a separate bounded cumulative replay budget. Failures preserve structure/replay progress, page/event location, fixed reducer diagnostics or mismatch hashes without raw payloads. Successful flags apply only to this response, including empty histories; no writes or repair occur."
+      remaining_scope: "No historical-code or source authentication, current server/full item content proof, arbitrary reducer replay, received-suffix/acknowledgement/physical database audit, automatic repair/migration, application export/restore or runtime evidence. Byte accounting does not bound exact IO, internal reducer work or peak process memory."
+      pending_evidence:
+        - "Pre-open adapter/query/limit rejection and primary/embedded readonly CLI routing without schema initialization"
+        - "Empty and multi-page histories, root-null forward replay, ignored/unknown types, lifecycle gaps and earliest self-consistent projection mismatch"
+        - "Structural corruption stops before reducers; cumulative/per-page budget, response cap and shared timeout rejection"
+        - "Exact stored JSON comparison, current adapter scope, stage/progress/hash diagnostics and read/rollback/close failure retention"
+      evidence: []
+      execution: "Source and documentation only; no builds, typechecks, tests, CLI/Bridge/reducer/API/service runs, database opens, schema initialization, migrations, sample artifacts or release. No new schema/dependencies; SQLite extensions and PostgreSQL 016-049 remain unexecuted. Each task is committed and pushed to main with skip-ci messages."
     sync_application_history_development_increment:
       date: "2026-11-03"
       status: "Source-only application history pagination and exact historical projection reads; R-005 remains incomplete."

@@ -180,7 +180,7 @@ export function contextItemApplicationAdapter(identity: SyncCommandIdentity) {
     },
   };
 }
-function requireBuiltIn(application: SyncInboxApplication, trace: string) {
+export function requireBuiltInApplication(application: SyncInboxApplication, trace: string) {
   if (
     application.name !== CONTEXT_ITEM_APPLICATION.name ||
     application.version !== CONTEXT_ITEM_APPLICATION.version
@@ -194,6 +194,6 @@ function requireBuiltIn(application: SyncInboxApplication, trace: string) {
 /** Parse and select before opening storage; no module paths or executable input. */
 export function parseInboxBuiltInApplicationApplyQuery(input: unknown, trace: string) {
   const query = parseInboxApplicationApplyQuery(input, trace);
-  requireBuiltIn(query.application, trace);
+  requireBuiltInApplication(query.application, trace);
   return query;
 }
