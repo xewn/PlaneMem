@@ -1,5 +1,7 @@
 # Context Bridge 本地同步存储
 
+离线备份子路径新增 `listOutboxRestoreRequeueBackupHistory/readOutboxRestoreRequeueBackupEntry`：先完整验证全部历史，再按backup_sha256绑定分页/批次；默认10最多20，返回next_query/get_query。单条返回完整原查询/回执及可导出的独立文件，保留备份观察时间/trace，缺项明确not-found。见 [备份离线取用](../../docs/design/01-contracts/outbox-restore-requeue-backup-access-runtime.md)。仅源码文档，无数据库结构或依赖变化，未编译、测试或运行。
+
 新增 `readRestoreRequeueBackup` 与离线子路径 `@planemem/context-bridge/outbox-restore-requeue-backup`：单读快照收集项目全部批次，按restore_id去重父历史，完整核验关联闭包和所有摘要。最多100批/100父项、64 MiB文档；重复读取父历史仍按批次计入默认64最多512 MiB读取预算。见 [完整备份](../../docs/design/01-contracts/outbox-restore-requeue-backup-runtime.md)。无数据库结构或依赖版本变化，仅源码文档，未编译、测试或运行。
 
 新增 `previewRestoreRequeueFileImport/importRestoreRequeueFile`：scope/document_sha256/requeue_id绑定完整文件，在同事务检查全局ID占用与完整内容，只补缺失父历史和批次回执，异文/跨项目拒绝；写前写后检查并完整读回。缺父历史时可凭完整匹配源文件补回，不改变当前事件/控制。见 [历史导入](../../docs/design/01-contracts/outbox-restore-requeue-import-runtime.md)。复用既有可选表，无schema/依赖变化，仅源码文档，未运行、编译、测试或初始化表。

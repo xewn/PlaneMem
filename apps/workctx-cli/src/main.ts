@@ -47,6 +47,10 @@ import {
 import { callOutboxReconcileArguments } from './outbox-reconcile.js';
 import { inspectOutboxReceiptArguments } from './outbox-receipt-file.js';
 import {
+  isOutboxRestoreRequeueBackupAccessCommand,
+  runOutboxRestoreRequeueBackupAccessArguments,
+} from './outbox-restore-requeue-backup-access.js';
+import {
   isOutboxRestoreRequeueBackupCommand,
   runOutboxRestoreRequeueBackupArguments,
 } from './outbox-restore-requeue-backup.js';
@@ -182,6 +186,9 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   outbox restore-requeue-import  Atomically add only missing matching histories with the same file/query; does not requeue events
   outbox restore-requeue-backup  Save all project batches/shared parent histories using --outbox and --output NEW_FILE; optional audit budget JSON
   outbox inspect-restore-requeue-backup  Verify the complete --archive-file backup offline without project configuration
+  outbox restore-requeue-backup-history  Browse verified --archive-file batches; optional limit/backup_sha256/after_requeue_id JSON
+  outbox restore-requeue-backup-get  Read original query/receipt using --archive-file and backup_sha256/requeue_id JSON; optional --output NEW_QUERY
+  outbox restore-requeue-backup-export  Save the selected batch and parent as a standalone receipt; same file/selection and required --output NEW_RECEIPT
   outbox restore-history         Browse restore metadata using explicit --outbox; optional limit/after_restore_id JSON
   outbox restore-audit           Verify all project restore receipts/archives using --outbox; optional max_receipts/max_bytes/timeout_ms JSON
   outbox restore-compare         Compare one restored event with its current row using --outbox and restore_id/event_id JSON
@@ -484,6 +491,9 @@ export async function main(args: string[]): Promise<number> {
       'outbox restore-requeue-import',
       'outbox restore-requeue-backup',
       'outbox inspect-restore-requeue-backup',
+      'outbox restore-requeue-backup-history',
+      'outbox restore-requeue-backup-get',
+      'outbox restore-requeue-backup-export',
       'outbox restore-history',
       'outbox restore-audit',
       'outbox restore-compare',
@@ -643,6 +653,10 @@ export async function main(args: string[]): Promise<number> {
     }
     if (isOutboxRestoreBackupAccessCommand(name)) {
       print(await runOutboxRestoreBackupAccessArguments(args, trace));
+      return 0;
+    }
+    if (isOutboxRestoreRequeueBackupAccessCommand(name)) {
+      print(await runOutboxRestoreRequeueBackupAccessArguments(args, trace));
       return 0;
     }
     if (isOutboxRestoreRequeueBackupCommand(name)) {

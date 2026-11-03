@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
-import { ContractError, syncJsonSnapshot } from '@planemem/contracts';
+import { ContractError, isSyncIdentifier, syncJsonSnapshot } from '@planemem/contracts';
 import type { OutboxScope } from './sqlite.js';
 import { parseOutboxReadScope } from './reading.js';
 import { parseOutboxRestoreAuditQuery } from './restore-audit.js';
@@ -15,6 +15,10 @@ import {
   outboxRequeueReceiptCandidate,
   type OutboxRestoreRequeueReceipt,
 } from './restore-requeue-receipt.js';
+import {
+  createOutboxRestoreRequeueFile,
+  outboxRestoreRequeueFileSummary,
+} from './restore-requeue-file.js';
 
 export const OUTBOX_REQUEUE_BACKUP_MAX_RECEIPTS = 100;
 export const OUTBOX_REQUEUE_BACKUP_DOCUMENT_BYTES = 64 * 1024 * 1024;
@@ -261,4 +265,217 @@ export function outboxRestoreRequeueBackupSummary(file: OutboxRestoreRequeueBack
     sender_stopped: 'not-proven' as const,
     local_commit: 'not-attempted' as const,
   };
+}
+
+export interface OutboxRestoreRequeueBackupHistoryQuery {
+  limit: number;
+  backup_sha256?: string;
+  after_requeue_id?: string;
+}
+const digest = (value: unknown): value is string =>
+  typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
+export function parseOutboxRestoreRequeueBackupHistoryQuery(
+  input: unknown,
+  trace: string,
+): OutboxRestoreRequeueBackupHistoryQuery {
+  try {
+    const row = object(JSON.parse(syncJsonSnapshot(input, 16384)));
+    if (
+      Object.keys(row).some((key) => !['limit', 'backup_sha256', 'after_requeue_id'].includes(key))
+    )
+      throw new TypeError();
+    const limit = row.limit === undefined ? 10 : row.limit;
+    if (typeof limit !== 'number' || !Number.isSafeInteger(limit) || limit < 1 || limit > 20)
+      throw new TypeError();
+    const query: OutboxRestoreRequeueBackupHistoryQuery = { limit };
+    if (row.backup_sha256 !== undefined) {
+      if (!digest(row.backup_sha256)) throw new TypeError();
+      query.backup_sha256 = row.backup_sha256;
+    }
+    if (row.after_requeue_id !== undefined) {
+      if (!isSyncIdentifier(row.after_requeue_id) || query.backup_sha256 === undefined)
+        throw new TypeError();
+      query.after_requeue_id = row.after_requeue_id;
+    }
+    return query;
+  } catch {
+    throw fail(
+      'OUTBOX_REQUEUE_BACKUP_HISTORY_QUERY_INVALID',
+      'Supply optional limit (1–20), backup_sha256 and after_requeue_id; continuation requires the original backup digest',
+      trace,
+    );
+  }
+}
+export function parseOutboxRestoreRequeueBackupSelection(input: unknown, trace: string) {
+  try {
+    const row = object(JSON.parse(syncJsonSnapshot(input, 16384)), ['backup_sha256', 'requeue_id']);
+    if (!digest(row.backup_sha256) || !isSyncIdentifier(row.requeue_id)) throw new TypeError();
+    return { backup_sha256: row.backup_sha256, requeue_id: row.requeue_id };
+  } catch {
+    throw fail(
+      'OUTBOX_REQUEUE_BACKUP_SELECTION_INVALID',
+      'Supply exactly the original backup_sha256 and requeue_id',
+      trace,
+    );
+  }
+}
+function assertBackupSelection(
+  file: OutboxRestoreRequeueBackupFile,
+  expected: string | undefined,
+  trace: string,
+) {
+  if (expected !== undefined && expected !== file.document_sha256)
+    throw fail(
+      'OUTBOX_REQUEUE_BACKUP_SELECTION_CHANGED',
+      'The backup differs from the original selection; retain the original file and query',
+      trace,
+      { expected_backup_sha256: expected, observed_backup_sha256: file.document_sha256 },
+    );
+}
+function backupObservation(file: OutboxRestoreRequeueBackupFile) {
+  return {
+    scope: file.document.scope,
+    backup_sha256: file.document_sha256,
+    backup_observed_at: file.document.observed_at,
+    backup_export_trace_id: file.document.export_trace_id,
+    total_receipts: file.document.receipts.length,
+    parent_histories: file.document.parents.length,
+    archive_integrity: 'verified' as const,
+    current_queue: 'not-checked' as const,
+    current_control: 'not-checked' as const,
+    server_delivery: 'not-checked' as const,
+    source_authenticity: 'not-proven' as const,
+    sender_stopped: 'not-proven' as const,
+    local_commit: 'not-attempted' as const,
+  };
+}
+function boundedMetadata<T>(input: T, trace: string, check: () => void): T {
+  try {
+    syncJsonSnapshot(input, 128 * 1024);
+  } catch {
+    throw fail(
+      'OUTBOX_REQUEUE_BACKUP_METADATA_TOO_LARGE',
+      'The complete selection metadata exceeds 128 KiB; use a smaller limit when listing',
+      trace,
+    );
+  }
+  check();
+  return input;
+}
+function accessError(error: unknown, query: unknown, trace: string) {
+  return fail(
+    error instanceof ContractError ? error.envelope.code : 'OUTBOX_REQUEUE_BACKUP_ACCESS_FAILED',
+    error instanceof ContractError
+      ? error.envelope.message
+      : 'The complete backup selection could not be read',
+    trace,
+    { ...(error instanceof ContractError ? error.envelope.details : {}), query },
+  );
+}
+/** Every page verifies the whole file, including histories outside the requested page. */
+export function listOutboxRestoreRequeueBackupHistory(
+  input: unknown,
+  selection: unknown,
+  trace: string,
+) {
+  const query = parseOutboxRestoreRequeueBackupHistoryQuery(selection, trace);
+  const check = outboxRestoreBudget(trace);
+  try {
+    const file = verifyOutboxRestoreRequeueBackup(input, trace);
+    check();
+    assertBackupSelection(file, query.backup_sha256, trace);
+    const after = query.after_requeue_id === undefined ? null : Buffer.from(query.after_requeue_id);
+    const selected = file.document.receipts.filter(
+      (receipt) =>
+        after === null || Buffer.compare(Buffer.from(receipt.query.requeue_id), after) > 0,
+    );
+    const items = selected.slice(0, query.limit).map((receipt) => ({
+      requeue_id: receipt.query.requeue_id,
+      restore_id: receipt.query.restore_id,
+      requeued_at: receipt.requeued_at,
+      archive_sha256: receipt.query.archive_sha256,
+      query_sha256: receipt.query_sha256,
+      restore_receipt_sha256: receipt.restore_receipt_sha256,
+      before_sha256: receipt.before_sha256,
+      after_sha256: receipt.after_sha256,
+      selected_records: receipt.selected_records,
+      get_query: { backup_sha256: file.document_sha256, requeue_id: receipt.query.requeue_id },
+    }));
+    const has_more = selected.length > query.limit;
+    return boundedMetadata(
+      {
+        ...backupObservation(file),
+        query: { ...query, backup_sha256: file.document_sha256 },
+        items,
+        has_more,
+        next_query: has_more
+          ? {
+              backup_sha256: file.document_sha256,
+              limit: query.limit,
+              after_requeue_id: items[items.length - 1]!.requeue_id,
+            }
+          : null,
+        observation: 'archived-requeue-history-page' as const,
+      },
+      trace,
+      check,
+    );
+  } catch (error) {
+    throw accessError(error, query, trace);
+  }
+}
+/** Callers must remove receipt_file before printing metadata; it includes complete parent bodies. */
+export function readOutboxRestoreRequeueBackupEntry(
+  input: unknown,
+  selection: unknown,
+  trace: string,
+) {
+  const query = parseOutboxRestoreRequeueBackupSelection(selection, trace);
+  const check = outboxRestoreBudget(trace);
+  try {
+    const file = verifyOutboxRestoreRequeueBackup(input, trace);
+    check();
+    assertBackupSelection(file, query.backup_sha256, trace);
+    const receipt = file.document.receipts.find(
+      (entry) => entry.query.requeue_id === query.requeue_id,
+    );
+    let receipt_file: ReturnType<typeof createOutboxRestoreRequeueFile> | null = null;
+    if (receipt) {
+      const parent = file.document.parents.find(
+        (entry) => entry.receipt.query.restore_id === receipt.query.restore_id,
+      );
+      if (!parent) throw new TypeError();
+      // Preserve backup observation metadata so extraction is deterministic, never a new requeue claim.
+      receipt_file = createOutboxRestoreRequeueFile(
+        {
+          schema_version: 1,
+          kind: 'workctx.sync-outbox-restore-requeue-receipt',
+          scope: file.document.scope,
+          observed_at: file.document.observed_at,
+          export_trace_id: file.document.export_trace_id,
+          receipt,
+          parent,
+        },
+        trace,
+        check,
+      );
+    }
+    const metadata = boundedMetadata(
+      {
+        ...backupObservation(file),
+        query,
+        status: receipt ? ('recorded' as const) : ('not-found' as const),
+        original_query: receipt?.query ?? null,
+        receipt: receipt ?? null,
+        standalone: receipt_file ? outboxRestoreRequeueFileSummary(receipt_file) : null,
+        packaging_metadata: 'preserved-from-backup' as const,
+        observation: 'archived-requeue-history-entry' as const,
+      },
+      trace,
+      check,
+    );
+    return { ...metadata, receipt_file };
+  } catch (error) {
+    throw accessError(error, query, trace);
+  }
 }

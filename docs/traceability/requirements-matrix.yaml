@@ -959,6 +959,25 @@ requirements:
         - "Offline routing without token/environment/SQLite, argument restrictions, output traces, provenance and exits"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, sample file generation, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_outbox_restore_requeue_backup_access_development_increment:
+      date: "2026-11-04"
+      status: "Source-only offline requeue backup pagination, original-query retrieval and standalone batch extraction; R-005 remains incomplete."
+      artifacts:
+        - "apps/context-bridge/src/outbox/restore-requeue-backup.ts"
+        - "apps/workctx-cli/src/outbox-restore-requeue-backup-access.ts"
+        - "apps/workctx-cli/src/outbox-restore-requeue-file.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/outbox-restore-requeue-backup-access-runtime.md"
+      behavior: "Every page/selection verifies all parents, batches, closure and digests before binding backup_sha256. BINARY pagination defaults to 10, maximum 20; continuation requires the original digest. Selected batches retain original query/receipt and backup observation metadata in deterministic standalone files, with distinct document_sha256/import_query for existing single-batch import. Get can save the original query; export requires a new output path. Missing IDs cannot create output. File-only routes reuse exclusive publication and exact final-byte/logical readback; bounded envelopes retain known publication state."
+      evidence: []
+      pending_evidence:
+        - "Strict page/selection arguments, empty/terminal pages, unknown IDs, BINARY cursors and digest changes"
+        - "Whole-file verification including damaged off-page histories, shared parents and original query/receipt preservation"
+        - "Deterministic standalone extraction, separate backup/file digests, existing import compatibility and no automatic queue actions"
+        - "Offline configuration/database isolation, output races, final readback, cleanup and saved-file response overflow"
+      remaining_scope: "Atomic combined-backup import/preview, cross-project backup, retention, provenance and runtime evidence remain pending. Sequential standalone imports do not provide collection-level atomicity."
+      execution: "Source/docs only; no builds, typechecks, tests, CLI/Bridge runs, database opens, sample files, migrations or release. No schema/dependency changes; prior SQLite additions and PostgreSQL 016-049 remain unexecuted."
     sync_outbox_restore_requeue_backup_development_increment:
       date: "2026-11-04"
       status: "Source-only complete project requeue backup with deduplicated parent histories and offline verification; R-005 remains incomplete."

@@ -137,7 +137,11 @@ export async function readOutboxRestoreRequeueInputFile(path: string, trace: str
     );
   }
 }
-async function saveFile(input: OutboxRestoreRequeueFile, output: ArtifactOutput, trace: string) {
+export async function saveOutboxRestoreRequeueFile(
+  input: OutboxRestoreRequeueFile,
+  output: ArtifactOutput,
+  trace: string,
+) {
   const destination = { ...output };
   const file = verifyOutboxRestoreRequeueFile(input, trace);
   const bytes = new TextEncoder().encode(syncJsonSnapshot(file, OUTBOX_REQUEUE_FILE_BYTES));
@@ -386,9 +390,9 @@ export async function runOutboxRestoreRequeueFileArguments(
     close_pending = true;
   }
   const summary = outboxRestoreRequeueFileSummary(file);
-  let local: Awaited<ReturnType<typeof saveFile>>;
+  let local: Awaited<ReturnType<typeof saveOutboxRestoreRequeueFile>>;
   try {
-    local = await saveFile(file, output, trace);
+    local = await saveOutboxRestoreRequeueFile(file, output, trace);
   } catch (error) {
     throw fail(
       error instanceof ContractError ? error.envelope.code : 'OUTBOX_REQUEUE_FILE_SAVE_FAILED',

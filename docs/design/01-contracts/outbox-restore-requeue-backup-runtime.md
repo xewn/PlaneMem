@@ -58,3 +58,5 @@ stdout 封套最多128 KiB，只含项目、备份时间/trace、document_sha256
 摘要标记 observation=archived-project-requeue-history、archive_integrity=verified、local_commit=not-attempted；current_queue/current_control/server_delivery=not-checked，source_authenticity/sender_stopped=not-proven。空备份只描述该份历史集合，不证明过去没有重新排队。文件摘要证明内部一致性，不证明来源真实性、当前事件状态或远端投递；备份不读取/恢复当前事件或控制状态，不自动发送，不是物理数据库备份。快照结束后的历史变化不包含在该文件内。
 
 项目联合备份的原子导入/预览、离线分页与按批次提取、跨项目备份、保留管理、来源证明和运行证据仍待补。既有单批次导入只接受独立回执格式，不能直接接收本集合文件。全部正常、空历史、共享父项、缺项/损坏、字节/节点/时间边界、文件竞争及关闭失败场景均未运行验证；R-005 仍未完成。
+
+2026-11-04 后续已补 [备份离线目录与批次提取](outbox-restore-requeue-backup-access-runtime.md)：每次完整核验联合备份后按原摘要分页/选择，可找回并保存原请求，或导出带完整父历史的独立批次文件；该文件可衔接已有单批次导入。保留原历史与备份观察时间/trace，缺项不创建输出，保存后完整读回。联合备份原子导入/预览及运行证据仍缺；仅源码文档，未编译、测试或运行。
