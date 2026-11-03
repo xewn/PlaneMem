@@ -28,8 +28,9 @@ export default async function ProposalReviewRecoveryPage() {
         <div>
           <h1>Recover an original proposal review</h1>
           <p>
-            Load the saved decision and reason, then explicitly decide whether to send the same
-            request.
+            Find an original decision, back up saved reviews or restore missing copies. Loading and
+            restoring do not send a review; query its receipt or explicitly send only after
+            inspecting the original.
           </p>
         </div>
       </div>

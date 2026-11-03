@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { backupOperation } from '../../sync/receipt/backup-operation';
 import { assertProposalSubmissionBinding, type ProposalSubmissionBinding } from '../original-model';
 import {
@@ -15,6 +15,7 @@ import {
   type SavedReviewPage,
 } from '../review-store';
 import { OriginalProposalReview } from '../review-submission';
+import { ReviewBackupPanel } from '../review-backup-panel';
 
 export function ProposalReviewRecovery({ binding }: { binding: ProposalSubmissionBinding }) {
   const [requestKey, setRequestKey] = useState('');
@@ -27,22 +28,42 @@ export function ProposalReviewRecovery({ binding }: { binding: ProposalSubmissio
   );
   const mounted = useRef(false);
   const loaded = useRef(false);
+  const active = useRef(false);
   const operation = useRef<AbortController | undefined>(undefined);
+  const beginBackup = useCallback(() => {
+    if (!mounted.current || active.current || loaded.current) return false;
+    active.current = true;
+    setBusy(true);
+    return true;
+  }, []);
+  const endBackup = useCallback(() => {
+    active.current = false;
+    if (mounted.current) setBusy(false);
+  }, []);
+  const storageChanged = useCallback(() => {
+    if (!mounted.current) return;
+    setPage(undefined);
+    setMessage(
+      'The saved review list needs to be read again after an import attempt. Keep the backup if the outcome is unknown.',
+    );
+  }, []);
   useEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
       operation.current?.abort();
       operation.current = undefined;
+      active.current = false;
     };
   }, []);
   async function run<T>(
     work: (signal: AbortSignal, check: () => void) => Promise<T>,
     receive: (result: T) => void,
   ) {
-    if (!mounted.current || operation.current || loaded.current) return;
+    if (!mounted.current || active.current || loaded.current) return;
     const controller = new AbortController();
     operation.current = controller;
+    active.current = true;
     setBusy(true);
     setMessage('Reading the complete original review…');
     try {
@@ -57,6 +78,7 @@ export function ProposalReviewRecovery({ binding }: { binding: ProposalSubmissio
     } finally {
       if (operation.current === controller) {
         operation.current = undefined;
+        active.current = false;
         if (mounted.current) setBusy(false);
       }
     }
@@ -101,6 +123,13 @@ export function ProposalReviewRecovery({ binding }: { binding: ProposalSubmissio
       <p>
         Project · {binding.identity.project_id} · Gateway · {binding.gateway_url}
       </p>
+      <ReviewBackupPanel
+        binding={binding}
+        disabled={busy}
+        begin={beginBackup}
+        end={endBackup}
+        onStorageChange={storageChanged}
+      />
       <div className="heading-actions">
         <button
           type="button"
@@ -148,7 +177,7 @@ export function ProposalReviewRecovery({ binding }: { binding: ProposalSubmissio
           maxLength={255}
           disabled={busy}
           onChange={(event) => {
-            if (!operation.current) setRequestKey(event.target.value);
+            if (!active.current) setRequestKey(event.target.value);
           }}
         />
       </label>
@@ -189,7 +218,7 @@ export function ProposalReviewRecovery({ binding }: { binding: ProposalSubmissio
           maxLength={REVIEW_ORIGINAL_BYTES}
           disabled={busy}
           onChange={(event) => {
-            if (!operation.current) setRaw(event.target.value);
+            if (!active.current) setRaw(event.target.value);
           }}
         />
       </label>

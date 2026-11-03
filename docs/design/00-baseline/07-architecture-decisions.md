@@ -1,5 +1,7 @@
 # 架构决策记录摘要
 
+2026-11-04 审核原请求整批备份协接（ADR-015）：T5.1/T7.2新增独立review-originals-backup v1、当前原网关/完整身份范围完整读取、规范SHA-256、有界文件加载与只读比较，确认后在单事务预检全部目标并仅补缺失双槽。最多100份/4 MiB文档，原理由/决定/版本/键不变，既有同文保留、异文或损坏拒绝整批，写后完整读回并等待提交；未知结果保留备份并要求重新比较。恢复页操作共用互斥，导入失效旧目录，不自动加载单份或发送/查询审核；不包含未准备输入、回执或创建/编辑草稿，不新增库schema/依赖。范围Web review-store、新review-backup model/adapter/panel、恢复页及契约/README/TODO/R009和协调记录；只源码文档人工审阅，不编译/类型检查/测试/运行浏览器/接口/数据库或发布，独立提交push main带[skip ci]。
+
 2026-11-04 CLI/MCP原审核回执协接（ADR-015）：T4.2/T4.3新增proposals review-receipt与get_proposal_review_receipt，接收完整原identity/request_key/proposal_id/decision/expected_revision/reason，只读复用现有Gateway及SDK严格封套。CLI稳定普通文件/内联JSON限32 KiB，拒绝标准输入/重复/写选项，网络与嵌入要求原身份及未过期human/review权限；MCP发现/调用同门禁，成功64 KiB/错误16 KiB、两路容量/30秒本地期限，超时保留名额至底层结束，不扩张普通HTTP预算。not-observed不证明失败或重发，查询不改文件/键/决定。范围CLI/MCP源码、契约/README/TODO/R009及协调记录，无schema/依赖变化；只开发人工审阅，不编译/类型检查/测试/运行CLI/MCP/网关/数据库或发布，独立提交并push main带[skip ci]。
 
 2026-11-04 原审核回执只读查询协接（ADR-015）：T0.5/T5.1/T7.2 新增共享严格契约、proposal.review.receipt / POST /v1/proposals/review-receipt、SDK及Mock、Web恢复页显式只读查询。完整原身份/键/建议/决定/版本/规范理由不可变；真实网关要求未过期human及review权限，以只读一致快照核对当前可见性、原命令指纹、审核记录及ApprovalCompleted事件；未观察到不推断失败或重发。Web查询不依赖浏览器保存、不自动审核，Mock只模拟已有内存记录。范围contracts/Gateway/SDK/Web及契约/README/TODO/R009，无schema/依赖变化；仅源码文档人工审阅，不编译/类型检查/测试/运行产品接口数据库或发布，独立提交并push main带[skip ci]。
