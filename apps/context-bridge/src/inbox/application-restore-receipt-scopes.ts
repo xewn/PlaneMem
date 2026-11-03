@@ -134,6 +134,7 @@ export function readInboxApplicationRestoreReceiptScopes(
         representative_request_id: id,
         receipt_list_query: { ...selection, limit: 20 },
         receipt_get_query: { ...selection, restore_request_id: id },
+        receipt_audit_query: { ...selection },
       });
     }
     previousConsumer = consumer;

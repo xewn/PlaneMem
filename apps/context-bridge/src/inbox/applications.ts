@@ -53,6 +53,11 @@ import {
   readInboxApplicationRestoreReceiptScopes,
 } from './application-restore-receipt-scopes.js';
 import {
+  auditInboxApplicationRestoreReceipts,
+  parseInboxApplicationRestoreReceiptAuditQuery,
+  type InboxApplicationRestoreReceiptAuditProgress,
+} from './application-restore-receipt-audit.js';
+import {
   parseInboxApplicationCatalogQuery,
   readInboxApplicationCatalog,
 } from './application-catalog.js';
@@ -657,6 +662,61 @@ export class InboxApplications {
           ...(observedReceipt === undefined
             ? {}
             : { observed_receipt: observedReceipt, receipt_scope: 'historical-local-transaction' }),
+          local_write_state: 'not-performed',
+          acknowledgement_dispatch_state: 'not-sent',
+        },
+      });
+    }
+  }
+  auditRestoreReceipts(input: unknown, trace: string) {
+    const query = parseInboxApplicationRestoreReceiptAuditQuery(input, trace);
+    const progress: InboxApplicationRestoreReceiptAuditProgress = {
+      stage: 'schema',
+      receipt_count: null,
+      checked_receipts: 0,
+      checked_bytes: 0,
+      selected_request_id: null,
+    };
+    try {
+      return this.run(trace, query.timeout_ms, false, (check) => {
+        this.require(trace);
+        const receipts = new InboxApplicationRestoreReceipts(this.db);
+        receipts.require(trace);
+        const key = keys(query);
+        const audit = auditInboxApplicationRestoreReceipts(
+          this.db,
+          key,
+          query,
+          trace,
+          check,
+          (id) => receipts.getByKey(key, id, trace),
+          progress,
+        );
+        const result = { ...this.historyEnvelope(query, trace), ...audit };
+        try {
+          syncJsonSnapshot(result, 512 * 1024);
+        } catch {
+          throw applicationFailure(
+            'INBOX_APPLICATION_RESTORE_RECEIPT_AUDIT_TOO_LARGE',
+            'The complete restore receipt audit response exceeds 512 KiB',
+            trace,
+          );
+        }
+        check();
+        return result;
+      });
+    } catch (error) {
+      if (!(error instanceof ContractError)) throw error;
+      throw new ContractError(error.envelope.code, error.envelope.message, {
+        trace_id: trace,
+        retryable: false,
+        details: {
+          ...error.envelope.details,
+          audit_query: query,
+          audit_scope: 'original-consumer-application-restore-receipts',
+          audit_completed: false,
+          full_receipt_history_audit: 'not-completed',
+          ...progress,
           local_write_state: 'not-performed',
           acknowledgement_dispatch_state: 'not-sent',
         },

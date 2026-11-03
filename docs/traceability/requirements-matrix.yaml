@@ -978,6 +978,29 @@ requirements:
         - "CLI primary/embedded local routing, old output migration, read/rollback/close failures and complete result retention"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_application_restore_receipt_audit_development_increment:
+      date: "2026-11-03"
+      status: "Source-only complete selected-consumer/application restore receipt audit in one bounded read transaction; R-005 remains incomplete."
+      artifacts:
+        - "apps/context-bridge/src/inbox/application-restore-receipt-audit.ts"
+        - "apps/context-bridge/src/inbox/application-restore-receipt-catalog.ts"
+        - "apps/context-bridge/src/inbox/application-restore-receipt-scopes.ts"
+        - "apps/context-bridge/src/inbox/applications.ts"
+        - "apps/context-bridge/src/inbox/sqlite.ts"
+        - "apps/workctx-cli/src/inbox.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/sync-application-restore-receipt-audit-runtime.md"
+      behavior: "Strict original identity/application and max_receipts/max_bytes/read deadline. One readonly transaction counts bounded membership, traverses bounded metadata batches from the first BINARY ID and fully verifies each receipt through the existing canonical/hash/key/outcome reader, then reconciles checked and actual counts. No consumer/application head needed. Budgets or read/transaction failures report incomplete with original query and mutable progress; CLI retains close state. Catalogs expose audit selections without pagination boundaries. Complete responses remain capped at 512 KiB."
+      remaining_scope: "No cross-scope whole-database audit, physical/schema-definition audit, proof of undeleted history, current application/source-chain verification, database-instance binding, source authentication, history merging or actual concurrent/crash/cross-device evidence."
+      pending_evidence:
+        - "Strict query defaults/limits/unknown fields and original scope isolation; missing/partial extensions without initialization"
+        - "Empty/single/multiple batches, absent application heads, Unicode BINARY IDs, exact count and byte budget boundaries"
+        - "Invalid ID/size, corrupt canonical JSON/hash/identity/outcome, missing or duplicate records and final membership reconciliation"
+        - "Read/commit/rollback/close/deadline failures retain original query, checked counts, stage and selected ID without partial success"
+        - "Primary/embedded readonly routing, forbidden file/output flags, response limits and both catalog audit-query handoffs"
+      evidence: []
+      execution: "Source and documentation only; no builds, typechecks, tests, CLI/Bridge/reducer/API/service runs, sample artifacts, database opens, schema initialization, migrations or release. No new schema/dependencies; existing SQLite extensions and PostgreSQL 016-049 remain unexecuted. Task commit/push targets main with skip-ci."
     sync_application_restore_receipt_scopes_development_increment:
       date: "2026-11-03"
       status: "Source-only cross-consumer/application restore receipt scope discovery, including empty restores without heads; R-005 remains incomplete."

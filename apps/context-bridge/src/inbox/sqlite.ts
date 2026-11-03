@@ -38,6 +38,8 @@ export { parseInboxApplicationRestoreReceiptCatalogQuery } from './application-r
 export type { SyncInboxApplicationRestoreReceiptCatalogQuery } from './application-restore-receipt-catalog.js';
 export { parseInboxApplicationRestoreReceiptScopesQuery } from './application-restore-receipt-scopes.js';
 export type { SyncInboxApplicationRestoreReceiptScopesQuery } from './application-restore-receipt-scopes.js';
+export { parseInboxApplicationRestoreReceiptAuditQuery } from './application-restore-receipt-audit.js';
+export type { SyncInboxApplicationRestoreReceiptAuditQuery } from './application-restore-receipt-audit.js';
 export { parseInboxApplicationCatalogQuery } from './application-catalog.js';
 export type { SyncInboxApplicationCatalogQuery } from './application-catalog.js';
 export { parseInboxBuiltInApplicationReplayQuery } from './application-replay.js';
@@ -1132,6 +1134,10 @@ export class SqliteSyncInbox {
   /** Discover original scopes directly from receipts, including empty restores without heads. */
   listApplicationRestoreReceiptScopes(input: unknown, trace: string) {
     return this.applications().listRestoreReceiptScopes(input, trace);
+  }
+  /** Fully validates one original scope's historical receipts in one bounded read transaction. */
+  auditApplicationRestoreReceipts(input: unknown, trace: string) {
+    return this.applications().auditRestoreReceipts(input, trace);
   }
   readApplicationState(input: unknown, trace: string) {
     return this.applications().read(input, trace);

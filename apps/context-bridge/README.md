@@ -1,5 +1,7 @@
 # Context Bridge 本地同步存储
 
+新增 `auditApplicationRestoreReceipts`，在一次只读事务内核对所选原身份/应用的全部恢复回执，默认最多 1000 份/64 MiB，逐条完整校验并核对实际行数。失败保留原查询、阶段和已核验数量；不读当前应用头。见 [回执完整范围审计](../../docs/design/01-contracts/sync-application-restore-receipt-audit-runtime.md)。仅源码，未运行或测试。
+
 新增 `listApplicationRestoreReceiptScopes`，直接从回执表分页找回原消费者身份和应用，覆盖没有应用头的空恢复回执。每个选中范围及前瞻范围校验一份代表回执，输出已有 list/get 的查询参数；不声明完整历史审计。见 [跨范围目录](../../docs/design/01-contracts/sync-application-restore-receipt-scopes-runtime.md)。仅源码文档，未编译、测试或打开库。
 
 恢复查询/目标/回执结构解析已提取为共享契约，保持原字段顺序与规范查询/回执摘要，Bridge 继续独立核验原查询和数据库回执 SHA。供 [回执文件离线流程](../../docs/design/01-contracts/sync-application-restore-receipt-file-runtime.md)复用；无数据库结构变更，仅源码，未运行或测试。

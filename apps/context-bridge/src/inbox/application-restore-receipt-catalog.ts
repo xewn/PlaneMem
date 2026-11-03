@@ -129,6 +129,11 @@ export function readInboxApplicationRestoreReceiptCatalog(
     after_request_id: query.after_request_id ?? null,
     has_more,
     next_query: has_more && last ? { ...query, after_request_id: last.restore_request_id } : null,
+    receipt_audit_query: {
+      expected_identity: query.expected_identity,
+      application: query.application,
+      timeout_ms: query.timeout_ms,
+    },
     checked_receipts: rows.length,
     selected_receipt_bytes,
     catalog_coverage: 'selected-page-and-lookahead' as const,

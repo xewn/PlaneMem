@@ -43,6 +43,8 @@ workctx inbox application-restore-receipt-get --inbox local-inbox.sqlite --json-
 
 ## 一致性和失败
 
+页结果另提供 receipt_audit_query，仅含原 expected_identity、application 和本次 timeout_ms，不携带分页下界。可交给[完整范围审计](sync-application-restore-receipt-audit-runtime.md)，从首条检查该范围全部回执；本目录的当前页校验范围不变。
+
 返回 order=request-id-binary-ascending、consistency=keyset-current-state、receipt_scope=historical-local-transaction、current_state=not-read、full_application_history_audit=not-performed、absence_proves_rollback=false 和 local_write_state=not-performed。请求 ID 可由调用方任意选择，排序不表示提交时间，不提供“最新恢复”保证。
 
 每次命令各自取得读取快照，不冻结跨页成员，没有最大序号/固定上界。页间新增的 ID 若位于已越过的边界之前，不会出现在后续页；位于边界之后则可能出现。库被替换、还原或外部改动同样可能改变页间观察。after_request_id 是位置，不要求该 ID 当前仍存在；next_query 不是签名授权或实例绑定凭据。需要新一轮发现时应从首笔查询重新读取，不能用分页结果宣称完整跨时点审计。

@@ -31,6 +31,7 @@ Bridge 结果和 CLI 外层 envelope 的 scope 均为 null，不伪造一个共�
 
 - receipt_list_query：原身份、应用、当前读取预算和默认 limit=20，可交给 application-restore-receipt-list。
 - receipt_get_query：原身份、应用、代表 ID 和当前读取预算，可交给 application-restore-receipt-get。
+- receipt_audit_query：原身份、应用和当前读取期限，可交给[完整范围审计](sync-application-restore-receipt-audit-runtime.md)，使用默认条数/字节预算，不含目录续页键。
 
 这些是后续读取查询，本次预算不会覆盖回执保存的原恢复期限。条目不包含完整回执或当前投影，也不执行后续读取。
 
@@ -55,4 +56,4 @@ order=consumer-key-application-key-binary-ascending，consistency=keyset-current
 
 Bridge 完整结果限 512 KiB，CLI 加入路径及关闭状态后再次限制 512 KiB；超限提示降低 limit，不截断身份或输出部分续页。失败保留 catalog_query、catalog_completed=false 和不写入状态；CLI 另保留路径和 close_pending。仅最终 CLI 响应超限时，读取已完成，标记 catalog_completed=true、response_completed=false。关闭失败单独报告，不抹去已完成读取。
 
-仍缺完整回执历史审计、数据库实例绑定、来源认证、不同历史合并及并发/崩溃/跨设备运行证据。R-005 保持未完成。
+现已另补所选原消费者/应用的[完整回执范围审计](sync-application-restore-receipt-audit-runtime.md)源码，本目录自身仍只核验代表回执。跨范围全库审计、数据库实例绑定、来源认证、不同历史合并及并发/崩溃/跨设备运行证据仍缺。R-005 保持未完成。

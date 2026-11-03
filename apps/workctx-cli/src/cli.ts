@@ -120,6 +120,7 @@ export async function runWorkctx(
     'inbox application-restore-receipt-get': 'inbox.application-restore-receipt-get',
     'inbox application-restore-receipt-list': 'inbox.application-restore-receipt-list',
     'inbox application-restore-receipt-scopes': 'inbox.application-restore-receipt-scopes',
+    'inbox application-restore-receipt-audit': 'inbox.application-restore-receipt-audit',
     'inbox application-restore-receipt-inspect': 'inbox.application-restore-receipt-inspect',
     'inbox application-restore-receipt-query': 'inbox.application-restore-receipt-query',
     'inbox application-status': 'inbox.application-status',
