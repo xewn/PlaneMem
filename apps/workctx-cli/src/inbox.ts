@@ -10,6 +10,7 @@ import type {
   SqliteSyncInbox,
   SyncInboxApplicationQuery,
   SyncInboxApplicationApplyQuery,
+  SyncInboxApplicationAuditQuery,
   SyncInboxConsumersQuery,
   SyncInboxPageAuditQuery,
   SyncInboxPageDetailQuery,
@@ -31,6 +32,7 @@ export function isInboxCommand(command: string) {
     'inbox enable-applications',
     'inbox application-status',
     'inbox application-apply',
+    'inbox application-audit',
     'inbox enable-ack',
     'inbox enable-ack-dispatch',
     'inbox enable-ack-recovery',
@@ -41,7 +43,7 @@ export function isInboxCommand(command: string) {
 function invalid(trace: string) {
   return new ContractError(
     'USAGE_ERROR',
-    'Use local inbox init/import/status/consumers/audit-pages/page-history/page-get/head/enable-applications/application-status/application-apply/enable-ack/enable-ack-dispatch/enable-ack-recovery/ack-status/ack-dispatch-status with --inbox FILE. Init and enable commands accept only --inbox. Import requires --page-file. Reads and application-apply require --json or --json-file: consumers accepts {} or limit/after_consumer_key; other queries require expected_identity and selection parameters. Application-status requires application name/version; application-apply selects context-item-lifecycle/1 and also requires document_sha256 and expected_previous_sha256 (root null). Both application queries permit timeout_ms in JSON. Head requires --output NEW_PAGE; page-get optionally exports to --output NEW_PAGE. No stdin, key, --timeout-ms or repeated options',
+    'Use local inbox init/import/status/consumers/audit-pages/page-history/page-get/head/enable-applications/application-status/application-apply/application-audit/enable-ack/enable-ack-dispatch/enable-ack-recovery/ack-status/ack-dispatch-status with --inbox FILE. Init and enable commands accept only --inbox. Import requires --page-file. Reads and application-apply require --json or --json-file: consumers accepts {} or limit/after_consumer_key; other queries require expected_identity and selection parameters. Application-status requires application name/version; application-apply selects context-item-lifecycle/1 and also requires document_sha256 and expected_previous_sha256 (root null). Application queries permit timeout_ms in JSON; application-audit also permits max_pages/max_events/max_bytes and never executes reducers. Head requires --output NEW_PAGE; page-get optionally exports to --output NEW_PAGE. No stdin, key, --timeout-ms or repeated options',
     { trace_id: trace, retryable: false, acknowledgement_dispatch_state: 'not-sent' },
   );
 }
@@ -175,6 +177,7 @@ export async function runInboxArguments(argv: string[], trace: string) {
       ? await readIdentity(args, trace)
       : undefined;
   const queryInput = [
+    'inbox application-audit',
     'inbox application-status',
     'inbox application-apply',
     'inbox consumers',
@@ -190,12 +193,16 @@ export async function runInboxArguments(argv: string[], trace: string) {
   let detailQuery: SyncInboxPageDetailQuery | undefined;
   let applicationQuery: SyncInboxApplicationQuery | undefined;
   let applicationApplyQuery: SyncInboxApplicationApplyQuery | undefined;
+  let applicationAuditQuery: SyncInboxApplicationAuditQuery | undefined;
   const output =
     args.output === undefined ? undefined : await prepareSyncPageOutput(args.output, trace);
   let inbox: SqliteSyncInbox;
   try {
     const bridge = await import('@planemem/context-bridge');
-    if (args.command === 'inbox application-apply') {
+    if (args.command === 'inbox application-audit') {
+      applicationAuditQuery = bridge.parseInboxApplicationAuditQuery(queryInput, trace);
+      identity = applicationAuditQuery.expected_identity;
+    } else if (args.command === 'inbox application-apply') {
       applicationApplyQuery = bridge.parseInboxBuiltInApplicationApplyQuery(queryInput, trace);
       identity = applicationApplyQuery.expected_identity;
     } else if (args.command === 'inbox application-status') {
@@ -216,6 +223,7 @@ export async function runInboxArguments(argv: string[], trace: string) {
     inbox = new bridge.SqliteSyncInbox(args.path, {
       create: args.command === 'inbox init',
       readonly:
+        args.command === 'inbox application-audit' ||
         args.command === 'inbox application-status' ||
         args.command === 'inbox consumers' ||
         args.command === 'inbox status' ||
@@ -254,6 +262,12 @@ export async function runInboxArguments(argv: string[], trace: string) {
         local_commit_state: 'committed',
         acknowledgement_dispatch_state: 'not-sent',
       });
+    } else if (applicationAuditQuery) {
+      result = envelope(
+        trace,
+        { ...inbox.auditApplicationHistory(applicationAuditQuery, trace), inbox: args.path },
+        applicationAuditQuery.expected_identity,
+      );
     } else if (applicationApplyQuery) {
       result = envelope(
         trace,
@@ -401,6 +415,7 @@ export async function runInboxArguments(argv: string[], trace: string) {
         'inbox enable-applications',
         'inbox application-status',
         'inbox application-apply',
+        'inbox application-audit',
       ].includes(args.command) &&
       error instanceof ContractError
     )

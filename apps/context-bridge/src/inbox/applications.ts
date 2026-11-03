@@ -23,6 +23,10 @@ import {
 } from './application-model.js';
 import { SYNC_INBOX_APPLICATION_SCHEMA_V1 } from './application-schema.js';
 import { InboxApplicationRejection } from './application-rejection.js';
+import {
+  auditInboxApplicationHistory,
+  parseInboxApplicationAuditQuery,
+} from './application-audit.js';
 
 type ReadPage = (
   identity: SyncCommandIdentity,
@@ -433,6 +437,81 @@ export class InboxApplications {
       this.require(trace);
       return this.state(query, this.head(query, trace, check), trace);
     });
+  }
+  audit(input: unknown, trace: string) {
+    const query = parseInboxApplicationAuditQuery(input, trace);
+    let progress:
+      | { checked_pages: number; checked_events: number; checked_bytes: number }
+      | undefined;
+    try {
+      return this.run(trace, query.timeout_ms, false, (check) => {
+        this.require(trace);
+        const audited = auditInboxApplicationHistory(this.db, keys(query), query, trace, check, {
+          head: () => this.head(query, trace, check),
+          step: (digest) => this.step(query, digest, trace),
+          events: (step) => this.verifyEvents(query, step, trace, check),
+        });
+        progress = {
+          checked_pages: audited.checked_pages,
+          checked_events: audited.checked_events,
+          checked_bytes: audited.checked_bytes,
+        };
+        return {
+          schema_version: 1 as const,
+          trace_id: trace,
+          source_refs: [],
+          scope: {
+            tenant_id: query.expected_identity.tenant_id,
+            workspace_id: query.expected_identity.workspace_id,
+            project_id: query.expected_identity.project_id,
+          },
+          expected_identity: { ...query.expected_identity },
+          application: { ...query.application },
+          status: 'complete' as const,
+          audit_scope: 'application-history-structure' as const,
+          audit_completed: true,
+          checked_pages: audited.checked_pages,
+          checked_events: audited.checked_events,
+          checked_bytes: audited.checked_bytes,
+          root_sha256: audited.root_sha256,
+          budgets: {
+            max_pages: query.max_pages,
+            max_events: query.max_events,
+            max_bytes: query.max_bytes,
+            timeout_ms: query.timeout_ms,
+          },
+          state: {
+            ...this.state(query, audited.head, trace),
+            full_application_history_audit: 'verified-structure' as const,
+          },
+          reducer_replay: 'not-performed' as const,
+          projection_semantics: 'not-verified' as const,
+          received_suffix_audit: 'not-performed' as const,
+          acknowledgement_audit: 'not-performed' as const,
+          physical_database_audit: 'not-performed' as const,
+          acknowledgement_dispatch_state: 'not-sent' as const,
+        };
+      });
+    } catch (error) {
+      if (!(error instanceof ContractError)) throw error;
+      throw new ContractError(error.envelope.code, error.envelope.message, {
+        trace_id: trace,
+        retryable: false,
+        details: {
+          ...progress,
+          ...error.envelope.details,
+          audit_scope: 'application-history-structure',
+          audit_completed: false,
+          expected_identity: query.expected_identity,
+          application: query.application,
+          max_pages: query.max_pages,
+          max_events: query.max_events,
+          max_bytes: query.max_bytes,
+          timeout_ms: query.timeout_ms,
+          acknowledgement_dispatch_state: 'not-sent',
+        },
+      });
+    }
   }
   apply(
     input: unknown,

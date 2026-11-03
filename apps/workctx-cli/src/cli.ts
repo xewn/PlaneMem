@@ -109,6 +109,7 @@ export async function runWorkctx(
     'inbox enable-applications': 'inbox.enable-applications',
     'inbox application-status': 'inbox.application-status',
     'inbox application-apply': 'inbox.application-apply',
+    'inbox application-audit': 'inbox.application-audit',
     'inbox ack-status': 'inbox.ack-status',
     'inbox ack-dispatch-status': 'inbox.ack-dispatch-status',
     'inbox ack-history': 'inbox.ack-history',

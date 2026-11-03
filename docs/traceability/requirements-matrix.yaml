@@ -978,6 +978,26 @@ requirements:
         - "CLI primary/embedded local routing, old output migration, read/rollback/close failures and complete result retention"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_application_audit_development_increment:
+      date: "2026-11-03"
+      status: "Source-only full structural audit of one original consumer/application history; R-005 remains incomplete."
+      artifacts:
+        - "apps/context-bridge/src/inbox/application-audit.ts"
+        - "apps/context-bridge/src/inbox/applications.ts"
+        - "apps/context-bridge/src/inbox/sqlite.ts"
+        - "apps/workctx-cli/src/inbox.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/sync-application-audit-runtime.md"
+      behavior: "One read transaction verifies bounded actual step/event cardinality and the complete selected application chain from head to root. Every snapshot/source page/ledger binding is checked, empty pages must preserve the prior projection, and complete visited counts must equal actual rows. Strict pre-open CLI query parsing and readonly routing require no token or network. Success marks only this result as verified-structure; failures retain incomplete status, progress, bounds and close/rollback details."
+      remaining_scope: "No reducer replay or business-semantic proof, full received-suffix/acknowledgement/physical database audit, repair, application backup/restore or runtime evidence. Byte accounting covers visited source documents and projections, not exact IO or process memory."
+      pending_evidence:
+        - "Strict identity/application queries, all limit ranges and both readonly CLI entry points without initialization/network"
+        - "Empty/root/multi-page histories, missing or orphan steps/events, duplicate bindings, corrupt old snapshots and complete coverage counts"
+        - "Empty-page projection invariance, fixed page size, cursor continuity and original source-page identity/digests"
+        - "Page/event/byte budgets, deadline and transaction/rollback/close failures without partial success or reducer invocation"
+      evidence: []
+      execution: "Source and documentation only; no builds, typechecks, tests, CLI/Bridge/API/service runs, database opens, migrations, sample artifacts or release. No new schema/dependencies. Existing SQLite extensions and PostgreSQL 016-049 remain unexecuted. Commit/push to main is authorized with skip-ci messages."
     sync_context_item_application_development_increment:
       date: "2026-11-03"
       status: "Source-only context item lifecycle metadata reducer and explicit original-page CLI application; R-005 remains incomplete."

@@ -1,5 +1,13 @@
 # workctx 开发入口
 
+应用历史新增只读结构审计（仅源码，示例未执行）：
+
+```text
+workctx inbox application-audit --inbox local-inbox.sqlite --json-file application-audit-query.json
+```
+
+查询含完整 expected_identity/application，可选 max_pages（默认 1000、最多 10000）、max_events（默认 100000、最多 1000000）、max_bytes（默认 64 MiB、最多 512 MiB）和 timeout_ms（默认 30000、最多 90000）。同一只读事务从应用头遍历到根，完整核对原页、全部投影摘要、事件 ledger、游标/前驱、实际行数及空页投影不变性。只有全部覆盖才返回 complete；超限/损坏/超时明确未完成。结果保留完整 state 和本次结构审计范围，不重跑 reducer、不证明业务内容正确或服务端已应用；普通 application-status 不继承历史审计标记。不自动建库、修复或发送确认，详见 [应用历史审计契约](../../docs/design/01-contracts/sync-application-audit-runtime.md)。未运行命令或数据库，无新 schema/依赖。
+
 首个内置应用已接入显式原页处理（仅源码，示例未执行）：
 
 ```text

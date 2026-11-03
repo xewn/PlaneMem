@@ -19,6 +19,8 @@ import {
 } from '@planemem/contracts';
 import { SYNC_INBOX_SCHEMA_V1, SYNC_INBOX_SCHEMA_VERSION } from './schema.js';
 import { InboxApplications } from './applications.js';
+export { parseInboxApplicationAuditQuery } from './application-audit.js';
+export type { SyncInboxApplicationAuditQuery } from './application-audit.js';
 import {
   contextItemApplicationAdapter,
   parseInboxBuiltInApplicationApplyQuery,
@@ -960,6 +962,10 @@ export class SqliteSyncInbox {
   }
   readApplicationState(input: unknown, trace: string) {
     return this.applications().read(input, trace);
+  }
+  /** Complete structural coverage in one read transaction; never re-executes reducers. */
+  auditApplicationHistory(input: unknown, trace: string) {
+    return this.applications().audit(input, trace);
   }
   /** Only pure synchronous handlers are supported. External effects are outside this transaction. */
   applyApplicationPage(input: unknown, handlers: SyncInboxApplicationHandlers, trace: string) {

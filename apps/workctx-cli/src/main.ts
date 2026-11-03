@@ -68,6 +68,8 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
                                  Requires expected_identity and application name/version; optional JSON timeout_ms
   inbox application-apply        Apply one imported page with the built-in context-item-lifecycle/1 adapter
                                  JSON also requires document_sha256 and expected_previous_sha256 (null for root)
+  inbox application-audit        Audit the selected application's entire saved history without running reducers
+                                 JSON: expected_identity/application; optional max_pages/max_events/max_bytes/timeout_ms
   inbox ack-status               Read latest original acknowledgement using expected_identity JSON
   inbox ack-dispatch-status      Read latest target and dispatch using expected_identity JSON
   inbox ack-history              Page original acknowledgement summaries using identity/history JSON
@@ -316,6 +318,7 @@ export async function main(args: string[]): Promise<number> {
       'inbox enable-applications',
       'inbox application-status',
       'inbox application-apply',
+      'inbox application-audit',
       'inbox ack-status',
       'inbox ack-dispatch-status',
       'inbox ack-history',
