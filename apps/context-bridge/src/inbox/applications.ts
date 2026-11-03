@@ -45,6 +45,10 @@ import {
 } from './application-restore-receipts.js';
 import type { InboxApplicationSourceCompare } from './application-restore-comparison.js';
 import {
+  parseInboxApplicationRestoreReceiptCatalogQuery,
+  readInboxApplicationRestoreReceiptCatalog,
+} from './application-restore-receipt-catalog.js';
+import {
   parseInboxApplicationCatalogQuery,
   readInboxApplicationCatalog,
 } from './application-catalog.js';
@@ -649,6 +653,50 @@ export class InboxApplications {
           ...(observedReceipt === undefined
             ? {}
             : { observed_receipt: observedReceipt, receipt_scope: 'historical-local-transaction' }),
+          local_write_state: 'not-performed',
+          acknowledgement_dispatch_state: 'not-sent',
+        },
+      });
+    }
+  }
+  listRestoreReceipts(input: unknown, trace: string) {
+    const query = parseInboxApplicationRestoreReceiptCatalogQuery(input, trace);
+    try {
+      return this.run(trace, query.timeout_ms, false, (check) => {
+        this.require(trace);
+        const receipts = new InboxApplicationRestoreReceipts(this.db);
+        receipts.require(trace);
+        const key = keys(query);
+        const catalog = readInboxApplicationRestoreReceiptCatalog(
+          this.db,
+          key,
+          query,
+          (selection) => receipts.get(key, selection, trace),
+          trace,
+          check,
+        );
+        const result = { ...this.historyEnvelope(query, trace), ...catalog };
+        try {
+          syncJsonSnapshot(result, 512 * 1024);
+        } catch {
+          throw applicationFailure(
+            'INBOX_APPLICATION_RESTORE_RECEIPT_CATALOG_TOO_LARGE',
+            'The complete restore receipt catalog exceeds 512 KiB; request a smaller limit',
+            trace,
+          );
+        }
+        check();
+        return result;
+      });
+    } catch (error) {
+      if (!(error instanceof ContractError)) throw error;
+      throw new ContractError(error.envelope.code, error.envelope.message, {
+        trace_id: trace,
+        retryable: false,
+        details: {
+          ...error.envelope.details,
+          catalog_query: query,
+          catalog_completed: false,
           local_write_state: 'not-performed',
           acknowledgement_dispatch_state: 'not-sent',
         },

@@ -6,6 +6,8 @@
 
 ### 2026-11-03 开发补充（未编译、未发布、未测试）
 
+- P3/P4：新增 listApplicationRestoreReceipts/application-restore-receipt-list，按完整原身份/应用分页发现恢复请求 ID。默认 20、最多 50，BINARY ID 升序，完整校验页内及额外前瞻回执后输出历史摘要、原请求摘要和 receipt_get_query；next_query 保留原范围/期限与最后返回 ID。独立读取快照，不解释为时间顺序、跨页冻结成员或全库审计；512 KiB 完整响应，错误保留原查询/关闭状态。无新 schema/依赖，仅源码文档，未编译、类型检查、测试、运行 CLI、打开库或发布；回执文件导出、跨应用发现、实例绑定和运行证据仍缺。按任务提交推送 main，使用 [skip ci]。
+
 - P3/P4：新增 application-restore-receipt-get/getApplicationRestoreReceipt，按原身份/应用/请求 ID 只读发现完整历史回执和原恢复查询；本次读取 timeout_ms 与原请求分离，原完整查询核对/重复恢复仍严格比较。可选 --output 在查询成功并尝试关闭后独占保存原查询 JSON，保留原归档摘要/目标约束/期限及字段是否存在；缺记录不创建文件、不推断回滚，文件失败保留回执/原查询/路径/关闭状态。无新 schema/依赖，只修改源码文档；未编译、类型检查、测试、运行 CLI、打开库或发布。回执完整文件导出、请求 ID 目录、实例绑定及运行证据仍缺；按任务提交推送 main，使用 [skip ci]。
 
 - P3/P4：新增显式可选应用恢复回执扩展 v1。恢复/预览可指定 restore_request_id，完整规范原查询绑定 ID；首次恢复与页面/应用历史在同一事务登记紧凑回执并读回，相同请求仅返回原历史结果，ID 复用不同查询明确拒绝。CLI 增加 enable-application-restore-receipts/application-restore-receipt，只读精确查询不需要归档；缺记录不推断未知提交已回滚。预览命中回执不生成计划，未命中继续目标比较并保留 ID。回执文件导出、原查询发现、实例绑定、不同历史合并和运行证据仍缺。独立扩展仅源码，未打开库、执行扩展/CLI、编译、类型检查、测试或发布；按任务独立提交推送 main，使用 [skip ci]。

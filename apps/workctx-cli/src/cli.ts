@@ -114,6 +114,7 @@ export async function runWorkctx(
     'inbox enable-application-restore-receipts': 'inbox.enable-application-restore-receipts',
     'inbox application-restore-receipt': 'inbox.application-restore-receipt',
     'inbox application-restore-receipt-get': 'inbox.application-restore-receipt-get',
+    'inbox application-restore-receipt-list': 'inbox.application-restore-receipt-list',
     'inbox application-status': 'inbox.application-status',
     'inbox application-list': 'inbox.application-list',
     'inbox application-export': 'inbox.application-export',

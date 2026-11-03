@@ -978,6 +978,27 @@ requirements:
         - "CLI primary/embedded local routing, old output migration, read/rollback/close failures and complete result retention"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_application_restore_receipt_catalog_development_increment:
+      date: "2026-11-03"
+      status: "Source-only bounded discovery of historical restore request IDs for one original consumer/application; R-005 remains incomplete."
+      artifacts:
+        - "apps/context-bridge/src/inbox/application-restore-receipt-catalog.ts"
+        - "apps/context-bridge/src/inbox/applications.ts"
+        - "apps/context-bridge/src/inbox/sqlite.ts"
+        - "apps/workctx-cli/src/inbox.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/sync-application-restore-receipt-catalog-runtime.md"
+      behavior: "Strict identity/application catalog query with limit 1-50, optional after_request_id and independent read deadline. A readonly transaction fully validates selected receipts and one lookahead before returning historical summaries, get selections and a next query based on the last returned ID. BINARY ID order uses UTF-8 comparisons, not chronology; each page has its own snapshot. Bounded SQL ID reads, 64 KiB receipt validation and complete 512 KiB Bridge/CLI response limits reject corrupt or oversized pages without partial continuations. Errors preserve the original query and close state."
+      remaining_scope: "No complete receipt file export/offline format, cross-application discovery, fixed cross-page snapshot, timestamp ordering, database-instance binding, history merging or real concurrent/crash/cross-device evidence. Missing records do not settle unknown restores."
+      pending_evidence:
+        - "Strict defaults/unknown fields and original identity/application isolation; missing/partial extensions without initialization"
+        - "Unicode ID BINARY ordering, invalid empty/null/oversized IDs, strict boundaries and same-snapshot full lookahead validation"
+        - "Empty/single/multiple pages, final returned ID continuation, independent read budgets and lossless get-query handoff"
+        - "Concurrent inserts around a boundary, database replacement, corrupt receipts, response-size failures and retained read/close errors"
+        - "Primary/embedded readonly routing with output/archive/key/timeout overrides rejected"
+      evidence: []
+      execution: "Source and documentation only; no builds, typechecks, tests, CLI/Bridge/reducer/API/service runs, sample artifacts, database opens, schema initialization, migrations or release. No new schema/dependencies; existing SQLite extensions and PostgreSQL 016-049 remain unexecuted. Task commits/pushes target main with skip-ci."
     sync_application_restore_receipt_selection_development_increment:
       date: "2026-11-03"
       status: "Source-only discovery and exclusive file recovery of the original restore query by consumer/application/request ID; R-005 remains incomplete."

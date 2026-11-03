@@ -1,5 +1,7 @@
 # Context Bridge 本地同步存储
 
+新增 `listApplicationRestoreReceipts` 按原消费者/应用分页发现恢复回执 ID；默认 20、最多 50，完整校验选中记录和前瞻后返回历史摘要及 get 查询。按 ID 排序，每页独立快照，不称为恢复时间线或完整审计。见 [回执目录](../../docs/design/01-contracts/sync-application-restore-receipt-catalog-runtime.md)。仅源码，未打开库、编译或测试。
+
 新增 `getApplicationRestoreReceipt` 按原身份/应用/restore_request_id 找回历史回执及完整原查询；本次读取 timeout_ms 不覆盖记录中的原期限。复用既有完整回执校验，原完整查询精确核对仍保留。见 [原查询找回](../../docs/design/01-contracts/sync-application-restore-receipt-selection-runtime.md)。仅源码，未打开数据库、编译或测试。
 
 2026-11-03 新增应用恢复持久回执源码：显式 enableApplicationRestoreReceipts 启用独立扩展；带 restore_request_id 的恢复在原事务内保存并读回紧凑历史回执，相同请求返回原回执，ID 复用不同查询拒绝。readApplicationRestoreReceipt 按完整原查询只读查回执，不读取当前投影；查无记录不证明此前回滚。见 [持久回执契约](../../docs/design/01-contracts/sync-application-restore-receipt-runtime.md)。仅源码文档，未启用扩展、打开库、编译或测试。

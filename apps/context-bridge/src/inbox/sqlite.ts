@@ -34,6 +34,8 @@ export type {
   SyncInboxApplicationRestoreReceipt,
   SyncInboxApplicationRestoreReceiptSelection,
 } from './application-restore-receipts.js';
+export { parseInboxApplicationRestoreReceiptCatalogQuery } from './application-restore-receipt-catalog.js';
+export type { SyncInboxApplicationRestoreReceiptCatalogQuery } from './application-restore-receipt-catalog.js';
 export { parseInboxApplicationCatalogQuery } from './application-catalog.js';
 export type { SyncInboxApplicationCatalogQuery } from './application-catalog.js';
 export { parseInboxBuiltInApplicationReplayQuery } from './application-replay.js';
@@ -1120,6 +1122,10 @@ export class SqliteSyncInbox {
   /** Finds the original query and historical receipt by original consumer/application/request ID. */
   getApplicationRestoreReceipt(input: unknown, trace: string) {
     return this.applications().getRestoreReceipt(input, trace);
+  }
+  /** Bounded current-snapshot discovery; request ID order is not a restore timeline. */
+  listApplicationRestoreReceipts(input: unknown, trace: string) {
+    return this.applications().listRestoreReceipts(input, trace);
   }
   readApplicationState(input: unknown, trace: string) {
     return this.applications().read(input, trace);

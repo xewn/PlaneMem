@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+新增 `inbox application-restore-receipt-list --inbox FILE --json-file QUERY`，按原身份/应用发现历史请求 ID；可选 limit（1–50）、after_request_id、读取 timeout_ms，返回 next_query 和每条 receipt_get_query。可接已有 get 找回并保存原查询。见 [回执目录](../../docs/design/01-contracts/sync-application-restore-receipt-catalog-runtime.md)。仅源码文档，未运行命令、编译或测试。
+
 新增 `inbox application-restore-receipt-get --inbox FILE --json-file SELECTION [--output NEW_QUERY]`，按原身份/应用/请求 ID 找回历史回执及原查询。可另设本次读取 timeout_ms；输出文件保留原恢复期限、归档摘要和目标约束，不自动恢复。缺记录不创建文件，已有文件不覆盖。见 [原查询找回](../../docs/design/01-contracts/sync-application-restore-receipt-selection-runtime.md)。仅源码文档，未执行命令、生成文件、编译或测试。
 
 新增 `inbox enable-application-restore-receipts --inbox FILE` 显式启用回执扩展，以及 `inbox application-restore-receipt --inbox FILE --json-file ORIGINAL_QUERY` 只读查询。恢复/预览查询可显式带 restore_request_id，预览保存的最终查询保留 ID 和目标约束，可供实际恢复及回执查询复用。相同请求返回历史回执；缺记录不证明回滚，不自动重试。见 [持久回执契约](../../docs/design/01-contracts/sync-application-restore-receipt-runtime.md)。仅源码文档，未执行命令、扩展、编译或测试。

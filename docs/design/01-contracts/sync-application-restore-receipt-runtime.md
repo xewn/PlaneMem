@@ -51,4 +51,6 @@ CLI 保留操作错误、完整原查询和 close_pending；成功后关闭失�
 
 已增补 [按请求 ID 找回原查询](sync-application-restore-receipt-selection-runtime.md)：getApplicationRestoreReceipt/CLI application-restore-receipt-get 只需原身份/应用/请求 ID，可单独指定本次读取预算，并可独占保存原查询文件。此发现入口不比较调用方的完整原请求；上文精确核对入口和重复恢复规则保持不变。
 
-仍缺回执独立文件导出/离线查看、请求 ID 目录、数据库实例绑定、不同历史合并、完整跨设备恢复及并发/崩溃运行证据。本增量仅人工审阅源码，R-005 保持未完成。
+已增补 [恢复回执目录](sync-application-restore-receipt-catalog-runtime.md)，可按原消费者/应用分页发现请求 ID，再使用 get 找回原查询。列表只反映各次读取快照，ID 顺序不表示恢复时间。
+
+仍缺回执独立文件导出/离线查看、跨应用回执发现、数据库实例绑定、不同历史合并、完整跨设备恢复及并发/崩溃运行证据。本增量仅人工审阅源码，R-005 保持未完成。

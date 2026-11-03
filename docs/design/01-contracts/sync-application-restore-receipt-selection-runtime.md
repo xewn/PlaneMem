@@ -52,4 +52,6 @@ workctx inbox application-restore-receipt --inbox local-inbox.sqlite --json-file
 
 文件预检/保存/读回沿用 REQUEST_OUTPUT_UNAVAILABLE、REQUEST_SAVE_FAILED、REQUEST_READBACK_FAILED 等既有错误，均使用 INBOX_APPLICATION_RESTORE_ 前缀。错误同时保留 receipt_lookup_completed=true、完整历史回执、原查询、输出/可能的临时路径以及关闭/清理状态。发布但最终读回失败保留 published-unconfirmed，不删除目标或自动换路径。保存后加入 request_file 再检查 256 KiB 响应限额，超限保留已经确认的文件状态，不冒充未保存。
 
-当前数据库读取预算不覆盖输出预检、库打开、文件写入/发布/最终读回；同步 SQL 等待仍没有硬实时保证。仍缺回执完整独立文件导出/离线查看、请求 ID 目录、数据库实例绑定、不同历史合并和真实故障/跨设备运行证据。本次只开发并人工审阅源码，R-005 保持未完成。
+若请求 ID 也已遗失，可先使用 [恢复回执目录](sync-application-restore-receipt-catalog-runtime.md)，按完整原消费者/应用分页发现 ID 和 receipt_get_query；不需要猜测原请求内容。
+
+当前数据库读取预算不覆盖输出预检、库打开、文件写入/发布/最终读回；同步 SQL 等待仍没有硬实时保证。仍缺回执完整独立文件导出/离线查看、跨应用回执发现、数据库实例绑定、不同历史合并和真实故障/跨设备运行证据。本次只开发并人工审阅源码，R-005 保持未完成。
