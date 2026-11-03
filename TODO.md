@@ -6,6 +6,8 @@
 
 ### 2026-11-04 开发补充（未编译、未发布、未测试）
 
+- P7：新增 generateProposalDraft/独立 generate CLI，明确配置 Chat Completions 兼容端点/模型/分类上限，从固定摘录单次生成；仅接收完整标题正文 JSON，来源/类型/分类/期限固定，记录响应模型及提示版本。凭据隔离、统一期限/取消、有界响应、不重定向或自动重试；输出新草稿经完整读回，保存失败保留生成结果供恢复。生成不打开队列或自动提交/审核。无依赖/schema变化，仅源码文档，未调用模型、执行CLI、编译、类型检查、测试或发布。自动来源摄取/权限、持久生成任务/审计、供应商兼容/质量证据仍缺；独立提交push main带[skip ci]。
+
 - P0-02：新增 MockProposalStore/Session/Source 与六个建议路由，支持创建/目录/详情/人工版本审核及身份读取；固定项目和会话能力，来源变化由显式配置模拟，可见性先于分页、分类不降低、派生链最多32层。按原 actor/client 保存规范命令及历史回执，同键同文重放、异文拒绝；有界内存/响应且失败不写入。其余公开 Mock 路由、真实来源图/Policy/持久化/未知网络结果和运行证据仍缺，P0-02 不勾选。无依赖/schema 变化，只开发源码文档，未编译、类型检查、测试、执行 Mock/API 或发布；独立提交 push main 带 [skip ci]。
 
 - P7：建议提交队列增加原生只读打开选项，CLI list/get 要求已有队列，在读事务检查 v1 表/列、唯一有界绑定及原网关/项目/身份；缺库不创建、不补结构、不回退可写。所有写入入口拒绝只读实例，flush 在取令牌前停止；默认可写提交/重试保留。无 schema/依赖变化，仅源码文档，未编译、类型检查、测试、执行 worker/CLI、打开库或发布；全队列审计、模型生成、保留清理及运行证据仍缺。按任务提交 push main 带 [skip ci]。
@@ -480,7 +482,7 @@
 
 ## P7：搜索和智能能力
 
-- [ ] **[P7-01][缺实现] 完善 Proposal 提交与审核链路。** 已开发持久化路由、来源/provenance、人工 expected_revision 确认及 MCP/SDK/CLI/UI，worker 已有持久提交队列与真实 HTTP 入口；仍需接通真实模型生成和运行验证，原内存服务仅保留离线兼容。完成条件：默认 `proposed`，带 source/provenance，人工 expected_revision 确认后才可进入 verified。
+- [ ] **[P7-01][缺实现] 完善 Proposal 提交与审核链路。** 已开发持久化路由、来源/provenance、人工 expected_revision 确认及 MCP/SDK/CLI/UI，worker 已有持久提交队列与真实 HTTP 入口；显式模型生成适配器/CLI 已补源码，配置端点/模型从指定摘录生成并保存可审阅草稿，不自动入队。仍缺自动来源摄取与权限过滤、持久生成任务/审计、真实供应商兼容和运行质量证据，原内存服务仅保留离线兼容。完成条件：默认 `proposed`，带 source/provenance，人工 expected_revision 确认后才可进入 verified。
 - [ ] **[P7-02][待外部环境] 接入真实模型/Embedding 与 Golden 评测。** 当前评测和建议主要是 deterministic fixture；需要固定模型、prompt、embedding/index 版本，执行 source fidelity、next action、stale content、injection 和人工抽样回归，并保存阈值报告。
 - [ ] **[P7-03][缺实现] 实现阻塞/依赖/进度分析的可消费输出。** 将 blocker、dependency、progress suggestion 接入 ContextPack、REST/MCP/UI，始终区分 desired/observed/verified，禁止智能结果直接提升权威状态。
 

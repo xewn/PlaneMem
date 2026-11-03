@@ -3,8 +3,15 @@ import { parseArgs } from 'node:util';
 import { ContractError, parseCreateProposal } from '@planemem/contracts';
 import { flushProposalQueue } from './publisher.js';
 import { SqliteProposalQueue, type ProposalQueueBinding } from './submission.js';
+import {
+  generateProposalDraft,
+  parseProposalGenerationProvider,
+  parseProposalGenerationRequest,
+} from './generation.js';
+import { prepareGenerationOutput, saveGeneratedDraft } from './generation-output.js';
 
 const help = `Proposal submission queue (Node.js 24)
+  proposal-worker generate --provider provider.json --file sources.json --output NEW_DRAFT.json
   proposal-worker enqueue --queue queue.sqlite --binding binding.json --file draft.json --key KEY
   proposal-worker list    --queue queue.sqlite --binding binding.json [--before JOB_ID] [--limit 25]
   proposal-worker get     --queue queue.sqlite --binding binding.json --id JOB_ID
@@ -13,6 +20,7 @@ const help = `Proposal submission queue (Node.js 24)
 
 binding.json contains gateway_url, tenant_id, workspace_id, project_id, actor_id, client_id.
 list/get open an existing initialized queue read-only; missing files are never created.
+generate calls the configured model once using PROPOSAL_GENERATION_API_KEY; it saves a new draft, without opening a queue.
 Only flush contacts the gateway. It reads PROPOSAL_WORKER_ACCESS_TOKEN from the environment.
 retry schedules the original draft/key; it does not send or regenerate content.
 Exit codes: 0 completed, 1 command/storage failure, 2 flush had retry/blocked/lost-lease jobs.
@@ -38,10 +46,13 @@ export async function main(args: string[]): Promise<number> {
         id: { type: 'string' },
         before: { type: 'string' },
         limit: { type: 'string' },
+        provider: { type: 'string' },
+        output: { type: 'string' },
       },
     });
     const command = positionals[0];
     const allowed: Record<string, string[]> = {
+      generate: ['provider', 'file', 'output'],
       enqueue: ['file', 'key'],
       list: ['before', 'limit'],
       get: ['id'],
@@ -49,9 +60,13 @@ export async function main(args: string[]): Promise<number> {
       flush: ['limit'],
     };
     if (!command || !Object.hasOwn(allowed, command) || positionals.length !== 1)
-      throw new TypeError('Expected enqueue, list, get, retry or flush');
+      throw new TypeError('Expected generate, enqueue, list, get, retry or flush');
     for (const option of Object.keys(values))
-      if (!['queue', 'binding', ...allowed[command]!].includes(option))
+      if (
+        ![...(command === 'generate' ? [] : ['queue', 'binding']), ...allowed[command]!].includes(
+          option,
+        )
+      )
         throw new TypeError('Unexpected option for ' + command);
     // Duplicate options are rejected instead of silently accepting a later path/key.
     const seen = new Set<string>();
@@ -67,6 +82,40 @@ export async function main(args: string[]): Promise<number> {
         throw new TypeError('--' + name + ' is required');
       return value;
     };
+    if (command === 'generate') {
+      const provider = parseProposalGenerationProvider(
+        await readJson(required('provider'), 16_384),
+      );
+      const input = parseProposalGenerationRequest(await readJson(required('file'), 512 * 1024));
+      const output = await prepareGenerationOutput(required('output'));
+      const generated = await generateProposalDraft(input, provider, {
+        api_key: process.env.PROPOSAL_GENERATION_API_KEY ?? '',
+      });
+      let saved: Awaited<ReturnType<typeof saveGeneratedDraft>>;
+      try {
+        saved = await saveGeneratedDraft(output, generated.draft, generated.trace_id);
+      } catch (error) {
+        // Preserve the already-generated draft, not credentials, excerpts or raw provider data.
+        process.stderr.write(
+          JSON.stringify(
+            {
+              code: 'PROPOSAL_GENERATION_SAVE_FAILED',
+              trace_id: generated.trace_id,
+              generation: generated,
+              output:
+                error instanceof ContractError
+                  ? error.envelope.details
+                  : { output_path: output.path },
+            },
+            null,
+            2,
+          ) + '\n',
+        );
+        return 1;
+      }
+      process.stdout.write(JSON.stringify({ ...generated, output: saved }, null, 2) + '\n');
+      return 0;
+    }
     const limit = values.limit === undefined ? 25 : Number(values.limit);
     if (values.limit !== undefined && (!/^[1-9]\d{0,2}$/.test(values.limit) || limit > 100))
       throw new TypeError('--limit must be between 1 and 100');
@@ -129,7 +178,21 @@ export async function main(args: string[]): Promise<number> {
       JSON.stringify({
         code,
         message:
-          'Proposal queue command failed. Check arguments, local queue access and gateway configuration; use --help for syntax.',
+          'Proposal worker command failed. Check arguments, local file access and provider/gateway configuration; use --help for syntax.',
+        ...(error instanceof ContractError
+          ? {
+              trace_id: error.envelope.trace_id,
+              ...(error.envelope.details.provider_dispatch === undefined
+                ? {}
+                : { provider_dispatch: error.envelope.details.provider_dispatch }),
+              ...(typeof error.envelope.details.status === 'number' &&
+              Number.isInteger(error.envelope.details.status) &&
+              error.envelope.details.status >= 100 &&
+              error.envelope.details.status <= 599
+                ? { status: error.envelope.details.status }
+                : {}),
+            }
+          : {}),
       }) + '\n',
     );
     return 1;

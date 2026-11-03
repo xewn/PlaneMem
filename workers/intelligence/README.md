@@ -2,13 +2,13 @@
 
 更新：2026-11-04。本轮仅开发代码与说明，未编译、类型检查、测试、安装依赖、启动服务、迁移、部署或发布。
 
-`SqliteProposalQueue` 把已经生成或人工撰写的建议保存到本地 SQLite，`flushProposalQueue` 再使用真实 HTTP 网关提交。这里尚未接入模型提供方；提交不会重新生成正文、改写来源、确认或拒绝建议。原 `ProposalService` 保留为离线兼容辅助类，已标记 deprecated，不是网关的存储。
+`SqliteProposalQueue` 把已经生成或人工撰写的建议保存到本地 SQLite，`flushProposalQueue` 再使用真实 HTTP 网关提交。新增独立 `generateProposalDraft`/`proposal-worker generate`，使用明确配置的模型接口把指定来源摘录生成可审阅草稿，详见 [模型草稿生成](../../docs/design/01-contracts/proposal-generation-runtime.md)。生成不会自动入队；提交不会重新生成正文、改写来源、确认或拒绝建议。原 `ProposalService` 保留为离线兼容辅助类，已标记 deprecated，不是网关的存储。
 
 ## 配置与命令
 
 需要仓库约定的 Node.js 24。依赖清单已补充 SDK 和现有版本的 tsx，本轮没有安装或运行。命令入口是根脚本 `pnpm proposal-worker`，包内入口为 `bin/proposal-worker.mjs`。
 
-每次操作明确指定 `--queue` 和 `--binding`。父目录须已存在，建议使用忽略入库的 `workers/intelligence/.local/`。绑定文件只接受以下字段，示例值需替换为真实配置：
+队列操作明确指定 `--queue` 和 `--binding`；独立 generate 使用 `--provider --file --output`，不打开队列。父目录须已存在，建议使用忽略入库的 `workers/intelligence/.local/`。绑定文件只接受以下字段，示例值需替换为真实配置：
 
 ```json
 {
@@ -39,7 +39,7 @@ pnpm proposal-worker flush --queue workers/intelligence/.local/queue.sqlite --bi
 
 可选 derived_from 记录原建议 ID/revision，由网关在提交时核对同项目可见性、版本及关联深度。原版本冲突进入 blocked，worker 不自行刷新关联或来源；如需修改，先处理原任务的未知结果，再用新草稿和请求键入队。未使用关联的旧草稿保持原规范化输出字段顺序，不注入额外默认值；本轮未运行队列迁移或验证。
 
-只有 `flush` 联网，从环境变量 `PROPOSAL_WORKER_ACCESS_TOKEN` 读取凭据；其他命令不需要令牌。`retry` 只将原任务置为可重试，随后显式 flush 才会发送。`get` 会输出完整草稿，`list` 仅输出任务摘要和最小回执。列表按 job_id 倒序，默认 25、最多 100 条；下一页将 `next_before` 传为 `--before`。
+队列命令中只有 `flush` 联网，从环境变量 `PROPOSAL_WORKER_ACCESS_TOKEN` 读取凭据；独立 `generate` 通过 `PROPOSAL_GENERATION_API_KEY` 调用配置模型，其他命令不需要令牌。`retry` 只将原任务置为可重试，随后显式 flush 才会发送。`get` 会输出完整草稿，`list` 仅输出任务摘要和最小回执。列表按 job_id 倒序，默认 25、最多 100 条；下一页将 `next_before` 传为 `--before`。
 
 返回值是 JSON。退出码 0 表示命令完成，1 表示参数/本地存储等命令失败，2 表示本次 flush 有 retry/blocked/lease_lost。flush 的成功退出不代表整库清空：它只处理开始时已经到期的最多 limit 个任务；未来重试、已有 blocked 和其他进程占用的任务不计入本次结果。
 
@@ -74,4 +74,4 @@ worker 在每次尝试中取得一次令牌，并用同一令牌依次请求：
 
 草稿在入队时规范化并保存 SHA-256，读取/提交时重新检查；损坏或不再符合契约的草稿隔离为 `PROPOSAL_QUEUE_CORRUPT`，不重写、不发送，并继续处理本批其他任务。同键同草稿返回已有任务，同键不同草稿拒绝。校验和用于发现损坏，不是防篡改认证。
 
-SQLite 文件及 WAL/SHM 包含完整建议内容和来源，不含令牌。使用适当的本地目录权限和一致性备份方式；当前没有加密、远端队列、后台调度、队列清理或模型生成适配器，也没有运行验证。不要直接复制活跃数据库主文件后丢弃 WAL，或删除未知结果任务后另键重发。
+SQLite 文件及 WAL/SHM 包含完整建议内容和来源，不含令牌。使用适当的本地目录权限和一致性备份方式；当前没有加密、远端队列、后台调度或队列清理，模型生成适配器也没有运行验证。不要直接复制活跃数据库主文件后丢弃 WAL，或删除未知结果任务后另键重发。

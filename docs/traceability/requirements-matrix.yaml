@@ -3435,6 +3435,23 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    explicit_proposal_generation_development_increment:
+      date: "2026-11-04"
+      status: "Source-only explicit model generation adapter and draft file workflow; R-009 remains incomplete."
+      artifacts:
+        - "workers/intelligence/src/generation.ts"
+        - "workers/intelligence/src/generation-output.ts"
+        - "workers/intelligence/src/main.ts"
+        - "docs/design/01-contracts/proposal-generation-runtime.md"
+      behavior: "A configured Chat Completions-compatible endpoint receives caller-selected excerpts once. Fixed prompt and strict title/content validation retain original sources, kind, maximum classification and TTL. Credentials stay out of files; one deadline, cancellation, bounded responses and no redirects/retries constrain calls. CLI saves a new verified draft file; save failures retain the generated result. No queue open, automatic submission, approval or authoritative state changes."
+      evidence: []
+      pending_evidence:
+        - "Real provider/model schema compatibility, refusal/truncation and structured response behavior"
+        - "Timeout/cancellation including ignored abort, large/invalid responses and no credential/raw-body disclosure"
+        - "Input classification limits, fixed references, prompt injection resilience and source fidelity"
+        - "Exclusive file publication/readback, occupied targets, interrupted save and retained draft recovery"
+      remaining_scope: "Automatic authorized retrieval, persistent generation requests/recovery/audit, quality evaluation, provider authentication and runtime evidence."
+      execution: "Source/docs only; no model calls, CLI execution, builds, typechecks, tests, database opens or release. Official documentation retrieval did not yield usable full content; compatibility is not verified."
     gates: ["nightly", "release_candidate", "production"]
 
   - id: R-010

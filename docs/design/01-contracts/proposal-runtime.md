@@ -133,4 +133,4 @@ worker 已增加 SQLite 持久提交队列和显式 enqueue/list/get/retry/flush
 
 2026-11-04：worker 的 `list/get` 改为原生只读打开已有队列，缺失文件不会创建；读取事务检查 v1 必需表/列及唯一绑定，绑定文本最多 16 KiB，并与规范化的网关/项目/身份精确匹配。只读分支不初始化结构、绑定或更改 journal_mode/synchronous，不回退可写；库接口可传 `{ readonly: true }`，所有写入入口报 `PROPOSAL_QUEUE_READ_ONLY`，flush 在获取令牌前拒绝认领。默认可写模式保留，结构/绑定检查不等于全队列完整性审计。无 schema 或依赖变更，仅源码文档，未编译、测试、运行 CLI、打开数据库或发布。
 
-真实模型生成尚未接入；原内存 ProposalService 已标记为 deprecated，仍保留离线兼容，不是上述 HTTP 接口的存储。外部证据验证、建议正文编辑历史、重开审核、审核结果物化到 ContextItem/ContextPack、后台调度、规模化保留清理和运行验证仍待后续工作。
+2026-11-04：新增显式模型草稿生成源码，配置兼容端点/模型后可调用 `proposal-worker generate`，从用户指定来源摘录生成并独占保存标准草稿，后续审阅再显式入队。模型只返回标题/正文，来源、类型、分类和期限固定，详情见 [生成契约](proposal-generation-runtime.md)。未调用模型，兼容性和质量没有运行证据；原内存 ProposalService 已标记为 deprecated，仍保留离线兼容，不是上述 HTTP 接口的存储。自动来源摄取、生成持久任务/审计、外部证据验证、建议正文编辑历史、重开审核、审核结果物化到 ContextItem/ContextPack、后台调度、规模化保留清理和运行验证仍待后续工作。

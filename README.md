@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [显式模型草稿生成](docs/design/01-contracts/proposal-generation-runtime.md)：用户配置模型端点并选择来源摘录，单次生成标题和正文，保留原来源与分类，保存为新草稿后再审阅入队。仅源码文档，未调用模型、编译、测试或发布。
+
 新增 [建议生命周期 Mock](docs/design/01-contracts/proposal-mock-runtime.md)：客户端开发可模拟创建、浏览、人工审核、来源变化和原请求重试，多个模拟账号共享建议数据。仅源码文档，未编译、测试、运行或发布。
 
 建议提交队列现支持只读查询：`proposal-worker list/get` 只打开已有且绑定匹配的队列，路径写错不会创建空库；只读实例拒绝写入。见 [worker 使用说明](workers/intelligence/README.md)。仅源码文档，未编译、测试、运行或发布。
