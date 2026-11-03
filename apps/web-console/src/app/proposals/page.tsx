@@ -37,11 +37,11 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
       ...(derivedFrom ? { derived_from: derivedFrom } : {}),
     });
     const page = (await listWorkbenchProposals(query)).data;
-    let creationBinding: ProposalSubmissionBinding | undefined;
+    let commandBinding: ProposalSubmissionBinding | undefined;
     let bindingError: unknown;
-    if (page.create_allowed) {
+    if (page.create_allowed || page.review_allowed) {
       try {
-        creationBinding = await getWorkbenchProposalSubmissionBinding();
+        commandBinding = await getWorkbenchProposalSubmissionBinding();
       } catch (error) {
         bindingError = error;
       }
@@ -125,6 +125,13 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
         detailError = error;
       }
     }
+    if (selected?.review_allowed && !commandBinding && bindingError === undefined) {
+      try {
+        commandBinding = await getWorkbenchProposalSubmissionBinding();
+      } catch (error) {
+        bindingError = error;
+      }
+    }
     const href = (id?: string, next: string | null | undefined = before) => {
       const search = new URLSearchParams({ status });
       if (kind) search.set('kind', kind);
@@ -153,6 +160,15 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
           >
             Recover an original proposal submission ↗
           </Link>
+          {' · '}
+          <Link
+            href="/proposals/recover-review"
+            prefetch={false}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Recover an original review ↗
+          </Link>
         </p>
         {page.create_allowed && (
           <Panel title="Submit a proposal" icon="decision">
@@ -164,11 +180,11 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
               {sourceError !== undefined && <PageError error={sourceError} />}
               {bindingError !== undefined && <PageError error={bindingError} />}
               {sourceMessage && <p role="status">{sourceMessage}</p>}
-              {sourceError === undefined && sourceMessage === undefined && creationBinding ? (
+              {sourceError === undefined && sourceMessage === undefined && commandBinding ? (
                 <ProposalCreateForm
                   key={
                     'new:' +
-                    JSON.stringify(creationBinding) +
+                    JSON.stringify(commandBinding) +
                     ':' +
                     (sourceId ?? '') +
                     ':' +
@@ -177,7 +193,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
                     (typeof params.proposal === 'string' ? params.proposal : '')
                   }
                   initialKey={'proposal-create-' + crypto.randomUUID()}
-                  binding={creationBinding}
+                  binding={commandBinding}
                   restricted={page.restricted_read === true}
                   {...(sourceSeed ? { source: sourceSeed } : {})}
                   {...(originSeed ? { origin: originSeed } : {})}
@@ -489,14 +505,29 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
                         {proposal.reviewed_by} · {proposal.reviewed_at}
                       </p>
                     </>
-                  ) : selected!.review_allowed ? (
+                  ) : selected!.review_allowed && commandBinding ? (
                     <ProposalReviewForm
-                      key={proposal.proposal_id + ':' + proposal.revision}
+                      key={
+                        JSON.stringify(commandBinding) +
+                        ':' +
+                        proposal.proposal_id +
+                        ':' +
+                        proposal.revision
+                      }
+                      binding={commandBinding}
                       id={proposal.proposal_id}
                       revision={proposal.revision}
                       canConfirm={!expired && selected!.sources_current}
                       initialKey={'proposal-review-' + crypto.randomUUID()}
                     />
+                  ) : selected!.review_allowed ? (
+                    <>
+                      {bindingError !== undefined && <PageError error={bindingError} />}
+                      <p>
+                        Review preparation requires the original project and account identity.
+                        Reload this page after restoring access.
+                      </p>
+                    </>
                   ) : (
                     <p>Your account is not authorized to review proposals.</p>
                   )}
@@ -519,6 +550,9 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
         <PageError error={error} />
         <Link className="panel-link" href="/proposals/recover" prefetch={false}>
           Recover an original submission
+        </Link>
+        <Link className="panel-link" href="/proposals/recover-review" prefetch={false}>
+          Recover an original review
         </Link>
         <Link className="panel-link" href="/proposals">
           Return to proposals without filters

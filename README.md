@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [原审核请求保存与恢复](docs/design/01-contracts/proposal-review-recovery-runtime.md)：审核先准备并保存完整决定，浏览器目录或文件可恢复原身份、理由、版本和请求键，明确确认后再发送；未知结果保留原请求。仅源码文档，未编译、测试、运行或发布。
+
 新增 [编辑草稿整批备份与恢复](docs/design/01-contracts/proposal-editing-draft-runtime.md#当前范围完整备份与恢复)：当前账号和项目下的已保存草稿可完整导出、核验后比较，明确确认才补入缺失副本；冲突拒绝整批恢复，保留原备份和当前编辑内容。仅源码文档，未编译、测试、运行或发布。
 
 新增 [编辑草稿逐份移除](docs/design/01-contracts/proposal-editing-draft-runtime.md#逐份移除浏览器副本)：审阅完整浏览器副本后独立确认删除，保留当前编辑内容及可导出的所选副本；删除前重新核对原文与保存时间，变化时拒绝。仅源码文档，未编译、测试、运行或发布。

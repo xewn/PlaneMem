@@ -3452,6 +3452,30 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_web_review_recovery_development_increment:
+      date: "2026-11-04"
+      status: "Source-only original review preparation, persistence and explicit recovery; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/review-model.ts"
+        - "apps/web-console/src/app/proposals/review-store.ts"
+        - "apps/web-console/src/app/proposals/review-actions.ts"
+        - "apps/web-console/src/app/proposals/review-submission.tsx"
+        - "apps/web-console/src/app/proposals/recover-review/loader.tsx"
+        - "apps/web-console/src/app/proposals/recover-review/page.tsx"
+        - "apps/web-console/src/app/proposals/form.tsx"
+        - "apps/web-console/src/app/proposals/page.tsx"
+        - "apps/web-console/src/app/proposals/recover/page.tsx"
+        - "apps/web-console/src/lib/server-api.ts"
+        - "docs/design/01-contracts/proposal-review-recovery-runtime.md"
+      behavior: "Review preparation fixes the page's trusted gateway/identity, proposal ID, expected revision, normalized reason, decision and key. Independent immutable browser pairs, a 20-entry directory and complete file recovery preserve originals across tabs without loading or saving sending a decision. Every explicit send first confirms complete browser persistence, revalidates original server identity, carries expected identity headers and validates the full historical receipt. All errors retain the frozen request. Existing Gateway human/review policy remains mandatory. The original write can be retried explicitly; recovery is not a read-only status query."
+      evidence: []
+      pending_evidence:
+        - "Identity changes, strict complete original fields, normalized reasons and receipt envelope mismatch"
+        - "Atomic pair save/readback, conflicting or partial slots, directory and selected reload"
+        - "File bounds/UTF-8, loading without writing/sending, save-before-send and old-tab compatibility"
+        - "Human/review permission enforcement, explicit same-key replay, cancellation and late action results"
+      remaining_scope: "Unprepared review drafts, original-review batch backups/cleanup, read-only review receipt lookup, durable receipt history, old missing records and cross-device coordination."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, browser/API/database execution or release. New browser v1 structure is source only; no Gateway/server schema/dependency changes."
     proposal_web_editing_draft_backup_development_increment:
       date: "2026-11-04"
       status: "Source-only complete scoped editing backup and atomic missing-only restore; R-009 remains incomplete."

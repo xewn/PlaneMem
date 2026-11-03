@@ -2,6 +2,7 @@ import { readWorkbenchAuditResponse } from './audit-response';
 import { readWorkbenchJsonResponse } from './workbench-response';
 import { readConflictResponse } from './conflict-read-response';
 import { validateProposalReceipt } from './mutation-receipts';
+import { parseReviewOriginal, parseReviewReceipt } from '../app/proposals/review-model';
 import {
   assertProposalSubmissionBinding,
   parseProposalSubmissionBinding,
@@ -1797,6 +1798,18 @@ export async function readWorkbenchProposalCreateReceipt(value: unknown) {
     (response, _scope, trace) => parseProposalCreateReceiptEnvelope(response, query, trace),
   );
 }
+export async function submitWorkbenchProposalReviewOriginal(value: unknown) {
+  const original = parseReviewOriginal(value);
+  await getWorkbenchProposalSubmissionBinding(original.binding);
+  return gatewayRequest<ProposalMutationReceipt>(
+    '/v1/proposals/' + encodeURIComponent(original.proposal_id) + '/' + original.decision,
+    { expected_revision: original.expected_revision, reason: original.reason },
+    original.request_key,
+    'POST',
+    original.binding.identity,
+    (response, _scope, trace) => parseReviewReceipt(response, original, trace),
+  );
+}
 export function reviewWorkbenchProposal(
   id: string,
   choice: 'confirm' | 'reject',
@@ -1880,7 +1893,8 @@ async function gatewayRequest<T>(
     ].includes(path) && method === 'GET';
   const proposalOriginalRequest =
     method === 'POST' &&
-    ['/v1/proposals', '/v1/proposals/creation-receipt'].includes(path) &&
+    (['/v1/proposals', '/v1/proposals/creation-receipt'].includes(path) ||
+      /^\/v1\/proposals\/[0-9A-HJKMNP-TV-Z]{26}\/(confirm|reject)$/.test(path)) &&
     expectedIdentity !== undefined;
   const checkpointDetailRequest =
     method === 'GET' &&
