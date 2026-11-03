@@ -1,5 +1,7 @@
 # Context Bridge 本地同步存储
 
+新增 `previewBuiltInApplicationPage`，复用 apply 的原页/前驱/事件/投影校验与归约，在单次读事务中返回 current_state 和独立 planned_application。已应用页只核验历史、返回当前状态；完整响应上限 3 MiB，不创建步骤或回执。见 [原页应用预览](../../docs/design/01-contracts/sync-application-apply-preview-runtime.md)。仅源码文档，未运行、编译或测试。
+
 新增 `CONFLICT_APPLICATION={name:'conflict-lifecycle',version:'1'}`，将现有冲突检测/决策事件投影为 open/resolved 历史，保留完整原事件与决策值，核对原字段/版本/来源及分类不下调。内置 apply/replay 使用同一选择器，最多 512 冲突并沿用原字节预算；不更新工作项等源字段。见 [冲突生命周期](../../docs/design/01-contracts/sync-conflict-application-runtime.md)。仅源码文档，未运行、编译或测试。
 
 新增 `PROPOSAL_APPLICATION={name:'proposal-lifecycle',version:'1'}`。内置 apply/replay 按原 application 选择上下文或建议适配器；建议保留请求和完成事件，严格创建基线、版本、种类、分类与游标，只表达历史状态。共享解析器按现有 Gateway 事件核验，不含正文或实时审阅权限。见 [建议生命周期](../../docs/design/01-contracts/sync-proposal-application-runtime.md)。无 schema/依赖变化，仅源码文档，未运行、编译或测试。

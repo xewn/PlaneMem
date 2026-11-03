@@ -1,4 +1,7 @@
 # PlaneMem
+
+新增 [原页应用只读预览](docs/design/01-contracts/sync-application-apply-preview-runtime.md)，在写入前查看当前已存状态、预计投影及拒绝原因，支持三个内置适配器；实际应用重新检查。仅源码文档，未编译、测试、运行或发布。
+
 项目记忆：多人协同，多AI终端协同开发，记忆统一。
 # 客户端无关的工作连续性平台设计方案
 

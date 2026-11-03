@@ -24,11 +24,16 @@ import {
   INBOX_APPLICATION_STATE_BYTES,
   INBOX_APPLICATION_REDUCTION_BYTES,
   type SyncInboxApplicationQuery,
+  type SyncInboxApplicationApplyQuery,
   type SyncInboxApplicationState,
   type SyncInboxApplicationHandlers,
 } from './application-model.js';
 import { SYNC_INBOX_APPLICATION_SCHEMA_V1 } from './application-schema.js';
 import { InboxApplicationRejection } from './application-rejection.js';
+import {
+  builtInApplicationAdapter,
+  parseInboxBuiltInApplicationApplyQuery,
+} from './built-in-applications.js';
 import {
   parseInboxApplicationRestoreQuery,
   prepareInboxApplicationRestore,
@@ -1298,6 +1303,253 @@ export class InboxApplications {
       });
     }
   }
+  preview(input: unknown, trace: string) {
+    const query = parseInboxBuiltInApplicationApplyQuery(input, trace);
+    const adapter = builtInApplicationAdapter(query.application, query.expected_identity, trace);
+    const handlers = applicationHandlers(adapter.handlers, trace);
+    const progress: Record<string, unknown> = { stage: 'begin' };
+    try {
+      return this.run(trace, query.timeout_ms, false, (check) => {
+        const plan = this.prepareApply(
+          query,
+          handlers,
+          trace,
+          check,
+          adapter.validateProjection,
+          progress,
+        );
+        progress.stage = 'completion';
+        const result = {
+          ...this.historyEnvelope(query, trace),
+          status: 'previewed' as const,
+          preview_completed: true,
+          disposition:
+            plan.status === 'already-applied'
+              ? ('already-applied' as const)
+              : ('would-apply' as const),
+          apply_query: query,
+          adapter: adapter.descriptor,
+          current_state: this.state(query, plan.current, trace),
+          selected_page: {
+            document_sha256: query.document_sha256,
+            previous_sha256: query.expected_previous_sha256,
+            sequence: plan.selected.sequence,
+            next_cursor: plan.selected.page.document.page.data.next_cursor,
+            event_count: plan.selected.page.document.page.data.changes.length,
+          },
+          planned_application:
+            plan.status === 'prepared'
+              ? {
+                  head_sha256: query.document_sha256,
+                  page_count: plan.selected.sequence,
+                  applied_cursor: plan.selected.page.document.page.data.next_cursor,
+                  projection_sha256: plan.projectionHash,
+                  projection: JSON.parse(plan.projectionJson) as unknown,
+                }
+              : null,
+          reduced_events: plan.status === 'prepared' ? plan.prepared.length : 0,
+          reduction_bytes: plan.status === 'prepared' ? plan.processedBytes : 0,
+          budgets: {
+            max_projection_bytes: INBOX_APPLICATION_STATE_BYTES,
+            max_reduction_bytes: INBOX_APPLICATION_REDUCTION_BYTES,
+            timeout_ms: query.timeout_ms,
+          },
+          local_write_state: 'not-performed' as const,
+          history_update: 'not-performed' as const,
+          application_receipt: 'not-created' as const,
+          future_application: 'requires-revalidation' as const,
+        };
+        try {
+          syncJsonSnapshot(result, 3 * 1024 * 1024);
+        } catch {
+          throw applicationFailure(
+            'INBOX_APPLICATION_APPLY_PREVIEW_TOO_LARGE',
+            'The complete application preview response exceeds 3 MiB',
+            trace,
+          );
+        }
+        check();
+        return result;
+      });
+    } catch (error) {
+      if (!(error instanceof ContractError)) throw error;
+      throw new ContractError(error.envelope.code, error.envelope.message, {
+        trace_id: trace,
+        retryable: false,
+        details: {
+          ...progress,
+          ...error.envelope.details,
+          apply_query: query,
+          preview_completed: false,
+          local_write_state: 'not-performed',
+          history_update: 'not-performed',
+          acknowledgement_dispatch_state: 'not-sent',
+        },
+      });
+    }
+  }
+  /** Shared read/reduce phase: neither preview nor apply may bypass these checks. */
+  private prepareApply(
+    query: SyncInboxApplicationApplyQuery,
+    handlers: ReturnType<typeof applicationHandlers>,
+    trace: string,
+    check: () => void,
+    validateProjection: ((projection: unknown, appliedCursor: number) => void) | undefined,
+    progress: Record<string, unknown>,
+  ) {
+    const key = keys(query);
+    progress.stage = 'current-state';
+    this.require(trace);
+    const current = this.head(query, trace, check);
+    if (validateProjection) {
+      validateProjection(
+        JSON.parse(current?.projectionJson ?? 'null') as unknown,
+        current?.page.document.page.data.next_cursor ?? 0,
+      );
+      check();
+    }
+    progress.stage = 'duplicate-page';
+    const duplicate = this.step(query, query.document_sha256, trace);
+    if (duplicate) {
+      progress.selected_sequence = duplicate.sequence;
+      if (
+        !current ||
+        duplicate.sequence > current.sequence ||
+        duplicate.page.document.previous_page_sha256 !== query.expected_previous_sha256
+      )
+        throw applicationFailure(
+          'INBOX_APPLICATION_PRECONDITION_FAILED',
+          'The original page application request differs from its recorded predecessor',
+          trace,
+        );
+      this.verifyEvents(query, duplicate, trace, check);
+      if (validateProjection) {
+        validateProjection(
+          JSON.parse(duplicate.projectionJson) as unknown,
+          duplicate.page.document.page.data.next_cursor,
+        );
+        check();
+      }
+      return {
+        status: 'already-applied' as const,
+        current,
+        selected: duplicate,
+      };
+    }
+    progress.stage = 'selected-page';
+    const selected = this.readPage(query.expected_identity, query.document_sha256, trace);
+    progress.selected_sequence = selected.sequence;
+    if (
+      query.expected_previous_sha256 !== (current?.page.document_sha256 ?? null) ||
+      selected.page.document.previous_page_sha256 !== query.expected_previous_sha256 ||
+      selected.sequence !== (current?.sequence ?? 0) + 1 ||
+      selected.page.document.query.cursor !== (current?.page.document.page.data.next_cursor ?? 0)
+    )
+      throw applicationFailure(
+        'INBOX_APPLICATION_PRECONDITION_FAILED',
+        'Apply the exact next saved page from the selected application head; no skipping or resetting',
+        trace,
+      );
+    progress.stage = 'event-validation';
+    const prepared = selected.page.document.page.data.changes.map((event) => {
+      progress.event_id = event.event_id;
+      progress.server_cursor = event.server_cursor;
+      check();
+      if (!handlers.has(event.event_type))
+        throw applicationFailure(
+          'INBOX_APPLICATION_EVENT_UNSUPPORTED',
+          'Every event type in this page requires an explicit application reducer',
+          trace,
+        );
+      if (
+        this.db
+          .prepare(
+            `SELECT 1 AS present FROM sync_inbox_application_events WHERE consumer_key = ? AND application_key = ?
+        AND (event_id = ? OR server_cursor = ?) LIMIT 1`,
+          )
+          .get(key.consumer, key.application, event.event_id, event.server_cursor)
+      )
+        throw applicationFailure(
+          'INBOX_APPLICATION_EVENT_REUSED',
+          'A saved event ID or cursor was already applied in another page; preserve the original chain',
+          trace,
+        );
+      const json = syncJsonSnapshot(event, SYNC_CHANGES_RESPONSE_BYTES);
+      return { event, json, digest: hash(json) };
+    });
+    let projectionJson = current?.projectionJson ?? 'null';
+    let processedBytes = 0;
+    let reducedEvents = 0;
+    progress.reduced_events = reducedEvents;
+    progress.reduction_bytes = processedBytes;
+    progress.stage = 'reduction';
+    for (const item of prepared) {
+      progress.event_id = item.event.event_id;
+      progress.server_cursor = item.event.server_cursor;
+      check();
+      processedBytes += size(projectionJson) + size(item.json);
+      progress.reduction_bytes = processedBytes;
+      if (processedBytes > INBOX_APPLICATION_REDUCTION_BYTES)
+        throw applicationFailure(
+          'INBOX_APPLICATION_LIMIT_REACHED',
+          'The complete page exceeds the local reduction byte budget; no partial application was committed',
+          trace,
+        );
+      try {
+        const result = handlers.get(item.event.event_type)!(
+          JSON.parse(projectionJson) as unknown,
+          JSON.parse(item.json) as SyncChange,
+        );
+        if (
+          result &&
+          (typeof result === 'object' || typeof result === 'function') &&
+          typeof (result as { then?: unknown }).then === 'function'
+        ) {
+          void Promise.resolve(result).catch(() => {});
+          throw new TypeError('Asynchronous reducers are unsupported');
+        }
+        projectionJson = syncJsonSnapshot(result, INBOX_APPLICATION_STATE_BYTES);
+      } catch (error) {
+        if (error instanceof InboxApplicationRejection) throw error;
+        throw applicationFailure(
+          'INBOX_APPLICATION_REDUCER_FAILED',
+          'A reducer failed, returned asynchronous work or produced an invalid/oversized projection; the page was not applied',
+          trace,
+        );
+      }
+      processedBytes += size(projectionJson);
+      progress.reduction_bytes = processedBytes;
+      if (processedBytes > INBOX_APPLICATION_REDUCTION_BYTES)
+        throw applicationFailure(
+          'INBOX_APPLICATION_LIMIT_REACHED',
+          'The complete page exceeds the local reduction byte budget; no partial application was committed',
+          trace,
+        );
+      reducedEvents += 1;
+      progress.reduced_events = reducedEvents;
+      check();
+    }
+    progress.stage = 'projection-validation';
+    delete progress.event_id;
+    delete progress.server_cursor;
+    if (validateProjection) {
+      validateProjection(
+        JSON.parse(projectionJson) as unknown,
+        selected.page.document.page.data.next_cursor,
+      );
+      check();
+    }
+    const projectionHash = hash(projectionJson);
+    return {
+      status: 'prepared' as const,
+      current,
+      selected,
+      prepared,
+      projectionJson,
+      projectionHash,
+      processedBytes,
+    };
+  }
   apply(
     input: unknown,
     suppliedHandlers: SyncInboxApplicationHandlers,
@@ -1308,127 +1560,15 @@ export class InboxApplications {
     const handlers = applicationHandlers(suppliedHandlers, trace);
     const key = keys(query);
     return this.run(trace, query.timeout_ms, true, (check) => {
-      this.require(trace);
-      const current = this.head(query, trace, check);
-      if (validateProjection) {
-        validateProjection(
-          JSON.parse(current?.projectionJson ?? 'null') as unknown,
-          current?.page.document.page.data.next_cursor ?? 0,
-        );
-        check();
-      }
-      const duplicate = this.step(query, query.document_sha256, trace);
-      if (duplicate) {
-        if (
-          !current ||
-          duplicate.sequence > current.sequence ||
-          duplicate.page.document.previous_page_sha256 !== query.expected_previous_sha256
-        )
-          throw applicationFailure(
-            'INBOX_APPLICATION_PRECONDITION_FAILED',
-            'The original page application request differs from its recorded predecessor',
-            trace,
-          );
-        this.verifyEvents(query, duplicate, trace, check);
-        if (validateProjection) {
-          validateProjection(
-            JSON.parse(duplicate.projectionJson) as unknown,
-            duplicate.page.document.page.data.next_cursor,
-          );
-          check();
-        }
+      const plan = this.prepareApply(query, handlers, trace, check, validateProjection, {});
+      if (plan.status === 'already-applied') {
         return {
           status: 'already-applied' as const,
           document_sha256: query.document_sha256,
-          state: this.state(query, current, trace),
+          state: this.state(query, plan.current, trace),
         };
       }
-      const selected = this.readPage(query.expected_identity, query.document_sha256, trace);
-      if (
-        query.expected_previous_sha256 !== (current?.page.document_sha256 ?? null) ||
-        selected.page.document.previous_page_sha256 !== query.expected_previous_sha256 ||
-        selected.sequence !== (current?.sequence ?? 0) + 1 ||
-        selected.page.document.query.cursor !== (current?.page.document.page.data.next_cursor ?? 0)
-      )
-        throw applicationFailure(
-          'INBOX_APPLICATION_PRECONDITION_FAILED',
-          'Apply the exact next saved page from the selected application head; no skipping or resetting',
-          trace,
-        );
-      const prepared = selected.page.document.page.data.changes.map((event) => {
-        check();
-        if (!handlers.has(event.event_type))
-          throw applicationFailure(
-            'INBOX_APPLICATION_EVENT_UNSUPPORTED',
-            'Every event type in this page requires an explicit application reducer',
-            trace,
-          );
-        if (
-          this.db
-            .prepare(
-              `SELECT 1 AS present FROM sync_inbox_application_events WHERE consumer_key = ? AND application_key = ?
-          AND (event_id = ? OR server_cursor = ?) LIMIT 1`,
-            )
-            .get(key.consumer, key.application, event.event_id, event.server_cursor)
-        )
-          throw applicationFailure(
-            'INBOX_APPLICATION_EVENT_REUSED',
-            'A saved event ID or cursor was already applied in another page; preserve the original chain',
-            trace,
-          );
-        const json = syncJsonSnapshot(event, SYNC_CHANGES_RESPONSE_BYTES);
-        return { event, json, digest: hash(json) };
-      });
-      let projectionJson = current?.projectionJson ?? 'null';
-      let processedBytes = 0;
-      for (const item of prepared) {
-        check();
-        processedBytes += size(projectionJson) + size(item.json);
-        if (processedBytes > INBOX_APPLICATION_REDUCTION_BYTES)
-          throw applicationFailure(
-            'INBOX_APPLICATION_LIMIT_REACHED',
-            'The complete page exceeds the local reduction byte budget; no partial application was committed',
-            trace,
-          );
-        try {
-          const result = handlers.get(item.event.event_type)!(
-            JSON.parse(projectionJson) as unknown,
-            JSON.parse(item.json) as SyncChange,
-          );
-          if (
-            result &&
-            (typeof result === 'object' || typeof result === 'function') &&
-            typeof (result as { then?: unknown }).then === 'function'
-          ) {
-            void Promise.resolve(result).catch(() => {});
-            throw new TypeError('Asynchronous reducers are unsupported');
-          }
-          projectionJson = syncJsonSnapshot(result, INBOX_APPLICATION_STATE_BYTES);
-        } catch (error) {
-          if (error instanceof InboxApplicationRejection) throw error;
-          throw applicationFailure(
-            'INBOX_APPLICATION_REDUCER_FAILED',
-            'A reducer failed, returned asynchronous work or produced an invalid/oversized projection; the page was not applied',
-            trace,
-          );
-        }
-        processedBytes += size(projectionJson);
-        if (processedBytes > INBOX_APPLICATION_REDUCTION_BYTES)
-          throw applicationFailure(
-            'INBOX_APPLICATION_LIMIT_REACHED',
-            'The complete page exceeds the local reduction byte budget; no partial application was committed',
-            trace,
-          );
-        check();
-      }
-      if (validateProjection) {
-        validateProjection(
-          JSON.parse(projectionJson) as unknown,
-          selected.page.document.page.data.next_cursor,
-        );
-        check();
-      }
-      const projectionHash = hash(projectionJson);
+      const { current, selected, prepared, projectionJson, projectionHash } = plan;
       this.db
         .prepare(
           `INSERT INTO sync_inbox_application_steps

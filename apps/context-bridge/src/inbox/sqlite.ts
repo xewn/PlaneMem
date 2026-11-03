@@ -1177,6 +1177,10 @@ export class SqliteSyncInbox {
   applyApplicationPage(input: unknown, handlers: SyncInboxApplicationHandlers, trace: string) {
     return this.applications().apply(input, handlers, trace);
   }
+  /** Readonly planning with fixed built-ins; actual application must check again. */
+  previewBuiltInApplicationPage(input: unknown, trace: string) {
+    return this.applications().preview(input, trace);
+  }
   /** Fixed built-in semantics; the complete original page and predecessor remain caller-selected. */
   applyBuiltInApplicationPage(input: unknown, trace: string) {
     const query = parseInboxBuiltInApplicationApplyQuery(input, trace);

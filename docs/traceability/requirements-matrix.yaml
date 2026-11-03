@@ -978,6 +978,26 @@ requirements:
         - "CLI primary/embedded local routing, old output migration, read/rollback/close failures and complete result retention"
       evidence: []
       execution: "Source and documentation only; no builds, typechecks, tests, CLI/SDK/API/service runs, database opens, migrations or release. No new dependencies/schema/migrations; prior SQLite schema additions and PostgreSQL 016-049 remain unexecuted."
+    sync_application_apply_preview_development_increment:
+      date: "2026-11-03"
+      status: "Source-only readonly exact-page application preview with shared apply preparation; R-005 remains incomplete."
+      artifacts:
+        - "apps/context-bridge/src/inbox/applications.ts"
+        - "apps/context-bridge/src/inbox/sqlite.ts"
+        - "apps/workctx-cli/src/inbox.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/sync-application-apply-preview-runtime.md"
+      behavior: "Strict original apply query and three fixed built-ins; readonly existing storage and one read transaction share current/historical snapshot validation, exact next page and predecessor checks, event reuse/type checks, reduction and final projection validation with actual apply. Return current saved state separately from unsaved planned projection; duplicate pages return current state without reduction or rewind. Existing 1 MiB/64 MiB budgets and 3 MiB complete Bridge/CLI responses, original query/stage/event progress and close-state retention."
+      remaining_scope: "No writes, application receipts, source changes, acknowledgement, frozen future state, whole-history semantic proof, missing baseline reconstruction, additional business adapters, permission rebuild or cross-device evidence. Actual apply revalidates in its write transaction."
+      pending_evidence:
+        - "Exact-query and adapter validation before open, readonly routing in primary/embedded CLI, missing/partial extensions and prohibited options"
+        - "Empty/root/next/already-applied historical pages, current versus planned state, original predecessor mismatch and event reuse/type rejection"
+        - "All three built-ins, canonical projection byte stability, shared apply behavior and preserved write commit/rollback uncertainty"
+        - "Per-projection/reduction/response budgets, monotonic deadline, event progress, read rollback and close failures"
+        - "Concurrent head advancement after preview, duplicate reapplication and no persistent state changes or acknowledgements"
+      evidence: []
+      execution: "Source and documentation only; no builds, typechecks, tests, reducer/CLI/Bridge/API runs, sample artifacts, database opens, schema initialization, migrations or release. No schema/dependency changes; existing SQLite extensions and PostgreSQL 016-049 remain unexecuted. Each task is committed and pushed to main with skip-ci."
     sync_conflict_lifecycle_application_development_increment:
       date: "2026-11-03"
       status: "Source-only original conflict detection/decision history projection and full saved-history replay; R-005 remains incomplete."

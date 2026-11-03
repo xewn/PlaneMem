@@ -49,6 +49,7 @@ export function isInboxCommand(command: string) {
     'inbox application-status',
     'inbox application-list',
     'inbox application-apply',
+    'inbox application-apply-preview',
     'inbox application-audit',
     'inbox application-replay',
     'inbox application-history',
@@ -63,7 +64,7 @@ export function isInboxCommand(command: string) {
 function invalid(trace: string) {
   return new ContractError(
     'USAGE_ERROR',
-    'Use local inbox init/import/status/consumers/audit-pages/page-history/page-get/head/enable-applications/enable-application-restore-receipts/application-restore-receipt/application-restore-receipt-get/application-restore-receipt-list/application-restore-receipt-scopes/application-restore-receipt-audit/application-list/application-status/application-apply/application-audit/application-replay/application-history/application-get/enable-ack/enable-ack-dispatch/enable-ack-recovery/ack-status/ack-dispatch-status with --inbox FILE. Init and enable commands accept only --inbox. Import requires --page-file. Reads and application-apply require --json or --json-file: consumers accepts {} or limit/after_consumer_key; application-restore-receipt-scopes accepts {} or limit/timeout_ms and paired after_consumer_key/after_application_key, returning original scopes from representative receipts; other queries require expected_identity and selection parameters. Application-restore-receipt requires the complete original restore query including restore_request_id and never reads an archive. Application-restore-receipt-get requires only original expected_identity/application/restore_request_id and optional read timeout_ms; --output optionally saves its recorded original query; mutually exclusive --receipt-output saves the complete historical receipt to a new file. Application-restore-receipt-list requires original expected_identity/application with optional limit (1–50), after_request_id and read timeout_ms, and accepts no output. Application-restore-receipt-audit requires original expected_identity/application and optional max_receipts (1–10000), max_bytes (1–536870912) and timeout_ms; it reads the complete selected receipt scope and accepts no output. Application-list requires only original expected_identity and optional limit/after_application_key/timeout_ms; other application reads require application name/version; history accepts limit and saved sequence/page/projection boundaries; get requires document_sha256 with optional expected_projection_sha256; application-apply selects context-item-lifecycle/1, proposal-lifecycle/1 or conflict-lifecycle/1 and also requires document_sha256 and expected_previous_sha256 (root null). Application queries permit timeout_ms in JSON; application-audit also permits max_pages/max_events/max_bytes and never executes reducers; application-replay selects context-item-lifecycle/1, proposal-lifecycle/1 or conflict-lifecycle/1, adds max_replay_bytes and recomputes saved history without writing. Head requires --output NEW_PAGE; page-get optionally exports to --output NEW_PAGE. No stdin, key, --timeout-ms or repeated options',
+    'Use local inbox init/import/status/consumers/audit-pages/page-history/page-get/head/enable-applications/enable-application-restore-receipts/application-restore-receipt/application-restore-receipt-get/application-restore-receipt-list/application-restore-receipt-scopes/application-restore-receipt-audit/application-list/application-status/application-apply/application-apply-preview/application-audit/application-replay/application-history/application-get/enable-ack/enable-ack-dispatch/enable-ack-recovery/ack-status/ack-dispatch-status with --inbox FILE. Init and enable commands accept only --inbox. Import requires --page-file. Reads, application-apply and application-apply-preview require --json or --json-file: consumers accepts {} or limit/after_consumer_key; application-restore-receipt-scopes accepts {} or limit/timeout_ms and paired after_consumer_key/after_application_key, returning original scopes from representative receipts; other queries require expected_identity and selection parameters. Application-restore-receipt requires the complete original restore query including restore_request_id and never reads an archive. Application-restore-receipt-get requires only original expected_identity/application/restore_request_id and optional read timeout_ms; --output optionally saves its recorded original query; mutually exclusive --receipt-output saves the complete historical receipt to a new file. Application-restore-receipt-list requires original expected_identity/application with optional limit (1–50), after_request_id and read timeout_ms, and accepts no output. Application-restore-receipt-audit requires original expected_identity/application and optional max_receipts (1–10000), max_bytes (1–536870912) and timeout_ms; it reads the complete selected receipt scope and accepts no output. Application-list requires only original expected_identity and optional limit/after_application_key/timeout_ms; other application reads require application name/version; history accepts limit and saved sequence/page/projection boundaries; get requires document_sha256 with optional expected_projection_sha256; application-apply and application-apply-preview select context-item-lifecycle/1, proposal-lifecycle/1 or conflict-lifecycle/1 and also require document_sha256 and expected_previous_sha256 (root null). Application-apply-preview reads existing storage without writing and accepts no output; it returns current saved state and an unsaved planned projection, and actual apply revalidates. Application queries permit timeout_ms in JSON; application-audit also permits max_pages/max_events/max_bytes and never executes reducers; application-replay selects context-item-lifecycle/1, proposal-lifecycle/1 or conflict-lifecycle/1, adds max_replay_bytes and recomputes saved history without writing. Head requires --output NEW_PAGE; page-get optionally exports to --output NEW_PAGE. No stdin, key, --timeout-ms or repeated options',
     { trace_id: trace, retryable: false, acknowledgement_dispatch_state: 'not-sent' },
   );
 }
@@ -224,6 +225,7 @@ export async function runInboxArguments(argv: string[], trace: string) {
     'inbox application-audit',
     'inbox application-status',
     'inbox application-apply',
+    'inbox application-apply-preview',
     'inbox consumers',
     'inbox audit-pages',
     'inbox page-history',
@@ -246,6 +248,7 @@ export async function runInboxArguments(argv: string[], trace: string) {
   let applicationRestoreReceiptAuditQuery: SyncInboxApplicationRestoreReceiptAuditQuery | undefined;
   let applicationCatalogQuery: SyncInboxApplicationCatalogQuery | undefined;
   let applicationApplyQuery: SyncInboxApplicationApplyQuery | undefined;
+  let applicationApplyPreviewQuery: SyncInboxApplicationApplyQuery | undefined;
   let applicationAuditQuery: SyncInboxApplicationAuditQuery | undefined;
   let applicationReplayQuery: SyncInboxApplicationReplayQuery | undefined;
   let applicationHistoryQuery: SyncInboxApplicationHistoryQuery | undefined;
@@ -291,6 +294,12 @@ export async function runInboxArguments(argv: string[], trace: string) {
     } else if (args.command === 'inbox application-audit') {
       applicationAuditQuery = bridge.parseInboxApplicationAuditQuery(queryInput, trace);
       identity = applicationAuditQuery.expected_identity;
+    } else if (args.command === 'inbox application-apply-preview') {
+      applicationApplyPreviewQuery = bridge.parseInboxBuiltInApplicationApplyQuery(
+        queryInput,
+        trace,
+      );
+      identity = applicationApplyPreviewQuery.expected_identity;
     } else if (args.command === 'inbox application-apply') {
       applicationApplyQuery = bridge.parseInboxBuiltInApplicationApplyQuery(queryInput, trace);
       identity = applicationApplyQuery.expected_identity;
@@ -312,6 +321,7 @@ export async function runInboxArguments(argv: string[], trace: string) {
     inbox = new bridge.SqliteSyncInbox(args.path, {
       create: args.command === 'inbox init',
       readonly:
+        args.command === 'inbox application-apply-preview' ||
         args.command === 'inbox application-restore-receipt-audit' ||
         args.command === 'inbox application-restore-receipt-scopes' ||
         args.command === 'inbox application-restore-receipt-list' ||
@@ -333,6 +343,27 @@ export async function runInboxArguments(argv: string[], trace: string) {
       trace_id: trace,
     });
   } catch (error) {
+    if (applicationApplyPreviewQuery) {
+      throw new ContractError(
+        error instanceof ContractError ? error.envelope.code : 'INBOX_STORAGE_UNAVAILABLE',
+        error instanceof ContractError
+          ? error.envelope.message
+          : 'The existing inbox could not be opened for application preview',
+        {
+          trace_id: trace,
+          retryable: false,
+          details: {
+            ...(error instanceof ContractError ? error.envelope.details : {}),
+            apply_query: applicationApplyPreviewQuery,
+            preview_completed: false,
+            stage: 'open',
+            inbox: args.path,
+            local_write_state: 'not-performed',
+            acknowledgement_dispatch_state: 'not-sent',
+          },
+        },
+      );
+    }
     if (applicationRestoreReceiptAuditQuery) {
       throw new ContractError(
         error instanceof ContractError ? error.envelope.code : 'INBOX_STORAGE_UNAVAILABLE',
@@ -497,6 +528,15 @@ export async function runInboxArguments(argv: string[], trace: string) {
         { ...inbox.auditApplicationHistory(applicationAuditQuery, trace), inbox: args.path },
         applicationAuditQuery.expected_identity,
       );
+    } else if (applicationApplyPreviewQuery) {
+      result = envelope(
+        trace,
+        {
+          ...inbox.previewBuiltInApplicationPage(applicationApplyPreviewQuery, trace),
+          inbox: args.path,
+        },
+        applicationApplyPreviewQuery.expected_identity,
+      );
     } else if (applicationApplyQuery) {
       result = envelope(
         trace,
@@ -635,6 +675,30 @@ export async function runInboxArguments(argv: string[], trace: string) {
       /* Preserve the original error or commit uncertainty. */
       close_pending = true;
     }
+    if (applicationApplyPreviewQuery) {
+      throw new ContractError(
+        error instanceof ContractError
+          ? error.envelope.code
+          : 'INBOX_APPLICATION_APPLY_PREVIEW_FAILED',
+        error instanceof ContractError
+          ? error.envelope.message
+          : 'The local application preview could not be completed',
+        {
+          trace_id: trace,
+          retryable: false,
+          details: {
+            stage: 'preview',
+            ...(error instanceof ContractError ? error.envelope.details : {}),
+            apply_query: applicationApplyPreviewQuery,
+            preview_completed: false,
+            inbox: args.path,
+            close_pending,
+            local_write_state: 'not-performed',
+            acknowledgement_dispatch_state: 'not-sent',
+          },
+        },
+      );
+    }
     if (
       [
         'inbox consumers',
@@ -650,6 +714,7 @@ export async function runInboxArguments(argv: string[], trace: string) {
         'inbox application-status',
         'inbox application-list',
         'inbox application-apply',
+        'inbox application-apply-preview',
         'inbox application-audit',
         'inbox application-replay',
         'inbox application-history',
@@ -731,6 +796,30 @@ export async function runInboxArguments(argv: string[], trace: string) {
     }
   }
   if (!result) throw invalid(trace);
+  if (applicationApplyPreviewQuery) {
+    try {
+      syncJsonSnapshot({ ...result, close_pending }, 3 * 1024 * 1024);
+    } catch {
+      throw new ContractError(
+        'INBOX_APPLICATION_APPLY_PREVIEW_TOO_LARGE',
+        'The complete application preview response exceeds 3 MiB',
+        {
+          trace_id: trace,
+          retryable: false,
+          details: {
+            apply_query: applicationApplyPreviewQuery,
+            preview_completed: true,
+            response_completed: false,
+            stage: 'response',
+            inbox: args.path,
+            close_pending,
+            local_write_state: 'not-performed',
+            acknowledgement_dispatch_state: 'not-sent',
+          },
+        },
+      );
+    }
+  }
   if (applicationRestoreReceiptAuditQuery) {
     try {
       syncJsonSnapshot({ ...result, close_pending }, 512 * 1024);

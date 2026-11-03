@@ -63,6 +63,10 @@ SQL 对投影/元数据做类型和字节投影保护；精确查找最多读两
 
 上述状态入口仅新增 CLI 源码与文档，没有执行示例、打开数据库或启用 schema。后续同日增补已接 `inbox application-apply` 与固定 context-item-lifecycle/1 内置适配器，详见 [上下文生命周期投影](sync-context-item-application-runtime.md)；状态读取仍不重跑 reducer、推进游标或发送确认。
 
+## 原页应用预览
+
+`previewBuiltInApplicationPage` / `inbox application-apply-preview` 复用实际 apply 的准备阶段，在单次读事务返回当前完整状态和独立预计投影，支持三个固定内置适配器；已应用页保留当前状态且不重跑。完整响应上限 3 MiB，失败保留原查询与阶段；后续实际应用重新校验，不自动写入或确认。详见 [原页应用只读预览](sync-application-apply-preview-runtime.md)。仅源码文档，无 schema/依赖变化，未运行或测试。
+
 ## 尚未完成
 
 目前提供 Bridge 可编程投影事务、读取基础、上下文/建议生命周期元数据与冲突历史适配器，以及 CLI 显式启用/读取/指定原页应用。新增 auditApplicationHistory/CLI application-audit 已提供同一只读快照的完整历史结构覆盖，详见 [应用历史结构审计](sync-application-audit-runtime.md)，不执行 reducer 或核对业务语义。readApplicationHistory/readApplicationSnapshot 与 CLI application-history/application-get 已补固定双边界分页和指定历史投影读取，见 [历史浏览契约](sync-application-history-runtime.md)，仅核验选中步骤与边界，不继承完整历史审计状态。replayBuiltInApplicationHistory/CLI application-replay 已补固定 context-item-lifecycle/1、proposal-lifecycle/1 和 conflict-lifecycle/1 的逐页正序重放比对，见 [内置历史重放核对](sync-application-replay-runtime.md)，不回写原状态，也不认证旧执行代码。readApplicationCatalog/CLI application-list 已提供原消费者下的应用名称/版本目录和后续读取查询，见 [应用目录](sync-application-catalog-runtime.md)；仅逐项核验当前头，不扫描缺描述的孤立行。readApplicationArchive 与 CLI application-export/application-inspect/application-archive-get 已补完整原页和逐页投影的独立归档及离线读取，见 [应用历史归档](sync-application-archive-runtime.md)，不包含未应用后缀/确认日志。restoreApplicationArchive/CLI application-restore 已补单写事务内的缺失原页和空应用恢复，以及完整相同历史的重复恢复，见 [应用归档恢复](sync-application-restore-runtime.md)；兼容较新接收后缀保留，分叉/部分应用历史拒绝。previewApplicationArchiveRestore/CLI application-restore-preview 已补只读目标关系和预计写入数量，见 [恢复预览](sync-application-restore-preview-runtime.md)，与恢复共用比较规则但不保留目标锁。其他业务适配器、完整正文、版本管理、其他适配器的历史重放、不同历史合并、跨设备迁移，以及真实并发/重启/崩溃证据仍待补。既有页面链归档只包含接收页，不包含此应用头/投影/ledger；恢复原页面不会自动恢复或重建应用状态。所有 schema、SQLite 事务和 reducer 路径均未实际运行。
