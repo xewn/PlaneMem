@@ -954,6 +954,27 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_pack_backup_output_recovery_development_increment:
+      date: "2026-11-05"
+      status: "Source-only offline CLI recovery of complete prepared backup sets; R-003 remains incomplete."
+      artifacts:
+        - "apps/workctx-cli/src/context-pack-backup-recovery.ts"
+        - "apps/workctx-cli/src/context-pack-backup-output.ts"
+        - "apps/workctx-cli/src/context-pack-backup-preparation.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "apps/workctx-cli/README.md"
+        - "docs/design/01-contracts/context-pack-runtime.md"
+      behavior: "Add context recover-backup for successful or failed complete prepare-backup/recover-backup stdout, with explicit new output directory and optional independent binding, expected root digest and read-only deadline. Bound actual input to 64 MiB and metadata to 16 MiB; retain per-volume node/byte limits. Reuse SDK full candidate inspection, verify all observation/volume/manifest hashes, ordering, redundant counts/binding/output plan and historical saved-prefix states. Never open historical paths. Re-read only explicit result/binding bytes before exclusive new directory publication. Extract and share existing fixed-name, volumes-before-manifest, per-file and final-set readback code with preparation; preserve complete candidates and earlier files after local failure. No timer races writes, no credentials/router/server/browser operation."
+      evidence: []
+      pending_evidence:
+        - "Single/empty/maximum volume output compatibility, metadata/JSON limits, all digest/count/plan/state contradictions and foreign-platform historical paths"
+        - "Optional independent constraints, source byte changes, read-only deadlines and late-result exclusion"
+        - "New/existing/root/symlink directory handling, prefix file states, cleanup hints, partial publication/readback failure and repeated recovery; original preparation parity"
+      remaining_gaps:
+        - "Runtime evidence, larger or streaming sets, retention/quotas and full-store audit"
+        - "Historical source metadata is not authenticated or re-read; completeness remains supplied-observations-only and publication is not atomic across the set"
+      execution: "Source/docs, manual review and formatting/Git text checks only; no build, typecheck, tests, CLI/SDK/file workflow/browser/API/database execution or release. No shared format, SDK, dependency or database change."
     context_pack_receipt_extraction_output_recovery_development_increment:
       date: "2026-11-05"
       status: "Source-only recovery of historical receipts from complete extraction outputs; R-003 remains incomplete."
@@ -968,7 +989,7 @@ requirements:
         - "Old query/recovery compatibility, single/volume extraction success/failure shapes and separate 96/256 KiB bounds"
         - "Metadata/hash/size/state mismatch rejection, ignored historical paths, explicit source changes and repeated local save failure recovery"
       remaining_gaps:
-        - "Whole-backup preparation output recovery and runtime evidence; no build, typecheck, test, CLI/SDK/file workflow/browser/API/database execution or release performed"
+        - "Runtime evidence; whole-backup preparation output recovery is covered by the separate source-only increment above. No build, typecheck, test, CLI/SDK/file workflow/browser/API/database execution or release performed"
         - "Historical source hashes do not prove original backup membership, identity or current server state"
     context_pack_receipt_backup_extraction_development_increment:
       date: "2026-11-05"

@@ -1,36 +1,32 @@
 import { createHash } from 'node:crypto';
-import type { BigIntStats } from 'node:fs';
-import { lstat, mkdir, realpath } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { lstat } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import {
   ContractError,
   CONTEXT_PACK_SAVE_RECEIPT_FILE_BYTES,
   PACK_ORIGINAL_BYTES,
-  PACK_RECEIPT_BACKUP_FILE_BYTES,
   PACK_RECEIPT_BACKUP_MAX_ENTRIES,
   PACK_RECEIPT_VOLUMES_MAX_ENTRIES,
   parsePackSaveBinding,
 } from '@planemem/contracts';
 import { prepareContextPackReceiptBackup } from '@planemem/sdk';
 import { readBoundedArtifactFile } from './artifact-files.js';
-import { prepareArtifactOutput, saveArtifactOutput } from './artifact-output.js';
+import { prepareArtifactOutput } from './artifact-output.js';
+import {
+  assertDirectory,
+  contextBackupFileStates,
+  createContextBackupPlan,
+  saveContextBackupOutput,
+} from './context-pack-backup-output.js';
 
 const hash = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
 const pathKey = (path: string) => (process.platform === 'win32' ? path.toLowerCase() : path);
-const states = {
-  identity_state: 'not-authenticated',
-  server_outcome: 'not-checked',
-  content_state: 'not-checked',
-  save_dispatch_state: 'not-sent',
-  browser_history_access: 'not-performed',
-  restore_state: 'not-started',
-} as const;
 function failure(code: string, message: string, trace: string, storage = 'file-read-only') {
   return new ContractError(code, message, {
     trace_id: trace,
     retryable: false,
-    details: { ...states, storage_access: storage },
+    details: { ...contextBackupFileStates, storage_access: storage },
   });
 }
 function argumentsFor(argv: string[], trace: string) {
@@ -237,18 +233,6 @@ async function prepareInputs(args: ReturnType<typeof argumentsFor>, trace: strin
   }
 }
 
-async function assertDirectory(path: string, identity: BigIntStats) {
-  const current = await lstat(path, { bigint: true });
-  if (
-    !identity.isDirectory() ||
-    !current.isDirectory() ||
-    current.dev !== identity.dev ||
-    current.ino !== identity.ino ||
-    pathKey(await realpath(path)) !== pathKey(path)
-  )
-    throw new TypeError();
-}
-
 /** No timer races publication; every destination is new, and failures retain earlier files. */
 export async function prepareContextPackBackupArguments(argv: string[], trace: string) {
   const args = argumentsFor(argv, trace);
@@ -257,35 +241,7 @@ export async function prepareContextPackBackupArguments(argv: string[], trace: s
     trace,
   );
   const contents = prepared.data.contents;
-  const files =
-    contents.kind === 'single'
-      ? [
-          {
-            name: `backup-${contents.backup.file.document_sha256}.json`,
-            candidate: contents.backup,
-          },
-        ]
-      : [
-          ...contents.collection.volumes.map((candidate, index) => ({
-            name: `volume-${String(index + 1).padStart(3, '0')}-${candidate.file.document_sha256}.json`,
-            candidate,
-          })),
-          {
-            name: `manifest-${contents.collection.file.document_sha256}.json`,
-            candidate: contents.collection,
-          },
-        ];
-  const plan = files.map(({ name, candidate }) => {
-    const bytes = new TextEncoder().encode(candidate.raw);
-    return {
-      name,
-      path: join(output.path, name),
-      bytes,
-      file_sha256: hash(bytes),
-      file_bytes: bytes.byteLength,
-      document_sha256: candidate.file.document_sha256,
-    };
-  });
+  const plan = createContextBackupPlan(contents, output.path);
   const data = {
     status: 'backup-prepared' as const,
     binding: prepared.data.binding,
@@ -313,117 +269,9 @@ export async function prepareContextPackBackupArguments(argv: string[], trace: s
       file_bytes,
       document_sha256,
     })),
-    ...states,
+    ...contextBackupFileStates,
     storage_access: 'file-read-write' as const,
   };
-  const written: {
-    path: string;
-    state: 'published-unconfirmed' | 'saved-and-read-back';
-    file_sha256: string;
-    file_bytes: number;
-    cleanup_pending: boolean;
-    temporary_path?: string;
-  }[] = [];
-  let directoryCreated = false;
-  let identity: BigIntStats | undefined;
-  let phase = 'create-directory';
-  let currentPath: string | undefined;
-  try {
-    await assertDirectory(output.directory, parentIdentity);
-    await mkdir(output.path, { recursive: false, mode: 0o700 });
-    directoryCreated = true;
-    identity = await lstat(output.path, { bigint: true });
-    await assertDirectory(output.directory, parentIdentity);
-    await assertDirectory(output.path, identity);
-    for (const file of plan) {
-      currentPath = file.path;
-      phase = 'publish-file';
-      await assertDirectory(output.path, identity);
-      const destination = await prepareArtifactOutput(file.path, trace);
-      if (
-        pathKey(destination.path) !== pathKey(file.path) ||
-        pathKey(destination.directory) !== pathKey(output.path)
-      )
-        throw new TypeError();
-      await assertDirectory(output.path, identity);
-      const saved = await saveArtifactOutput(destination, file.bytes, file.file_sha256, trace);
-      const record = {
-        path: saved.path,
-        state: 'published-unconfirmed' as 'published-unconfirmed' | 'saved-and-read-back',
-        file_sha256: file.file_sha256,
-        file_bytes: file.file_bytes,
-        cleanup_pending: saved.cleanup_pending,
-        ...(saved.temporary_path === undefined ? {} : { temporary_path: saved.temporary_path }),
-      };
-      written.push(record);
-      phase = 'readback-file';
-      await assertDirectory(output.path, identity);
-      const bytes = await readBoundedArtifactFile(
-        file.path,
-        PACK_RECEIPT_BACKUP_FILE_BYTES,
-        trace,
-        file.file_bytes,
-      );
-      if (!Buffer.from(bytes).equals(file.bytes) || hash(bytes) !== file.file_sha256)
-        throw new TypeError();
-      await assertDirectory(output.path, identity);
-      record.state = 'saved-and-read-back';
-    }
-    phase = 'readback-set';
-    // The manifest is already last in the publication plan; now recheck every destination.
-    for (const file of plan) {
-      currentPath = file.path;
-      await assertDirectory(output.path, identity);
-      const bytes = await readBoundedArtifactFile(
-        file.path,
-        PACK_RECEIPT_BACKUP_FILE_BYTES,
-        trace,
-        file.file_bytes,
-      );
-      if (!Buffer.from(bytes).equals(file.bytes) || hash(bytes) !== file.file_sha256)
-        throw new TypeError();
-    }
-    await assertDirectory(output.path, identity);
-    await assertDirectory(output.directory, parentIdentity);
-    return {
-      schema_version: 1,
-      trace_id: trace,
-      source_refs: [],
-      data: {
-        ...data,
-        local: {
-          state: 'saved-and-read-back' as const,
-          directory: output.path,
-          files: written,
-          cleanup_pending: written.some((file) => file.cleanup_pending),
-        },
-      },
-    };
-  } catch (error) {
-    const details =
-      error instanceof ContractError &&
-      error.envelope.trace_id === trace &&
-      error.envelope.code === 'ARTIFACT_SAVE_FAILED'
-        ? error.envelope.details
-        : undefined;
-    return {
-      schema_version: 1,
-      trace_id: trace,
-      source_refs: [],
-      data: {
-        ...data,
-        local: {
-          state: 'save-failed' as const,
-          directory: output.path,
-          directory_created: directoryCreated,
-          phase,
-          ...(currentPath === undefined ? {} : { current_path: currentPath }),
-          files: written,
-          ...(details === undefined ? {} : { details }),
-          message:
-            'Keep this complete backup candidate and any files already saved. The set was not confirmed. Existing paths were not replaced; retry from the original observations into a new directory, or inspect the saved files explicitly.',
-        },
-      },
-    };
-  }
+  const local = await saveContextBackupOutput(output, parentIdentity, plan, trace);
+  return { schema_version: 1, trace_id: trace, source_refs: [], data: { ...data, local } };
 }

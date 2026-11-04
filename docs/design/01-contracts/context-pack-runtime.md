@@ -1252,3 +1252,29 @@ workctx context recover-receipt --result-file EXTRACT_RESULT.json --output new-r
 本次只读取显式result-file、可选独立原请求文件以及新输出，写入仅针对显式新目标及其自有临时文件。原观察时间/原请求/回执不变；保存前复读result-file并比较完整实际字节，沿独占新文件保存和完整回执读回。成功或失败输出仍为receipt-recovered，可再次补存；本次recovery增加input_status标明直接输入类型、backup_membership=not-checked。这两项在解析旧补存输出时可缺省，若存在则校验枚举；多次补存不把上游来源提示升级成成员证明。退出码及失败候选保留语义沿既有补存流程。
 
 整套 `prepare-backup` 失败输出的补存仍待补，不在本次单观察范围。R-003未完成、evidence为空。仅源码文档人工审阅和格式文本检查，未编译、类型检查、测试、运行CLI/SDK/文件流程/浏览器/API/数据库或发布。
+
+## 整套备份输出离线补存（2026-11-05源码增量）
+
+新增 `context recover-backup --result-file RESULT.json --output NEW_DIRECTORY`，覆盖上述整套构造失败输出补存缺口。普通main及内嵌runWorkctx入口均在凭据/路由调用前离线处理，可选完整独立 `--binding-file BINDING.json`、根document摘要 `--expected-document-sha256 SHA256`、只读准备时限 `--timeout-ms 30000`。拒绝stdin、未知/重复选项；路径首次await前解析并限4096字符，拒绝空白/控制字符/孤立代理，参数错误退出2。
+
+```sh
+# Usage examples only; not executed. RESULT.json contains complete captured stdout.
+workctx context recover-backup --result-file RESULT.json --output recovered-backup
+workctx context recover-backup --result-file RESULT.json --output recovered-again --binding-file binding.json --expected-document-sha256 ROOT_DIGEST
+```
+
+输入必须是完整 `backup-prepared` 或 `backup-recovered` 封套，包括contents、原始输入元数据、output_plan和local记录，成功及本地保存失败输出均可接受。稳定普通文件实际字节限64 MiB，UTF-8严格解码；元数据单独限16 MiB/100000节点/64层，固定状态和字段闭合。contents分别使用已有单份/卷4 MiB+1 KiB、清单32 KiB、最多10卷/1000条及整套限制，每卷保留原节点预算，避免对全部卷套用单卷节点总量。过量额外空白可触发实际文件上限，不能靠重排字段或尾部内容绕过。
+
+规范化每个完整候选文件后调用既有SDK inspectContextPackReceiptBackup，实算并核对每条观察、每卷、清单摘要，完整绑定、全局顺序和数量。输入中的卷数组必须与清单顺序一致；冗余binding、根摘要、观察数、输入文件数、输入字节总数、输出文件数/规范字节总数均核对。历史来源限与观察数量相同的有限路径/字节数/摘要项，拒绝重复原样路径和文件摘要；原binding_file只作有界历史信息。可选独立绑定必须与候选完整绑定一致，预期摘要必须是整套根document摘要，不接受某个卷的摘要冒充集合摘要。
+
+历史output_plan必须与核验后的固定文件名、每文件规范摘要/大小及document摘要一致；每个旧路径只与旧directory按Windows或POSIX分隔符作字符串核对，不按本机路径规则解析，更不读写。历史local.files只允许按计划顺序已发布的前缀，大小摘要逐项相同；saved-and-read-back必须覆盖全部文件及清理状态。save-failed按create-directory、publish-file、readback-file、readback-set核对目录创建状态、当前路径与已保存前缀；补存输出还可有preflight、source-readback。临时路径、错误详情仅有限元数据，不赋予访问权限。历史本地保存状态不能证明文件当前仍存在。
+
+只读准备默认30秒，覆盖结果读取、可选独立绑定读取、解析与整套核验；每个阶段前后检查期限，底层当前读取可能等待关闭，同步解析不能中途抢占，迟到的只读结果不能进入写入。准备成功后先预检新目录及父目录身份，复读本次显式result-file和独立binding-file并比较完整实际字节；原备份构造输入、历史绑定/输出/临时路径全部不访问。复读是顺序观察，不提供跨文件原子快照；之后的本地创建、写入和读回独立等待，不竞速准备计时器。
+
+从原prepare-backup抽出共用backup-output实现：独占mkdir新叶目录，固定摘要文件名，卷先清单后；沿临时文件独占写/sync/读回/hard-link发布，每份及最终整套再核对实际字节和SHA-256，过程中检查目录身份与非链接路径。原prepare-backup的格式、顺序与保存策略保持。失败不覆盖或删除用户旧目录及已发布文件；它不是整套原子事务，不提供目录断电持久保证。
+
+stdout返回 `data.status=backup-recovered`、完整原候选、历史输入元数据、本次output_plan/local，以及本次recovery信息：直接输入文件/长度/摘要/类型、source_inputs_state=historical-not-reread、candidate_integrity=verified、binding_state及可选本次独立绑定元数据/预期摘要。再次补存替换上一轮recovery而不嵌套整份旧输出，候选规范文件/观察时间/原请求/回执不变。完整性仍为supplied-observations-only，不推断这就是浏览器或服务器的全部历史；摘要是内部一致性，不是身份认证、来源认证或当前服务器事实。
+
+输出预检失败也保留完整候选，local.phase=preflight且未创建目录；源复读失败标记source-readback，其他发布阶段由共用helper记录。所有本地保存失败退出1，完整stdout仍可交本命令换新目录补存。候选不完整、字段矛盾、独立约束不匹配或准备超时则在写入前退出1；成功saved-and-read-back退出0。保持not-authenticated/not-checked/not-sent，browser_history_access=not-performed、restore_state=not-started，无网络、服务器查询/重发或自动网页恢复。
+
+R-003未完成、evidence为空；更大/流式集合、保留/配额、全库审计和运行证据仍待补。仅源码文档人工审阅及格式/Git文本检查，未编译、类型检查、测试、执行CLI/SDK/文件工作流/浏览器/API/数据库或发布。

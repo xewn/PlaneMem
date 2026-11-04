@@ -4,6 +4,8 @@
 
 ## 当前基线
 
+- P4：新增context recover-backup --result-file/--output新目录，普通/内嵌入口均接收prepare-backup或本命令成功/失败完整stdout，可选独立binding-file、expected-document-sha256及timeout-ms。64 MiB实际输入/16 MiB元数据，完整候选按单卷既有字节/节点预算核验全部观察、卷及清单摘要和顺序；冗余身份/条数/大小/输出计划与历史文件前缀状态核对，旧路径仅数据不访问。默认30秒只读准备，保存前复读显式结果和绑定实际字节；共用抽取的backup-output独占新目录/固定摘要文件名/卷先清单后/逐份及最终全套读回，保存不与计时器竞速。失败保留完整候选、阶段、已写文件且可继续补存，成功0、失败1、用法2；不查询/重发/恢复浏览器，不宣称认证或整套文件系统原子性。下述整套构造失败stdout恢复缺口已由本源码覆盖；流式集合、自动保留/配额及运行证据仍缺。R-003未完成、evidence为空，仅源码文档人工审阅及格式/Git文本检查，未编译、类型检查、测试、执行CLI/SDK/文件流程/浏览器/API/数据库或发布。
+
 - P4：context recover-receipt接入extract-backup-receipt成功/保存失败的完整stdout；查询/补存输入仍限96 KiB，提取输出单独限256 KiB。闭合字段、固定状态、提取来源形状/数量/字节限制、完整回执摘要和local实际或候选摘要均核对，旧备份/绑定/输出路径只作历史元数据、不访问。沿可选独立原请求核对、输入复读、独占新文件保存与完整读回；保留原观察，失败输出可再次补存。新增recovery.input_status和backup_membership=not-checked，兼容旧补存输出，不重新证明原备份成员关系。下述单观察提取失败stdout补存缺口已由本增量覆盖；整套备份构造失败输出补存和运行证据仍缺。R-003未完成、evidence为空，仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行CLI/SDK/文件流程/浏览器/API/数据库或发布。
 
 - P4：新增context extract-backup-receipt，普通/内嵌共用重复backup-file完整核验，按必填observation-sha256精确选一份，output只能新文件；可选binding-file/根expected-document-sha256/timeout-ms保持。未命中或任一卷核验失败不写入；选中原回执不改时间/键/身份/正文，保存前重读全部源文件及独立绑定文件核对实际长度/SHA-256，独占发布/sync/完整回执读回。失败保留候选、来源摘要和local阶段，不覆盖/删除旧文件、不查服务器；成功文件可交inspect-receipt、extract-original或网页导入，整套完整性仍只相对清单。核验时限与后续本地保存独立，保存失败1、成功0、用法2；失败stdout直接补存及运行证据仍待补。R-003未完成、evidence为空，仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行CLI/SDK/文件流程/浏览器/API/数据库或发布。

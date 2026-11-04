@@ -22,6 +22,7 @@ import {
 import { recoverContextPackReceipt } from './context-pack-receipt-recovery.js';
 import { inspectContextPackBackupArguments } from './context-pack-backup-inspection.js';
 import { prepareContextPackBackupArguments } from './context-pack-backup-preparation.js';
+import { recoverContextPackBackup } from './context-pack-backup-recovery.js';
 import { extractContextPackBackupReceipt } from './context-pack-backup-extraction.js';
 import { prepareHandoffClaim, handoffClaimResult } from './handoff-claim.js';
 import { prepareHandoffCreate, handoffCreateResult } from './handoff-create.js';
@@ -312,6 +313,7 @@ export async function runWorkctx(
     'context inspect-receipt': 'context.pack.receipt.inspect',
     'context inspect-backup': 'context.pack.backup.inspect',
     'context prepare-backup': 'context.pack.backup.prepare',
+    'context recover-backup': 'context.pack.backup.recover',
     'context extract-backup-receipt': 'context.pack.backup.extract-receipt',
     'context extract-original': 'context.pack.receipt.extract-original',
     'context recover-receipt': 'context.pack.receipt.recover',
@@ -432,6 +434,14 @@ export async function runWorkctx(
     }
     if (command === 'context prepare-backup') {
       const result = await prepareContextPackBackupArguments(argv, context.trace_id);
+      return {
+        exit_code: result.data.local.state === 'save-failed' ? 1 : 0,
+        stdout: JSON.stringify(result),
+        stderr: '',
+      };
+    }
+    if (command === 'context recover-backup') {
+      const result = await recoverContextPackBackup(argv, context.trace_id);
       return {
         exit_code: result.data.local.state === 'save-failed' ? 1 : 0,
         stdout: JSON.stringify(result),

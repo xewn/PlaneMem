@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [整套备份输出离线补存](docs/design/01-contracts/context-pack-runtime.md#整套备份输出离线补存2026-11-05源码增量)：`context recover-backup` 可从备份构造或补存的完整输出恢复单份或分卷备份，重新核验候选后写入新目录；保存失败继续保留完整候选和已保存文件。仅源码文档，未编译、测试、执行CLI或发布。
+
 新增 [备份提取输出回执补存](docs/design/01-contracts/context-pack-runtime.md#备份提取输出回执补存2026-11-05源码增量)：`context recover-receipt` 可接收备份提取成功或保存失败时的完整输出，校验其中的历史回执后保存到新文件，保留原观察时间。仅源码文档，未编译、测试、执行CLI或发布。
 
 新增 [从备份提取历史回执](docs/design/01-contracts/context-pack-runtime.md#cli从备份提取历史回执2026-11-05源码增量)：完整核验单份或分卷备份后，按准确观察摘要提取一份回执到新文件，保留原时间和请求，可接续既有原请求恢复流程。仅源码文档，未编译、测试、执行CLI或发布。
