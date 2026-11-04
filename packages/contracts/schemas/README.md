@@ -2,6 +2,37 @@
 
 这些文件是开发源码，尚未经过本轮编译、生成器、Schema校验器、测试或运行验证。`$id`是契约标识，不代表已发布网站；消费者应从工作区或包子路径加载文件，不依赖远端下载。
 
+## 保存 ContextPack 元数据目录
+
+`context-pack-directory.json`采用JSON Schema 2020-12，包子路径为`@planemem/contracts/schemas/context-pack-directory.json`。文件自包含全部定义，根`ContextPackDirectoryEnvelope`描述GET /v1/context-packs完整成功页、SDK `listContextPacks`与`contextPackPages`每页、CLI `context list-packs`输出和MCP `list_context_packs`文本中的JSON，也适用于Mock返回的同形封套。它不包含HTTP状态/头、MCP外层包装、Mock种子/会话或SDK读取/迭代选项。
+
+从本地文件或包子路径加载完整资源，以其`$id`注册后再解析锚点；无需加载完整读取或对比Schema，也不向planemem.local联网取文件。目录仅保存六个标量，自包含定义避免为了元数据引入完整包内容结构。Schema和运行时的一致性尚未自动验证。
+
+| 锚点 | 用途 |
+| --- | --- |
+| `#ContextPackDirectoryQuery` | SDK/MCP可选pack_id、limit、cursor输入；可为{} |
+| `#ContextPackDirectoryNormalizedQuery` | 响应回显，limit必填 |
+| `#ContextPackDirectoryCliQuery` | CLI输入，额外允许成对可选expected_actor_id/expected_client_id |
+| `#ContextPackDirectoryCursor` | base64url游标的词法范围，不负责解码和绑定 |
+| `#ContextPackDirectoryRecord` | version、pack_id、created_at、expires_at、budget_tokens、used_tokens六字段记录 |
+| `#ContextPackDirectoryScope` | 原tenant/workspace/project范围 |
+| `#ContextPackDirectorySourceRef` | 唯一目录来源标记，id须为原project_id |
+| `#ContextPackDirectoryEnvelope` | 完整metadata-only/not-checked页，可选next_cursor |
+
+所有对象均拒绝未知字段。输入limit为1–100，省略规范为25，`default`仅为注解，不会填写输入；回显必须显式提供limit。空、null或额外字段不是省略；SDK对可选undefined的处理属于JavaScript适配，Schema只描述JSON。CLI身份可同时省略，或同时提供；`--timeout-ms`属于命令选项，signal/timeout_ms/max_pages等也不是目录查询字段。HTTP沿URL查询，不发送GET JSON正文。
+
+记录版本为正安全整数，ULID沿既有26字符规则，不新增首字符限制。预算128–32768、用量0–32768，UTC毫秒时间保留24字符和严格词法；`format: date-time`可能只作注解。trace最多255码点且拒绝C0，CLI客户端约束还拒绝DEL；运行时按UTF-16单元并拒绝孤立代理项，结构长度不能代替这一检查。精确pack_id查询页最多一条且无next_cursor，提供续页必须非空；Schema不能据此推断内容可读或来源有效。
+
+以下仍须原共享解析器和可信服务负责：
+
+- 普通有限JSON、深度/节点预算，以及查询4 KiB、单条2 KiB、完整页256 KiB；SDK/CLI/MCP传输、错误和文本包装限制另沿各自读取器。
+- 时间有效且精确UTC毫秒往返、created_at小于expires_at、used_tokens不大于budget_tokens。过期或来源变化的保存包仍允许列出。
+- scope、规范query、trace和目录来源标记与原请求一致；标记id等于scope.project_id。真实context.read、父项目/read_restricted和当前可见性由可信处理器检查。
+- pack_id唯一、筛选匹配、版本/ASCII（数据库C排序）ID降序、每项都在原游标之后、条数不超过query.limit。`uniqueItems`只拒绝完全相同记录，不能检查相同ID但其他值不同的记录。
+- 游标须规范无填充base64url，解码为`[1, 64位小写十六进制绑定, 正安全版本, ULID]`并精确重新编码。next_cursor只能用于完整非空页，位置必须是末项；已有cursor时绑定必须相同。服务另核对当前身份/权限/筛选绑定，Mock使用独立场景绑定，游标不是签名、授权或跨页快照。
+
+元数据没有正文、hash、ETag、revision、分类或包内来源；metadata-only/not-checked明确没有检查完整内容或来源。需要完整内容时再调用原读取入口。示例仅为人工编写的输入，不是运行证据。接入边界见[保存包运行契约](../../../docs/design/01-contracts/context-pack-runtime.md)。本次无生产JSON导入或校验器依赖；未运行Schema校验、生成器、编译、类型检查、测试或发布，OpenAPI对齐、本地加载和自动一致性证据仍待补。
+
 ## 保存 ContextPack 对比
 
 `context-pack-comparison.json`采用JSON Schema 2020-12，包子路径为`@planemem/contracts/schemas/context-pack-comparison.json`。根`ContextPackComparisonResult`描述SDK `compareContextPacks`、CLI `context compare-packs`输出及MCP `compare_context_packs`文本内的JSON；MCP外层content/JSON-RPC包装不在根内。网页内部组合使用单独的`#ContextPackComparisonWebResult`，只有query/from/to/comparison，不带SDK/MCP的标记和身份字段，也不是新增REST接口。

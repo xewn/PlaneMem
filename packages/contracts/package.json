@@ -12,7 +12,8 @@
     "./schemas/artifact-registry.json": "./schemas/artifact-registry.json",
     "./schemas/artifact-comparison.json": "./schemas/artifact-comparison.json",
     "./schemas/context-pack-read.json": "./schemas/context-pack-read.json",
-    "./schemas/context-pack-comparison.json": "./schemas/context-pack-comparison.json"
+    "./schemas/context-pack-comparison.json": "./schemas/context-pack-comparison.json",
+    "./schemas/context-pack-directory.json": "./schemas/context-pack-directory.json"
   },
   "type": "module",
   "name": "@planemem/contracts",
