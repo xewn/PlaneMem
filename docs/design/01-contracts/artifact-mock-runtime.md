@@ -53,7 +53,7 @@ const client = new WcpClient(transport, {
 | POST /v1/artifacts/receipt | 核对完整原上传请求，返回 recorded/not-observed |
 | GET /v1/artifacts/{id}/versions/{version}/content | 固定版本二进制内容与模拟释放记录 ID |
 
-现有 `createArtifact/putArtifactVersion/getArtifact/getArtifactVersion/getArtifactReceipt/downloadArtifactVersion` 可通过上述 transport 接线。SDK 当前没有上传身份的专用方法；该 GET 路由可直接通过 transport 调用并使用共享 `parseArtifactUploadContextEnvelope` 核验。下载只模拟进程内内容释放，不能用此实现宣称真实审计、网络传输或客户端收妥已完成。
+现有 `getArtifactUploadContext/createArtifact/putArtifactVersion/getArtifact/getArtifactVersion/getArtifactReceipt/downloadArtifactVersion` 可通过上述 transport 接线。上传身份专用方法默认30秒期限、支持取消、16 KiB响应限制，并核验完整身份/权限提示/到期时间，详见 [SDK上传身份读取](artifact-persistence-runtime.md#sdk-上传身份读取源码阶段)。下载只模拟进程内内容释放，不能用此实现宣称真实审计、网络传输或客户端收妥已完成。
 
 所有路由拒绝查询参数、片段、错误方法及多余写条件。GET 不接收正文。元数据/回执支持 JSON/bounded-json 响应上限，内容路由必须使用 bytes；Mock 支持 AbortSignal，没有自动重试。
 

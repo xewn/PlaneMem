@@ -167,6 +167,10 @@ import type {
 
 import { readAuditRecords, exportReviewedAuditView, type WcpAuditOptions } from './audit.js';
 import { readAdminSnapshot, type WcpAdminOptions } from './admin.js';
+import {
+  readArtifactUploadContext,
+  type WcpArtifactUploadContextOptions,
+} from './artifact-upload-context.js';
 import { uploadSyncEvents, type WcpSyncUploadOptions } from './sync-upload.js';
 import { readSyncChanges, iterateSyncChanges, type WcpSyncChangesOptions } from './sync-changes.js';
 import {
@@ -1673,6 +1677,11 @@ export class WcpClient {
     } catch {
       throw this.invalidResponse();
     }
+  }
+
+  /** Read the current writer and upload limits; this never reserves or submits an upload. */
+  getArtifactUploadContext(options: WcpArtifactUploadContextOptions = {}) {
+    return readArtifactUploadContext(this.transport, this.context, options);
   }
 
   async getArtifact(artifactId: string) {

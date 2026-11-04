@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [SDK上传身份读取](docs/design/01-contracts/artifact-persistence-runtime.md#sdk-上传身份读取源码阶段)：客户端可读取当前上传账号、大小限制和读取权限提示，支持取消、期限与完整身份核对；不替换旧上传请求、不自动上传。仅源码文档，未编译、测试、运行或发布。
+
 新增 [资料上传与版本历史 Mock](docs/design/01-contracts/artifact-mock-runtime.md)：支持模拟上传、追加版本、查看当前与历史资料元数据、查询原上传回执和下载固定版本文件。下载显式核对模拟导出权限、摘要与长度，并保留独立内存释放记录；历史保持原样。仅源码文档，未编译、测试、执行 Mock 或发布。
 
 新增 [冲突生命周期 Mock](docs/design/01-contracts/conflict-mock-runtime.md)：上传产生的冲突可分页查询、查看双方原值、按原版本显式解决并查询原决定回执；解决事件进入同一同步流，来源字段和原上传回执保持。仅源码文档，未编译、测试、执行 Mock 或发布。

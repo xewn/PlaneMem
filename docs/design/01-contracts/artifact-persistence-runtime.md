@@ -232,6 +232,20 @@ HTTP MCP 在读取前鉴权，严格 UTF-8 JSON 对象与无压缩 Content-Type�
 
 无新依赖、迁移或 Gateway 写操作；只改源码和文档，未编译、类型检查、测试、实际上传、浏览器渲染/服务运行或发布，016–045 未执行。Next multipart、浏览器生命周期、反向代理容量/时限及真实存储行为没有运行证据；P2-01/R-008 保持未完成。
 
+## SDK 上传身份读取（源码阶段）
+
+2026-11-04：`WcpClient.getArtifactUploadContext({timeout_ms?,signal?})` 接入既有 GET /v1/artifacts/upload-context，导出 `WcpArtifactUploadContextOptions` 和 `ArtifactUploadContextEnvelope`。返回当前可信五项 identity、expires_at、max_bytes、can_read/can_read_restricted；不生成请求键、不选择文件、不预留版本，也不检查对象存储健康。调用方必须另行保存并审阅新上传的完整原请求；恢复旧请求时禁止用新身份替换原身份。
+
+调用时捕获SDK上下文，要求固定项目和有效trace；已设置的actor/client作为请求头前置约束并与响应再次核对。未设置时可以读取当前会话身份，普通账号字符串遵守资料身份契约，不强制将响应账号转为ULID。WcpClient构造上下文仍沿用既有ULID规则，本增量不修改该公共约定。
+
+不继承上下文中的幂等键、If-Match或expected_version；无正文与查询参数。默认本地等待30秒，timeout_ms允许1至2147483647的安全整数，signal沿用共享请求期限机制。预先取消不派发，期限覆盖自定义transport等待及响应校验；结束后清理定时器与取消监听。不自动重试、缓存或保存；停止等待不保证远端请求及其授权决定审计被撤销。
+
+请求使用bounded-json，成功正文最多16 KiB，Fetch错误正文沿用16 KiB。共享响应解析前再次有界复制纯JSON，因此自定义transport不能返回超限封套、访问器/循环/额外字段等非契约数据；返回值独立于transport原对象。完整核对schema/trace/空source_refs/三项范围/五项身份、规范日期、0至1 GiB整数上限和布尔提示，并拒绝已过期会话及不匹配的已绑定actor/client。
+
+已知同trace错误仅保留错误码，使用固定消息且retryable=false；未知错误或异trace错误统一GATEWAY_UNAVAILABLE，不回显远端详情。无效/过期响应为GATEWAY_RESPONSE_INVALID。自定义transport须执行bounded-json的读入字节限制和signal；SDK返回后的复制检查不能替代读入过程限额。权限提示不证明项目可读、分类可导出或后续上传一定成功。
+
+现有资料Mock无需新增路由即可支持该方法。仅源码文档人工审阅，未编译、类型检查、测试、执行SDK/Mock/网关/数据库或发布。身份约束、取消/期限、大小边界、错误归一化及真实transport兼容仍待运行证据，R-001不标完成。
+
 ## 工作台新请求准备（源码阶段）
 
 新增 `GET /v1/artifacts/upload-context` 与 `artifact.upload-context`，无输入字段、查询参数或写入前置头。必须是已验证客户端、实际 artifact.write、具有有限且未过期的 token_expires_at；admin 不能代替该能力。通过现有 artifact.write Policy/OPA 和授权决定审计，返回 schema_version/trace/source_refs=[]，data 为自身 identity、规范 UTC expires_at、服务器 max_bytes、can_read 与 can_read_restricted。共享解析器核对完整字段、项目、trace、日期、布尔能力提示及 0–1 GiB 上限；不返回 token、存储键、对象内容或其他账号身份。

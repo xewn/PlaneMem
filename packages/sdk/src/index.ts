@@ -18,6 +18,8 @@ export {
 } from './mock-proposals.js';
 export * from './continuity.js';
 export * from './fetch-transport.js';
+export type { WcpArtifactUploadContextOptions } from './artifact-upload-context.js';
+export type { ArtifactUploadContextEnvelope } from '@planemem/contracts';
 export type { WcpSyncUploadOptions } from './sync-upload.js';
 export type { WcpSyncChangesOptions } from './sync-changes.js';
 export type { WcpSyncCursorOptions, WcpSyncAckOptions } from './sync-cursor.js';

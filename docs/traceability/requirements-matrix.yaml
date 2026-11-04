@@ -11,6 +11,23 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    sdk_artifact_upload_context_development_increment:
+      date: "2026-11-04"
+      status: "Source-only typed upload identity reader connected to existing gateway and Mock routes; R-001 remains incomplete."
+      artifacts:
+        - "packages/sdk/src/artifact-upload-context.ts"
+        - "packages/sdk/src/client.ts"
+        - "packages/sdk/src/index.ts"
+        - "docs/design/01-contracts/artifact-persistence-runtime.md"
+        - "docs/design/01-contracts/artifact-mock-runtime.md"
+      behavior: "Read current upload identity/expiry/limits/capability hints with captured project/trace and optional actor/client constraints. Use a 30-second default local budget, cancellation and 16 KiB bounded JSON, validate and detach the full envelope, reject expired or mismatched identities, sanitize errors, omit write conditions and never retry or replace original uploads."
+      evidence: []
+      pending_evidence:
+        - "Gateway/Mock/Fetch compatibility, identity discovery versus fixed constraints, expired or malformed envelopes and detached results"
+        - "Pre-cancellation, timeout/late responses, bounded success/error bodies and sanitized same-trace errors"
+        - "No inherited write headers, dispatch retries, original-request mutation or upload side effects"
+      remaining_scope: "CLI/MCP dedicated upload preparation, runtime compatibility evidence and other public SDK/Mock routes."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, SDK/Mock/API/database execution or release. No server, schema or dependency change."
     sdk_artifact_download_mock_development_increment:
       date: "2026-11-04"
       status: "Source-only pinned artifact binary downloads and in-memory release observations; R-001 remains incomplete."
