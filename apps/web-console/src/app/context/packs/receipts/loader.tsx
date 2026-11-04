@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { CONTEXT_PACK_SAVE_RECEIPT_FILE_BYTES, type PackSaveBinding } from '@planemem/contracts';
 import { backupOperation } from '../../../sync/receipt/backup-operation';
 import { PackReceiptHistoryEntry } from '../../save-receipt-entry';
+import { PackReceiptBackupPanel } from '../../save-receipt-backup-panel';
 import { historyDateRangeError } from '../../../proposals/history-date-range';
 import {
   PACK_RECEIPT_HISTORY_PAGE_SIZE,
@@ -98,7 +99,7 @@ export function PackReceiptHistoryBrowser({ binding }: { binding: PackSaveBindin
     pageRef.current = undefined;
     setPage(undefined);
     setMessage(
-      'A browser history change was requested. The selected review copy is retained. Read the first matching page again after the operation finishes.',
+      'A browser history change was requested. Existing review copies are retained. Read the first matching page again after the operation finishes.',
     );
   }
   async function load(query: PackReceiptHistoryQuery | null, file?: File) {
@@ -315,6 +316,14 @@ export function PackReceiptHistoryBrowser({ binding }: { binding: PackSaveBindin
           </button>
         </div>
       ))}
+      <PackReceiptBackupPanel
+        binding={binding}
+        disabled={busy}
+        reviewGeneration={reviewGeneration}
+        begin={begin}
+        end={end}
+        onHistoryWrite={historyWriteStarted}
+      />
       {selected && (
         <div>
           <p>Selected observation for review. It may be outside the current filters.</p>

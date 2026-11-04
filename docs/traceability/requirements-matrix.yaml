@@ -954,6 +954,23 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_pack_web_receipt_backup_development_increment:
+      date: "2026-11-05"
+      status: "Source-only bounded complete browser history backup and explicit atomic missing-only restore; R-003 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/context/save-receipt-backup-model.ts"
+        - "apps/web-console/src/app/context/save-receipt-backup-panel.tsx"
+        - "apps/web-console/src/app/context/save-receipt-store.ts"
+        - "apps/web-console/src/app/context/packs/receipts/loader.tsx"
+        - "docs/design/01-contracts/context-pack-runtime.md"
+      behavior: "Create a complete unfiltered snapshot for the canonical full-binding prefix by checking both content and directory stores in one readonly transaction. Reject orphan pairs, corruption or more than 100 entries without truncation. A Web backup contains sorted unique shared receipt files and an outer canonical document digest, bounded to 4 MiB document plus 1 KiB file overhead; verify outer and every inner digest. Import only reviews. Explicit restore revalidates all candidates, preflights every target before writes in one transaction, inserts missing pairs, preserves identical pairs and fully rereads before success. Preserve backups on failure, revoke stale page/confirmation state and retain historical observation semantics."
+      evidence: []
+      pending_evidence:
+        - "Complete paired snapshot, both orphan directions, empty database, strict 100-entry/byte bounds and filter independence"
+        - "Malformed/sorted/duplicate/binding/digest checks, UTF-8 input and no persistence during import/export"
+        - "All-target transaction preflight, atomic add/readback, quota/conflict/cancel races, explicit confirmation and retained backup; no runtime verification performed"
+      remaining_gaps:
+        - "Larger-history multipart backups, CLI/SDK batch format support, restore comparison preview, batch cleanup, cross-tab notifications, full-database auditing, quota management and runtime evidence"
     context_pack_web_receipt_removal_development_increment:
       date: "2026-11-05"
       status: "Source-only explicit removal of one fully reviewed browser history observation; R-003 remains incomplete."
@@ -969,7 +986,7 @@ requirements:
         - "Confirmation invalidation across batched parent operations/filters, double clicks, cancellation and unmount"
         - "Retained export/re-save copy, stale directory invalidation, concurrent re-add and unchanged submission confirmation; no runtime verification performed"
       remaining_gaps:
-        - "Batch cleanup, complete backup/restore, cross-tab notifications, orphan-slot auditing, quota management and runtime evidence"
+        - "Batch cleanup, cross-tab notifications, full-database orphan auditing, quota management and runtime evidence; bounded complete backup/restore has a separate source-only increment"
     context_pack_web_receipt_filter_development_increment:
       date: "2026-11-05"
       status: "Source-only explicit filtered browser history lookup with complete bounded scanning; R-003 remains incomplete."
@@ -986,7 +1003,7 @@ requirements:
         - "100-scan/20-match boundaries, empty continuation, full-filter preservation and corrupt nonmatching records"
         - "Filter/page reference invalidation, selected-copy retention, independent import and cancel/late-result guards; no runtime verification performed"
       remaining_gaps:
-        - "Time ordering, automatic retention, complete backup/restore/batch cleanup, orphan-slot auditing, quota management and runtime evidence; single removal has a separate source-only increment"
+        - "Time ordering, automatic retention, batch cleanup, full-database orphan auditing, quota management and runtime evidence; single removal and bounded complete backup/restore have separate source-only increments"
     context_pack_receipt_output_recovery_development_increment:
       date: "2026-11-05"
       status: "Source-only offline CLI recovery of a captured receipt from query or recovery stdout; R-003 remains incomplete."
@@ -1040,7 +1057,7 @@ requirements:
         - "Atomic paired insertion/readback, concurrent tabs, cancellation/unknown commit and bounded complete paging"
         - "Parent/child lifecycle exclusion, old live confirmation preservation and explicit original export; no runtime verification performed"
       remaining_gaps:
-        - "Automatic retention, time ordering, complete backup/restore/batch cleanup, orphan-slot auditing and quota management; bounded filtering and single removal have separate source-only increments"
+        - "Automatic retention, time ordering, batch cleanup, full-database orphan auditing and quota management; bounded filtering, single removal and complete backup/restore have separate source-only increments"
     context_pack_save_receipt_file_development_increment:
       date: "2026-11-05"
       status: "Source-only historical save observation file and CLI explicit publication/offline inspection; R-003 remains incomplete."

@@ -25,6 +25,14 @@ import {
   parsePackReceiptHistoryQuery,
   type PackReceiptHistoryQuery,
 } from './save-receipt-query';
+import {
+  PACK_RECEIPT_BACKUP_FILE_BYTES,
+  PACK_RECEIPT_BACKUP_MAX_ENTRIES,
+  packReceiptBackupDocumentJson,
+  packReceiptBackupFileJson,
+  parsePackReceiptBackupFile,
+  type PackReceiptBackupCandidate,
+} from './save-receipt-backup-model';
 
 const layout = { databaseName: 'planemem-context-pack-save-history', contentStore: 'observations' };
 export interface PackReceiptCandidate {
@@ -258,4 +266,175 @@ export async function listPackReceiptHistory(
     scanned: result.entries.length,
     next: result.next === null ? null : { ...query, after: result.next },
   };
+}
+
+export async function inspectPackReceiptBackup(
+  raw: string,
+  input: PackSaveBinding,
+  check: () => void,
+): Promise<PackReceiptBackupCandidate> {
+  check();
+  const binding = parsePackSaveBinding(input);
+  slot(binding, '0'.repeat(64));
+  if (
+    !raw ||
+    raw.length > PACK_RECEIPT_BACKUP_FILE_BYTES ||
+    new TextEncoder().encode(raw).byteLength > PACK_RECEIPT_BACKUP_FILE_BYTES
+  )
+    return invalid();
+  const file = parsePackReceiptBackupFile(JSON.parse(raw.replace(/^\uFEFF/, '')));
+  assertPackSaveBinding(file.document.binding, binding);
+  if ((await backupHash(packReceiptBackupDocumentJson(file.document))) !== file.document_sha256)
+    return invalid();
+  check();
+  for (const entry of file.document.entries) {
+    await inspectPackReceiptHistory(contextPackSaveReceiptFileJson(entry), binding, check);
+    check();
+  }
+  return { file, raw: packReceiptBackupFileJson(file) };
+}
+
+/** One complete unfiltered snapshot of both stores; never truncate or join separate list pages. */
+export async function preparePackReceiptBackup(
+  input: PackSaveBinding,
+  signal: AbortSignal,
+  check: () => void,
+): Promise<PackReceiptBackupCandidate> {
+  check();
+  const binding = parsePackSaveBinding(input);
+  slot(binding, '0'.repeat(64));
+  const start = prefix(binding);
+  const entries = await inBrowserStores<PackReceiptCandidate[]>(
+    layout,
+    'readonly',
+    signal,
+    () => [],
+    (context) => {
+      const entries: PackReceiptCandidate[] = [];
+      const range = IDBKeyRange.bound(start, start + '\uffff', false, true);
+      const request = context.content.openKeyCursor(range);
+      request.onsuccess = context.guard(() => {
+        check();
+        const cursor = request.result;
+        if (!cursor) {
+          // A second scan in this transaction rejects directory-only orphan slots too.
+          let position = 0;
+          const directory = context.directory.openKeyCursor(range);
+          directory.onsuccess = context.guard(() => {
+            check();
+            const cursor = directory.result;
+            if (!cursor) {
+              if (position !== entries.length) return invalid();
+              context.accept(entries);
+              return;
+            }
+            const expected = entries[position];
+            if (
+              !expected ||
+              checkedKey(cursor.primaryKey, binding) !==
+                slot(binding, expected.file.document_sha256)
+            )
+              return invalid();
+            position += 1;
+            cursor.continue();
+          });
+          return;
+        }
+        if (entries.length === PACK_RECEIPT_BACKUP_MAX_ENTRIES) return invalid();
+        const key = checkedKey(cursor.primaryKey, binding);
+        readBrowserPair(context, key, (raw, digest, exists) => {
+          check();
+          if (!exists) return invalid();
+          entries.push(pair(raw, digest, key, binding));
+          cursor.continue();
+        });
+      });
+    },
+  );
+  check();
+  for (const entry of entries) {
+    await inspectPackReceiptHistory(entry.raw, binding, check);
+    check();
+  }
+  const document = {
+    schema_version: 1,
+    kind: 'context-pack-save-history-backup',
+    binding,
+    entries: entries.map((entry) => entry.file),
+  };
+  const document_sha256 = await backupHash(packReceiptBackupDocumentJson(document));
+  check();
+  const file = parsePackReceiptBackupFile({ document, document_sha256 });
+  return { file, raw: packReceiptBackupFileJson(file) };
+}
+
+/** Preflight every target in one transaction before adding any missing immutable observation. */
+export async function restorePackReceiptBackup(
+  raw: string,
+  input: PackSaveBinding,
+  signal: AbortSignal,
+  check: () => void,
+) {
+  const binding = parsePackSaveBinding(input);
+  const candidate = await inspectPackReceiptBackup(raw, binding, check);
+  const entries = candidate.file.document.entries.map((file) => ({
+    key: slot(binding, file.document_sha256),
+    raw: contextPackSaveReceiptFileJson(file),
+    digest: file.document_sha256,
+  }));
+  check();
+  if (!entries.length) return { total: 0, added: 0, already_present: 0 };
+  const result = await inBrowserStores<{ total: number; added: number; already_present: number }>(
+    layout,
+    'readwrite',
+    signal,
+    invalid,
+    (context) => {
+      const missing: typeof entries = [];
+      let position = 0;
+      let verified = 0;
+      const readback = () => {
+        check();
+        const entry = entries[verified];
+        if (!entry) {
+          context.accept({
+            total: entries.length,
+            added: missing.length,
+            already_present: entries.length - missing.length,
+          });
+          return;
+        }
+        readBrowserPair(context, entry.key, (raw, digest, exists) => {
+          check();
+          if (!exists || pair(raw, digest, entry.key, binding).raw !== entry.raw) return invalid();
+          verified += 1;
+          readback();
+        });
+      };
+      const preflight = () => {
+        check();
+        const entry = entries[position];
+        if (!entry) {
+          for (const item of missing) {
+            check();
+            context.content.add(item.raw, item.key);
+            context.directory.add(item.digest, item.key);
+          }
+          readback();
+          return;
+        }
+        readBrowserPair(context, entry.key, (raw, digest, exists) => {
+          check();
+          if (exists) {
+            if (pair(raw, digest, entry.key, binding).raw !== entry.raw) return invalid();
+          } else missing.push(entry);
+          position += 1;
+          preflight();
+        });
+      };
+      preflight();
+    },
+  );
+  check();
+  return result;
 }
