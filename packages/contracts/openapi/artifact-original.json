@@ -1,0 +1,258 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem artifact upload identity and original receipts",
+    "version": "0.1.0",
+    "description": "Source-only contract for two existing read operations. Does not describe multipart upload or binary download. Load this document and the artifact-original.json/artifact-comparison.json schema resources locally with their complete IDs. No validator, generator, build, test, product/API/database execution or release was performed."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Relative Gateway base; configure the actual deployment origin and base path."
+    }
+  ],
+  "security": [{ "GatewayBearer": [] }],
+  "tags": [{ "name": "Artifact original requests" }],
+  "x-todo": "P0-01",
+  "x-source-boundaries": {
+    "server-receipt-post-body-bytes": 1048576,
+    "client-original-query-bytes": 1048576,
+    "client-complete-receipt-bytes": 4194304,
+    "client-upload-context-bytes": 16384,
+    "client-error-bytes": 16384,
+    "description": "Existing generic receipt POST reader limits raw JSON bytes before authentication. Shared handler parsers do not impose the clients' full-response byte budgets. Dedicated clients use their own deadlines; these two Gateway handlers have no dedicated 30-second/two-slot read guard. No raw-header aggregate budget or uniform strict duplicate-header validation is asserted."
+  },
+  "paths": {
+    "/v1/artifacts/upload-context": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "get": {
+        "operationId": "getArtifactUploadContext",
+        "tags": ["Artifact original requests"],
+        "summary": "Read the current verified upload identity and limits",
+        "description": "Require verified Bearer scope, nonblank authenticated client, actual artifact.write, unexpired session and a Policy decision. Return the five-field current identity, exact canonical session expiry, configured max_bytes and current artifact.read/data.restricted.read hints. This synchronous handler does not query project existence, Artifact rows, receipt storage or objects; success can occur without a configured artifact storage reader/writer. It reserves no key or version and grants no future upload permission. Use this to prepare a new original request; never silently replace the identity of an already dispatched request. The synchronous handler checks expiry after router authorization/audit and before producing hints. They describe the current session and do not guarantee authorization for a later upload.",
+        "x-wcp-operation": "artifact.upload-context",
+        "x-policy-action": "artifact.write",
+        "x-current-http-parser": "No query parameters or command input are accepted. Idempotency-Key, If-Match and If-Match-Version are explicitly rejected. Send no body or other cache/range/write/encoding headers: this legacy GET does not enforce the directory's full forbidden-header/framing guard and leaves GET body bytes unread. It does not implement 304/206 or conditional identity reads.",
+        "responses": {
+          "200": {
+            "description": "Complete current authority hints with empty source_refs and no outer revision/JSON etag/HTTP ETag. max_bytes is a configured content-upload limit from 0 through 1 GiB, not a JSON response limit or a guarantee that storage will accept the upload. can_read/can_read_restricted describe capabilities, not current object visibility or export permission.",
+            "headers": {
+              "cache-control": { "$ref": "#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "#/components/headers/SuccessTrace" }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../schemas/artifact-original.json#ArtifactUploadContextEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error",
+            "description": "INVALID_INPUT for query/input/write conditions. ARTIFACT_UPLOAD_CONTEXT_INVALID when trusted identity or expiry cannot be represented is currently mapped to 400 by the generic command error mapper, not 500. Both are nonretryable; this document records that existing mapping."
+          },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": {
+            "$ref": "#/components/responses/Error",
+            "description": "Unexpected INTERNAL_ERROR from the command boundary, serializer default retryable=true. No partial identity is returned."
+          },
+          "503": {
+            "$ref": "#/components/responses/Error",
+            "description": "WORKBENCH_AUTH_UNAVAILABLE or AUDIT_PERSISTENCE_UNAVAILABLE at outer boundaries, retryable=true. The identity handler does not require artifact storage readiness."
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/artifacts/receipt": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "post": {
+        "operationId": "getArtifactReceipt",
+        "tags": ["Artifact original requests"],
+        "summary": "Observe the historical outcome for one complete original upload request",
+        "description": "Read-only POST requiring verified Bearer scope, a nonblank authenticated client, actual artifact.write and Policy approval. Body identity is an exact five-field equality precondition on the trusted session; it never supplies authority. Persistent lookup checks current parent visibility, the identity/key receipt record, canonical command fingerprint, saved result and current/historical snapshot consistency. If the current artifact advanced, return the original saved version, never replace it with current metadata. Restricted current or saved classification still requires data.restricted.read. On a missing append receipt, the target current artifact must be visible before not-observed can be returned. This lookup does not take the writer's original-request advisory lock, so a concurrent save may commit after a not-observed observation. Neither response nor error authorizes a new key, new identity, changed parameters or automatic resubmission. The handler performs no upload/object read and has no explicit session-expiry recheck after database work.",
+        "x-wcp-operation": "artifact.receipt",
+        "x-policy-action": "artifact.write",
+        "x-current-http-parser": "No URL query fields are accepted. Idempotency-Key, If-Match and If-Match-Version are explicitly forbidden; the original request_key and expected_version remain nested in command. Send application/json. Legacy generic POST parsing reads a nonempty JSON object within 1 MiB before authentication, without a dedicated Content-Type/Content-Encoding, strict UTF-8 or duplicate-JSON-key guard. Other cache/range/expected-version headers do not establish conditions. The stricter saved-pack receipt HTTP checks are not applied here.",
+        "requestBody": {
+          "required": true,
+          "description": "Exact original identity and complete original create/append command, including stable request_key and declared sha256/size. No content bytes, partial key-only query, new identity or top-level idempotency_key/expected_version. The current configured upload limit does not narrow historical command.size. Unknown JSON fields are rejected by shared parsers.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/artifact-original.json#ArtifactReceiptQuery" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Complete recorded or not-observed envelope, both status 200. recorded has original public metadata, replayed=true, content_state=not-checked and one artifact/version source; not-observed has only original identity/command/status and empty sources. No outer revision/ETag; nested metadata ETag and trace remain historical while outer trace identifies this read. No object availability/hash verification occurs. Absence is an observation, not proof the original save failed.",
+            "headers": {
+              "cache-control": { "$ref": "#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "#/components/headers/SuccessTrace" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "../schemas/artifact-original.json#ArtifactReceiptEnvelope" }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error",
+            "description": "INVALID_JSON for malformed/nonobject/missing/oversized generic JSON body; INVALID_INPUT for invalid complete original, unsupported query, forbidden write headers or exhausted append expected_version. retryable=false. Validation errors never mean not-observed."
+          },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": {
+            "$ref": "#/components/responses/Error",
+            "description": "ARTIFACT_NOT_FOUND for missing/deleted/invisible parent/current artifact, including an append target with no receipt; ARTIFACT_VERSION_NOT_FOUND when a recorded receipt's historical version is missing. retryable=false. Do not convert these errors to not-observed."
+          },
+          "409": {
+            "$ref": "#/components/responses/Error",
+            "description": "IDEMPOTENCY_KEY_REUSED when the same original identity/key has different canonical parameters, or ARTIFACT_LEGACY_UNVERIFIED for missing trustworthy saved metadata. retryable=false. Preserve the original request; no synthesized success or partial receipt."
+          },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": {
+            "$ref": "#/components/responses/Error",
+            "description": "ARTIFACT_STORED_INVALID for corrupt/inconsistent saved receipts, command fingerprints, snapshots or reader output (retryable=false). Unexpected command-boundary INTERNAL_ERROR has serializer default retryable=true. No partial receipt or absent observation is returned."
+          },
+          "503": {
+            "$ref": "#/components/responses/Error",
+            "description": "ARTIFACT_STORAGE_UNAVAILABLE for no configured receipt reader or non-ContractError persistent storage failure; WORKBENCH_AUTH_UNAVAILABLE or AUDIT_PERSISTENCE_UNAVAILABLE at outer boundaries. These sources set retryable=true. No in-memory fallback or fabricated not-observed result."
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "GatewayBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Verified issuer token, actual artifact.write and nonblank authenticated client plus Policy approval. Administrator role alone does not satisfy artifact.write. Scope headers constrain allowed claims or configured fallback project; body identity/expected headers cannot impersonate another account/client. Upload identity explicitly requires unexpired session; receipt authorization uses existing policy expiry checks with no final handler recheck."
+      }
+    },
+    "parameters": {
+      "TenantId": {
+        "name": "x-tenant-id",
+        "in": "header",
+        "required": true,
+        "description": "Exact authorized tenant; general metadata scope identifier, not necessarily ULID.",
+        "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/scopeIdentifier" }
+      },
+      "WorkspaceId": {
+        "name": "x-workspace-id",
+        "in": "header",
+        "required": true,
+        "description": "Exact authorized workspace.",
+        "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/scopeIdentifier" }
+      },
+      "ProjectId": {
+        "name": "x-project-id",
+        "in": "header",
+        "required": true,
+        "description": "Exact authorized project. Receipt storage checks current parent visibility; upload-context hints alone do not establish project existence.",
+        "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/scopeIdentifier" }
+      },
+      "TraceParent": {
+        "name": "traceparent",
+        "in": "header",
+        "description": "Nonempty opaque value takes precedence over x-trace-id. This legacy boundary does not parse W3C Trace Context or require both headers to agree. Supply a value compatible with shared response trace rules.",
+        "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/trace" }
+      },
+      "TraceId": {
+        "name": "x-trace-id",
+        "in": "header",
+        "description": "Used when traceparent is absent/empty; if both are absent/empty the server generates trace_http_<ULID>. Shared parsers impose stricter trace rules than generic selection.",
+        "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/trace" }
+      },
+      "ExpectedActorId": {
+        "name": "x-expected-actor-id",
+        "in": "header",
+        "description": "Independently optional exact comparison to verified actor. Receipt body identity is mandatory and separately compared even if this header is absent.",
+        "schema": { "type": "string" }
+      },
+      "ExpectedClientId": {
+        "name": "x-expected-client-id",
+        "in": "header",
+        "description": "Independently optional exact comparison to verified client, never credentials. Both routes require an authenticated client claim.",
+        "schema": { "type": "string" }
+      }
+    },
+    "headers": {
+      "NoStore": {
+        "description": "Application JSON policy; pre-application proxy/parser responses are outside this contract.",
+        "required": true,
+        "schema": { "type": "string", "const": "private, no-store" }
+      },
+      "SuccessTrace": {
+        "description": "Equals outer body.trace_id. Receipt metadata can retain a different original saved trace.",
+        "required": true,
+        "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/trace" }
+      },
+      "ErrorTrace": {
+        "description": "Command-boundary errors include this header; early body/authentication/input failures may omit it. Preserve the error body trace_id.",
+        "schema": { "type": "string", "minLength": 1 }
+      }
+    },
+    "schemas": {
+      "ErrorEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message", "details", "trace_id", "retryable"],
+        "properties": {
+          "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]+$" },
+          "message": { "type": "string", "minLength": 1 },
+          "details": { "type": "object", "additionalProperties": true },
+          "trace_id": { "type": "string", "minLength": 1 },
+          "retryable": { "type": "boolean" }
+        },
+        "description": "Existing error envelope. No global 16 KiB server limit is implied. Raw retryable flags differ from stricter client mappings and never prove an original upload failed."
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Application error with no partial successful identity or receipt. Earlier proxy/HTTP parser failures may have another representation.",
+        "headers": {
+          "cache-control": { "$ref": "#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "#/components/headers/ErrorTrace" }
+        },
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } }
+        }
+      },
+      "Unauthenticated": {
+        "$ref": "#/components/responses/Error",
+        "description": "UNAUTHENTICATED for missing/rejected Bearer token; retryable=false. WWW-Authenticate and early x-trace-id headers are not guaranteed."
+      },
+      "Denied": {
+        "$ref": "#/components/responses/Error",
+        "description": "DENIED or ARTIFACT_ACCESS_DENIED for unauthorized scope/expected identity, original five-field identity mismatch, missing actual artifact.write/verified client, expired session where checked, Policy denial or restricted saved data. retryable=false; never an absent-receipt observation."
+      },
+      "RateLimited": {
+        "$ref": "#/components/responses/Error",
+        "description": "RATE_LIMITED from the general actor/path limiter, retryable=true. No dedicated two-slot identity/receipt limiter or Retry-After header is promised."
+      }
+    }
+  }
+}

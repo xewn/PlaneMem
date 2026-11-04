@@ -1,5 +1,7 @@
 # WCP API 契约 v1
 
+2026-11-05，TODO P0-01：[文件上传身份与原请求回执 OpenAPI](../../../packages/contracts/openapi/README.md#文件上传身份与原请求回执)新增现有 GET upload-context 与只读 POST receipt 的机器描述，完整 Schema 覆盖原五项身份、创建/追加命令、recorded/not-observed 和当前能力提示。原回执只读且不等待并发上传完成，未观察到不是原上传失败证明；客户端限额不冒称服务端保证。未改运行行为，未执行校验器、生成器、编译、测试、接口、数据库或发布；P0-01/R-001 未完成、evidence 为空。
+
 2026-11-05，TODO P0-01：[文件元数据读取 OpenAPI](../../../packages/contracts/openapi/README.md#文件元数据读取)覆盖现有文件目录、当前详情、版本目录和指定历史详情四路 GET。新增详情完整 Schema，复用原目录和公开元数据/历史封套；区分真实权限/客户端检查、分页、当前与历史 ETag、错误和服务端/客户端限额。仅机器契约源码，未改运行行为或执行校验器、生成器、编译、测试、接口、数据库及发布；P0-01/R-001 未完成、evidence 为空。
 
 2026-11-05，TODO P0-01：[保存包生成与完整读取 OpenAPI](../../../packages/contracts/openapi/README.md#保存包生成与完整读取)新增现有 POST /v1/context-pack/compile 和 GET /v1/context-pack 的机器描述。成功复用完整包 Schema，覆盖稳定键/参数与原身份重放、显式或最新读取、三种格式、ETag/原游标/双层trace及404/409/410等错误。准确区分旧HTTP通用1MiB正文与客户端4KiB/2MiB/16KiB预算，不声称具有目录入口的专用期限/容量/禁止头检查。仅源码文档，未运行校验器、生成器、接口、数据库、编译、测试或发布；完整WCP/机器契约接线仍缺。

@@ -1,6 +1,31 @@
 # OpenAPI 源码契约
 
-这里的文档描述已有HTTP实现，尚未经过OpenAPI校验器、生成器、编译、类型检查、测试或运行验证。文档中的版本不表示已发布或部署；目前覆盖五个保存包接口和四个文件元数据读取接口，共九个接口，尚不是完整WCP接口目录。
+这里的文档描述已有HTTP实现，尚未经过OpenAPI校验器、生成器、编译、类型检查、测试或运行验证。文档中的版本不表示已发布或部署；目前覆盖五个保存包接口、四个文件元数据读取接口及两个文件上传身份/原回执接口，共十一个接口，尚不是完整WCP接口目录。
+
+## 文件上传身份与原请求回执
+
+2026-11-05，TODO **P0-01** / T0.3 / T4.1 / R-001：新增 `artifact-original.json`（OpenAPI 3.1.0），包子路径为 `@planemem/contracts/openapi/artifact-original.json`。只描述已有两路读取，不包含 multipart 上传或二进制下载，也不改变运行处理器。
+
+| 路径 | WCP 操作 | 机器结构 |
+| --- | --- | --- |
+| `GET /v1/artifacts/upload-context` | `artifact.upload-context` | `artifact-original.json#ArtifactUploadContextEnvelope` 完整成功 |
+| `POST /v1/artifacts/receipt` | `artifact.receipt` | `#ArtifactReceiptQuery` 请求、`#ArtifactReceiptEnvelope` 完整成功，均位于 schemas/artifact-original.json |
+
+本地加载 OpenAPI 文件及 `schemas/artifact-original.json`、`schemas/artifact-comparison.json` 两份完整资源，保留相对目录并注册各 `$id`。新 Schema 根为回执完整成功；上传身份必须选对应锚点，不能误用根。comparison 仅提供公开元数据、来源和标量，不使用其本地比较结果根。没有新增运行时 JSON 导入、依赖或生成器。
+
+两路均要求 Bearer 验证、可信非空客户端、实际 `artifact.write` 和 Policy 放行；管理员角色不替代上传能力。上传身份同步处理器在路由授权/审计后再次检查会话到期，返回五项身份、规范到期时间、`max_bytes` 及读取能力提示。它不查询父项目或文件、证明存储就绪、预留请求键/版本或授权未来上传。`max_bytes` 可为 0，最大 1 GiB，持久服务仍有自身限额。旧原请求不能用新读出的身份静默替换。
+
+回执 POST 为只读，完整正文只有 `{ identity, command }`；五项身份逐一等于当前可信会话。创建命令保留原名称/MIME/分类/有序来源，追加命令保留原 Artifact/预期版本，两者均带原键和 hash/size。当前上传限额不应改写历史 size；追加 expected_version 最大为安全整数减一。来源次序、重复、缺省字段均有语义，原键不是 HTTP 查询幂等头。
+
+`recorded` 与 `not-observed` 都返回 200。前者具有原公开元数据、`replayed=true`、`content_state=not-checked` 及精确 Artifact/版本来源；后者只回显 identity/command/status，来源为空。根无 revision/ETag，保存元数据保留原 trace 与内层 ETag。共享运行解析器继续核对原请求、创建版本 1/追加版本加一、原范围/hash/size/来源及两层 trace，不读取正文或重新计算对象摘要。
+
+持久回执读取先核对父项目；已记录结果还核对当前可见性及原历史快照。缺回执的追加目标也必须当前可见，不能把无权访问伪装为不存在。查询不取得写入端的原请求 advisory lock，并发保存可能在本次未观察到之后提交，所以 `not-observed` 和错误都不能判定原写失败、授权换键/换身份或自动重发。
+
+两路拒绝 URL 查询及 Idempotency-Key、If-Match、If-Match-Version；没有目录入口那套完整正文/framing/缓存/Range/编码头检查。GET 正文未读取；POST 沿通用 1 MiB JSON 解析且发生在认证前，未专门强制 Content-Type、严格 UTF-8 或重复 JSON 键。专用客户端另有原请求 1 MiB、完整回执 4 MiB、上传身份/错误 16 KiB 与默认 30 秒预算，不能冒称 Gateway 全部响应/期限/容量保证。回执处理器无数据库读取后会话到期复查。
+
+OpenAPI 保留实际错误映射：`ARTIFACT_UPLOAD_CONTEXT_INVALID` 当前落为 400；原键异文/旧快照为 409，不存在/不可见为 404，坏存储为 500，缺读取器/存储不可用为 503。早期错误头不齐、外层认证/审计失败、retryable 与客户端映射分别记录。身份接口不因未配置 Artifact 存储而自动报 503。
+
+源码依据为 Gateway server/http/router/authenticated-context/artifact-upload-context/artifact-receipts、PersistentArtifactService 和 contracts/SDK 对应解析器。仅人工源码文档审阅/指定格式/Git 文本检查，未执行校验器、生成器、编译、类型检查、测试、接口、数据库或发布。P0-01/R-001 未完成、evidence 为空；其余 WCP/MCP、SDK/Mock 机器契约接线和破坏性差异 CI 待补。
 
 ## 文件元数据读取
 

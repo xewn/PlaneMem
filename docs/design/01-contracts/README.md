@@ -1,5 +1,7 @@
 # 公共契约目录
 
+- [文件上传身份与原请求回执 OpenAPI](../../../packages/contracts/openapi/README.md#文件上传身份与原请求回执)：TODO P0-01，两路已有读取及完整原命令/回执/身份 Schema；仅源码，完整机器契约接线与运行证据仍缺。
+
 - [文件目录、版本目录与完整详情 OpenAPI](../../../packages/contracts/openapi/README.md#文件元数据读取)：TODO P0-01，四路现有 GET 的源码描述及详情 Schema；完整 WCP/SDK/Mock 机器契约接线与运行证据仍缺。
 
 所有并行任务只能使用以下契约；任何私有 payload 都必须被拒绝。契约变更流程：ADR → Schema → generated SDK → Mock/Fixtures → compatibility test → downstream migration plan。

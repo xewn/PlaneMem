@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/artifact-original.json",
+  "title": "Artifact original requests, historical receipts and current upload identity v1",
+  "description": "Root is the complete original-upload receipt query response, not an upload response. Select the explicit anchors for original request objects or current upload identity.",
+  "$comment": "Source-only contract. Load this resource and artifact-comparison.json locally under their full IDs. Reuse only comparison scalars, public metadata and source references, never its comparison-result root. Runtime parsers remain authoritative for exact original identity/command equality, metadata/version/source binding, valid dates, UTF-16 lengths and ordinary JSON. No schema validity authenticates a receipt, proves content availability or grants upload authority. No validator or generator was executed.",
+  "$ref": "#ArtifactReceiptEnvelope",
+  "$defs": {
+    "ArtifactCommandIdentity": {
+      "$anchor": "ArtifactCommandIdentity",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant_id", "workspace_id", "project_id", "actor_id", "client_id"],
+      "properties": {
+        "tenant_id": { "$ref": "artifact-comparison.json#/$defs/scopeIdentifier" },
+        "workspace_id": { "$ref": "artifact-comparison.json#/$defs/scopeIdentifier" },
+        "project_id": { "$ref": "artifact-comparison.json#/$defs/scopeIdentifier" },
+        "actor_id": { "$ref": "artifact-comparison.json#/$defs/identityText" },
+        "client_id": { "$ref": "artifact-comparison.json#/$defs/identityText" }
+      },
+      "$comment": "Original five-field equality constraint, not credentials. Scope and actor identifiers are not all ULID-only in these shared parsers. Runtime counts UTF-16 units; dedicated clients can apply stricter Unicode rules."
+    },
+    "requestKey": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "not": { "pattern": "\\s" },
+      "$comment": "Existing validateIdempotencyKey rule: nonempty and no whitespace, at most 255 UTF-16 units. Do not silently replace the original key. This shared rule does not additionally reject every C0/DEL or lone surrogate; other adapters may be stricter."
+    },
+    "ArtifactCreateCommand": {
+      "$anchor": "ArtifactCreateCommand",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation",
+        "request_key",
+        "sha256",
+        "size",
+        "name",
+        "mime",
+        "classification",
+        "source_refs"
+      ],
+      "properties": {
+        "operation": { "const": "artifact.create" },
+        "request_key": { "$ref": "#/$defs/requestKey" },
+        "sha256": { "$ref": "artifact-comparison.json#/$defs/sha256" },
+        "size": { "$ref": "artifact-comparison.json#/$defs/nonnegativeInteger" },
+        "name": { "$ref": "artifact-comparison.json#/$defs/name" },
+        "mime": { "$ref": "artifact-comparison.json#/$defs/mime" },
+        "classification": { "$ref": "artifact-comparison.json#/$defs/classification" },
+        "source_refs": {
+          "type": "array",
+          "maxItems": 200,
+          "items": { "$ref": "artifact-comparison.json#ArtifactComparisonSourceRef" }
+        }
+      },
+      "$comment": "Complete original metadata and content descriptor, not an upload body or a new preparation draft. Empty source list is allowed; order and duplicates remain meaningful. size is a nonnegative safe integer here, not bounded by the current upload configuration."
+    },
+    "ArtifactPutCommand": {
+      "$anchor": "ArtifactPutCommand",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation", "request_key", "sha256", "size", "artifact_id", "expected_version"],
+      "properties": {
+        "operation": { "const": "artifact.put-version" },
+        "request_key": { "$ref": "#/$defs/requestKey" },
+        "sha256": { "$ref": "artifact-comparison.json#/$defs/sha256" },
+        "size": { "$ref": "artifact-comparison.json#/$defs/nonnegativeInteger" },
+        "artifact_id": { "$ref": "artifact-comparison.json#/$defs/artifactId" },
+        "expected_version": { "type": "integer", "minimum": 1, "maximum": 9007199254740990 }
+      },
+      "$comment": "Original append expectation, not a fresh current-version assertion for the read. Maximum leaves room for the saved next version. The receipt reader does not rewrite it when current metadata advances."
+    },
+    "ArtifactWriteCommand": {
+      "$anchor": "ArtifactWriteCommand",
+      "oneOf": [{ "$ref": "#ArtifactCreateCommand" }, { "$ref": "#ArtifactPutCommand" }]
+    },
+    "ArtifactReceiptQuery": {
+      "$anchor": "ArtifactReceiptQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "command"],
+      "properties": {
+        "identity": { "$ref": "#ArtifactCommandIdentity" },
+        "command": { "$ref": "#ArtifactWriteCommand" }
+      },
+      "$comment": "HTTP POST receipt body and original request document. No content bytes, outer write headers or replacement identity. Runtime compares all original identity fields to the verified session and the canonical command to the saved fingerprint. The shared object parser has no intrinsic byte cap; HTTP and clients impose their own limits."
+    },
+    "ArtifactNotObservedReceipt": {
+      "$anchor": "ArtifactNotObservedReceipt",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "command", "status"],
+      "properties": {
+        "identity": { "$ref": "#ArtifactCommandIdentity" },
+        "command": { "$ref": "#ArtifactWriteCommand" },
+        "status": { "const": "not-observed" }
+      },
+      "description": "No saved success was observed in this read. This is not proof of failure, a reservation or permission to rotate the key or identity. No artifact, replayed or content_state fields."
+    },
+    "ArtifactRecordedReceipt": {
+      "$anchor": "ArtifactRecordedReceipt",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "command", "status", "artifact", "replayed", "content_state"],
+      "properties": {
+        "identity": { "$ref": "#ArtifactCommandIdentity" },
+        "command": { "$ref": "#ArtifactWriteCommand" },
+        "status": { "const": "recorded" },
+        "artifact": { "$ref": "artifact-comparison.json#ArtifactComparisonMetadata" },
+        "replayed": { "const": true },
+        "content_state": { "const": "not-checked" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "command": {
+                "properties": { "operation": { "const": "artifact.create" } },
+                "required": ["operation"]
+              }
+            },
+            "required": ["command"]
+          },
+          "then": { "properties": { "artifact": { "properties": { "version": { "const": 1 } } } } }
+        }
+      ],
+      "$comment": "Runtime binds scope/hash/size to the original command; create also binds name/mime/classification/ordered sources and created_at=updated_at. Append binds artifact_id and version=expected_version+1. Saved metadata retains its original trace and nested ETag, neither a current write condition nor content verification."
+    },
+    "ArtifactReceiptEnvelope": {
+      "$anchor": "ArtifactReceiptEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "artifact-comparison.json#/$defs/trace" },
+        "source_refs": {
+          "type": "array",
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "id", "revision"],
+            "properties": {
+              "type": { "const": "artifact" },
+              "id": { "$ref": "artifact-comparison.json#/$defs/artifactId" },
+              "revision": { "$ref": "artifact-comparison.json#/$defs/positiveInteger" }
+            }
+          }
+        },
+        "data": {
+          "oneOf": [
+            { "$ref": "#ArtifactNotObservedReceipt" },
+            { "$ref": "#ArtifactRecordedReceipt" }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "data": {
+                "properties": { "status": { "const": "recorded" } },
+                "required": ["status"]
+              }
+            },
+            "required": ["data"]
+          },
+          "then": { "properties": { "source_refs": { "minItems": 1 } } },
+          "else": { "properties": { "source_refs": { "maxItems": 0 } } }
+        }
+      ],
+      "$comment": "No outer revision or etag. Runtime binds outer trace to this read, original query to data, and the single recorded source to the saved artifact/version. Absent observations require empty sources. Bare saved receipt files use this shape; file/local validity does not authenticate the server or update the historical observation. Dedicated clients bound complete receipts to 4 MiB and embedded originals to 1 MiB; Gateway's shared response parser does not enforce those byte budgets."
+    },
+    "expiryTimestamp": {
+      "type": "string",
+      "minLength": 24,
+      "maxLength": 27,
+      "pattern": "^(?:[0-9]{4}|[+-][0-9]{6})-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$",
+      "$comment": "Existing parser requires finite Date.parse and exact Date.toISOString round-trip; that can include signed six-digit extended years. No date-time format assertion narrows that runtime rule. Real calendar validity, canonical year spelling and unexpired trusted session are runtime checks; the shared response parser alone does not compare expiry to now."
+    },
+    "ArtifactUploadContextEnvelope": {
+      "$anchor": "ArtifactUploadContextEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "artifact-comparison.json#/$defs/trace" },
+        "source_refs": { "type": "array", "maxItems": 0 },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["identity", "expires_at", "max_bytes", "can_read", "can_read_restricted"],
+          "properties": {
+            "identity": { "$ref": "#ArtifactCommandIdentity" },
+            "expires_at": { "$ref": "#/$defs/expiryTimestamp" },
+            "max_bytes": { "type": "integer", "minimum": 0, "maximum": 1073741824 },
+            "can_read": { "type": "boolean" },
+            "can_read_restricted": { "type": "boolean" }
+          }
+        }
+      },
+      "$comment": "Current authority hints, not a receipt, upload reservation or proof of project/storage readiness. max_bytes is configured upload limit (zero allowed), not the JSON response budget; the persistent service can impose its own limit. Runtime binds trusted identity, expiry, capabilities, request scope and trace. No outer revision/etag or source references. Dedicated SDK/embedded clients enforce a 16 KiB complete envelope."
+    }
+  }
+}

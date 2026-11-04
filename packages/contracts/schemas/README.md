@@ -1,5 +1,9 @@
 # 独立契约结构定义
 
+2026-11-05，TODO **P0-01**：新增 `artifact-original.json`（包子路径 `@planemem/contracts/schemas/artifact-original.json`），根为原上传回执完整成功。锚点包含 `ArtifactCommandIdentity`、创建/追加/联合命令、`ArtifactReceiptQuery`、两种状态的数据对象和完整 `ArtifactReceiptEnvelope`；上传身份使用 `ArtifactUploadContextEnvelope`，不使用回执根。完整对象拒绝未知字段，recorded 必须有一个带版本来源且 replayed=true/not-checked，not-observed 来源为空且无结果元数据；回执及身份均无外层 revision/ETag。
+
+新资源本地依赖 `artifact-comparison.json` 的公开元数据、来源及标量，两份完整 `$id` 须一起注册。原命令 expected_version 留出加一空间，size 不以当前上传限额截断，键沿原非空/无空白规则；身份和 trace 保持一般文本。expires_at 保留现有 Date.toISOString 规则（含扩展年份），日历/原身份/原文/来源/版本关系和到期检查由运行代码完成，Schema 不授予权限或证明正文/回执真实性。客户端回执 4 MiB、内嵌原请求 1 MiB、身份 16 KiB 与服务端通用 POST 1 MiB 分层说明，未新增运行校验器或更改旧结构。参见[文件上传身份与原请求回执 OpenAPI](../openapi/README.md#文件上传身份与原请求回执)。
+
 2026-11-05，TODO **P0-01**：新增 `artifact-read.json`，包子路径 `@planemem/contracts/schemas/artifact-read.json`。根为当前/历史详情完整成功封套的互斥联合；`ArtifactCurrentReadEnvelope` 要求外层 ETag、current/not-checked，`ArtifactHistoricalReadEnvelope` 复用原 comparison 历史封套且禁止外层 ETag。`ArtifactReadQuery` 联合当前/历史查询锚点，分别要求 artifact_id 与 artifact_id/version；这些是解码后的对象，HTTP 使用路径而非 URL 查询。
 
 本资源依赖 `artifact-comparison.json` 的公开完整元数据/历史封套锚点与标量，须本地加载两份完整资源并注册 `$id`；comparison 根仍只表示本地比较结果，不能用作 HTTP 响应。版本/ETag/来源/原 scope/trace 相等、日历顺序、普通 JSON 和 UTF-16 限制仍由共享解析器负责；客户端 2 MiB 限额不是本 Schema 或 Gateway 详情处理器的统一保证。没有执行校验器/生成器或修改已有 Schema。四路 HTTP 对应关系及目录 Schema 另见[文件元数据读取 OpenAPI](../openapi/README.md#文件元数据读取)。

@@ -1,5 +1,7 @@
 # Artifact 持久化服务基础（源码阶段）
 
+2026-11-05，TODO P0-01：[文件上传身份与原请求回执 OpenAPI](../../../packages/contracts/openapi/README.md#文件上传身份与原请求回执)覆盖 GET upload-context、只读 POST receipt，新增 artifact-original Schema 的原身份/两种命令/两种回执和身份提示锚点，复用公开保存元数据。写能力、客户端、原文精确绑定、历史当前可见性、双层 trace/无外层 ETag 及客户端/服务端限额按现有实现记录；上传身份不证明存储/项目就绪，not-observed 不证明并发保存失败。仅机器契约源码，未修改持久逻辑、依赖或数据库，未运行校验器、编译、测试、接口或发布。
+
 2026-11-05，TODO P0-01：[文件元数据读取 OpenAPI](../../../packages/contracts/openapi/README.md#文件元数据读取)覆盖当前/历史详情及两种目录。新增 artifact-read Schema 的完整封套和查询锚点，复用 comparison 公开元数据/历史封套，不使用比较结果根。准确记录当前快照一致性、历史不回退、公开投影无 storage_key、当前外层 ETag/历史仅内层 ETag及 content_state=not-checked。详情客户端 2 MiB 不冒称服务端统一限额；未改持久化逻辑、数据库或依赖，未运行校验器、编译、测试、接口及数据库。
 
 2026-11-02：`apps/artifact-service/src/persistent.ts` 新增 `PersistentArtifactService`，由包入口导出。旧 `ArtifactService` 保留内存兼容实现。当前已补入 PostgreSQL/S3 适配、显式服务器配置、HTTP/SDK/CLI/MCP/工作台按原请求上传、可审计下载，以及元数据与原请求回执查询源码；工作台另有新请求的可视化准备并交接至原上传流程。以上均没有运行验证。

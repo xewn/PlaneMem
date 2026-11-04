@@ -1,6 +1,8 @@
 # PlaneMem
 
-按 TODO **P0-01** 补充[文件元数据读取 OpenAPI](packages/contracts/openapi/README.md#文件元数据读取)：覆盖文件目录、当前详情、版本目录与历史详情四路 GET，新增完整详情 Schema，并复用已有元数据和目录定义。现有 OpenAPI 源码共覆盖九个接口；完整 WCP/MCP、SDK/Mock 机器契约接线和验收证据仍待补。仅源码文档，未运行校验器、生成器、编译、测试、接口或发布。
+按 TODO **P0-01** 补充[文件上传身份与原请求回执 OpenAPI](packages/contracts/openapi/README.md#文件上传身份与原请求回执)，提供现有两路读取及完整原命令/身份/回执 Schema。明确已记录与未观察到、原身份/参数绑定和当前能力提示；现有 OpenAPI 源码共覆盖十一个接口。完整 WCP/MCP、SDK/Mock 机器契约接线和验收证据仍待补；未运行校验器、生成器、编译、测试、接口或发布。
+
+按 TODO **P0-01** 补充[文件元数据读取 OpenAPI](packages/contracts/openapi/README.md#文件元数据读取)：覆盖文件目录、当前详情、版本目录与历史详情四路 GET，新增完整详情 Schema，并复用已有元数据和目录定义。该轮使 OpenAPI 源码覆盖九个接口；完整 WCP/MCP、SDK/Mock 机器契约接线和验收证据仍待补。仅源码文档，未运行校验器、生成器、编译、测试、接口或发布。
 
 按 TODO **P0-01** 补充[保存包生成与完整读取 OpenAPI](packages/contracts/openapi/README.md#保存包生成与完整读取)：覆盖已有 POST 生成保存包、GET 显式或最新包及三种读取格式，复用完整结构并描述原请求重放和错误。连同已有目录/身份/历史回执，现已提供五个保存包接口的 OpenAPI 源码；完整 WCP 和机器契约接线仍待补。仅源码文档，未运行校验器、生成器、编译、测试、接口或发布。
 

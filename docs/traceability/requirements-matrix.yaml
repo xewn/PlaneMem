@@ -11,6 +11,26 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    artifact_original_openapi_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only artifact upload identity and historical original-receipt OpenAPI/schema; P0-01 and R-001 remain incomplete."
+      artifacts:
+        - "packages/contracts/openapi/artifact-original.json"
+        - "packages/contracts/schemas/artifact-original.json"
+        - "packages/contracts/package.json"
+        - "packages/contracts/openapi/README.md"
+        - "packages/contracts/schemas/README.md"
+      behavior: "Two existing read routes, complete original identity/create-or-append command, recorded/not-observed receipt union and current upload identity hints. Reuses comparison public metadata/scalars. Captures actual write capability/client checks, original equality, historical source/version binding, empty absent sources, no outer ETag, saved versus request trace, error mappings and distinct server/client bounds."
+      boundaries: "No upload/download implementation or runtime/schema changes. Current identity does not prove project/storage readiness or reserve future authority. Receipt lookup does not lock concurrent original writes; not-observed is not proof of failure. Legacy generic POST parses 1 MiB before authentication; full response budgets, strict header/body guards and final expiry rechecks are not uniformly enforced server-side."
+      evidence: []
+      remaining_scope: "Remaining WCP/MCP machine contracts, SDK/Mock machine-contract integration, breaking-change CI and tool/runtime/release evidence."
+      pending_evidence:
+        - "Closed identity/command/receipt/context branches, current versus saved metadata and local resource ID/anchor resolution"
+        - "Exact original binding, exhausted append version, source order/duplicates, historical permission and stored fingerprint checks"
+        - "Concurrent save versus absent observation, unsupported conditions and actual 400/401/403/404/409/429/500/503 mapping"
+        - "Client/server byte and expiry boundaries, extended ISO expiry and OpenAPI tool compatibility"
+      execution: "Manual source/docs review and explicit formatting/Git text checks only; no build, typecheck, tests, validators, generators, SDK/Mock/product/API/database execution or release."
     artifact_reads_openapi_development_increment:
       date: "2026-11-05"
       todo: "P0-01"
