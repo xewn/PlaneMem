@@ -4,6 +4,8 @@
 
 ## 当前基线
 
+- P0/P2：新增SDK listContextPacks及按需contextPackPages，固定原范围/trace/可选账号客户端约束，GET /v1/context-packs显式页大小和原筛选游标，无正文/写条件。复用共享4 KiB查询、2 KiB记录、256 KiB完整元数据页，验证原scope/query/trace/排序/续页及metadata-only/not-checked标记；默认30秒含凭据/读取/校验、signal取消、固定错误。分页创建时要求完整账号客户端，next才发请求、每页独立期限，max_pages默认100最大1000；yield前保存续页、仍有续页时超过上限明确报错，无预取/重试/缩页/去重。泛型transport无HTTP状态/头，Fetch沿原bounded-json及16 KiB错误，SDK不验HTTP ETag或错误状态映射；没有跨页快照/新并发限制/内容摘要核验。CLI/MCP/Mock目录适配、独立Schema/OpenAPI和运行兼容仍待补；R-003未完成、evidence为空，仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布。
+
 - P0/P2/P4/P5：新增GET /v1/context-packs元数据目录及/context/packs网页，默认25、最多100条，精确pack_id筛选，按版本/ID降序游标分页。可信未过期客户端、实际context.read、父项目及read_restricted过滤；只读取六个保存标量，不读取正文、摘要或来源，不排除过期/来源变化记录。共享查询4 KiB、单条2 KiB、完整响应256 KiB，游标绑定身份/范围/角色能力/页大小/筛选；无跨页快照。Web完整响应/trace/无ETag/会话校验、显式重试/首屏、基础包跨页选择与独立读取/对比返回。每router两笔目录容量、30秒处理器期限，底层结束才释放；Web另有30秒读取期限，认证获取/渲染/发送不计入。复用016索引，无新增或执行迁移。SDK/CLI/MCP/Mock目录适配、独立Schema/OpenAPI及运行证据待补；R-003未完成、evidence为空。仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、渲染、执行产品/API/SQL/数据库或发布。
 
 - P5/P2：新增/context/packs/read独立保存包查看页，空页仅查找、pack必须完整ULID、latest=1显式读取且与pack互斥；不先查询context目录或条目详情。复用原Web完整2 MiB JSON/HTTP-ETag/trace/Node SHA-256/16 KiB错误与30秒读取，显示保存元数据、完整入选正文/字段、排除原因/来源及完整封套；支持实际编号固定链接、预填对比和原条件重试。context头/保存卡片/目录失败及compare两侧/失败恢复接入，return仅接受重建的context或compare内部地址，保留原筛选/对比方向/显示条件，不接受重复或外部/片段返回，导航不授权。latest重复读取可能换包、失效/过期仍失败；页面渲染/发送不计读取期限，无新API/写操作/自动回退重试。R-003未完成、evidence为空；仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、渲染、浏览器/产品/API/数据库执行或发布。

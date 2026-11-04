@@ -954,6 +954,25 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_pack_sdk_directory_development_increment:
+      date: "2026-11-05"
+      status: "Source-only SDK complete saved ContextPack metadata reads and demand-driven pages; R-003 remains incomplete."
+      artifacts:
+        - "packages/sdk/src/context-pack-directory.ts"
+        - "packages/sdk/src/client.ts"
+        - "packages/sdk/src/index.ts"
+        - "packages/sdk/README.md"
+        - "docs/design/01-contracts/context-pack-runtime.md"
+        - "docs/design/01-contracts/wcp-api.md"
+      behavior: "listContextPacks captures the original scope/trace and optional actor/client constraints, normalizes optional flat query fields, and sends GET /v1/context-packs with explicit limit and no body/write conditions. Shared 4 KiB query, 2 KiB record and 256 KiB complete detached envelope checks preserve metadata-only/not-checked semantics, original query/scope/trace and strict order/filter/continuation. Default 30-second local budget includes credentials, transport and validation, supports signal, fixed errors and no late data. contextPackPages captures full actor/client and filters at creation, reads on next with independent per-page deadlines, default 100/max 1000 pages and explicit CONTEXT_PACK_DIRECTORY_PAGE_LIMIT when further continuation is requested. Continuation saved before yield; returned page mutations cannot change later requests. No prefetch/retries/size fallback/deduplication/content/hash reads."
+      evidence: []
+      pending_evidence:
+        - "SDK entry/types, original identity/filter capture, exact request path and complete shared envelope compatibility"
+        - "Empty/exact/cursor pages, binding changes, malformed or oversized custom transport output"
+        - "Local cancellation/deadline, credential waits, late responses, fixed errors and resource cleanup"
+        - "Lazy iteration, original/returned object mutations, max-pages boundary, return/break and real Gateway compatibility"
+      remaining_scope: "CLI/MCP/Mock directory adapters, standalone Schema/OpenAPI and runtime evidence. Generic transport does not expose HTTP headers/status; Fetch keeps existing bounded-json and 16 KiB error limits. Metadata is not full-pack availability/source freshness, pages are not one snapshot, and local cancellation does not prove remote SQL termination. No added SDK concurrency limit."
+      execution: "Source/docs, manual review and formatting/text checks only; no build, typecheck, tests, SDK/CLI/MCP/Mock/product/API/database execution or release. No shared contract/Gateway/Web/schema/dependency/migration changes."
     context_pack_metadata_directory_development_increment:
       date: "2026-11-05"
       status: "Source-only saved ContextPack metadata directory and Web browsing; R-003 remains incomplete."
@@ -977,7 +996,7 @@ requirements:
         - "Empty/exact/cursor pages, changed binding, ordering/lookahead and complete response limits"
         - "Expired/stale metadata versus full content checks, invalid stored records and error status parity"
         - "Deadline/capacity retention, underlying SQL costs and real Web pagination/return/base selection"
-      remaining_scope: "SDK/CLI/MCP/Mock directory adapters, standalone Schema/OpenAPI and runtime evidence. Metadata visibility is not full-pack readability or source freshness; cursors are not authorization or cross-page snapshots. Handler budget excludes outer authorization/audit/HTTP sending; Web session acquisition/rendering/sending are outside read budget. No global SQL cancellation/cost guarantee."
+      remaining_scope: "SDK directory source is tracked above; CLI/MCP/Mock adapters, standalone Schema/OpenAPI and runtime evidence remain. Metadata visibility is not full-pack readability or source freshness; cursors are not authorization or cross-page snapshots. Handler budget excludes outer authorization/audit/HTTP sending; Web session acquisition/rendering/sending are outside read budget. No global SQL cancellation/cost guarantee."
       execution: "Source/docs, manual review and explicit formatting/text checks only; no build, typecheck, tests, rendering, browser/product/SDK/CLI/MCP/Mock/API/SQL/database execution or release. Existing 016 index reused; no new dependency or migration."
     context_pack_web_standalone_read_development_increment:
       date: "2026-11-04"

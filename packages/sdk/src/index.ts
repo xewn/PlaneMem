@@ -7,6 +7,17 @@ export {
 } from './mock-context-packs.js';
 export type { WcpContextItemReadOptions } from './context-item-read.js';
 export type { WcpContextPackReadOptions } from './context-pack-read.js';
+export type {
+  WcpContextPackDirectoryQuery,
+  WcpContextPackDirectoryReadOptions,
+  WcpContextPackDirectoryPagesOptions,
+} from './context-pack-directory.js';
+export type {
+  ContextPackDirectoryQuery,
+  ContextPackDirectoryRecord,
+  ContextPackDirectoryScope,
+  ContextPackDirectoryEnvelope,
+} from '@planemem/contracts';
 export type { WcpContextPackComparisonResult } from './context-pack-comparison.js';
 export { parseContextPackComparisonQuery, compareSavedContextPacks } from '@planemem/contracts';
 export type {

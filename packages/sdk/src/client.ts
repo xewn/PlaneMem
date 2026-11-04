@@ -178,6 +178,13 @@ import {
 import { readSavedContextPack, type WcpContextPackReadOptions } from './context-pack-read.js';
 import { compareContextPacks } from './context-pack-comparison.js';
 import {
+  readContextPackDirectory,
+  iterateContextPackDirectory,
+  type WcpContextPackDirectoryQuery,
+  type WcpContextPackDirectoryReadOptions,
+  type WcpContextPackDirectoryPagesOptions,
+} from './context-pack-directory.js';
+import {
   readContextDirectory,
   iterateContextDirectory,
   type WcpContextDirectoryReadOptions,
@@ -592,6 +599,22 @@ export class WcpClient {
 
   getContextPack(input: ContextPackReadQuery = {}, options: WcpContextPackReadOptions = {}) {
     return readSavedContextPack(this.transport, this.context, input, options);
+  }
+
+  /** One complete metadata page; opening a pack separately checks content and current sources. */
+  listContextPacks(
+    input: WcpContextPackDirectoryQuery = {},
+    options: WcpContextPackDirectoryReadOptions = {},
+  ) {
+    return readContextPackDirectory(this.transport, this.context, input, options);
+  }
+
+  /** Metadata pages on demand; fixes the original account/client and filters across pages. */
+  contextPackPages(
+    input: WcpContextPackDirectoryQuery = {},
+    options: WcpContextPackDirectoryPagesOptions = {},
+  ) {
+    return iterateContextPackDirectory(this.transport, this.context, input, options);
   }
 
   compareContextPacks(query: ContextPackComparisonQuery, options: WcpContextPackReadOptions = {}) {

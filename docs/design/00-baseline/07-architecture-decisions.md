@@ -1,5 +1,7 @@
 # 架构决策记录摘要
 
+2026-11-05 SDK保存包元数据目录协接（ADR-015 / T0.5）：源码前登记，新增listContextPacks与按需contextPackPages，SDK专用可选查询/读取与分页options及根类型导出；复用共享4 KiB查询、2 KiB记录、256 KiB完整元数据封套，不读取或摘要核验包正文。固定原范围/trace及可选身份相等约束，GET显式limit/pack_id/cursor，不带正文/写条件；默认30秒含凭据/接收/完整校验、signal取消、固定错误文本。分页创建时要求完整actor/client并捕获筛选/页大小/信号，每次next读取一页且独立期限，max_pages默认100最大1000，仍有续页时下一次next明确报限；yield前保留续页，不自动重试/缩页/去重或预取。通用transport不提供HTTP状态/响应头，Fetch沿既有bounded-json/16 KiB错误边界，不能声称SDK核对HTTP ETag或错误状态映射；目录可含过期/来源变化包，无跨页快照或额外SDK并发限制。范围SDK新context-pack-directory/client/index/README、根README/TODO、ContextPack/WCP契约、R003及本任务/ADR；不改共享契约/Gateway/Web/CLI/MCP/Mock/schema/依赖/迁移。仅源码文档人工审阅和格式文本检查，不编译、类型检查、测试、执行SDK/CLI/MCP/Mock/产品/API/SQL/数据库或发布，独立提交push main带[skip ci]。
+
 2026-11-05 保存包目录源码收口：上述登记范围已接入共享契约、Gateway与Web，补入单条2 KiB和映射前limit+1行数边界；保存基础包可跨页选择，读页/对比页仅重建有限内部目录返回。完整行为和限制见[保存包元数据目录](../01-contracts/context-pack-runtime.md#保存包元数据目录2026-11-05源码增量)。仅源码人工审阅及格式文本检查，无编译、类型检查、测试、渲染、运行或发布；R-003未完成，运行证据为空。
 
 2026-11-04 保存包目录导航范围补充：源码前登记read/navigation和compare/navigation允许重建的/context/packs目录返回；目录base参数固定已选基础包并随筛选/翻页保留，第二包从任意页显式选择后进入原对比。目录导航不含return_to，保持有限无环返回解析，不引入任意嵌套或自动读取/比较。

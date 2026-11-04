@@ -1,5 +1,7 @@
 # 持久化 ContextPack 开发说明
 
+2026-11-05新增[SDK保存包目录读取](#sdk-保存包目录读取2026-11-05源码增量)：完整单页读取及固定身份的按需分页，支持取消/超时和页数上限；不读取正文或核验来源。仅源码文档，未编译、测试、运行或发布。
+
 2026-11-05新增[保存包元数据目录](#保存包元数据目录2026-11-05源码增量)：GET /v1/context-packs及网页分页浏览，跨页选择基础包和对比包；目录不证明完整内容或来源当前可用。仅源码文档，未编译、测试、渲染或发布。
 
 2026-11-04新增[网页独立查看](#网页保存包独立查看2026-11-04源码增量)：保存包读取不再必须经过上下文目录页面；提供显式编号/最新选择、完整内容、原请求重试与目录/对比返回入口。仅源码文档，未编译、测试、渲染或发布。
@@ -333,4 +335,44 @@ R-003未完成、`evidence: []`。独立读取与目录故障隔离、有效/非
 - 资源边界：每router独立两笔目录读取容量，30秒单调处理器期限覆盖事务等待、元数据校验与封套生成；容量占用返回RATE_LIMITED/429，超时返回CONTEXT_PACK_DIRECTORY_TIMEOUT/503，底层工作实际结束才释放。不能保证取消已发出的数据库调用、限制全局SQL扫描成本或同步工作耗时；外层认证/授权/审计和HTTP发送不计该期限。异常元数据CONTEXT_PACK_INVALID/500，存储不可用CONTEXT_PACK_STORAGE_UNAVAILABLE/503，非法参数/绑定INVALID_INPUT/400。
 - Web：在当前会话范围内读取一页，完整校验HTTP状态/JSON/trace/无ETag及共享封套，成功256 KiB、错误16 KiB；另有30秒读取期限和阶段性会话到期检查。会话获取、渲染和发送不计读取期限。失败保留原筛选/游标显式重试，另可回首屏；无自动翻页、重试或缩页。网页参数pack/limit/cursor/base均单值，空pack表单表示不筛选；base为已选基础包ULID，仅用于导航，不发送Gateway。基础包随筛选/翻页保留，从任意页选择不同包后进入原对比页；read/compare返回保留目录位置及base，目录没有return_to，返回解析保持有限层级。
 
-本轮无新依赖或迁移，SQL源码复用016索引，未执行SQL。SDK/CLI/MCP/Mock的专用目录适配、独立Schema/OpenAPI与权限/分页/超时/真实浏览器兼容证据待补；现有MCP资源候选目录仍按其原协议执行，不能与本元数据目录混同。R-003未完成、`evidence: []`；仅源码文档人工审阅和格式文本检查，未编译、类型检查、测试、渲染、执行产品/CLI/SDK/MCP/Mock/API/数据库或发布。
+本轮无新依赖或迁移，SQL源码复用016索引，未执行SQL。SDK目录适配见下文；CLI/MCP/Mock的专用目录适配、独立Schema/OpenAPI与权限/分页/超时/真实浏览器兼容证据待补；现有MCP资源候选目录仍按其原协议执行，不能与本元数据目录混同。R-003未完成、`evidence: []`；仅源码文档人工审阅和格式文本检查，未编译、类型检查、测试、渲染、执行产品/CLI/SDK/MCP/Mock/API/数据库或发布。
+
+## SDK 保存包目录读取（2026-11-05，源码增量）
+
+`client.listContextPacks(query?, options?)`返回`Promise<ContextPackDirectoryEnvelope>`，读取既有`GET /v1/context-packs`的一页元数据。SDK根导出`WcpContextPackDirectoryQuery`（共享规范查询的可选字段形式）、`WcpContextPackDirectoryReadOptions`、`WcpContextPackDirectoryPagesOptions`，以及共享`ContextPackDirectoryQuery/Record/Scope/Envelope`类型。
+
+- 查询只接受pack_id/limit/cursor，平面可选undefined允许并在共享解析前移除；拒绝未知/继承/访问器字段、空编号或非法游标，不把错误筛选变成latest。JSON查询4 KiB，limit默认25、最大100；URL始终携带规范limit。固定调用时的项目范围/trace及已提供actor/client约束，清除原写条件，不发正文，不改已有完整包读取/编译/对比。
+- 请求使用bounded-json与256 KiB成功限额；共享解析器再次限制并复制完整JSON，包括自定义transport的对象。核对scope、规范query、trace、目录来源标记、metadata-only/not-checked、全部六字段记录及排序/唯一性/原游标位置/续页一致性，不显示或返回部分页。目录不需要WebCrypto、不读取或核验包摘要，过期/来源变化包仍可能列出，明确调用getContextPack或compareContextPacks才检查完整包。
+- options仅timeout_ms/signal，timeout_ms默认30000、整数1–2147483647，期限覆盖transport凭据等待、网络、完整读取和本地响应校验。同步校验只能在阶段边界检查，不能被计时器抢占；取消/超时后不交付迟到数据，finally清理计时器与监听。Fetch另有自身期限，两者先到者生效；停止本地等待不证明服务端SQL已取消。没有新增SDK并发限制，也没有自动重试、缩页或换包。
+- `contextPackPages(query?, options?)`返回`AsyncGenerator<ContextPackDirectoryEnvelope, void, unknown>`。调用时就捕获筛选/页大小/原游标/超时/信号，并要求合法完整actor_id/client_id；每次next才开始一页读取且重用相等身份头，每页独立期限、等待调用方处理时不启动计时器或预取。max_pages默认100、整数1–1000；到限页没有续页时正常结束，仍有续页时下一次next抛CONTEXT_PACK_DIRECTORY_PAGE_LIMIT而不发请求。yield前保存续页，修改返回query/data/next_cursor不会改变迭代器的后续请求；无需累积全量页，也不自动去重。参数错误在创建迭代器时同步抛出，单页方法错误为Promise拒绝。break/return结束迭代；要立即停止进行中的读取应取消signal，return本身不会中止底层请求。
+- 游标的身份/角色能力/条件绑定仍由Gateway检查；令牌刷新须保持原账号/客户端和游标条件，绑定变化明确失败，不能自动回首屏。跨页不是数据库快照，后续可见记录可能变化；即使完整页校验通过也不代表历史或来源当前有效。
+
+错误保留匹配原trace的已知code，但使用SDK固定文本且retryable=false。非法输入INVALID_INPUT；身份/会话DENIED、UNAUTHENTICATED；不可见项目CONTEXT_PACK_NOT_FOUND；存储/元数据异常沿CONTEXT_PACK_STORAGE_UNAVAILABLE、CONTEXT_PACK_INVALID；服务端目录超时CONTEXT_PACK_DIRECTORY_TIMEOUT、容量RATE_LIMITED。SDK本地取消/超时为GATEWAY_REQUEST_CANCELED/TIMEOUT，完整响应异常为GATEWAY_RESPONSE_INVALID；未知或trace不匹配错误为GATEWAY_UNAVAILABLE，不输出任意服务端异常文本。
+
+通用WcpTransport只返回解析正文，不提供HTTP状态或响应头，SDK不声称核对HTTP ETag或错误code/HTTP状态映射。Fetch沿既有bounded-json检查成功200、响应trace、JSON类型和完整成功字节，错误正文16 KiB及错误trace，401沿会话错误处理；自定义transport必须实现bounded-json/signal及完整响应，SDK收到对象后的限额不能代替网络接收限制。旧Mock保存包store暂不支持此目录路径，不伪造成功或回退其他目录；Mock/CLI/MCP适配后续独立开发。
+
+下面仅展示调用方式，假设client已配置正确范围和原actor/client；未执行：
+
+```ts
+const first = await client.listContextPacks({ limit: 25 }, { timeout_ms: 30_000 });
+// Save the complete query and continuation before handing the page to mutable UI code.
+const nextQuery = first.next_cursor
+  ? { ...first.query, cursor: first.next_cursor }
+  : undefined;
+if (nextQuery) {
+  const next = await client.listContextPacks(nextQuery);
+  // Render next.data as saved metadata; open a specific pack separately.
+}
+
+const controller = new AbortController();
+const pages = client.contextPackPages(
+  { limit: 25 },
+  { max_pages: 10, timeout_ms: 30_000, signal: controller.signal },
+);
+for await (const page of pages) {
+  // Process each complete page here. A further continuation after 10 pages raises an error.
+  // Breaking stops later pages; controller.abort() cancels local waiting during an active read.
+}
+```
+
+R-003未完成、`evidence: []`。原条件/身份捕获、空页/精确筛选/分页顺序、变更输入与返回值、错误/取消/迟到结果、页数上限/生成器关闭及真实transport/Gateway兼容仍缺运行证据；独立Schema/OpenAPI待补。本轮仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行SDK/Mock/CLI/MCP/产品/API/数据库或发布；无共享契约/Gateway/Web/依赖/迁移改动。
