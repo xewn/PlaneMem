@@ -62,6 +62,7 @@ import {
   type RequestContext,
   type SyncUploadEvent,
   type ContextPackReceipt,
+  type ContextPackReadQuery,
   type CheckpointReceiptQuery,
   type ResumeReceiptQuery,
   parseResumeBinding,
@@ -173,6 +174,7 @@ import {
   readArchivedContextItem,
   type WcpContextItemReadOptions,
 } from './context-item-read.js';
+import { readSavedContextPack, type WcpContextPackReadOptions } from './context-pack-read.js';
 import {
   readContextDirectory,
   iterateContextDirectory,
@@ -586,21 +588,8 @@ export class WcpClient {
     return this.command<ContextPackReceipt>('/v1/context-pack/compile', input, options);
   }
 
-  getContextPack(input: { pack_id?: string; format?: 'json' | 'markdown' | 'mcp' } = {}) {
-    const query = new URLSearchParams();
-    if (input.pack_id !== undefined) {
-      if (!isUlid(input.pack_id)) throw this.invalid('pack_id must be a ULID');
-      query.set('pack_id', input.pack_id);
-    }
-    if (input.format !== undefined) {
-      if (!['json', 'markdown', 'mcp'].includes(input.format))
-        throw this.invalid('Unsupported pack format');
-      query.set('format', input.format);
-    }
-    return this.envelope<ContextPackReceipt>(
-      'GET',
-      '/v1/context-pack' + (query.size ? '?' + query : ''),
-    );
+  getContextPack(input: ContextPackReadQuery = {}, options: WcpContextPackReadOptions = {}) {
+    return readSavedContextPack(this.transport, this.context, input, options);
   }
 
   async startAgentRun(

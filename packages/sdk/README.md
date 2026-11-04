@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-04：`getContextPack(input?, options?)` 新增 `WcpContextPackReadOptions`（timeout_ms/signal），返回 `Promise<ContextPackReadEnvelope>`，根入口导出查询与封套类型。固定原项目、可选账号/客户端约束和 latest/指定 ID/格式，4 KiB 输入、2 MiB 完整成功、Fetch 错误 16 KiB；共享完整校验与 WebCrypto SHA-256 核对涵盖全部正文、来源、预算、版本/JSON 内 ETag、保存 trace 及 rendered。默认 30 秒含凭据等待、接收、解析和摘要计算，取消/超时不交付迟到结果，摘要不可用或不匹配明确失败。保留原省略格式的 URL，支持平面可选 undefined 字段；非法输入改为 Promise 拒绝，不继承写条件、不重试。通用 transport 不暴露 HTTP ETag/状态，SDK 不声称核对；自定义 transport 需要支持 bounded-json/signal 并提供完整封套。见[SDK保存包读取](../../docs/design/01-contracts/context-pack-runtime.md#sdk-保存包完整读取2026-11-04源码增量)。仅源码文档，未编译、类型检查、测试、执行 SDK/Mock 或发布。
+
 2026-11-04：原MockContextHistorySeed增加可选`directory: MockContextDirectorySeed`（`{searches:[{query,item_ids}]}`）和每条`directory_record`完整投影；启用目录必须覆盖全部条目，核对current_*与可用详情/同版历史保存字段。MockWcpServer原context_history接入SDK listContextItems/contextItemPages，与work_items按operation分派共存；五类上下文读取共享两容量/30秒。目录2 MiB、输入8 KiB，完整微秒排序/精确筛选与store/身份/权限/筛选/页大小绑定游标；文本query须配置完整命中集合，未配置明确报错，不仿造数据库搜索。session可选`directory_access: MockContextDirectoryAccess`三布尔显示提示，缺省false，restricted沿原会话；不授予写权限。完整种子仍16 MiB/1000条目/总1000历史，见[上下文目录Mock](../../docs/design/01-contracts/context-directory-mock-runtime.md)。仅源码文档，未编译、类型检查、测试、执行SDK/Mock或发布。
 
 2026-11-04：`listContextItems(query?, options?)`接入目录专用完整读取，options为`WcpContextDirectoryReadOptions`（timeout_ms/signal），返回`Promise<ContextItemDirectoryEnvelope>`；8 KiB严格查询，完整成功2 MiB、Fetch错误16 KiB，默认30秒覆盖等待和响应核对。新增`contextItemPages(query?, options?)`与`WcpContextDirectoryPagesOptions`，创建时要求并固定项目/actor/client，next才读取，每页独立期限；max_pages默认100、范围1–1000，到限仍有续页时下次next抛`CONTEXT_DIRECTORY_PAGE_LIMIT`。完整页保留scope/query/context_permissions/data及原next_cursor，yield前保存续页，修改返回值不会改变后续请求；不自动重试、缩页或去重，不保证跨页快照。旧目录Mock/自定义transport必须迁移到完整封套和bounded-json，否则明确失败；旧v1游标从首屏重新开始。详见[SDK目录读取](../../docs/design/01-contracts/context-item-runtime.md#2026-11-04-sdk上下文目录完整读取及按需分页增量)。仅源码文档，未编译、类型检查、测试、执行SDK/Mock或发布。
@@ -298,7 +300,7 @@ const handoff = await client.createHandoff(started.data.session_id, originalHand
 - 同步：`uploadEvents`、`getSyncChanges`、`syncPages`、`getSyncCursor`、`acknowledgeSync`。
 - 同步原请求：`getSyncCommandContext` 读取准备新事件所需身份；`getSyncEventReceipt` 查询保存的原 identity/event。
 - 冲突：`listConflicts(query?, options?)` 返回元数据分页；`getConflict(id)` 独立读取完整值；`resolveConflict` 合并决定要求提供 `merged_value`。
-- 上下文包：`compileContextPack({ budget_tokens?, ttl_seconds? }, { idempotency_key })`、`getContextPack({ pack_id?, format? })`。
+- 上下文包：`compileContextPack({ budget_tokens?, ttl_seconds? }, { idempotency_key })`、`getContextPack({ pack_id?, format? }, { timeout_ms?, signal? })`。
 - 来源条目：`createContextItem`、`getContextItem`、`listContextItems`、`updateContextItem`、`archiveContextItem`。
 - 归档管理：`getArchivedContextItem`、`restoreContextItem`；列表传入 `{ archived: true }`。
 - 版本历史：`listContextItemHistory(id, { before_version?, limit? }, options?)`、`getContextItemVersion(id, version, options?)`，options支持timeout_ms/signal。
@@ -345,7 +347,7 @@ SDK 上传错误保留固定代码/文案及本次 dispatch_state，原始错误
 
 `listContextItems` 默认返回 25 条，支持 1–100 的 limit。将响应外层字符串 `next_cursor` 作为下一次请求的 cursor，并保留原筛选；没有 next_cursor 时结束。分页按优先级、更新时间倒序和 ID 升序继续，项目/权限/筛选变化后应移除 cursor。单次调用不再返回全量条目；分页是实时视图，并发编辑可能改变条目位置。共享输入类型和解析器为 `ContextItemListQuery`、`parseContextItemListQuery`（`@planemem/contracts`）。
 
-ContextPack 默认预算 4096、寿命 3600 秒；范围分别为 128–32768 和 60–86400。`getContextPack()` 读取最新可见完整快照；传 `pack_id` 读取指定历史包。`format` 为 `json`、`markdown` 或 `mcp`，后两者在 JSON 响应的 `data.rendered` 中增加 Markdown。返回类型为 `ContextPackReceipt`，包含完整 pack、版本和估计内容 token 数。来源变更或包到期后读取/原键重试会失败，需要新键重新编译。存储和哈希兼容说明见 [ContextPack 运行时](../../docs/design/01-contracts/context-pack-runtime.md)。
+ContextPack 默认编译预算 4096、寿命 3600 秒；范围分别为 128–32768 和 60–86400。`getContextPack()` 读取最新可见完整快照；传 `pack_id` 读取指定历史包。`format` 为 `json`、`markdown` 或 `mcp`，后两者在 JSON 响应的 `data.rendered` 中增加 Markdown。读取返回 `Promise<ContextPackReadEnvelope>`，其中 `data` 为 `ContextPackReceipt`，包含完整 pack、版本和估计内容 token 数；版本、JSON 内 ETag、游标和来源保留在外层。`options` 可设 `timeout_ms` 和 `signal`，默认 30 秒；需要 WebCrypto SHA-256，失败不会返回未经核对的内容。来源变更或包到期后读取/原键重试会失败，需要显式新键重新编译。存储和哈希兼容说明见 [ContextPack 运行时](../../docs/design/01-contracts/context-pack-runtime.md)。
 
 `getArchivedContextItem(id)` 返回完整归档条目和 archived_at。`restoreContextItem(id, { expected_version, idempotency_key })` 使用归档后的版本，返回 operation=restore 的历史回执；恢复后仍 excluded，分类/到期时间保留，需要显式编辑后才能重新成为包候选。普通 getContextItem 仍不读取归档条目。listContextItems 的 archived 默认 false，true 只查询归档；切换视图必须重置 cursor。恢复依赖新增但未执行的 020 迁移。
 

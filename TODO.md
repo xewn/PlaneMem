@@ -4,6 +4,8 @@
 
 ## 当前基线
 
+- P0/P2：SDK getContextPack(input?, options?) 接入完整共享读取，新增 WcpContextPackReadOptions（timeout_ms/signal）与查询/完整封套类型导出；固定原项目/可选账号客户端约束/包与格式，4 KiB 查询、2 MiB 成功/Fetch16 KiB 错误、默认30秒总预算，核对 JSON 内版本/ETag/游标/完整内容/来源/rendered，并以 WebCrypto SHA-256 核对保存摘要。摘要不可用/不匹配、取消/超时明确错误，finally清理；不继承写条件、不自动回退/重试/编译。通用transport不暴露HTTP ETag/状态，非法输入改为Promise拒绝，自定义transport需支持bounded-json/signal及完整封套。CLI/MCP/Mock/独立Schema与运行兼容证据待补，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行SDK/产品/API/数据库或发布。
+
 - P0/P2/P5：新增 ContextPack 完整读取共享契约与 Web 专用读取，4 KiB 查询、2 MiB 成功/16 KiB 错误、原 30 秒期限；核对完整内容/来源/预算/原 ID 与项目/版本/游标/trace/HTTP ETag，并按现有编译器规则重算 SHA-256。显式空 ID 不回退 latest，保存 trace 保持，rendered 需匹配具体 URI 与全文；页面失败保留原包和目录选择重试。原编译/命令解析保持，来源实时有效性仍由 Gateway 负责。SDK/CLI/MCP/Mock/Schema 专用接入与运行兼容证据待补，R-003 未完成、evidence 为空。仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、运行产品/浏览器/API/数据库或发布。
 
 ### 2026-11-04 开发补充（未编译、未发布、未测试）

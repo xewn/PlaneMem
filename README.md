@@ -1,5 +1,7 @@
 # PlaneMem
 
+完善 [SDK 保存包读取](docs/design/01-contracts/context-pack-runtime.md)：支持超时与取消，完整核对原项目、内容、来源、格式及 SHA-256 摘要；异常或不完整响应明确失败。仅源码文档，未编译、测试、运行或发布。
+
 完善 [网页保存包读取](docs/design/01-contracts/context-pack-runtime.md)：校验完整内容、原项目、版本、来源和 SHA-256 摘要，限制读取大小与等待时间，失败可保留原选择重试。仅源码文档，未编译、测试、运行或发布。
 
 新增 [上下文目录 Mock](docs/design/01-contracts/context-directory-mock-runtime.md)：同一模拟存储支持完整目录、详情和历史读取，目录可筛选和分页，并与工作项模拟路由共存；文本查询使用显式配置的命中集合。仅源码文档，未编译、测试、运行或发布。
