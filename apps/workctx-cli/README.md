@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+2026-11-04：`work-items list/get`新增`--timeout-ms`，默认30000；网络和嵌入统一复用SDK有界单页/详情读取，成功2 MiB、Fetch错误16 KiB和完整trace/结果校验。输入支持最多8 KiB内联JSON/稳定普通文件，列表省略为{}，网络支持有界`--json -`、嵌入不读stdin；本地输入等待不计入网络期限。可选成对expected_actor_id/expected_client_id只转成身份相等头；嵌入要求可信未过期context.read，按原身份派发、两笔容量到真实读取结束才释放。拒绝key/output/重复/未知/写选项，不自动翻页、保存或重试。下一页保留原筛选/身份和外层next_cursor。详见[命令行工作项读取](../../docs/design/01-contracts/work-item-projection-runtime.md)。仅源码文档人工审阅，未编译、测试、运行命令或发布。
+
 2026-11-04：新增`artifacts compare --json-file QUERY.json [--timeout-ms 30000]`，也支持`--json`及网络入口有界`--json -`；嵌入不读stdin。输入最多4 KiB，仅含artifact_id/from_version/to_version/expected_actor_id/expected_client_id；两版本必须不同，账号ULID和客户端需匹配实际读者，范围沿现有WORKCTX项目配置。网络固定原token，嵌入逐次核对可信未过期artifact.read、完整身份和SDK实际请求，两个指定历史读取共用SDK总期限；任一失败不返回部分对比。成功stdout是明确本地组合的WcpArtifactComparisonResult，包含query/identity_constraints/from/to/comparison，正文未检查；这是独立返回形状，没有外层data或新的Gateway操作。拒绝--key/--output/重复未知参数，不自动下载/上传/保存。详见[命令行版本对比](../../docs/design/01-contracts/artifact-versions-runtime.md#命令行版本对比源码阶段)。仅源码文档，未编译、测试、执行命令或发布。
 
 2026-11-04：新增 `artifacts list --json-file QUERY.json [--timeout-ms 30000]`，也可用 `--json '{}'` 读取首屏；网络入口支持有界 `--json -`，嵌入入口不读stdin。查询`{query?, classification?, limit?, cursor?}`最多8 KiB，名称按字面子串与ASCII大小写规则匹配，分类精确，默认20最多20条。下一页原样传入`data.next_query`；改变筛选/页大小/身份/权限后需去掉cursor重读。网络与嵌入均复用SDK listArtifacts的完整响应校验、256 KiB上限及默认30秒期限；拒绝key/output/重复参数，不自动翻页、下载或保存。文件ID倒序目录只反映各页当前可见性，选定记录后可用`artifacts version`读取所见版本，详见 [项目目录客户端](../../docs/design/01-contracts/artifact-registry-runtime.md#命令行与-mcp源码阶段)。仅源码文档人工审阅，未编译、测试、执行命令或发布。

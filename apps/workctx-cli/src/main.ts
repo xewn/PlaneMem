@@ -100,6 +100,7 @@ import { callConflictPreparation } from './conflict-preparation.js';
 import { callConflictReceiptArguments } from './conflict-receipt.js';
 import { callProposalCreateReceiptArguments } from './proposal-create-receipt.js';
 import { callProposalReviewReceiptArguments } from './proposal-review-receipt.js';
+import { isWorkItemReadCommand, callWorkItemReadArguments } from './work-item-reads.js';
 
 const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
 
@@ -281,6 +282,9 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   search                         Search saved project records; JSON query required, optional type/mode/limit/cursor
   work-items get                 Read a saved local work item by item_id, with version and sources
   work-items list                List saved work items; optional query, status, priority, exact owner, assignment (assigned/unassigned), cursor and limit
+                                 list/get: --json or --json-file <=8 KiB; list may omit JSON; network --json - supported
+                                 Optional --timeout-ms (default 30000), paired expected_actor_id/expected_client_id in JSON
+                                 One complete page/detail <=2 MiB; preserve filters for continuation; no --key/--output
   sessions start                 Start with original expected_identity and optional parent/actor/client in JSON, plus --key
   sessions start-receipt         Query original start with expected_identity, request_key and original session JSON; no --key
   sessions end                   End session_id with original expected_identity, status, expected_version and --key
@@ -1027,6 +1031,21 @@ export async function main(args: string[]): Promise<number> {
       return 0;
     }
     if (values.reviewed !== undefined) usage('--reviewed is only for audit export');
+    if (isWorkItemReadCommand(name)) {
+      print(
+        await callWorkItemReadArguments(args, {
+          base: process.env.WORKCTX_URL ?? 'http://127.0.0.1:3000',
+          token: token(),
+          trace,
+          scope: {
+            tenant_id: envId('WORKCTX_TENANT_ID'),
+            workspace_id: envId('WORKCTX_WORKSPACE_ID'),
+            project_id: envId('WORKCTX_PROJECT_ID'),
+          },
+        }),
+      );
+      return 0;
+    }
     if (isArtifactQueryCommand(name)) {
       const result = await callArtifactQueryArguments(args, {
         base: process.env.WORKCTX_URL ?? 'http://127.0.0.1:3000',

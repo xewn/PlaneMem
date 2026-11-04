@@ -6,6 +6,7 @@ import {
 import { parseArgs } from 'node:util';
 import type { CommandRouter, CommandResult, RequestContext } from '@planemem/api-gateway';
 import { prepareObservedRead, observedReadResult } from './observed.js';
+import { isWorkItemReadCommand, runWorkItemRead } from './work-item-reads.js';
 import { prepareHandoffClaim, handoffClaimResult } from './handoff-claim.js';
 import { prepareHandoffCreate, handoffCreateResult } from './handoff-create.js';
 import { prepareSessionStart, sessionStartResult } from './session-start.js';
@@ -357,6 +358,10 @@ export async function runWorkctx(
       }),
     };
   try {
+    if (command && isWorkItemReadCommand(command)) {
+      const result = await runWorkItemRead(argv, router, context);
+      return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
+    }
     if (command === 'artifacts inspect-request') {
       const result = await inspectArtifactRequestArguments(argv, context.trace_id);
       return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
@@ -1056,13 +1061,7 @@ export async function runWorkctx(
       if (argv.includes('--key')) usage('Observed reads do not accept --key');
       input = observed.input;
     }
-    if (operation === 'workbench.query')
-      input.operation =
-        command === 'work-items get'
-          ? 'work_item'
-          : command === 'work-items list'
-            ? 'work_items'
-            : command!.split(' ')[0];
+    if (operation === 'workbench.query') input.operation = command!.split(' ')[0];
     const result = await router.execute({ operation, input, context: commandContext });
     const output = checkpointHistory
       ? checkpointHistoryResult(result, checkpointHistory, context, context.trace_id)

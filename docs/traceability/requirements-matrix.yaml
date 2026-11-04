@@ -11,6 +11,24 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    cli_work_item_reads_development_increment:
+      date: "2026-11-04"
+      status: "Source-only bounded work item CLI list/detail reads; R-001 and R-002 remain incomplete."
+      artifacts:
+        - "apps/workctx-cli/src/work-item-reads.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "apps/workctx-cli/src/remote.ts"
+        - "apps/workctx-cli/README.md"
+        - "docs/design/01-contracts/work-item-projection-runtime.md"
+      behavior: "Network main/callGateway and embedded runWorkctx share SDK bounded single-page/detail reads: default 30 seconds, 2 MiB success, Fetch 16 KiB error, exact trace and shared result validation. Add timeout-ms and bounded 8 KiB inline/stable-file/network-only-stdin input; list may omit JSON. Optional paired expected actor/client constraints become headers only and must match embedded authority. Embedded reads require verified unexpired context.read, preserve original identity, reject unexpected SDK requests/restricted results and hold one of two router slots until underlying settlement, including after SDK timeout. Remove legacy generic work item paths; no automatic pagination, retry, persistence or writes."
+      evidence: []
+      pending_evidence:
+        - "Network/embedded routing, optional identity equality constraints and migration of old embedded fixtures"
+        - "Inline/file/stdin UTF-8, size/stability, duplicate/unknown/write argument rejection and exit codes"
+        - "SDK response limits, exact trace and filters, deadlines, late settlement, restricted responses and retained capacity"
+      remaining_scope: "Real CLI/SDK/transport/runtime evidence and source freshness. MCP/Web adapter budgets and broader client parity remain incomplete."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/SDK/MCP/Mock/product/API/database execution or release. No production route, shared contract, database schema or dependency change."
     sdk_work_item_reads_development_increment:
       date: "2026-11-04"
       status: "Source-only bounded SDK work item reads and demand-driven iteration; R-001 and R-002 remain incomplete."

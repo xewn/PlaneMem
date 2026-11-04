@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [命令行工作项读取控制](docs/design/01-contracts/work-item-projection-runtime.md)：列表和详情接入有界输入与完整响应、可配置等待期限，以及可选账号/客户端相等条件；保留显式单页读取。仅源码文档，未编译、测试、运行或发布。
+
 新增 [SDK 工作项读取控制与按需分页](docs/design/01-contracts/work-item-projection-runtime.md)：列表和详情支持超时、取消及完整响应大小限制；`workItemPages`按需读取，固定原筛选、检测重复游标，达到页数上限时明确报错。仅源码文档，未编译、测试、运行或发布。
 
 新增 [工作项目录与详情 Mock](docs/design/01-contracts/work-item-mock-runtime.md)：可选固定数据集和模拟权限，支持现有 SDK 列表、详情、组合筛选和显式续页，保留原记录并返回独立副本。仅源码文档，未编译、测试、运行 Mock 或发布。

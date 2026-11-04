@@ -13,10 +13,6 @@ import {
   parseSessionRunDetail,
   parseSessionToolCallPage,
   parseSessionToolCallDetail,
-  parseWorkItemProjectionQuery,
-  parseWorkItemProjection,
-  parseWorkItemListQuery,
-  parseWorkItemProjectionList,
   parseWorkbenchOverview,
   parseProjectSearchQuery,
   parseProjectSearchPage,
@@ -38,6 +34,7 @@ import { prepareSessionStart, sessionStartResult } from './session-start.js';
 import { prepareSessionActivity, sessionActivityResult } from './session-activity.js';
 import { prepareSessionState, sessionStateResult } from './session-state.js';
 import { callSessionRegistry } from './session-registry.js';
+import { isWorkItemReadCommand, callWorkItemRead } from './work-item-reads.js';
 import { callHandoffRegistry } from './handoff-registry.js';
 import { callCheckpointRegistry } from './checkpoint-registry.js';
 import { callCheckpointRead } from './checkpoint-reads.js';
@@ -385,14 +382,6 @@ function route(command: string, input: Record<string, unknown>) {
         method: 'POST',
         path: '/v1/handoffs/' + segment(input, 'handoff_id') + '/claim/receipt',
       };
-    case 'work-items get':
-      try {
-        parseWorkItemProjectionQuery(input);
-      } catch (error) {
-        usage(error instanceof Error ? error.message : 'Invalid work item query');
-      }
-      return { method: 'POST', path: '/v1/workbench/query' };
-    case 'work-items list':
     case 'overview':
     case 'sessions list':
     case 'context list':
@@ -578,6 +567,7 @@ export async function callGateway(
   input: Record<string, unknown>,
   options: GatewayOptions,
 ) {
+  if (isWorkItemReadCommand(command)) return callWorkItemRead(command, input, options);
   if (isArtifactQueryCommand(command)) return callArtifactQuery(command, input, options);
   if (isSyncConsumerCommand(command)) return callSyncConsumer(command, input, options);
   if (command === 'sessions list') return callSessionRegistry(input, options);
@@ -672,11 +662,7 @@ export async function callGateway(
               'limit',
               'archived',
             ]
-          : command === 'work-items get'
-            ? ['item_id']
-            : command === 'work-items list'
-              ? ['query', 'status', 'priority', 'owner', 'assignment', 'cursor', 'limit']
-              : [];
+          : [];
     if (Object.keys(input).some((field) => !allowed.includes(field)))
       usage(command + ' accepts ' + (allowed.join(', ') || 'no JSON fields'));
     if (command === 'context list') {
@@ -684,13 +670,6 @@ export async function callGateway(
         input = { ...parseContextItemListQuery(input) };
       } catch (error) {
         usage(error instanceof Error ? error.message : 'Invalid context query');
-      }
-    }
-    if (command === 'work-items list') {
-      try {
-        input = { ...parseWorkItemListQuery(input) };
-      } catch (error) {
-        usage(error instanceof Error ? error.message : 'Invalid work item query');
       }
     }
     if (input.session_id !== undefined) segment(input, 'session_id');
@@ -808,12 +787,7 @@ export async function callGateway(
       listing
         ? {
             ...input,
-            operation:
-              command === 'work-items get'
-                ? 'work_item'
-                : command === 'work-items list'
-                  ? 'work_items'
-                  : command.split(' ')[0],
+            operation: command.split(' ')[0],
           }
         : input,
     );
@@ -913,26 +887,6 @@ export async function callGateway(
       throw new ContractError(
         'GATEWAY_RESPONSE_INVALID',
         'Expected a project overview with consistent totals and previews',
-        { trace_id: options.trace },
-      );
-    }
-  }
-  if (command === 'work-items list') {
-    try {
-      return { ...body, ...parseWorkItemProjectionList(body, parseWorkItemListQuery(input)) };
-    } catch {
-      throw new ContractError('GATEWAY_RESPONSE_INVALID', 'Expected a work item projection page', {
-        trace_id: options.trace,
-      });
-    }
-  }
-  if (command === 'work-items get') {
-    try {
-      return { ...body, data: parseWorkItemProjection(body.data, String(input.item_id)) };
-    } catch {
-      throw new ContractError(
-        'GATEWAY_RESPONSE_INVALID',
-        'Expected the requested work item projection',
         { trace_id: options.trace },
       );
     }

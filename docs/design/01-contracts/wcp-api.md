@@ -1,5 +1,7 @@
 # WCP API 契约 v1
 
+2026-11-04 工作项CLI读取增补：work-items list/get网络及嵌入入口复用SDK有界读取，支持--timeout-ms、8 KiB JSON/文件/仅网络stdin和2 MiB完整成功响应；CLI可选成对expected_actor_id/expected_client_id只转为身份前置头，不加入POST workbench.query正文。列表仍每次一页，原共享字段、路由和数据库保持。说明及兼容限制见[工作项运行契约](work-item-projection-runtime.md)，仅源码文档，未编译、测试、执行或发布。
+
 2026-11-04 项目文件目录结构增补：`GET /v1/artifacts`的独立JSON Schema源码现为`packages/contracts/schemas/artifact-registry.json`，可通过contracts显式子路径引用。输入/规范查询/续页/当前摘要/页面/封套均有资源锚点；游标规范解码、身份权限绑定、原查询与来源/排序关系等仍由运行时执行，不把结构有效当作授权。见[Schema说明](../../../packages/contracts/schemas/README.md#项目文件目录)和[项目目录契约](artifact-registry-runtime.md)。未编译、执行校验器、测试或发布，完整OpenAPI和自动一致性证据仍缺。
 
 2026-11-03 独立恢复身份增补：新增只读 `GET /v1/sessions/command-context`，无业务参数/写条件，强制可信有效客户端，按既有读/写/领取能力或 admin 语义执行策略及入口审计；只返回当前身份、到期和权限提示，来源为空，不读取目录或业务记录。完整封套限 16 KiB，SDK/CLI/MCP/Web 接入，专用 `/handoffs/recover` 保留原创建请求；不授予后续权限或证明项目存在/原请求成功。详见 [独立恢复身份](session-command-context-runtime.md)，无新迁移，未编译、测试或运行。

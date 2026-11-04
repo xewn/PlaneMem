@@ -106,12 +106,36 @@ const result = await pages.next();
 await pages.return(undefined); // 没有预取下一页。
 ```
 
-MockWorkItemStore沿现有bounded-json和取消信号接入，无新增Mock路由。CLI/MCP/Web未增加这些SDK选项或遍历命令，生产Gateway/共享投影/数据库/依赖不变。仅源码文档人工审阅，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布；真实取消/迟到/超限/错误、旧传输兼容、重复游标/页数上限及分页消费仍待运行证据，R-001/R-002保持未完成且evidence为空。
+MockWorkItemStore沿现有bounded-json和取消信号接入，无新增Mock路由。CLI单页/详情的后续适配见下节；MCP/Web未增加这些SDK选项或遍历命令，生产Gateway/共享投影/数据库/依赖不变。仅源码文档人工审阅，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布；真实取消/迟到/超限/错误、旧传输兼容、重复游标/页数上限及分页消费仍待运行证据，R-001/R-002保持未完成且evidence为空。
+
+### 命令行有界读取（2026-11-04，仅源码）
+
+`workctx work-items list/get`的真实网络main、程序调用callGateway和嵌入runWorkctx现统一经过专用适配，复用上述SDK单页/详情方法。新增`--timeout-ms`，默认30000，范围1–2147483647，拒绝空值、负数、小数、指数表示及前导零。成功stdout仍是完整WCP封套，最多2 MiB；网络错误正文最多16 KiB，错trace/目标/条目/筛选/超限均整份失败，不输出部分成功。USAGE_ERROR退出2，其他读取错误退出1，成功退出0。
+
+支持内联`--json`或`--json-file`二选一，每份原始UTF-8输入最多8 KiB；列表省略两者等价`{}`，详情仍必须提供item_id。文件复用稳定普通文件读取：打开后检查实际句柄及大小，读取后检查长度/修改时间/变化时间，损坏UTF-8/JSON/变化或超限拒绝，不修改文件。网络入口继续支持有界`--json -`，最多读8193字节以探测超限；嵌入入口不读取stdin。读取文件或等待stdin EOF在SDK期限之前，不宣称--timeout-ms会中断本地输入等待。
+
+列表原query/status/priority/owner/assignment/cursor/limit及详情item_id保持原语义。CLI查询可额外携带成对`expected_actor_id`和`expected_client_id`：账号遵守SDK ULID规则，客户端为最多1024字符的非空无控制字符文本，必须两者同时提供。它们只转成SDK构造上下文和HTTP身份相等头，发送前从workbench查询正文剥离，不作为数据字段或授权。网络令牌仍由WORKCTX_ACCESS_TOKEN提供，每笔读取固定调用时令牌；不提供这对条件时不推断当前账号。续页需要账号连续性时，应保存原两值并保持不变。
+
+嵌入入口复制可信上下文，要求authenticated_client=true、明确未到期token_expires_at和实际context.read能力；若查询提供预期账号/客户端，必须与该上下文完全相等。始终固定可信账号/客户端传入SDK，去掉上下文写键/版本，核对SDK路径、方法、全部头、完整原正文及响应模式后才调用router.execute；Router仍执行原Policy/Audit。派发前、返回后及完整解析后重查期限/能力，无data.restricted.read却收到restricted记录时整份DENIED，不静默删行。每router最多两笔嵌入读取，SDK超时后名额保留到实际Router读取结束；后来的调用可得到RATE_LIMITED，不排队重试。未认证、缺期限/能力或使用非ULID上下文的旧嵌入fixture需要显式迁移，未声称已完成兼容验证。
+
+拒绝--key/--output/重复/未知选项、正文写条件和未知查询字段。成功数据保留原记录来源、版本、记录trace和外层本次trace；只执行一页或一条详情，不自动调用workItemPages，不保存文件、不重试。续页须保留全部原筛选和可选身份条件并传回外层next_cursor；换筛选时回首页。超限可减小limit重读当前位置，单条详情超限不会改读其他任务。动态目录和本地投影的来源限制保持，读取成功不等于全项目遍历完成。
+
+开发命令形状（未执行）：
+
+```text
+workctx work-items list --timeout-ms 15000
+workctx work-items list --json-file filters.json --timeout-ms 15000
+workctx work-items get --json-file selection.json --timeout-ms 15000
+```
+
+filters.json示例为`{"assignment":"unassigned","limit":25}`；selection.json示例为`{"item_id":"local-work-1","expected_actor_id":"01J000000000000000000000004","expected_client_id":"editor"}`。未创建或执行示例文件。
+
+本次只修改CLI源码和文档，MCP/Web/生产Gateway/数据库/schema/依赖不变；SDK先前开发的有界实现直接复用。未编译、类型检查、测试、执行CLI/SDK/Mock/API/产品/数据库或发布。真实网络/嵌入兼容、身份头、稳定文件/stdin边界、超限/超时/迟到/容量及退出码证据仍缺，R-001/R-002保持未完成。
 
 ### 其他读取入口
 
 - SDK：`getWorkItemProjection(itemId, options?)`，共享输入/响应解析器，返回 WCP 封套；有界读取及取消见上节。
-- CLI：`workctx work-items get --json-file work-item.json`，文件内容 `{"item_id":"本地 ID"}`，无需 --key。
+- CLI：`workctx work-items get --json-file work-item.json [--timeout-ms 30000]`，文件内容 `{"item_id":"本地 ID"}`，拒绝 --key；单页/详情大小与可选身份条件见上节。
 - MCP：`get_work_item_projection`，输入 item_id，要求 context.read，声明只读。
 - 工作台：`/work-items/detail?item=...` 独立读取指定任务，展示描述、版本、时间和来源；刷新表单重新请求详情。来源 URI 作为文本展示，不自动访问。
 - 看板/列表提供详情入口。显式指定 item 不在筛选结果中时，不选择另一条任务；保留原 ID 并提供独立读取入口。没有指定 item 时仍默认选择第一条。
