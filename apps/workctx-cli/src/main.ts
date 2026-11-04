@@ -23,6 +23,7 @@ import {
   artifactQueryExitCode,
 } from './artifact-queries.js';
 import { inspectArtifactReceiptArguments } from './artifact-receipt-file.js';
+import { inspectContextPackBackupArguments } from './context-pack-backup-inspection.js';
 import { callArtifactPreparation } from './artifact-preparation.js';
 import { inspectArtifactRequestArguments } from './artifact-inspection.js';
 import { callAudit, isAuditCommand } from './audit.js';
@@ -354,6 +355,8 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   context submit-save            Send the unchanged --json-file original after --reviewed; optional --timeout-ms
   context save-receipt            Observe historical save metadata from --json-file ORIGINAL; optional --output NEW_RECEIPT.json
   context inspect-receipt         Inspect --receipt-file RECEIPT.json offline; optional --json-file ORIGINAL.json
+  context inspect-backup          Inspect --backup-file FILE offline; repeat for manifest and all volumes
+                                 Optional --binding-file BINDING.json, --expected-document-sha256 SHA256, --timeout-ms
   context extract-original       Recover its original offline with --receipt-file RECEIPT.json --output NEW_ORIGINAL.json
                                  Optional --json-file ORIGINAL.json checks full binding; no query or pack save
   context recover-receipt         Save a captured observation offline from --result-file RESULT.json to --output NEW_RECEIPT.json
@@ -406,6 +409,9 @@ function parseOptions(args: string[]) {
         'evidence-file': { type: 'string' },
         'result-file': { type: 'string' },
         'receipt-file': { type: 'string' },
+        'backup-file': { type: 'string', multiple: true },
+        'binding-file': { type: 'string' },
+        'expected-document-sha256': { type: 'string' },
         'receipt-output': { type: 'string' },
         'result-output': { type: 'string' },
         'dispatch-id': { type: 'string' },
@@ -673,6 +679,7 @@ export async function main(args: string[]): Promise<number> {
       'context submit-save',
       'context save-receipt',
       'context inspect-receipt',
+      'context inspect-backup',
       'context extract-original',
       'context recover-receipt',
       'context create',
@@ -708,6 +715,17 @@ export async function main(args: string[]): Promise<number> {
         : positionals.length > 2)
     )
       usage('Unknown or incomplete command. Run workctx --help');
+    if (
+      name !== 'context inspect-backup' &&
+      (values['backup-file'] !== undefined ||
+        values['binding-file'] !== undefined ||
+        values['expected-document-sha256'] !== undefined)
+    )
+      usage('Backup inspection options are only supported by context inspect-backup');
+    if (name === 'context inspect-backup') {
+      print(await inspectContextPackBackupArguments(args, trace));
+      return 0;
+    }
     if (name === 'context inspect-save') {
       print(await inspectContextPackOriginal(args, trace));
       return 0;

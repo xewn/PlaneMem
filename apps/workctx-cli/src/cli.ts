@@ -20,6 +20,7 @@ import {
   extractContextPackReceiptOriginal,
 } from './context-pack-receipt-file.js';
 import { recoverContextPackReceipt } from './context-pack-receipt-recovery.js';
+import { inspectContextPackBackupArguments } from './context-pack-backup-inspection.js';
 import { prepareHandoffClaim, handoffClaimResult } from './handoff-claim.js';
 import { prepareHandoffCreate, handoffCreateResult } from './handoff-create.js';
 import { prepareSessionStart, sessionStartResult } from './session-start.js';
@@ -307,6 +308,7 @@ export async function runWorkctx(
     'context submit-save': 'context.pack.original.submit',
     'context inspect-save': 'context.pack.original.inspect',
     'context inspect-receipt': 'context.pack.receipt.inspect',
+    'context inspect-backup': 'context.pack.backup.inspect',
     'context extract-original': 'context.pack.receipt.extract-original',
     'context recover-receipt': 'context.pack.receipt.recover',
     'context create': 'context.item.create',
@@ -410,6 +412,10 @@ export async function runWorkctx(
     }
     if (command === 'context inspect-receipt') {
       const result = await inspectContextPackReceipt(argv, context.trace_id);
+      return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
+    }
+    if (command === 'context inspect-backup') {
+      const result = await inspectContextPackBackupArguments(argv, context.trace_id);
       return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
     }
     if (command === 'context extract-original') {

@@ -1130,3 +1130,26 @@ const set = await inspectContextPackReceiptBackup([volumeTwoBytes, manifestJson,
 ```
 
 所有成功/失败都保持identity_state=not-authenticated、server_outcome/content_state=not-checked、save_dispatch_state=not-sent、storage_access=not-performed。摘要是内部一致性校验，不能认证来源；volumes只说明relative-to-manifest。SDK不读取凭据、联网、访问路径或IndexedDB，不保存原请求、不恢复或清理历史。CLI批量入口、SDK备份构造/拆分、流式集合与运行证据仍待补；R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行SDK/产品/浏览器/API/数据库或发布。
+
+## CLI历史备份离线核验（2026-11-05源码增量）
+
+普通main与内嵌runWorkctx新增同一专用处理器context inspect-backup，在读取凭据、环境项目或调用路由之前执行；内嵌仅采用context.trace_id作为本地追踪，不使用宿主身份代替备份原绑定。语法如下，仅为未执行的使用示例：
+
+```sh
+workctx context inspect-backup --backup-file history.json
+workctx context inspect-backup --backup-file volume-2.json --backup-file manifest.json --backup-file volume-1.json --binding-file binding.json --expected-document-sha256 <manifest-document-sha256> --timeout-ms 30000
+```
+
+--backup-file可重复1–11次，文件名与参数顺序不决定卷身份；一份输入只核验单份备份（最多100观察），可以是某套分卷中的一份或其他合法子集，不推断全历史完整。两份以上必须恰一清单及全部声明卷，最多1000观察/10卷。复用SDK完整核验，缺卷、多卷、重复卷、混组、摘要不符、观察全局乱序/重复全部拒绝。
+
+可选--binding-file读取独立完整PackSaveBinding JSON，即gateway_url、五字段identity及read_restricted三个字段，最多8 KiB，不接受保存原请求或回执外层。它只是相等约束，不认证来源。--expected-document-sha256接受64位小写十六进制，指单份backup document或分卷manifest document的规范摘要，不是文件实际字节摘要。缺省不加独立约束，仍核对内嵌完整绑定和全部摘要。
+
+路径在开始时固定为绝对路径，原输入/解析后长度均最多4096字符，拒绝空白路径、stdin占位-、控制字符/孤立代理字符及解析后重复路径（Windows忽略大小写）；别名/硬链接不宣称已按文件系统身份去重，其重复内容仍由整套摘要规则拒绝。仅backup-file可重复，其他选项重复或无关JSON/网络/output选项均拒绝。主入口新增选项不能用于其他命令。不会扫描目录、读取输入文档中的路径、改写文件或访问浏览器历史库。
+
+沿现有readBoundedArtifactFile逐份只读普通文件，句柄读前/后核对长度、mtime/ctime及额外字节并关闭；每份最多4 MiB+1 KiB且剩余额度限制下次分配，总备份输入40 MiB+42 KiB，清单32 KiB另由SDK核对。独立binding-file不计入备份总字节数，受单独8 KiB限制。首次await前已捕获所有参数/路径，每份读回后保留字节并计算实际文件SHA-256，再交SDK复制及完整解析。任一输入失败不输出部分备份；逐份稳定读取不提供跨文件或外部修改的原子快照。
+
+--timeout-ms为1–2147483647的十进制整数，默认30000；总单调期限从参数解析结束开始，覆盖绑定读取、所有备份读取、实际文件摘要及SDK完整核验。剩余时长传SDK，并有共同AbortSignal，超时或迟到结果不交付。底层单次文件I/O不可强制取消，当前读取可能继续并最终关闭句柄，但检查点阻止继续读下一文件或开始核验；同步解析/摘要只能在检查点响应。stdout序列化/写出不属于读取核验时限。
+
+成功stdout为本地schema_version/trace_id/source_refs:[]，data保留locally-valid、完整binding/binding_state、根document_sha256、input_files/input_bytes、observations及completeness。contents.kind=single携带backup_file；kind=volumes携带manifest_file和清单顺序的volume_files，均为完整规范文件对象，不重复SDK的raw字符串。local_inputs按参数顺序列出绝对path、实际file_bytes/file_sha256；提供绑定文件时matched_binding_file记录其路径/实际字节摘要。既有观察时间、原请求键、内嵌trace和回执内容保持。
+
+CLI数据明确storage_access=file-read-only、browser_history_access=not-performed、restore_state=not-started，不继承SDK的未访问存储声明；identity_state=not-authenticated、server_outcome/content_state=not-checked、save_dispatch_state=not-sent。成功退出0，用法错误2，文件/绑定/摘要/核验/超时错误1；固定错误不含输入正文、无部分成功输出。核验不查询原保存状态，不给出重新发送或恢复授权。批量离线核验已补源码；备份构造/拆分/导出、流式集合及运行证据仍待补，R-003未完成、evidence为空。仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行CLI/SDK/文件工作流/浏览器/API/数据库或发布。
