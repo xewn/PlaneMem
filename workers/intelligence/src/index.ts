@@ -38,3 +38,4 @@ export * from './generation-journal-backup.js';
 export * from './generation-journal-backup-recovery.js';
 export * from './generation-journal-restore.js';
 export * from './generation-journal-comparison.js';
+export * from './generation-journal-merge.js';

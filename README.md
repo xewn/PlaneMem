@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [恢复日志补缺合并](docs/design/01-contracts/proposal-generation-journal-merge-runtime.md)：预览并确认计划后，向已有恢复目录新增缺失的原日志；保留已有记录、来源和合并前快照，冲突拒绝，生成仍被隔离。失败保留已写文件并要求重新预览。仅源码文档，未编译、测试、运行或发布。
+
 新增 [生成日志差异比较](docs/design/01-contracts/proposal-generation-journal-comparison-runtime.md)：比较两份备份或备份与现有日志，列出缺失、多出及冲突记录，保留原请求身份和未知调用状态；仅输出元数据，不修改日志或重发。仅源码文档，未编译、测试、运行或发布。
 
 新增 [生成日志恢复新目录](docs/design/01-contracts/proposal-generation-journal-restore-runtime.md)：预览并确认备份摘要后，恢复全部原请求、领取和结果，支持查询与结果取回；恢复目录阻止新的模型调用，失败保留已写文件和来源。仅源码文档，未编译、测试、运行或发布。

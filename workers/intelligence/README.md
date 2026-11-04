@@ -6,6 +6,8 @@
 
 ## 配置与命令
 
+新增 [已有恢复日志补缺](../../docs/design/01-contracts/proposal-generation-journal-merge-runtime.md)：`generation-journal-merge --file BACKUP.json --journal RESTORED_DIR --binding binding.json --preview` 预览后，以`--confirm-sha256 PLAN_SHA256`替换preview。只允许原恢复标记/备份完整的同范围隔离目录；完整比较后只补缺项，异文/身份冲突整批拒绝，目标更多结果及独有项保留。计划固定原内容和目录/隔离身份，先保存来源与目标原快照再逐文件独占新增，最后全量核对；多文件非事务，失败保留所有文件并须重新预览。普通目录不接受，生成隔离不解除；仅源码，未执行命令。
+
 新增 [生成日志差异比较](../../docs/design/01-contracts/proposal-generation-journal-comparison-runtime.md)：`generation-journal-compare --file BACKUP.json --against OTHER_BACKUP.json` 比较两份完整备份；也可用互斥的 `--journal EXISTING_DIR --binding binding.json` 只读观察现有目录。按原键列同文、缺失、单侧多出文件和不可变文档/跨键ID冲突，目录模式核对两轮读取及隔离状态；只输出元数据，保留原未知。比较成功含有差异也退出0，须读identical/has_conflicts；不写入、合并、解除隔离或调用模型。仅源码，未执行命令。
 
 新增 [生成日志恢复新目录](../../docs/design/01-contracts/proposal-generation-journal-restore-runtime.md)：`generation-journal-restore --file BACKUP.json --binding binding.json --output NEW_JOURNAL_DIR --preview` 预览后，以 `--confirm-sha256 BACKUP_SHA256` 替换preview恢复。先独占保存隔离标记和原备份，再保存原请求/领取/结果，全量读回后才报告成功；已有目标不覆盖，失败保留目录/文件/阶段。恢复目录支持status/result和原领取结果补存，阻止新增请求与模型调用，prepared也不放行；状态和目录返回journal_dispatch。必须保留隔离标记与原备份，旧worker不具备此门禁；原进程协调、已有日志合并与解除隔离仍缺。仅源码，未运行命令。

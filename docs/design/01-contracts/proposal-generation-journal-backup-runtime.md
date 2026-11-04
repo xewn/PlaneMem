@@ -60,8 +60,10 @@ recover 输入可以是原备份文件，也可以是上述两类完整失败封
 
 ## 库入口与剩余工作
 
+已有恢复目录可使用 [补缺合并](proposal-generation-journal-merge-runtime.md)，完整核验原隔离证据并确认计划后只新增缺项，保留来源和目标原快照；普通运行目录不接受，既有内容与生成限制保持。
+
 已补 [备份与现有日志差异比较](proposal-generation-journal-comparison-runtime.md)：可以比较两份完整备份，或只读完整观察现有目录。按原键区分同文、缺失、单侧更多文件与原身份/文档冲突，current独有键单列；不合并或赋予重发资格。
 
 `captureGenerationJournalBackup(directory, binding)`、`inspectGenerationJournalBackup(value)`、`generationJournalBackupSummary(value)`、`readGenerationJournalBackup(path)`、`prepareGenerationJournalBackupOutput(path)` / `saveGenerationJournalBackup(preparedOutput, value)`，以及 `inspectGenerationJournalBackupRecovery(value)` / `readGenerationJournalBackupRecovery(path)` 从 worker 导出。
 
-已补 [恢复到新隔离目录](proposal-generation-journal-restore-runtime.md)：先预览并确认源摘要，再完整保存原请求/领取/结果和原备份，保留生成隔离；恢复后的查询、结果导出及原领取结果补存可用，不把 prepared 观察转为再次派发资格。与现有日志合并仍未提供，也不直接从备份文件选择生成记录导出。跨队列/日志联合一致备份、供应商未知调用对账、原进程协调、保留/清理策略、签名/加密及全局审计仍缺。目录并发、文件系统失败、格式兼容和真实运行证据待后续获准后补充，现阶段没有执行结果。
+已补 [恢复到新隔离目录](proposal-generation-journal-restore-runtime.md)：先预览并确认源摘要，再完整保存原请求/领取/结果和原备份，保留生成隔离；恢复后的查询、结果导出及原领取结果补存可用，不把 prepared 观察转为再次派发资格。普通运行目录原位合并仍未提供，也不直接从备份文件选择生成记录导出。跨队列/日志联合一致备份、供应商未知调用对账、原进程协调、保留/清理策略、签名/加密及全局审计仍缺。目录并发、文件系统失败、格式兼容和真实运行证据待后续获准后补充，现阶段没有执行结果。

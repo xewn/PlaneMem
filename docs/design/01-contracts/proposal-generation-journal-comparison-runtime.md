@@ -51,4 +51,4 @@ identical表示同一范围的所有逻辑请求文档一致且current无独有�
 
 比较成功（包括有差异或冲突）退出0，无法完整核验退出1。同范围错误为PROPOSAL_GENERATION_JOURNAL_COMPARISON_BINDING_MISMATCH，目录身份/隔离观察变化为同前缀CHANGED，不可观察为UNAVAILABLE；备份的原校验/超限/孤立文件错误保持。不能把退出0当成相同，需阅读identical/has_conflicts和条目。
 
-已有日志补缺合并、显式冲突处置/隔离解除、原进程协调和供应商对账仍待开发；本增量不新增运行证据。
+已补 [隔离恢复目录补缺合并](proposal-generation-journal-merge-runtime.md)，它单独要求完整原恢复证据、目标/源绑定和明确计划确认；比较报告本身仍不授予合并资格。普通运行目录合并、显式冲突处置/隔离解除、原进程协调和供应商对账仍待开发；本增量不新增运行证据。
