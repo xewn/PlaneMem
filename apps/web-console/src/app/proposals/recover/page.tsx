@@ -36,6 +36,11 @@ export default async function ProposalRecoveryPage() {
       </div>
       {content}
       <p>
+        <Link href="/proposals/creation-history" prefetch={false}>
+          Inspect a creation history file or extract its original request
+        </Link>
+      </p>
+      <p>
         <Link href="/proposals/recover-review" prefetch={false}>
           Recover an original review decision
         </Link>

@@ -2,11 +2,13 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { proposalReceiptJson, type ProposalMutationReceipt } from '@planemem/contracts';
 import {
-  parseProposalCreateReceiptEnvelope,
-  type ProposalMutationReceipt,
-} from '@planemem/contracts';
-import { validateProposalReceipt } from '../../lib/mutation-receipts';
+  creationRecordedReceipt,
+  parseCreationObservation,
+  type CreationObservation,
+} from './creation-history-model';
+import { CreationHistoryPanel } from './creation-history-panel';
 import { backupOperation } from '../sync/receipt/backup-operation';
 import { submitSavedProposal, readSavedProposalReceipt } from './actions';
 import {
@@ -30,9 +32,22 @@ export function OriginalProposalSubmission({
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [receipt, setReceipt] = useState<ProposalMutationReceipt>();
+  const [observation, setObservation] = useState<CreationObservation>();
+  const [confirmedObservation, setConfirmedObservation] = useState<CreationObservation>();
   const active = useRef(false);
   const mounted = useRef(false);
   const operation = useRef<AbortController | undefined>(undefined);
+  const beginHistory = useCallback(() => {
+    if (!mounted.current || active.current) return false;
+    active.current = true;
+    setBusy(true);
+    setConfirmed(false);
+    return true;
+  }, []);
+  const endHistory = useCallback(() => {
+    active.current = false;
+    if (mounted.current) setBusy(false);
+  }, []);
   const save = useCallback(async () => {
     if (active.current || !mounted.current) return;
     const controller = new AbortController();
@@ -132,8 +147,18 @@ export function OriginalProposalSubmission({
       if (!mounted.current || operation.current !== controller) return;
       if (result.original !== encodeProposalOriginal(request)) throw new TypeError();
       if (result.status === 'saved') {
-        validateProposalReceipt(result.receipt, { status: 'proposed', revision: 1 });
-        setReceipt(result.receipt);
+        const document = parseCreationObservation({
+          schema_version: 1,
+          kind: 'proposal-creation-observation',
+          original: request,
+          observed_at: new Date().toISOString(),
+          source: 'submission',
+          receipt: result.receipt,
+        });
+        if (document.source !== 'submission') throw new TypeError();
+        setReceipt(document.receipt.data);
+        setObservation(document);
+        setConfirmedObservation(document);
         setMessage(
           'The gateway confirmed the original submission. Keep the saved request for your records.',
         );
@@ -154,7 +179,7 @@ export function OriginalProposalSubmission({
     }
   }
   async function checkReceipt() {
-    if (active.current || receipt || !mounted.current) return;
+    if (active.current || !mounted.current) return;
     const controller = new AbortController();
     operation.current = controller;
     active.current = true;
@@ -176,20 +201,33 @@ export function OriginalProposalSubmission({
         setMessage(result.message);
         return;
       }
-      const view = parseProposalCreateReceiptEnvelope(
-        result.receipt,
-        {
-          identity: request.binding.identity,
-          request_key: request.request_key,
-          draft: request.draft,
-        },
-        result.receipt.trace_id,
-      ).data;
+      const document = parseCreationObservation({
+        schema_version: 1,
+        kind: 'proposal-creation-observation',
+        original: request,
+        observed_at: new Date().toISOString(),
+        source: 'receipt-query',
+        receipt: result.receipt,
+      });
+      if (document.source !== 'receipt-query') throw new TypeError();
+      setObservation(document);
+      const view = document.receipt.data;
       if (view.status === 'not-observed') {
         setMessage(
           'No matching original creation receipt was observed in this read. This does not prove failure or cancel an in-flight submission. Keep the original unchanged; no new creation request was sent.',
         );
       } else {
+        if (
+          confirmedObservation &&
+          proposalReceiptJson(creationRecordedReceipt(confirmedObservation)) !==
+            proposalReceiptJson(creationRecordedReceipt(document))
+        ) {
+          setMessage(
+            'This query returned different creation facts from the retained confirmed result. Both observations remain available for inspection and export. The previous confirmation is retained; no new submission was sent.',
+          );
+          return;
+        }
+        setConfirmedObservation(document);
         const saved = view.receipt;
         setReceipt({
           proposal_id: saved.proposal_id,
@@ -239,7 +277,7 @@ export function OriginalProposalSubmission({
         <button
           type="button"
           className="secondary-button"
-          disabled={busy || !!receipt}
+          disabled={busy}
           onClick={() => void checkReceipt()}
         >
           Check original submission result
@@ -264,7 +302,7 @@ export function OriginalProposalSubmission({
         Stopping the wait keeps the original request. A submission already sent may still complete;
         check its original receipt before deciding whether to retry.
       </p>
-      {busy && (
+      {busy && operation.current && (
         <button type="button" className="secondary-button" onClick={stopWaiting}>
           Stop waiting on this page
         </button>
@@ -311,6 +349,24 @@ export function OriginalProposalSubmission({
           Open confirmed submission
         </Link>
       )}
+      <CreationHistoryPanel
+        binding={request.binding}
+        live={observation}
+        confirmedLive={confirmedObservation}
+        disabled={busy}
+        begin={beginHistory}
+        end={endHistory}
+      />
+      <p>
+        <Link
+          href="/proposals/creation-history"
+          prefetch={false}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Open creation history file inspection ↗
+        </Link>
+      </p>
     </div>
   );
 }

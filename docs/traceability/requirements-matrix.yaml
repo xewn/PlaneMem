@@ -3452,6 +3452,26 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_creation_history_file_development_increment:
+      date: "2026-11-04"
+      status: "Source-only complete creation observation files, inspection and original-request extraction; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/creation-history-model.ts"
+        - "apps/web-console/src/app/proposals/creation-history-file.ts"
+        - "apps/web-console/src/app/proposals/creation-history-panel.tsx"
+        - "apps/web-console/src/app/proposals/creation-history/page.tsx"
+        - "apps/web-console/src/app/proposals/actions.ts"
+        - "apps/web-console/src/app/proposals/original-submission.tsx"
+        - "docs/design/01-contracts/proposal-creation-history-runtime.md"
+      behavior: "Retain full original creation requests and validated submission/query responses with original trace and observation time. Keep latest and confirmed observations separately; later not-observed/errors never clear confirmation. Independent 4 MiB observation plus SHA-256 file envelope supports strict bounded UTF-8 import, inspection, complete export and original-request extraction for existing recovery. Imported history never changes current submission state or sends/queries/saves a proposal. File operations share the parent lock, use 30-second waits, retain old candidates on failure and ignore late results after unmount."
+      evidence: []
+      pending_evidence:
+        - "Complete submission envelope and query validation, exact preserved fields, byte limits, digest mismatch and original binding rejection"
+        - "Recorded/not-observed history, later failed or conflicting queries, retained confirmed results and unchanged send gate"
+        - "File round trips and original extraction, failed import/download retention, no network or storage writes from historical inspection"
+        - "Shared parent lock, clearing send confirmation, hash/file timeout, unmount and standalone navigation"
+      remaining_scope: "Browser creation-history persistence/catalog, batch backup/restore/cleanup, automatic retention, cross-page coordination and runtime evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, product/browser/database execution or release. No schema, migration or dependency changes."
     proposal_creation_wait_control_development_increment:
       date: "2026-11-04"
       status: "Source-only bounded original-creation waits with explicit local cancellation; R-009 remains incomplete."

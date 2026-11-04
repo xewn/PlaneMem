@@ -64,7 +64,7 @@ export async function submitSavedProposal(data: FormData) {
     if (field(data, 'confirmed') !== 'yes') throw new TypeError();
     const result = await submitWorkbenchProposalOriginal(original);
     revalidatePath('/proposals');
-    return { status: 'saved' as const, original: raw, receipt: result.data };
+    return { status: 'saved' as const, original: raw, receipt: result };
   } catch {
     return {
       status: 'unknown' as const,

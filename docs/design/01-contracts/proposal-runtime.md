@@ -84,6 +84,8 @@ verified 表示该建议 revision 曾经过明确人工审核，不表示来源�
 
 ## 原创建回执只读查询
 
+Web原创建页的发送与查询结果可保留为[完整历史文件](proposal-creation-history-runtime.md)，包含原请求、完整封套、观察时间和摘要；支持独立审阅及原请求提取，导入不会回填当前提交状态。仅源码开发。
+
 `POST /v1/proposals/creation-receipt` 使用保存的 `{identity, request_key, draft}`。identity 包含原 tenant/workspace/project/actor/client 五字段并与可信令牌一致；draft 必须是提交时完整规范草稿，包含分类、TTL 和适用的 derived_from，不补默认值或修改正文。请求最多 1 MiB，只接受 JSON UTF-8；不接受查询参数、外层幂等键、版本、缓存条件、Range 或 Content-Encoding。读取要求原已验证客户端、未过期令牌及 proposal.write 或 admin，并继续检查当前项目、建议、本地来源与派生链可见性。
 
 处理器在 repeatable-read/read-only 事务内按原 actor/client 派生键查现有命令回执，核对原创建指纹、创建者、时间/TTL、不可变正文/来源/生成信息和原 ApprovalRequested 事件；不获取写流锁，不创建建议或补存回执。正常审阅或过期不撤销原创建结果，来源失去当前可见性则不能确认。平台常规鉴权/审计仍适用，“只读”指业务查询不修改建议、命令或同步事件。
