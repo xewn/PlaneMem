@@ -6,6 +6,8 @@ import {
   CONTEXT_REVISION_RESPONSE_BYTES,
   CONTEXT_ITEM_READ_RESPONSE_BYTES,
   CONTEXT_ITEM_READ_ERROR_BYTES,
+  CONTEXT_ITEM_DIRECTORY_RESPONSE_BYTES,
+  CONTEXT_ITEM_DIRECTORY_ERROR_BYTES,
   compareContextSnapshots,
   contextRevisionSnapshotJson,
   isSyncIdentifier,
@@ -15,33 +17,42 @@ import {
   parseContextHistoryReadQuery,
   parseContextItemReadEnvelope,
   parseContextItemReadQuery,
+  parseContextItemDirectoryEnvelope,
+  parseContextItemDirectoryQuery,
   syncJsonSnapshot,
   validateErrorEnvelope,
   type ContextComparisonQuery,
   type ContextHistoryReadQuery,
   type ContextItemRevision,
   type ContextItemReadQuery,
+  type ContextItemDirectoryQuery,
 } from '@planemem/contracts';
 import type { ApiGateway } from '../http.js';
 import type { RequestContext } from '../router.js';
 
 type ToolName =
+  | 'list_context_items'
   | 'get_context_item'
   | 'get_archived_context_item'
   | 'list_context_item_history'
   | 'get_context_item_version'
   | 'compare_context_item_versions';
-type ReadQuery = ContextHistoryReadQuery | ContextItemReadQuery;
+type ReadQuery =
+  | ContextHistoryReadQuery
+  | ContextItemReadQuery
+  | { kind: 'list'; query: ContextItemDirectoryQuery };
 type Query = ReadQuery | { kind: 'compare'; query: ContextComparisonQuery };
 function isDetailQuery(query: Query): query is ContextItemReadQuery {
   return query.kind === 'current' || query.kind === 'archived';
 }
 function readPath(query: ReadQuery) {
+  if (query.kind === 'list') return '/v1/workbench/query';
   const root = '/v1/context-items/' + encodeURIComponent(query.item_id);
   if (isDetailQuery(query)) return root + (query.kind === 'archived' ? '/archived' : '');
   return root + (query.kind === 'history' ? '/history' : '/versions/' + query.version);
 }
 function responseLimit(query: ReadQuery) {
+  if (query.kind === 'list') return CONTEXT_ITEM_DIRECTORY_RESPONSE_BYTES;
   if (isDetailQuery(query)) return CONTEXT_ITEM_READ_RESPONSE_BYTES;
   return query.kind === 'history'
     ? CONTEXT_HISTORY_RESPONSE_BYTES
@@ -51,23 +62,27 @@ const comparisonBytes = 16 * 1024 * 1024;
 const activeReads = new WeakMap<ApiGateway, { active: number }>();
 const messages = {
   INVALID_INPUT:
-    'Supply one local item_id for current/archived details, valid history positions or two different positive safe versions, without identity or write fields',
+    'Supply valid directory filters and a current cursor, one local item_id for current/archived details, valid history positions or two different positive safe versions, without identity or write fields',
   DENIED:
     'Use a verified unexpired client with actual context.read and the required record visibility',
-  UNAUTHENTICATED: 'Renew the intended session before reading context details or history',
+  UNAUTHENTICATED: 'Renew the intended session before reading context',
   NOT_FOUND: 'The context read route is unavailable',
   CONTEXT_ITEM_NOT_FOUND: 'The selected item or recorded version is unavailable in this project',
-  CONTEXT_ITEM_INVALID: 'The stored context details or history could not be validated',
+  CONTEXT_ITEM_INVALID: 'The complete stored context response could not be validated',
   CONTEXT_ITEM_STORAGE_UNAVAILABLE: 'Context storage is unavailable',
+  WORKBENCH_DATABASE_UNAVAILABLE: 'Context directory storage is unavailable',
   WORKBENCH_AUTH_UNAVAILABLE: 'Gateway authentication is unavailable',
   AUDIT_PERSISTENCE_UNAVAILABLE: 'The context read audit could not be persisted',
   RATE_LIMITED: 'Gateway request capacity is occupied',
   MCP_CONTEXT_HISTORY_BUSY: 'MCP context history read capacity is occupied',
   MCP_CONTEXT_HISTORY_TIMEOUT:
     'Stopped waiting for context history; the underlying read may still be running',
-  MCP_CONTEXT_ITEM_BUSY: 'MCP context detail/history read capacity is occupied',
+  MCP_CONTEXT_ITEM_BUSY: 'MCP context read capacity is occupied',
   MCP_CONTEXT_ITEM_TIMEOUT:
     'Stopped waiting for context details; the underlying read may still be running',
+  MCP_CONTEXT_DIRECTORY_BUSY: 'MCP context read capacity is occupied',
+  MCP_CONTEXT_DIRECTORY_TIMEOUT:
+    'Stopped waiting for the context directory; the underlying read may still be running',
   GATEWAY_RESPONSE_INVALID:
     'The complete context response or comparison did not match this read or exceeded its size limit',
   CONTEXT_HISTORY_INTEGRITY_UNAVAILABLE:
@@ -80,6 +95,7 @@ function fail(code: ErrorCode, trace: string) {
 }
 export function isContextReadTool(name: unknown): name is ToolName {
   return (
+    name === 'list_context_items' ||
     name === 'get_context_item' ||
     name === 'get_archived_context_item' ||
     name === 'list_context_item_history' ||
@@ -111,9 +127,18 @@ export function canReadContextTool(context: RequestContext): boolean {
 function captureQuery(name: string, raw: unknown, trace: string): Query {
   try {
     if (!isContextReadTool(name)) throw new TypeError();
-    const value: unknown = JSON.parse(syncJsonSnapshot(raw, 4096));
+    const value: unknown = JSON.parse(
+      syncJsonSnapshot(raw, name === 'list_context_items' ? 8192 : 4096),
+    );
     if (!value || typeof value !== 'object' || Array.isArray(value) || Object.hasOwn(value, 'kind'))
       throw new TypeError();
+    if (name === 'list_context_items') {
+      // Optional enum values must be omitted rather than bypassing the tool schema with ''.
+      const fields = value as Record<string, unknown>;
+      if (['layer', 'classification', 'status'].some((field) => fields[field] === ''))
+        throw new TypeError();
+      return { kind: 'list', query: parseContextItemDirectoryQuery(value) };
+    }
     if (name === 'compare_context_item_versions')
       return { kind: 'compare', query: parseContextComparisonQuery(value) };
     if (name === 'get_context_item' || name === 'get_archived_context_item')
@@ -139,7 +164,12 @@ export async function executeContextReadTool(
 ) {
   const deadline = performance.now() + 30_000;
   const detail = name === 'get_context_item' || name === 'get_archived_context_item';
-  const timeoutCode = detail ? 'MCP_CONTEXT_ITEM_TIMEOUT' : 'MCP_CONTEXT_HISTORY_TIMEOUT';
+  const directory = name === 'list_context_items';
+  const timeoutCode = directory
+    ? 'MCP_CONTEXT_DIRECTORY_TIMEOUT'
+    : detail
+      ? 'MCP_CONTEXT_ITEM_TIMEOUT'
+      : 'MCP_CONTEXT_HISTORY_TIMEOUT';
   const trace = isSyncIdentifier(original.trace_id) ? original.trace_id : 'trace_unknown';
   let context: RequestContext;
   try {
@@ -171,7 +201,14 @@ export async function executeContextReadTool(
     activeReads.set(api, gate);
   }
   if (gate.active >= 2)
-    throw fail(detail ? 'MCP_CONTEXT_ITEM_BUSY' : 'MCP_CONTEXT_HISTORY_BUSY', trace);
+    throw fail(
+      directory
+        ? 'MCP_CONTEXT_DIRECTORY_BUSY'
+        : detail
+          ? 'MCP_CONTEXT_ITEM_BUSY'
+          : 'MCP_CONTEXT_HISTORY_BUSY',
+      trace,
+    );
   const lease = gate;
   lease.active++;
   const work = (async () => {
@@ -181,10 +218,11 @@ export async function executeContextReadTool(
         const { kind, ...input } = selected;
         // Internal ApiGateway accepts query fields as body; public GET uses URL parameters.
         const response = await api.handle({
-          method: 'GET',
+          method: kind === 'list' ? 'POST' : 'GET',
           path: readPath(selected),
           headers: {},
-          body: { ...input },
+          body:
+            selected.kind === 'list' ? { ...selected.query, operation: 'context' } : { ...input },
           context: structuredClone(context),
         });
         active();
@@ -205,9 +243,11 @@ export async function executeContextReadTool(
           syncJsonSnapshot(
             response.body,
             response.status >= 400
-              ? isDetailQuery(selected)
-                ? CONTEXT_ITEM_READ_ERROR_BYTES
-                : CONTEXT_HISTORY_ERROR_BYTES
+              ? selected.kind === 'list'
+                ? CONTEXT_ITEM_DIRECTORY_ERROR_BYTES
+                : isDetailQuery(selected)
+                  ? CONTEXT_ITEM_READ_ERROR_BYTES
+                  : CONTEXT_HISTORY_ERROR_BYTES
               : responseLimit(selected),
           ),
         );
@@ -221,15 +261,22 @@ export async function executeContextReadTool(
             trace,
           );
         }
-        const envelope = isDetailQuery(selected)
-          ? parseContextItemReadEnvelope(value, selected, identity, trace)
-          : parseContextHistoryReadEnvelope(value, selected, identity, trace);
+        const envelope =
+          selected.kind === 'list'
+            ? parseContextItemDirectoryEnvelope(value, selected.query, identity, trace)
+            : isDetailQuery(selected)
+              ? parseContextItemReadEnvelope(value, selected, identity, trace)
+              : parseContextHistoryReadEnvelope(value, selected, identity, trace);
         if (
           isDetailQuery(selected) &&
           (!('etag' in envelope) || response.headers.etag !== envelope.etag)
         )
           throw fail('GATEWAY_RESPONSE_INVALID', trace);
-        const records = 'versions' in envelope.data ? envelope.data.versions : [envelope.data];
+        const records = Array.isArray(envelope.data)
+          ? envelope.data
+          : 'versions' in envelope.data
+            ? envelope.data.versions
+            : [envelope.data];
         if (
           !context.capability.includes('data.restricted.read') &&
           records.some((record) => record.classification === 'restricted')

@@ -1,5 +1,19 @@
 # ContextItem 录入与编辑开发说明
 
+## 2026-11-04 MCP上下文目录完整读取增量
+
+`list_context_items`纳入既有mcp/context-history专用执行器，tools/list、客户端身份要求、prepareMcpTool及tools/call沿同一isContextReadTool识别。发现与调用均要求schema v1、可信未过期客户端、实际context.read、完整项目/actor/client和合法trace；admin不替代实际能力。prepareMcpTool先核对身份再返回MCP_TOOL_EXECUTOR_REQUIRED，要求调用dispatchMcp或专用executeContextReadTool，避免绕开完整解析、期限和容量。
+
+参数仅原query/layer/classification/status/item_type/archived/limit/cursor，普通JSON最多8 KiB；缺省arguments为{}，archived=false、limit=25，页大小1–100。拒绝未知字段、identity/写条件、kind及空枚举值；其他五类详情/历史/比较仍为4 KiB。原输入/上下文在等待前复制，清除继承写键/版本条件，固定POST /v1/workbench/query及operation=context，内层沿原workbench授权/项目可见性/审计，调用正文与校验查询分开保存。
+
+成功要求HTTP200、原trace、JSON媒体类型和无ETag；错误只接受4xx/5xx、完整16 KiB有效原trace封套，然后映射固定文案且retryable=false。完整成功最多2 MiB，共享解析核对scope/query/来源、四项权限提示、完整正文与记录/数值/微秒时间/归档/精确筛选/顺序/续页；根据原可信data.restricted.read再次检查记录，不用返回的权限提示提升权限。query文本搜索只核对原查询回显，保留PostgreSQL语义，不在MCP重算文本匹配。
+
+目录/当前/归档/历史/版本/比较六类工具共用每ApiGateway两笔容量；目录返回MCP_CONTEXT_DIRECTORY_BUSY或MCP_CONTEXT_DIRECTORY_TIMEOUT，旧详情与历史错误码保持。单调用30秒覆盖参数捕获、内层读取、完整解析及输出包装的前后检查；超时只停止外层等待，底层未结束继续占槽，不新增取消协议。执行前后与交付前复核原有效期，finally在底层结束后释放槽位；同步解析无法抢占，外层网络发送不在此预算内。
+
+返回保持MCP content中的单个text，其中JSON为完整原目录封套（含data/next_cursor/scope/query/context_permissions/source_refs），二次转义包装最多4 MiB+4096。失败无部分页、不切换视图或自动缩页；下一次显式调用保留身份、筛选、归档及limit，把原next_cursor传入cursor。换条件或旧v1游标需回首页；没有自动翻页、重试、写入或来源刷新，不承诺跨页一致快照或来源真实性。资源目录、模板及当前详情资源不改变，它们的独立容量保持。
+
+兼容变化：直接prepareMcpTool调用不再生成通用目录请求，缺少scope/query/完整记录的旧替身不接受；身份不完整/过期或只有admin角色的调用不再发现或执行该工具。工具名与参数字段、data数组/next_cursor保留，目录说明同步告知完整读取上限和续页约束。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布；Mock目录、真实MCP客户端/权限/容量/期限及旧调用兼容证据待补，R-003未完成、evidence为空。
+
 ## 2026-11-04 CLI上下文目录完整读取增量
 
 `context list`在网络main、直接callGateway及嵌入runWorkctx三个入口统一走既有context-history适配和SDK listContextItems。最多一个`--json`或`--json-file`，目录输入最多8 KiB，省略为{}；网络允许有界`--json -`，嵌入不读取stdin。文件沿既有稳定普通文件读取器、完整UTF-8解码；文件/stdin输入等待发生在SDK期限之前，stdin等待EOF不能被该期限中断。其他五个详情/历史/比较命令继续要求恰一4 KiB输入。
@@ -12,7 +26,7 @@
 
 未执行用法：`workctx context list --json-file QUERY.json --timeout-ms 30000`。QUERY.json可为`{"archived":false,"limit":20,"layer":"L2"}`，可附加原成对身份条件；第二页保留上述字段并附加上次返回next_cursor。旧不完整嵌入替身必须提供规范scope/query/context_permissions及完整目录记录，不能回退通用未校验结果。目录仍是实时视图，不证明跨页一致性、来源实时状态或写权限。
 
-仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/SDK/产品/API/数据库或发布。真实凭据/权限/期限/容量、原调用兼容及文件/stdin行为证据待补；MCP/Mock专用目录适配仍缺，R-003未完成、evidence为空。
+仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/SDK/产品/API/数据库或发布。真实凭据/权限/期限/容量、原调用兼容及文件/stdin行为证据待补；MCP专用适配见上方增量，Mock目录仍缺，R-003未完成、evidence为空。
 
 ## 2026-11-04 SDK上下文目录完整读取及按需分页增量
 
@@ -37,7 +51,7 @@ for await (const page of pages) {
 }
 ```
 
-兼容变化：listContextItems非法输入现在通过Promise拒绝；返回记录为明确类型，version/confidence为数值，时间为六位微秒，查询必须为普通JSON。旧仅data/source_refs的自定义transport或目录Mock需提供完整scope/query/context_permissions/记录且支持bounded-json/signal；当前Mock目录尚未接入，不回退到不完整响应。单页方法仍可省略actor/client相等约束，迭代则要求两者都有。CLI专用适配见上方增量，MCP/Mock适配和真实旧调用兼容证据后续处理。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布；R-003未完成、evidence为空。
+兼容变化：listContextItems非法输入现在通过Promise拒绝；返回记录为明确类型，version/confidence为数值，时间为六位微秒，查询必须为普通JSON。旧仅data/source_refs的自定义transport或目录Mock需提供完整scope/query/context_permissions/记录且支持bounded-json/signal；当前Mock目录尚未接入，不回退到不完整响应。单页方法仍可省略actor/client相等约束，迭代则要求两者都有。CLI/MCP专用适配见上方增量，Mock适配和真实旧调用兼容证据后续处理。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布；R-003未完成、evidence为空。
 
 ## 2026-11-04 上下文目录完整读取与页大小增量
 
@@ -53,7 +67,7 @@ Web在等待会话前捕获原查询，清除写键；fetch开始后的同一30�
 
 网页新增Items per page数字输入，仅1–100正整数，缺省或显式25在规范链接中省略。筛选提交清除旧位置和选择，下一页、原页重试、条目链接、归档视图切换、清除筛选及历史/比较返回保留页大小；搜索返回仍遵守原item/return_to限制。目录失败保留原参数重试、同筛选首屏，并在页大小大于1时提供Smaller page with these filters：明确减半（向下取整且最小1），清除旧cursor/选择、保留筛选和指定包。不会自行缩页或返回部分列表。
 
-SDK专用目录读取及按需分页、CLI完整单页读取见上方增量；MCP通用入口继续收到原data数组及新增元数据，尚未增加专用目录客户端解析/期限，Mock目录尚未接入。旧消费方的数字字符串、毫秒时间、v1游标及无scope/query封套需要迁移，独立Schema、SQL成本与兼容证据后续处理。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行产品/浏览器/API/SQL/数据库或发布；R-003未完成、evidence为空。
+SDK专用目录读取及按需分页、CLI与MCP完整单页读取见上方增量；Mock目录尚未接入。旧消费方的数字字符串、毫秒时间、v1游标及无scope/query封套需要迁移，独立Schema、SQL成本与兼容证据后续处理。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行产品/浏览器/API/SQL/数据库或发布；R-003未完成、evidence为空。
 
 ## 2026-11-04 当前与归档详情Mock增量
 

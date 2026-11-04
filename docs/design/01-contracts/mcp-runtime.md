@@ -1,5 +1,7 @@
 # MCP HTTP 运行时开发说明
 
+2026-11-04 上下文目录增补：list_context_items接入原上下文读取执行器，发现/prepare/调用要求可信未过期实际context.read与完整身份，admin不替代。目录严格8 KiB输入、完整2 MiB成功/16 KiB错误，HTTP状态/type/trace/无ETag和scope/query/来源/记录/归档/排序/续页/restricted核验；单文本包装限4 MiB+4096。六类上下文工具共用每Gateway两笔容量/30秒，目录新增MCP_CONTEXT_DIRECTORY_BUSY/TIMEOUT，底层未结束仍占槽，其他工具错误码保持。prepareMcpTool要求专用执行器，旧不完整替身需迁移；无自动分页/缩页/重试/写入，保留原筛选/视图/limit显式续页，旧游标重回首屏。资源及其他读取容量独立，详见[上下文目录MCP](context-item-runtime.md#2026-11-04-mcp上下文目录完整读取增量)。仅源码文档，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布。
+
 2026-11-04 当前上下文资源增补：work://project/{project_id}/context-item/{item_id}的原mcp.resource路由接入专用完整读取。处理器要求可信未过期实际context.read，4 KiB仅uri输入、原项目/单次解码ID，保留父项目可见性和内层策略/审计；完整2 MiB详情校验，原contents文本/URI/MIME与source_refs保留，含转义文本及重复来源的包装封套限6 MiB+8192，错误限16 KiB后映射固定提示。每router独立两笔资源容量和处理器30秒，超时底层结束才释放，使用MCP_CONTEXT_RESOURCE_BUSY/TIMEOUT；工具容量独立。内层只核对JSON内ETag，处理器前外层审计与网络发送不在期限内，目录/模板/其他资源保持。详见[上下文资源读取](context-item-runtime.md#2026-11-04-mcp当前上下文资源读取增量)。仅源码文档，运行与兼容证据待补，未编译、测试、执行或发布。
 
 2026-11-04 上下文详情增补：get_context_item/get_archived_context_item接入专用执行器，发现/prepare/调用统一要求可信未过期实际context.read与完整身份。4 KiB严格item_id输入、2 MiB完整详情/16 KiB错误、HTTP状态/type/trace与HTTP/正文ETag一致性、完整范围/版本/内容/来源诊断/确认及restricted核验。两详情与原历史/版本/比较五工具共用每Gateway两笔容量，每次30秒，超时到底层结束才释放；详情新增MCP_CONTEXT_ITEM_BUSY/TIMEOUT，历史错误码保留，详情转义结果限4 MiB+4096。prepare要求专用执行器，无回退/重试/写入；resources/read、Mock及包目录另行完善。详见[上下文MCP详情读取](context-item-runtime.md#2026-11-04-mcp当前与归档详情读取增量)。仅源码文档，运行与兼容证据待补，未编译、测试、执行或发布。
@@ -300,7 +302,7 @@ ContextItem 详情/列表、Proposal 可见性规则及本地工作项详情/列
 
 ContextItem 提供 `get_context_item` 和 `list_context_items`（`context.read`）；修改与归档需要 `expected_version`，所有条目写入都需要请求键及客户端身份。编辑不会保留旧的 confirmed 状态，分类不可通过编辑更改；`expires_at: null` 可清除到期时间。详情与 017 迁移依赖见 [ContextItem 开发说明](context-item-runtime.md)。
 
-`list_context_items` 支持 cursor/limit，默认 25、最大 100 条。工具返回的 WCP 信封外层提供字符串 next_cursor，继续调用时将它传入 cursor 并保留筛选；没有 next_cursor 即结束。排序保留优先级、更新时间倒序及 ID 升序。范围、restricted 权限或筛选变化后重新从第一页开始。分页为实时列表，并发编辑可能改变页位置，不能作为一致性导出。
+`list_context_items` 支持 cursor/limit，默认 25、最大 100 条。工具返回完整 WCP 信封，外层提供字符串 next_cursor，继续调用时将它传入 cursor 并保留原身份、筛选、归档视图和 limit；没有 next_cursor 即结束。排序保留优先级、微秒更新时间倒序及 ID 的 C 顺序。范围、restricted 权限、页大小或筛选变化，以及旧 v1 游标，都需重新从第一页开始。分页为实时列表，并发编辑可能改变页位置，不能作为一致性导出。
 
 归档管理：`list_context_items({ archived: true })` 只读取归档条目，`get_archived_context_item` 返回归档详情及 archived_at，均要求 context.read。`restore_context_item` 要求 context.write、客户端身份、expected_version 和请求键；恢复后保持 excluded 和原到期时间，不自动恢复事实确认或旧包有效性。切换归档视图需清除 cursor；普通 context-item 资源模板仍隐藏归档条目。恢复依赖 020 迁移文件，该文件尚未执行。
 

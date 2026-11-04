@@ -6,6 +6,8 @@
 
 ### 2026-11-04 开发补充（未编译、未发布、未测试）
 
+- P4/P0：MCP list_context_items并入原上下文读取执行器，发现/prepare/调用要求可信未过期实际context.read及完整身份，admin不替代，prepare必须用专用执行器。目录8 KiB严格输入、2 MiB完整成功/16 KiB错误、HTTP状态/type/trace/无ETag及原scope/query/来源/权限提示/完整记录/归档/排序/续页/restricted核验；六类工具共用每Gateway两笔容量与30秒期限，超时底层结束才释放，目录新增MCP_CONTEXT_DIRECTORY_BUSY/TIMEOUT。保留完整封套单text，包装4 MiB+4096，无自动翻页/缩页/重试/写入，资源容量独立；Mock目录及运行/真实客户端/权限/期限/旧调用兼容证据待补，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布。
+
 - P0/P4：CLI context list纳入原context-history专用读取，网络main/callGateway与嵌入runWorkctx统一SDK完整目录解析；输入8 KiB可省略、稳定文件或仅网络stdin，其他五类仍4 KiB必填，可选成对身份与默认30秒timeout-ms。目录2 MiB/Fetch错误16 KiB，原scope/query/trace/来源/权限提示/完整记录/归档/排序/续页核验；嵌入可信未过期实际context.read、完整身份、固定POST/正文/头及restricted检查，六类共用每router两笔容量，超时底层未结束仍占槽。不自动翻页/重试/缩页/保存，旧游标或换页大小重回首页。MCP/Mock目录适配与真实兼容/权限/期限/容量证据待补，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行CLI/SDK/产品/API/数据库或发布。
 
 - P0/P2：SDK listContextItems接入专用8 KiB查询/2 MiB完整封套及默认30秒timeout_ms/signal，固定原项目和可选actor/client，清除写条件；完整核对scope/query/trace/来源/权限提示/记录/归档/排序及续页，自定义transport结果同样复制解析，错误只给固定提示。新增contextItemPages，创建时固定完整身份/筛选/页大小，next才读取、逐页预算、yield前保存原续页；max_pages默认100/最多1000，到限仍有续页时下一next明确报CONTEXT_DIRECTORY_PAGE_LIMIT。无预取/重试/自动缩页/去重，不承诺跨页快照或权限凭据。CLI/MCP/Mock专用目录适配、旧自定义transport迁移和运行证据待补，R-003未完成、evidence为空。仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行SDK/产品/API/数据库或发布。
