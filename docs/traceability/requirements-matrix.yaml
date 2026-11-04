@@ -11,6 +11,23 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    sdk_sync_upload_mock_development_increment:
+      date: "2026-11-04"
+      status: "Source-only opt-in sync upload and original-event receipt Mock; full WCP coverage and R-001 remain incomplete."
+      artifacts:
+        - "packages/sdk/src/mock-sync-upload.ts"
+        - "packages/sdk/src/mock-sync.ts"
+        - "packages/sdk/src/index.ts"
+        - "docs/design/01-contracts/sync-upload-mock-runtime.md"
+        - "docs/design/01-contracts/sync-mock-runtime.md"
+      behavior: "Explicit bounded source snapshots and session access enable uploadEvents and getSyncEventReceipt. Sender-scoped batch keys compare complete original batches; event identities compare normalized content and preserve original deliveries. Client sequence gaps, source visibility and field-version conflicts produce complete receipts without applying source values. Validate new canonical events and complete bounded responses before synchronously committing ledger and shared download stream. Original receipt queries preserve history and never infer deliveries from seeded changes. New event visibility requires explicit scope/source/classification access; historical batch watermarks never roll back the live stream."
+      evidence: []
+      pending_evidence:
+        - "SDK upload/receipt/download/ack compatibility, raw batch versus normalized event replay, sender isolation and no duplicate effects"
+        - "Client cursor gaps, unchanged older values, source/field visibility, version conflict and historical original trace/time preservation"
+        - "Opt-in compatibility, canonical stream validation, hidden events, capacity/response limits, canceled or expired requests and detached returned data"
+      remaining_scope: "Conflict detail/resolution, dynamic source updates, persistent upload ledgers, true Policy/audit, network uncertainty and other public Mock routes."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, Mock/SDK/API/product/database execution or release. No schema or dependency change."
     sdk_proposal_mock_development_increment:
       date: "2026-11-04"
       status: "Source-only proposal lifecycle simulation; full WCP Mock coverage and R-001 remain incomplete."

@@ -2,7 +2,7 @@
 
 2026-11-04 开发增量。仅源码与文档；未编译、类型检查、测试、调用 Mock、生成数据文件或发布。P0-02 的全路由覆盖与真实兼容证据仍未完成。
 
-`@planemem/sdk` 导出 `MockSyncStore`、`MockSyncSeed`、`MockSyncSession`。既有 `MockWcpServer` 新增可选 `sync: { store, session }`；也可通过 `store.connect(session)` 取得仅含这四个路由的 `WcpTransport`。未配置同步时，既有项目创建 Mock 行为保持。
+`@planemem/sdk` 导出 `MockSyncStore`、`MockSyncSeed`、`MockSyncSession`。既有 `MockWcpServer` 新增可选 `sync: { store, session }`；也可通过 `store.connect(session)` 取得默认含下列四个路由的 `WcpTransport`。未配置同步时，既有项目创建 Mock 行为保持。新增可选 [同步上传与原事件回执](sync-upload-mock-runtime.md)：显式 upload_sources 与 upload_access 配置后开启另两个路由，追加事件进入同一下载/确认流；配置字段和容量见该契约。
 
 | SDK 方法 | 模拟路由 | 行为 |
 | --- | --- | --- |
@@ -15,9 +15,9 @@
 
 `MockSyncSeed` 必须包含 `scope`、`server_cursor`、`changes`，可含 `acknowledgements: [{identity,cursor}]`。范围只有 tenant/workspace/project 三项。事件按正的安全整数 `server_cursor` 严格升序，事件 ID 全流唯一，游标不能超过高水位；允许游标有间隙或空流具有非零高水位。每条事件复用完整同步页解析，保留全部 payload、来源及额外历史字段；只验证同步流契约，不代替各业务事件的 reducer 或真实性检查。
 
-构造时复制完整输入；不自动排序、修复、截断、生成事件或推断上传回执。最多 10000 条事件、16 MiB 种子 JSON、1000 个已记录消费者。种子中的确认身份须属于本范围、无重复且位点不超过高水位。确认零位点也算已记录；未记录的零位点与之区分。
+构造时复制完整输入；不自动排序、修复、截断、生成事件或推断上传回执。最多 10000 条事件、16 MiB 种子 JSON、1000 个已记录消费者。种子中的确认身份须属于本范围、无重复且位点不超过高水位。确认零位点也算已记录；未记录的零位点与之区分。启用上传后总流仍受10000条/16 MiB限制，原种子事件不产生上传回执。
 
-每个 `MockSyncSession` 必须显式提供完整 `identity`、规范 UTC 毫秒 `expires_at`、三个布尔值 `read_sync/write_sync/project_readable` 和 `visible_event_ids`。集合允许为空，但不能重复或包含种子中不存在的事件 ID，最多 10000 项；会话 JSON 最多 4 MiB。配置不从请求头猜测账号或权限，不把 `expected_identity` 当作授权凭据。过期时间允许已过去，以便开发拒绝分支；请求开始和返回前按当前时间检查。
+每个 `MockSyncSession` 必须显式提供完整 `identity`、规范 UTC 毫秒 `expires_at`、三个布尔值 `read_sync/write_sync/project_readable` 和 `visible_event_ids`。集合允许为空，但不能重复或包含当前流中不存在的事件 ID，最多 10000 项；会话 JSON 最多 4 MiB。配置不从请求头猜测账号或权限，不把 `expected_identity` 当作授权凭据。过期时间允许已过去，以便开发拒绝分支；请求开始和返回前按当前时间检查。
 
 调用 `connect` 或构造 `MockWcpServer` 时复制会话。更换身份或可见集合须显式创建新连接。相同 store 的连接共享事件和内存确认状态；不同 store 互不影响。确认键是原 tenant/workspace/project/actor/client 的 JSON 元组，避免字符串拼接碰撞；同一客户端名称下的不同账号仍相互隔离。修改种子、会话或返回结果不会修改 store。既有 `onRequest` 钩子仍在路由处理前收到调用，供开发者观察或显式改变请求，不构成隔离的安全边界。
 
@@ -31,7 +31,7 @@
 
 确认结果先完整构造、解析、复制并检查限制/取消/过期，再更新单个 Map 项；处理中没有异步让出。模拟调用失败前不写入确认。真实 Gateway 与网络仍可能出现已提交但响应未知，调用方不能将此 Mock 的顺序保证推广到网络调用。
 
-身份读取只要求配置写权限和未过期身份，不读取项目或确认记录；因此 `project_readable=false` 时仍可读身份。其余三个路由要求读权限与可读项目，分别以 `DENIED` 和 `NOT_FOUND` 拒绝。`write_sync=true` 只产生身份接口的权限提示，本轮没有上传模拟入口。
+身份读取只要求配置写权限和未过期身份，不读取项目或确认记录；因此 `project_readable=false` 时仍可读身份。其余三个消费路由要求读权限与可读项目，分别以 `DENIED` 和 `NOT_FOUND` 拒绝。未配置上传场景时，`write_sync=true` 只产生身份接口的权限提示；已配置时上传/原事件回执另要求明确 upload_access 与可读项目。
 
 ## 输入和输出限制
 
@@ -66,6 +66,6 @@ await client.acknowledgeSync(page.data.next_cursor, {
 
 ## 剩余范围与证据
 
-本轮不实现上传、冲突、原事件回执、会话等其余 Mock 路由，事件追加、真实鉴权/Policy/审计/数据库事务、权限变化主动清理、网络故障注入和持久恢复亦未模拟。显式可见集合只表达开发者配置的情景，不证明 Gateway 权限过滤正确。原项目 Mock 的历史行为及限制未扩展为真实项目创建服务。
+已补可选上传、原事件回执及同流事件追加，详见独立上传契约；冲突详情/解决、会话等其余 Mock 路由、真实鉴权/Policy/审计/数据库事务、权限变化主动清理、网络故障注入和持久恢复仍未模拟。显式可见集合只表达开发者配置的情景，不证明 Gateway 权限过滤正确。原项目 Mock 的历史行为及限制未扩展为真实项目创建服务。
 
 尚无运行证据：待后续获准执行时覆盖空流与隐藏尾部、跨账号/客户端确认隔离、缺省/显式游标、重复确认和回退、过期/权限拒绝、原身份头与正文不一致、重复参数、响应/节点/深度上限、取消、外部修改隔离与 SDK 分页衔接。未修改依赖、Gateway 协议或数据库结构。

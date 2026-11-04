@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [同步上传与原回执 Mock](docs/design/01-contracts/sync-upload-mock-runtime.md)：显式配置后可模拟上传、原批次重放、客户端序号和版本冲突，新增事件进入同一下载流；原事件回执保留历史身份、时间与结果，来源字段不被修改。仅源码文档，未编译、测试、执行 Mock 或发布。
+
 新增 [生成日志备份离线取用](docs/design/01-contracts/proposal-generation-journal-backup-access-runtime.md)：按状态分页查找原请求、完整审阅，并导出原成功记录或原领取结果文件；选择绑定备份摘要，保留原时间与内容，不访问日志或重新生成。仅源码文档，未编译、测试、运行或发布。
 
 新增 [恢复日志补缺合并](docs/design/01-contracts/proposal-generation-journal-merge-runtime.md)：预览并确认计划后，向已有恢复目录新增缺失的原日志；保留已有记录、来源和合并前快照，冲突拒绝，生成仍被隔离。失败保留已写文件并要求重新预览。仅源码文档，未编译、测试、运行或发布。

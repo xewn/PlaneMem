@@ -1,5 +1,6 @@
 import {
   ContractError,
+  isUlid,
   assertSyncCommandIdentity,
   assertSyncIdentityScope,
   parseSyncAcknowledgement,
@@ -16,12 +17,20 @@ import {
   SYNC_COMMAND_CONTEXT_BYTES,
   SYNC_CURSOR_REQUEST_BYTES,
   SYNC_CURSOR_RESPONSE_BYTES,
+  SYNC_UPLOAD_RESPONSE_BYTES,
+  SYNC_EVENT_RECEIPT_RESPONSE_BYTES,
   type SyncChange,
   type SyncChangesQuery,
   type SyncCommandIdentity,
   type SyncUploadScope,
 } from '@planemem/contracts';
+import { validateEvent } from '@planemem/events';
 import type { WcpRequest, WcpTransport } from './client.js';
+import {
+  MockSyncUploadLedger,
+  type MockSyncFieldSource,
+  type MockSyncUploadAccess,
+} from './mock-sync-upload.js';
 
 const MAX_CHANGES = 10_000;
 const MAX_CONSUMERS = 1_000;
@@ -33,14 +42,18 @@ const routes = new Map([
   ['/v1/sync/cursor', 'GET'],
   ['/v1/sync/ack', 'POST'],
   ['/v1/sync/commands/context', 'GET'],
+  ['/v1/events:batch', 'POST'],
+  ['/v1/sync/events/receipt', 'POST'],
 ]);
 
-/** A fixed development stream. Gaps may represent events absent from this scenario. */
+/** A seeded development stream. Gaps may represent events absent from this scenario. */
 export interface MockSyncSeed {
   scope: SyncUploadScope;
   server_cursor: number;
   changes: SyncChange[];
   acknowledgements?: { identity: SyncCommandIdentity; cursor: number }[];
+  /** Presence explicitly enables uploads; an empty array allows ordinary client events. */
+  upload_sources?: MockSyncFieldSource[];
 }
 
 /** Explicit simulated authority, never inferred from expected-identity request headers. */
@@ -51,6 +64,7 @@ export interface MockSyncSession {
   write_sync: boolean;
   project_readable: boolean;
   visible_event_ids: string[];
+  upload_access?: MockSyncUploadAccess;
 }
 
 const messages = {
@@ -128,17 +142,18 @@ export function isMockSyncPath(path: string) {
 /** Shared only when explicitly passed to multiple MockWcpServer instances; never persisted. */
 export class MockSyncStore {
   readonly #scope: SyncUploadScope;
-  readonly #serverCursor: number;
+  #serverCursor: number;
   readonly #changes: SyncChange[];
   readonly #eventIds: Set<string>;
   readonly #acknowledgements = new Map<string, number>();
+  readonly #uploads: MockSyncUploadLedger | undefined;
 
   constructor(seed: MockSyncSeed) {
     const saved = checked('MOCK_SYNC_CONFIGURATION_INVALID', configurationTrace, () => {
       const input = row(
         JSON.parse(syncJsonSnapshot(seed, SEED_BYTES)),
         ['scope', 'server_cursor', 'changes'],
-        ['acknowledgements'],
+        ['acknowledgements', 'upload_sources'],
       );
       const rawScope = row(input.scope, ['tenant_id', 'workspace_id', 'project_id']);
       const identity = parseSyncCommandIdentity({
@@ -198,12 +213,18 @@ export class MockSyncStore {
           acknowledgements.push({ identity, cursor });
         }
       }
-      return { scope, serverCursor, eventIds, changes, acknowledgements };
+      const uploads = Object.hasOwn(input, 'upload_sources')
+        ? new MockSyncUploadLedger(input.upload_sources)
+        : undefined;
+      if (uploads && ![scope.tenant_id, scope.workspace_id, scope.project_id].every(isUlid))
+        throw new TypeError();
+      return { scope, serverCursor, eventIds, changes, acknowledgements, uploads };
     });
     this.#scope = saved.scope;
     this.#serverCursor = saved.serverCursor;
     this.#changes = saved.changes;
     this.#eventIds = saved.eventIds;
+    this.#uploads = saved.uploads;
     for (const entry of saved.acknowledgements)
       this.#acknowledgements.set(consumerKey(entry.identity), entry.cursor);
   }
@@ -211,14 +232,18 @@ export class MockSyncStore {
   /** Capture a detached session; create another connection to model another account or permissions. */
   connect(session: MockSyncSession): WcpTransport {
     const saved = checked('MOCK_SYNC_CONFIGURATION_INVALID', configurationTrace, () => {
-      const input = row(JSON.parse(syncJsonSnapshot(session, SESSION_BYTES)), [
-        'identity',
-        'expires_at',
-        'read_sync',
-        'write_sync',
-        'project_readable',
-        'visible_event_ids',
-      ]);
+      const input = row(
+        JSON.parse(syncJsonSnapshot(session, SESSION_BYTES)),
+        [
+          'identity',
+          'expires_at',
+          'read_sync',
+          'write_sync',
+          'project_readable',
+          'visible_event_ids',
+        ],
+        ['upload_access'],
+      );
       const identity = parseSyncCommandIdentity(input.identity);
       assertSyncIdentityScope(identity, this.#scope);
       if (
@@ -239,6 +264,10 @@ export class MockSyncStore {
           throw new TypeError();
         visible.add(id);
       }
+      if (Object.hasOwn(input, 'upload_access') && !this.#uploads) throw new TypeError();
+      const upload_access = Object.hasOwn(input, 'upload_access')
+        ? this.#uploads!.access(input.upload_access)
+        : undefined;
       return {
         identity,
         expires_at: input.expires_at,
@@ -246,6 +275,7 @@ export class MockSyncStore {
         write_sync: input.write_sync,
         project_readable: input.project_readable,
         visible,
+        upload_access,
       };
     });
     return {
@@ -263,6 +293,7 @@ export class MockSyncStore {
       write_sync: boolean;
       project_readable: boolean;
       visible: Set<string>;
+      upload_access: MockSyncUploadAccess | undefined;
     },
   ): unknown {
     let trace = 'trace_unknown';
@@ -297,7 +328,12 @@ export class MockSyncStore {
       throw fail('INVALID_INPUT', trace);
     const isIdentity = path === '/v1/sync/commands/context';
     const isAck = path === '/v1/sync/ack';
-    if (!(isIdentity ? session.write_sync : session.read_sync)) throw fail('DENIED', trace);
+    const isUpload = path === '/v1/events:batch';
+    const isReceipt = path === '/v1/sync/events/receipt';
+    if ((isUpload || isReceipt) && !this.#uploads) throw fail('MOCK_ROUTE_NOT_FOUND', trace);
+    if (!(isIdentity || isUpload || isReceipt ? session.write_sync : session.read_sync))
+      throw fail('DENIED', trace);
+    if ((isUpload || isReceipt) && !session.upload_access) throw fail('DENIED', trace);
     for (const field of ['tenant_id', 'workspace_id', 'project_id'] as const)
       if (headers.get('x-' + field.replaceAll('_', '-')) !== session.identity[field])
         throw fail('DENIED', trace);
@@ -309,7 +345,18 @@ export class MockSyncStore {
         throw fail('DENIED', trace);
     if (isAck && headers.has('x-expected-actor-id') !== headers.has('x-expected-client-id'))
       throw fail('DENIED', trace);
-    if (['idempotency-key', 'if-match', 'x-expected-version'].some((key) => headers.has(key)))
+    if (
+      ['if-match', 'x-expected-version'].some((key) => headers.has(key)) ||
+      (!isUpload && headers.has('idempotency-key')) ||
+      ((isUpload || isReceipt) &&
+        [
+          'if-none-match',
+          'if-modified-since',
+          'if-unmodified-since',
+          'range',
+          'content-encoding',
+        ].some((key) => headers.has(key)))
+    )
       throw fail('INVALID_INPUT', trace);
     if (
       request.response_type !== undefined &&
@@ -326,8 +373,9 @@ export class MockSyncStore {
       request.path.includes('?') ? request.path.slice(request.path.indexOf('?') + 1) : '',
     );
     if (path !== '/v1/sync/changes' && parameters.size) throw fail('INVALID_INPUT', trace);
-    if (!isAck && request.body !== undefined) throw fail('INVALID_INPUT', trace);
-    // Every response is detached and bounded before the only state mutation below.
+    if (!isAck && !isUpload && !isReceipt && request.body !== undefined)
+      throw fail('INVALID_INPUT', trace);
+    // Every response is detached and bounded before its synchronous state mutations below.
     const finish = (value: unknown, cap: number) => {
       const result = checked(
         'GATEWAY_RESPONSE_INVALID',
@@ -358,6 +406,57 @@ export class MockSyncStore {
       return finish(result, SYNC_COMMAND_CONTEXT_BYTES);
     }
     if (!session.project_readable) throw fail('NOT_FOUND', trace);
+    if (isReceipt) {
+      return finish(
+        this.#uploads!.receipt(request.body, session.identity, session.upload_access!, trace),
+        SYNC_EVENT_RECEIPT_RESPONSE_BYTES,
+      );
+    }
+    if (isUpload) {
+      const batchKey = headers.get('idempotency-key');
+      if (batchKey === undefined) throw fail('INVALID_INPUT', trace);
+      const plan = this.#uploads!.plan(
+        request.body,
+        batchKey,
+        session.identity,
+        session.upload_access!,
+        trace,
+        this.#serverCursor,
+      );
+      if (this.#changes.length + plan.changes.length > MAX_CHANGES)
+        throw fail('RATE_LIMITED', trace);
+      const ids = new Set<string>();
+      let cursor = this.#serverCursor;
+      const additions = checked('SYNC_CHANGES_INVALID', trace, () =>
+        plan.changes.map((change) => {
+          if (!validateEvent(change).valid) throw new TypeError();
+          const result = parseSyncChangesEnvelope(
+            page(this.#scope, [change], plan.response.data.next_cursor, false, trace),
+            { cursor, limit: 1 },
+            this.#scope,
+            trace,
+          ).data.changes[0]!;
+          if (this.#eventIds.has(result.event_id) || ids.has(result.event_id))
+            throw new TypeError();
+          ids.add(result.event_id);
+          cursor = result.server_cursor;
+          return result;
+        }),
+      );
+      if (
+        new TextEncoder().encode(JSON.stringify([...this.#changes, ...additions])).byteLength >
+        SEED_BYTES
+      )
+        throw fail('RATE_LIMITED', trace);
+      const response = finish(plan.response, SYNC_UPLOAD_RESPONSE_BYTES);
+      // No await or caller callback between validation and committing the ledger and stream.
+      plan.commit();
+      this.#changes.push(...additions);
+      for (const change of additions) this.#eventIds.add(change.event_id);
+      // A replay returns its historical watermark; it cannot move the live stream backwards.
+      if (additions.length) this.#serverCursor = cursor;
+      return response;
+    }
     const key = consumerKey(session.identity);
     const savedCursor = this.#acknowledgements.get(key);
     if (path === '/v1/sync/cursor') {
@@ -441,7 +540,15 @@ export class MockSyncStore {
     const limit = query.limit ?? 100;
     const selected: SyncChange[] = [];
     for (const event of this.#changes) {
-      if (event.server_cursor > after && session.visible.has(event.event_id)) selected.push(event);
+      const explicitlyVisible = session.visible.has(event.event_id);
+      const visible =
+        this.#uploads?.visible(
+          event.event_id,
+          session.identity,
+          session.upload_access,
+          explicitlyVisible,
+        ) ?? explicitlyVisible;
+      if (event.server_cursor > after && visible) selected.push(event);
       if (selected.length > limit) break;
     }
     const more = selected.length > limit;

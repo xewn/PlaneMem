@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-04：`MockSyncStore` 新增可选上传与原事件回执模拟。seed 提供 `upload_sources`（允许空数组），session 提供 `upload_access` 后，可直接接现有 `uploadEvents/getSyncEventReceipt`；批次与事件按原账号/客户端隔离、同文重放，来源与版本决定完整接受/拒绝回执，新增 canonical 事件进入既有下载/确认流。导出 `MockSyncFieldSource/MockSyncUploadAccess` 类型，来源不被修改，未启用时保持原四路由。配置、来源字段、原历史查询、下载可见性和容量见 [同步上传 Mock](../../docs/design/01-contracts/sync-upload-mock-runtime.md)。仅源码文档人工审阅，未编译、类型检查、测试、执行 Mock 或发布。
+
 2026-11-04：`MockProposalStore` 已补 `getProposalCreateReceipt` 原创建回执只读适配，按原身份/键/完整规范草稿核对既有创建命令与当前可见建议。缺记录返回 not-observed，审核或过期后仍可返回历史 proposed/revision1；查询不重提、不更改模拟存储或游标。复用共享输入/响应限制，拒绝写条件，见 [Mock 原创建查询](../../docs/design/01-contracts/proposal-mock-runtime.md#请求和状态)。仅源码人工审阅，未编译、类型检查、测试、调用 Mock 或发布。
 
 2026-11-04：新增 `MockProposalStore` 与显式模拟会话，接入建议身份读取、创建、列表、详情、确认和拒绝。支持原账号/客户端隔离的命令回放、人工版本审核、来源变化、分类继承和直接修订筛选；可直接用现有五个建议 SDK 方法。见 [建议生命周期 Mock](../../docs/design/01-contracts/proposal-mock-runtime.md) 的接线示例与边界。只修改源码文档，未编译、测试、运行 Mock 或发布。
