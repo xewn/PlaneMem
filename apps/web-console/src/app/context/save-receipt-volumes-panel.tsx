@@ -45,6 +45,21 @@ export function PackReceiptVolumesPanel({
   onSelect: (backup: PackReceiptBackupCandidate, label: string) => void;
 }) {
   const [collection, setCollection] = useState<PackReceiptVolumesCandidate>();
+  const [downloadRequests, setDownloadRequests] = useState<{
+    setDigest: string;
+    files: number[];
+  }>();
+  // Position 0 is the manifest; positions 1..N are its declared volumes.
+  const requestedFiles = new Set(
+    collection && downloadRequests?.setDigest === collection.file.document_sha256
+      ? downloadRequests.files
+      : [],
+  );
+  const nextDownload = collection
+    ? Array.from({ length: collection.volumes.length + 1 }, (_, index) => index).find(
+        (index) => !requestedFiles.has(index),
+      )
+    : undefined;
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(
     'Prepare a complete set, or select its manifest and all volume files together.',
@@ -124,6 +139,7 @@ export function PackReceiptVolumesPanel({
           return;
         }
         setCollection(result);
+        setDownloadRequests(undefined);
         setMessage(
           'The manifest, every declared volume and every observation were checked. Save the manifest and all volumes separately. Nothing was restored.',
         );
@@ -145,6 +161,16 @@ export function PackReceiptVolumesPanel({
             `context-pack-history-volume-${index! + 1}-${volume.file.document_sha256}.json`,
           );
         else throw new TypeError();
+        const requested = kind === 'manifest' ? 0 : index! + 1;
+        setDownloadRequests((previous) => ({
+          setDigest: result.file.document_sha256,
+          files: Array.from(
+            new Set([
+              ...(previous?.setDigest === result.file.document_sha256 ? previous.files : []),
+              requested,
+            ]),
+          ),
+        }));
         setMessage(
           'A download was requested. This does not confirm that the browser saved it. Keep the manifest and every volume; partial sets cannot be imported here.',
         );
@@ -206,6 +232,37 @@ export function PackReceiptVolumesPanel({
             Checksums establish internal consistency, not server authenticity or current server
             state. Imported completeness is relative to the supplied manifest.
           </p>
+          <p role="status">
+            Downloads requested in this page: {requestedFiles.size} of{' '}
+            {collection.volumes.length + 1} files. Not yet requested:{' '}
+            {collection.volumes.length + 1 - requestedFiles.size}. These marks only record download
+            requests, not files saved. Check your downloads before leaving this page. Preparing or
+            importing a set starts a new checklist.
+          </p>
+          {nextDownload !== undefined ? (
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={busy || disabled}
+              onClick={() =>
+                void run(
+                  nextDownload === 0 ? 'manifest' : 'volume',
+                  undefined,
+                  nextDownload === 0 ? undefined : nextDownload - 1,
+                )
+              }
+            >
+              {nextDownload === 0
+                ? 'Download next file: manifest'
+                : `Download next file: volume ${nextDownload}`}
+            </button>
+          ) : (
+            <p>
+              Every file has a download request. This does not confirm a saved backup. You can
+              request any file again below if it is missing from your downloads.
+            </p>
+          )}
+          <p>Manifest: {requestedFiles.has(0) ? 'Download requested' : 'Not yet requested'}</p>
           <button
             type="button"
             className="secondary-button"
@@ -224,6 +281,7 @@ export function PackReceiptVolumesPanel({
               <tr>
                 <th scope="col">Volume</th>
                 <th scope="col">Observations</th>
+                <th scope="col">Download request</th>
                 <th scope="col">Actions</th>
               </tr>
             </thead>
@@ -238,6 +296,9 @@ export function PackReceiptVolumesPanel({
                     </details>
                   </td>
                   <td>{volume.file.document.entries.length}</td>
+                  <td>
+                    {requestedFiles.has(index + 1) ? 'Download requested' : 'Not yet requested'}
+                  </td>
                   <td>
                     <button
                       type="button"

@@ -954,6 +954,19 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_pack_receipt_volume_download_checklist_development_increment:
+      date: "2026-11-05"
+      status: "Source-only per-page volume download request checklist; R-003 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/context/save-receipt-volumes-panel.tsx"
+        - "docs/design/01-contracts/context-pack-runtime.md"
+      behavior: "Track manifest and volume download requests separately, bind marks to the captured set digest and count repeat requests once. Mark only after full set verification and download invocation returns. Each explicit next-file action requests at most one missing file, manifest first. Preserve individual re-downloads after all requests. Successful preparation/import resets the checklist, including the same digest; failure preserves prior collection and progress. Review/restore/removal never mark downloads. State exists only in component memory and never asserts disk persistence or complete recovery."
+      evidence: []
+      pending_evidence:
+        - "Manifest-first progression, out-of-order individual requests, duplicate requests, empty set and full ten-volume set"
+        - "Cancellation/failure preservation, same/different set replacement, unmount and page exclusion; no browser or runtime verification performed"
+      remaining_gaps:
+        - "Browser download requests cannot establish saved files; runtime evidence remains absent"
     context_pack_receipt_volumes_development_increment:
       date: "2026-11-05"
       status: "Source-only browser history volume sets with complete import and explicit per-volume recovery; R-003 remains incomplete."
