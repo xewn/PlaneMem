@@ -11,6 +11,26 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    canonical_cloudevent_catalog_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only structured CloudEvents AsyncAPI catalog and paired-type schema anchors; P0-01 and R-001 remain incomplete."
+      artifacts:
+        - "packages/events/asyncapi/canonical-cloudevents.json"
+        - "packages/events/schemas/canonical-cloudevent-v1-catalog.json"
+        - "packages/events/package.json"
+        - "packages/events/asyncapi/README.md"
+        - "docs/design/01-contracts/canonical-cloudevents.md"
+      behavior: "38 AsyncAPI 3.0.0 structured message components explicitly use application/cloudevents+json and reference same-name 2020-12 anchors. Root oneOf selects those anchors; each reuses the complete CloudEvent profile and pairs outer com.planemem.Type.v1 with the matching inner canonical-event type anchor, retaining deletion/restoration constraints. Both resources have explicit package subpaths and a documented seven-schema local dependency graph."
+      boundaries: "Original naked CanonicalEvent AsyncAPI and runtime conversion stay unchanged. No servers/channels/operations, transport or consumer wiring, runtime validation/generation, new payload model, authentication or delivery guarantee. Scalar equality, expected source, complete bounds and business semantics still require the adapter/consumer."
+      evidence: []
+      remaining_scope: "Real channels/transport/consumer wiring, complete business payload/WCP/MCP schemas, SDK/Mock machine-contract consumption, breaking-change CI and runtime/tool/release evidence."
+      pending_evidence:
+        - "All 38 runtime types, paired anchors, root union branches, message names and reference fragments remain aligned"
+        - "Mismatched outer and inner types, wrong selected message, missing profile fields and deletion/restoration structures"
+        - "Local resource IDs/anchors, optional 2020-12 Multi Format Schema tool support and media-type compatibility"
+        - "Remaining adapter equality/source/calendar/byte/depth rules and production consumer authorization/delivery"
+      execution: "Source/docs manual review plus formatting/Git text checks only; no build, typecheck, tests, validators, generators, event/product/API/database execution or release."
     canonical_cloudevent_development_increment:
       date: "2026-11-05"
       todo: "P0-01"

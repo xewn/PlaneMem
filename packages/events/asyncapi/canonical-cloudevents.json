@@ -1,0 +1,345 @@
+{
+  "asyncapi": "3.0.0",
+  "id": "urn:planemem:canonical-cloudevent-catalog:v1",
+  "info": {
+    "title": "PlaneMem Canonical CloudEvent v1 message catalog",
+    "version": "0.1.0",
+    "description": "Source-only reusable structured JSON message components for all 38 default v1 CanonicalEvent types. Each payload is the entire CloudEvents 1.0 profile object, including the complete CanonicalEvent in data. Typed anchors pair outer type with data.event_type. This catalog declares no server, channel, operation, protocol binding or delivery guarantee. Validation, generation and runtime compatibility have not been executed."
+  },
+  "defaultContentType": "application/cloudevents+json",
+  "x-todo": "P0-01",
+  "x-scope": "reusable-structured-message-catalog-only",
+  "x-canonical-schema-version": 1,
+  "x-cloudevents-specversion": "1.0",
+  "x-schema-loading": "Load ../schemas/canonical-cloudevent-v1-catalog.json and all six sibling event schemas locally with their $id mappings. Do not fetch planemem.local. A consumer must explicitly support JSON Schema 2020-12 in Multi Format Schema payloads; this format is not assumed to be every AsyncAPI tool's default.",
+  "x-runtime-boundaries": [
+    "Use toCanonicalCloudEvent and fromCanonicalCloudEvent with an explicit source; schema acceptance does not authenticate a producer or grant scope/sensitivity permissions.",
+    "The complete structured payload uses application/cloudevents+json; its data is a complete CanonicalEvent with datacontenttype application/json, not an encoded JSON string.",
+    "The source/id pair is the CloudEvents duplicate identity. This catalog does not add persistence or change the legacy event_id-only ledger.",
+    "Both outer type and data.event_type are constrained together for each message; id/time/subject equality, expected source, URI/calendar/scalar-string validity and complete 1 MiB/depth/node bounds still require the adapter.",
+    "The closed profile does not accept arbitrary extensions, data_base64, binary/batch formats or custom registry types/versions.",
+    "Most business payloads remain open objects. Deletion/restoration structures are retained; business effects, restore arithmetic, ordering/retries and broker acknowledgement remain consumer responsibilities."
+  ],
+  "components": {
+    "messages": {
+      "ProjectCreated": {
+        "name": "ProjectCreated",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#ProjectCreated" }
+        }
+      },
+      "ProjectUpdated": {
+        "name": "ProjectUpdated",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#ProjectUpdated" }
+        }
+      },
+      "WorkItemCreated": {
+        "name": "WorkItemCreated",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#WorkItemCreated" }
+        }
+      },
+      "WorkItemUpdated": {
+        "name": "WorkItemUpdated",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#WorkItemUpdated" }
+        }
+      },
+      "WorkItemDeleted": {
+        "name": "WorkItemDeleted",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#WorkItemDeleted" }
+        }
+      },
+      "WorkItemRestored": {
+        "name": "WorkItemRestored",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#WorkItemRestored" }
+        }
+      },
+      "WorkItemStatusProposed": {
+        "name": "WorkItemStatusProposed",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": {
+            "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#WorkItemStatusProposed"
+          }
+        }
+      },
+      "WorkItemStatusConfirmed": {
+        "name": "WorkItemStatusConfirmed",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": {
+            "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#WorkItemStatusConfirmed"
+          }
+        }
+      },
+      "PlanCreated": {
+        "name": "PlanCreated",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#PlanCreated" }
+        }
+      },
+      "PlanRevisionCreated": {
+        "name": "PlanRevisionCreated",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": {
+            "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#PlanRevisionCreated"
+          }
+        }
+      },
+      "DecisionRecorded": {
+        "name": "DecisionRecorded",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#DecisionRecorded" }
+        }
+      },
+      "RiskRaised": {
+        "name": "RiskRaised",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#RiskRaised" }
+        }
+      },
+      "RiskResolved": {
+        "name": "RiskResolved",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#RiskResolved" }
+        }
+      },
+      "ArtifactCreated": {
+        "name": "ArtifactCreated",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#ArtifactCreated" }
+        }
+      },
+      "ArtifactUpdated": {
+        "name": "ArtifactUpdated",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#ArtifactUpdated" }
+        }
+      },
+      "SessionStarted": {
+        "name": "SessionStarted",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#SessionStarted" }
+        }
+      },
+      "SessionEnded": {
+        "name": "SessionEnded",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#SessionEnded" }
+        }
+      },
+      "AgentRunStarted": {
+        "name": "AgentRunStarted",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#AgentRunStarted" }
+        }
+      },
+      "AgentRunCompleted": {
+        "name": "AgentRunCompleted",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#AgentRunCompleted" }
+        }
+      },
+      "ToolCallStarted": {
+        "name": "ToolCallStarted",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#ToolCallStarted" }
+        }
+      },
+      "ToolCallCompleted": {
+        "name": "ToolCallCompleted",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#ToolCallCompleted" }
+        }
+      },
+      "CheckpointCreated": {
+        "name": "CheckpointCreated",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#CheckpointCreated" }
+        }
+      },
+      "HandoffCreated": {
+        "name": "HandoffCreated",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#HandoffCreated" }
+        }
+      },
+      "HandoffAccepted": {
+        "name": "HandoffAccepted",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#HandoffAccepted" }
+        }
+      },
+      "ContextPackIssued": {
+        "name": "ContextPackIssued",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#ContextPackIssued" }
+        }
+      },
+      "ContextItemCreated": {
+        "name": "ContextItemCreated",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#ContextItemCreated" }
+        }
+      },
+      "ContextItemUpdated": {
+        "name": "ContextItemUpdated",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#ContextItemUpdated" }
+        }
+      },
+      "ContextItemArchived": {
+        "name": "ContextItemArchived",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": {
+            "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#ContextItemArchived"
+          }
+        }
+      },
+      "ContextItemRestored": {
+        "name": "ContextItemRestored",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": {
+            "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#ContextItemRestored"
+          }
+        }
+      },
+      "ContextItemConfirmed": {
+        "name": "ContextItemConfirmed",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": {
+            "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#ContextItemConfirmed"
+          }
+        }
+      },
+      "ConflictDetected": {
+        "name": "ConflictDetected",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#ConflictDetected" }
+        }
+      },
+      "ConflictResolved": {
+        "name": "ConflictResolved",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#ConflictResolved" }
+        }
+      },
+      "ClientConnected": {
+        "name": "ClientConnected",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#ClientConnected" }
+        }
+      },
+      "ClientEventRecorded": {
+        "name": "ClientEventRecorded",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": {
+            "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#ClientEventRecorded"
+          }
+        }
+      },
+      "ClientDisconnected": {
+        "name": "ClientDisconnected",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#ClientDisconnected" }
+        }
+      },
+      "PolicyDenied": {
+        "name": "PolicyDenied",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#PolicyDenied" }
+        }
+      },
+      "ApprovalRequested": {
+        "name": "ApprovalRequested",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#ApprovalRequested" }
+        }
+      },
+      "ApprovalCompleted": {
+        "name": "ApprovalCompleted",
+        "contentType": "application/cloudevents+json",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-cloudevent-v1-catalog.json#ApprovalCompleted" }
+        }
+      }
+    }
+  }
+}

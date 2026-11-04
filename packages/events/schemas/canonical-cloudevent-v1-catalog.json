@@ -1,0 +1,505 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/canonical-cloudevent-v1-catalog.json",
+  "$anchor": "RegisteredCanonicalCloudEventV1",
+  "title": "PlaneMem registered Canonical CloudEvent v1 catalog",
+  "description": "All 38 default v1 events in the closed CloudEvents 1.0 structured JSON profile. The root selects exactly one typed anchor; each anchor pairs outer type with the matching data.event_type and preserves the complete profile and deletion/restoration structures. Load all seven event schema resources locally. Cross-field id/time/subject equality, expected source, business semantics, permissions and complete byte/depth limits still require the adapter. No runtime compatibility or transport is implied.",
+  "oneOf": [
+    { "$ref": "#ProjectCreated" },
+    { "$ref": "#ProjectUpdated" },
+    { "$ref": "#WorkItemCreated" },
+    { "$ref": "#WorkItemUpdated" },
+    { "$ref": "#WorkItemDeleted" },
+    { "$ref": "#WorkItemRestored" },
+    { "$ref": "#WorkItemStatusProposed" },
+    { "$ref": "#WorkItemStatusConfirmed" },
+    { "$ref": "#PlanCreated" },
+    { "$ref": "#PlanRevisionCreated" },
+    { "$ref": "#DecisionRecorded" },
+    { "$ref": "#RiskRaised" },
+    { "$ref": "#RiskResolved" },
+    { "$ref": "#ArtifactCreated" },
+    { "$ref": "#ArtifactUpdated" },
+    { "$ref": "#SessionStarted" },
+    { "$ref": "#SessionEnded" },
+    { "$ref": "#AgentRunStarted" },
+    { "$ref": "#AgentRunCompleted" },
+    { "$ref": "#ToolCallStarted" },
+    { "$ref": "#ToolCallCompleted" },
+    { "$ref": "#CheckpointCreated" },
+    { "$ref": "#HandoffCreated" },
+    { "$ref": "#HandoffAccepted" },
+    { "$ref": "#ContextPackIssued" },
+    { "$ref": "#ContextItemCreated" },
+    { "$ref": "#ContextItemUpdated" },
+    { "$ref": "#ContextItemArchived" },
+    { "$ref": "#ContextItemRestored" },
+    { "$ref": "#ContextItemConfirmed" },
+    { "$ref": "#ConflictDetected" },
+    { "$ref": "#ConflictResolved" },
+    { "$ref": "#ClientConnected" },
+    { "$ref": "#ClientEventRecorded" },
+    { "$ref": "#ClientDisconnected" },
+    { "$ref": "#PolicyDenied" },
+    { "$ref": "#ApprovalRequested" },
+    { "$ref": "#ApprovalCompleted" }
+  ],
+  "$defs": {
+    "ProjectCreated": {
+      "$anchor": "ProjectCreated",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.ProjectCreated.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#ProjectCreated" }
+          }
+        }
+      ]
+    },
+    "ProjectUpdated": {
+      "$anchor": "ProjectUpdated",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.ProjectUpdated.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#ProjectUpdated" }
+          }
+        }
+      ]
+    },
+    "WorkItemCreated": {
+      "$anchor": "WorkItemCreated",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.WorkItemCreated.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#WorkItemCreated" }
+          }
+        }
+      ]
+    },
+    "WorkItemUpdated": {
+      "$anchor": "WorkItemUpdated",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.WorkItemUpdated.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#WorkItemUpdated" }
+          }
+        }
+      ]
+    },
+    "WorkItemDeleted": {
+      "$anchor": "WorkItemDeleted",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.WorkItemDeleted.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#WorkItemDeleted" }
+          }
+        }
+      ]
+    },
+    "WorkItemRestored": {
+      "$anchor": "WorkItemRestored",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.WorkItemRestored.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#WorkItemRestored" }
+          }
+        }
+      ]
+    },
+    "WorkItemStatusProposed": {
+      "$anchor": "WorkItemStatusProposed",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.WorkItemStatusProposed.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#WorkItemStatusProposed" }
+          }
+        }
+      ]
+    },
+    "WorkItemStatusConfirmed": {
+      "$anchor": "WorkItemStatusConfirmed",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.WorkItemStatusConfirmed.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#WorkItemStatusConfirmed" }
+          }
+        }
+      ]
+    },
+    "PlanCreated": {
+      "$anchor": "PlanCreated",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.PlanCreated.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#PlanCreated" }
+          }
+        }
+      ]
+    },
+    "PlanRevisionCreated": {
+      "$anchor": "PlanRevisionCreated",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.PlanRevisionCreated.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#PlanRevisionCreated" }
+          }
+        }
+      ]
+    },
+    "DecisionRecorded": {
+      "$anchor": "DecisionRecorded",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.DecisionRecorded.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#DecisionRecorded" }
+          }
+        }
+      ]
+    },
+    "RiskRaised": {
+      "$anchor": "RiskRaised",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.RiskRaised.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#RiskRaised" }
+          }
+        }
+      ]
+    },
+    "RiskResolved": {
+      "$anchor": "RiskResolved",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.RiskResolved.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#RiskResolved" }
+          }
+        }
+      ]
+    },
+    "ArtifactCreated": {
+      "$anchor": "ArtifactCreated",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.ArtifactCreated.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#ArtifactCreated" }
+          }
+        }
+      ]
+    },
+    "ArtifactUpdated": {
+      "$anchor": "ArtifactUpdated",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.ArtifactUpdated.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#ArtifactUpdated" }
+          }
+        }
+      ]
+    },
+    "SessionStarted": {
+      "$anchor": "SessionStarted",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.SessionStarted.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#SessionStarted" }
+          }
+        }
+      ]
+    },
+    "SessionEnded": {
+      "$anchor": "SessionEnded",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.SessionEnded.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#SessionEnded" }
+          }
+        }
+      ]
+    },
+    "AgentRunStarted": {
+      "$anchor": "AgentRunStarted",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.AgentRunStarted.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#AgentRunStarted" }
+          }
+        }
+      ]
+    },
+    "AgentRunCompleted": {
+      "$anchor": "AgentRunCompleted",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.AgentRunCompleted.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#AgentRunCompleted" }
+          }
+        }
+      ]
+    },
+    "ToolCallStarted": {
+      "$anchor": "ToolCallStarted",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.ToolCallStarted.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#ToolCallStarted" }
+          }
+        }
+      ]
+    },
+    "ToolCallCompleted": {
+      "$anchor": "ToolCallCompleted",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.ToolCallCompleted.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#ToolCallCompleted" }
+          }
+        }
+      ]
+    },
+    "CheckpointCreated": {
+      "$anchor": "CheckpointCreated",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.CheckpointCreated.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#CheckpointCreated" }
+          }
+        }
+      ]
+    },
+    "HandoffCreated": {
+      "$anchor": "HandoffCreated",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.HandoffCreated.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#HandoffCreated" }
+          }
+        }
+      ]
+    },
+    "HandoffAccepted": {
+      "$anchor": "HandoffAccepted",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.HandoffAccepted.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#HandoffAccepted" }
+          }
+        }
+      ]
+    },
+    "ContextPackIssued": {
+      "$anchor": "ContextPackIssued",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.ContextPackIssued.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#ContextPackIssued" }
+          }
+        }
+      ]
+    },
+    "ContextItemCreated": {
+      "$anchor": "ContextItemCreated",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.ContextItemCreated.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#ContextItemCreated" }
+          }
+        }
+      ]
+    },
+    "ContextItemUpdated": {
+      "$anchor": "ContextItemUpdated",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.ContextItemUpdated.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#ContextItemUpdated" }
+          }
+        }
+      ]
+    },
+    "ContextItemArchived": {
+      "$anchor": "ContextItemArchived",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.ContextItemArchived.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#ContextItemArchived" }
+          }
+        }
+      ]
+    },
+    "ContextItemRestored": {
+      "$anchor": "ContextItemRestored",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.ContextItemRestored.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#ContextItemRestored" }
+          }
+        }
+      ]
+    },
+    "ContextItemConfirmed": {
+      "$anchor": "ContextItemConfirmed",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.ContextItemConfirmed.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#ContextItemConfirmed" }
+          }
+        }
+      ]
+    },
+    "ConflictDetected": {
+      "$anchor": "ConflictDetected",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.ConflictDetected.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#ConflictDetected" }
+          }
+        }
+      ]
+    },
+    "ConflictResolved": {
+      "$anchor": "ConflictResolved",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.ConflictResolved.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#ConflictResolved" }
+          }
+        }
+      ]
+    },
+    "ClientConnected": {
+      "$anchor": "ClientConnected",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.ClientConnected.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#ClientConnected" }
+          }
+        }
+      ]
+    },
+    "ClientEventRecorded": {
+      "$anchor": "ClientEventRecorded",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.ClientEventRecorded.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#ClientEventRecorded" }
+          }
+        }
+      ]
+    },
+    "ClientDisconnected": {
+      "$anchor": "ClientDisconnected",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.ClientDisconnected.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#ClientDisconnected" }
+          }
+        }
+      ]
+    },
+    "PolicyDenied": {
+      "$anchor": "PolicyDenied",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.PolicyDenied.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#PolicyDenied" }
+          }
+        }
+      ]
+    },
+    "ApprovalRequested": {
+      "$anchor": "ApprovalRequested",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.ApprovalRequested.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#ApprovalRequested" }
+          }
+        }
+      ]
+    },
+    "ApprovalCompleted": {
+      "$anchor": "ApprovalCompleted",
+      "allOf": [
+        { "$ref": "canonical-cloudevent.json" },
+        {
+          "properties": {
+            "type": { "const": "com.planemem.ApprovalCompleted.v1" },
+            "data": { "$ref": "canonical-v1-catalog.json#ApprovalCompleted" }
+          }
+        }
+      ]
+    }
+  }
+}

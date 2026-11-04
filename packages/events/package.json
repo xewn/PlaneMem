@@ -14,7 +14,9 @@
     "./schemas/work-item-restored.json": "./schemas/work-item-restored.json",
     "./schemas/canonical-v1-catalog.json": "./schemas/canonical-v1-catalog.json",
     "./schemas/canonical-cloudevent.json": "./schemas/canonical-cloudevent.json",
-    "./asyncapi/canonical-events.json": "./asyncapi/canonical-events.json"
+    "./schemas/canonical-cloudevent-v1-catalog.json": "./schemas/canonical-cloudevent-v1-catalog.json",
+    "./asyncapi/canonical-events.json": "./asyncapi/canonical-events.json",
+    "./asyncapi/canonical-cloudevents.json": "./asyncapi/canonical-cloudevents.json"
   },
   "type": "module",
   "name": "@planemem/events",

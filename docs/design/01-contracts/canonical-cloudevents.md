@@ -2,6 +2,8 @@
 
 2026-11-05，TODO **P0-01** / T0.4 / R-001 的源码增量。新增 `@planemem/events` 导出的 `toCanonicalCloudEvent(event, {source})`、`fromCanonicalCloudEvent(value, {source})`，以及 `schemas/canonical-cloudevent.json` 包子路径。两个函数同步接收对象、返回独立普通 JSON 副本；不会发送消息或调用原事件处理器。
 
+同日补入 `schemas/canonical-cloudevent-v1-catalog.json` 与 `asyncapi/canonical-cloudevents.json` 两个包子路径，提供默认 38 类结构化消息的逐类锚点与 AsyncAPI 组件。根 Schema 联合及每个组件均绑定外层 type 与内层事件类型；完整消息、媒体类型和本地引用详见 [双格式事件目录](../../../packages/events/asyncapi/README.md)。源码仍未执行工具验证或发布。
+
 这是 PlaneMem 对 CloudEvents 1.0 structured JSON 的封闭配置，只覆盖默认 38 类 schema_version=1 的 CanonicalEvent。依据固定版本 [CloudEvents 1.0.2](https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/spec.md) 和 [JSON Event Format](https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/formats/json-format.md)，外层 `specversion` 为 `1.0`；1.0.2 是规范修订号，内层 schema_version 和 AsyncAPI 3.0.0 也是不同版本维度。本轮未运行标准兼容验证。
 
 ## 字段映射
@@ -17,7 +19,7 @@
 | time | 原 occurred_at，不重写时间或小数精度 |
 | data | 完整原 CanonicalEvent，包含 payload、scope、source_refs、trace 和 sensitivity |
 
-`CANONICAL_CLOUDEVENT_CONTENT_TYPE` 为 `application/cloudevents+json`，指完整外层的序列化媒体类型，不能用来标记原裸 CanonicalEvent。`datacontenttype` 只描述 data；data 是 JSON 对象，不是二次编码的字符串。原 [AsyncAPI 消息目录](../../../packages/events/asyncapi/README.md) 仍描述裸 CanonicalEvent，不能直接把目录的消息改用这个媒体类型。
+`CANONICAL_CLOUDEVENT_CONTENT_TYPE` 为 `application/cloudevents+json`，指完整外层的序列化媒体类型，不能用来标记原裸 CanonicalEvent。`datacontenttype` 只描述 data；data 是 JSON 对象，不是二次编码的字符串。`asyncapi/canonical-events.json` 仍描述裸 CanonicalEvent，新 `asyncapi/canonical-cloudevents.json` 则引用完整结构化消息的逐类 Schema；不能只改原消息的媒体类型。
 
 正向转换要求 source 是 1–2048 个 ASCII 字符的绝对 URI：有 scheme 和非空后续内容，仅接受 URI 字符、完整百分号转义，拒绝空白/控制字符，并可由 `URL` 构造器解析。返回值保留原 source，不使用解析器的规范化结果；例如 `urn:planemem:producer:plane`。相对 URI 虽可用于通用 CloudEvents，本配置不接收。反向转换必须提供预期 source，以原字符串精确比较；大小写、百分号形式或尾斜线不同不会合并。source 不从不可信事件自行选取，也不通过网络访问。
 
@@ -41,6 +43,38 @@
 
 新增 JSON Schema 2020-12 根锚点 `CanonicalCloudEventV1`；本地加载此文件和原五份事件 Schema，保留相邻布局及资源 `$id`。`data` 复用 canonical-v1-catalog，继续限定默认类型、完整封套和删除/恢复结构；新增外层必填/封闭字段、source 词法、时间和 ID 长度。相等关系、source 的 URL 解析、业务语义、时间日历、完整字节/节点/深度和 Unicode 标量要求由转换器执行，不能只用 Schema 宣称同等验证。日期与 URI 的 format 断言还取决于消费工具配置。
 
-不增加传输通道、HTTP binary 模式、批量格式、认证、持久总线、投递 ACK、自动重试或权限行为；现有 Webhook、同步、SDK 和消费者未自动切换到此格式。AsyncAPI 的结构化消息引用与真实传输接线、完整 payload、完整 WCP/MCP schema、SDK/Mock 消费机器契约和破坏性差异 CI 仍须按 TODO 后续完成。
+逐类目录再增加一份 Schema，共七份。其根锚点 `RegisteredCanonicalCloudEventV1` 通过 oneOf 引用全部同名事件锚点，每项同时复用基础 CloudEvent profile 和内层同名裸事件锚点，用 const 固定外层 type。例如 WorkItemDeleted 必须在两层都指向删除事件，不能在外层声称删除而内层携带更新。该配对规则已进入机器契约；id/time/subject 和预期来源的相等关系仍需要转换器，不因配对 Schema 生效而免除。
+
+下例用于展示 `#WorkItemDeleted` 的完整结构；没有实际投递或执行它，也不证明所述来源及删除事实存在。
+
+```json
+{
+  "specversion": "1.0",
+  "id": "01J000000000000000000000001",
+  "source": "urn:planemem:producer:plane",
+  "type": "com.planemem.WorkItemDeleted.v1",
+  "datacontenttype": "application/json",
+  "subject": "work_item/01J000000000000000000000005",
+  "time": "2026-11-05T00:00:00.123456Z",
+  "data": {
+    "event_id": "01J000000000000000000000001",
+    "event_type": "WorkItemDeleted",
+    "schema_version": 1,
+    "tenant_id": "01J000000000000000000000002",
+    "workspace_id": "01J000000000000000000000003",
+    "project_id": "01J000000000000000000000004",
+    "aggregate_type": "work_item",
+    "aggregate_id": "01J000000000000000000000005",
+    "aggregate_version": 2,
+    "occurred_at": "2026-11-05T00:00:00.123456Z",
+    "trace_id": "trace_cloud_example",
+    "source_refs": [{ "type": "plane", "id": "issue_01" }],
+    "sensitivity": "internal",
+    "payload": { "external_id": "issue_01" }
+  }
+}
+```
+
+不增加传输通道、HTTP binary 模式、批量格式、认证、持久总线、投递 ACK、自动重试或权限行为；现有 Webhook、同步、SDK 和消费者未自动切换到此格式。结构化消息的 AsyncAPI 引用已补源码，真实传输/消费者接线、完整 payload、完整 WCP/MCP schema、SDK/Mock 消费机器契约和破坏性差异 CI 仍须按 TODO 后续完成。
 
 本次只做源码文档人工审阅、指定格式整理和 Git 文本检查；未编译、类型检查、测试、运行校验器/生成器/事件/产品/API/数据库或发布。P0-01/R-001 保持未完成，evidence 为空。
