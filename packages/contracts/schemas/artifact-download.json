@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/artifact-download.json",
+  "title": "Pinned artifact download descriptor v1",
+  "description": "Root is the decoded four-field download query, not an HTTP response. Successful HTTP downloads carry raw octets with binding headers, not JSON or base64.",
+  "$comment": "Source-only contract for parseArtifactDownloadQuery and related metadata/header bindings. Load this resource and artifact-comparison.json locally under their full IDs. The in-process ArtifactDownloadEnvelope contains Uint8Array and is intentionally not represented as a JSON envelope. Runtime remains authoritative for numeric HTTP decoding, exact query/scope/version/hash/size/header equality, canonical percent encoding, dates, integrity, authorization and durable audit. No validator, generator or download execution was performed.",
+  "$ref": "#ArtifactDownloadQuery",
+  "$defs": {
+    "downloadSize": { "type": "integer", "minimum": 0, "maximum": 1073741824 },
+    "versionText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 16,
+      "pattern": "^[1-9][0-9]{0,15}$",
+      "$comment": "Canonical positive decimal, without signs, leading zeros, exponent or fraction. Runtime additionally requires a safe integer and equality to the selected saved version."
+    },
+    "sizeText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 10,
+      "pattern": "^(0|[1-9][0-9]{0,9})$",
+      "$comment": "Canonical decimal byte length. Runtime limits its numeric value to 1073741824 and any lower configured maximum, and binds it to selected metadata and actual content. Lexical shape alone does not enforce the numeric maximum."
+    },
+    "encodedScope": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?:[A-Za-z0-9_.!~*'()-]|%[0-9A-F]{2})+$",
+      "$comment": "Successful response scope headers contain encodeURIComponent(original metadata scope), not raw scope strings. Pattern is lexical only; consumers compare exact encoding of expected scope and reject malformed/noncanonical UTF-8 encodings. Request scope headers remain raw authorized identifiers."
+    },
+    "attachmentDisposition": {
+      "type": "string",
+      "pattern": "^attachment; filename=\"[0-9A-HJKMNP-TV-Z]{26}-v[1-9][0-9]{0,15}\\.bin\"$",
+      "$comment": "Server-generated ASCII filename uses selected artifact ID/version, never the stored name or storage address. Cross-field equality remains a producer/runtime responsibility."
+    },
+    "ArtifactDownloadQuery": {
+      "$anchor": "ArtifactDownloadQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id", "version", "sha256", "size"],
+      "properties": {
+        "artifact_id": { "$ref": "artifact-comparison.json#/$defs/artifactId" },
+        "version": { "$ref": "artifact-comparison.json#/$defs/positiveInteger" },
+        "sha256": { "$ref": "artifact-comparison.json#/$defs/sha256" },
+        "size": { "$ref": "#/$defs/downloadSize" }
+      },
+      "$comment": "HTTP puts artifact_id/version in path segments and sha256/size in required expected-descriptor headers. No URL query fields or latest/current alias. The shared query parser does not impose a whole-object byte budget. A protocol-valid size can still exceed the configured Gateway or persistent-reader limit."
+    },
+    "ArtifactDownloadMetadata": {
+      "$anchor": "ArtifactDownloadMetadata",
+      "$ref": "artifact-comparison.json#ArtifactComparisonMetadata",
+      "properties": { "size": { "$ref": "#/$defs/downloadSize" } },
+      "$comment": "Public saved metadata used for preflight/internal binding, not the binary HTTP response body. Runtime matches all four descriptor fields and original project scope, then verifies actual copied bytes independently. Metadata validity alone does not prove content integrity or release audit."
+    }
+  }
+}

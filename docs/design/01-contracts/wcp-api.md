@@ -1,5 +1,7 @@
 # WCP API 契约 v1
 
+2026-11-05，TODO P0-01：[指定版本文件下载 OpenAPI](../../../packages/contracts/openapi/README.md#指定版本文件下载)新增现有 GET /v1/artifacts/{artifact_id}/versions/{version}/content 的机器描述。新 Schema 根仅描述解码请求及绑定元数据/HTTP标量，成功明确为原始octet-stream；完整列出范围/版本/hash/长度/放行审计头、读取前后导出检查、两笔容量和仅发送阶段60秒期限。放行/发送结束不等于客户端收存。未改运行实现，未运行下载、校验器、生成器、编译、测试、数据库或发布；P0-01/R-001未完成、evidence为空。
+
 2026-11-05，TODO P0-01：[文件创建与追加上传 OpenAPI](../../../packages/contracts/openapi/README.md#文件创建与追加上传)新增已有 POST /v1/artifacts 和 POST /v1/artifacts/{artifact_id}/versions 的机器描述。复用原身份/命令，独立完整成功 Schema 严格配对首次保存与重放状态，描述原键/版本、文件部件、两笔容量/120 秒仅正文预算和错误。未改运行逻辑或执行上传、校验器、生成器、编译、测试、数据库及发布；P0-01/R-001 未完成、evidence 为空。
 
 2026-11-05，TODO P0-01：[文件上传身份与原请求回执 OpenAPI](../../../packages/contracts/openapi/README.md#文件上传身份与原请求回执)新增现有 GET upload-context 与只读 POST receipt 的机器描述，完整 Schema 覆盖原五项身份、创建/追加命令、recorded/not-observed 和当前能力提示。原回执只读且不等待并发上传完成，未观察到不是原上传失败证明；客户端限额不冒称服务端保证。未改运行行为，未执行校验器、生成器、编译、测试、接口、数据库或发布；P0-01/R-001 未完成、evidence 为空。

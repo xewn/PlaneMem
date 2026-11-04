@@ -1,6 +1,24 @@
 # OpenAPI 源码契约
 
-这里的文档描述已有HTTP实现，尚未经过OpenAPI校验器、生成器、编译、类型检查、测试或运行验证。文档中的版本不表示已发布或部署；目前覆盖五个保存包接口、四个文件元数据读取接口、两个上传身份/原回执接口及两个文件上传接口，共十三个接口，尚不是完整WCP接口目录。
+这里的文档描述已有HTTP实现，尚未经过OpenAPI校验器、生成器、编译、类型检查、测试或运行验证。文档中的版本不表示已发布或部署；目前覆盖五个保存包接口及九个文件接口（目录/详情四路、身份/回执两路、上传两路、下载一路），共十四个接口，尚不是完整WCP接口目录。
+
+## 指定版本文件下载
+
+2026-11-05，TODO **P0-01** / T0.3 / T4.1 / R-001：新增 `artifact-download.json`（OpenAPI 3.1.0），包子路径 `@planemem/contracts/openapi/artifact-download.json`，覆盖已有 `GET /v1/artifacts/{artifact_id}/versions/{version}/content`。本地加载该 OpenAPI 及 schemas 下的 artifact-download、artifact-comparison 两份完整资源，保留相对目录并注册 `$id`。新 Schema 根为**解码后的四字段请求**，不是成功响应；内部含 Uint8Array 的封套及 SDK 顶层 content 不冒充 HTTP JSON。
+
+请求必须指定明确的 Artifact/正安全版本，并带 `X-Expected-Artifact-SHA256`（裸小写64位十六进制）及 `X-Expected-Artifact-Size`（规范十进制、0–1 GiB）。原路径 version 必须已经是规范数字，不接受 percent 编码的数字别名；Artifact ID 单次解码。无 URL 查询/current 别名；按源码列出正文 framing、Range、缓存和写条件的拒绝名单，不宣称拒绝所有其他头。缺 Content-Length 或字面值 0 才符合无正文条件。
+
+两次可见性/导出检查均覆盖当前记录和选定历史记录，要求可信客户端、有效会话及实际 artifact.read，管理员不替代能力。public 无额外导出能力要求；internal/confidential 需 data.export 或 data.restricted.export；restricted 同时需 data.restricted.read 和 data.restricted.export。本地与配置的 OPA export.artifact 检查均须通过；OPA 不可用按拒绝处理，拒绝审计失败则报审计不可用。读取后还核对快照未变、完整字节长度与 SHA-256，再等待持久放行审计。放行审计之后到发送完成之间没有持续授权/到期复查保证。
+
+200 返回原始 `application/octet-stream`，空文件仍为200/长度0；按 OpenAPI3.1 原始二进制表示省略正文 Schema，不设 JSON/base64/字符长度。响应完整描述精确长度、生成的安全下载文件名、no-store/close/nosniff/CSP/accept-ranges:none、协议版本、请求trace、选定 Artifact/版本/hash 和放行 audit_id/stage。响应三项范围头是 `encodeURIComponent(保存范围)`，请求范围头仍是原值；无 ETag、Content-Range，服务器不设置 Content-Encoding，既有客户端也容许 identity。客户端必须按原目标独立比较头、长度并核验实际摘要。
+
+release 只表示内容通过核验并获准释放，不能证明客户端接收或保存。每次明确下载均产生独立放行记录，不按 trace 幂等；失败或取消后记录仍可能存在。发送阶段 finish 只表示交给传输；开始发送后发生关闭/错误/超时会断开连接，不追加 JSON 或新的408/504，部分字节不能作为成功。
+
+服务器下载容量为两笔，与实际 MCP 内容适配器共用，上传容量独立；从准备一直占用至 HTTP 发送结算。可配置内容限额0–1GiB，默认64MiB或继承存储设置；协议描述超过1GiB为400，合法描述超过较低配置上限为413。60秒仅是发送观察期限，未涵盖认证、元数据/对象、策略或强制审计；SDK180秒及传输自身预算、客户端错误16KiB另行说明。完整正文在内存核验/复制，未提供流式hash、Range或断点续传。
+
+错误描述覆盖400/401/403/404/409/413/429/500/503；区分持久对象hash错误的400与Gateway核对错误的500，描述不符的409、两槽满的503，以及缺reader/强制审计、持久存储和可选观察不同retryable。可选失败/传输观察不能替代强制放行审计；on_audit回调失败也可能在已有持久release之后阻止本次发送。所有接口状态均记录现有实现，没有执行下载或改变行为。
+
+源码依据为 Gateway server/http/artifact-downloads/artifact-download-audit、contracts/artifact-download、auth分类规则、PolicyService及SDK下载器。仅人工源码文档审阅/指定格式/Git文本检查，未编译、类型检查、测试、运行校验器/生成器/下载/API/数据库或发布；P0-01/R-001 未完成、evidence 为空。
 
 ## 文件创建与追加上传
 

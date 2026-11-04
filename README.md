@@ -1,6 +1,8 @@
 # PlaneMem
 
-按 TODO **P0-01** 补充[文件创建与追加上传 OpenAPI](packages/contracts/openapi/README.md#文件创建与追加上传)及完整成功 Schema，覆盖两路现有 multipart 上传、原请求/版本约束和首次保存/历史重放差异。现有 OpenAPI 源码覆盖十三个接口；完整 WCP/MCP、SDK/Mock 机器契约接线及验收证据仍待补。未编译、测试、执行上传、校验器/生成器或发布。
+按 TODO **P0-01** 补充[指定版本文件下载 OpenAPI](packages/contracts/openapi/README.md#指定版本文件下载)，覆盖固定版本/hash/长度、二进制响应和放行审计头，区分授权放行与客户端收存。现有OpenAPI源码覆盖十四个接口，包括九个文件接口；完整WCP/MCP、SDK/Mock机器契约接线与验收证据仍待补。未编译、测试、执行下载、校验器/生成器或发布。
+
+按 TODO **P0-01** 补充[文件创建与追加上传 OpenAPI](packages/contracts/openapi/README.md#文件创建与追加上传)及完整成功 Schema，覆盖两路现有 multipart 上传、原请求/版本约束和首次保存/历史重放差异。该轮使 OpenAPI 源码覆盖十三个接口；完整 WCP/MCP、SDK/Mock 机器契约接线及验收证据仍待补。未编译、测试、执行上传、校验器/生成器或发布。
 
 按 TODO **P0-01** 补充[文件上传身份与原请求回执 OpenAPI](packages/contracts/openapi/README.md#文件上传身份与原请求回执)，提供现有两路读取及完整原命令/身份/回执 Schema。明确已记录与未观察到、原身份/参数绑定和当前能力提示；该轮使 OpenAPI 源码覆盖十一个接口。完整 WCP/MCP、SDK/Mock 机器契约接线和验收证据仍待补；未运行校验器、生成器、编译、测试、接口或发布。
 

@@ -1,0 +1,291 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem pinned artifact content download",
+    "version": "0.1.0",
+    "description": "Source-only contract for the existing version-pinned binary GET. Load this document plus artifact-download.json and artifact-comparison.json schema resources locally with complete IDs. HTTP success is raw octets, not the internal Uint8Array envelope, SDK result or MCP wrapper. No validator, generator, build, test, download/API/database execution or release was performed."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Relative Gateway base; configure the intended deployment origin and base path."
+    }
+  ],
+  "security": [{ "GatewayBearer": [] }],
+  "tags": [{ "name": "Artifact download" }],
+  "x-todo": "P0-01",
+  "x-runtime-boundaries": {
+    "default-content-bytes": 67108864,
+    "maximum-configurable-content-bytes": 1073741824,
+    "concurrent-downloads-per-server": 2,
+    "http-send-observation-timeout-ms": 60000,
+    "client-error-bytes": 16384,
+    "description": "Download limit allows zero and defaults to 64 MiB or configured artifact-storage maximum. The decoded descriptor itself is capped at 1 GiB. The shared download gate (also used by the actual MCP content adapter) reserves two slots through preparation and HTTP send settlement; upload capacity is separate. The 60-second timer starts at HTTP sending/transport observation, not authentication, metadata/object reads, Policy or mandatory audit. There is no single server whole-operation deadline. Content is read and copied in memory before sending. Optional failure/transport observations use a separate bounded observer and cannot replace durable pre-release audit. Dedicated SDK default 180-second local budget and transport budgets are separate."
+  },
+  "paths": {
+    "/v1/artifacts/{artifact_id}/versions/{version}/content": {
+      "get": {
+        "operationId": "downloadArtifactVersionContent",
+        "tags": ["Artifact download"],
+        "summary": "Download exactly one saved version with expected hash and length",
+        "description": "Require verified Bearer scope, nonblank authenticated client, unexpired session, actual artifact.read and router Policy approval. The persistent reader checks parent/current/historical visibility. Gateway additionally checks both current and selected historical classifications with canRead/canExport plus local and configured OPA export.artifact decisions before and after the object read. Public data needs no extra export capability; internal/confidential require data.export or data.restricted.export; restricted requires data.restricted.read and data.restricted.export. Administrator role does not bypass these explicit capability/classification checks. Exact selected metadata/hash/size must match the requested descriptor. Validate returned metadata/trace/length, copy and hash bytes, then re-read visibility/metadata and export authorization before persisting the required release audit. No bytes are sent unless a valid durable release audit ID is confirmed. Permission checks describe the last authorization observation, not continuous authorization throughout audit and network sending; there is no further policy/expiry recheck after the release audit. Missing history never falls back to current content.",
+        "x-wcp-operation": "artifact.download",
+        "x-policy-action": "artifact.read",
+        "x-additional-policy-action": "export.artifact",
+        "x-decoded-query-schema": {
+          "$ref": "../schemas/artifact-download.json#ArtifactDownloadQuery"
+        },
+        "x-http-input": "No URL query fields. Reject Range, If-Range, If-Match, If-Match-Version, If-None-Match, If-Modified-Since, If-Unmodified-Since, Idempotency-Key and Transfer-Encoding. Content-Length must be absent or exactly 0. No body read, range/conditional cache support, 206 or 304. This is the implemented rejection list, not a claim that every other header or duplicate raw header name is rejected. artifact_id is decoded once; the raw version path segment must already be canonical decimal.",
+        "parameters": [
+          {
+            "name": "artifact_id",
+            "in": "path",
+            "required": true,
+            "description": "Exact selected artifact ULID, decoded once and bound to the authorized project.",
+            "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/artifactId" }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "description": "Explicit positive safe version; raw decimal path segment without signs, leading zeros, exponent or percent-encoded numeric aliases. No latest/current alias.",
+            "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/positiveInteger" }
+          },
+          {
+            "name": "X-Expected-Artifact-SHA256",
+            "in": "header",
+            "required": true,
+            "description": "Exact saved descriptor, 64 lowercase hexadecimal digits without a prefix. This pins expected content; it is not an authorization credential or ETag.",
+            "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/sha256" }
+          },
+          {
+            "name": "X-Expected-Artifact-Size",
+            "in": "header",
+            "required": true,
+            "description": "Canonical decimal bytes from the selected saved version, including literal 0 for empty content. Numeric maximum 1073741824; a valid descriptor above the configured lower download limit returns 413. A descriptor above 1 GiB is invalid input (400).",
+            "schema": { "$ref": "../schemas/artifact-download.json#/$defs/sizeText" }
+          },
+          {
+            "name": "x-tenant-id",
+            "in": "header",
+            "required": true,
+            "description": "Raw authorized tenant identifier. Request headers are not percent-encoded response scope headers.",
+            "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/scopeIdentifier" }
+          },
+          {
+            "name": "x-workspace-id",
+            "in": "header",
+            "required": true,
+            "description": "Raw authorized workspace identifier.",
+            "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/scopeIdentifier" }
+          },
+          {
+            "name": "x-project-id",
+            "in": "header",
+            "required": true,
+            "description": "Raw authorized project identifier; persistent reads also check parent visibility.",
+            "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/scopeIdentifier" }
+          },
+          {
+            "name": "traceparent",
+            "in": "header",
+            "description": "Nonempty opaque value takes precedence over x-trace-id. Generic selection does not parse W3C Trace Context or enforce agreement between both trace headers.",
+            "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/trace" }
+          },
+          {
+            "name": "x-trace-id",
+            "in": "header",
+            "description": "Used when traceparent is absent/empty; otherwise generated as trace_http_<ULID>. Supply a value compatible with shared metadata/consumer trace rules.",
+            "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/trace" }
+          },
+          {
+            "name": "x-expected-actor-id",
+            "in": "header",
+            "description": "Independently optional exact comparison to the verified actor, never identity input. Dedicated SDK supplies both expected actor and client.",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "x-expected-client-id",
+            "in": "header",
+            "description": "Independently optional exact comparison to the verified authenticated client. HTTP does not impose the SDK's paired-identity requirement.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Exact unencoded file bytes, with application/octet-stream regardless of saved MIME/name. Empty files return 200 with Content-Length 0. All binding headers describe the selected saved artifact and this request, while the internal metadata keeps its original save trace. There is no JSON success body, base64, ETag, Content-Range or server Content-Encoding. The client must check exact headers, length and SHA-256 against independently selected metadata. A persisted release audit precedes sending; server finish means handoff to the transport and does not prove client receipt or file storage. Once headers are sent, send error/close/60-second timeout destroys the connection instead of returning a new JSON error or HTTP 408/504; a partial transport body must never be accepted as success.",
+            "headers": {
+              "Content-Length": {
+                "description": "Exact selected byte length, including 0. Compare both declared and actually received bytes to the pinned descriptor.",
+                "required": true,
+                "schema": { "$ref": "../schemas/artifact-download.json#/$defs/sizeText" }
+              },
+              "Content-Disposition": {
+                "description": "Fixed safe ASCII download name based on artifact ID/version, not the stored name or storage key.",
+                "required": true,
+                "schema": {
+                  "$ref": "../schemas/artifact-download.json#/$defs/attachmentDisposition"
+                }
+              },
+              "cache-control": { "$ref": "#/components/headers/NoStore" },
+              "connection": { "$ref": "#/components/headers/Close" },
+              "x-trace-id": { "$ref": "#/components/headers/Trace" },
+              "x-content-type-options": {
+                "required": true,
+                "schema": { "type": "string", "const": "nosniff" }
+              },
+              "content-security-policy": {
+                "required": true,
+                "schema": { "type": "string", "const": "default-src 'none'; sandbox" }
+              },
+              "accept-ranges": {
+                "description": "Partial content requests are unsupported and rejected.",
+                "required": true,
+                "schema": { "type": "string", "const": "none" }
+              },
+              "x-wcp-schema-version": {
+                "required": true,
+                "schema": { "type": "string", "const": "1" }
+              },
+              "x-tenant-id": {
+                "description": "Exactly encodeURIComponent(selected metadata.tenant_id); compare the encoded string, never silently substitute request or ambient scope.",
+                "required": true,
+                "schema": { "$ref": "../schemas/artifact-download.json#/$defs/encodedScope" }
+              },
+              "x-workspace-id": {
+                "description": "Exactly encodeURIComponent(selected metadata.workspace_id).",
+                "required": true,
+                "schema": { "$ref": "../schemas/artifact-download.json#/$defs/encodedScope" }
+              },
+              "x-project-id": {
+                "description": "Exactly encodeURIComponent(selected metadata.project_id).",
+                "required": true,
+                "schema": { "$ref": "../schemas/artifact-download.json#/$defs/encodedScope" }
+              },
+              "x-artifact-id": {
+                "description": "Exact selected artifact ID.",
+                "required": true,
+                "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/artifactId" }
+              },
+              "x-artifact-version": {
+                "description": "Exact canonical selected version, not current version when newer.",
+                "required": true,
+                "schema": { "$ref": "../schemas/artifact-download.json#/$defs/versionText" }
+              },
+              "x-artifact-sha256": {
+                "description": "Exact selected SHA-256 after server content verification; client still hashes received bytes independently.",
+                "required": true,
+                "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/sha256" }
+              },
+              "x-artifact-audit-id": {
+                "description": "ULID of the durable pre-send release record for this attempt. Distinct explicit downloads create distinct release records; trace is not an idempotency key. No client-delivery confirmation is implied.",
+                "required": true,
+                "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/artifactId" }
+              },
+              "x-artifact-audit-stage": {
+                "description": "Content checked and release authorized/audited, not receipt or save confirmation.",
+                "required": true,
+                "schema": { "type": "string", "const": "release" }
+              }
+            },
+            "content": { "application/octet-stream": {} },
+            "x-forbidden-response-headers": ["etag", "content-range"],
+            "x-content-encoding": "Server emits no Content-Encoding; the existing client header parser also tolerates literal identity. Compressed responses are rejected by dedicated clients."
+          },
+          "400": {
+            "$ref": "#/components/responses/Error",
+            "description": "INVALID_INPUT for bad/missing descriptor, invalid version/encoding, unsupported query, body framing or forbidden headers, including size above the protocol 1 GiB maximum. ARTIFACT_HASH_MISMATCH from the persistent object's own integrity check currently maps to 400; a failed Gateway content/metadata comparison instead maps to ARTIFACT_STORED_INVALID (500). These sources set retryable=false."
+          },
+          "401": {
+            "$ref": "#/components/responses/Error",
+            "description": "UNAUTHENTICATED for missing/rejected Bearer token; retryable=false. No WWW-Authenticate guarantee."
+          },
+          "403": {
+            "$ref": "#/components/responses/Error",
+            "description": "DENIED or ARTIFACT_ACCESS_DENIED for scope/expected identity/capability/client/session denial, or current/historical read/export classification and Policy/OPA denial. OPA unavailability is also treated as denial, not a direct 503. retryable=false. Dedicated classified/export denial requires durable denied audit; if that audit fails, return 503 instead."
+          },
+          "404": {
+            "$ref": "#/components/responses/Error",
+            "description": "ARTIFACT_NOT_FOUND for missing/deleted/invisible parent/current artifact, or ARTIFACT_VERSION_NOT_FOUND for absent selected history; retryable=false. No fallback to current or another version."
+          },
+          "409": {
+            "$ref": "#/components/responses/Error",
+            "description": "ARTIFACT_DESCRIPTOR_CONFLICT for selected metadata differing from requested scope/ID/version/hash/size, or ARTIFACT_LEGACY_UNVERIFIED for absent trustworthy metadata snapshots. retryable=false. No bytes are released."
+          },
+          "413": {
+            "$ref": "#/components/responses/Error",
+            "description": "ARTIFACT_TOO_LARGE for a protocol-valid descriptor exceeding the configured Gateway limit or the persistent object reader limit; retryable=false."
+          },
+          "429": {
+            "$ref": "#/components/responses/Error",
+            "description": "RATE_LIMITED from general actor/path rate limiting; retryable=true. The separate two-slot download gate instead reports 503. Retry-After is not promised."
+          },
+          "500": {
+            "$ref": "#/components/responses/Error",
+            "description": "ARTIFACT_STORED_INVALID for corrupt/inconsistent metadata, changed saved snapshot, invalid reader envelope/trace, wrong bytes/hash at Gateway validation or outer delivery preparation failure (retryable=false). Unexpected command-boundary INTERNAL_ERROR defaults retryable=true. A release record may already exist if failure occurs after the release audit; no fabricated success is returned."
+          },
+          "503": {
+            "$ref": "#/components/responses/Error",
+            "description": "ARTIFACT_DOWNLOAD_BUSY (retryable=true); missing content reader or mandatory audit sink, or failed release/denied audit (false); persistent ARTIFACT_STORAGE_UNAVAILABLE/ARTIFACT_OBJECT_UNAVAILABLE (true), ARTIFACT_OBJECT_MISSING (false), or outer WORKBENCH_AUTH_UNAVAILABLE/general decision AUDIT_PERSISTENCE_UNAVAILABLE (true). Mandatory audit cannot fall back to memory-only callbacks. No partial content is released before successful preparation."
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "GatewayBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Verified token and nonblank authenticated client; actual artifact.read is required even for admin. Initial router action is artifact.read. Additional current and historical export.artifact Policy/OPA decisions and explicit classification read/export checks run before and after object reading. Request headers supply constraints, not authority."
+      }
+    },
+    "headers": {
+      "NoStore": {
+        "description": "Application success/error cache policy.",
+        "required": true,
+        "schema": { "type": "string", "const": "private, no-store" }
+      },
+      "Close": {
+        "description": "Application closes this HTTP connection, including early download failures. Pre-application proxy/parser responses are outside this contract.",
+        "required": true,
+        "schema": { "type": "string", "const": "close" }
+      },
+      "Trace": {
+        "description": "Selected request trace set by the download path before authentication; binary success repeats it and JSON errors carry the same outer trace. This is not the original metadata save trace.",
+        "required": true,
+        "schema": { "type": "string", "minLength": 1 }
+      }
+    },
+    "schemas": {
+      "ErrorEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message", "details", "trace_id", "retryable"],
+        "properties": {
+          "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]+$" },
+          "message": { "type": "string", "minLength": 1 },
+          "details": { "type": "object", "additionalProperties": true },
+          "trace_id": { "type": "string", "minLength": 1 },
+          "retryable": { "type": "boolean" }
+        },
+        "description": "Existing JSON error before content headers are sent. No uniform server 16 KiB error cap is asserted; dedicated clients impose that bound. Error retryability is not delivery evidence, and local client timeout/cancellation can follow a durable release."
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Application JSON error before binary sending. No successful file bytes are mixed into it. After headers start, transport failure closes the connection instead of returning this envelope. Proxy or HTTP-parser failures before the application can use a different representation.",
+        "headers": {
+          "cache-control": { "$ref": "#/components/headers/NoStore" },
+          "connection": { "$ref": "#/components/headers/Close" },
+          "x-trace-id": { "$ref": "#/components/headers/Trace" }
+        },
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } }
+        }
+      }
+    }
+  }
+}

@@ -1,5 +1,9 @@
 # 独立契约结构定义
 
+2026-11-05，TODO **P0-01**：新增 `artifact-download.json`，包子路径 `@planemem/contracts/schemas/artifact-download.json`。根/`ArtifactDownloadQuery` 是已解码的 artifact_id/version/sha256/size 四字段请求，size 为0–1GiB；`ArtifactDownloadMetadata` 复用 comparison 公开元数据并约束下载协议大小。二者均不表示 HTTP 成功正文，内部 Uint8Array 封套也未伪造为 JSON Schema。响应为原始 octet-stream，详见[指定版本文件下载 OpenAPI](../openapi/README.md#指定版本文件下载)。
+
+本地加载本资源和 artifact-comparison 完整资源并注册 `$id`；versionText/sizeText/encodedScope/attachmentDisposition 供 HTTP 参数与响应头复用。文本模式只限制词法形状，数字上限、精确原范围/版本/摘要/长度及 encodeURIComponent 相等、日历、实际字节摘要、导出权限和持久审计继续由运行代码核对；Schema 不证明正文交付或文件保存。未修改运行处理器/原 Schema，未执行校验器、生成器、编译、测试或下载。
+
 2026-11-05，TODO **P0-01**：新增 `artifact-upload.json`，包子路径 `@planemem/contracts/schemas/artifact-upload.json`。根为完整 `ArtifactUploadEnvelope`，数据封闭且严格配对 false/verified-at-save 与 true/not-checked，status 只为 recorded；单个版本来源、无外层 revision/etag。`ArtifactCreateOriginal`/`ArtifactPutOriginal` 在原 ReceiptQuery 上约束命令操作，`ArtifactCreateUploadEnvelope`/`ArtifactPutUploadEnvelope` 区分各路完整成功。新资源本地依赖 artifact-original 与 artifact-comparison 两份完整资源，需一起注册 `$id`。
 
 Schema 不描述 multipart 字节本身，不给原始文件套字符串/base64 或字符长度限制；部件编码、文件 disposition、120 秒正文读取与两笔上传容量见[文件创建与追加上传 OpenAPI](../openapi/README.md#文件创建与追加上传)。原身份/命令/版本加一/hash/size/来源/双 trace 绑定仍由共享解析器完成；首次保存不证明未来仍可下载，历史重放不重新读取对象。客户端完整成功 4 MiB 不冒称 Gateway 统一限额。未修改原 Schema 或运行代码，未执行校验器/生成器、编译或测试。

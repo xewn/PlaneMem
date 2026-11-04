@@ -1,5 +1,7 @@
 # 公共契约目录
 
+- [指定版本文件下载 OpenAPI](../../../packages/contracts/openapi/README.md#指定版本文件下载)：TODO P0-01，固定版本/摘要/长度请求、原始字节响应及放行审计头；只记录现有实现，没有运行下载或校验。
+
 - [文件创建与追加上传 OpenAPI](../../../packages/contracts/openapi/README.md#文件创建与追加上传)：TODO P0-01，两路 multipart 上传与完整首次/重放成功 Schema；只记录现有实现，未执行上传或运行校验。
 
 - [文件上传身份与原请求回执 OpenAPI](../../../packages/contracts/openapi/README.md#文件上传身份与原请求回执)：TODO P0-01，两路已有读取及完整原命令/回执/身份 Schema；仅源码，完整机器契约接线与运行证据仍缺。

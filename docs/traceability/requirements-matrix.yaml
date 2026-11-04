@@ -11,6 +11,26 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    artifact_download_openapi_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only pinned binary download OpenAPI and decoded descriptor schema; P0-01 and R-001 remain incomplete."
+      artifacts:
+        - "packages/contracts/openapi/artifact-download.json"
+        - "packages/contracts/schemas/artifact-download.json"
+        - "packages/contracts/package.json"
+        - "packages/contracts/openapi/README.md"
+        - "packages/contracts/schemas/README.md"
+      behavior: "Existing fixed-version content GET with required hash/size, complete binary binding/protection headers, percent-encoded response scope, current/historical read/export checks before and after object verification, mandatory durable release audit and transport outcomes. Query schema is not the raw binary response or internal Uint8Array envelope."
+      boundaries: "No runtime or existing schema changes. Two-slot gate covers preparation/send and is shared with the actual MCP content adapter; 60 seconds covers send observation only. Release and server finish do not confirm client receipt/save. No continuous permission check after release audit, whole-operation server deadline, streaming/range support or fake JSON/base64 file body."
+      evidence: []
+      remaining_scope: "Remaining WCP/MCP machine contracts, SDK/Mock machine-contract consumption, breaking-change CI and tool/runtime/release evidence."
+      pending_evidence:
+        - "Exact path/descriptor/header and encoded-scope bindings, empty content and independent received-byte integrity"
+        - "Current/historical classification and Policy/OPA checks, post-read recheck, required release/denied audit"
+        - "Protocol versus configured size errors, caller cancellation, transport failure after headers and existing release records"
+        - "Shared gate/observer lifetime, send-only timer, complete error mappings and local OpenAPI/schema reference compatibility"
+      execution: "Manual source/docs review plus explicit formatting/Git text checks only; no build, typecheck, tests, validators, generators, download/product/API/database execution or release."
     artifact_upload_openapi_development_increment:
       date: "2026-11-05"
       todo: "P0-01"
