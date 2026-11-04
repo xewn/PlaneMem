@@ -1,5 +1,7 @@
 # 持久化 ContextPack 开发说明
 
+2026-11-05新增[网页保存包包内筛选](#网页保存包包内筛选2026-11-05源码增量)：完整读取后可搜索保存候选编号、正文或排除原因，并显示全部/仅入选/仅排除；筛选始终固定本次实际包编号，完整统计/来源/响应不被裁剪。仅源码文档，未编译、测试、渲染或发布。
+
 2026-11-05新增[保存包目录OpenAPI源码](../../../packages/contracts/openapi/README.md)：`@planemem/contracts/openapi/context-pack-directory.json`仅描述既有GET /v1/context-packs，复用本地目录Schema。按实际HTTP入口区分可分别提供的身份条件、traceparent优先级、早期错误可缺x-trace-id头，以及429/503不同错误来源的retryable；全量OpenAPI和工具/自动一致性/运行证据仍待补。未改运行时，只源码文档人工审阅与格式文本检查，未执行校验器/生成器、编译、类型检查、测试、API/数据库或发布。
 
 2026-11-05新增[独立保存包目录Schema](../../../packages/contracts/schemas/README.md#保存-contextpack-元数据目录)：`@planemem/contracts/schemas/context-pack-directory.json`自包含输入/规范/CLI查询、游标词法、六字段记录、范围/来源标记和完整metadata-only/not-checked分页封套。完整本地资源注册后解析锚点，无需完整读取Schema或联网加载。时间/用量关系、原请求绑定、唯一ID/排序/页大小、规范游标、字节和UTF-16预算仍由原实现核对，真实权限与可见性由可信处理器决定；结构不能证明包内容/来源有效。仅源码文档人工审阅与格式文本检查，未执行校验器/生成器、编译、类型检查、测试或发布；目录OpenAPI源码见本文顶部链接，全量接口目录、本地加载和自动一致性证据仍待补。
@@ -324,7 +326,7 @@ workctx context compare-packs --json-file pack-comparison.json --timeout-ms 3000
 
 `/context/packs/read`提供独立的只读查看页。原`/context?pack=...`依然保留，但它先读取context目录，目录失败会阻断保存包展示。新页面直接复用`readWorkbenchContextPack`，无需目录或当前条目详情成功；未选包时只显示查找表单，不读取latest。上下文页面头、保存包卡片链接、目录失败恢复，以及对比结果/失败页的两侧入口均接到新页。
 
-参数只允许单个`pack`、`latest`、`return_to`。`pack`要求完整ULID，显式空串或非法编号直接失败；`latest`只能为字符串`1`，并与pack互斥。用户可输入编号，也可点击独立的“Read the latest visible pack”按钮。latest每次重新选择最新可见包，成功后提供实际保存ID的固定链接；不把latest当作失效编号或读失败后的回退。
+包选择参数只允许单个`pack`、`latest`、`return_to`，后续包内显示参数`q`/`show`见下节。`pack`要求完整ULID，显式空串或非法编号直接失败；`latest`只能为字符串`1`，并与pack互斥。用户可输入编号，也可点击独立的“Read the latest visible pack”按钮。latest每次重新选择最新可见包，成功后提供实际保存ID的固定链接；不把latest当作失效编号或读失败后的回退。
 
 `return_to`只能是本应用`/context`目录、`/context/packs`保存包目录或`/context/packs/compare`对比地址，逐字段使用已有导航解析器重新构建。单个返回地址最多64 KiB字符，完整导航输入JSON最多96 KiB；原context 16 KiB、compare 24 KiB等内部约束仍执行。拒绝未知/重复/数组参数、外部地址、片段和任意读页嵌套；对比页已验证的context或保存包目录返回可以保留一层，保存包目录本身没有return_to。目录筛选/游标/基础包、对比两个ID/显示方式/原目录返回在返回按钮中保留，链接不会自动重定向或授予权限。
 
@@ -333,6 +335,18 @@ workctx context compare-packs --json-file pack-comparison.json --timeout-ms 3000
 失败保留原pack或latest选择以及return_to，用GET表单显式重试；不会自动刷新、换包、重试、重新编译或写入。latest重试可能选择不同包，界面有说明；固定ID重试始终使用原ID。成功可用具体包ID预填新的对比，也可返回原对比页继续原两侧选择。原编译和目录页面行为不变；页面渲染、交互及HTTP发送不在读取期限内，不承诺总页面容量或来源持续有效。
 
 R-003未完成、`evidence: []`。独立读取与目录故障隔离、有效/非法URL、身份/过期/来源/摘要错误、完整正文空白/Unicode显示、返回/重试/最新固定链接和真实浏览器兼容仍缺运行证据。本轮只源码文档人工审阅及格式文本检查，未编译、类型检查、测试、渲染、执行浏览器/产品/API/数据库或发布。
+
+## 网页保存包包内筛选（2026-11-05，源码增量）
+
+独立`/context/packs/read`增加显示条件`q`和`show`。`q`在trim前最多256 UTF-16单元，拒绝C0/DEL控制字符与孤立代理项，空串或全空白规范为省略，不静默截断。`show`只允许all/included/excluded，缺省或all规范省略，显式空值/未知枚举报错。所有参数仍须单值且在白名单，完整导航仍限96 KiB，不允许借显示条件扩展return_to层级或外部跳转。未选包时不自动读取，查找表单和显式latest动作保留现有显示条件。
+
+完整2 MiB包及原响应/范围/版本/来源/摘要校验成功后，才计算用于显示的数组：q按JavaScript小写后的字面包含匹配入选ID或完整正文、排除ID或原因码（policy/expired/budget/source）。不使用正则/数据库搜索，不对来源或保存JSON的其他属性作全文索引，不修改包内容、确认状态、预算或原校验输入。全部候选在读阶段照常验证，隐藏内容不绕过权限/完整性检查。
+
+显示结果保持原入选列表序号和排除顺序；顶部保存统计不变，另显示可见条数/原总数和当前隐藏的列表。真正空列表与有条目但无文字匹配采用不同提示，清除筛选可回到完整列表。入选完整正文/字段与匹配排除原因可展开，来源和完整原响应始终保留，不因筛选删减；区段链接仅指向当前可见列表以及完整来源区段。
+
+筛选GET表单、清除链接和固定链接使用这次读取实际返回的pack_id，并保留原有限return_to；即使从latest进入，筛选也不会再次选最新包。固定链接保留q/show，清除只去掉显示条件；每次GET仍重新授权并完整读取相同保存ID，不缓存为永久可读。显式“Read latest again”保留原动作和显示条件，可能读取新的包；读取失败继续保留原pack/latest、q/show及return_to供显式重试，不退回全量或切换包。比较入口仍按既有规则保留基础包和原目录/对比返回，没有增加读页递归返回。
+
+范围仅read页面与导航及文档，复用既有样式；无Gateway/SDK/CLI/MCP/共享协议、数据库或新依赖变更。R-003未完成、`evidence: []`，文字/Unicode/空匹配、原序号和完整数据、固定latest筛选、返回/错误恢复及真实浏览器兼容证据待补。仅源码人工审阅和格式文本检查，未编译、类型检查、测试、渲染、执行浏览器/产品/API/数据库或发布。
 
 ## 保存包元数据目录（2026-11-05，源码增量）
 

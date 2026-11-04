@@ -55,6 +55,7 @@ export default async function SavedPackReadPage({
             key={JSON.stringify(navigation)}
           >
             <ReturnField navigation={navigation} />
+            <DisplayFields navigation={navigation} />
             <label htmlFor="saved-pack-id">Saved pack ID</label>
             <input
               id="saved-pack-id"
@@ -71,6 +72,7 @@ export default async function SavedPackReadPage({
           </form>
           <form action="/context/packs/read" method="get">
             <ReturnField navigation={navigation} />
+            <DisplayFields navigation={navigation} />
             <input type="hidden" name="latest" value="1" />
             <button type="submit" className="secondary-button">
               Read the latest visible pack
@@ -101,6 +103,15 @@ function ReturnField({ navigation }: { navigation: PackReadNavigation }) {
   ) : null;
 }
 
+function DisplayFields({ navigation }: { navigation: PackReadNavigation }) {
+  return (
+    <>
+      {navigation.query !== undefined && <input type="hidden" name="q" value={navigation.query} />}
+      {navigation.show !== undefined && <input type="hidden" name="show" value={navigation.show} />}
+    </>
+  );
+}
+
 function Retry({ navigation }: { navigation: PackReadNavigation }) {
   const params = new URLSearchParams(packReadHref(navigation).split('?')[1]);
   return (
@@ -120,7 +131,31 @@ async function SavedPack({ navigation }: { navigation: PackReadNavigation }) {
     // The dedicated read does not require context directory or current-item reads to succeed.
     const response = await readWorkbenchContextPack(navigation.pack_id);
     const saved = response.data;
-    const fixed = { pack_id: saved.pack_id, return_href: navigation.return_href };
+    // Filters after a latest read must target this saved ID, never silently select latest again.
+    const fixed: PackReadNavigation = {
+      pack_id: saved.pack_id,
+      query: navigation.query,
+      show: navigation.show,
+      return_href: navigation.return_href,
+    };
+    const needle = navigation.query?.toLowerCase() ?? '';
+    const included =
+      navigation.show === 'excluded'
+        ? []
+        : saved.pack.items
+            .map((item, index) => ({ item, position: index + 1 }))
+            .filter(
+              ({ item }) =>
+                item.id.toLowerCase().includes(needle) ||
+                item.content.toLowerCase().includes(needle),
+            );
+    const excluded =
+      navigation.show === 'included'
+        ? []
+        : saved.pack.exclusions.filter(
+            (item) =>
+              item.id.toLowerCase().includes(needle) || item.reason.toLowerCase().includes(needle),
+          );
     const comparisonReturn = navigation.return_href?.startsWith('/context/packs/compare')
       ? undefined
       : navigation.return_href;
@@ -180,48 +215,148 @@ async function SavedPack({ navigation }: { navigation: PackReadNavigation }) {
             <Retry navigation={navigation} />
           </div>
         </Panel>
-        <Panel title="Included saved knowledge" icon="context">
+        <Panel title="Find within this saved pack" icon="search">
           <div className="side-detail">
-            {saved.pack.items.length === 0 && <p>This pack contains no selected items.</p>}
-            {saved.pack.items.map((item, index) => (
-              <details key={item.id} className="side-detail">
-                <summary>
-                  <span className="context-hash">
-                    {index + 1}. {item.layer} · {item.id}
-                  </span>
-                </summary>
-                <Badge tone="neutral">{item.sensitivity}</Badge>
-                <p>{item.confirmed ? 'Confirmed when saved' : 'Not confirmed when saved'}</p>
-                <pre className="context-content" tabIndex={0} aria-label="Complete saved content">
-                  {item.content}
+            <form
+              action="/context/packs/read"
+              method="get"
+              className="artifact-lookup-form"
+              key={JSON.stringify(fixed)}
+            >
+              <input type="hidden" name="pack" value={saved.pack_id} />
+              <ReturnField navigation={navigation} />
+              <label htmlFor="saved-pack-filter-query">Find text or candidate ID</label>
+              <input
+                id="saved-pack-filter-query"
+                name="q"
+                type="search"
+                maxLength={256}
+                defaultValue={navigation.query ?? ''}
+                aria-describedby="saved-pack-filter-help"
+              />
+              <label htmlFor="saved-pack-filter-show">Candidates to show</label>
+              <select
+                id="saved-pack-filter-show"
+                name="show"
+                defaultValue={navigation.show ?? 'all'}
+              >
+                <option value="all">All candidates</option>
+                <option value="included">Included only</option>
+                <option value="excluded">Excluded only</option>
+              </select>
+              <button className="primary-button" type="submit">
+                Filter this saved pack
+              </button>
+            </form>
+            <p id="saved-pack-filter-help" className="muted">
+              Matches saved candidate IDs, included content and exclusion reason codes, ignoring
+              case. Filters keep this pack ID, including after a latest read. Counts, sources and
+              the complete response below remain unfiltered.
+            </p>
+            <p>
+              Showing {included.length} of {saved.pack.items.length} included candidates and{' '}
+              {excluded.length} of {saved.pack.exclusions.length} exclusions.
+              {navigation.show === 'included' && ' Exclusions are hidden by this view.'}
+              {navigation.show === 'excluded' && ' Included candidates are hidden by this view.'}
+            </p>
+            <nav className="heading-actions" aria-label="Saved pack content">
+              <Link
+                className="panel-link"
+                href={packReadHref({ pack_id: saved.pack_id, return_href: navigation.return_href })}
+                prefetch={false}
+              >
+                Clear candidate filters
+              </Link>
+              {navigation.show !== 'excluded' && (
+                <a className="panel-link" href="#saved-pack-included">
+                  Included knowledge
+                </a>
+              )}
+              {navigation.show !== 'included' && (
+                <a className="panel-link" href="#saved-pack-excluded">
+                  Excluded candidates
+                </a>
+              )}
+              <a className="panel-link" href="#saved-pack-sources">
+                Complete sources and response
+              </a>
+            </nav>
+          </div>
+        </Panel>
+        {navigation.show !== 'excluded' && (
+          <div id="saved-pack-included" className="context-comparison-section" tabIndex={-1}>
+            <Panel title="Included saved knowledge" icon="context">
+              <div className="side-detail">
+                {included.length === 0 && (
+                  <p>
+                    {saved.pack.items.length === 0
+                      ? 'This pack contains no selected items.'
+                      : 'No included candidates match this text. Clear the filters to see all saved candidates.'}
+                  </p>
+                )}
+                {included.map(({ item, position }) => (
+                  <details key={item.id} className="side-detail">
+                    <summary>
+                      <span className="context-hash">
+                        {position}. {item.layer} · {item.id}
+                      </span>
+                    </summary>
+                    <Badge tone="neutral">{item.sensitivity}</Badge>
+                    <p>{item.confirmed ? 'Confirmed when saved' : 'Not confirmed when saved'}</p>
+                    <pre
+                      className="context-content"
+                      tabIndex={0}
+                      aria-label="Complete saved content"
+                    >
+                      {item.content}
+                    </pre>
+                    <details>
+                      <summary>All saved item fields and sources</summary>
+                      <pre className="context-content" tabIndex={0}>
+                        {JSON.stringify(item, null, 2)}
+                      </pre>
+                    </details>
+                  </details>
+                ))}
+              </div>
+            </Panel>
+          </div>
+        )}
+        {navigation.show !== 'included' && (
+          <div id="saved-pack-excluded" className="context-comparison-section" tabIndex={-1}>
+            <Panel title="Excluded saved candidates" icon="context">
+              <div className="side-detail">
+                {excluded.length === 0 ? (
+                  <p>
+                    {saved.pack.exclusions.length === 0
+                      ? 'No candidate items were excluded from this pack.'
+                      : 'No excluded candidates match this text. Clear the filters to see all saved candidates.'}
+                  </p>
+                ) : (
+                  <PackExclusions exclusions={excluded} />
+                )}
+              </div>
+            </Panel>
+          </div>
+        )}
+        <div id="saved-pack-sources" className="context-comparison-section" tabIndex={-1}>
+          <Panel title="Complete sources and read information" icon="context">
+            <div className="side-detail">
+              <details>
+                <summary>Complete saved source references</summary>
+                <pre className="context-content" tabIndex={0}>
+                  {JSON.stringify(saved.pack.source_refs, null, 2)}
                 </pre>
-                <details>
-                  <summary>All saved item fields and sources</summary>
-                  <pre className="context-content" tabIndex={0}>
-                    {JSON.stringify(item, null, 2)}
-                  </pre>
-                </details>
               </details>
-            ))}
-          </div>
-        </Panel>
-        <Panel title="Exclusions and sources" icon="context">
-          <div className="side-detail">
-            <PackExclusions exclusions={saved.pack.exclusions} />
-            <details>
-              <summary>Complete saved source references</summary>
-              <pre className="context-content" tabIndex={0}>
-                {JSON.stringify(saved.pack.source_refs, null, 2)}
-              </pre>
-            </details>
-            <details>
-              <summary>Complete response and read information</summary>
-              <pre className="context-content" tabIndex={0}>
-                {JSON.stringify(response, null, 2)}
-              </pre>
-            </details>
-          </div>
-        </Panel>
+              <details>
+                <summary>Complete response and read information</summary>
+                <pre className="context-content" tabIndex={0}>
+                  {JSON.stringify(response, null, 2)}
+                </pre>
+              </details>
+            </div>
+          </Panel>
+        </div>
       </>
     );
   } catch (error) {

@@ -954,6 +954,22 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_pack_web_candidate_filters_development_increment:
+      date: "2026-11-05"
+      status: "Source-only saved ContextPack in-page candidate filtering; R-003 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/context/packs/read/navigation.ts"
+        - "apps/web-console/src/app/context/packs/read/page.tsx"
+        - "docs/design/01-contracts/context-pack-runtime.md"
+      behavior: "Read page adds strict single q and show=all/included/excluded. Query is bounded to 256 UTF-16 units before trimming and rejects C0/DEL/unpaired surrogates; blank and all canonicalize to omission. Only after complete original pack/response/hash checks, filter saved candidate IDs/included content/exclusion reason codes by lowercase literal inclusion. Keep original selected positions, exclusion order, full statistics, source references and complete response; distinguish empty lists from no matches and explain hidden views. Filter/clear/fixed links pin the actual returned pack ID even after latest, retaining the finite original return. Selection/explicit latest and original failure retry preserve display conditions; filters do not reach Gateway or relax full read authority/integrity."
+      evidence: []
+      pending_evidence:
+        - "Valid/duplicate/unknown/empty query and show parameters, Unicode limits and canonical navigation"
+        - "Literal matches, saved positions/order, hidden/no-match/empty states and unfiltered complete data"
+        - "Latest-to-fixed filtering, clearing, fixed links, selected pack retry and directory/comparison returns"
+        - "Full read authorization/integrity behavior and actual browser rendering/navigation compatibility"
+      remaining_scope: "Source-only display feature; browser/runtime evidence remains. Filters do not search current project knowledge, verify external sources, persist a local pack or grant continued read access."
+      execution: "Source/docs, manual review and formatting/text checks only; no build, typecheck, tests, rendering, browser/product/API/database execution or release. No Gateway/shared protocol/SDK/CLI/MCP/style/dependency/migration changes."
     context_pack_directory_openapi_development_increment:
       date: "2026-11-05"
       status: "Source-only OpenAPI description of the existing saved ContextPack metadata directory; R-003 remains incomplete."
