@@ -6,8 +6,10 @@ import {
   isUlid,
   contextPackSaveReceiptQuery,
   parseContextPackSaveReceiptEnvelope,
+  parseContextPackSaveReceiptDocument,
+  contextPackSaveReceiptDocumentJson,
   type ContextPackRecordedSave,
-  type ContextPackSaveReceiptEnvelope,
+  type ContextPackSaveReceiptDocument,
 } from '@planemem/contracts';
 import { backupOperation } from '../sync/receipt/backup-operation';
 import { queryPackSaveReceipt, submitPackSave } from './actions';
@@ -18,6 +20,7 @@ import {
 } from './save-model';
 import { preservePackOriginal } from './save-store';
 import { packReadHref } from './packs/read/navigation';
+import { PackReceiptHistoryEntry } from './save-receipt-entry';
 
 export function PackSaveSubmission({
   original,
@@ -35,10 +38,10 @@ export function PackSaveSubmission({
   const [attempted, setAttempted] = useState(recovered);
   const [unusable, setUnusable] = useState(false);
   const [saved, setSaved] = useState<{ pack_id: string; version: number; trace: string }>();
-  const [observation, setObservation] = useState<ContextPackSaveReceiptEnvelope>();
+  const [observation, setObservation] = useState<ContextPackSaveReceiptDocument>();
   const [history, setHistory] = useState<{
     receipt: ContextPackRecordedSave;
-    envelope: ContextPackSaveReceiptEnvelope;
+    document: ContextPackSaveReceiptDocument;
   }>();
   const [message, setMessage] = useState(
     recovered
@@ -55,6 +58,17 @@ export function PackSaveSubmission({
       operation.current?.abort();
     };
   }, []);
+  function beginHistory() {
+    if (!mounted.current || active.current) return false;
+    active.current = true;
+    setBusy(true);
+    setConfirmed(false);
+    return true;
+  }
+  function endHistory() {
+    active.current = false;
+    if (mounted.current) setBusy(false);
+  }
   async function run(kind: 'preserve' | 'send' | 'new' | 'query') {
     if (
       active.current ||
@@ -89,6 +103,13 @@ export function PackSaveSubmission({
           contextPackSaveReceiptQuery(request),
           result.receipt.trace_id,
         );
+        const document = parseContextPackSaveReceiptDocument({
+          schema_version: 1,
+          kind: 'context-pack-save-observation',
+          observed_at: new Date().toISOString(),
+          original: request,
+          receipt: observed,
+        });
         if (observed.data.status === 'recorded') {
           const receipt = observed.data.receipt;
           if (
@@ -96,7 +117,7 @@ export function PackSaveSubmission({
             (history && JSON.stringify(history.receipt) !== JSON.stringify(receipt))
           )
             throw new TypeError();
-          setHistory({ receipt, envelope: observed });
+          setHistory({ receipt, document });
           setMessage(
             'A matching historical save was found. Content and sources have not been checked. The original is retained; this query sent no save.',
           );
@@ -105,7 +126,7 @@ export function PackSaveSubmission({
             'No matching record was observed in this lookup. A save may still be in progress; this does not prove failure or permit an automatic retry. Any previously confirmed result below is retained.',
           );
         }
-        setObservation(observed);
+        setObservation(document);
         return;
       }
       const result = await backupOperation(controller.signal, async (signal, check) => {
@@ -238,7 +259,7 @@ export function PackSaveSubmission({
           </button>
         </>
       )}
-      {busy && (
+      {busy && operation.current && (
         <button
           type="button"
           className="secondary-button"
@@ -256,37 +277,22 @@ export function PackSaveSubmission({
         </p>
       )}
       {history && (
-        <section aria-label="Recorded original save">
-          <h2>Historical save recorded</h2>
-          <p>
-            Pack · {history.receipt.pack_id} · Version · {history.receipt.version}
-          </p>
-          <p>
-            Saved · {history.receipt.created_at} · Expires · {history.receipt.expires_at}
-          </p>
-          <p>
-            Budget · {history.receipt.budget_tokens} · Used · {history.receipt.used_tokens}
-          </p>
-          <p>
-            This record matches the original request. Content and sources were not checked; the pack
-            may now be expired or unavailable. A later failed or empty lookup does not remove this
-            earlier observation.
-          </p>
-          <Link prefetch={false} href={packReadHref({ pack_id: history.receipt.pack_id })}>
-            Open this saved pack to check availability
-          </Link>
-          <details>
-            <summary>Complete recorded response</summary>
-            <pre>{JSON.stringify(history.envelope, null, 2)}</pre>
-          </details>
-        </section>
+        <PackReceiptHistoryEntry
+          key={contextPackSaveReceiptDocumentJson(history.document)}
+          document={history.document}
+          disabled={busy}
+          begin={beginHistory}
+          end={endHistory}
+        />
       )}
-      {observation?.data.status === 'not-observed' && (
-        <details>
-          <summary>Last completed lookup: no record observed</summary>
-          <p>This snapshot does not prove the original save failed.</p>
-          <pre>{JSON.stringify(observation, null, 2)}</pre>
-        </details>
+      {observation?.receipt.data.status === 'not-observed' && (
+        <PackReceiptHistoryEntry
+          key={contextPackSaveReceiptDocumentJson(observation)}
+          document={observation}
+          disabled={busy}
+          begin={beginHistory}
+          end={endHistory}
+        />
       )}
       {onNew && (!attempted || saved || history || unusable) && (
         <button
@@ -304,9 +310,13 @@ export function PackSaveSubmission({
         </Link>
       </p>
       <p>
-        Browser copies contain the request, not a persistent save receipt. Lookup results are only
-        retained on this page. Clearing browser data can remove original copies. Keep an exported
-        original.
+        <Link href="/context/packs/receipts" prefetch={false}>
+          Find saved historical observations
+        </Link>
+      </p>
+      <p>
+        Original browser copies contain only the request. Query observations stay on this page
+        unless you explicitly save or export them. Clearing browser data can remove local copies.
       </p>
     </div>
   );

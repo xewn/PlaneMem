@@ -55,6 +55,10 @@ export default async function PackSaveRecoveryPage() {
         ·{' '}
         <Link href="/context/packs" prefetch={false}>
           Saved pack directory
+        </Link>{' '}
+        ·{' '}
+        <Link href="/context/packs/receipts" prefetch={false}>
+          Historical save observations
         </Link>
       </p>
     </>
