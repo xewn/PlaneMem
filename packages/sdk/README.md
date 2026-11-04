@@ -190,7 +190,7 @@ Plane 观察状态新增 `getObservedProjectState()`、`getObservedWorkItemState
 
 `getProjectOverview()` 返回同条数据库查询得到的项目汇总、上下文各层统计及有限条预览。SDK 校验总数、状态、预览大小和标识；`average_confidence` 为保存值均值，不能用作来源新鲜度，proposed 也不等于可立即确认。不可见项目返回 404。字段及口径见 [项目概览读取](../../docs/design/01-contracts/workbench-overview-runtime.md)。
 
-`listWorkItemProjections({ query, status, priority, owner, cursor, limit })` 读取工作项投影页，默认 25、最多 100 条，返回 data 数组和可选外层 next_cursor。priority 为 P0–P3，owner 是最多 255 字符单位的完整保存文本，大小写/空格精确匹配，空字符串表示不过滤；不是账号 ID 推断。继续时保留 query/status/priority/owner；改变筛选、范围或受限数据权限需移除 cursor。无新增筛选的旧游标继续兼容。分页按更新时间倒序、ID 升序，不提供快照隔离。SDK 校验输入、条目、重复 ID、状态/优先级/负责人、页大小与游标；每页数量不是项目总数。筛选增量仅源码，未编译、测试或调用，详见 [工作项投影](../../docs/design/01-contracts/work-item-projection-runtime.md)。
+`listWorkItemProjections({ query, status, priority, owner, assignment, cursor, limit })` 读取工作项投影页，默认 25、最多 100 条，返回 data 数组和可选外层 next_cursor。priority 为 P0–P3，owner 是最多 255 字符单位的完整保存文本，大小写/空格精确匹配，空字符串表示不过滤；不是账号 ID 推断。assignment为assigned/unassigned，对应保存owner非空/严格空串，unassigned不能与非空精确owner组合；省略表示全部。继续时保留 query/status/priority/owner/assignment；改变筛选、范围或受限数据权限需移除 cursor。省略assignment的原v1/v2游标继续兼容，含assignment使用v3绑定。分页按更新时间倒序、ID 升序，不提供快照隔离。SDK 校验输入、条目、重复 ID、状态/优先级/负责人/分配状态、页大小与游标；每页数量不是项目总数。筛选增量仅源码，未编译、测试或调用，详见 [工作项投影](../../docs/design/01-contracts/work-item-projection-runtime.md)。
 
 `getWorkItemProjection(itemId)` 按本地 ID 读取当前项目可见工作项投影，保留来源和追踪，使用共享输入/响应解析器。`data.version` 是正十进制字符串，避免 BIGINT 精度丢失；它不是 Plane 写入版本，也不证明外部来源当前有效。缺失或不可见统一 404。见 [工作项投影详情](../../docs/design/01-contracts/work-item-projection-runtime.md)。
 

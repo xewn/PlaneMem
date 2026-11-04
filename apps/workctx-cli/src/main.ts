@@ -280,7 +280,7 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
                                  no --key, no scheduling; not-observed does not prove failure
   search                         Search saved project records; JSON query required, optional type/mode/limit/cursor
   work-items get                 Read a saved local work item by item_id, with version and sources
-  work-items list                List saved work items; optional query, status, priority, exact owner, cursor and limit
+  work-items list                List saved work items; optional query, status, priority, exact owner, assignment (assigned/unassigned), cursor and limit
   sessions start                 Start with original expected_identity and optional parent/actor/client in JSON, plus --key
   sessions start-receipt         Query original start with expected_identity, request_key and original session JSON; no --key
   sessions end                   End session_id with original expected_identity, status, expected_version and --key

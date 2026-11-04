@@ -4,6 +4,7 @@ import { Icon } from '../../components/icons';
 import { PageError, numberValue, textValue, toneFor } from '../../components/page-state';
 import { Badge, Panel, Progress } from '../../components/ui';
 import { listWorkbenchWorkItems } from '../../lib/server-api';
+import { WorkItemOwnerFilter } from './owner-filter';
 import {
   parseWorkItemBrowseParams,
   workItemBrowseHref,
@@ -33,7 +34,8 @@ export default async function WorkItemsPage({
     const status = filters.status ?? '';
     const priority = filters.priority ?? '';
     const owner = filters.owner ?? '';
-    const hasFilters = Boolean(query || status || priority || owner);
+    const assignment = filters.assignment ?? '';
+    const hasFilters = Boolean(query || status || priority || owner || assignment);
     const cursor = filters.cursor;
     const list = browse.view === 'list';
     const response = await listWorkbenchWorkItems(filters);
@@ -80,7 +82,7 @@ export default async function WorkItemsPage({
           className="filters work-item-filters"
           action="/work-items"
           method="get"
-          key={JSON.stringify([query, status, priority, owner])}
+          key={JSON.stringify([query, status, priority, owner, assignment])}
         >
           {list && <input type="hidden" name="view" value="list" />}
           <label className="filter-input">
@@ -120,17 +122,7 @@ export default async function WorkItemsPage({
               </option>
             ))}
           </select>
-          <label className="filter-input">
-            <input
-              type="text"
-              name="owner"
-              defaultValue={owner}
-              aria-label="Exact owner, case-sensitive"
-              placeholder="Exact owner"
-              maxLength={255}
-              aria-describedby="work-item-owner-hint"
-            />
-          </label>
+          <WorkItemOwnerFilter initialAssignment={assignment} initialOwner={owner} />
           <button className="secondary-button" type="submit">
             Apply filters
           </button>
@@ -156,10 +148,6 @@ export default async function WorkItemsPage({
             </Link>
           </div>
         </form>
-        <p className="muted" id="work-item-owner-hint">
-          Owner matches the saved name exactly, including case and spaces. Leave it blank for all
-          owners.
-        </p>
         <nav className="heading-actions" aria-label="Work item pages">
           <span className="muted">
             Newest updates first · Up to 25 per page. Column counts are for this page.

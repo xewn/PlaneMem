@@ -733,6 +733,29 @@ requirements:
         - "External/other return paths, fragments, duplicate/unknown parameters, mismatched IDs and size bounds"
         - "Scope/permission changes still reject stale cursors and reauthorize each data read"
       execution: "Source/docs only; no builds, typechecks, tests, browser/service/API execution, database access or release."
+    work_item_assignment_filter_development_increment:
+      date: "2026-11-04"
+      status: "Source-only saved-owner assignment filters; R-002 remains incomplete."
+      artifacts:
+        - "packages/contracts/src/work-item-projection.ts"
+        - "apps/api-gateway/src/workbench/repository.ts"
+        - "apps/api-gateway/src/workbench/work-item-pagination.ts"
+        - "apps/api-gateway/src/mcp/catalog.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/remote.ts"
+        - "apps/web-console/src/app/work-items/page.tsx"
+        - "apps/web-console/src/app/work-items/navigation.ts"
+        - "apps/web-console/src/app/work-items/owner-filter.tsx"
+        - "docs/design/01-contracts/work-item-projection-runtime.md"
+      behavior: "Add assignment=assigned/unassigned using exact nonempty/empty saved owner text, without trimming or account inference. Reject unassigned combined with a nonempty exact owner. Apply C-comparison filters before pagination and validate every returned item. SDK/network CLI/Web reuse shared parsing; MCP and embedded CLI reach the same Gateway query. New assignment-bearing cursor digests use v3 with all filters; absent assignment preserves v1/v2 keys. Web selection clears/disables exact owner for unassigned, filter submission resets paging and board/list/detail return links preserve assignment. No writes or live Plane assignment claims."
+      evidence: []
+      pending_evidence:
+        - "Enum/blank/null/array boundaries, conflicting exact owner and empty versus whitespace saved values"
+        - "Combined permission/filter SQL before limit, complete-page mismatch rejection and real query performance"
+        - "v1/v2 compatibility, v3 binding, changed-filter rejection and adjustable page sizes"
+        - "SDK/CLI/MCP inputs, Web form interaction, duplicate URL fields, paging/view/detail return paths"
+      remaining_scope: "Runtime/browser/client evidence, source freshness and Mock work-item directory coverage. This only filters saved projections."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, product/SDK/CLI/MCP/Mock/API/browser/database execution or release. No writes, database schema, migration or dependency change."
     work_item_filter_development_increment:
       date: "2026-11-04"
       status: "Source-only priority and exact-owner filters on local projections; no authority or runtime completion claim."
@@ -753,7 +776,7 @@ requirements:
         - "Exact owner case/space/Unicode and wildcard literals, invalid/empty inputs and priority bounds"
         - "Old unfiltered cursors, extended bindings, changed-filter rejection and adjustable page size"
         - "REST/SDK/CLI/MCP parity, browser duplicate parameters, navigation, view selection and empty states"
-      remaining_scope: "No new Plane write path, source freshness verification, dedicated unassigned-owner filter or runtime evidence."
+      remaining_scope: "No new Plane write path, source freshness verification or runtime evidence. Dedicated assignment filtering is recorded in a later source increment above."
       execution: "Source/docs only; no build, typecheck, tests, product/browser/API execution, database access, migration or release. No dependency/schema change."
     rest_transport_development_increment:
       date: "2026-11-02"

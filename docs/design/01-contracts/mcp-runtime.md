@@ -169,7 +169,7 @@ get_plane_event_retry_receipt 使用原 request_key，拒绝 confirmed/idempoten
 
 新增只读 `get_project_overview`（context.read），无业务参数，读取当前项目可见记录的汇总及有限预览。置信度为保存值均值，proposed 不是审核就绪承诺；具体统计和快照边界见 [项目概览读取](workbench-overview-runtime.md)。
 
-新增只读 `list_work_item_projections`（context.read），输入 query/status/priority/owner/cursor/limit，默认 25、最多 100 条；priority 为 P0–P3，owner 为区分大小写和空格的精确保存文本。按更新时间倒序读取，继续时把外层 next_cursor 作为 cursor 并保留全部筛选，改筛选须回首页。条目带本地版本及来源，返回整页核对所选状态/优先级/负责人，不能据单页数量推断项目总数。2026-11-04 筛选增量仅源码，未运行或测试。
+新增只读 `list_work_item_projections`（context.read），输入 query/status/priority/owner/assignment/cursor/limit，默认 25、最多 100 条；priority 为 P0–P3，owner 为区分大小写和空格的精确保存文本。assignment为assigned/unassigned，按保存owner非空/严格空串匹配，unassigned不能与非空owner组合，不筛选时省略。按更新时间倒序读取，继续时把外层 next_cursor 作为 cursor 并保留全部筛选，改筛选须回首页。条目带本地版本及来源，返回整页核对所选状态/优先级/负责人/分配状态，不能据单页数量推断项目总数或当前Plane分配。2026-11-04 筛选增量仅源码，未运行或测试。
 
 新增只读 `get_work_item_projection`（context.read），输入本地 item_id；返回保存的工作项投影、字符串版本和来源，与原 get_work_item_context 的上下文组合读取区分。投影版本不能作为 Plane 写入条件，详见 [工作项投影详情](work-item-projection-runtime.md)。
 

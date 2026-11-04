@@ -6,6 +6,8 @@
 
 ### 2026-11-04 开发补充（未编译、未发布、未测试）
 
+- P0/P4/P5：已补工作项assignment=assigned/unassigned筛选，严格保存owner空串/非空语义，不修剪数据或推断实时Plane负责人；unassigned拒绝与非空精确owner组合。共享输入/整页返回核对、Gateway分页前C比较、SDK/CLI/MCP入口与Web分配下拉均接入；CLI网络白名单允许新字段，Web未分配清空并禁用精确owner，筛选/视图/翻页/详情返回保留条件。含assignment使用v3查询绑定，省略时原v1/v2游标兼容；换条件必须回首页。无写接口/数据库schema/迁移/依赖变化，R-002仍未完成且evidence为空，真实组合筛选/旧游标/客户端及浏览器证据待补。仅源码文档人工审阅，未编译、类型检查、测试、执行产品/SDK/CLI/MCP/Mock/API/浏览器/数据库或发布；独立提交push main带[skip ci]。
+
 - P0：已补文件版本比较独立JSON Schema 2020-12及contracts显式子路径导出，根为SDK/CLI/MCP文本中的本地组合；共享三字段/CLI五字段查询、身份、完整元数据/历史封套、固定八字段行、来源位置状态和差异计数均有定义。缺失来源侧省略，same/changed必须两侧，来源顺序和重复保留；大小/权限/原query与scope/trace/版本/ETag关系、差异重算仍由运行时执行。自动一致性、真实客户端和权限/期限证据仍缺，R-001未完成且evidence为空。不改生产比较行为、旧实体、数据库或依赖，仅源码文档人工审阅，未编译、类型检查、测试、执行校验器/SDK/CLI/MCP/Mock/API/产品/数据库或发布；单独提交push main带[skip ci]。
 
 - P0/P4：已补 MCP `compare_artifact_versions`，严格4 KiB查询、两个不同正安全版本，发现/调用均要求可信未过期实际artifact.read。固定身份顺序读取两份历史记录，共用30秒及每Gateway两笔容量，超时底层未结束仍占槽；每份2 MiB/错误16 KiB，完整scope/版本/trace/JSON/无ETag/restricted核对。共享八字段与来源位置比较省略缺失侧undefined，返回两份原封套及local/separate-reads/not-checked组合，8 MiB结果/16 MiB+4096转义限制，无部分结果、重试或内容读取。运行兼容、独立比较Schema和真实权限/超时证据仍缺，R-001未完成且evidence为空。仅源码文档人工审阅，无REST/存储操作/schema/依赖变化，未编译、类型检查、测试、运行产品/CLI/MCP/SDK/Mock/API/数据库或发布；独立提交push main带[skip ci]。

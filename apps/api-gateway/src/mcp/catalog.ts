@@ -4,6 +4,7 @@ import {
   validateIdempotencyKey,
   WORK_ITEM_STATUSES,
   WORK_ITEM_PRIORITIES,
+  WORK_ITEM_ASSIGNMENTS,
   SESSION_REGISTRY_STATUSES,
 } from '@planemem/contracts';
 import type { HttpRequest } from '../http.js';
@@ -842,7 +843,7 @@ const definitions: ToolDefinition[] = [
   ),
   tool(
     'list_work_item_projections',
-    'List visible saved work item projections, newest updates first. Filter by status, priority or exact stored owner text (case-sensitive); query searches ID/title/owner. Pass next_cursor as cursor with the same filters to continue. Counts describe only this page.',
+    'List visible saved work item projections, newest updates first. Filter by status, priority, exact stored owner text (case-sensitive) or assignment (assigned/unassigned). Unassigned means saved owner is exactly empty and cannot be combined with an exact owner; no account or live Plane assignment is inferred. query searches ID/title/owner. Pass next_cursor as cursor with the same filters to continue. Counts describe only this page.',
     ['context.read'],
     'POST',
     '/v1/workbench/query',
@@ -855,7 +856,13 @@ const definitions: ToolDefinition[] = [
         minLength: 1,
         maxLength: 255,
         description:
-          'Exact stored owner text; case and surrounding spaces are significant. Omit for all owners.',
+          'Exact stored owner text; case and surrounding spaces are significant. Omit when filtering unassigned work items.',
+      },
+      assignment: {
+        type: 'string',
+        enum: [...WORK_ITEM_ASSIGNMENTS],
+        description:
+          'Omit for all assignments. unassigned requires an exactly empty saved owner; assigned requires a nonempty saved owner, without trimming. unassigned cannot be combined with owner.',
       },
       cursor: { type: 'string', minLength: 1, maxLength: 2048, pattern: '^[A-Za-z0-9_-]+$' },
       limit: { type: 'integer', minimum: 1, maximum: 100, default: 25 },

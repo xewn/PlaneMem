@@ -531,7 +531,7 @@ observed-item.json 示例：`{"work_item_id":"plane-item-42"}`。CLI 核对返�
 | `index delete` | id、expected_revision、reason；软删除手工索引 | `--key` 必需 |
 | `index restore` | id、expected_revision、reason；恢复手工索引，保留原到期和分类 | `--key` 必需 |
 | `work-items get` | 本地 `item_id`；返回工作项投影、字符串版本及来源 | 无 |
-| `work-items list` | 可选 query/status/priority/owner/cursor/limit；priority 为 P0–P3，owner 精确文本；默认 25、最多 100 条，保留全部筛选并用外层 next_cursor 继续 | 无 |
+| `work-items list` | 可选 query/status/priority/owner/assignment/cursor/limit；priority 为 P0–P3，owner 精确文本，assignment=assigned/unassigned对应保存owner非空/空串，unassigned不能与非空owner组合；默认 25、最多 100 条，保留全部筛选并用外层 next_cursor 继续，换条件回首页 | 无 |
 | `sessions start` | `expected_identity`，可选原 `parent_session_id/actor_id/client_id` | `--key` 或正文 idempotency_key，出现多个时须一致 |
 | `sessions start-receipt` | `expected_identity`、`request_key`、`session` 原业务正文 | 禁止新键 |
 | `sessions end` | `session_id`、`expected_identity`、`status`、`expected_version` | `--key` |

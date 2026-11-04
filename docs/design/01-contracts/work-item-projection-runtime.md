@@ -14,7 +14,7 @@ item_id 是 `wcp_work_items.id`，不是 Plane external_id；允许非 ULID 标�
 
 ## 列表分页补充
 
-`POST /v1/workbench/query` 的 `operation=work_items` 现支持 query/status/priority/owner/cursor/limit。默认 25 条，每页 1–100 条；query 最多 500 字符，搜索 external_id/title/owner，空 query/status/priority/owner 表示不过滤。共享 `parseWorkItemListQuery` 拒绝未知字段、非法状态、优先级、负责人和游标；SDK/CLI/Web 使用同一规范化逻辑。
+`POST /v1/workbench/query` 的 `operation=work_items` 现支持 query/status/priority/owner/assignment/cursor/limit。默认 25 条，每页 1–100 条；query 最多 500 字符，搜索 external_id/title/owner，空 query/status/priority/owner/assignment 表示不过滤。共享 `parseWorkItemListQuery` 拒绝未知字段、非法状态、优先级、负责人、分配状态和游标；SDK/CLI/Web 使用同一规范化逻辑。
 
 响应 data 仍是数组，条目增加 created_at 并与详情使用相同字段验证。存在后续数据时在外层返回 next_cursor；调用方把它作为下一次 cursor，并保留查询、状态、优先级和负责人条件。没有 next_cursor 即当前读取结束，不能把单页条数当项目总数。SDK `listWorkItemProjections`、CLI `work-items list`、MCP `list_work_item_projections` 均接入；共享响应解析验证页大小、重复 ID、所选状态/优先级/负责人和游标形状。
 
@@ -26,7 +26,7 @@ item_id 是 `wcp_work_items.id`，不是 Plane external_id；允许非 ULID 标�
 
 ### 优先级与负责人筛选（2026-11-04，仅源码）
 
-priority 只接受 `P0/P1/P2/P3`，大小写精确。owner 是本地投影中保存的负责人文本，最多 255 个 JavaScript 字符单位，不是令牌 actor_id 或账号目录查询；空字符串表示不过滤，纯空白、控制字符、DEL、孤立代理字符、数组、null 和超长文本拒绝。非空 owner 保留原文，首尾空格、大小写、Unicode 组合形式均不归一化。使用参数化 `COLLATE "C"` 相等条件，`%`、`_`、引号等是普通文本，没有通配或 SQL 含义。空负责人暂不支持专门筛选。
+priority 只接受 `P0/P1/P2/P3`，大小写精确。owner 是本地投影中保存的负责人文本，最多 255 个 JavaScript 字符单位，不是令牌 actor_id 或账号目录查询；空字符串表示不过滤，纯空白、控制字符、DEL、孤立代理字符、数组、null 和超长文本拒绝。非空 owner 保留原文，首尾空格、大小写、Unicode 组合形式均不归一化。使用参数化 `COLLATE "C"` 相等条件，`%`、`_`、引号等是普通文本，没有通配或 SQL 含义。空负责人专门筛选见下节assignment增量。
 
 所有筛选以 AND 组合，在权限过滤后的数据库查询中、LIMIT 和前瞻之前生效。返回的整页再复用共享解析逐项匹配；出现错状态、错优先级或错负责人时整页返回 `WORK_ITEM_PROJECTION_INVALID`，不在客户端静默删项。SDK、网络 CLI、Web 本身也使用共享结果解析；嵌入 CLI/MCP 接收 Gateway 已校验结果。不新增路由、写入、来源检查或权限承诺。
 
@@ -38,9 +38,23 @@ priority 只接受 `P0/P1/P2/P3`，大小写精确。owner 是本地投影中保
 
 本次只修改源码和文档，没有编译、类型检查、测试、调用 API/CLI/MCP、浏览器检查、数据库访问或发布。没有新增索引/迁移/依赖，原 030 等迁移状态保持未执行。组合筛选在真实数据规模下的性能、大小写/空格/Unicode 边界、旧游标兼容、客户端与网页导航均待运行证据，不宣称已验证。
 
+### 负责人分配状态筛选（2026-11-04，仅源码）
+
+新增可选`assignment: 'assigned' | 'unassigned'`和共享枚举WORK_ITEM_ASSIGNMENTS。共享解析接受省略或空串为不过滤，拒绝其他大小写、空白、null、布尔和数组；MCP schema只接受两枚举，不筛选时省略字段。`unassigned`严格对应本地保存的owner为空串，`assigned`对应非空字符串，SQL使用`COLLATE "C"`空串比较；原表owner为NOT NULL，不把损坏null、纯空白或占位名字自动改写成未分配。此字段只描述投影保存情况，不认证账号有效性或当前Plane分配。
+
+unassigned与非空精确owner互斥，整份查询在读取前拒绝；owner空串仍表示省略，可以与unassigned使用。assigned可与精确owner组合，并与原query/status/priority全部按AND筛选。数据库先按权限及筛选取LIMIT+1，完整结果解析再逐项核对空串/非空条件，不静默丢弃错项。SDK、网络CLI和Web沿共享输入及响应解析；嵌入CLI/MCP沿Gateway查询。无新Mock工作项目录路由，不声称Mock覆盖该入口。
+
+含assignment时查询摘要采用`work-item-list-v3`，固定原范围、受限数据权限、query/status/priority/完整owner及assignment。省略或规范化为空时保留原v1/v2摘要和游标编码，旧筛选可继续；添加、移除或改变assignment必须回第一页，即使精确owner令结果集合相同也不复用旧条件游标。页大小仍可调整，分页仍非一致快照。
+
+工作台提供All assignments、With saved owner、Without saved owner选项。选择Without saved owner会清空并禁用精确owner输入，切回其他选择不会恢复被清空的名字；只改表单本地状态，提交GET才读取。应用/清空筛选从首页开始，选择任务、下一页、视图切换和详情return_to保留assignment；直接URL中的互斥条件、重复或非法参数在查询前拒绝。单独分配筛选也显示清空入口和匹配为空提示，页面数量继续只表示当页。
+
+开发示例（未执行）：SDK `listWorkItemProjections({assignment:'unassigned',status:'todo'})`；CLI `workctx work-items list --json-file filters.json`，内容`{"assignment":"unassigned","priority":"P0"}`；MCP `list_work_item_projections`使用相同字段。下一页保留全部条件并传回next_cursor；CLI帮助及输入白名单已同步。
+
+仅源码文档人工审阅，未编译、类型检查、测试、执行CLI/SDK/MCP/Mock/API/产品/浏览器/数据库或发布。无新数据库schema、迁移、依赖、写入或来源刷新；输入边界、空串/空白区别、互斥组合、SQL筛选、整页错项拒绝、v1/v2/v3游标、真实客户端及Web返回导航仍待运行证据，R-002保持未完成。
+
 ## 工作台详情返回路径（2026-11-04，仅源码）
 
-工作项看板/列表的详情入口新增 `return_to`，保存原 q/status/priority/owner/cursor/view 和当前详情 item。共用 `work-items/navigation.ts` 解析浏览参数、构造内部列表/详情链接；显式 item 始终按本地 ID 契约验证，无效 ID 不再渲染一个不可用的选择链接。默认首项进入详情时也显式保存该选择，页外选中项仍可独立读取并返回原页。
+工作项看板/列表的详情入口新增 `return_to`，保存原 q/status/priority/owner/assignment/cursor/view 和当前详情 item。共用 `work-items/navigation.ts` 解析浏览参数、构造内部列表/详情链接；显式 item 始终按本地 ID 契约验证，无效 ID 不再渲染一个不可用的选择链接。默认首项进入详情时也显式保存该选择，页外选中项仍可独立读取并返回原页。
 
 详情的“Back to results”回到原视图、筛选和分页位置。从工作项目录进入时，“Open in board/list”只改变视图，保留其余条件。刷新详情及读取失败后的显式重试均使用原 item 与已规范化 return_to；404、权限或网络读取错误仍提供原结果返回链接，不用其他项目或工作项替换失败目标。缺少 return_to 的旧详情链接继续可用，返回默认看板并保留所选 item。全局搜索已接独立返回分支，保留搜索查询/筛选/分页和所选工作项；切换工作项看板/列表时使用默认目录条件，不推断搜索条件与目录筛选等价。
 

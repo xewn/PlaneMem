@@ -14,19 +14,21 @@ interface WorkItemPosition {
 
 export function workItemQueryKey(scope: WorkbenchScope, query: WorkItemListQuery): string {
   const filters = parseWorkItemListQuery(query);
-  const extended = filters.priority !== undefined || filters.owner !== undefined;
+  const withAssignment = filters.assignment !== undefined;
+  const extended = filters.priority !== undefined || filters.owner !== undefined || withAssignment;
   return createHash('sha256')
     .update(
       JSON.stringify([
-        extended ? 'work-item-list-v2' : 'work-item-list-v1',
+        withAssignment ? 'work-item-list-v3' : extended ? 'work-item-list-v2' : 'work-item-list-v1',
         scope.tenant_id,
         scope.workspace_id,
         scope.project_id,
         scope.read_restricted === true,
         filters.query ?? '',
         filters.status ?? '',
-        // Keep the original v1 key for queries without the new filters.
+        // Preserve existing v1/v2 keys when assignment is absent.
         ...(extended ? [filters.priority ?? '', filters.owner ?? ''] : []),
+        ...(withAssignment ? [filters.assignment] : []),
       ]),
     )
     .digest('hex');

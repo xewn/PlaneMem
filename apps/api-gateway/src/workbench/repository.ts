@@ -208,6 +208,8 @@ export class WorkbenchRepository {
     if (query.priority) filters.push(`w.priority = $${params.push(query.priority)}`);
     if (query.owner !== undefined)
       filters.push(`w.owner COLLATE "C" = $${params.push(query.owner)}::text COLLATE "C"`);
+    if (query.assignment === 'unassigned') filters.push('w.owner COLLATE "C" = \'\' COLLATE "C"');
+    if (query.assignment === 'assigned') filters.push('w.owner COLLATE "C" <> \'\' COLLATE "C"');
     if (query.query) {
       const position = params.push(query.query);
       filters.push(

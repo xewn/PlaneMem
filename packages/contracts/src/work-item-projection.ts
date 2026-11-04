@@ -10,6 +10,7 @@ export const WORK_ITEM_STATUSES = [
 ] as const;
 
 export const WORK_ITEM_PRIORITIES = ['P0', 'P1', 'P2', 'P3'] as const;
+export const WORK_ITEM_ASSIGNMENTS = ['assigned', 'unassigned'] as const;
 
 export interface WorkItemListQuery {
   query?: string;
@@ -17,6 +18,8 @@ export interface WorkItemListQuery {
   priority?: WorkItemProjection['priority'];
   /** Exact stored owner text; no case folding, trimming or account-ID inference. */
   owner?: string;
+  /** Based only on whether the saved owner is exactly empty; no whitespace normalization. */
+  assignment?: (typeof WORK_ITEM_ASSIGNMENTS)[number];
   cursor?: string;
   limit?: number;
 }
@@ -27,7 +30,8 @@ export function parseWorkItemListQuery(value: unknown): WorkItemListQuery {
   const input = value as Record<string, unknown>;
   if (
     Object.keys(input).some(
-      (key) => !['query', 'status', 'priority', 'owner', 'cursor', 'limit'].includes(key),
+      (key) =>
+        !['query', 'status', 'priority', 'owner', 'assignment', 'cursor', 'limit'].includes(key),
     )
   )
     throw new TypeError('Unknown work item list query field');
@@ -61,6 +65,17 @@ export function parseWorkItemListQuery(value: unknown): WorkItemListQuery {
       throw new TypeError('owner must be exact non-blank text of at most 255 characters');
     query.owner = input.owner;
   }
+  if (input.assignment !== undefined && input.assignment !== '') {
+    if (
+      !WORK_ITEM_ASSIGNMENTS.includes(
+        input.assignment as NonNullable<WorkItemListQuery['assignment']>,
+      )
+    )
+      throw new TypeError('assignment must be assigned or unassigned');
+    query.assignment = input.assignment as NonNullable<WorkItemListQuery['assignment']>;
+  }
+  if (query.assignment === 'unassigned' && query.owner !== undefined)
+    throw new TypeError('Unassigned work items cannot be filtered by an exact owner');
   if (input.cursor !== undefined) {
     if (typeof input.cursor !== 'string' || !/^[A-Za-z0-9_-]{1,2048}$/.test(input.cursor))
       throw new TypeError('cursor must be an opaque work item list cursor');
@@ -106,6 +121,11 @@ export function parseWorkItemProjectionList(
       throw new TypeError('Work item does not match priority');
     if (query.owner !== undefined && item.owner !== query.owner)
       throw new TypeError('Work item does not match owner');
+    if (
+      (query.assignment === 'unassigned' && item.owner !== '') ||
+      (query.assignment === 'assigned' && item.owner === '')
+    )
+      throw new TypeError('Work item does not match assignment');
     return item;
   });
   if (page.next_cursor === undefined) return { data };
