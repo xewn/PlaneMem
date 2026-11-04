@@ -954,6 +954,23 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_pack_mcp_comparison_development_increment:
+      date: "2026-11-04"
+      status: "Source-only MCP complete saved ContextPack comparison; R-003 remains incomplete."
+      artifacts:
+        - "apps/api-gateway/src/mcp/context-history.ts"
+        - "apps/api-gateway/src/mcp/catalog.ts"
+        - "docs/design/01-contracts/context-pack-runtime.md"
+        - "docs/design/01-contracts/mcp-runtime.md"
+      behavior: "Add compare_context_packs with strict 4 KiB distinct from/to ULIDs and trusted captured identity, rejecting user identity/write fields. Existing dynamic discovery/client/prepare/protocol gates require verified unexpired actual context.read. Two sequential explicit json saved-pack reads use original ApiGateway policy/audit, complete 2 MiB responses/16 KiB errors, HTTP status/type/trace/ETag, Node SHA-256 and selected restricted checks. Shared 8 MiB comparison, full query/identity/from/to/comparison local result 12 MiB and escaped MCP text wrapper 24 MiB+4096. Eight context tools share two slots per Gateway and one 30-second deadline, retaining slots until underlying work settles. Existing pack busy/timeout codes, fixed error text and no partial comparison/latest fallback/retry/compile/source fetch/write."
+      evidence: []
+      pending_evidence:
+        - "MCP discovery/client/prepare/direct protocol parity, strict selection and immutable trusted identity"
+        - "Complete both-side envelopes/HTTP headers/digests, restricted/expired/stale failures and candidate differences"
+        - "Second-read failure, combined byte/complexity limits, escaped result size and no partial output"
+        - "One total deadline, shared capacity/retained slots, late underlying reads and real client/Gateway compatibility"
+      remaining_scope: "Standalone comparison schema and runtime evidence. Internal ApiGateway calls cannot be aborted; outer authorization/audit and HTTP sending are outside the executor deadline. Separate reads are not a database snapshot and matching hashes do not authenticate sources."
+      execution: "Source/docs, manual review and formatting/text checks only; no build, typecheck, tests, MCP/SDK/Mock/product/API/database execution or release. No REST/SDK/CLI/Web/Mock/schema/database/dependency changes."
     context_pack_cli_comparison_development_increment:
       date: "2026-11-04"
       status: "Source-only CLI complete saved ContextPack comparison; R-003 remains incomplete."

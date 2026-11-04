@@ -1,5 +1,7 @@
 # MCP HTTP 运行时开发说明
 
+2026-11-04 保存包对比增补：新增 `compare_context_packs`，仅接收不同ULID的 from_pack_id/to_pack_id（4 KiB），身份来自可信当前会话，实际未过期context.read与完整身份是发现/prepare/调用共同门禁。两次指定json读取复用保存包完整HTTP/ETag/trace/Node SHA-256/restricted核对；各侧2 MiB、错误16 KiB、共享比较8 MiB、完整本地结果12 MiB、转义文本包装24 MiB+4096。与其他七种上下文读共用每Gateway两笔容量，整次读取/比较/包装共用30秒，超时底层结束才释放；沿用MCP_CONTEXT_PACK_BUSY/TIMEOUT。无部分结果/换包/重试/编译/写入，内部请求不可中止，外层授权审计及网络发送在期限外。详见[MCP保存包对比](context-pack-runtime.md#mcp-指定保存包对比2026-11-04源码增量)。仅源码文档，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布。
+
 2026-11-04 资源目录增补：`resources/list` 的内部 `mcp.catalog` resources 分支进入专用处理器，要求可信未过期实际 `context.read` 和完整身份，admin 不替代。内部查询仅 kind/cursor、8 KiB；候选副本256 KiB/最多101项，核对种类/编号、严格UTF-8 C顺序、去重及续页排他位置。保留100候选/8包扫描，逐包校验完整2 MiB封套、原范围/ID/trace/JSON内ETag/来源预算、Node SHA-256与入选restricted权限；16 KiB错误核验后使用固定说明。最终完整目录封套1 MiB，独立每router两容量与30秒处理器期限，超时底层结束才释放；外层授权审计及网络发送在期限之外。v3游标绑定账号/客户端/actor_type/完整角色和能力集合，旧游标从首屏重读。非包资源仅元数据发现，项目不可见仍空目录，不保证逐项正文可读。详见[资源目录完整读取](context-pack-runtime.md#mcp-资源目录完整读取2026-11-04源码增量)。仅源码文档，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布。
 
 2026-11-04 保存包资源增补：项目 context-pack/{ULID|latest} URI 接入现有上下文资源处理器，4 KiB仅uri、单次解码/原项目/指定包核验；可信未过期实际context.read与完整身份、父项目可见性及嵌套原读取策略审计保持。2 MiB完整json封套、JSON内版本/ETag/来源/预算/trace，Node SHA-256与入选restricted核验；16 KiB错误固定提示，原URI/MIME/contents/source_refs形状保持，转义正文加重复来源包装6 MiB+8192。包和条目资源共享每router两笔容量/处理器30秒，超时底层结束才释放；工具容量独立。内层router不提供HTTP ETag/状态，外层审计与HTTP发送不计入期限；模板/候选目录仍保持既有实现，不自动换包/重试/编译或来源访问。详见[保存包资源](context-pack-runtime.md#mcp-保存包资源完整读取2026-11-04源码增量)。仅源码文档，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布。
@@ -199,7 +201,7 @@ get_plane_event_retry_receipt 使用原 request_key，拒绝 confirmed/idempoten
 | --- | --- |
 | `admin.read`，且可信客户端与 admin 角色 | `get_plane_event_queue_summary`、`list_plane_events`、`get_plane_event_receipt`、`get_plane_event_diagnosis`、`get_plane_event_retry_receipt` |
 | `plane.retry`，且可信客户端、admin 角色、签名 actor_type=human | `retry_plane_event` |
-| `context.read` | `get_project_context`、`get_work_item_state`、`get_work_item_context`、`search_project_context`、兼容别名 `context_search`、`compile_context_pack`、`get_context_pack`、`get_context_item`、`list_context_items`、`list_proposals`、`get_proposal`、`list_sessions`、`get_session_state`、`get_session_checkpoint`、`get_session_handoff`、`list_session_runs`、`get_session_run`、`list_session_tool_calls`、`get_session_tool_call`、`list_handoffs`、`list_checkpoints`、`list_conflicts` |
+| `context.read` | `get_project_context`、`get_work_item_state`、`get_work_item_context`、`search_project_context`、兼容别名 `context_search`、`compile_context_pack`、`get_context_pack`、`compare_context_packs`、`get_context_item`、`list_context_items`、`list_proposals`、`get_proposal`、`list_sessions`、`get_session_state`、`get_session_checkpoint`、`get_session_handoff`、`list_session_runs`、`get_session_run`、`list_session_tool_calls`、`get_session_tool_call`、`list_handoffs`、`list_checkpoints`、`list_conflicts` |
 | `context.write` | `context_index`、`create_context_item`、`update_context_item`、`archive_context_item` |
 | `session.write` | `start_session`、`get_session_start_receipt`、`start_agent_run`、`finish_agent_run`、`record_tool_call`、`finish_tool_call`、`end_session`、`record_checkpoint`、`create_handoff`、`get_handoff_create_receipt`、`resume_session`、`get_session_command_receipt`、`get_checkpoint_receipt`、`get_resume_receipt` |
 | `session.write` 或 `handoff.claim` | `accept_handoff`、`get_handoff_claim_receipt` |
@@ -292,7 +294,7 @@ work://session/{session_id}/handoff
 
 旧项目根地址、current-state 和 work://work-item/... 已统一为持久 Plane 观察快照读取，关联源事件、同版本索引和当前项目检查可见性，不再直读内存 Map。work-item 根地址经 workitem.state 命令授权；新增 get_work_item_state 工具使用外部/aggregate ID。overview 和项目下 work-item/{item_id} 调用持久工作台查询，后者的 item_id 为本地 ID，两种投影不自动互相同步。版本和外部记忆边界见 [Plane 观察状态](observed-state-runtime.md)。会话资源读取 PostgreSQL 中的检查点和交接记录；checkpoint 返回最新检查点，handoff 返回最多 25 条的基础首屏，有更多记录时附带 list_handoffs 续读参数，见 [交接目录分页](handoff-registry-runtime.md)。work:// 读取先检查当前父项目可见性；缺少数据或资源不属于当前项目时返回不可用。持久目录暂不重复枚举旧项目和工作项地址。
 
-`compile_context_pack` 需要有效客户端身份和请求键，可传 `budget_tokens`、`ttl_seconds`。`get_context_pack` 可传 `pack_id`、`format`。保存包资源每次读取都会检查当前权限、来源和到期时间，返回含完整文档的 WCP JSON envelope；参数化 pack 不要求出现在静态资源列表。默认值、错误与 016 数据库迁移依赖见 [ContextPack 运行时](context-pack-runtime.md)。
+`compile_context_pack` 需要有效客户端身份和请求键，可传 `budget_tokens`、`ttl_seconds`。`get_context_pack` 可传 `pack_id`、`format`。`compare_context_packs` 必须提供不同的 `from_pack_id`、`to_pack_id`，返回完整两侧和本地差异；使用当前可信身份，两侧仍受保存包有效性约束。保存包资源每次读取都会检查当前权限、来源和到期时间，返回含完整文档的 WCP JSON envelope；参数化 pack 不要求出现在静态资源列表。默认值、错误与 016 数据库迁移依赖见 [ContextPack 运行时](context-pack-runtime.md)。
 
 `resources/list` 已改为 PostgreSQL 持久元数据目录，每页最多 100 条，使用响应 `nextCursor` 继续。依次列出项目 overview、未归档 ContextItem、有效 wcp://context/... 旧索引、可见 Proposal、本地工作项投影、有检查点的会话、有交接的会话及检查通过的保存包；每类按原始 ID 的 C 排序继续，不按编码后的 URI 排序。ID 在 URI 中经过百分号编码，应使用目录返回的完整 URI。名称只使用 URI，不复制标题、正文或来源内容。目录先过滤当前项目、分类和删除状态；旧索引额外过滤到期，Proposal 复用本地来源与派生链可见性规则。ContextItem 的过期/excluded 和 Proposal 的历史状态不影响其作为可读历史资料出现，不表示可用于确认或编译。
 

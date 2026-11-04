@@ -13,6 +13,8 @@ import {
   contextPackReadHashJson,
   parseContextPackReadEnvelope,
   parseContextPackReadQuery,
+  parseContextPackComparisonQuery,
+  compareSavedContextPacks,
   compareContextSnapshots,
   contextRevisionSnapshotJson,
   isSyncIdentifier,
@@ -32,6 +34,7 @@ import {
   type ContextItemReadQuery,
   type ContextItemDirectoryQuery,
   type ContextPackReadQuery,
+  type ContextPackComparisonQuery,
   type ContextPackReceipt,
 } from '@planemem/contracts';
 import type { ApiGateway } from '../http.js';
@@ -39,6 +42,7 @@ import type { RequestContext } from '../router.js';
 
 type ToolName =
   | 'get_context_pack'
+  | 'compare_context_packs'
   | 'list_context_items'
   | 'get_context_item'
   | 'get_archived_context_item'
@@ -50,7 +54,10 @@ type ReadQuery =
   | ContextItemReadQuery
   | { kind: 'pack'; query: ContextPackReadQuery }
   | { kind: 'list'; query: ContextItemDirectoryQuery };
-type Query = ReadQuery | { kind: 'compare'; query: ContextComparisonQuery };
+type Query =
+  | ReadQuery
+  | { kind: 'compare'; query: ContextComparisonQuery }
+  | { kind: 'compare-packs'; query: ContextPackComparisonQuery };
 function isDetailQuery(query: Query): query is ContextItemReadQuery {
   return query.kind === 'current' || query.kind === 'archived';
 }
@@ -70,10 +77,11 @@ function responseLimit(query: ReadQuery) {
     : CONTEXT_REVISION_RESPONSE_BYTES;
 }
 const comparisonBytes = 16 * 1024 * 1024;
+const packComparisonBytes = 12 * 1024 * 1024;
 const activeReads = new WeakMap<ApiGateway, { active: number }>();
 const messages = {
   INVALID_INPUT:
-    'Supply a saved pack selection (optional pack_id/format), valid directory filters and a current cursor, one local item_id for current/archived details, valid history positions or two different positive safe versions, without identity or write fields',
+    'Supply a saved pack selection (optional pack_id/format), two different from_pack_id/to_pack_id values for pack comparison, valid directory filters and a current cursor, one local item_id for current/archived details, valid history positions or two different positive safe versions, without identity or write fields',
   DENIED:
     'Use a verified unexpired client with actual context.read and the required record visibility',
   UNAUTHENTICATED: 'Renew the intended session before reading context',
@@ -103,7 +111,7 @@ const messages = {
     'Stopped waiting for the context directory; the underlying read may still be running',
   MCP_CONTEXT_PACK_BUSY: 'MCP context read capacity is occupied',
   MCP_CONTEXT_PACK_TIMEOUT:
-    'Stopped waiting for the saved context pack; the underlying read may still be running',
+    'Stopped waiting for the saved context pack read or comparison; the underlying read may still be running',
   CONTEXT_PACK_INTEGRITY_UNAVAILABLE:
     'Context pack integrity checking is unavailable; no unchecked pack was returned',
   CONTEXT_PACK_HASH_MISMATCH: 'The complete context pack differs from its saved hash',
@@ -120,6 +128,7 @@ function fail(code: ErrorCode, trace: string) {
 export function isContextReadTool(name: unknown): name is ToolName {
   return (
     name === 'get_context_pack' ||
+    name === 'compare_context_packs' ||
     name === 'list_context_items' ||
     name === 'get_context_item' ||
     name === 'get_archived_context_item' ||
@@ -159,6 +168,8 @@ function captureQuery(name: string, raw: unknown, trace: string): Query {
       throw new TypeError();
     if (name === 'get_context_pack')
       return { kind: 'pack', query: parseContextPackReadQuery(value) };
+    if (name === 'compare_context_packs')
+      return { kind: 'compare-packs', query: parseContextPackComparisonQuery(value) };
     if (name === 'list_context_items') {
       // Optional enum values must be omitted rather than bypassing the tool schema with ''.
       const fields = value as Record<string, unknown>;
@@ -192,7 +203,7 @@ export async function executeContextReadTool(
   const deadline = performance.now() + 30_000;
   const detail = name === 'get_context_item' || name === 'get_archived_context_item';
   const directory = name === 'list_context_items';
-  const pack = name === 'get_context_pack';
+  const pack = name === 'get_context_pack' || name === 'compare_context_packs';
   const timeoutCode = pack
     ? 'MCP_CONTEXT_PACK_TIMEOUT'
     : directory
@@ -223,7 +234,12 @@ export async function executeContextReadTool(
     actor_id: context.actor_id,
     client_id: context.client_id,
   };
-  const maximum = query.kind === 'compare' ? comparisonBytes : responseLimit(query);
+  const maximum =
+    query.kind === 'compare-packs'
+      ? packComparisonBytes
+      : query.kind === 'compare'
+        ? comparisonBytes
+        : responseLimit(query);
   active();
   let gate = activeReads.get(api);
   if (!gate) {
@@ -364,7 +380,31 @@ export async function executeContextReadTool(
         return envelope;
       };
       let value: unknown;
-      if (query.kind === 'compare') {
+      if (query.kind === 'compare-packs') {
+        const selected = query.query;
+        const from = await read({
+          kind: 'pack',
+          query: { pack_id: selected.from_pack_id, format: 'json' },
+        });
+        const to = await read({
+          kind: 'pack',
+          query: { pack_id: selected.to_pack_id, format: 'json' },
+        });
+        active();
+        value = {
+          schema_version: 1,
+          kind: 'saved-context-pack-comparison',
+          comparison_origin: 'local',
+          read_consistency: 'separate-reads',
+          content_state: 'pack-hashes-checked',
+          source_state: 'not-checked',
+          query: selected,
+          identity_constraints: identity,
+          from,
+          to,
+          comparison: compareSavedContextPacks(from, to),
+        };
+      } else if (query.kind === 'compare') {
         const selected = query.query;
         const from = await read({
           kind: 'version',

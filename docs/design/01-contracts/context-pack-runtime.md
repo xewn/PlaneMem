@@ -199,7 +199,7 @@ Web先捕获同一会话/项目范围及Gateway基址，随后两次顺序GET都
 - 单列保存ID、版本、创建时间、保存游标、包摘要、保存trace、预算、估算用量、到期时间及入选/排除数量。原HTTP读取trace不当作保存内容变化，单独显示供定位。包内容摘要相同并不要求保存ID/版本相同。
 - 聚合来源保留两侧完整引用及顺序，独立显示变化。每候选可展开两侧正文及完整保存字段；只看变化隐藏same候选及相同元数据，来源相同时保留提示。候选无变化时仍显示可能变化的包信息，不把空差异当成同一保存记录。
 
-Web、下节SDK及CLI已接入双包对比，MCP双包对比和专用Schema后续开发；旧完整读取Schema描述各侧封套，不描述本地组合比较结果。R-003未完成、`evidence: []`；双侧完整性/摘要、状态迁移/位置/字段、原范围/期限、导航与真实页面兼容都缺运行证据。本轮只源码文档人工审阅和格式文本检查，未编译、类型检查、测试、渲染、启动浏览器/产品/API/数据库或发布。
+Web、下节SDK、CLI及MCP已接入双包对比，专用Schema后续开发；旧完整读取Schema描述各侧封套，不描述本地组合比较结果。R-003未完成、`evidence: []`；双侧完整性/摘要、状态迁移/位置/字段、原范围/期限、导航与真实页面兼容都缺运行证据。本轮只源码文档人工审阅和格式文本检查，未编译、类型检查、测试、渲染、启动浏览器/产品/API/数据库或发布。
 
 ## SDK 指定保存包对比（2026-11-04，源码增量）
 
@@ -243,7 +243,7 @@ const result = await client.compareContextPacks(selection, {
 // 需取消时由调用方调用cancellation.abort()；不会重发或编译包。
 ```
 
-CLI对比适配见下节；MCP对比适配、组合Schema、自动一致性和SDK/Mock/真实Gateway兼容、身份刷新/总预算/取消/完整结果边界运行证据仍待补。R-003保持未完成、`evidence: []`；本轮仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布。
+CLI及MCP对比适配见后续章节；组合Schema、自动一致性和SDK/Mock/真实Gateway兼容、身份刷新/总预算/取消/完整结果边界运行证据仍待补。R-003保持未完成、`evidence: []`；本轮仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布。
 
 ## CLI 指定保存包对比（2026-11-04，源码增量）
 
@@ -270,4 +270,33 @@ stdout返回上节完整SDK结果：原query/identity_constraints、from/to及co
 workctx context compare-packs --json-file pack-comparison.json --timeout-ms 30000
 ```
 
-反向比较须显式交换两个包编号；命令不会覆盖输入文件。R-003未完成、`evidence: []`，网络/嵌入/SDK兼容、总期限/授权等待/容量、文件/stdin输入和完整输出仍缺运行证据；MCP对比与独立组合Schema待补。本轮仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/SDK/产品/API/数据库或发布。
+反向比较须显式交换两个包编号；命令不会覆盖输入文件。R-003未完成、`evidence: []`，网络/嵌入/SDK兼容、总期限/授权等待/容量、文件/stdin输入和完整输出仍缺运行证据；MCP对比见下节，独立组合Schema待补。本轮仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/SDK/产品/API/数据库或发布。
+
+## MCP 指定保存包对比（2026-11-04，源码增量）
+
+新增只读工具 `compare_context_packs`。输入只允许 `from_pack_id`、`to_pack_id` 两个不同ULID，上限4 KiB；未知字段、相同编号、format/latest、调用者提供的身份或写条件均拒绝。完整身份取自捕获的可信上下文，清除继承的幂等键/版本/If-Match。工具发现、HTTP客户端要求、prepare和实际调用复用上下文专用读门禁：已认证且未过期，完整项目/账号/客户端/trace，实际具有context.read，admin不代替该能力。`prepareMcpTool` 保持明确返回MCP_TOOL_EXECUTOR_REQUIRED，实际比较由dispatchMcp或专用执行器执行。
+
+按原方向顺序执行两次指定 `format=json` 包读取。内部ApiGateway沿用原GET路由、策略和审计，查询在内部请求body传递，不创建新REST比较路由。每侧完整成功2 MiB、错误16 KiB，核对HTTP状态/type/trace/ETag、原范围和指定编号、保存内容/来源/预算；Node SHA-256核对保存摘要，入选restricted条目需要可信data.restricted.read。过期、来源变化、不可读和摘要失败仍阻止整次返回；第一侧失败不开始第二侧，第二侧失败不交付第一侧内容。
+
+结果为单个MCP文本项，其text是完整JSON组合，与SDK/CLI采用相同字段：schema_version=1、kind=saved-context-pack-comparison、comparison_origin=local、read_consistency=separate-reads、content_state=pack-hashes-checked、source_state=not-checked，以及query、identity_constraints、完整from/to和comparison。共享比较模型保持候选选中/排除/未出现、完整正文/理由/位置/来源/预算差异；候选移除不表示项目知识删除。比较上限8 MiB，完整结果12 MiB，转义MCP文本包装24 MiB+4096；仍沿既有JSON节点/深度约束，不截断或省略大字段。
+
+八类上下文读工具共用每ApiGateway两笔容量，本次两侧读取、摘要、比较、完整序列化和文本包装共用一次30秒期限。阶段间复查期限及捕获权限；沿MCP_CONTEXT_PACK_BUSY/TIMEOUT及固定已知错误说明。超时停止等待后，槽位保留至底层工作实际结束，后续阶段不会启动第二次读取。内部ApiGateway请求没有中止能力，已开始的授权/审计/读取可能继续；外层授权审计与HTTP发送不计工具期限，同步解析也不能抢占。无自动换包、重试、编译、来源访问或写入，两次读取不构成同一数据库快照，摘要一致不证明外部来源真实。
+
+调用示例仅用于说明，本轮未执行，需替换为当前项目可读的真实保存包编号：
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "compare-saved-packs",
+  "method": "tools/call",
+  "params": {
+    "name": "compare_context_packs",
+    "arguments": {
+      "from_pack_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "to_pack_id": "01ARZ3NDEKTSV4RRFFQ69G5FAW"
+    }
+  }
+}
+```
+
+反向比较须显式交换两编号。R-003保持未完成、`evidence: []`；发现/调用/prepare兼容、完整双侧及转义输出边界、超时/共享容量和真实Gateway/MCP客户端兼容仍缺运行证据，独立组合Schema待补。本轮仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行MCP/SDK/Mock/产品/API/数据库或发布。
