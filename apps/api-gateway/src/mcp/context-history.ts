@@ -12,6 +12,9 @@ import {
   CONTEXT_PACK_READ_ERROR_BYTES,
   CONTEXT_PACK_DIRECTORY_RESPONSE_BYTES,
   CONTEXT_PACK_SAVE_CONTEXT_BYTES,
+  CONTEXT_PACK_SAVE_RECEIPT_RESPONSE_BYTES,
+  parseContextPackSaveReceiptQuery,
+  parseContextPackSaveReceiptEnvelope,
   parseContextPackSaveContextEnvelope,
   parseContextPackDirectoryEnvelope,
   parseContextPackDirectoryQuery,
@@ -42,11 +45,14 @@ import {
   type ContextPackComparisonQuery,
   type ContextPackReceipt,
   type ContextPackDirectoryQuery,
+  type ContextPackSaveReceiptQuery,
 } from '@planemem/contracts';
 import type { ApiGateway } from '../http.js';
 import type { RequestContext } from '../router.js';
+import { canReadContextPackSaveReceipt } from '../context-pack-save-receipt.js';
 
 type ToolName =
+  | 'get_context_pack_save_receipt'
   | 'get_context_pack_save_context'
   | 'get_context_pack'
   | 'list_context_packs'
@@ -58,6 +64,7 @@ type ToolName =
   | 'get_context_item_version'
   | 'compare_context_item_versions';
 type ReadQuery =
+  | { kind: 'save-receipt'; query: ContextPackSaveReceiptQuery }
   | { kind: 'save-identity' }
   | ContextHistoryReadQuery
   | ContextItemReadQuery
@@ -72,6 +79,7 @@ function isDetailQuery(query: Query): query is ContextItemReadQuery {
   return query.kind === 'current' || query.kind === 'archived';
 }
 function readPath(query: ReadQuery) {
+  if (query.kind === 'save-receipt') return '/v1/context-pack/save-receipt';
   if (query.kind === 'save-identity') return '/v1/context-pack/save-context';
   if (query.kind === 'pack-list') return '/v1/context-packs';
   if (query.kind === 'pack') return '/v1/context-pack';
@@ -81,6 +89,7 @@ function readPath(query: ReadQuery) {
   return root + (query.kind === 'history' ? '/history' : '/versions/' + query.version);
 }
 function responseLimit(query: ReadQuery) {
+  if (query.kind === 'save-receipt') return CONTEXT_PACK_SAVE_RECEIPT_RESPONSE_BYTES;
   if (query.kind === 'save-identity') return CONTEXT_PACK_SAVE_CONTEXT_BYTES;
   if (query.kind === 'pack-list') return CONTEXT_PACK_DIRECTORY_RESPONSE_BYTES;
   if (query.kind === 'pack') return CONTEXT_PACK_READ_RESPONSE_BYTES;
@@ -92,6 +101,21 @@ function responseLimit(query: ReadQuery) {
 }
 const comparisonBytes = 16 * 1024 * 1024;
 const packComparisonBytes = 12 * 1024 * 1024;
+// Internal ApiGateway statuses, independent of the outer HTTP authentication listener.
+const saveReceiptErrorStatuses: Record<string, number> = {
+  INVALID_INPUT: 400,
+  DENIED: 403,
+  NOT_FOUND: 404,
+  COMMAND_NOT_FOUND: 404,
+  CONTEXT_PACK_NOT_FOUND: 404,
+  IDEMPOTENCY_KEY_REUSED: 409,
+  RATE_LIMITED: 429,
+  CONTEXT_PACK_RECEIPT_INVALID: 500,
+  CONTEXT_PACK_STORAGE_UNAVAILABLE: 503,
+  CONTEXT_PACK_RECEIPT_TIMEOUT: 503,
+  WORKBENCH_AUTH_UNAVAILABLE: 400,
+  AUDIT_PERSISTENCE_UNAVAILABLE: 503,
+};
 const saveIdentityErrorStatuses: Record<string, number> = {
   INVALID_INPUT: 400,
   UNAUTHENTICATED: 401,
@@ -117,11 +141,20 @@ const packDirectoryErrorStatuses: Record<string, number> = {
 const activeReads = new WeakMap<ApiGateway, { active: number }>();
 const messages = {
   INVALID_INPUT:
-    'Supply an empty object for save identity, a saved pack selection (optional pack_id/format), saved pack metadata filters (optional pack_id/limit/cursor), two different from_pack_id/to_pack_id values for pack comparison, valid item directory filters and a current cursor, one local item_id for current/archived details, valid history positions or two different positive safe versions, without identity or write fields',
+    'Supply complete original identity/read_restricted/request_key/parameters for a save receipt lookup. Other reads accept an empty object for save identity, a saved pack selection, metadata filters, two pack IDs, item filters, an item ID, history positions or two different versions, without identity or write fields. Never supply write conditions to a read.',
   DENIED:
     'Use a verified unexpired client with actual context.read and the required record visibility',
   UNAUTHENTICATED: 'Renew the intended session before reading context',
   NOT_FOUND: 'The context read route is unavailable',
+  COMMAND_NOT_FOUND: 'The historical save receipt handler is unavailable',
+  IDEMPOTENCY_KEY_REUSED:
+    'The original key belongs to different settings or permissions; retain the exact original',
+  CONTEXT_PACK_RECEIPT_INVALID: 'The historical save metadata could not be validated',
+  CONTEXT_PACK_RECEIPT_TIMEOUT:
+    'The gateway stopped waiting for historical save metadata; the read may still be running',
+  MCP_CONTEXT_PACK_SAVE_RECEIPT_BUSY: 'MCP context read capacity is occupied',
+  MCP_CONTEXT_PACK_SAVE_RECEIPT_TIMEOUT:
+    'Stopped waiting for the original save receipt; no pack save was sent by this query',
   CONTEXT_ITEM_NOT_FOUND: 'The selected item or recorded version is unavailable in this project',
   CONTEXT_ITEM_INVALID: 'The complete stored context response could not be validated',
   CONTEXT_ITEM_STORAGE_UNAVAILABLE: 'Context storage is unavailable',
@@ -173,6 +206,7 @@ function fail(code: ErrorCode, trace: string) {
 }
 export function isContextReadTool(name: unknown): name is ToolName {
   return (
+    name === 'get_context_pack_save_receipt' ||
     name === 'get_context_pack_save_context' ||
     name === 'get_context_pack' ||
     name === 'list_context_packs' ||
@@ -214,6 +248,8 @@ function captureQuery(name: string, raw: unknown, trace: string): Query {
     );
     if (!value || typeof value !== 'object' || Array.isArray(value) || Object.hasOwn(value, 'kind'))
       throw new TypeError();
+    if (name === 'get_context_pack_save_receipt')
+      return { kind: 'save-receipt', query: parseContextPackSaveReceiptQuery(value) };
     if (name === 'get_context_pack_save_context') {
       if (Object.keys(value).length) throw new TypeError();
       return { kind: 'save-identity' };
@@ -260,17 +296,20 @@ export async function executeContextReadTool(
   const packDirectory = name === 'list_context_packs';
   const pack = name === 'get_context_pack' || name === 'compare_context_packs';
   const saveIdentity = name === 'get_context_pack_save_context';
-  const timeoutCode = saveIdentity
-    ? 'MCP_CONTEXT_PACK_SAVE_CONTEXT_TIMEOUT'
-    : packDirectory
-      ? 'MCP_CONTEXT_PACK_DIRECTORY_TIMEOUT'
-      : pack
-        ? 'MCP_CONTEXT_PACK_TIMEOUT'
-        : directory
-          ? 'MCP_CONTEXT_DIRECTORY_TIMEOUT'
-          : detail
-            ? 'MCP_CONTEXT_ITEM_TIMEOUT'
-            : 'MCP_CONTEXT_HISTORY_TIMEOUT';
+  const saveReceipt = name === 'get_context_pack_save_receipt';
+  const timeoutCode = saveReceipt
+    ? 'MCP_CONTEXT_PACK_SAVE_RECEIPT_TIMEOUT'
+    : saveIdentity
+      ? 'MCP_CONTEXT_PACK_SAVE_CONTEXT_TIMEOUT'
+      : packDirectory
+        ? 'MCP_CONTEXT_PACK_DIRECTORY_TIMEOUT'
+        : pack
+          ? 'MCP_CONTEXT_PACK_TIMEOUT'
+          : directory
+            ? 'MCP_CONTEXT_DIRECTORY_TIMEOUT'
+            : detail
+              ? 'MCP_CONTEXT_ITEM_TIMEOUT'
+              : 'MCP_CONTEXT_HISTORY_TIMEOUT';
   const trace = isSyncIdentifier(original.trace_id) ? original.trace_id : 'trace_unknown';
   let context: RequestContext;
   try {
@@ -280,7 +319,8 @@ export async function executeContextReadTool(
   }
   const active = () => {
     if (performance.now() >= deadline) throw fail(timeoutCode, trace);
-    if (!canReadContextTool(context)) throw fail('DENIED', trace);
+    if (saveReceipt ? !canReadContextPackSaveReceipt(context) : !canReadContextTool(context))
+      throw fail('DENIED', trace);
   };
   active();
   const query = captureQuery(name, raw, trace);
@@ -294,6 +334,14 @@ export async function executeContextReadTool(
     actor_id: context.actor_id,
     client_id: context.client_id,
   };
+  if (
+    query.kind === 'save-receipt' &&
+    ((Object.keys(identity) as Array<keyof typeof identity>).some(
+      (key) => query.query.identity[key] !== identity[key],
+    ) ||
+      query.query.read_restricted !== context.capability.includes('data.restricted.read'))
+  )
+    throw fail('DENIED', trace);
   const maximum =
     query.kind === 'compare-packs'
       ? packComparisonBytes
@@ -308,17 +356,19 @@ export async function executeContextReadTool(
   }
   if (gate.active >= 2)
     throw fail(
-      saveIdentity
-        ? 'MCP_CONTEXT_PACK_SAVE_CONTEXT_BUSY'
-        : packDirectory
-          ? 'MCP_CONTEXT_PACK_DIRECTORY_BUSY'
-          : pack
-            ? 'MCP_CONTEXT_PACK_BUSY'
-            : directory
-              ? 'MCP_CONTEXT_DIRECTORY_BUSY'
-              : detail
-                ? 'MCP_CONTEXT_ITEM_BUSY'
-                : 'MCP_CONTEXT_HISTORY_BUSY',
+      saveReceipt
+        ? 'MCP_CONTEXT_PACK_SAVE_RECEIPT_BUSY'
+        : saveIdentity
+          ? 'MCP_CONTEXT_PACK_SAVE_CONTEXT_BUSY'
+          : packDirectory
+            ? 'MCP_CONTEXT_PACK_DIRECTORY_BUSY'
+            : pack
+              ? 'MCP_CONTEXT_PACK_BUSY'
+              : directory
+                ? 'MCP_CONTEXT_DIRECTORY_BUSY'
+                : detail
+                  ? 'MCP_CONTEXT_ITEM_BUSY'
+                  : 'MCP_CONTEXT_HISTORY_BUSY',
       trace,
     );
   const lease = gate;
@@ -330,11 +380,14 @@ export async function executeContextReadTool(
         const { kind, ...input } = selected;
         // Internal ApiGateway accepts query fields as body; public GET uses URL parameters.
         const response = await api.handle({
-          method: kind === 'list' ? 'POST' : 'GET',
+          method: kind === 'list' || kind === 'save-receipt' ? 'POST' : 'GET',
           path: readPath(selected),
           headers:
-            selected.kind === 'save-identity'
+            selected.kind === 'save-identity' || selected.kind === 'save-receipt'
               ? {
+                  ...(selected.kind === 'save-receipt'
+                    ? { 'content-type': 'application/json' }
+                    : {}),
                   'x-trace-id': trace,
                   'x-tenant-id': identity.tenant_id,
                   'x-workspace-id': identity.workspace_id,
@@ -344,11 +397,13 @@ export async function executeContextReadTool(
                 }
               : {},
           body:
-            selected.kind === 'pack' || selected.kind === 'pack-list'
-              ? { ...selected.query }
-              : selected.kind === 'list'
-                ? { ...selected.query, operation: 'context' }
-                : { ...input },
+            selected.kind === 'save-receipt'
+              ? { ...parseContextPackSaveReceiptQuery(selected.query) }
+              : selected.kind === 'pack' || selected.kind === 'pack-list'
+                ? { ...selected.query }
+                : selected.kind === 'list'
+                  ? { ...selected.query, operation: 'context' }
+                  : { ...input },
           context: structuredClone(context),
         });
         active();
@@ -369,7 +424,8 @@ export async function executeContextReadTool(
           syncJsonSnapshot(
             response.body,
             response.status >= 400
-              ? selected.kind === 'save-identity' ||
+              ? selected.kind === 'save-receipt' ||
+                selected.kind === 'save-identity' ||
                 selected.kind === 'pack' ||
                 selected.kind === 'pack-list'
                 ? CONTEXT_PACK_READ_ERROR_BYTES
@@ -384,6 +440,15 @@ export async function executeContextReadTool(
         if (response.status >= 400) {
           const error = validateErrorEnvelope(value);
           if (error.trace_id !== trace) throw fail('GATEWAY_RESPONSE_INVALID', trace);
+          if (
+            selected.kind === 'save-receipt' &&
+            (!Object.hasOwn(saveReceiptErrorStatuses, error.code) ||
+              response.status !== saveReceiptErrorStatuses[error.code] ||
+              Object.keys(value as object).some(
+                (key) => !['code', 'message', 'details', 'trace_id', 'retryable'].includes(key),
+              ))
+          )
+            throw fail('GATEWAY_RESPONSE_INVALID', trace);
           if (
             selected.kind === 'save-identity' &&
             (!Object.hasOwn(saveIdentityErrorStatuses, error.code) ||
@@ -417,6 +482,11 @@ export async function executeContextReadTool(
               : 'GATEWAY_RESPONSE_INVALID',
             trace,
           );
+        }
+        if (selected.kind === 'save-receipt') {
+          const receipt = parseContextPackSaveReceiptEnvelope(value, selected.query, trace);
+          active();
+          return receipt;
         }
         if (selected.kind === 'save-identity') {
           const authority = parseContextPackSaveContextEnvelope(value, identity, trace);

@@ -23,6 +23,7 @@ import { canReadArtifactVersionsTool, prepareArtifactVersionsTool } from './arti
 import { canReadArtifactRegistryTool, prepareArtifactRegistryTool } from './artifact-registry.js';
 import { canCompareArtifactVersionsTool } from './artifact-comparison.js';
 import { isContextReadTool, canReadContextTool } from './context-history.js';
+import { canReadContextPackSaveReceipt } from '../context-pack-save-receipt.js';
 import {
   isWorkItemReadTool,
   canReadWorkItemsTool,
@@ -1070,6 +1071,35 @@ const definitions: ToolDefinition[] = [
     { write: true, versioned: true },
   ),
   tool(
+    'get_context_pack_save_receipt',
+    'Read historical save metadata for the exact original identity, read_restricted bucket, request_key and explicit budget_tokens/ttl_seconds parameters (4 KiB). The original identity must equal the verified unexpired authenticated context.read client; identity fields are constraints, never authority. Retain the original Gateway/MCP destination; this query cannot establish network destination equivalence. One read-only POST, 16 KiB complete response, 32 KiB+4096 escaped text wrapper and 30-second local deadline, sharing context read capacity. recorded identifies matching historical metadata with content_state/source_state not-checked; it may be expired or unavailable. not-observed is only a snapshot observation and never proves failure or permits automatic resend. No compile/save, identity replacement, write conditions, retry, source/content read or persistence.',
+    ['context.read'],
+    'POST',
+    '/v1/context-pack/save-receipt',
+    {
+      identity: object(
+        {
+          tenant_id: ulid,
+          workspace_id: ulid,
+          project_id: ulid,
+          actor_id: ulid,
+          client_id: identifier,
+        },
+        claimIdentityFields,
+      ),
+      read_restricted: { type: 'boolean' },
+      request_key: { ...identifier, pattern: '^\\S+$' },
+      parameters: object(
+        {
+          budget_tokens: { ...integer, minimum: 128, maximum: 32768 },
+          ttl_seconds: { ...integer, minimum: 60, maximum: 86400 },
+        },
+        ['budget_tokens', 'ttl_seconds'],
+      ),
+    },
+    ['identity', 'read_restricted', 'request_key', 'parameters'],
+  ),
+  tool(
     'get_context_pack_save_context',
     'Read current verified context pack save identity, token expiry and compile/restricted permission hints. Requires an unexpired authenticated client with actual context.read; identity comes only from the trusted session. Arguments must be an empty object (4 KiB limit), complete business JSON 16 KiB, escaped MCP text wrapper 32 KiB+4096, local waiting 30 seconds. Shares context read capacity. Does not read project records, packs or sources, reserve a key, save a pack, or prove a historical save. Retain any existing original request binding; this response must not automatically replace it or authorize a retry.',
     ['context.read'],
@@ -1804,6 +1834,8 @@ export function listMcpTools(context: RequestContext) {
         (entry.name !== 'list_artifacts' || canReadArtifactRegistryTool(context)) &&
         (!isWorkItemReadTool(entry.name) || canReadWorkItemsTool(context)) &&
         (!isContextReadTool(entry.name) || canReadContextTool(context)) &&
+        (entry.name !== 'get_context_pack_save_receipt' ||
+          canReadContextPackSaveReceipt(context)) &&
         (entry.name !== 'compile_context_pack' || canReadContextTool(context)) &&
         (entry.name !== 'get_artifact_receipt' ||
           (context.authenticated_client === true &&
@@ -1910,13 +1942,16 @@ export function prepareMcpTool(
   }
   if (isWorkItemReadTool(name)) return prepareWorkItemReadTool(name, raw, context);
   if (isContextReadTool(name)) {
-    if (!canReadContextTool(context))
+    if (
+      !canReadContextTool(context) ||
+      (name === 'get_context_pack_save_receipt' && !canReadContextPackSaveReceipt(context))
+    )
       throw new ContractError('DENIED', 'A verified unexpired context reader is required', {
         trace_id: context.trace_id,
       });
     throw new ContractError(
       'MCP_TOOL_EXECUTOR_REQUIRED',
-      'Context save identity, pack/directory/detail/history reads and comparisons require dispatchMcp or the dedicated executor',
+      'Context save identity/receipt, pack/directory/detail/history reads and comparisons require dispatchMcp or the dedicated executor',
       { trace_id: context.trace_id },
     );
   }

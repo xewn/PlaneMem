@@ -1,5 +1,7 @@
 # 持久化 ContextPack 开发说明
 
+2026-11-05新增[MCP原保存回执查询](#mcp原保存回执查询2026-11-05源码增量)：工具按原身份/权限桶/键/显式参数查询历史记录，沿上下文读期限与容量，完整核验原查询及封套，不发保存或自动重试。仅源码文档，未编译、类型检查、测试、执行MCP/API或发布。
+
 2026-11-05新增[网页原保存回执查询](#网页原保存回执查询2026-11-05源码增量)：准备与恢复共用面板显式查询完整原请求，不发保存；已确认历史保留，显示固定包链接、完整元数据及内容/来源尚未检查。仅源码文档，未编译、类型检查、测试、渲染、执行网页/接口或发布。
 
 2026-11-05新增[原保存请求回执查询](#原保存请求回执查询2026-11-05源码增量)：Gateway/SDK/网络CLI只读匹配原保存请求的历史记录，不触发保存；明确区分历史已记录与快照中未观察到，内容及来源均另行检查。仅源码文档，未编译、类型检查、测试、执行客户端/接口/数据库或发布。
@@ -768,3 +770,21 @@ recorded独立显示历史包编号/版本、保存和到期时间、预算/用�
 not-observed只显示本次快照未观察到，完整响应可展开；保留既有已确认保存和历史记录，不将其降级为未保存，也不赋予自动重发资格。查询错误、取消、超时及恢复身份提示同样不清空旧结果或原文，保留的空观察标注为上次完整查询，不伪装成本次失败结果。新有效recorded可更新本页查询trace，保存正文仍需另行打开读取。查询结果仅保存在当前页面内存，刷新/返回原目录会丢失本页观察；浏览器原副本及文件只保留请求，尚未新增历史回执文件导出/持久化。
 
 R-003未完成、evidence为空。真实session/原Gateway路径/身份权限变化、HTTP状态/头/错误限额、过期和损坏历史、查询取消/迟到/容量保留、原文相等和既有确认结果不降级、跨页丢失提示等均缺运行证据。本轮仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、渲染、执行浏览器/接口/数据库或发布；不改协议、后端、SDK、CLI、MCP、Mock、存储格式或依赖。
+
+## MCP原保存回执查询（2026-11-05源码增量）
+
+新增`get_context_pack_save_receipt`，接入既有`executeContextReadTool`，不通过通用工具转发。输入为上文共享4 KiB闭合查询：identity完整五字段、read_restricted布尔、request_key原键、parameters内显式budget_tokens/ttl_seconds；均必填，无默认补全。不接受Gateway URL、完整原文件外层、idempotency_key/expected_version等写条件，调用方从所保留原请求准确提取字段。contracts的`contextPackSaveReceiptQuery(original)`可辅助提取，MCP工具本身不读取本地文件。
+
+工具目录提供严格嵌套object schema、四项ULID/客户端标识和预算128–32768、期限60–86400秒；真实解析仍复用共享普通JSON/字节/标识检查，不能只凭schema通过。发现/prepare/执行要求认证客户端、schema_version=1、可信完整身份/trace、未过期token和实际context.read，管理员角色不能代替实际能力。原identity逐字段与可信会话相等，restricted桶与当前实际data.restricted.read精确一致；正文身份只是约束，不替代会话授权。Gateway继续检查父项目当前可见及存储指纹。
+
+原目标由调用方保持：MCP执行内部已配置的Gateway，没有外部Gateway URL可供等价比较；不要把另一个MCP端点的相同身份/请求键当作原保存位置证明。工具不自动读取当前save-context来改绑原请求，不补造缺失字段或为查询生成新键。
+
+捕获独立context/query后清除继承idempotency_key/expected_version/if_match，原输入中的写字段直接拒绝。单次内部POST /v1/context-pack/save-receipt，传入原范围/actor/client相等头和JSON类型；派发正文再解析复制，避免内部处理修改嵌套字段影响保留的比对原查询。仅原历史查询，无compile POST、内容/来源读、保存或自动重试。
+
+响应要求200或有效错误状态、JSON类型、原x-trace-id和无ETag；完整业务JSON及错误各16 KiB，错误字段闭合且码与内部ApiGateway状态表相符。内部WORKBENCH_AUTH_UNAVAILABLE沿现有ApiGateway的400映射，不混用公开HTTP认证的503；其他如请求键冲突409、损坏回执500、存储/handler超时503沿原语义。错误固定信息、retryable=false，不传出上游details/部分记录。成功经共享原查询及完整封套核验，保留完整source_refs和data，不裁剪元数据。
+
+输出沿MCP `content: [{type: "text", text: 完整WCP封套JSON}]`，转义后的content包装限32 KiB+4096，外层JSON-RPC元数据由原协议添加。recorded仅证明匹配历史保存元数据，content_state/source_state固定not-checked，过期/后来来源变化仍可能返回记录；需要内容时另行读取固定pack_id。not-observed只是查询快照未观察到记录，不能证明没有保存，也不能作为自动重发或换键许可。输出失败不能否定先前保存，调用方保留完整原请求。
+
+十一类上下文读共享每ApiGateway两路容量；本工具使用MCP_CONTEXT_PACK_SAVE_RECEIPT_BUSY/TIMEOUT，30秒从执行器开始覆盖内部授权审计等待、读取和完整输出核验，逐阶段复查有效身份。内部api.handle不可被此计时器取消，超时停止本地等待但名额保留至底层实际结束；公开HTTP认证/外层审计与网络交付不在执行器期限内。prepareMcpTool返回MCP_TOOL_EXECUTOR_REQUIRED，调用者须使用dispatchMcp或专用执行器，不能绕过限额/输出核验。readOnlyHint为true，未注册新写操作或REST路径。
+
+R-003仍未完成、evidence为空。工具发现/认证客户端/直接prepare门禁、严格原身份与restricted绑定、HTTP与完整封套/错误边界、共享容量/迟到授权、旧十类读取兼容和客户端展示均待运行证据。Mock/嵌入CLI、MCP完整原文件与持久恢复流程、历史回执备份/清理及独立Schema/OpenAPI仍有缺口。本轮仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行MCP/API/产品/数据库或发布；无SDK/CLI/Web/Mock/共享协议/依赖/迁移变化。

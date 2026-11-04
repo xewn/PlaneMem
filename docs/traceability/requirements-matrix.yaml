@@ -954,6 +954,22 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_pack_mcp_save_receipt_development_increment:
+      date: "2026-11-05"
+      status: "Source-only MCP original save receipt tool with bounded shared context reader; R-003 remains incomplete."
+      artifacts:
+        - "apps/api-gateway/src/mcp/context-history.ts"
+        - "apps/api-gateway/src/mcp/catalog.ts"
+        - "docs/design/01-contracts/context-pack-runtime.md"
+        - "docs/design/01-contracts/mcp-runtime.md"
+      behavior: "get_context_pack_save_receipt requires the closed 4 KiB original identity/restricted/key/explicit parameters and an equal verified unexpired context.read client. Discovery, prepare and HTTP client checks recognize the tool; prepare requires the dedicated executor. One internal read-only POST strips inherited write conditions and copies the query independently. HTTP status/type/trace/no-ETag, 16 KiB complete response/error and shared original-matching envelope are checked before the 32 KiB+4096 escaped content wrapper. Eleven context tools share two slots and a 30-second deadline, retaining slots until underlying work settles. recorded remains historical metadata with content/source not-checked; not-observed never permits resend. Caller retains the original Gateway/MCP target."
+      evidence: []
+      pending_evidence:
+        - "Discovery, authenticated-client and prepare/dispatch gating with exact original identity/restricted constraints"
+        - "Input/output/error/HTTP bounds, stored metadata matching and shared context-read capacity across timeout"
+        - "Compatibility of existing ten context reads and MCP clients; no runtime verification performed"
+      remaining_gaps:
+        - "Mock and embedded CLI receipt adapters, MCP full original-file workflow, durable history recovery and independent Schema/OpenAPI"
     context_pack_web_save_receipt_development_increment:
       date: "2026-11-05"
       status: "Source-only explicit Web original-save receipt query on preparation and recovery panels; R-003 remains incomplete."
