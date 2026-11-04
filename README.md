@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [CLI历史备份双侧比较](docs/design/01-contracts/context-pack-runtime.md#cli历史备份双侧比较2026-11-05源码增量)：`context compare-backups` 可只读比较两套本地单份或分卷备份，输出完整差异、原请求冲突及两侧输入文件摘要，无需登录或联网。仅源码文档，未编译、测试、执行CLI或发布。
+
 新增 [SDK历史备份双侧比较](docs/design/01-contracts/context-pack-runtime.md#sdk历史备份双侧比较2026-11-05源码增量)：可离线比较两套完整单份或分卷备份，列出共有、各侧独有的观察及同键不同原请求冲突；比较前逐层核验摘要和完整身份绑定。仅源码文档，未编译、测试、执行SDK或发布。
 
 新增 [历史当前页所选整理](docs/design/01-contracts/context-pack-runtime.md#历史当前页所选整理2026-11-05源码增量)：可多选当前页观察，完整审阅后导出可恢复子集，并单独确认移除匹配的浏览器副本；旧审阅子集在翻页或失败后继续保留。仅源码文档，未编译、测试、运行浏览器或发布。

@@ -954,6 +954,26 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    cli_context_pack_receipt_backup_comparison_development_increment:
+      date: "2026-11-05"
+      status: "Source-only offline CLI comparison of complete historical backup sets; R-003 remains incomplete."
+      artifacts:
+        - "apps/workctx-cli/src/context-pack-backup-comparison.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "apps/workctx-cli/README.md"
+        - "docs/design/01-contracts/context-pack-runtime.md"
+      behavior: "Add context compare-backups with repeated from-backup-file and to-backup-file options, 1-11 files per side, optional independent binding and each root digest. Capture every path and option before awaiting; reject duplicate resolved paths within a side but permit the same path across sides. Sequentially read stable nonempty regular files within existing per-file/per-side limits, then call the complete SDK comparator under one default 30-second budget. Keep every difference and request-key conflict, add actual input paths/byte lengths/SHA-256, and label file-read-only and separate-file-reads. Metadata is limited to 512 KiB and combined finite JSON to 4 MiB plus 512 KiB, without backup bodies. Wire normal and embedded entry points before credentials/routing; reject unrelated or repeated singleton options. Successful comparison exits 0 even when sets differ or originals conflict; usage exits 2 and file/integrity/timeout failures exit 1 without partial stdout."
+      evidence: []
+      pending_evidence:
+        - "Normal/embedded command parity, irrelevant options and duplicate singleton rejection, missing sides, same-side duplicate paths and cross-side identical path"
+        - "Stable bounded file reads, per-side aggregate limits, independent binding/root constraints and single/volume packaging compatibility"
+        - "Complete SDK difference/conflict preservation, accurate raw input digests, detached metadata/total output bounds and no partial stdout"
+        - "Common read/inspection/serialization deadline, late read handle cleanup, no next-file read after timeout and no credentials/network/browser/writes"
+      remaining_gaps:
+        - "Web two-backup comparison integration, larger or streaming sets and runtime evidence"
+        - "Separate file reads are not an atomic snapshot; comparison does not authorize mutation or establish current server state"
+      execution: "Source/docs, manual review and formatting/Git text checks only; no build, typecheck, tests, CLI/SDK/browser/file-workflow/API/database execution or release. No SDK/shared format/dependency/storage changes."
     sdk_context_pack_receipt_backup_comparison_development_increment:
       date: "2026-11-05"
       status: "Source-only complete two-sided historical receipt backup comparison; R-003 remains incomplete."

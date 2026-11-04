@@ -1328,3 +1328,19 @@ comparison.entries为观察document摘要升序的完整并集，最多2000条�
 输入错误沿INVALID_INPUT/CONTEXT_BACKUP_INVALID，绑定/摘要/摘要不可用沿固定CONTEXT_BACKUP_BINDING_MISMATCH、CONTEXT_BACKUP_DIGEST_MISMATCH、CONTEXT_BACKUP_INTEGRITY_UNAVAILABLE；新增CONTEXT_BACKUP_COMPARISON_CONFLICT/CANCELED/TIMEOUT/FAILED，使用固定说明、原本地trace和无写入状态，不回显任意底层诊断。finally清理公共预算；停止等待不交付迟到比较，正在执行的底层摘要可能仍会结束。
 
 CLI/Web比较接线、更大或流式集合和运行证据仍待补。R-003未完成、evidence为空；仅源码文档人工审阅及格式/Git文本检查，未编译、类型检查、测试、执行SDK/CLI/浏览器/产品/API/数据库或发布。
+
+## CLI历史备份双侧比较（2026-11-05源码增量）
+
+新增context compare-backups，通过可重复--from-backup-file和--to-backup-file指定两套完整历史回执备份。每侧1–11份，独立选择一份既有单备份，或一份清单与所有分卷；文件顺序不要求与清单一致，实际归属/全局观察顺序由SDK完整核验。两侧可采用不同包装，也可以指定同一路径比较各自读取的内容。同侧解析到相同绝对路径拒绝，Windows路径按大小写不敏感比较；不同硬链接/符号链接路径不靠路径字符串识别同一物理文件，但重复卷/观察由SDK拒绝。无stdin、目录扫描或自动补齐缺卷。
+
+可选--binding-file提供8 KiB以内完整独立PackSaveBinding；--expected-from-document-sha256与--expected-to-document-sha256分别约束对应单备份或分卷清单的document摘要，必须64位小写十六进制。--timeout-ms默认30000，正整数最大2147483647。非文件选项不可重复，额外位置参数、无关输出/请求/网络/JSON参数全部拒绝；所有路径限制4096字符并拒绝控制字符、DEL和孤立代理项，首次await前完成两侧及绑定文件路径、独立摘要约束与时限捕获，绑定正文随后只读捕获。无需WORKCTX身份、网关地址或凭据。
+
+沿readBoundedArtifactFile顺序读取独立绑定、from所有文件、to所有文件：每份非空普通文件、实际句柄类型/长度、末尾探测以及读前后size/mtime/ctime检查；每份沿PACK_RECEIPT_BACKUP_FILE_BYTES，每侧累计沿PACK_RECEIPT_VOLUMES_SET_BYTES，下一份读取上限取单文件和剩余集合预算的较小值。输入文件实际字节独立保存后才调用compareContextPackReceiptBackups，不重新序列化输入文件代替原始字节。共同总期限覆盖文件读取、SDK双方完整核验/比较、元数据及最终结果复制；SDK接收剩余时间和同一取消信号。超时返回固定错误、清理计时器并终止等待，当前底层文件读取可能继续到关闭句柄，但完成后检查预算，不再启动下一份文件读取或接收迟到结果。
+
+成功stdout保留SDK完整backups-compared封套：原binding/binding_state、from/to摘要、完整排序观察并集及共有/独有计数、所有同键不同原文冲突、历史/未认证/未检查当前服务器状态等边界。额外local_inputs.from/to记录各自按输入顺序读取的绝对path、实际file_bytes和file_sha256；该摘要是实际文件字节SHA-256，与规范document摘要不同。提供独立绑定时增加matched_binding_file同形记录。元数据限512 KiB，SDK结果保持4 MiB边界，最终完整有限JSON限4 MiB+512 KiB及共享节点/深度限制；超限整次失败，不截断差异或返回部分文件。
+
+CLI将SDK的storage_access覆盖为file-read-only，增加input_consistency=separate-file-reads、browser_history_access=not-performed及restore_state=not-started。逐文件稳定检查不是跨文件/跨侧原子快照，跨侧同路径也会分别读取；根摘要不同不必然代表观察集合不同，same_observations只沿SDK集合比较。文件源信息不认证其内容，不证明当前磁盘仍保持这些字节。比较结果不包含可恢复的备份正文；按entries中的document_sha256提取时，应另行显式调用extract-backup-receipt并提供所需备份文件，后者重新完整核验。
+
+main及内嵌runWorkctx统一调用专用comparison模块，在凭据读取、路由或网络前返回；内嵌只使用context.trace_id作本地追踪。成功退出0，即使双方不同或报告同键不同原请求；此类冲突属于完整比较结果。参数错误USAGE_ERROR退出2；文件不可读/变动/超限、绑定文件非法、SDK结构/摘要/绑定错误、超时或结果超限退出1，stderr固定错误封套且stdout为空。观察摘要相同却正文不同或原请求摘要歧义沿SDK的COMPARISON_CONFLICT错误，不能作为成功差异继续。专用模块错误准确保留是否已尝试文件读取，不回显底层任意诊断。
+
+本命令无--output，不写文件、恢复浏览器、合并、选择新旧、删除或重发原请求；不访问数据库。Web双备份比较、更大/流式集合及运行证据仍待补。R-003未完成、evidence为空；仅源码文档人工审阅及格式/Git文本检查，未编译、类型检查、测试、执行CLI/SDK/浏览器/文件工作流/API/数据库或发布。

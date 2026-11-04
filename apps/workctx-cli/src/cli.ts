@@ -21,6 +21,7 @@ import {
 } from './context-pack-receipt-file.js';
 import { recoverContextPackReceipt } from './context-pack-receipt-recovery.js';
 import { inspectContextPackBackupArguments } from './context-pack-backup-inspection.js';
+import { compareContextPackBackupArguments } from './context-pack-backup-comparison.js';
 import { prepareContextPackBackupArguments } from './context-pack-backup-preparation.js';
 import { recoverContextPackBackup } from './context-pack-backup-recovery.js';
 import { extractContextPackBackupReceipt } from './context-pack-backup-extraction.js';
@@ -312,6 +313,7 @@ export async function runWorkctx(
     'context inspect-save': 'context.pack.original.inspect',
     'context inspect-receipt': 'context.pack.receipt.inspect',
     'context inspect-backup': 'context.pack.backup.inspect',
+    'context compare-backups': 'context.pack.backup.compare',
     'context prepare-backup': 'context.pack.backup.prepare',
     'context recover-backup': 'context.pack.backup.recover',
     'context extract-backup-receipt': 'context.pack.backup.extract-receipt',
@@ -396,6 +398,25 @@ export async function runWorkctx(
       }),
     };
   try {
+    const optionEnd = argv.indexOf('--');
+    if (
+      command !== 'context compare-backups' &&
+      argv
+        .slice(0, optionEnd === -1 ? argv.length : optionEnd)
+        .some((argument) =>
+          [
+            '--from-backup-file',
+            '--to-backup-file',
+            '--expected-from-document-sha256',
+            '--expected-to-document-sha256',
+          ].some((option) => argument === option || argument.startsWith(option + '=')),
+        )
+    )
+      throw new ContractError(
+        'USAGE_ERROR',
+        'Two-sided backup options are only supported by context compare-backups',
+        { trace_id: context.trace_id, retryable: false, dispatch_state: 'not-sent' },
+      );
     if (command === 'context submit-save') {
       const result = await runContextPackSubmitSave(argv, router, context, options.gateway_url);
       return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
@@ -422,6 +443,10 @@ export async function runWorkctx(
     }
     if (command === 'context inspect-backup') {
       const result = await inspectContextPackBackupArguments(argv, context.trace_id);
+      return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
+    }
+    if (command === 'context compare-backups') {
+      const result = await compareContextPackBackupArguments(argv, context.trace_id);
       return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
     }
     if (command === 'context extract-backup-receipt') {

@@ -24,6 +24,7 @@ import {
 } from './artifact-queries.js';
 import { inspectArtifactReceiptArguments } from './artifact-receipt-file.js';
 import { inspectContextPackBackupArguments } from './context-pack-backup-inspection.js';
+import { compareContextPackBackupArguments } from './context-pack-backup-comparison.js';
 import { prepareContextPackBackupArguments } from './context-pack-backup-preparation.js';
 import { recoverContextPackBackup } from './context-pack-backup-recovery.js';
 import { extractContextPackBackupReceipt } from './context-pack-backup-extraction.js';
@@ -360,6 +361,9 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   context inspect-receipt         Inspect --receipt-file RECEIPT.json offline; optional --json-file ORIGINAL.json
   context inspect-backup          Inspect --backup-file FILE offline; repeat for manifest and all volumes
                                  Optional --binding-file BINDING.json, --expected-document-sha256 SHA256, --timeout-ms
+  context compare-backups         Compare repeated --from-backup-file FILE with repeated --to-backup-file FILE offline
+                                 Each side requires a single backup or manifest and all volumes; optional --binding-file and --timeout-ms
+                                 Optional --expected-from-document-sha256 SHA256 and --expected-to-document-sha256 SHA256
   context prepare-backup          Save a backup in new --output DIRECTORY; --binding-file BINDING.json --format single|volumes
                                  Repeat --observation-file FILE or use --empty; optional --timeout-ms for input preparation
   context recover-backup          Recover complete prepare-backup/recover-backup --result-file RESULT.json into --output NEW_DIRECTORY
@@ -420,6 +424,10 @@ function parseOptions(args: string[]) {
         'result-file': { type: 'string' },
         'receipt-file': { type: 'string' },
         'backup-file': { type: 'string', multiple: true },
+        'from-backup-file': { type: 'string', multiple: true },
+        'to-backup-file': { type: 'string', multiple: true },
+        'expected-from-document-sha256': { type: 'string' },
+        'expected-to-document-sha256': { type: 'string' },
         'observation-file': { type: 'string', multiple: true },
         format: { type: 'string' },
         empty: { type: 'boolean' },
@@ -694,6 +702,7 @@ export async function main(args: string[]): Promise<number> {
       'context save-receipt',
       'context inspect-receipt',
       'context inspect-backup',
+      'context compare-backups',
       'context prepare-backup',
       'context recover-backup',
       'context extract-backup-receipt',
@@ -733,6 +742,14 @@ export async function main(args: string[]): Promise<number> {
     )
       usage('Unknown or incomplete command. Run workctx --help');
     if (
+      name !== 'context compare-backups' &&
+      (values['from-backup-file'] !== undefined ||
+        values['to-backup-file'] !== undefined ||
+        values['expected-from-document-sha256'] !== undefined ||
+        values['expected-to-document-sha256'] !== undefined)
+    )
+      usage('Two-sided backup options are only supported by context compare-backups');
+    if (
       !['context inspect-backup', 'context extract-backup-receipt'].includes(name) &&
       values['backup-file'] !== undefined
     )
@@ -755,6 +772,7 @@ export async function main(args: string[]): Promise<number> {
         'context inspect-backup',
         'context prepare-backup',
         'context recover-backup',
+        'context compare-backups',
         'context extract-backup-receipt',
       ].includes(name) &&
       values['binding-file'] !== undefined
@@ -781,6 +799,10 @@ export async function main(args: string[]): Promise<number> {
     }
     if (name === 'context inspect-backup') {
       print(await inspectContextPackBackupArguments(args, trace));
+      return 0;
+    }
+    if (name === 'context compare-backups') {
+      print(await compareContextPackBackupArguments(args, trace));
       return 0;
     }
     if (name === 'context recover-backup') {
