@@ -954,6 +954,23 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_pack_embedded_cli_receipt_development_increment:
+      date: "2026-11-05"
+      status: "Source-only embedded CLI original save receipt lookup with optional historical file capture; R-003 remains incomplete."
+      artifacts:
+        - "apps/workctx-cli/src/context-pack-original.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "apps/workctx-cli/README.md"
+        - "docs/design/01-contracts/context-pack-runtime.md"
+      behavior: "Add optional host-owned EmbeddedCliOptions.gateway_url to runWorkctx while preserving existing three-argument calls. The new save-receipt command requires that actual router gateway to match the complete original file including path, identity and restricted bucket. Reuse strict arguments, stable bounded file reads and output preflight. Require verified unexpired context.read, strip inherited write conditions, adapt exactly one SDK bounded POST to context.pack.save-receipt, recheck monotonic deadline/cancellation/authority after authorization and validate the complete original-bound response. Keep an independent two-read lease until underlying work settles. Reuse network observation/file output including retained candidates and exit 1 on local capture failure; no HTTP, save, identity lookup or automatic retry."
+      evidence: []
+      pending_evidence:
+        - "Old call compatibility, required host gateway/path versus file binding, strict arguments, complete identity/permission and input-file rejection"
+        - "Exact request adaptation, authorization-wait expiry/cancellation, late result suppression, occupied leases and full response validation"
+        - "Network/embedded output parity, not-observed exit semantics, new output preflight, local failure recovery and no query/save on rejected input; no runtime verification performed"
+      remaining_gaps:
+        - "Embedded original preparation/submission, independent Schema/OpenAPI and real runtime/compatibility evidence"
+        - "The host must bind its declared gateway to the supplied router; file IO and output delivery are outside query deadlines"
     context_pack_mock_receipt_development_increment:
       date: "2026-11-05"
       status: "Source-only original save receipt lookup in MockContextPackStore and existing MockWcpServer dispatch; R-003 remains incomplete."

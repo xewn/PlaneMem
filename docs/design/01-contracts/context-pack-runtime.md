@@ -1,5 +1,7 @@
 # 持久化 ContextPack 开发说明
 
+2026-11-05新增[内嵌CLI原保存回执查询](#内嵌cli原保存回执查询2026-11-05源码增量)：宿主提供实际Gateway后，runWorkctx复用完整原文件、原身份/权限约束、只读历史查询及可选回执留存，不调用保存。仅源码文档，未编译、类型检查、测试、执行CLI/文件流程/API或发布。
+
 2026-11-05新增[Mock原保存回执查询](context-pack-mock-runtime.md#原保存请求历史回执2026-11-05源码增量)：显式保存场景按原身份/权限桶/键/参数观察历史，不激活pending，不核对当前正文/来源或期限；已保存但返回失败的结果仍可查询。仅源码文档，未编译、类型检查、测试、执行Mock/SDK/API或发布。
 
 2026-11-05新增[网页历史回执留存与找回](#网页历史回执留存与找回2026-11-05源码增量)：显式浏览器双槽保存、原绑定20条完整目录、共享回执文件导入导出及原请求导出，保留原时间与历史语义；载入不查询或发送。仅源码文档，未编译、类型检查、测试、渲染、执行网页/文件/接口或发布。
@@ -962,3 +964,30 @@ R-003未完成、evidence为空。100份/字节边界、两侧孤立项与损坏
 沿父页互斥、30秒总期限/10秒存储限制、离页取消、迟到保护和完整备份/审阅代次/存储代次检查；任何新动作、变更通知或返回页面撤销清理及恢复资格。界面写尝试立即撤销旧目录/续页，存储写流程前和finally沿同范围跨标签失效通道通知，通知失败不改事务结果。取消或失败时仍说明可能已经提交，保留备份并要求重新比较，不自动重试或恢复。
 
 本增量补齐有界备份匹配子集的批量清理源码。R-003未完成、evidence为空；冻结子集/异步输入变化/新增未选中项、严格成员与排序边界、全目标预检/成对删除与读回/原子性、已缺失/缺库/空集合、冲突/取消/未知提交、互斥勾选和跨标签资格撤销均缺运行证据。筛选集合清理、自动保留策略、大历史分卷、CLI/SDK整批、全库审计与配额管理待补。仅源码文档人工审阅和格式文本检查，未编译、类型检查、测试、渲染、执行浏览器清理/产品/API/数据库或发布；无共享格式/IndexedDB布局/依赖/其他客户端/服务端/迁移变更。
+
+## 内嵌CLI原保存回执查询（2026-11-05源码增量）
+
+runWorkctx的命令表和独立分派增加`context save-receipt --json-file ORIGINAL.json [--timeout-ms 30000] [--output NEW_RECEIPT.json]`。复用网络原请求命令的严格解析，拒绝重复/未知选项、stdin、内联JSON、替换键/参数和reviewed；原文件仍为8 KiB以内稳定完整UTF-8，包含原Gateway、五字段身份、权限桶、键和规范预算/TTL。离线inspect/recover/extract及已有三参嵌入命令保持原行为。
+
+新增可选第四参数`EmbeddedCliOptions`，当前提供gateway_url。宿主必须从其真实router部署配置传入完整Gateway基址，包含部署路径；经原packGateway规范化后与原文件完整相等。不能把原文件地址、命令行用户输入或任意新地址当成宿主真实路由配置，也不会按该地址联网。缺失或无效配置为CONTEXT_PACK_GATEWAY_UNAVAILABLE；有效但地址/身份/权限不同为DENIED。此配置与既有RequestContext一样依赖可信嵌入宿主，适配器不能独立证明一个进程内router实际代表哪台网关。
+
+下面仅为未执行的宿主接线示例，router、verifiedContext及actualGatewayBase均须来自宿主既有可信配置/认证结果：
+
+```ts
+const result = await runWorkctx(
+  ['context', 'save-receipt', '--json-file', originalPath, '--output', newReceiptPath],
+  router,
+  verifiedContext,
+  { gateway_url: actualGatewayBase },
+);
+```
+
+进入适配时复制可信上下文，清除继承的idempotency_key/expected_version/if_match，要求schema_version=1、authenticated_client=true、实际context.read、未过期token及合法完整身份/trace；restricted必须精确匹配原文件。原文件和可选新输出路径预检之后才开始查询期限，文件读取或输出已存在等失败不会派发历史查询。没有额外save-context GET，也不把原文件中的身份直接提升为当前可信身份。
+
+复用SDK getContextPackSaveReceipt，捕获原查询后最多一次传输调用，要求精确POST路径、完整七个预期头、规范4 KiB正文、bounded-json/16 KiB限额及signal，随后只执行context.pack.save-receipt。router策略/审计等待之后再检查单调期限、signal和原会话到期，才允许派发处理器；返回后和完整封套解析后继续核对。共享解析器及SDK核验完整原查询回显、历史字段/来源/trace，拒绝额外不完整封套；历史content_state/source_state仍为not-checked。
+
+每router有独立两笔内嵌回执读取容量，授权等待和底层查询均占槽，直到实际工作结束才释放；SDK本地等待先超时不会提前释放槽。默认30秒，可显式timeout-ms，单调截止同时覆盖授权等待后同步阶段，避免仅依赖尚未来得及触发的计时器。已经开始的数据库读取不因本地结束等待得到撤销保证，迟到结果不交付或落盘。适配不提供HTTP响应状态/头验证，不调用编排保存、不改原请求、不自动重查或重发。
+
+无output直接返回原完整历史封套；recorded和not-observed均为成功观察，退出0，后者不证明原保存失败。指定output与网络入口共用finishReceiptObservation和既有完整捕获：查询结束后记录观察时间/原文/历史回执/规范document摘要，在新路径独占发布、同步并完整读回。查询期限不竞速本地文件发布；本地失败保留完整观察和已构造候选、local.state=save-failed并退出1，可继续离线recover-receipt。用法错误退出2，配置/身份/查询错误退出1且明确未派发保存；stdout交付和文件I/O不在查询期限内。
+
+本增量补齐内嵌CLI在线原保存回执源码接线；网络命令的输出形状与文件格式不变。内嵌prepare-save/submit-save、独立Schema/OpenAPI及真实客户端兼容仍待补。R-003未完成、evidence为空，旧调用兼容、Gateway含路径匹配、完整身份/权限拒绝、精确传输适配、授权延迟/取消/到期/占槽、完整返回与文件留存失败恢复均缺运行证据。仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/文件流程/API/数据库或发布；无生产Gateway、SDK、共享格式、Web/MCP/Mock、依赖或迁移变化。

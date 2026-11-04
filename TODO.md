@@ -4,6 +4,8 @@
 
 ## 当前基线
 
+- P4：runWorkctx新增context save-receipt --json-file ORIGINAL [--timeout-ms N] [--output NEW_RECEIPT]，可选第四参数EmbeddedCliOptions.gateway_url必须由宿主实际router配置提供，新命令缺配置拒绝；旧三参调用保持。共享8 KiB完整稳定原文件及严格参数，核对含路径Gateway、五字段可信身份和restricted，要求schema/真实context.read/未过期会话，清除继承写条件。经SDK单次bounded-json POST适配到原context.pack.save-receipt，精确头/正文与16 KiB完整封套检查，授权审计后复查单调期限/取消/到期，独立每router两读容量保留到底层结束。复用网络回执输出，未指定output返回完整历史封套；输出预检后查询、查询结束后独占发布/读回，本地失败仍保留原观察/候选且退出1，用法2、成功观察含not-observed退出0。无HTTP、身份GET、编排保存或自动重查/重发。内嵌原请求准备/提交、独立Schema/OpenAPI与运行兼容仍待补，R-003未完成、evidence为空；仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/文件流程/API/数据库或发布。
+
 - P0/P2：MockContextPackStore新增原保存历史回执，原MockWcpServer路径识别接入SDK getContextPackSaveReceipt。要求显式compilations（空数组可查询空历史，省略仍未配置），完整4 KiB原查询/16 KiB封套及较小响应限额，固定五字段身份、当前restricted桶、原键/规范预算TTL和头条件。只从构造时提取的独立标量及保存状态读取：pending/未知键为not-observed，saved/已激活记录在可见性和原参数/桶相等后返回recorded；未绑定保存场景的种子包不自动拥有原命令回执。过期/来源变化/内容摘要损坏仍可观察历史元数据，不读正文/hash、不激活或重放。独立两笔回执容量、30秒/signal和固定错误，原种子/会话形状不变。此前Mock回执源码缺口已覆盖，嵌入CLI回执、独立Schema/OpenAPI、真实客户端兼容与运行证据仍缺；R-003未完成、evidence为空。仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行Mock/SDK/API/数据库或发布。
 
 - P5：ContextPack历史新增按完整备份批量移除。复用只读预览，只有当前无冲突且有identical记录才开放独立清理确认，恢复/清理勾选互斥；点击时冻结预览匹配摘要集合，预览缺失但后来新增的记录不加入。存储先重核整份备份及升序唯一子集，在create:false单一写事务预检全部选中双槽，同文才删、已缺失跳过、部分槽/异文整批拒绝；全部预检后成对删除并读回全部缺失，提交后返回removed/already_absent/total。缺库/空集合不建库，不改备份外或未选中历史、原请求或服务器包；取消/失败保持提交未知提示。沿完整备份/操作/存储代次资格及跨标签失效，备份始终保留可导出/重新比较恢复。此前批量清理缺口的有界备份子集已覆盖；大历史分卷、筛选集合清理、自动保留策略、CLI/SDK整批、全库审计/配额及运行证据仍缺。R-003未完成、evidence为空；仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、渲染、执行浏览器清理/产品/API/数据库或发布。

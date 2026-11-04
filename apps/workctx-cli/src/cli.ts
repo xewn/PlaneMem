@@ -9,7 +9,7 @@ import { prepareObservedRead, observedReadResult } from './observed.js';
 import { isWorkItemReadCommand, runWorkItemRead } from './work-item-reads.js';
 import { isContextReadCommand, runContextRead } from './context-history.js';
 import { runContextCompile } from './context-pack-compile.js';
-import { inspectContextPackOriginal } from './context-pack-original.js';
+import { inspectContextPackOriginal, runContextPackSaveReceipt } from './context-pack-original.js';
 import {
   inspectContextPackReceipt,
   extractContextPackReceiptOriginal,
@@ -145,10 +145,16 @@ export interface CliResult {
   stderr: string;
 }
 
+export interface EmbeddedCliOptions {
+  /** Actual gateway represented by the supplied router, including its deployment path. */
+  gateway_url?: string;
+}
+
 export async function runWorkctx(
   argv: string[],
   router: CommandRouter,
   context: RequestContext,
+  options: EmbeddedCliOptions = {},
 ): Promise<CliResult> {
   const subcommand = argv[1] !== undefined && !argv[1].startsWith('--');
   const command = subcommand ? argv.slice(0, 2).join(' ') : argv[0];
@@ -291,6 +297,7 @@ export async function runWorkctx(
     'context get': 'context.pack.read',
     'context list-packs': 'context.pack.list',
     'context save-identity': 'context.pack.save-context',
+    'context save-receipt': 'context.pack.save-receipt',
     'context inspect-save': 'context.pack.original.inspect',
     'context inspect-receipt': 'context.pack.receipt.inspect',
     'context extract-original': 'context.pack.receipt.extract-original',
@@ -374,6 +381,14 @@ export async function runWorkctx(
       }),
     };
   try {
+    if (command === 'context save-receipt') {
+      const result = await runContextPackSaveReceipt(argv, router, context, options.gateway_url);
+      return {
+        exit_code: 'local' in result.data && result.data.local.state === 'save-failed' ? 1 : 0,
+        stdout: JSON.stringify(result),
+        stderr: '',
+      };
+    }
     if (command === 'context inspect-save') {
       const result = await inspectContextPackOriginal(argv, context.trace_id);
       return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };

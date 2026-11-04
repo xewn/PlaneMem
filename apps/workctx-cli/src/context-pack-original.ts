@@ -4,6 +4,8 @@ import { parseArgs } from 'node:util';
 import {
   ContractError,
   PACK_ORIGINAL_BYTES,
+  CONTEXT_PACK_SAVE_RECEIPT_REQUEST_BYTES,
+  CONTEXT_PACK_SAVE_RECEIPT_RESPONSE_BYTES,
   assertPackSaveBinding,
   contextPackSaveReceiptQuery,
   decodePackSaveOriginal,
@@ -11,15 +13,24 @@ import {
   isSyncIdentifier,
   packGateway,
   parseContextPackCompileParameters,
+  parseContextPackSaveReceiptEnvelope,
+  parsePackSaveBinding,
   parsePackSaveOriginal,
   validateIdempotencyKey,
   validateRequestContext,
+  syncJsonSnapshot,
+  type ContextPackSaveReceiptEnvelope,
   type PackSaveBinding,
   type PackSaveOriginal,
 } from '@planemem/contracts';
-import { FetchWcpTransport, WcpClient } from '@planemem/sdk';
+import { FetchWcpTransport, WcpClient, type WcpRequest, type WcpTransport } from '@planemem/sdk';
+import type { CommandRouter, RequestContext } from '@planemem/api-gateway';
 import { readBoundedArtifactFile } from './artifact-files.js';
-import { prepareArtifactOutput, saveArtifactOutput } from './artifact-output.js';
+import {
+  prepareArtifactOutput,
+  saveArtifactOutput,
+  type ArtifactOutput,
+} from './artifact-output.js';
 import {
   captureContextPackReceipt,
   prepareContextPackReceiptOutput,
@@ -382,6 +393,208 @@ async function network<T>(
   }
 }
 
+async function finishReceiptObservation(
+  original: PackSaveOriginal,
+  receipt: ContextPackSaveReceiptEnvelope,
+  output: ArtifactOutput | undefined,
+  trace: string,
+) {
+  if (!output) return receipt;
+  // Query waiting has settled. Await local publication/readback without a timeout race.
+  const capture = await captureContextPackReceipt(original, receipt, output, trace);
+  return {
+    schema_version: 1,
+    trace_id: trace,
+    source_refs: receipt.source_refs,
+    data: {
+      status: 'receipt-observed' as const,
+      original,
+      receipt,
+      ...capture,
+    },
+  };
+}
+
+const activeReceiptReads = new WeakMap<CommandRouter, { active: number }>();
+
+/** The host supplies the actual router's gateway; an original file cannot select its destination. */
+export async function runContextPackSaveReceipt(
+  argv: string[],
+  router: CommandRouter,
+  input: RequestContext,
+  gatewayUrl: string | undefined,
+) {
+  const context = structuredClone(input);
+  delete context.idempotency_key;
+  delete context.expected_version;
+  Reflect.deleteProperty(context, 'if_match');
+  const trace = context.trace_id;
+  const args = argumentsFor(argv, trace);
+  if (args.mode !== 'save-receipt') throw invalid(trace);
+  const authority = () => {
+    const expiry = Date.parse(context.token_expires_at ?? '');
+    if (
+      context.schema_version !== 1 ||
+      context.authenticated_client !== true ||
+      !Number.isFinite(expiry) ||
+      expiry <= Date.now() ||
+      !Array.isArray(context.capability) ||
+      !context.capability.includes('context.read') ||
+      !isSyncIdentifier(trace) ||
+      /\u007f/.test(trace)
+    )
+      throw fail('DENIED', 'Use the original verified unexpired context reader.', trace);
+  };
+  authority();
+  let base: string;
+  try {
+    if (typeof gatewayUrl !== 'string') throw new TypeError();
+    base = packGateway(gatewayUrl);
+  } catch {
+    throw fail(
+      'CONTEXT_PACK_GATEWAY_UNAVAILABLE',
+      'Configure the embedded host with its actual gateway URL before querying original save receipts.',
+      trace,
+    );
+  }
+  let binding: PackSaveBinding;
+  try {
+    binding = parsePackSaveBinding({
+      gateway_url: base,
+      identity: {
+        tenant_id: context.tenant_id,
+        workspace_id: context.workspace_id,
+        project_id: context.project_id,
+        actor_id: context.actor_id,
+        client_id: context.client_id,
+      },
+      read_restricted: context.capability.includes('data.restricted.read'),
+    });
+  } catch {
+    throw fail('DENIED', 'The complete verified reader identity could not be confirmed.', trace);
+  }
+  const saved = await originalFile(args.file!, trace);
+  authority();
+  try {
+    assertPackSaveBinding(binding, saved.original.binding);
+  } catch {
+    throw fail(
+      'DENIED',
+      'Restore the original gateway, identity and permissions before querying.',
+      trace,
+    );
+  }
+  const output =
+    args.output === undefined
+      ? undefined
+      : await prepareContextPackReceiptOutput(args.output, trace);
+  authority();
+  const query = contextPackSaveReceiptQuery(saved.original);
+  const body = syncJsonSnapshot(query, CONTEXT_PACK_SAVE_RECEIPT_REQUEST_BYTES);
+  const deadline = performance.now() + args.timeout;
+  const headers: Record<string, string> = {
+    'content-type': 'application/json',
+    'x-trace-id': trace,
+    'x-tenant-id': binding.identity.tenant_id,
+    'x-workspace-id': binding.identity.workspace_id,
+    'x-project-id': binding.identity.project_id,
+    'x-expected-actor-id': binding.identity.actor_id,
+    'x-expected-client-id': binding.identity.client_id,
+  };
+  let called = false;
+  const transport: WcpTransport = {
+    async request<T = unknown>(request: WcpRequest): Promise<T> {
+      const active = () => {
+        if (performance.now() >= deadline)
+          throw fail(
+            'GATEWAY_REQUEST_TIMEOUT',
+            'Stopped waiting for the original save receipt.',
+            trace,
+          );
+        if (request.signal?.aborted)
+          throw fail(
+            'GATEWAY_REQUEST_CANCELED',
+            'Stopped waiting for the original save receipt.',
+            trace,
+          );
+        authority();
+      };
+      active();
+      if (
+        called ||
+        !request.signal ||
+        request.method !== 'POST' ||
+        request.path !== '/v1/context-pack/save-receipt' ||
+        request.response_type !== 'bounded-json' ||
+        request.max_response_bytes !== CONTEXT_PACK_SAVE_RECEIPT_RESPONSE_BYTES ||
+        Object.keys(request.headers).length !== Object.keys(headers).length ||
+        Object.entries(headers).some(([key, value]) => request.headers[key] !== value) ||
+        syncJsonSnapshot(request.body, CONTEXT_PACK_SAVE_RECEIPT_REQUEST_BYTES) !== body
+      )
+        throw invalid(trace);
+      called = true;
+      let gate = activeReceiptReads.get(router);
+      if (!gate) {
+        gate = { active: 0 };
+        activeReceiptReads.set(router, gate);
+      }
+      if (gate.active >= 2)
+        throw fail('RATE_LIMITED', 'Embedded save receipt capacity is occupied.', trace);
+      const lease = gate;
+      lease.active++;
+      try {
+        const raw = await router.execute(
+          {
+            operation: 'context.pack.save-receipt',
+            input: { ...contextPackSaveReceiptQuery(saved.original) },
+            context: structuredClone(context),
+          },
+          async (run) => {
+            active();
+            return run();
+          },
+        );
+        active();
+        let receipt;
+        try {
+          receipt = parseContextPackSaveReceiptEnvelope(raw, query, trace);
+        } catch {
+          active();
+          throw fail(
+            'GATEWAY_RESPONSE_INVALID',
+            'The complete historical receipt differs from the original query.',
+            trace,
+          );
+        }
+        active();
+        return receipt as unknown as T;
+      } finally {
+        // Keep capacity occupied until the underlying authorized read actually settles.
+        lease.active--;
+      }
+    },
+  };
+  const client = new WcpClient(
+    transport,
+    validateRequestContext({ ...binding.identity, trace_id: trace }),
+  );
+  let receipt: ContextPackSaveReceiptEnvelope;
+  try {
+    receipt = await client.getContextPackSaveReceipt(query, { timeout_ms: args.timeout });
+    authority();
+  } catch (error) {
+    const envelope = error instanceof ContractError ? error.envelope : undefined;
+    throw fail(
+      envelope?.trace_id === trace && knownErrors.has(envelope.code)
+        ? envelope.code
+        : 'GATEWAY_UNAVAILABLE',
+      'The historical save query could not be confirmed. No pack save was sent; keep the original file.',
+      trace,
+    );
+  }
+  return finishReceiptObservation(saved.original, receipt, output, trace);
+}
+
 export async function callContextPackOriginal(argv: string[], input: NetworkOptions) {
   const options = structuredClone(input);
   const args = argumentsFor(argv, options.trace);
@@ -413,20 +626,7 @@ export async function callContextPackOriginal(argv: string[], input: NetworkOpti
         }),
       true,
     );
-    if (!output) return receipt;
-    // Network waiting has settled. Await local publication/readback without a timeout race.
-    const capture = await captureContextPackReceipt(saved.original, receipt, output, options.trace);
-    return {
-      schema_version: 1,
-      trace_id: options.trace,
-      source_refs: receipt.source_refs,
-      data: {
-        status: 'receipt-observed' as const,
-        original: saved.original,
-        receipt,
-        ...capture,
-      },
-    };
+    return finishReceiptObservation(saved.original, receipt, output, options.trace);
   }
 
   if (args.mode === 'submit-save') {
