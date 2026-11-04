@@ -250,6 +250,8 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   artifacts version              Read artifact_id/positive version; optional --timeout-ms (default 30000), no --key
   artifacts versions             List history with artifact_id/limit?/at_version?/before_version? JSON
                                  Preserve next_query; --timeout-ms defaults to 30000, no --key/--output
+  artifacts compare              Compare artifact_id/from_version/to_version with expected_actor_id/expected_client_id JSON
+                                 JSON <=4 KiB; --timeout-ms is the total budget (default 30000), no --key/--output
   artifacts list                 Find project files with query?/classification?/limit?/cursor? JSON (<=8 KiB)
                                  Use --json '{}' for the first page; preserve complete next_query to continue
                                  Optional --timeout-ms (default 30000); no --key/--output or automatic paging
@@ -598,6 +600,7 @@ export async function main(args: string[]): Promise<number> {
       'artifacts inspect-receipt',
       'artifacts version',
       'artifacts versions',
+      'artifacts compare',
       'artifacts list',
       'artifacts receipt',
       'artifacts create',

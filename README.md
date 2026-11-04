@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [命令行文件版本对比](docs/design/01-contracts/artifact-versions-runtime.md#命令行版本对比源码阶段)：`artifacts compare` 支持从 JSON、文件或网络入口标准输入选择两个版本，核对预期账号与客户端，在统一期限内返回完整字段和来源差异。仅源码文档，未编译、测试、执行命令或发布。
+
 新增 [SDK 文件版本对比](docs/design/01-contracts/artifact-versions-runtime.md#sdk版本对比源码阶段)：`compareArtifactVersions` 在统一期限内读取两个指定历史版本，固定账号、客户端及项目条件，完整读取后返回本地差异和两份原记录；工作台复用相同的共享比较模型。仅源码文档，未编译、测试、运行或发布。
 
 新增 [工作台文件版本对比](docs/design/01-contracts/artifact-versions-runtime.md#工作台版本对比源码阶段)：选择同一文件的两个保存版本，并排查看字段和来源引用差异；历史页可直接选取当页版本，详情可带入比较基准。只读取元数据，失败不替换版本。仅源码文档，未编译、测试、运行或发布。

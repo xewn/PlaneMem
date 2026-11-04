@@ -262,6 +262,7 @@ export async function runWorkctx(
     'artifacts inspect-receipt': 'artifact.inspect-receipt',
     'artifacts version': 'artifact.version.read',
     'artifacts versions': 'artifact.versions.list',
+    'artifacts compare': 'artifact.version.read',
     'artifacts list': 'artifact.registry.list',
     'artifacts receipt': 'artifact.receipt',
     'artifacts create': 'artifact.create',

@@ -35,7 +35,31 @@ const result = await client.compareArtifactVersions(
 // result.comparison 是本地差异；from/to 是两次独立历史读取，正文仍未检查。
 ```
 
-固定允许列表错误使用原trace及retryable=false、read_kind=comparison、comparison_state=not-completed、content_state=not-checked和upload_dispatch_state=not-sent；不回显transport原始异常或上游details。没有新增HTTP/MCP/CLI命令、数据库/schema/依赖或Mock专用路由；可通过已有历史读取适配器接入，但未执行SDK、Mock或服务。共享契约自动一致性、独立比较Schema、真实客户端/取消/期限/身份变化和浏览器兼容仍待证据；本次仅源码文档人工审阅，未编译、类型检查、测试、运行产品/API/数据库或发布，R-001保持未完成。
+固定允许列表错误使用原trace及retryable=false、read_kind=comparison、comparison_state=not-completed、content_state=not-checked和upload_dispatch_state=not-sent；不回显transport原始异常或上游details。没有新增HTTP/MCP操作、数据库/schema/依赖或Mock专用路由；CLI接入见下节。可通过已有历史读取适配器接入，但未执行SDK、Mock或服务。共享契约自动一致性、独立比较Schema、真实客户端/取消/期限/身份变化和浏览器兼容仍待证据；本次仅源码文档人工审阅，未编译、类型检查、测试、运行产品/API/数据库或发布，R-001保持未完成。
+
+## 命令行版本对比（源码阶段）
+
+2026-11-04新增`workctx artifacts compare --json-file QUERY.json [--timeout-ms 30000]`，也支持`--json OBJECT`；两种输入必须且只能提供一种。网络入口的`--json -`沿既有4 KiB有界stdin读取，嵌入runWorkctx拒绝stdin；文件沿既有稳定常规文件和严格UTF-8读取。文件/stdin等待不计入SDK读取预算，也不宣称可取消。拒绝--key、--output、重复/未知参数和输入中的未知字段。
+
+命令查询对象仅含五个必填字段：artifact_id、from_version、to_version、expected_actor_id和expected_client_id，整体最多4 KiB。前三个字段沿共享ArtifactComparisonQuery，必须两个不同正安全整数，保留方向；expected_actor_id须符合SDK context的ULID规则，expected_client_id沿完整身份文本约束。租户/工作区/项目来自原配置，不能在JSON中覆盖；预期账号/客户端只是核对条件，不替代令牌或授予读权限，也不从令牌文本推断身份。不要求artifact.write或调用上传身份接口。
+
+```json
+{
+  "artifact_id": "01J000000000000000000000001",
+  "from_version": 2,
+  "to_version": 5,
+  "expected_actor_id": "01J000000000000000000000002",
+  "expected_client_id": "editor"
+}
+```
+
+以上仅静态用法示例，需换成实际文件/版本/账号/客户端，未执行命令。网络主入口与callGateway复用artifact-queries和SDK compareArtifactVersions；预先捕获配置、令牌和范围，SDK上下文加两项相等约束，两次请求使用同一捕获令牌。默认30秒总期限，可设1..2147483647毫秒，覆盖两个历史读取及完整比较；成功各2 MiB、Fetch错误16 KiB。返回前完整核对封套/项目/文件/所选版本及本地比较，首读失败不派发第二读，任一失败不输出部分对比或自动重试。
+
+嵌入入口捕获可信context并清除继承写键/版本/条件，读取前后核对authenticated_client、有限未过期token_expires_at、实际artifact.read及五项原身份一致；admin不能替代能力。transport按原from/to顺序最多接受两次准确历史GET，检查完整路径、无正文、完整scope/trace/账号/客户端头、bounded-json及2 MiB上限，超出次数/换序/改版拒绝；再映射既有artifact.version.read并使用复制的可信context。SDK计算完成后再查权限/有效期，任一失败均不发布组合结果。没有新的artifact.compare网关操作；两次读授权审计沿原路径。
+
+成功stdout直接输出WcpArtifactComparisonResult，保留query、identity_constraints、from/to原封套及comparison，并标明local/separate-reads/not-checked；没有外层data，不能按目录页封套读取。相同或不同都退出0，差异本身不是错误；读取/权限/参数失败沿现有退出码和固定错误路径。公共退出码判定兼容该本地对象，原artifacts receipt --output的保存失败仍退出1。不写结果文件、自动下载或读取正文，不上传/恢复旧版/查回执。
+
+仅源码文档人工审阅；未编译、类型检查、测试、执行CLI/SDK/Mock/API/产品/数据库或发布。参数/文件/stdin边界、完整返回形状、网络/嵌入路径、身份不匹配和过期、两次请求期限/顺序及现有回执保存兼容仍待运行证据。无新公共协议、Schema、依赖或数据库变化，R-001保持未完成且evidence为空。
 
 ## 查询与续页
 

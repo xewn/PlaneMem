@@ -6,9 +6,14 @@ import {
   ARTIFACT_REGISTRY_RESPONSE_BYTES,
   ContractError,
   assertArtifactReceiptIdentity,
+  parseArtifactCommandIdentity,
+  parseArtifactComparisonQuery,
   parseArtifactVersionsQuery,
   parseArtifactRegistryQuery,
   syncJsonSnapshot,
+  validateRequestContext,
+  type ArtifactCommandIdentity,
+  type ArtifactComparisonQuery,
   type ArtifactReadQuery,
   type ArtifactReceiptQuery,
 } from '@planemem/contracts';
@@ -23,6 +28,7 @@ import type { ArtifactOutput } from './artifact-output.js';
 type Scope = { tenant_id: string; workspace_id: string; project_id: string };
 type Query =
   | { kind: 'metadata'; query: ArtifactReadQuery }
+  | { kind: 'comparison'; query: ArtifactComparisonQuery; identity: ArtifactCommandIdentity }
   | { kind: 'versions'; query: ReturnType<typeof parseArtifactVersionsQuery> }
   | { kind: 'registry'; query: ReturnType<typeof parseArtifactRegistryQuery> }
   | { kind: 'receipt'; query: ArtifactReceiptQuery };
@@ -40,13 +46,14 @@ export function isArtifactQueryCommand(command: string) {
     isArtifactReadCommand(command) ||
     command === 'artifacts receipt' ||
     command === 'artifacts list' ||
+    command === 'artifacts compare' ||
     command === 'artifacts versions'
   );
 }
 function invalid(trace: string) {
   return new ContractError(
     'USAGE_ERROR',
-    'Use artifacts get/version/versions/list/receipt with one --json or --json-file and optional --timeout-ms (1..2147483647). Only receipt accepts --output NEW_FILE; no --key or repeated options. Metadata/version query JSON is limited to 4 KiB, file directory query JSON to 8 KiB and original receipt JSON to 1 MiB. Preserve the complete next_query for another directory page and keep saved originals unchanged.',
+    'Use artifacts get/version/versions/compare/list/receipt with one --json or --json-file and optional --timeout-ms (1..2147483647). Only receipt accepts --output NEW_FILE; no --key or repeated options. Metadata/version/comparison query JSON is limited to 4 KiB, file directory query JSON to 8 KiB and original receipt JSON to 1 MiB. Compare requires artifact_id, different from_version/to_version and expected_actor_id/expected_client_id matching the reader. Preserve complete next_query for another directory page and keep saved originals unchanged.',
     { trace_id: trace, retryable: false },
   );
 }
@@ -68,6 +75,36 @@ function prepare(
     if (!isArtifactQueryCommand(command) || key !== undefined) throw new TypeError();
     const maximum = queryBytes(command);
     const snapshot: unknown = JSON.parse(syncJsonSnapshot(input, maximum));
+    if (command === 'artifacts compare') {
+      if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot))
+        throw new TypeError();
+      const row = snapshot as Record<string, unknown>;
+      if (
+        Object.keys(row).some(
+          (field) =>
+            ![
+              'artifact_id',
+              'from_version',
+              'to_version',
+              'expected_actor_id',
+              'expected_client_id',
+            ].includes(field),
+        )
+      )
+        throw new TypeError();
+      const query = parseArtifactComparisonQuery({
+        artifact_id: row.artifact_id,
+        from_version: row.from_version,
+        to_version: row.to_version,
+      });
+      const identity = parseArtifactCommandIdentity({
+        ...scope,
+        actor_id: row.expected_actor_id,
+        client_id: row.expected_client_id,
+      });
+      validateRequestContext({ ...identity, trace_id: trace });
+      return { kind: 'comparison', query, identity };
+    }
     if (command === 'artifacts receipt')
       return { kind: 'receipt', query: prepareArtifactReceipt(snapshot, scope, trace) };
     if (command === 'artifacts versions')
@@ -153,6 +190,8 @@ async function readArguments(argv: string[], scope: Scope, trace: string, allowS
   }
 }
 function execute(client: WcpClient, target: Query, timeout_ms: number) {
+  if (target.kind === 'comparison')
+    return client.compareArtifactVersions(target.query, { timeout_ms });
   if (target.kind === 'receipt') return client.getArtifactReceipt(target.query, { timeout_ms });
   if (target.kind === 'versions') return client.listArtifactVersions(target.query, { timeout_ms });
   if (target.kind === 'registry') return client.listArtifacts(target.query, { timeout_ms });
@@ -180,9 +219,13 @@ async function executeWithOutput(
 export function artifactQueryExitCode(
   result: Awaited<ReturnType<typeof executeWithOutput>>,
 ): 0 | 1 {
-  return 'local' in result.data && result.data.local.state !== 'saved-and-read-back' ? 1 : 0;
+  return 'data' in result &&
+    'local' in result.data &&
+    result.data.local.state !== 'saved-and-read-back'
+    ? 1
+    : 0;
 }
-function networkClient(options: Options) {
+function networkClient(options: Options, target?: Query) {
   try {
     if (options.key !== undefined) throw new TypeError();
     const base = new URL(options.base);
@@ -195,7 +238,13 @@ function networkClient(options: Options) {
         access_token: () => token,
         timeout_ms: options.timeout_ms ?? 30_000,
       }),
-      { ...options.scope, trace_id: options.trace },
+      validateRequestContext({
+        ...options.scope,
+        trace_id: options.trace,
+        ...(target?.kind === 'comparison'
+          ? { actor_id: target.identity.actor_id, client_id: target.identity.client_id }
+          : {}),
+      }),
     );
   } catch {
     throw invalid(options.trace);
@@ -204,7 +253,7 @@ function networkClient(options: Options) {
 export function callArtifactQuery(command: string, input: unknown, options: Options) {
   const snapshot = structuredClone(options);
   const target = prepare(command, input, snapshot.scope, snapshot.trace, snapshot.key);
-  return execute(networkClient(snapshot), target, snapshot.timeout_ms ?? 30_000);
+  return execute(networkClient(snapshot, target), target, snapshot.timeout_ms ?? 30_000);
 }
 export async function callArtifactQueryArguments(argv: string[], options: Options) {
   const snapshot = structuredClone(options);
@@ -219,7 +268,7 @@ export async function callArtifactQueryArguments(argv: string[], options: Option
   const destination =
     output === undefined ? undefined : await prepareArtifactReceiptOutput(output, snapshot.trace);
   return executeWithOutput(
-    networkClient({ ...snapshot, timeout_ms }),
+    networkClient({ ...snapshot, timeout_ms }, target),
     target,
     timeout_ms,
     snapshot.trace,
@@ -254,6 +303,7 @@ export async function runArtifactQuery(
       )
         throw new TypeError();
       if (target.kind === 'receipt') assertArtifactReceiptIdentity(target.query.identity, context);
+      if (target.kind === 'comparison') assertArtifactReceiptIdentity(target.identity, context);
     } catch {
       throw new ContractError(
         'ARTIFACT_ACCESS_DENIED',
@@ -278,7 +328,12 @@ export async function runArtifactQuery(
           'x-expected-actor-id': target.query.identity.actor_id,
           'x-expected-client-id': target.query.identity.client_id,
         }
-      : {}),
+      : target.kind === 'comparison'
+        ? {
+            'x-expected-actor-id': target.identity.actor_id,
+            'x-expected-client-id': target.identity.client_id,
+          }
+        : {}),
   };
   const path =
     target.kind === 'receipt'
@@ -287,19 +342,34 @@ export async function runArtifactQuery(
         ? versionsPath(target.query)
         : target.kind === 'registry'
           ? registryPath(target.query)
-          : '/v1/artifacts/' +
-            encodeURIComponent(target.query.artifact_id) +
-            (target.query.version === undefined ? '' : '/versions/' + target.query.version);
+          : target.kind === 'comparison'
+            ? undefined
+            : '/v1/artifacts/' +
+              encodeURIComponent(target.query.artifact_id) +
+              (target.query.version === undefined ? '' : '/versions/' + target.query.version);
   const body =
     target.kind === 'receipt'
       ? syncJsonSnapshot(target.query, ARTIFACT_UPLOAD_REQUEST_BYTES)
       : undefined;
+  let comparisonStep = 0;
   const transport: WcpTransport = {
     async request<T = unknown>(request: WcpRequest): Promise<T> {
       authority();
+      const comparisonVersion =
+        target.kind === 'comparison'
+          ? [target.query.from_version, target.query.to_version][comparisonStep]
+          : undefined;
+      const expectedPath =
+        target.kind === 'comparison' && comparisonVersion !== undefined
+          ? '/v1/artifacts/' +
+            encodeURIComponent(target.query.artifact_id) +
+            '/versions/' +
+            comparisonVersion
+          : path;
       if (
+        expectedPath === undefined ||
         request.method !== (target.kind === 'receipt' ? 'POST' : 'GET') ||
-        request.path !== path ||
+        request.path !== expectedPath ||
         request.response_type !== 'bounded-json' ||
         request.max_response_bytes !==
           (target.kind === 'versions'
@@ -318,6 +388,7 @@ export async function runArtifactQuery(
         throw new ContractError('GATEWAY_REQUEST_CANCELED', 'Stopped waiting for artifact data', {
           trace_id: trace,
         });
+      if (target.kind === 'comparison') comparisonStep++;
       const result = await router.execute({
         operation:
           target.kind === 'receipt'
@@ -326,33 +397,48 @@ export async function runArtifactQuery(
               ? 'artifact.versions.list'
               : target.kind === 'registry'
                 ? 'artifact.registry.list'
-                : target.query.version === undefined
-                  ? 'artifact.read'
-                  : 'artifact.version.read',
+                : target.kind === 'comparison'
+                  ? 'artifact.version.read'
+                  : target.query.version === undefined
+                    ? 'artifact.read'
+                    : 'artifact.version.read',
         input:
-          target.kind === 'versions' || target.kind === 'registry'
-            ? { ...target.query }
-            : target.kind === 'metadata'
-              ? {
-                  ...target.query,
-                  ...(target.query.version === undefined
-                    ? {}
-                    : { version: String(target.query.version) }),
-                }
-              : (JSON.parse(body!) as Record<string, unknown>),
+          target.kind === 'comparison'
+            ? { artifact_id: target.query.artifact_id, version: String(comparisonVersion) }
+            : target.kind === 'versions' || target.kind === 'registry'
+              ? { ...target.query }
+              : target.kind === 'metadata'
+                ? {
+                    ...target.query,
+                    ...(target.query.version === undefined
+                      ? {}
+                      : { version: String(target.query.version) }),
+                  }
+                : (JSON.parse(body!) as Record<string, unknown>),
         context: structuredClone(context),
       });
       authority();
       return result as unknown as T;
     },
   };
-  return executeWithOutput(
-    new WcpClient(transport, { ...scope, trace_id: trace }),
+  const result = await executeWithOutput(
+    new WcpClient(
+      transport,
+      validateRequestContext({
+        ...scope,
+        trace_id: trace,
+        ...(target.kind === 'comparison'
+          ? { actor_id: target.identity.actor_id, client_id: target.identity.client_id }
+          : {}),
+      }),
+    ),
     target,
     timeout_ms,
     trace,
     destination,
   );
+  if (target.kind === 'comparison') authority();
+  return result;
 }
 
 function versionsPath(query: ReturnType<typeof parseArtifactVersionsQuery>) {

@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-04：CLI `artifacts compare`的网络/嵌入入口已复用`compareArtifactVersions`。命令输入另带expected_actor_id/expected_client_id，核对后转成SDK上下文相等约束，SDK查询仍只有artifact_id/from_version/to_version；输出保持SDK本地组合形状，不包装为新的Gateway响应。详见[命令行版本对比](../../docs/design/01-contracts/artifact-versions-runtime.md#命令行版本对比源码阶段)。仅源码文档，未执行SDK/CLI或测试。
+
 2026-11-04：新增`client.compareArtifactVersions({artifact_id, from_version, to_version}, options?)`，两版本必须不同且为正安全整数，保留比较方向；构造上下文必须显式包含project_id、actor_id及client_id，作为两次读取的相等约束。使用WcpArtifactReadOptions，默认30秒总期限/取消，复用两次每份2 MiB的指定历史读取；任何失败不返回部分比较。结果是`WcpArtifactComparisonResult`本地组合对象，含query、identity_constraints、from/to完整原封套和comparison，明确comparison_origin=local/read_consistency=separate-reads/content_state=not-checked，不是新增Gateway响应。根入口另导出`parseArtifactComparisonQuery`、`compareArtifactMetadata`和比较类型，工作台与SDK共用字段/来源位置规则；本地函数不执行网络或认证内容。见[SDK版本对比](../../docs/design/01-contracts/artifact-versions-runtime.md#sdk版本对比源码阶段)。仅源码文档，未编译、测试、执行SDK/Mock或发布。
 
 2026-11-04：`MockArtifactStore`新增GET项目文件目录，既有`MockWcpServer({artifacts:{store,session}})`可接`listArtifacts`。按名称字面子串/ASCII折叠及分类筛选，默认20最多20，ID倒序、完整next_query绑定原身份/读取权限/筛选/页大小；仅项目目录GET路径允许8192字符，容纳较长Unicode编码查询。当前和探测元数据完整有界核验，响应256 KiB并遵守更低调用方限额，Web Crypto只用于游标绑定且每store最多两笔在途目录读取；不读取正文、不写回执或释放记录。见 [Mock项目目录](../../docs/design/01-contracts/artifact-mock-runtime.md#项目文件目录)。仅源码文档，未编译、测试、执行SDK/Mock或发布。
