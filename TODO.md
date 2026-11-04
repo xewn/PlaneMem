@@ -4,6 +4,8 @@
 
 ## 当前基线
 
+- P0/P2：MockContextPackStore新增可选compilations与根导出MockContextPackCompilation，显式actor/client/原键/规范参数/目标包/pending或saved，种子整体16 MiB/最多100包和100场景。单POST 4 KiB参数、16 KiB头，完整封套/原预算最大TTL/WebCrypto SHA-256/来源状态检查后激活pending包，读取与目录自动可见；同键保留原内容与时间，参数或restricted桶变化拒绝。保存与读取各两容量、30秒/取消，实际摘要结束释放；激活后较小输出限额/到期错误不回滚，SDK继续unknown。旧配置兼容，无任意编译/数据生成/真实授权来源/数据库/持久恢复，预置版本时间不随提交重写，目录跨页不是快照。R-003未完成、evidence为空；仅源码文档人工审阅和格式文本检查，未编译、类型检查、测试、执行Mock/SDK/API/保存请求或发布。
+
 - P5：网页compileWorkbenchContextPack改专用server helper，原函数签名保持；固定本次session/范围/Gateway/参数/键，单POST及30秒本地等待，完整2 MiB成功/16 KiB错误、HTTP/type/trace/ETag、共享预算/最大TTL及Node SHA-256核验。自有派发错误使提交后401/权限/4xx/到期仍保留unknown；表单原参数锁定，已核验过期/来源变化可显式另起新请求但不宣称原保存失败。重复表单字段拒绝，原键不trim改写；完整成功才跳转，缓存刷新失败不要求重发。当前session获取在期限外，跨重登录账号/客户端及原范围未固定，无本地恢复存储或取消远端保证；运行/兼容和身份恢复闭环仍待补，R-003未完成、evidence为空。仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、渲染/浏览器/API/保存请求或发布。
 
 - P2/P4：MCP compile_context_pack接入专用保存执行器，发现/prepare/调用统一可信未过期实际context.read和完整身份；严格4 KiB参数/相等原键，保留可信context键回退，规范预算/期限、单次内部POST。完整2 MiB成功/16 KiB错误、原范围/trace/预算/最大TTL、HTTP状态/type/ETag、Node SHA-256及restricted核对，4 MiB+4096转义文本包装。独立每ApiGateway两笔保存/30秒期限，底层结束才释放；阶段/派发/unknown固定诊断，无自动重试/换键/读回/持久化。prepare现要求专用executor，旧不完整返回或无可信实际能力的替身须迁移。内部请求不可取消、授权等待超时后仍可能写入，恢复存储/Mock保存及运行证据待补；R-003未完成、evidence为空。仅源码文档人工审阅和格式文本检查，未编译、类型检查、测试、执行MCP/API/保存或发布。

@@ -1,12 +1,14 @@
 # 保存 ContextPack Mock（源码阶段）
 
+2026-11-05新增[显式保存与重放](#显式保存与重放2026-11-05源码增量)：可选compilations把预置完整包绑定到原请求，pending包在提交核验后激活，读取与目录共享状态。仅源码文档，未执行Mock/SDK、保存请求、编译、类型检查、测试或发布。
+
 2026-11-05新增[保存包元数据目录](#保存包元数据目录2026-11-05源码增量)：同一store和会话提供GET /v1/context-packs，接入SDK listContextPacks/contextPackPages，不新增配置字段。列表只使用预先提取的六字段元数据，来源变化/过期记录仍可出现；仅源码文档，未执行Mock/SDK、编译、类型检查、测试或发布。
 
 2026-11-04新增 `MockContextPackStore`、`MockContextPackSeed`、`MockContextPackSession`，经 `MockWcpServer({context_packs:{store,session}})` 接入 `GET /v1/context-pack` 与 SDK `getContextPack`。这是独立固定数据集，可与上下文详情/历史/目录及其他 Mock 同时配置，但不自动同步数据或核对跨数据集来源。仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布；R-003未完成、`evidence: []`。
 
 ## 完整保存数据与显式场景
 
-种子为 `{scope, packs}`，scope是tenant_id/workspace_id/project_id三个ULID。packs最多100份，整体普通JSON最多16 MiB，并受共享JSON深度/节点限制；空数组明确表示没有保存包。每项必须且只能提供：
+基础种子为 `{scope, packs}`，另可提供下文的compilations。scope是tenant_id/workspace_id/project_id三个ULID。packs最多100份，含可选场景的整体普通JSON最多16 MiB，并受共享JSON深度/节点限制；空数组明确表示没有保存包。每项必须且只能提供：
 
 | 字段 | 含义 |
 | --- | --- |
@@ -36,7 +38,7 @@
 
 每store两笔容量及30秒本地预算，支持signal与SDK更短期限；超时/取消只结束等待，底层WebCrypto摘要真正结束才释放名额，迟到响应不交付。同步解析不能中途抢占。容量错误RATE_LIMITED，等待错误GATEWAY_REQUEST_TIMEOUT/CANCELED；内部错误转固定说明，不暴露任意原始异常。配置错误MOCK_CONTEXT_PACK_CONFIGURATION_INVALID，未配置或不支持的路径MOCK_ROUTE_NOT_FOUND；SDK可将其白名单外的Mock专用错误转为GATEWAY_UNAVAILABLE。
 
-编译/写操作没有接入，其他Mock路由保持。该模拟返回不证明数据库事务、实时来源有效性、网络故障处理、生产权限或SQL成本。
+未提供compilations时保存路由仍未启用，其他Mock路由保持。显式保存场景见下文；该模拟返回不证明数据库事务、实时来源有效性、网络故障处理、生产权限或SQL成本。
 
 ## 保存包元数据目录（2026-11-05，源码增量）
 
@@ -66,6 +68,77 @@ for await (const page of client.contextPackPages({ limit: 10 }, { max_pages: 10 
 ```
 
 R-003未完成、`evidence: []`。SDK单页/迭代/其他Mock共存、排序与精确空页、权限桶/可见集合、会话续期与store隔离、错误hash/过期/来源变化只在完整读失败、较小限额及摘要取消后容量保留仍缺运行证据。本轮仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行Mock/SDK/产品/API/数据库或发布；无新种子/会话字段、生产接口、依赖或迁移。
+
+## 显式保存与重放（2026-11-05源码增量）
+
+`MockContextPackSeed.compilations`为可选数组，最多100项；根导出`MockContextPackCompilation`。不提供该字段时，原只读种子/会话/读取及目录行为保持，POST保存返回MOCK_ROUTE_NOT_FOUND。提供空数组表示已启用但没有任何可匹配保存场景。整个种子含场景仍限16 MiB，包总数仍最多100，不因保存增加新对象或扩大容量。
+
+每项必须且只能包含以下字段：
+
+| 字段 | 约束 |
+| --- | --- |
+| actor_id | 原账号ULID，项目范围沿store.scope |
+| client_id | 原客户端合法标识，与模拟会话逐字相等 |
+| idempotency_key | 原键1–255 UTF-16单元，拒绝空白/C0/DEL/孤立代理项；不trim、不生成 |
+| parameters | 显式budget_tokens/ttl_seconds，沿共享128–32768/60–86400整数边界，两项都必须提供 |
+| pack_id | 指向packs中已提供的完整json结果；一个包只能绑定一个场景 |
+| initial_state | 必须为pending或saved；描述初始状态，激活后不改写配置字段 |
+
+同一actor/client/key三元组只能有一项，使用JSON元组作内部索引，避免分隔符碰撞；每store固定项目范围自然隔离不同项目。构造时复制全部配置，核对包预算等于场景预算、保存到到期时长不超过原TTL，以及完整封套结构。摘要仍在请求阶段核验，构造时不会重算或替换，所以形状正确但摘要损坏的包仍可明确模拟失败。没有增设会话字段；原visible_pack_ids必须包含将要提交的目标ID，它表示可访问的候选集合，不代表所有候选都已保存。
+
+pending包在指定读取、latest选择和目录中都隐藏；saved或未绑定场景的种子包保持原可见行为。成功激活只移除该包的pending状态，同store所有现有和重新connect的会话都看到同一保存状态，但各自的身份、期限、项目、visible_pack_ids及restricted过滤仍然生效。目录继续只读预先提取的六字段元数据，不为激活重新读取正文或来源。保存时不改写ID、版本、游标、created_at、expires_at、包内trace、hash或内容；调用方应提供所需顺序和有效时间的完整场景，不能用该模拟证明生产版本分配或时间行为。
+
+保存接线经既有MockWcpServer的context_packs配置及路径识别，入口严格为POST /v1/context-pack/compile，不接受查询或片段。头部沿16 KiB复制、大小写重复拒绝、trace/三范围/可选原身份相等检查；必须有application/json（允许UTF-8 charset）及原idempotency-key。拒绝写版本/缓存/Range/content-encoding和传输层content-length/transfer-encoding；这里的传输正文是对象，SDK不会自行添加传输层长度。正文只接受共享4 KiB普通JSON budget_tokens/ttl_seconds，缺省值规范为4096/3600；正文键、身份覆盖或其他字段均拒绝。返回沿json/bounded-json，后者仍需显式正安全整数max_response_bytes。
+
+先检查未过期模拟会话、read_context、项目可读，再按真实模拟会话的actor/client和原键查找场景，不能通过请求头改换身份。未匹配为MOCK_CONTEXT_PACK_SCENARIO_NOT_FOUND，不猜测最接近场景、不自动生成包或换键。目标不在visible_pack_ids时为CONTEXT_PACK_NOT_FOUND；规范预算/TTL或原包read_restricted桶与当前会话不同，返回IDEMPOTENCY_KEY_REUSED，包括获得或失去restricted权限。即使pending尚未激活，也必须遵守预先声明的场景参数；这是固定场景约束，不是声称生产已记录该请求。
+
+匹配后复用完整2 MiB封套与canonical WebCrypto SHA-256读取核验，检查原范围/版本/ETag/来源/用量/预算、真实expires_at及显式sources_current，并再次按场景预算/最大TTL核对。只有全部通过且当前会话/预算仍有效，才同步激活该包。并发相同请求核验同一不可变结果、激活同一ID，不会创建两个包；重放仍检查权限、摘要、到期和来源状态，外层trace替换为当前请求trace，包内保存trace和时间保持。pending失败不自动生成替代结果；该sources_current开关不模拟首次编译时的真实来源筛选图。
+
+激活后才检查调用方更小的响应字节限额并交付独立完整封套，超限为GATEWAY_RESPONSE_INVALID；这类返回失败以及之后的取消/期限或会话错误不会回滚已保存状态。同键显式重试或后续读取可以恢复原包，不能因错误换键推断原保存失败。直接Mock传输只给固定错误，SDK compileContextPack继续给派发后unknown诊断；MOCK_ROUTE_NOT_FOUND、MOCK_CONTEXT_PACK_SCENARIO_NOT_FOUND等SDK白名单外错误会转为GATEWAY_UNAVAILABLE，仍不清除unknown。
+
+每store保存独立两笔容量，与原读取/目录共用的两笔容量分开；一个保存占槽直到底层摘要实际完成，即使30秒本地预算或外部signal先结束等待也不提前释放。摘要完成后检查取消/期限再激活，迟到结果不交付；停止等待不是生产服务器撤销保证。同步解析只能阶段性检查期限。相同store续期可重放原场景；进程退出或重建store会失去激活状态，除非调用者另提供saved初始场景，不提供磁盘恢复或自动持久化。
+
+目录游标仍绑定store、身份、权限、可见候选集合与查询，不绑定pending状态。跨页期间激活新包可能改变结果，游标页不是快照；若需要查看所有新保存包，应显式从第一页重新查询。只读场景的数据仍固定。本增量不提供真实编译器、动态来源、数据库事务、审计、HTTP响应头/状态、认证token解析或任意新请求的自动结果。
+
+以下示例仅展示源码接线，未执行。调用方须提供合法且适合当前时间的完整response、相等scope/identity、有效会话到期，以及与response预算/有效期一致的parameters；read_restricted=false要求包不含入选restricted内容。
+
+```ts
+import {
+  MockContextPackStore, MockWcpServer, WcpClient,
+  type ContextPackReadEnvelope, type ContextPackCompileParameters,
+} from '@planemem/sdk';
+import { validateRequestContext, type SyncCommandIdentity } from '@planemem/contracts';
+
+declare const identity: SyncCommandIdentity;
+declare const response: ContextPackReadEnvelope;
+declare const parameters: ContextPackCompileParameters;
+declare const sessionExpiresAt: string;
+const originalKey = 'explicit-mock-save-1';
+const store = new MockContextPackStore({
+  scope: response.data.pack.scope,
+  packs: [{ response, read_restricted: false, sources_current: true }],
+  compilations: [{
+    actor_id: identity.actor_id, client_id: identity.client_id,
+    idempotency_key: originalKey, parameters,
+    pack_id: response.data.pack_id, initial_state: 'pending',
+  }],
+});
+const transport = new MockWcpServer({ context_packs: { store, session: {
+  identity, expires_at: sessionExpiresAt,
+  project_readable: true, read_context: true, read_restricted: false,
+  visible_pack_ids: [response.data.pack_id],
+} } });
+const client = new WcpClient(transport, validateRequestContext({
+  ...identity, trace_id: 'trace_mock_save_example',
+}));
+const before = await client.listContextPacks(); // pending fixture is hidden
+const saved = await client.compileContextPack(parameters, { idempotency_key: originalKey });
+const replay = await client.compileContextPack(parameters, { idempotency_key: originalKey });
+const read = await client.getContextPack({ pack_id: saved.data.pack_id });
+const after = await client.listContextPacks(); // activated fixture is now visible
+```
+
+R-003未完成、evidence为空。旧配置兼容、首次激活/重放、跨连接可见性、并发/取消/容量、摘要/到期/来源失败、响应超限后的恢复、目录跨页变化及SDK实际接线仍待运行证据。仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行校验器/Mock/SDK/API/保存请求、数据库或发布；无生产接口、共享契约、依赖或迁移变化。
 
 ## 未执行的接线示例
 

@@ -3,6 +3,7 @@ export * from './mock-server.js';
 export {
   MockContextPackStore,
   type MockContextPackSeed,
+  type MockContextPackCompilation,
   type MockContextPackSession,
 } from './mock-context-packs.js';
 export type { WcpContextItemReadOptions } from './context-item-read.js';
