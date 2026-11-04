@@ -186,6 +186,21 @@ function summary(value: unknown, detail = false): ContextItemRevisionSummary {
   };
 }
 
+/** Structural snapshot parsing only; canonical hash verification belongs to the read boundary. */
+export function parseContextRevision(
+  value: unknown,
+  input: Extract<ContextHistoryReadQuery, { kind: 'version' }>,
+  scope: { tenant_id: string; workspace_id: string; project_id: string },
+): ContextItemRevision {
+  const query = parseContextHistoryReadQuery(input);
+  if (query.kind !== 'version') throw new TypeError('Choose one recorded version');
+  return revision(
+    JSON.parse(syncJsonSnapshot(value, CONTEXT_REVISION_RESPONSE_BYTES)),
+    query,
+    scope,
+  );
+}
+
 function revision(
   value: unknown,
   query: Extract<ContextHistoryReadQuery, { kind: 'version' }>,

@@ -123,8 +123,7 @@ import {
   type UpdateContextItemRequest,
   type ContextItemListQuery,
   type ContextItemHistoryQuery,
-  type ContextItemHistoryPage,
-  type ContextItemRevision,
+  type ContextComparisonQuery,
   parseContextItemListQuery,
   parseCreateContextItem,
   parseUpdateContextItem,
@@ -172,6 +171,12 @@ import {
 } from './artifact-reads.js';
 import { downloadArtifactVersion, type WcpArtifactDownloadOptions } from './artifact-download.js';
 import { compareArtifactVersions } from './artifact-comparison.js';
+import {
+  readContextItemHistory,
+  readContextItemVersion,
+  compareContextItemVersions,
+  type WcpContextHistoryReadOptions,
+} from './context-history.js';
 import { uploadArtifact, type WcpArtifactUploadOptions } from './artifact-upload.js';
 import { uploadSyncEvents, type WcpSyncUploadOptions } from './sync-upload.js';
 import { readSyncChanges, iterateSyncChanges, type WcpSyncChangesOptions } from './sync-changes.js';
@@ -462,33 +467,28 @@ export class WcpClient {
     );
   }
 
-  listContextItemHistory(itemId: string, input: ContextItemHistoryQuery = {}) {
-    const query = new URLSearchParams();
-    for (const [field, value] of Object.entries(input)) {
-      if (value === undefined) continue;
-      if (
-        !['before_version', 'limit'].includes(field) ||
-        typeof value !== 'number' ||
-        !Number.isSafeInteger(value) ||
-        value < 1 ||
-        (field === 'limit' && value > 100)
-      )
-        throw this.invalid('History accepts a positive before_version and limit between 1 and 100');
-      query.set(field, String(value));
-    }
-    return this.envelope<ContextItemHistoryPage>(
-      'GET',
-      '/v1/context-items/' + this.segment(itemId) + '/history' + (query.size ? '?' + query : ''),
-    );
+  listContextItemHistory(
+    itemId: string,
+    input: ContextItemHistoryQuery = {},
+    options: WcpContextHistoryReadOptions = {},
+  ) {
+    return readContextItemHistory(this.transport, this.context, itemId, input, options);
   }
 
-  getContextItemVersion(itemId: string, version: number) {
-    if (!Number.isSafeInteger(version) || version < 1)
-      throw this.invalid('version must be a positive safe integer');
-    return this.envelope<ContextItemRevision>(
-      'GET',
-      '/v1/context-items/' + this.segment(itemId) + '/versions/' + version,
-    );
+  getContextItemVersion(
+    itemId: string,
+    version: number,
+    options: WcpContextHistoryReadOptions = {},
+  ) {
+    return readContextItemVersion(this.transport, this.context, itemId, version, options);
+  }
+
+  /** Local comparison of two complete historical snapshots under one total read budget. */
+  compareContextItemVersions(
+    query: ContextComparisonQuery,
+    options: WcpContextHistoryReadOptions = {},
+  ) {
+    return compareContextItemVersions(this.transport, this.context, query, options);
   }
 
   listContextItems(input: ContextItemListQuery = {}) {

@@ -1,5 +1,32 @@
 # ContextItem 录入与编辑开发说明
 
+## 2026-11-04 SDK历史读取与双版本对比增量
+
+现有listContextItemHistory(itemId, query?, options?)与getContextItemVersion(itemId, version, options?)改用专用历史读取器，成功仍返回完整WcpEnvelope。新增可选WcpContextHistoryReadOptions.timeout_ms/signal；默认30秒本地等待预算，允许1–2147483647毫秒。查询和选项必须普通已知平面字段，拒绝访问器/符号/额外字段，合法可选undefined省略；item与版本规则复用共享历史查询，默认limit=25、最多100。异步前固定查询、project范围及已有actor/client约束；不发送构造上下文中的写入键、expected_version或If-Match。
+
+目录成功响应上限256KiB、版本2MiB，transport采用bounded-json并传入取消信号；默认Fetch传输继续限制错误16KiB，处理HTTP状态/trace/媒体类型/UTF-8/Content-Length。SDK对任何传输返回再次通过共享解析复制完整有界JSON，核对条目、版本、分页、来源、快照范围及历史确认。SDK业务层拿不到自定义传输的HTTP头，不声称独立验证其网络身份或头部；自定义传输必须按WcpTransport约定自行鉴权、处理错误和bounded-json。已有Fetch传输自身的timeout_ms仍可更早终止读取。
+
+版本读取要求WebCrypto SHA-256能力；缺失时在发请求前返回CONTEXT_HISTORY_INTEGRITY_UNAVAILABLE，摘要服务失败也用该固定错误，摘要不一致返回CONTEXT_HISTORY_HASH_MISMATCH。正文经过独立复制后才异步计算{item,archived_at}规范JSON摘要，摘要等待同样可被原预算/取消终止；没有能力时不降级返回未核对快照。目录只核对保存摘要的格式，不替代单版正文读取。已取消或超时优先于随后到达的读取/解析结果；错误不透传上游任意message/details，不自动重试。
+
+新增compareContextItemVersions({item_id,from_version,to_version}, options?)，两个版本必须为不同的正安全整数，查询最多4KiB，方向不自动排序。构造上下文必须有完整tenant/workspace/project ULID、actor ULID及非空本地client ID；两次GET均带相同scope和expected actor/client相等条件，由真实Gateway比对已验证身份。凭据提供器可以刷新令牌，但不能因此混用不同账号/客户端结果。两份版本顺序读取，在同一个默认30秒总预算内完成传输、解析、摘要及本地比较；首读失败不发第二读，任一失败不返回部分组合。
+
+返回WcpContextComparisonResult为SDK本地组合，不是新的Gateway封套：schema_version=1、kind=context-version-comparison、comparison_origin=local、read_consistency=separate-reads、content_state=snapshot-hashes-checked、source_state=not-checked，并含原query、identity_constraints、from/to完整读取封套和comparison。保留请求trace和比较方向；两次读取可以使用相同调用trace。摘要相符只说明快照自洽，不是来源真实性、当前确认、当前可用性或跨请求一致性快照证明。
+
+Web比较模型提取到contracts/context-comparison，由Web和SDK共用十项属性、九项记录信息及完整正文/来源/确认比较规则。新增parseContextRevision供独立结构解析；导出的compareContextSnapshots也先复制并核对两份完整结构、同范围/同条目和不同版本，再比较普通JSON。直接调用该纯函数不执行网络、摘要算法或鉴权，不应将结果当作已验证读取。
+
+以下仅为未执行的调用示例，client须已配置真实传输和完整项目/账号/客户端上下文：
+
+```ts
+const history = await client.listContextItemHistory(itemId, { limit: 25 }, { timeout_ms: 30_000 });
+const snapshot = await client.getContextItemVersion(itemId, 3, { signal });
+const comparison = await client.compareContextItemVersions(
+  { item_id: itemId, from_version: 2, to_version: 3 },
+  { timeout_ms: 30_000, signal },
+);
+```
+
+兼容变化：原参数调用继续可用，但现在需要完整项目范围、合法本地trace/client、能提供完整匹配响应及支持bounded-json/signal的传输；非法未知字段不再忽略，失败统一为Promise拒绝。单版/比较需要WebCrypto。没有扩展Mock历史存储，CLI/MCP原通用历史入口也尚未改接此SDK读取器。无新Gateway路由/schema、数据库/迁移、依赖或写入行为。本次仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、运行SDK/Mock/CLI/MCP/API/数据库或发布；自定义传输、凭据切换、取消/期限、摘要和真实数据兼容仍待运行证据，R-003未完成、evidence为空。
+
 ## 2026-11-04 网页历史版本对比增量
 
 /context/history/compare提供同一条目两个明确历史版本的只读对比。历史页有至少两条记录时可从本页实际版本下拉选择；单版本详情的Compare this version预填基准，另一个版本可手动输入，允许跨历史页选择。未选择完整两边时不读取快照，不自动选最新。完整选择要求两个不同正安全整数并保持用户方向；选同一版会保留表单供修正、拒绝发送读取。

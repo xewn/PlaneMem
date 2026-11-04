@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-04：`listContextItemHistory(id, query?, options?)`和`getContextItemVersion(id, version, options?)`新增`WcpContextHistoryReadOptions`（timeout_ms/signal），默认30秒，完整目录256KiB、版本2MiB，版本读取核对WebCrypto SHA-256。新增`compareContextItemVersions({item_id,from_version,to_version}, options?)`，要求构造上下文含完整project_id/actor_id/client_id，固定两版本并在同一总预算内读取、校验和比较；任一失败无部分结果。结果为`WcpContextComparisonResult`本地组合对象，保存原from/to封套与query/identity_constraints，明确snapshot-hashes-checked、source_state=not-checked，非新Gateway响应或来源真实性证明。根入口导出共享`parseContextComparisonQuery/compareContextSnapshots`及相关类型；本地函数做结构比较，不独立核对摘要或权限。接口、兼容变化与未执行示例见[SDK上下文历史读取](../../docs/design/01-contracts/context-item-runtime.md#2026-11-04-sdk历史读取与双版本对比增量)。仅源码文档，未编译、测试、执行SDK/Mock或发布。
+
 2026-11-04：工作项列表和workItemPages支持`sort:'due_asc'`，截止日期从早到晚、null最后、同日期按本地ID升序；例如`{sort:'due_asc',status:'todo',limit:25}`。默认`updated_desc`与省略相同，旧游标兼容；更换排序须从第一页重新开始，续页保留排序及原筛选。Mock同步支持；客户端不重排单页，不保证跨页快照或实时来源。详见[工作项排序](../../docs/design/01-contracts/work-item-projection-runtime.md)，仅源码文档，未编译、测试、运行或发布。
 
 2026-11-04：`listWorkItemProjections`和`workItemPages`新增`due=scheduled|unscheduled`、`due_from`及`due_before`。日期为严格有效YYYY-MM-DD，UTC含起始、不含结束；例如`{due_from:'2026-11-01',due_before:'2026-12-01',status:'todo'}`读取指定UTC月份的待办。unscheduled仅匹配due_at=null，不能与日期区间组合；不自动按当前日期判断逾期或排除已完成任务。续页保留全部条件；新日期条件采用生产v4/独立Mock v2绑定，无新条件保持旧绑定。Mock已同步，原有界输入/响应及期限保持，见[工作项筛选](../../docs/design/01-contracts/work-item-projection-runtime.md)。仅源码文档，未编译、测试、运行或发布。
@@ -287,7 +289,8 @@ const handoff = await client.createHandoff(started.data.session_id, originalHand
 - 上下文包：`compileContextPack({ budget_tokens?, ttl_seconds? }, { idempotency_key })`、`getContextPack({ pack_id?, format? })`。
 - 来源条目：`createContextItem`、`getContextItem`、`listContextItems`、`updateContextItem`、`archiveContextItem`。
 - 归档管理：`getArchivedContextItem`、`restoreContextItem`；列表传入 `{ archived: true }`。
-- 版本历史：`listContextItemHistory(id, { before_version?, limit? })`、`getContextItemVersion(id, version)`。
+- 版本历史：`listContextItemHistory(id, { before_version?, limit? }, options?)`、`getContextItemVersion(id, version, options?)`，options支持timeout_ms/signal。
+- 版本对比：`compareContextItemVersions({ item_id, from_version, to_version }, options?)`，两版本不同，要求完整项目、账号与客户端上下文。
 - 人工确认：`confirmContextItem(id, reason, { expected_version, idempotency_key })`，要求签名 human、客户端身份和 context.review。
 - 建议审核：`createProposal`、`listProposals`、`getProposal`、`confirmProposal`、`rejectProposal`。
 

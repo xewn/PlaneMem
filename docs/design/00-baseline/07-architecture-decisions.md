@@ -1,5 +1,7 @@
 # 架构决策记录摘要
 
+2026-11-04 SDK上下文历史与对比协接（ADR-015 / T0.3/T0.5/T5.1）：源码编辑前登记，SDK现有listContextItemHistory/getContextItemVersion接入严格捕获查询/范围/读取选项、默认30秒可取消预算和有界完整响应/摘要核对；新增compareContextItemVersions，同一明确条目两个不同版本、完整项目/actor/client相等约束、两次顺序读取共用总期限，失败无部分结果。Web比较模型提取至contracts并补本地结构校验，Web维持既有入口；新增SDK读取服务/client/index及SDK README，更新ContextItem契约、根README/TODO/R003与任务记录。无Gateway/数据库/依赖/写表单/Mock/CLI/MCP变化，HTTP细节仍由现有bounded-json传输承担，不把自定义传输视为身份或来源证明。仅源码文档人工审阅/格式文本检查，不编译/测试/执行/发布；独立提交push main带[skip ci]。
+
 2026-11-04 上下文历史版本对比协接（ADR-015 / T5.1）：源码编辑前登记，新增Web /context/history/compare只读双版本对比，历史目录实际版本选择及单版本预填入口，显式固定两个不同安全版本、保持方向/原历史页及浏览返回链。两次快照读取捕获同一会话/范围/Gateway并共用30秒期限，复用完整历史响应和摘要校验，任一失败不返回部分对比；并排呈现完整正文/来源/历史确认及属性变化，正文按结构比较且保留数组顺序、文本空白，不把记录差异当成当前有效性或恢复操作。范围Web context导航/历史/新增compare页面与模型表单、读取服务和样式，ContextItem契约、README/TODO/R003/T5.1/ADR；不改Gateway、共享协议、数据库、SDK/CLI/MCP、依赖或写表单。仅源码文档人工审阅/格式文本检查，不编译/测试/执行/发布；独立提交push main带[skip ci]。
 
 2026-11-04 上下文历史完整读取协接（ADR-015 / T0.3/T5.1）：源码编辑前登记，新增共享历史查询/完整目录/版本快照校验及快照规范JSON；Web历史读取固定原条目/版本/分页，响应限额、现有30秒截止、trace/来源/范围/版本/确认元数据一致性校验，版本快照另核对SHA-256。目录不伪造未提供的范围回显，不把历史确认视为当前来源有效。范围contracts新context-history与导出、Web新context-history-response/server-api、ContextItem契约、README/TODO/R003与任务记录；不改Gateway、数据库、写表单、SDK/CLI/MCP或依赖。仅源码文档人工审阅/格式文本检查，不编译、类型检查、测试、执行产品/API/数据库或发布；独立提交push main带[skip ci]。

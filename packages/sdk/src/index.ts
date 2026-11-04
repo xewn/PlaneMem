@@ -1,6 +1,18 @@
 export * from './client.js';
 export * from './mock-server.js';
 export type { WcpWorkItemReadOptions, WcpWorkItemPagesOptions } from './work-item-reads.js';
+export type {
+  WcpContextHistoryReadOptions,
+  WcpContextComparisonResult,
+} from './context-history.js';
+export { parseContextComparisonQuery, compareContextSnapshots } from '@planemem/contracts';
+export type {
+  ContextComparisonQuery,
+  ContextSnapshotComparison,
+  ContextItemHistoryQuery,
+  ContextItemHistoryPage,
+  ContextItemRevision,
+} from '@planemem/contracts';
 export type { WorkItemListQuery, WorkItemProjection } from '@planemem/contracts';
 export {
   MockWorkItemStore,
