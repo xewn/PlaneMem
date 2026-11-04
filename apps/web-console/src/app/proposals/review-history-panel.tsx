@@ -13,6 +13,7 @@ import {
 } from './review-history-query';
 import { ReviewHistoryBackupPanel } from './review-history-backup-panel';
 import { ReviewHistoryCleanupPanel } from './review-history-cleanup-panel';
+import { subscribeReviewHistoryChanges } from './review-history-changes';
 import {
   REVIEW_HISTORY_FILE_BYTES,
   reviewObservationStatus,
@@ -67,6 +68,8 @@ export function ReviewHistoryPanel({
   const [digest, setDigest] = useState('');
   const [busy, setBusy] = useState(false);
   const [localStorageEpoch, setStorageEpoch] = useState(0);
+  const storageGeneration = useRef(0);
+  const getStorageGeneration = useCallback(() => storageGeneration.current, []);
   // External writes invalidate eligibility in this render, before the clearing effect runs.
   const storageEpoch = localStorageEpoch + externalStorageEpoch;
   const lastExternalEpoch = useRef(externalStorageEpoch);
@@ -78,13 +81,19 @@ export function ReviewHistoryPanel({
   const operation = useRef<AbortController | undefined>(undefined);
   const release = useRef<(() => void) | undefined>(undefined);
   const beginStorage = useCallback(() => {
-    if (!mounted.current || active.current || (begin && !begin())) return false;
+    if (
+      !mounted.current ||
+      active.current ||
+      storageGeneration.current !== localStorageEpoch ||
+      (begin && !begin())
+    )
+      return false;
     active.current = true;
     release.current = end;
     setBusy(true);
     setRemoveConfirmed(false);
     return true;
-  }, [begin, end]);
+  }, [begin, end, localStorageEpoch]);
   const endStorage = useCallback(() => {
     active.current = false;
     if (mounted.current) setBusy(false);
@@ -93,10 +102,11 @@ export function ReviewHistoryPanel({
   }, []);
   const storageChanged = useCallback(() => {
     if (!mounted.current) return;
+    storageGeneration.current += 1;
+    setStorageEpoch(storageGeneration.current);
     setPage(undefined);
     setRemoveConfirmed(false);
     setRemovalFresh(false);
-    setStorageEpoch((value) => value + 1);
     setMessage(
       'Saved history may have changed. Find saved review history again; compare any retained backup again before restoring. Received results and inspected copies are retained.',
     );
@@ -118,21 +128,52 @@ export function ReviewHistoryPanel({
     storageChanged();
   }, [externalStorageEpoch, storageChanged]);
   useEffect(() => {
+    const invalidate = () => storageChanged();
+    const unsubscribe = subscribeReviewHistoryChanges(binding, invalidate);
+    const visible = () => {
+      if (window.document.visibilityState === 'visible') invalidate();
+    };
+    const restored = (event: PageTransitionEvent) => {
+      if (event.persisted) invalidate();
+    };
+    window.addEventListener('focus', invalidate);
+    window.addEventListener('pageshow', restored);
+    window.document.addEventListener('visibilitychange', visible);
+    return () => {
+      unsubscribe();
+      window.removeEventListener('focus', invalidate);
+      window.removeEventListener('pageshow', restored);
+      window.document.removeEventListener('visibilitychange', visible);
+    };
+  }, [binding, storageChanged]);
+  useEffect(() => {
     if (disabled) setRemoveConfirmed(false);
   }, [disabled]);
   async function run<T>(
     work: (signal: AbortSignal, check: () => void) => Promise<T>,
     receive: (value: T) => void,
-    options: { start?: () => void; failureMessage?: string } = {},
+    options: {
+      start?: () => void;
+      failureMessage?: string;
+      requireUnchangedStorage?: boolean;
+    } = {},
   ) {
     if (!mounted.current || disabled || operation.current || !beginStorage()) return;
     const controller = new AbortController();
     operation.current = controller;
     try {
       options.start?.();
+      const generation = getStorageGeneration();
       const result = await backupOperation(controller.signal, work);
-      if (mounted.current && operation.current === controller && !controller.signal.aborted)
+      if (mounted.current && operation.current === controller && !controller.signal.aborted) {
+        if (options.requireUnchangedStorage && generation !== getStorageGeneration()) {
+          setMessage(
+            'Saved history may have changed during this read. Its result was not applied. Refresh the directory or read the copy again; the previous inspected copy is retained.',
+          );
+          return;
+        }
         receive(result);
+      }
     } catch {
       if (mounted.current && operation.current === controller)
         setMessage(
@@ -204,6 +245,7 @@ export function ReviewHistoryPanel({
       },
       {
         start: clearDirectory,
+        requireUnchangedStorage: true,
         failureMessage:
           'History search could not be completed. Check the exact proposal ID and request key. Invalid filters, damaged stored records or an expired read stop the whole page; no partial results are shown. Inspected copies are retained.',
       },
@@ -213,7 +255,7 @@ export function ReviewHistoryPanel({
     void run(
       (signal, check) => loadReviewHistory(binding, value, signal, check, selection),
       (item) => inspect(item, 'browser'),
-      { start: () => setRemovalFresh(false) },
+      { start: () => setRemovalFresh(false), requireUnchangedStorage: true },
     );
   }
   const locked = disabled || busy;
@@ -636,6 +678,7 @@ export function ReviewHistoryPanel({
         begin={beginStorage}
         end={endStorage}
         onStorageChange={storageChanged}
+        getStorageGeneration={getStorageGeneration}
       />
       <p>
         History filters limit the directory and its selected-copy actions. The backup below still
@@ -648,7 +691,13 @@ export function ReviewHistoryPanel({
         begin={beginStorage}
         end={endStorage}
         onStorageChange={storageChanged}
+        getStorageGeneration={getStorageGeneration}
       />
+      <p className="muted">
+        This page clears old history confirmations when it hears about a storage attempt or regains
+        focus. Messages can be missed; refresh before acting. Notifications never load or change
+        history, and every removal or restore still checks the stored contents again.
+      </p>
       <p role="status">{message}</p>
     </section>
   );

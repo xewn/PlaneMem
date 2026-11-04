@@ -22,6 +22,7 @@ export function ReviewHistoryCleanupPanel({
   begin,
   end,
   onStorageChange,
+  getStorageGeneration,
 }: {
   binding: ProposalSubmissionBinding;
   page: ReviewHistoryPage | undefined;
@@ -30,6 +31,7 @@ export function ReviewHistoryCleanupPanel({
   begin: () => boolean;
   end: () => void;
   onStorageChange: () => void;
+  getStorageGeneration: () => number;
 }) {
   const [selection, setSelection] = useState<{ page: ReviewHistoryPage; digests: string[] }>();
   const [reviewed, setReviewed] = useState<{
@@ -44,6 +46,7 @@ export function ReviewHistoryCleanupPanel({
   const [message, setMessage] = useState('');
   const mounted = useRef(false);
   const operation = useRef<AbortController | undefined>(undefined);
+  const release = useRef<(() => void) | undefined>(undefined);
   const chosen = selection?.page === page ? (selection?.digests ?? []) : [];
   const selectionKey = JSON.stringify(chosen);
   const current =
@@ -68,10 +71,11 @@ export function ReviewHistoryCleanupPanel({
       if (operation.current) {
         operation.current.abort();
         operation.current = undefined;
-        end();
+        release.current?.();
+        release.current = undefined;
       }
     };
-  }, [end]);
+  }, []);
   useEffect(() => {
     setFresh(false);
     setConfirmed(null);
@@ -121,6 +125,8 @@ export function ReviewHistoryCleanupPanel({
     if (!begin()) return;
     const controller = new AbortController();
     operation.current = controller;
+    release.current = end;
+    const generation = getStorageGeneration();
     setBusy(true);
     setConfirmed(null);
     if (action !== 'export') setFresh(false);
@@ -134,6 +140,12 @@ export function ReviewHistoryCleanupPanel({
         const candidate = await prepareReviewHistorySelection(binding, rows, controller.signal);
         if (!isCurrent()) return;
         setReviewed({ candidate, page: page!, epoch: storageEpoch, selectionKey });
+        if (generation !== getStorageGeneration()) {
+          setMessage(
+            'Saved history may have changed during this inspection. The complete subset is retained for export. Refresh the directory, select and inspect the current copies again before removal.',
+          );
+          return;
+        }
         setFresh(true);
         setMessage(
           'Inspect every selected observation below. You can export this selected subset before deciding whether to remove its browser copies.',
@@ -189,7 +201,8 @@ export function ReviewHistoryCleanupPanel({
       if (operation.current === controller) {
         operation.current = undefined;
         if (mounted.current) setBusy(false);
-        end();
+        release.current?.();
+        release.current = undefined;
       }
     }
   }

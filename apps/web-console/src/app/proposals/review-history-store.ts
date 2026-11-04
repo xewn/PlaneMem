@@ -1,5 +1,6 @@
 'use client';
 
+import { withReviewHistoryChange } from './review-history-changes';
 import { backupHash } from '../sync/receipt/backup-operation';
 import {
   matchesReviewHistory,
@@ -126,29 +127,31 @@ export async function saveReviewHistory(
   const candidate = await inspectReviewHistory(raw, binding, check);
   check();
   const slot = key(binding, candidate.file.document_sha256);
-  return inBrowserStores<ReviewHistoryCandidate>(
-    layout,
-    'readwrite',
-    signal,
-    () => {
-      throw new TypeError();
-    },
-    (context) => {
-      readBrowserPair(context, slot, (old, index, exists) => {
-        if (exists) {
-          const saved = pair(old, index, binding, slot);
-          if (saved.raw !== candidate.raw) throw new TypeError();
-          context.accept(saved);
-          return;
-        }
-        context.content.add(candidate.raw, slot);
-        context.directory.add(JSON.stringify(summary(candidate.file)), slot);
-        readBrowserPair(context, slot, (saved, metadata, present) => {
-          if (!present || saved !== candidate.raw) throw new TypeError();
-          context.accept(pair(saved, metadata, binding, slot));
+  return withReviewHistoryChange(binding, () =>
+    inBrowserStores<ReviewHistoryCandidate>(
+      layout,
+      'readwrite',
+      signal,
+      () => {
+        throw new TypeError();
+      },
+      (context) => {
+        readBrowserPair(context, slot, (old, index, exists) => {
+          if (exists) {
+            const saved = pair(old, index, binding, slot);
+            if (saved.raw !== candidate.raw) throw new TypeError();
+            context.accept(saved);
+            return;
+          }
+          context.content.add(candidate.raw, slot);
+          context.directory.add(JSON.stringify(summary(candidate.file)), slot);
+          readBrowserPair(context, slot, (saved, metadata, present) => {
+            if (!present || saved !== candidate.raw) throw new TypeError();
+            context.accept(pair(saved, metadata, binding, slot));
+          });
         });
-      });
-    },
+      },
+    ),
   );
 }
 export async function loadReviewHistory(
@@ -194,25 +197,27 @@ export async function removeReviewHistory(
   check();
   const slot = key(binding, reviewed.file.document_sha256);
   const expectedIndex = JSON.stringify(summary(reviewed.file));
-  return inBrowserStores<BrowserRemovalResult>(
-    layout,
-    'readwrite',
-    signal,
-    () => 'not-present',
-    (context) => {
-      readBrowserPair(context, slot, (stored, index, exists) => {
-        check();
-        if (!exists) {
-          context.accept('not-present');
-          return;
-        }
-        pair(stored, index, binding, slot);
-        if (stored !== reviewed.raw || index !== expectedIndex) throw new TypeError();
-        check();
-        removeBrowserPair(context, slot);
-      });
-    },
-    { create: false },
+  return withReviewHistoryChange(binding, () =>
+    inBrowserStores<BrowserRemovalResult>(
+      layout,
+      'readwrite',
+      signal,
+      () => 'not-present',
+      (context) => {
+        readBrowserPair(context, slot, (stored, index, exists) => {
+          check();
+          if (!exists) {
+            context.accept('not-present');
+            return;
+          }
+          pair(stored, index, binding, slot);
+          if (stored !== reviewed.raw || index !== expectedIndex) throw new TypeError();
+          check();
+          removeBrowserPair(context, slot);
+        });
+      },
+      { create: false },
+    ),
   );
 }
 /** Read a bounded consistent page, then verify every content digest before exposing it. */
@@ -495,58 +500,60 @@ export async function removeReviewHistorySelection(
     throw new TypeError();
   const prepared = await backupEntries(input, check);
   check();
-  return inBrowserStores<ReviewHistorySelectionRemoval>(
-    layout,
-    'readwrite',
-    signal,
-    () => ({ total: prepared.length, removed: 0, not_present: prepared.length }),
-    (context) => {
-      const present: typeof prepared = [];
-      const account = backupReadBudget();
-      let inspected = 0;
-      let verified = 0;
-      const verify = () => {
-        check();
-        const item = prepared[verified];
-        if (!item) {
-          context.accept({
-            total: prepared.length,
-            removed: present.length,
-            not_present: prepared.length - present.length,
+  return withReviewHistoryChange(prepared[0]!.file.document.original.binding, () =>
+    inBrowserStores<ReviewHistorySelectionRemoval>(
+      layout,
+      'readwrite',
+      signal,
+      () => ({ total: prepared.length, removed: 0, not_present: prepared.length }),
+      (context) => {
+        const present: typeof prepared = [];
+        const account = backupReadBudget();
+        let inspected = 0;
+        let verified = 0;
+        const verify = () => {
+          check();
+          const item = prepared[verified];
+          if (!item) {
+            context.accept({
+              total: prepared.length,
+              removed: present.length,
+              not_present: prepared.length - present.length,
+            });
+            return;
+          }
+          readBrowserPair(context, item.slot, (_raw, _index, exists) => {
+            if (exists) throw new TypeError();
+            verified += 1;
+            verify();
           });
-          return;
-        }
-        readBrowserPair(context, item.slot, (_raw, _index, exists) => {
-          if (exists) throw new TypeError();
-          verified += 1;
-          verify();
-        });
-      };
-      const inspect = () => {
-        check();
-        const item = prepared[inspected];
-        if (!item) {
-          for (const match of present) {
-            check();
-            context.content.delete(match.slot);
-            context.directory.delete(match.slot);
+        };
+        const inspect = () => {
+          check();
+          const item = prepared[inspected];
+          if (!item) {
+            for (const match of present) {
+              check();
+              context.content.delete(match.slot);
+              context.directory.delete(match.slot);
+            }
+            verify();
+            return;
           }
-          verify();
-          return;
-        }
-        readBrowserPair(context, item.slot, (raw, index, exists) => {
-          if (exists) {
-            account(raw, index);
-            if (backupEntryState(item, raw, index, exists) !== 'same') throw new TypeError();
-            present.push(item);
-          }
-          inspected += 1;
-          inspect();
-        });
-      };
-      inspect();
-    },
-    { create: false },
+          readBrowserPair(context, item.slot, (raw, index, exists) => {
+            if (exists) {
+              account(raw, index);
+              if (backupEntryState(item, raw, index, exists) !== 'same') throw new TypeError();
+              present.push(item);
+            }
+            inspected += 1;
+            inspect();
+          });
+        };
+        inspect();
+      },
+      { create: false },
+    ),
   );
 }
 function backupEntryState(
@@ -617,60 +624,62 @@ export async function restoreReviewHistoryBackup(
   const prepared = await backupEntries(input, check);
   check();
   if (!prepared.length) return { total: 0, added: 0, already_present: 0 };
-  return inBrowserStores<ReviewHistoryBackupRestoreResult>(
-    layout,
-    'readwrite',
-    signal,
-    () => {
-      throw new TypeError();
-    },
-    (context) => {
-      const missing: typeof prepared = [];
-      const preflightBudget = backupReadBudget();
-      const verificationBudget = backupReadBudget();
-      let inspected = 0;
-      let verified = 0;
-      const verify = () => {
-        check();
-        const item = prepared[verified];
-        if (!item) {
-          context.accept({
-            total: prepared.length,
-            added: missing.length,
-            already_present: prepared.length - missing.length,
-          });
-          return;
-        }
-        readBrowserPair(context, item.slot, (raw, index, exists) => {
-          if (!exists) throw new TypeError();
-          verificationBudget(raw, index);
-          if (backupEntryState(item, raw, index, exists) !== 'same') throw new TypeError();
-          verified += 1;
-          verify();
-        });
-      };
-      const inspect = () => {
-        check();
-        const item = prepared[inspected];
-        if (!item) {
-          for (const absent of missing) {
-            check();
-            context.content.add(absent.raw, absent.slot);
-            context.directory.add(absent.index, absent.slot);
+  return withReviewHistoryChange(prepared[0]!.file.document.original.binding, () =>
+    inBrowserStores<ReviewHistoryBackupRestoreResult>(
+      layout,
+      'readwrite',
+      signal,
+      () => {
+        throw new TypeError();
+      },
+      (context) => {
+        const missing: typeof prepared = [];
+        const preflightBudget = backupReadBudget();
+        const verificationBudget = backupReadBudget();
+        let inspected = 0;
+        let verified = 0;
+        const verify = () => {
+          check();
+          const item = prepared[verified];
+          if (!item) {
+            context.accept({
+              total: prepared.length,
+              added: missing.length,
+              already_present: prepared.length - missing.length,
+            });
+            return;
           }
-          verify();
-          return;
-        }
-        readBrowserPair(context, item.slot, (raw, index, exists) => {
-          if (exists) preflightBudget(raw, index);
-          const state = backupEntryState(item, raw, index, exists);
-          if (state === 'missing') missing.push(item);
-          else if (state !== 'same') throw new TypeError();
-          inspected += 1;
-          inspect();
-        });
-      };
-      inspect();
-    },
+          readBrowserPair(context, item.slot, (raw, index, exists) => {
+            if (!exists) throw new TypeError();
+            verificationBudget(raw, index);
+            if (backupEntryState(item, raw, index, exists) !== 'same') throw new TypeError();
+            verified += 1;
+            verify();
+          });
+        };
+        const inspect = () => {
+          check();
+          const item = prepared[inspected];
+          if (!item) {
+            for (const absent of missing) {
+              check();
+              context.content.add(absent.raw, absent.slot);
+              context.directory.add(absent.index, absent.slot);
+            }
+            verify();
+            return;
+          }
+          readBrowserPair(context, item.slot, (raw, index, exists) => {
+            if (exists) preflightBudget(raw, index);
+            const state = backupEntryState(item, raw, index, exists);
+            if (state === 'missing') missing.push(item);
+            else if (state !== 'same') throw new TypeError();
+            inspected += 1;
+            inspect();
+          });
+        };
+        inspect();
+      },
+    ),
   );
 }

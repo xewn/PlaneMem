@@ -3452,6 +3452,27 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_review_history_cross_page_development_increment:
+      date: "2026-11-04"
+      status: "Source-only review history cross-page invalidation and shared transport extraction; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/history-change-channel.ts"
+        - "apps/web-console/src/app/proposals/creation-history-changes.ts"
+        - "apps/web-console/src/app/proposals/review-history-changes.ts"
+        - "apps/web-console/src/app/proposals/review-history-store.ts"
+        - "apps/web-console/src/app/proposals/review-history-panel.tsx"
+        - "apps/web-console/src/app/proposals/review-history-backup-panel.tsx"
+        - "apps/web-console/src/app/proposals/review-history-cleanup-panel.tsx"
+        - "docs/design/01-contracts/proposal-review-history-runtime.md"
+        - "docs/design/01-contracts/proposal-creation-history-runtime.md"
+      behavior: "Shared transport factory keeps creation and review channels, kinds and listeners separate while preserving the creation wire format. All four review write paths notify before storage attempts and on settlement, including autosave/retry and unknown outcomes. Exact bounded binding scopes carry no history content or action authority. Notifications and focus/visibility/page-cache returns revoke directories and single/selected removal and backup qualifications. Synchronous generations block stale callbacks before rerender and prevent in-flight reads or comparisons from requalifying old snapshots; complete retained files remain exportable. Child panels capture their own operation release. Writes keep their original transaction checks and outcome reporting; notifications trigger no automatic loading or saving."
+      evidence: []
+      pending_evidence:
+        - "Creation/review transport isolation, unchanged creation protocol, strict message and exact binding scope checks"
+        - "All four review write paths including automatic retention and explicit retries; unavailable channels and listener errors preserve write outcomes"
+        - "Pending-render and in-flight read races, focus/visibility/page-cache return, captured lock release, retained exports and subscription cleanup"
+      remaining_scope: "Automatic backup and capacity cleanup, cross-device coordination and runtime/compatibility evidence; notifications are best effort and do not provide a cross-page lock."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, product/browser/API/database execution or release. Existing browser v1 reused; no schema or dependency changes."
     proposal_creation_history_cross_page_development_increment:
       date: "2026-11-04"
       status: "Source-only scoped browser history invalidation and stale-read qualification guards; R-009 remains incomplete."

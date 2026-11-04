@@ -20,6 +20,7 @@ export function ReviewHistoryBackupPanel({
   begin,
   end,
   onStorageChange,
+  getStorageGeneration,
 }: {
   binding: ProposalSubmissionBinding;
   disabled: boolean;
@@ -27,6 +28,7 @@ export function ReviewHistoryBackupPanel({
   begin: () => boolean;
   end: () => void;
   onStorageChange: () => void;
+  getStorageGeneration: () => number;
 }) {
   const [reviewed, setReviewed] = useState<ReviewHistoryBackupCandidate>();
   const [comparison, setComparison] = useState<{
@@ -45,6 +47,7 @@ export function ReviewHistoryBackupPanel({
   );
   const mounted = useRef(false);
   const operation = useRef<AbortController | undefined>(undefined);
+  const release = useRef<(() => void) | undefined>(undefined);
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -52,10 +55,11 @@ export function ReviewHistoryBackupPanel({
       if (operation.current) {
         operation.current.abort();
         operation.current = undefined;
-        end();
+        release.current?.();
+        release.current = undefined;
       }
     };
-  }, [end]);
+  }, []);
   useEffect(() => {
     setConfirmed(null);
     setComparison(undefined);
@@ -80,6 +84,8 @@ export function ReviewHistoryBackupPanel({
     if (!begin()) return;
     const controller = new AbortController();
     operation.current = controller;
+    release.current = end;
+    const generation = getStorageGeneration();
     setBusy(true);
     const isCurrent = () =>
       mounted.current && operation.current === controller && !controller.signal.aborted;
@@ -102,13 +108,21 @@ export function ReviewHistoryBackupPanel({
         setReviewed(result);
         setMessage(
           action === 'prepare'
-            ? 'The complete saved review history backup is ready to download. Save any received result in the history panel first if you want it included.'
+            ? generation !== getStorageGeneration()
+              ? 'The complete backup from this read is retained, but saved history may have changed while it was prepared. Prepare again for a fresh snapshot, or compare before restoring this retained file.'
+              : 'The complete saved review history backup is ready to download. Save any received result in the history panel first if you want it included.'
             : 'The review history backup matches this gateway and account. Compare it with this browser before restoring.',
         );
       } else if (action === 'compare') {
         const result = await compareReviewHistoryArchive(reviewed!.raw, binding, controller.signal);
         if (!isCurrent()) return;
         setReviewed({ file: result.file, raw: result.raw });
+        if (generation !== getStorageGeneration()) {
+          setMessage(
+            'Saved history may have changed during the comparison. The complete backup is retained; compare again before confirming a restore.',
+          );
+          return;
+        }
         setComparison({
           digest: result.file.document_sha256,
           epoch: storageEpoch,
@@ -161,7 +175,8 @@ export function ReviewHistoryBackupPanel({
       if (operation.current === controller) {
         operation.current = undefined;
         if (mounted.current) setBusy(false);
-        end();
+        release.current?.();
+        release.current = undefined;
       }
     }
   }
