@@ -2,7 +2,6 @@ import {
   buildEtag,
   ContractError,
   isSyncIdentifier,
-  parseContextItemListQuery,
   parseProposalListQuery,
   parseCheckpointReceiptQuery,
   parseResumeReceiptQuery,
@@ -346,7 +345,6 @@ function route(command: string, input: Record<string, unknown>) {
       };
     case 'overview':
     case 'sessions list':
-    case 'context list':
     case 'handoffs list':
     case 'checkpoints list':
       return { method: 'POST', path: '/v1/workbench/query' };
@@ -611,30 +609,9 @@ export async function callGateway(
   const { method, path } = route(command, input);
   const listing = path === '/v1/workbench/query';
   if (listing) {
-    const allowed =
-      command === 'checkpoints list'
-        ? ['session_id', 'before_revision']
-        : command === 'context list'
-          ? [
-              'query',
-              'layer',
-              'classification',
-              'status',
-              'item_type',
-              'cursor',
-              'limit',
-              'archived',
-            ]
-          : [];
+    const allowed = command === 'checkpoints list' ? ['session_id', 'before_revision'] : [];
     if (Object.keys(input).some((field) => !allowed.includes(field)))
       usage(command + ' accepts ' + (allowed.join(', ') || 'no JSON fields'));
-    if (command === 'context list') {
-      try {
-        input = { ...parseContextItemListQuery(input) };
-      } catch (error) {
-        usage(error instanceof Error ? error.message : 'Invalid context query');
-      }
-    }
     if (input.session_id !== undefined) segment(input, 'session_id');
     if (
       input.before_revision !== undefined &&

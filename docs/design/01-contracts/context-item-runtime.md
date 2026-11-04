@@ -1,5 +1,19 @@
 # ContextItem 录入与编辑开发说明
 
+## 2026-11-04 CLI上下文目录完整读取增量
+
+`context list`在网络main、直接callGateway及嵌入runWorkctx三个入口统一走既有context-history适配和SDK listContextItems。最多一个`--json`或`--json-file`，目录输入最多8 KiB，省略为{}；网络允许有界`--json -`，嵌入不读取stdin。文件沿既有稳定普通文件读取器、完整UTF-8解码；文件/stdin输入等待发生在SDK期限之前，stdin等待EOF不能被该期限中断。其他五个详情/历史/比较命令继续要求恰一4 KiB输入。
+
+目录JSON接受query/layer/classification/status/item_type/archived/limit/cursor；archived默认false、limit默认25且允许1–100。可选expected_actor_id/expected_client_id必须成对，只作为与可信账号客户端相等的约束，剥离后不进入workbench正文。拒绝写字段、--key/--output、重复/未知选项和混合输入。支持`--timeout-ms`（默认30000、1–2147483647），经SDK及Fetch覆盖完整网络等待/响应读取/解析前后检查；只执行单页，不调用SDK迭代器。
+
+成功输出完整`ContextItemDirectoryEnvelope`：data数组、原next_cursor、scope/query/来源与权限提示。沿共享2 MiB上限校验完整记录、原trace/项目/规范筛选、归档状态/排序/微秒位置和续页；Fetch错误16 KiB、固定错误提示，失败不输出部分正文。通用SDK不能单独检查HTTP ETag；正文不含ETag。下一页由调用方保留原身份、筛选、archived和limit，把next_cursor作为cursor显式读取；改变页大小/筛选/权限或遇到旧v1游标须回首页，不自动重试/缩页/去重或保存输出。
+
+嵌入读取复制原可信上下文、清除写条件，要求未过期实际context.read及合法完整身份，admin不能替代。SDK实际请求必须为固定POST /v1/workbench/query、规范原operation=context正文、完整原身份头、bounded-json与2 MiB上限；每次路由调用用独立上下文/正文，执行前后和交付前复核权限/期限。完整结果再次按可信data.restricted.read核对记录，不信任响应提示来提升权限。目录、当前/归档详情、历史/版本、比较共用每router两笔容量，SDK超时后底层未结束仍占槽；其他工作项读取容量独立。
+
+未执行用法：`workctx context list --json-file QUERY.json --timeout-ms 30000`。QUERY.json可为`{"archived":false,"limit":20,"layer":"L2"}`，可附加原成对身份条件；第二页保留上述字段并附加上次返回next_cursor。旧不完整嵌入替身必须提供规范scope/query/context_permissions及完整目录记录，不能回退通用未校验结果。目录仍是实时视图，不证明跨页一致性、来源实时状态或写权限。
+
+仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/SDK/产品/API/数据库或发布。真实凭据/权限/期限/容量、原调用兼容及文件/stdin行为证据待补；MCP/Mock专用目录适配仍缺，R-003未完成、evidence为空。
+
 ## 2026-11-04 SDK上下文目录完整读取及按需分页增量
 
 `listContextItems(query?, options?)`改用专用目录读取器，返回`Promise<ContextItemDirectoryEnvelope>`，保留data数组/next_cursor并公开已校验scope/query/context_permissions。options为`WcpContextDirectoryReadOptions`，支持timeout_ms（默认30000、正安全整数且不超过2147483647）和signal。等待前复制原合法项目、trace、已有actor/client相等约束和最多8 KiB普通JSON查询；不发送继承的写键/版本条件。默认archived=false、limit=25，limit允许1–100，v1游标拒绝并需重新开始。
@@ -23,7 +37,7 @@ for await (const page of pages) {
 }
 ```
 
-兼容变化：listContextItems非法输入现在通过Promise拒绝；返回记录为明确类型，version/confidence为数值，时间为六位微秒，查询必须为普通JSON。旧仅data/source_refs的自定义transport或目录Mock需提供完整scope/query/context_permissions/记录且支持bounded-json/signal；当前Mock目录尚未接入，不回退到不完整响应。单页方法仍可省略actor/client相等约束，迭代则要求两者都有。CLI/MCP/Mock专用适配和真实旧调用兼容证据后续处理。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布；R-003未完成、evidence为空。
+兼容变化：listContextItems非法输入现在通过Promise拒绝；返回记录为明确类型，version/confidence为数值，时间为六位微秒，查询必须为普通JSON。旧仅data/source_refs的自定义transport或目录Mock需提供完整scope/query/context_permissions/记录且支持bounded-json/signal；当前Mock目录尚未接入，不回退到不完整响应。单页方法仍可省略actor/client相等约束，迭代则要求两者都有。CLI专用适配见上方增量，MCP/Mock适配和真实旧调用兼容证据后续处理。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布；R-003未完成、evidence为空。
 
 ## 2026-11-04 上下文目录完整读取与页大小增量
 
@@ -39,7 +53,7 @@ Web在等待会话前捕获原查询，清除写键；fetch开始后的同一30�
 
 网页新增Items per page数字输入，仅1–100正整数，缺省或显式25在规范链接中省略。筛选提交清除旧位置和选择，下一页、原页重试、条目链接、归档视图切换、清除筛选及历史/比较返回保留页大小；搜索返回仍遵守原item/return_to限制。目录失败保留原参数重试、同筛选首屏，并在页大小大于1时提供Smaller page with these filters：明确减半（向下取整且最小1），清除旧cursor/选择、保留筛选和指定包。不会自行缩页或返回部分列表。
 
-SDK专用目录读取及按需分页见上方增量；CLI/MCP通用入口继续收到原data数组及新增元数据，尚未增加专用目录客户端解析/期限，Mock目录尚未接入。旧消费方的数字字符串、毫秒时间、v1游标及无scope/query封套需要迁移，独立Schema、SQL成本与兼容证据后续处理。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行产品/浏览器/API/SQL/数据库或发布；R-003未完成、evidence为空。
+SDK专用目录读取及按需分页、CLI完整单页读取见上方增量；MCP通用入口继续收到原data数组及新增元数据，尚未增加专用目录客户端解析/期限，Mock目录尚未接入。旧消费方的数字字符串、毫秒时间、v1游标及无scope/query封套需要迁移，独立Schema、SQL成本与兼容证据后续处理。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行产品/浏览器/API/SQL/数据库或发布；R-003未完成、evidence为空。
 
 ## 2026-11-04 当前与归档详情Mock增量
 

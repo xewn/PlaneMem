@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+2026-11-04：`context list`接入SDK完整目录读取，支持最多一个`--json`/`--json-file`（8 KiB），省略为{}，网络支持有界`--json -`；可选`--timeout-ms`默认30000及JSON内成对expected_actor_id/expected_client_id。完整响应2 MiB、Fetch错误16 KiB，核对原项目/trace/筛选回显/完整记录/归档/排序/续页，失败不返回局部结果。嵌入实际未过期context.read、完整身份/POST正文/头及restricted核验，六类上下文读取共用每router两笔容量，超时底层未结束仍占槽。每次一页，下一页保留原身份/筛选/归档/limit并传回next_cursor，换页大小或旧游标须回首屏；无自动翻页/重试/缩页/保存。拒绝key/output/写字段/重复未知参数，文件/stdin等待在SDK期限前，其他五类读取仍要求恰一4 KiB输入。见[CLI上下文目录](../../docs/design/01-contracts/context-item-runtime.md#2026-11-04-cli上下文目录完整读取增量)。仅源码文档，未编译、类型检查、测试、执行CLI/SDK或发布。
+
 2026-11-04：`context read` / `context read-archived`接入SDK完整读取，接受恰一`--json`或`--json-file`（4 KiB），可选`--timeout-ms`（默认30000）；网络入口支持`--json -`，嵌入不读stdin。输入为`{item_id}`及可选成对expected_actor_id/expected_client_id，拒绝key/output/写字段/重复未知选项。完整详情2 MiB、Fetch错误16 KiB，核对原条目/范围/版本/正文ETag/来源诊断/确认信息，失败不输出部分正文或切换当前/归档视图。嵌入要求可信未过期context.read，核对restricted权限及实际SDK请求；详情/历史/比较共用每router两笔容量，超时后底层未结束仍占槽。原item_id输入保持，旧不完整自定义返回须迁移；不自动重试或保存，通用SDK不暴露HTTP ETag。详见[CLI当前/归档详情](../../docs/design/01-contracts/context-item-runtime.md#2026-11-04-cli当前与归档详情读取增量)。仅源码文档，未编译、测试、执行或发布。
 
 2026-11-04：`context history/version/compare --json-file QUERY.json [--timeout-ms 30000]`统一复用SDK有界历史读取；也可使用`--json`，网络支持有界`--json -`，嵌入不读stdin。恰一输入、最多4 KiB；history接收`{item_id,before_version?,limit?}`（默认25最多100），version接收`{item_id,version}`，compare接收`{item_id,from_version,to_version,expected_actor_id,expected_client_id}`。两版本为不同正安全整数，方向保留；history/version也可附加成对expected身份。账号为ULID，客户端为本地ID，只作与可信读者相等约束，不授予权限。成功目录256 KiB、单版2 MiB，版本核对完整快照SHA-256；比较两次读取共用总期限，stdout原样返回SDK本地组合对象（无外层data），包含完整from/to封套和comparison，来源真实性未检查。嵌入要求可信未过期context.read，额外核对restricted权限、真实请求和每router两笔容量；超时不代表底层router已停止。输入文件/stdin等待在预算前完成，不承诺可取消。拒绝key/output/写字段/重复未知参数，不自动翻页/重试/保存；下一页保留item_id、limit和身份，将data.next_before_version传作before_version。详见[CLI上下文历史与对比](../../docs/design/01-contracts/context-item-runtime.md#2026-11-04-cli上下文历史与对比增量)。仅源码文档，未编译、测试、执行或发布。
@@ -622,7 +624,7 @@ observed-item.json 示例：`{"work_item_id":"plane-item-42"}`。CLI 核对返�
 | `context get` | 可选 `pack_id`、`format` | 无 |
 | `context create` | `title`、`content`、`source_refs`，可选层级、分类等 | `--key` |
 | `context read` | `item_id`，可选成对 expected_actor_id/expected_client_id | 恰一 --json/--json-file，可选 --timeout-ms；无写条件 |
-| `context list` | 可选 query/layer/classification/status/item_type/cursor/limit/archived | 无 |
+| `context list` | 可选 query/layer/classification/status/item_type/cursor/limit/archived，及成对 expected_actor_id/expected_client_id；可选 --timeout-ms | 无 |
 | `context update` | `item_id`、`expected_version` 和待编辑字段 | `--key` |
 | `context archive` | `item_id`、`expected_version` | `--key` |
 | `context read-archived` | `item_id`，可选成对 expected_actor_id/expected_client_id | 恰一 --json/--json-file，可选 --timeout-ms；无写条件 |
@@ -672,7 +674,7 @@ workctx resume --json-file resume.json --key resume-001
 
 `checkpoint` JSON 可增加 `context_pack_id`，与旧 `context_pack` 互斥。绑定要求上下文读取授权，保存及 `resume` 重查包和来源。续接返回 `context_pack_state`（checked / legacy-unverified / none），仅 checked 附带完整包回执。首次结果不明而重试遇到过期/失效时，不据此换键创建第二条，先核对历史。024 迁移未执行，见 [检查点上下文绑定](../../docs/design/01-contracts/checkpoint-context-runtime.md)。
 
-`context list` 默认每页 25 条，limit 范围为 1–100；按优先级、更新时间倒序和 ID 升序排列。响应外层存在字符串 `next_cursor` 时，在下一次 JSON 输入中传入 `cursor` 并保持原筛选；缺省时表示结束。筛选、项目或 restricted 权限变化后移除 cursor 重新读取。列表是实时视图，条目被编辑后可能改变页位置；不能将单页当作全量结果。
+`context list` 默认每页 25 条，limit 范围为 1–100；按优先级、微秒更新时间倒序和 ID 的 C 顺序排列。完整响应外层存在字符串 `next_cursor` 时，在下一次 JSON 输入中传入 `cursor` 并保持原身份、筛选、归档视图和 limit；缺省时表示结束。页大小、筛选、项目或 restricted 权限变化后移除 cursor 重新读取，旧 v1 游标也需回首页。列表是实时视图，条目被编辑后可能改变页位置；不能将单页当作全量结果。
 
 `sync changes` 不自动确认游标。将返回的完整变化、原消费者身份和游标处理并持久保存后，再以 `{expected_identity,cursor}` JSON 提交保存的 `next_cursor` 到 `sync ack`；expected_identity 为原 tenant/workspace/project/actor/client 五字段，不得用切换后的账号补认。旧只传 cursor 的命令会被拒绝。权限过滤可能造成游标跳号，也可能返回空变化和推进后的游标。三条命令已有专用有界适配，未知结果可显式使用同一原身份 `sync cursor` 查询当前位点，不能把异常当作回滚；见 [原消费者确认](../../docs/design/01-contracts/sync-cursor-runtime.md)。
 

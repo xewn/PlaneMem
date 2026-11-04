@@ -1,5 +1,7 @@
 # WCP API 契约 v1
 
+2026-11-04 CLI上下文目录读取增补：context list三入口统一SDK有界完整读取，仍为POST /v1/workbench/query的operation=context。8 KiB可选JSON/文件/仅网络stdin、默认30秒timeout-ms、2 MiB完整成功响应及原scope/query/trace/记录/续页核验；可选成对expected_actor_id/expected_client_id剥离为身份相等头，不进入业务正文。嵌入与其他上下文读取共用两笔容量并核对实际context.read/到期/restricted；每次一页，页大小与筛选固定续读，不自动重试/缩页。完整兼容边界见[CLI上下文目录](context-item-runtime.md#2026-11-04-cli上下文目录完整读取增量)。仅源码文档，未编译、类型检查、测试、执行或发布。
+
 2026-11-04 工作项排序：workbench.query的work_items新增sort=updated_desc/due_asc。默认规范化省略、旧筛选与游标保持；due_asc以微秒截止日期升序/null最后/同日期ID的C顺序分页，新v5查询绑定/v2位置固定全部条件和排序。SDK/CLI/MCP/Web/Mock同步；不改变原记录或默认排序，不提供跨页快照，见[工作项排序](work-item-projection-runtime.md)。仅源码文档，未编译、测试、执行或发布。
 
 2026-11-04 工作项截止日期筛选：workbench.query的work_items增加due=scheduled/unscheduled与due_from/due_before，按已保存due_at是否null及严格UTC YYYY-MM-DD区间（含起始、不含结束）筛选。无日期与区间互斥，起始须早于结束；新日期条件使用v4游标绑定全部筛选，无新条件保持v1–v3。SDK/CLI/MCP/Web/Mock同步，权限和筛选先于LIMIT、响应整页核对，不自动判断逾期或改状态。详见[工作项筛选](work-item-projection-runtime.md)，仅源码文档，未编译、测试、执行或发布。

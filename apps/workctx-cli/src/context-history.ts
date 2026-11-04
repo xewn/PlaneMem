@@ -5,6 +5,9 @@ import {
   CONTEXT_HISTORY_RESPONSE_BYTES,
   CONTEXT_REVISION_RESPONSE_BYTES,
   CONTEXT_ITEM_READ_RESPONSE_BYTES,
+  CONTEXT_ITEM_DIRECTORY_RESPONSE_BYTES,
+  parseContextItemDirectoryEnvelope,
+  parseContextItemDirectoryQuery,
   parseContextItemReadEnvelope,
   parseContextItemReadQuery,
   parseContextComparisonQuery,
@@ -16,6 +19,7 @@ import {
   type ContextComparisonQuery,
   type ContextHistoryReadQuery,
   type ContextItemReadQuery,
+  type ContextItemDirectoryQuery,
 } from '@planemem/contracts';
 import { FetchWcpTransport, WcpClient, type WcpRequest, type WcpTransport } from '@planemem/sdk';
 import type { CommandRouter, RequestContext } from '@planemem/api-gateway';
@@ -23,7 +27,8 @@ import { readBoundedArtifactFile } from './artifact-files.js';
 
 type Scope = { tenant_id: string; workspace_id: string; project_id: string };
 type Expected = { actor_id: string; client_id: string };
-type ReadQuery = ContextHistoryReadQuery | ContextItemReadQuery;
+type DirectoryQuery = { kind: 'list'; query: ContextItemDirectoryQuery };
+type ReadQuery = ContextHistoryReadQuery | ContextItemReadQuery | DirectoryQuery;
 type Target = (ReadQuery | { kind: 'compare'; query: ContextComparisonQuery }) & {
   expected?: Expected;
 };
@@ -38,11 +43,14 @@ interface Options {
 function isDetailQuery(query: Target): query is ContextItemReadQuery & { expected?: Expected } {
   return query.kind === 'current' || query.kind === 'archived';
 }
-const inputBytes = 4096;
+function inputLimit(command: string) {
+  return command === 'context list' ? 8192 : 4096;
+}
 const activeReads = new WeakMap<CommandRouter, { active: number }>();
 
 export function isContextReadCommand(command: string) {
   return [
+    'context list',
     'context read',
     'context read-archived',
     'context history',
@@ -53,7 +61,7 @@ export function isContextReadCommand(command: string) {
 function invalid(trace: string) {
   return new ContractError(
     'USAGE_ERROR',
-    'Use context read/read-archived/history/version/compare with exactly one --json or --json-file (4 KiB) and optional --timeout-ms (1..2147483647). Details accept item_id; history adds optional before_version/limit, version requires version, compare requires distinct from_version/to_version. Optional expected_actor_id/expected_client_id must be paired; compare requires both. No --key, --output, write fields, repeated or unknown options.',
+    'Use context list/read/read-archived/history/version/compare with --json or --json-file and optional --timeout-ms (1..2147483647). List accepts at most one input (8 KiB), defaults to {}, and preserves filters/view/limit/cursor for explicit continuation. Other reads require exactly one input (4 KiB): details accept item_id; history adds optional before_version/limit, version requires version, compare requires distinct from_version/to_version. Optional expected_actor_id/expected_client_id must be paired; compare requires both. No --key, --output, write fields, repeated or unknown options.',
     { trace_id: trace, retryable: false },
   );
 }
@@ -71,7 +79,7 @@ function timeout(value: unknown, trace: string) {
 function prepare(command: string, input: unknown, scope: Scope, trace: string): Target {
   try {
     if (!isContextReadCommand(command)) throw new TypeError();
-    const raw: unknown = JSON.parse(syncJsonSnapshot(input, inputBytes));
+    const raw: unknown = JSON.parse(syncJsonSnapshot(input, inputLimit(command)));
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new TypeError();
     const row = raw as Record<string, unknown>;
     let expected: Expected | undefined;
@@ -89,6 +97,12 @@ function prepare(command: string, input: unknown, scope: Scope, trace: string): 
       expected = { actor_id: identity.actor_id, client_id: identity.client_id };
     }
     const { expected_actor_id: _actor, expected_client_id: _client, ...query } = row;
+    if (command === 'context list')
+      return {
+        kind: 'list',
+        query: parseContextItemDirectoryQuery(query),
+        ...(expected ? { expected } : {}),
+      };
     if (Object.hasOwn(query, 'kind')) throw new TypeError();
     const target =
       command === 'context read' || command === 'context read-archived'
@@ -109,7 +123,7 @@ function prepare(command: string, input: unknown, scope: Scope, trace: string): 
 }
 
 // File/stdin capture precedes the SDK deadline; waiting for EOF is not cancelable.
-function readStdin() {
+function readStdin(inputBytes: number) {
   const bytes = new Uint8Array(inputBytes + 1);
   let used = 0;
   while (used < bytes.length) {
@@ -139,13 +153,15 @@ async function argumentsFor(argv: string[], scope: Scope, trace: string, allowSt
       seen.add(token.name);
     }
     const command = args.positionals.join(' ');
+    const inputBytes = inputLimit(command);
     const raw = args.values.json;
     const file = args.values['json-file'];
     const rawTimeout = args.values['timeout-ms'] ?? '30000';
     if (
       args.positionals.length !== 2 ||
       !isContextReadCommand(command) ||
-      (raw === undefined) === (file === undefined) ||
+      (raw !== undefined && file !== undefined) ||
+      (command !== 'context list' && raw === undefined && file === undefined) ||
       (file !== undefined && (!file.trim() || file === '-' || /[\u0000-\u001f]/.test(file))) ||
       (raw === '-' && !allowStdin) ||
       !/^[1-9][0-9]{0,9}$/.test(rawTimeout)
@@ -155,11 +171,13 @@ async function argumentsFor(argv: string[], scope: Scope, trace: string, allowSt
     let text: string;
     if (file !== undefined || raw === '-') {
       const bytes =
-        file === undefined ? readStdin() : await readBoundedArtifactFile(file, inputBytes, trace);
+        file === undefined
+          ? readStdin(inputBytes)
+          : await readBoundedArtifactFile(file, inputBytes, trace);
       text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
     } else {
-      if (raw === undefined || Buffer.byteLength(raw, 'utf8') > inputBytes) throw new TypeError();
-      text = raw;
+      text = raw ?? '{}';
+      if (Buffer.byteLength(text, 'utf8') > inputBytes) throw new TypeError();
     }
     return { target: prepare(command, JSON.parse(text), scope, trace), timeout_ms };
   } catch {
@@ -167,6 +185,7 @@ async function argumentsFor(argv: string[], scope: Scope, trace: string, allowSt
   }
 }
 function execute(client: WcpClient, target: Target, timeout_ms: number) {
+  if (target.kind === 'list') return client.listContextItems(target.query, { timeout_ms });
   if (isDetailQuery(target))
     return target.kind === 'current'
       ? client.getContextItem(target.item_id, { timeout_ms })
@@ -220,6 +239,7 @@ export async function callContextReadArguments(argv: string[], options: Options)
 }
 
 function readPath(query: ReadQuery) {
+  if (query.kind === 'list') return '/v1/workbench/query';
   const root = '/v1/context-items/' + encodeURIComponent(query.item_id);
   if (isDetailQuery(query)) return root + (query.kind === 'archived' ? '/archived' : '');
   if (query.kind === 'version') return root + '/versions/' + query.version;
@@ -230,6 +250,7 @@ function readPath(query: ReadQuery) {
 }
 
 function responseLimit(query: ReadQuery) {
+  if (query.kind === 'list') return CONTEXT_ITEM_DIRECTORY_RESPONSE_BYTES;
   if (query.kind === 'history') return CONTEXT_HISTORY_RESPONSE_BYTES;
   if (query.kind === 'version') return CONTEXT_REVISION_RESPONSE_BYTES;
   return CONTEXT_ITEM_READ_RESPONSE_BYTES;
@@ -292,20 +313,22 @@ export async function runContextRead(
           version,
         }))
       : [
-          isDetailQuery(target)
-            ? parseContextItemReadQuery({ kind: target.kind, item_id: target.item_id })
-            : parseContextHistoryReadQuery(
-                target.kind === 'history'
-                  ? {
-                      kind: 'history',
-                      item_id: target.item_id,
-                      limit: target.limit,
-                      ...(target.before_version === undefined
-                        ? {}
-                        : { before_version: target.before_version }),
-                    }
-                  : { kind: 'version', item_id: target.item_id, version: target.version },
-              ),
+          target.kind === 'list'
+            ? { kind: 'list', query: parseContextItemDirectoryQuery(target.query) }
+            : isDetailQuery(target)
+              ? parseContextItemReadQuery({ kind: target.kind, item_id: target.item_id })
+              : parseContextHistoryReadQuery(
+                  target.kind === 'history'
+                    ? {
+                        kind: 'history',
+                        item_id: target.item_id,
+                        limit: target.limit,
+                        ...(target.before_version === undefined
+                          ? {}
+                          : { before_version: target.before_version }),
+                      }
+                    : { kind: 'version', item_id: target.item_id, version: target.version },
+                ),
         ];
   let step = 0;
   const transport: WcpTransport = {
@@ -314,7 +337,7 @@ export async function runContextRead(
         if (request.signal?.aborted)
           throw new ContractError(
             'GATEWAY_REQUEST_CANCELED',
-            'Stopped waiting for context details or history',
+            'Stopped waiting for the context read',
             { trace_id: trace, retryable: false },
           );
         authority();
@@ -323,10 +346,13 @@ export async function runContextRead(
       const query = queries[step];
       if (
         !query ||
-        request.method !== 'GET' ||
+        request.method !== (query.kind === 'list' ? 'POST' : 'GET') ||
         request.path !== readPath(query) ||
         request.response_type !== 'bounded-json' ||
-        request.body !== undefined ||
+        (query.kind === 'list'
+          ? syncJsonSnapshot(request.body, 8192) !==
+            syncJsonSnapshot({ ...query.query, operation: 'context' }, 8192)
+          : request.body !== undefined) ||
         request.max_response_bytes !== responseLimit(query) ||
         Object.keys(request.headers).length !== Object.keys(headers).length ||
         Object.entries(headers).some(([key, value]) => request.headers[key] !== value)
@@ -338,47 +364,62 @@ export async function runContextRead(
         activeReads.set(router, gate);
       }
       if (gate.active >= 2)
-        throw new ContractError(
-          'RATE_LIMITED',
-          'Embedded context detail/history read capacity is occupied',
-          { trace_id: trace, retryable: false },
-        );
+        throw new ContractError('RATE_LIMITED', 'Embedded context read capacity is occupied', {
+          trace_id: trace,
+          retryable: false,
+        });
       const lease = gate;
       lease.active++;
       step++;
       try {
-        const { kind, ...input } = query;
-        const raw = await router.execute({
-          operation: {
-            current: 'context.item.read',
-            archived: 'context.item.archived.read',
-            history: 'context.item.history',
-            version: 'context.item.version.read',
-          }[kind],
-          input,
-          context: structuredClone(context),
-        });
+        let raw;
+        if (query.kind === 'list') {
+          raw = await router.execute({
+            operation: 'workbench.query',
+            input: { ...query.query, operation: 'context' },
+            context: structuredClone(context),
+          });
+        } else {
+          const { kind, ...input } = query;
+          raw = await router.execute({
+            operation: {
+              current: 'context.item.read',
+              archived: 'context.item.archived.read',
+              history: 'context.item.history',
+              version: 'context.item.version.read',
+            }[kind],
+            input,
+            context: structuredClone(context),
+          });
+        }
         active();
         let result;
         try {
-          result = isDetailQuery(query)
-            ? parseContextItemReadEnvelope(raw, query, scope, trace)
-            : parseContextHistoryReadEnvelope(raw, query, scope, trace);
+          result =
+            query.kind === 'list'
+              ? parseContextItemDirectoryEnvelope(raw, query.query, scope, trace)
+              : isDetailQuery(query)
+                ? parseContextItemReadEnvelope(raw, query, scope, trace)
+                : parseContextHistoryReadEnvelope(raw, query, scope, trace);
         } catch {
           throw new ContractError(
             'GATEWAY_RESPONSE_INVALID',
-            'Context detail/history response could not be validated',
+            'The complete context response could not be validated',
             { trace_id: trace, retryable: false },
           );
         }
-        const records = 'versions' in result.data ? result.data.versions : [result.data];
+        const records = Array.isArray(result.data)
+          ? result.data
+          : 'versions' in result.data
+            ? result.data.versions
+            : [result.data];
         if (
           !context.capability.includes('data.restricted.read') &&
           records.some((record) => record.classification === 'restricted')
         )
           throw new ContractError(
             'DENIED',
-            'Restricted context details or history are unavailable to this reader',
+            'Restricted context records are unavailable to this reader',
             { trace_id: trace, retryable: false },
           );
         active();

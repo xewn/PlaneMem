@@ -333,7 +333,8 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   context get                    Read a pack; optional pack_id and format (json/markdown/mcp)
   context create                 Add proposed context; title/content/source_refs and --key
   context read                   Read complete current item_id; bounded response and timeout
-  context list                   Filter current source items by query/layer/classification/status/item_type
+  context list                   Read one complete page by query/layer/classification/status/item_type/archived/limit/cursor
+                                 Optional --json/--json-file (8 KiB); default {}, limit 25 (1-100); preserve filters/limit for next_cursor
   context update                 Edit item_id with expected_version and --key
   context archive                Archive item_id with expected_version and --key
   context read-archived          Read complete archived item_id; bounded response and timeout

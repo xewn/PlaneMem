@@ -6,6 +6,8 @@
 
 ### 2026-11-04 开发补充（未编译、未发布、未测试）
 
+- P0/P4：CLI context list纳入原context-history专用读取，网络main/callGateway与嵌入runWorkctx统一SDK完整目录解析；输入8 KiB可省略、稳定文件或仅网络stdin，其他五类仍4 KiB必填，可选成对身份与默认30秒timeout-ms。目录2 MiB/Fetch错误16 KiB，原scope/query/trace/来源/权限提示/完整记录/归档/排序/续页核验；嵌入可信未过期实际context.read、完整身份、固定POST/正文/头及restricted检查，六类共用每router两笔容量，超时底层未结束仍占槽。不自动翻页/重试/缩页/保存，旧游标或换页大小重回首页。MCP/Mock目录适配与真实兼容/权限/期限/容量证据待补，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行CLI/SDK/产品/API/数据库或发布。
+
 - P0/P2：SDK listContextItems接入专用8 KiB查询/2 MiB完整封套及默认30秒timeout_ms/signal，固定原项目和可选actor/client，清除写条件；完整核对scope/query/trace/来源/权限提示/记录/归档/排序及续页，自定义transport结果同样复制解析，错误只给固定提示。新增contextItemPages，创建时固定完整身份/筛选/页大小，next才读取、逐页预算、yield前保存原续页；max_pages默认100/最多1000，到限仍有续页时下一next明确报CONTEXT_DIRECTORY_PAGE_LIMIT。无预取/重试/自动缩页/去重，不承诺跨页快照或权限凭据。CLI/MCP/Mock专用目录适配、旧自定义transport迁移和运行证据待补，R-003未完成、evidence为空。仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行SDK/产品/API/数据库或发布。
 
 - P0/P4/P5：上下文目录新增共享8 KiB严格查询、2 MiB完整页/16 KiB错误、原scope/query/trace/来源/权限提示与记录/筛选/排序/续页校验，保留完整正文。Gateway规范安全数字与UTC微秒时间，C排序/比较，v2游标绑定页大小及原范围/权限/筛选，旧游标重回首屏；Web完整读取覆盖原30秒期限，校验HTTP/type/trace/无ETag并复核会话。网页支持1–100页大小，默认25规范省略，导航/历史/重试保留；失败可显式减半页大小回原筛选首屏。PG文本查询不由JS重算，不声称数据库分配/扫描上限，SDK/CLI/MCP/Mock专用目录适配及运行/兼容证据待补，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行产品/浏览器/API/SQL/数据库或发布。
