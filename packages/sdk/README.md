@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-05：新增独立`inspectContextPackReceiptBackup(files, options)`离线入口。files为1–11个JSON文本或UTF-8 Uint8Array组成的数组；一份视为既有100条备份，多份必须恰好包含清单及其全部分卷（最多1000条/10卷）。共享contracts格式与网页互通，核验每层SHA-256、完整绑定、数量/连续卷号/跨卷严格顺序，返回完整规范候选。options必填trace_id，可选expected_binding、expected_document_sha256（单份document或分卷manifest document的摘要）、timeout_ms（默认30秒）、signal；不创建WcpClient，不需凭据，不访问网络/文件/IndexedDB。`data.contents.kind`为single或volumes；单份只证明提供文件的内部一致性，整套完整性仅相对提供清单；均不认证身份、确认服务器状态或执行恢复。详见[SDK历史备份离线核验](../../docs/design/01-contracts/context-pack-runtime.md#sdk历史备份离线核验2026-11-05源码增量)。仅源码文档，未编译、类型检查、测试、执行SDK/API或发布。
+
 2026-11-05：MockContextPackStore及原MockWcpServer的context_packs接线新增`getContextPackSaveReceipt`支持。须显式配置compilations，空数组表示可观察的空历史；未知键/pending返回not-observed，saved/已激活按原五字段身份、restricted桶和预算TTL核对后返回recorded。历史只读预先提取的标量，不读正文/hash、不检查包当前到期/来源、不激活保存；不完整或不可见记录仍拒绝。独立两笔容量/30秒/signal和完整16 KiB或较小响应限额。详见[原保存请求历史回执](../../docs/design/01-contracts/context-pack-mock-runtime.md#原保存请求历史回执2026-11-05源码增量)。仅源码文档，未编译、类型检查、测试、执行Mock/SDK/API或发布。
 
 2026-11-05：新增`getContextPackSaveReceipt(query, {timeout_ms?, signal?})`，使用contracts导出的`contextPackSaveReceiptQuery(original)`可从完整原请求提取查询。单次只读POST /v1/context-pack/save-receipt，绑定原五项身份、restricted权限桶、原键和显式预算/TTL，默认30秒、16 KiB完整封套校验，不携带继承写条件。`recorded`含历史保存元数据，正文/来源均为not-checked；`not-observed`不是保存失败或允许重发的证明。Gateway地址由调用方核对；通用transport不暴露HTTP响应头和状态，不声称SDK独立核验HTTP ETag。Mock接线见上方独立增量。详见[原保存请求回执查询](../../docs/design/01-contracts/context-pack-runtime.md#原保存请求回执查询2026-11-05源码增量)。仅源码文档，未编译、类型检查、测试、执行SDK/API或发布。

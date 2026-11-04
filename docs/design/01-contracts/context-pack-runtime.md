@@ -1100,3 +1100,33 @@ preparePackReceiptVolumes与单份准备共用双槽快照helper：在同一read
 “Download next file”只在用户点击时请求一份未请求文件，优先清单，再按卷号前进；沿原互斥、取消、总期限及失败保留机制，不自动连续下载。全部文件已有请求时提示自行核对实际下载，原逐份导出按钮仍可再次请求。空历史仍需清单与空卷两份文件。
 
 成功准备或导入集合会开始新一轮清单，包括重新载入同一摘要；失败保留原集合与进度。选择审阅、比较、恢复或移除不会增加下载计数，存储变更不改写已捕获集合的请求记录。离开或重新载入页面丢失清单进度；不写入IndexedDB、不改备份格式，也不以此推断整套恢复完成。仅源码文档与人工审阅，未运行浏览器、编译、类型检查、测试或发布；R-003证据仍为空。
+
+## SDK历史备份离线核验（2026-11-05源码增量）
+
+既有Web单份/分卷纯模型提取到contracts的context-pack-receipt-backup及context-pack-receipt-volumes，根入口导出全部原类型/常量/解析与规范JSON函数；Web旧路径保留显式重导出。版本、kind、排序、身份、100条单份/1000条集合及每份字节/节点限制不变。纯解析器仍只核对结构，调用方必须计算摘要；原浏览器存储、恢复和下载机制保持。
+
+SDK根导出独立inspectContextPackReceiptBackup(files, options)，不创建WcpClient。files为稠密数组，元素为JSON文本或UTF-8 Uint8Array，也可混合；拒绝空数组、超过11份、稀疏/附加键/访问器项。字节输入按原生buffer/offset/length复制，支持Node Buffer切片，拒绝共享缓冲；文本拒绝孤立代理字符，UTF-8解码严格，允许BOM。输入实际字节在解析前计数，单文件上限4 MiB+1 KiB、清单额外限32 KiB、总40 MiB+42 KiB，保持共享文档预算。
+
+一份输入只接受单份备份，包括合法空备份或子集备份；它可能是某套分卷中的一卷，返回single-file-only，不推断完整浏览器历史。两份以上必须恰一清单及其所有声明卷，接受任意顺序，不以文件名匹配；拒绝重复/额外/缺失卷、完整绑定差异、条数错误、摘要全局重复或乱序。按清单顺序返回集合，空集合仍要清单与空卷。每观察规范document、每卷规范document、清单规范document均实算SHA-256，任一失败不交付部分结果。
+
+options要求本地trace_id，可选完整expected_binding（原Gateway、五项身份、restricted）、expected_document_sha256（单份document或manifest document，64位小写十六进制，非实际文件字节摘要）、timeout_ms及signal。普通自有数据属性选项在开始时捕获，绑定解析和所有文件复制/解析在首次await之前完成，后续修改原数组/字节/绑定不改变核验对象。默认整笔30秒，单调期限覆盖解析及WebCrypto等待，主动取消/超时抑制迟到结果；同步解析只能在检查点响应。固定错误区分参数、文件集合、绑定、摘要、摘要不可用、取消/超时，不包含原文或部分候选。
+
+成功返回本地schema_version/trace_id/source_refs:[]，data含完整binding、binding_state、根document_sha256、input_files/input_bytes、observations及contents。contents.kind=single时有backup；kind=volumes时有collection（清单、规范raw、按卷号排序的全部原格式候选）。规范raw不保留原空白/BOM，输入字节计数保留原字节规模。独立data.binding与候选不共享原调用方对象。下列仅为调用示意，未执行：
+
+```ts
+import { inspectContextPackReceiptBackup } from '@planemem/sdk';
+
+// Files are already supplied by the host; the SDK does not read any path.
+const one = await inspectContextPackReceiptBackup([backupJson], {
+  trace_id: 'offline-backup-review',
+  expected_binding: originalBinding,
+});
+const set = await inspectContextPackReceiptBackup([volumeTwoBytes, manifestJson, volumeOneJson], {
+  trace_id: 'offline-volume-review',
+  expected_binding: originalBinding,
+  expected_document_sha256: expectedManifestDocumentDigest,
+  signal: controller.signal,
+});
+```
+
+所有成功/失败都保持identity_state=not-authenticated、server_outcome/content_state=not-checked、save_dispatch_state=not-sent、storage_access=not-performed。摘要是内部一致性校验，不能认证来源；volumes只说明relative-to-manifest。SDK不读取凭据、联网、访问路径或IndexedDB，不保存原请求、不恢复或清理历史。CLI批量入口、SDK备份构造/拆分、流式集合与运行证据仍待补；R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行SDK/产品/浏览器/API/数据库或发布。

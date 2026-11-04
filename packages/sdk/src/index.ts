@@ -162,6 +162,20 @@ export type {
   SyncRecordedEventReceipt,
 } from '@planemem/contracts';
 export type { SyncCommandIdentity, SyncCommandContextEnvelope } from '@planemem/contracts';
+export {
+  inspectContextPackReceiptBackup,
+  type WcpContextPackReceiptBackupInspectionOptions,
+  type WcpContextPackReceiptBackupContents,
+  type WcpInspectedContextPackReceiptBackup,
+} from './context-pack-receipt-backup-inspection.js';
+export type {
+  PackReceiptBackupDocument,
+  PackReceiptBackupFile,
+  PackReceiptBackupCandidate,
+  PackReceiptVolumesDocument,
+  PackReceiptVolumesFile,
+  PackReceiptVolumesCandidate,
+} from '@planemem/contracts';
 export type { WcpAuditOptions } from './audit.js';
 export type { WcpAdminOptions } from './admin.js';
 export type { WcpSessionRegistryOptions } from './session-registry.js';
