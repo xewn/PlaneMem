@@ -7,6 +7,7 @@ import {
   type ProposalMutationReceipt,
 } from '@planemem/contracts';
 import { validateProposalReceipt } from '../../lib/mutation-receipts';
+import { backupOperation } from '../sync/receipt/backup-operation';
 import { submitSavedProposal, readSavedProposalReceipt } from './actions';
 import {
   decodeProposalOriginal,
@@ -38,8 +39,12 @@ export function OriginalProposalSubmission({
     operation.current = controller;
     active.current = true;
     setBusy(true);
+    setConfirmed(false);
+    setMessage('Saving and checking the complete original request in this browser…');
     try {
-      await preserveBrowserProposalOriginal(request, controller.signal);
+      await backupOperation(controller.signal, (signal) =>
+        preserveBrowserProposalOriginal(request, signal),
+      );
       if (mounted.current && operation.current === controller)
         setMessage(
           'The complete original request was saved and read back in this browser. It can be found from recovery after closing this tab.',
@@ -47,13 +52,13 @@ export function OriginalProposalSubmission({
     } catch {
       if (mounted.current && operation.current === controller)
         setMessage(
-          'Browser saving could not be confirmed, or an existing copy is damaged or different. Keep this page open and export the original. Sending is blocked until saving succeeds.',
+          'Browser saving could not be confirmed. It may already have completed; stopping or timing out does not remove a saved copy. Keep or export the original, then retry saving. Existing damaged or different copies are never replaced. This action did not send a submission.',
         );
     } finally {
-      if (mounted.current && operation.current === controller) {
+      if (operation.current === controller) {
         operation.current = undefined;
         active.current = false;
-        setBusy(false);
+        if (mounted.current) setBusy(false);
       }
     }
   }, [request]);
@@ -67,8 +72,13 @@ export function OriginalProposalSubmission({
       active.current = false;
     };
   }, [save, saveOnMount]);
+  function stopWaiting() {
+    if (!mounted.current || !active.current || !operation.current) return;
+    // Abort only the local wait. An already dispatched server action can still complete.
+    operation.current.abort();
+  }
   function download() {
-    if (active.current) return;
+    if (active.current || !mounted.current) return;
     let url: string | undefined;
     try {
       url = URL.createObjectURL(
@@ -102,22 +112,23 @@ export function OriginalProposalSubmission({
     active.current = true;
     setBusy(true);
     setConfirmed(false);
+    setMessage('Saving and checking the complete original before sending…');
+    let dispatched = false;
     try {
-      try {
-        await preserveBrowserProposalOriginal(request, controller.signal);
-      } catch {
-        if (mounted.current && operation.current === controller)
-          setMessage(
-            'The original request could not be saved and read back. No submission was sent. Export it or retry saving; an existing different copy is never replaced.',
-          );
-        return;
-      }
-      if (!mounted.current || controller.signal.aborted || operation.current !== controller) return;
-      setMessage('Waiting for the original submission. Its outcome is not yet confirmed.');
-      const form = new FormData();
-      form.set('original', encodeProposalOriginal(request));
-      form.set('confirmed', 'yes');
-      const result = await submitSavedProposal(form);
+      const result = await backupOperation(controller.signal, async (signal, check) => {
+        await preserveBrowserProposalOriginal(request, signal);
+        check();
+        if (!mounted.current || operation.current !== controller) throw new TypeError();
+        const form = new FormData();
+        form.set('original', encodeProposalOriginal(request));
+        form.set('confirmed', 'yes');
+        check();
+        dispatched = true;
+        setMessage('Waiting for the original submission. Its outcome is not yet confirmed.');
+        const response = await submitSavedProposal(form);
+        check();
+        return response;
+      });
       if (!mounted.current || operation.current !== controller) return;
       if (result.original !== encodeProposalOriginal(request)) throw new TypeError();
       if (result.status === 'saved') {
@@ -130,13 +141,15 @@ export function OriginalProposalSubmission({
     } catch {
       if (mounted.current && operation.current === controller)
         setMessage(
-          'The original submission is not confirmed. Keep its content and key unchanged; explicitly retry this same request when access is restored.',
+          dispatched
+            ? 'The original submission is not confirmed and may still complete. Stopping or timing out only ends this page’s wait. Keep the original content and key; check its receipt before deciding whether to explicitly retry the same request.'
+            : 'Saving and checking the original could not be confirmed, so this attempt did not send a submission. A browser copy may already have been saved. Keep or export the original, then explicitly retry saving or sending the same request.',
         );
     } finally {
-      if (mounted.current && operation.current === controller) {
+      if (operation.current === controller) {
         operation.current = undefined;
         active.current = false;
-        setBusy(false);
+        if (mounted.current) setBusy(false);
       }
     }
   }
@@ -149,9 +162,14 @@ export function OriginalProposalSubmission({
     setConfirmed(false);
     setMessage('Reading the original creation receipt. No creation request is being sent.');
     try {
-      const form = new FormData();
-      form.set('original', encodeProposalOriginal(request));
-      const result = await readSavedProposalReceipt(form);
+      const result = await backupOperation(controller.signal, async (_signal, check) => {
+        const form = new FormData();
+        form.set('original', encodeProposalOriginal(request));
+        check();
+        const response = await readSavedProposalReceipt(form);
+        check();
+        return response;
+      });
       if (!mounted.current || operation.current !== controller) return;
       if (result.original !== encodeProposalOriginal(request)) throw new TypeError();
       if (result.status === 'unavailable') {
@@ -188,18 +206,18 @@ export function OriginalProposalSubmission({
     } catch {
       if (mounted.current && operation.current === controller)
         setMessage(
-          'The complete creation receipt could not be confirmed. Keep the original request. This query did not send a creation command.',
+          'The complete creation receipt could not be confirmed. Stopping or timing out does not establish whether an earlier submission completed. Keep the original request and explicitly check again when ready. This query did not send a creation command.',
         );
     } finally {
-      if (mounted.current && operation.current === controller) {
+      if (operation.current === controller) {
         operation.current = undefined;
         active.current = false;
-        setBusy(false);
+        if (mounted.current) setBusy(false);
       }
     }
   }
   return (
-    <div className="handoff-form" style={{ overflowWrap: 'anywhere' }}>
+    <div className="handoff-form" style={{ overflowWrap: 'anywhere' }} aria-busy={busy}>
       <h3>{request.draft.title}</h3>
       <p>
         {request.draft.kind} · {request.draft.classification}
@@ -242,6 +260,16 @@ export function OriginalProposalSubmission({
         </Link>
       </div>
       <p className="muted">
+        This page waits up to 30 seconds for each save, save-and-send attempt or receipt query.
+        Stopping the wait keeps the original request. A submission already sent may still complete;
+        check its original receipt before deciding whether to retry.
+      </p>
+      {busy && (
+        <button type="button" className="secondary-button" onClick={stopWaiting}>
+          Stop waiting on this page
+        </button>
+      )}
+      <p className="muted">
         Browser copies can survive closing tabs in this browser profile. Clearing browser data can
         remove them; other devices need an exported file. Keep a separate export. Loading or saving
         a request does not submit it, and a saved request does not confirm its outcome.
@@ -263,7 +291,9 @@ export function OriginalProposalSubmission({
               type="checkbox"
               checked={confirmed}
               disabled={busy}
-              onChange={(event) => setConfirmed(event.target.checked)}
+              onChange={(event) => {
+                if (!active.current) setConfirmed(event.target.checked);
+              }}
             />
             I reviewed this complete original request and want to send it with the same key.
           </label>

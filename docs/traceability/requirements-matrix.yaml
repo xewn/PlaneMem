@@ -3452,6 +3452,21 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_creation_wait_control_development_increment:
+      date: "2026-11-04"
+      status: "Source-only bounded original-creation waits with explicit local cancellation; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/original-submission.tsx"
+        - "apps/web-console/src/app/sync/receipt/backup-operation.ts"
+        - "docs/design/01-contracts/proposal-runtime.md"
+      behavior: "Explicit save, save-and-send and receipt lookup each use one 30-second local operation budget. Stop-waiting aborts the local operation without claiming remote cancellation. Saving must commit and pass post-await/current-operation checks before dispatch; stopping beforehand never initiates a submission. After dispatch, timeout/cancellation retains the immutable original and an unknown outcome. Late responses cannot update receipt/message or unlock a new operation. Each operation clears send confirmation; receipt lookup remains independent of storage availability."
+      evidence: []
+      pending_evidence:
+        - "Save timeout/cancellation before dispatch, completed browser transaction with unknown observation, and unchanged legacy-copy conflict checks"
+        - "Hung submission/lookup, stop before and after dispatch, late server results during a newer operation, and retained original identity/content/key"
+        - "Shared page lock release, mandatory fresh send confirmation, unmount/StrictMode cleanup, and complete receipt validation"
+      remaining_scope: "Durable client observation history, cross-page operation coordination and runtime/compatibility evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, product/browser/database execution or release. No schema, dependency or server API changes."
     proposal_review_history_filter_development_increment:
       date: "2026-11-04"
       status: "Source-only exact history filtering with bounded scanning and preserved continuation filters; R-009 remains incomplete."
