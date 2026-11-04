@@ -2,8 +2,10 @@ import { readSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import {
   ARTIFACT_UPLOAD_REQUEST_BYTES,
+  ARTIFACT_VERSIONS_RESPONSE_BYTES,
   ContractError,
   assertArtifactReceiptIdentity,
+  parseArtifactVersionsQuery,
   syncJsonSnapshot,
   type ArtifactReadQuery,
   type ArtifactReceiptQuery,
@@ -19,6 +21,7 @@ import type { ArtifactOutput } from './artifact-output.js';
 type Scope = { tenant_id: string; workspace_id: string; project_id: string };
 type Query =
   | { kind: 'metadata'; query: ArtifactReadQuery }
+  | { kind: 'versions'; query: ReturnType<typeof parseArtifactVersionsQuery> }
   | { kind: 'receipt'; query: ArtifactReceiptQuery };
 interface Options {
   base: string;
@@ -30,12 +33,16 @@ interface Options {
 }
 
 export function isArtifactQueryCommand(command: string) {
-  return isArtifactReadCommand(command) || command === 'artifacts receipt';
+  return (
+    isArtifactReadCommand(command) ||
+    command === 'artifacts receipt' ||
+    command === 'artifacts versions'
+  );
 }
 function invalid(trace: string) {
   return new ContractError(
     'USAGE_ERROR',
-    'Use artifacts get/version/receipt with one --json or --json-file and optional --timeout-ms (1..2147483647). Only receipt accepts --output NEW_FILE; no --key or repeated options. Metadata JSON is limited to 4 KiB and original receipt JSON to 1 MiB. Keep the complete saved original unchanged.',
+    'Use artifacts get/version/versions/receipt with one --json or --json-file and optional --timeout-ms (1..2147483647). Only receipt accepts --output NEW_FILE; no --key or repeated options. Metadata/version query JSON is limited to 4 KiB and original receipt JSON to 1 MiB. Preserve the complete next_query for another version page and keep saved originals unchanged.',
     { trace_id: trace, retryable: false },
   );
 }
@@ -52,6 +59,8 @@ function prepare(
     const snapshot: unknown = JSON.parse(syncJsonSnapshot(input, maximum));
     if (command === 'artifacts receipt')
       return { kind: 'receipt', query: prepareArtifactReceipt(snapshot, scope, trace) };
+    if (command === 'artifacts versions')
+      return { kind: 'versions', query: parseArtifactVersionsQuery(snapshot) };
     const query = prepareArtifactRead(command, snapshot, trace);
     if (!query) throw new TypeError();
     return { kind: 'metadata', query };
@@ -132,6 +141,7 @@ async function readArguments(argv: string[], scope: Scope, trace: string, allowS
 }
 function execute(client: WcpClient, target: Query, timeout_ms: number) {
   if (target.kind === 'receipt') return client.getArtifactReceipt(target.query, { timeout_ms });
+  if (target.kind === 'versions') return client.listArtifactVersions(target.query, { timeout_ms });
   return target.query.version === undefined
     ? client.getArtifact(target.query.artifact_id, { timeout_ms })
     : client.getArtifactVersion(target.query.artifact_id, target.query.version, { timeout_ms });
@@ -259,9 +269,11 @@ export async function runArtifactQuery(
   const path =
     target.kind === 'receipt'
       ? '/v1/artifacts/receipt'
-      : '/v1/artifacts/' +
-        encodeURIComponent(target.query.artifact_id) +
-        (target.query.version === undefined ? '' : '/versions/' + target.query.version);
+      : target.kind === 'versions'
+        ? versionsPath(target.query)
+        : '/v1/artifacts/' +
+          encodeURIComponent(target.query.artifact_id) +
+          (target.query.version === undefined ? '' : '/versions/' + target.query.version);
   const body =
     target.kind === 'receipt'
       ? syncJsonSnapshot(target.query, ARTIFACT_UPLOAD_REQUEST_BYTES)
@@ -273,7 +285,10 @@ export async function runArtifactQuery(
         request.method !== (target.kind === 'receipt' ? 'POST' : 'GET') ||
         request.path !== path ||
         request.response_type !== 'bounded-json' ||
-        request.max_response_bytes !== (target.kind === 'receipt' ? 4 : 2) * 1024 * 1024 ||
+        request.max_response_bytes !==
+          (target.kind === 'versions'
+            ? ARTIFACT_VERSIONS_RESPONSE_BYTES
+            : (target.kind === 'receipt' ? 4 : 2) * 1024 * 1024) ||
         Object.keys(request.headers).length !== Object.keys(headers).length ||
         Object.entries(headers).some(([key, value]) => request.headers[key] !== value) ||
         (body === undefined
@@ -289,18 +304,22 @@ export async function runArtifactQuery(
         operation:
           target.kind === 'receipt'
             ? 'artifact.receipt'
-            : target.query.version === undefined
-              ? 'artifact.read'
-              : 'artifact.version.read',
+            : target.kind === 'versions'
+              ? 'artifact.versions.list'
+              : target.query.version === undefined
+                ? 'artifact.read'
+                : 'artifact.version.read',
         input:
-          target.kind === 'metadata'
-            ? {
-                ...target.query,
-                ...(target.query.version === undefined
-                  ? {}
-                  : { version: String(target.query.version) }),
-              }
-            : (JSON.parse(body!) as Record<string, unknown>),
+          target.kind === 'versions'
+            ? { ...target.query }
+            : target.kind === 'metadata'
+              ? {
+                  ...target.query,
+                  ...(target.query.version === undefined
+                    ? {}
+                    : { version: String(target.query.version) }),
+                }
+              : (JSON.parse(body!) as Record<string, unknown>),
         context: structuredClone(context),
       });
       authority();
@@ -313,5 +332,15 @@ export async function runArtifactQuery(
     timeout_ms,
     trace,
     destination,
+  );
+}
+
+function versionsPath(query: ReturnType<typeof parseArtifactVersionsQuery>) {
+  const parameters = new URLSearchParams({ limit: String(query.limit) });
+  if (query.at_version !== undefined) parameters.set('at_version', String(query.at_version));
+  if (query.before_version !== undefined)
+    parameters.set('before_version', String(query.before_version));
+  return (
+    '/v1/artifacts/' + encodeURIComponent(query.artifact_id) + '/versions?' + parameters.toString()
   );
 }

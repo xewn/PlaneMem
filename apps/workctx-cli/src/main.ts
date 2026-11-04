@@ -248,8 +248,10 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   artifacts inspect-request      Inspect --json-file ORIGINAL offline; optional --file CONTENT and --max-bytes
                                  No configuration or network; local validity does not confirm upload success
   artifacts version              Read artifact_id/positive version; optional --timeout-ms (default 30000), no --key
+  artifacts versions             List history with artifact_id/limit?/at_version?/before_version? JSON
+                                 Preserve next_query; --timeout-ms defaults to 30000, no --key/--output
   artifacts receipt              Query saved identity/command; optional --timeout-ms (default 30000), no --key
-                                 get/version JSON <=4 KiB, receipt <=1 MiB; --json, --json-file or network --json -
+                                 get/version/versions JSON <=4 KiB, receipt <=1 MiB; --json, --json-file or network --json -
                                  Optional --output NEW_RECEIPT.json saves the complete receipt and returns receipt/local states
   artifacts inspect-receipt      Inspect --receipt-file RECEIPT.json offline; optional --json-file ORIGINAL.json
                                  No login or network; local validation does not authenticate a server outcome
@@ -592,6 +594,7 @@ export async function main(args: string[]): Promise<number> {
       'artifacts inspect-request',
       'artifacts inspect-receipt',
       'artifacts version',
+      'artifacts versions',
       'artifacts receipt',
       'artifacts create',
       'artifacts put-version',

@@ -16,6 +16,7 @@ import { isSessionActivityTool, prepareSessionActivityTool } from './session-act
 import { isCheckpointTool, prepareCheckpointTool } from './checkpoint.js';
 import { isResumeTool, prepareResumeTool } from './resume.js';
 import { isArtifactReadTool } from './artifact-read.js';
+import { canReadArtifactVersionsTool, prepareArtifactVersionsTool } from './artifact-versions.js';
 import { isAuditTool, canUseAuditTool, prepareAuditTool } from './audit.js';
 import { canUseAdminSnapshot, prepareAdminSnapshot } from './admin.js';
 import { prepareSessionRegistry } from './session-registry.js';
@@ -562,6 +563,27 @@ const definitions: ToolDefinition[] = [
     '/v1/artifacts/{artifact_id}/versions/{version}',
     { artifact_id: ulid, version },
     ['artifact_id', 'version'],
+  ),
+  tool(
+    'list_artifact_versions',
+    'List one page of historical artifact metadata summaries, descending by version. Defaults to 10, at most 20. Preserve the complete next_query with its original at_version ceiling and before_version position for another explicit call. Requires a verified unexpired client with actual artifact.read and current/historical visibility. No automatic paging, object bytes, storage addresses, upload receipt or current write precondition; content remains not-checked.',
+    ['artifact.read'],
+    'GET',
+    '/v1/artifacts/{artifact_id}/versions',
+    {
+      artifact_id: ulid,
+      limit: { type: 'integer', minimum: 1, maximum: 20, default: 10 },
+      at_version: {
+        ...version,
+        description: 'Inclusive historical ceiling; retain the first page snapshot_version.',
+      },
+      before_version: {
+        ...version,
+        description:
+          'Exclusive position from next_query; requires at_version and must not exceed it.',
+      },
+    },
+    ['artifact_id'],
   ),
   tool(
     'list_observed_work_items',
@@ -1645,6 +1667,7 @@ export function listMcpTools(context: RequestContext) {
           canReadArtifactUploadContext(context)) &&
         (entry.name !== 'download_artifact_version' || canDownloadArtifactTool(context)) &&
         (!isArtifactReadTool(entry.name) || context.capability.includes('artifact.read')) &&
+        (entry.name !== 'list_artifact_versions' || canReadArtifactVersionsTool(context)) &&
         (entry.name !== 'get_artifact_receipt' ||
           (context.authenticated_client === true &&
             context.capability.includes('artifact.write'))) &&
@@ -1708,6 +1731,7 @@ export function mcpToolRequiresClient(name: unknown): boolean {
     name === 'get_session_command_context' ||
     name === 'get_artifact_receipt' ||
     name === 'get_artifact_upload_context' ||
+    name === 'list_artifact_versions' ||
     name === 'prepare_artifact_upload' ||
     name === 'get_conflict_receipt' ||
     name === 'get_proposal_create_receipt' ||
@@ -1729,6 +1753,7 @@ export function prepareMcpTool(
     });
   if (isSyncReadTool(name)) return prepareSyncReadTool(name, raw, context);
   if (name === 'get_artifact_upload_context') return prepareArtifactUploadContextTool(raw, context);
+  if (name === 'list_artifact_versions') return prepareArtifactVersionsTool(raw, context);
   if (name === 'prepare_artifact_upload') {
     if (!canReadArtifactUploadContext(context))
       throw new ContractError('DENIED', 'A verified unexpired artifact writer is required', {

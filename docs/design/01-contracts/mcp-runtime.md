@@ -1,5 +1,7 @@
 # MCP HTTP 运行时开发说明
 
+2026-11-04 附件版本目录增补：新增只读 `list_artifact_versions({artifact_id,limit?,at_version?,before_version?})`，发现/调用要求已验证未过期实际artifact.read，admin不替代。首轮固定版本上界并返回完整next_query；仅历史摘要，不读正文或自动翻页。专用执行器每Gateway独立两笔、30秒等待，超时底层未结束仍占槽；输入4 KiB、成功256 KiB、错误16 KiB、二次转义结果512 KiB+4096字节。核对完整范围/trace/原查询/顺序/下一查询，固定错误及retryable=false，清除继承写条件；没有HTTP正文扩容或新数据库访问逻辑。见 [版本目录客户端](artifact-versions-runtime.md#命令行与-mcp源码阶段)，仅源码文档人工审阅，未编译、测试、执行MCP/API或发布。
+
 2026-11-04 上传身份读取增补：新增只读工具 `get_artifact_upload_context({})`，发现与调用要求可信未过期客户端和实际artifact.write，admin不代替。返回完整身份/期限/上传上限/读取能力提示；不接受范围/身份/键或额外参数，不准备文件/命令或上传。独立两笔准备容量、30秒本地期限、成功/错误16 KiB、二次转义36 KiB；超时保留底层名额，核对完整原可信身份/期限/能力，错误固定且不重试。见 [CLI/MCP上传身份](artifact-persistence-runtime.md#cli-与-mcp-上传身份读取源码阶段)。仅源码文档，未编译、测试、调用或发布。
 
 2026-11-04 原审核回执增补：get_proposal_review_receipt接收完整原identity/request_key/proposal_id/decision/expected_revision/reason，发现/调用都要求未过期可信human及proposal.review/admin。复用原审核只读路由和严格封套，不发送决定；not-observed不证明失败。每Gateway独立两笔准备名额、30秒本地等待，超时保留名额到底层结束；输入32 KiB、成功64 KiB、错误16 KiB、二次转义结果128 KiB+4096字节。保持普通HTTP 1 MiB，无大正文扩容权限；继承写条件清除，不保存结果或重试。见[CLI/MCP原审核查询](proposal-review-receipt-runtime.md#cli-与-mcp-原审核查询)，仅源码文档，未编译/类型检查/测试/运行或发布。

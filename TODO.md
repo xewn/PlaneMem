@@ -6,6 +6,8 @@
 
 ### 2026-11-04 开发补充（未编译、未发布、未测试）
 
+- P0/P2/P4：已补CLI artifacts versions与MCP list_artifact_versions，复用现有版本目录契约及完整next_query。CLI网络/嵌入沿SDK有界256 KiB响应、默认30秒和固定错误，4 KiB内联/稳定文件查询，网络可有界stdin，拒绝key/output/重复参数；嵌入清除写条件并校验未过期实际reader、规范路径/方法/正文/响应限额。MCP目录/直接调用均要求已验证未过期实际artifact.read，独立两笔/30秒期限，底层未结束不释放超时名额；成功/错误256/16 KiB、转义结果另限，完整共享核验并丢弃上游错误详情。只读历史摘要，不自动翻页/下载/查上传回执/恢复/上传；工作台/Mock目录及运行证据仍缺，R-001未完成。无服务端目录/数据库schema/依赖变化，仅源码文档人工审阅，未编译/类型检查/测试/执行CLI、MCP、SDK、API、数据库或发布。
+
 - P0/P2：已补PersistentArtifactService.listVersions、GET /v1/artifacts/{artifact_id}/versions与SDK listArtifactVersions，默认10最多20条历史摘要，首轮固定版本上界、续页完整query/at_version/before_version，明确非当前写条件。当前项目/附件共享锁及每页权限检查，最多21份历史快照各先限2 MiB并完整核验（包括探测行），公开只含元数据摘要/来源计数，无对象正文或storage_key；成功封套256 KiB，SDK默认30秒与signal，不自动翻页。显式artifact_versions reader或既有artifact_storage接线，旧reader必需方法保持；CLI/MCP/Web/Mock目录、Schema生成物和运行证据仍缺，R-001未完成。无依赖/数据库schema变化，仅源码文档人工审阅，未编译/类型检查/测试/执行SDK、产品、API、SQL、数据库、迁移或发布。
 
 - P0/P2/P4/P5：已补SDK独立inspectArtifactReceipt，4 MiB文本/非共享UTF-8字节、1 MiB内嵌原请求，支持完整expected_original和实际/规范回执SHA-256约束。默认30秒本地预算与signal，异步前捕获输入/约束，取消或失败不返回部分结果。contracts共享parseSavedArtifactReceipt统一CLI及工作台解析；原裸封套、历史trace/status和既有文件行为保持。输出本地trace/空外层sources、完整回执/原请求及规范JSON和摘要、明确身份未认证/服务器与内容未检查/未上传/未读写文件；不需要WcpClient或凭据。签名认证、回执集合/持久恢复及运行证据仍缺，R-001未完成。无服务端/schema/依赖变化，仅源码文档人工审阅，未编译/类型检查/测试/执行SDK、CLI、浏览器、Mock、API、数据库或发布。

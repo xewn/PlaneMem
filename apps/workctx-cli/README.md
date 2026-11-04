@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+2026-11-04：新增 `artifacts versions --json-file QUERY.json [--timeout-ms 30000]`，也可用 `--json`（网络入口支持有界 `--json -`；嵌入入口不读stdin）。查询JSON为`{artifact_id, limit?, at_version?, before_version?}`，最多4 KiB；默认10最多20条，下一页原样使用返回的`data.next_query`，不把整个响应或单独before_version当查询。网络和嵌入复用SDK listArtifactVersions，完整成功256 KiB、默认30秒，嵌入要求有效已验证reader。拒绝`--key/--output`、重复/额外选项，不自动翻页或读取正文。选定版本后另行调用`artifacts version`或下载流程，详见 [版本目录客户端](../../docs/design/01-contracts/artifact-versions-runtime.md#命令行与-mcp源码阶段)。仅源码文档人工审阅，未编译、测试、执行命令或发布。
+
 2026-11-04：回执文件解析已与工作台及新增SDK `inspectArtifactReceipt`共用contracts的`parseSavedArtifactReceipt`和4 MiB上限；仍使用现有裸WCP封套、稳定文件读取与Node摘要，参数、输出和本地保存流程保持。独立SDK调用可额外约束实际/规范回执SHA-256，详见 [共享解析](../../docs/design/01-contracts/artifact-persistence-runtime.md#sdk-原回执离线核验与共享解析源码阶段)。仅源码文档人工审阅，未执行命令或测试。
 
 新增 `artifacts receipt --json-file ORIGINAL.json --output NEW_RECEIPT.json`，网络与嵌入均可显式保存原回执；不指定output时保持原返回形状。指定后stdout含`data.receipt`与独立`data.local`，文件保存失败也保留完整查询结果，退出1；保存并读回成功退出0，临时清理待处理仍在local中说明。文件本身只含完整WCP回执封套，最多4 MiB，查询前检查新路径，独占发布后完整读回；查询超时不启动保存，保存不受查询计时器竞速。`recorded/not-observed`原义保持，未观察到不能当作上传失败。

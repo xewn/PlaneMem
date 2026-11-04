@@ -11,6 +11,25 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    artifact_versions_clients_development_increment:
+      date: "2026-11-04"
+      status: "Source-only CLI and MCP artifact version directory adapters; R-001 remains incomplete."
+      artifacts:
+        - "apps/workctx-cli/src/artifact-queries.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "apps/api-gateway/src/mcp/artifact-versions.ts"
+        - "apps/api-gateway/src/mcp/catalog.ts"
+        - "apps/api-gateway/src/mcp/protocol.ts"
+        - "docs/design/01-contracts/artifact-versions-runtime.md"
+      behavior: "Expose artifacts versions in network/embedded CLI through bounded SDK reads and list_artifact_versions in MCP through a dedicated executor. Preserve complete anchored next_query, 4 KiB input and 256 KiB full-page validation. CLI retains stable file/inline inputs and bounded network stdin with the existing 30-second timeout; no key/output/repeated options. MCP discovery and direct calls require verified unexpired actual artifact.read, use two slots per gateway and a 30-second deadline, retain slots until underlying work settles, bound errors to 16 KiB and bound escaped success output separately. Clear inherited write conditions, reject mismatched pages and sanitize errors. No automatic pagination, content access, receipt query, upload or local persistence."
+      evidence: []
+      pending_evidence:
+        - "CLI network/embedded routing, defaults/continuation, file/stdin bounds and invalid flags or incomplete pagination"
+        - "MCP discovery/call authorization, expiry, capacity retention, deadline and fixed bounded errors"
+        - "Complete trace/query/scope/order/continuation validation and unchanged old metadata/receipt commands"
+      remaining_scope: "Workbench and Mock directory integration, schema generation and runtime evidence. File/stdin waits precede the CLI read deadline; local timeout cannot cancel underlying router/database activity."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/MCP/SDK/API/database execution or release. No directory-server, database schema or dependency change."
     artifact_versions_directory_development_increment:
       date: "2026-11-04"
       status: "Source-only persistent artifact version directory, HTTP route and bounded SDK read; R-001 remains incomplete."

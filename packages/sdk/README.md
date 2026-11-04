@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-04：CLI `artifacts versions`的网络与嵌入入口已复用`listArtifactVersions`完整分页校验、256 KiB响应及默认30秒期限；MCP `list_artifact_versions`使用同一契约和独立有界执行器。两者保留next_query且不自动翻页；这只是源码接线，未编译、测试或调用。详见 [目录客户端](../../docs/design/01-contracts/artifact-versions-runtime.md#命令行与-mcp源码阶段)。
+
 2026-11-04：新增`client.listArtifactVersions({artifact_id, limit?, at_version?, before_version?}, options?)`，默认10最多20条倒序历史摘要，next_query保留完整查询和首轮版本上界。复用`WcpArtifactReadOptions`默认30秒本地期限与signal，完整成功封套256 KiB，核验范围/目标/顺序/下一查询；不自动翻页、读正文、下载或使用历史值作为写条件。导出`ArtifactVersionsQuery/ArtifactVersionSummary/ArtifactVersionsPage/ArtifactVersionsEnvelope`，详见 [版本目录](../../docs/design/01-contracts/artifact-versions-runtime.md)。需配置持久目录reader或artifact_storage；Mock接入及运行证据尚缺，未编译、类型检查、测试、执行或发布。
 
 2026-11-04：新增独立 `inspectArtifactReceipt(input, options)` 及 `WcpArtifactReceiptInspectionOptions/WcpInspectedArtifactReceipt`。接受已有裸 `ArtifactReceiptEnvelope` 的 JSON 文本或非共享 UTF-8 `Uint8Array`（最多4 MiB），要求本地 `trace_id`；可传完整 `expected_original`（1 MiB）、`expected_receipt_sha256`、`expected_canonical_receipt_sha256`、`timeout_ms/signal`，默认30秒本地期限。返回完整历史回执及原请求、实际输入与规范回执的大小/SHA-256/规范JSON，以及原请求比对状态。CLI与工作台同步改用contracts共享解析，不增加文件包装。无需WcpClient、网络、凭据或文件I/O，SHA-256使用Web Crypto；本地有效与摘要匹配不认证服务器或当前内容，not-observed不证明先前上传失败。详见 [SDK回执离线核验](../../docs/design/01-contracts/artifact-persistence-runtime.md#sdk-原回执离线核验与共享解析源码阶段)。仅源码文档人工审阅，未编译、类型检查、测试、调用或发布。

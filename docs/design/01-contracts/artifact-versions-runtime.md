@@ -53,4 +53,20 @@ const detail = await client.getArtifactVersion(artifactId, selectedVersion);
 
 错误使用现有有限错误码与固定信息、retryable=false，details.read_kind=versions及upload_dispatch_state=not-sent；不回显底层响应、不自动下载/查回执/恢复/上传。SDK根入口导出上述四个契约类型。
 
-CLI、MCP、工作台版本目录与Mock接入、JSON Schema生成物及跨存储/并发/权限/分页运行证据仍待开发，R-001保持未完成且本增量evidence为空。现有指定版本各客户端读取仍保留。无依赖或数据库schema变更。
+工作台版本目录与Mock接入、独立JSON Schema生成物及跨存储/并发/权限/分页运行证据仍待开发，R-001保持未完成且本增量evidence为空。CLI与MCP源码接入见下节；现有指定版本各客户端读取仍保留。无依赖或数据库schema变更。
+
+## 命令行与 MCP（源码阶段）
+
+2026-11-04新增 `workctx artifacts versions --json-file QUERY.json [--timeout-ms 30000]`；查询也可用`--json`，两种方式必须且只能选择一种。JSON为共享ArtifactVersionsQuery：必填artifact_id，可选limit/at_version/before_version；before必须携带原at且不超过它。单份输入最多4 KiB，文件沿用稳定常规文件检查和严格UTF-8；网络入口的`--json -`沿有界stdin读取，嵌入runWorkctx不读取进程stdin。拒绝`--key`、`--output`、额外字段、重复/无关选项；页大小在JSON里，不能传外层--limit。文件/stdin读取在网络预算前，不宣称可取消或包含在查询期限内。
+
+网络callGateway与CLI主入口均接现有artifact-queries；嵌入入口复制可信上下文，清除继承的idempotency_key/expected_version/if_match，并在路由调用前后检查真实artifact.read、已验证客户端和有效期限。两者统一通过SDK listArtifactVersions；嵌入transport严格比对预先固定的规范分页URL、GET、空正文、范围/trace头和256 KiB上限，再用已捕获完整查询调用artifact.versions.list。客户端不会把at_version写入expected_version。
+
+成功stdout是完整ArtifactVersionsEnvelope，保留历史摘要和content_state=not-checked；本次命令只读一页。下一次把`data.next_query`完整对象作为输入，不能仅保留before_version、改成最新上界或将整个响应当作查询。next_query=null即本次范围没有更多行；不等于历史连续性审计成功或文件正文可读。输出不保存文件，成功退出0，参数/读取失败沿既有错误路径，不输出部分页。
+
+MCP新增 `list_artifact_versions`，参数与共享查询相同；发现schema公开ULID、limit 1–20默认10和正安全整数版本，跨字段关系由完整共享解析强制检查。工具只读、可重复查询，不自动跟随next_query。发现、prepareMcpTool及专用执行器均要求schema_version=1、完整可信范围/账号/客户端、有效trace、authenticated_client=true、未过期令牌及实际artifact.read；admin角色不能替代。HTTP MCP沿既有普通正文限额，不新增大正文扩容资格；最终工具名要求验证客户端，内层查询另限4 KiB。
+
+专用执行器在首次异步前捕获查询/上下文，清除写条件；内部ApiGateway按GET路径加body中的查询字段派发，与公开HTTP的URL参数是不同的内部表示。调用仍经过相同policy/audit和持久目录reader。每个ApiGateway独立最多两笔目录读取，默认固定30秒单调本地等待；超时及时返回固定错误，底层未结束继续占槽，不能因超时反复释放名额制造无限后台读取。无自动重试，底层活动不能由本地期限保证取消。
+
+成功必须是200、JSON、原trace响应头且没有ETag，完整封套256 KiB；错误封套16 KiB且trace必须一致。共享解析核对范围、原query、历史摘要、顺序、条数及完整next_query；无restricted权限的摘要再拒绝。返回前重查期限和身份有效期，MCP文本转义后的content整体另限512 KiB+4096字节；这不是网络传输完成或客户端收到的证明。失败仅保留有限错误码和固定消息、retryable=false、read_kind=versions、content_state=not-checked、upload_dispatch_state=not-sent，不回显底层message/details；调用结果沿标准isError=true输出。
+
+两个入口均不读取对象正文、授予下载/恢复/写入权限、查询原上传回执或更改历史状态。选定版本后需另行读取完整元数据/下载，历史目录上界不能当成当前写条件。工作台与Mock目录接入和运行证据仍缺；无数据库schema、依赖或目录服务逻辑变化，仅源码文档人工审阅，未编译、类型检查、测试、执行CLI/MCP/SDK/API/SQL/数据库或发布。

@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [版本目录命令行与 MCP 入口](docs/design/01-contracts/artifact-versions-runtime.md#命令行与-mcp源码阶段)：`artifacts versions` 和 `list_artifact_versions` 可查询历史版本并保留完整续页参数，分别沿用有界 SDK 读取与独立 MCP 等待限制。仅源码文档，未编译、测试、执行或发布。
+
 新增 [附件版本目录](docs/design/01-contracts/artifact-versions-runtime.md)：服务端和SDK可分页查找历史版本，续页固定原版本上界，逐页核验权限与历史快照；目录不读取文件正文。仅源码文档，未编译、测试、执行或发布。
 
 新增 [SDK 回执离线核验](docs/design/01-contracts/artifact-persistence-runtime.md#sdk-原回执离线核验与共享解析源码阶段)：直接检查回执文本或字节，可对照完整原请求与预期摘要；命令行、工作台和 SDK 共用相同解析规则。只核验本地内容，不认证服务器状态。仅源码文档，未编译、测试、执行或发布。
