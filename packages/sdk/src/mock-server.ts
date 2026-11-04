@@ -3,6 +3,7 @@ import type { WcpRequest, WcpTransport } from './client.js';
 import type { MockWorkItemSession, MockWorkItemStore } from './mock-work-items.js';
 import {
   isMockContextReadPath,
+  isMockContextDirectoryRequest,
   type MockContextHistorySession,
   type MockContextHistoryStore,
 } from './mock-context-history.js';
@@ -45,7 +46,10 @@ export class MockWcpServer implements WcpTransport {
 
   async request<T = unknown>(request: WcpRequest): Promise<T> {
     this.options.onRequest?.(request);
-    if (this.contextHistory && isMockContextReadPath(request.path))
+    if (
+      this.contextHistory &&
+      (isMockContextReadPath(request.path) || isMockContextDirectoryRequest(request))
+    )
       return this.contextHistory.request<T>(request);
     if (
       this.workItems &&

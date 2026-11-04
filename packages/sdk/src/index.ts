@@ -27,6 +27,10 @@ export type {
   ContextItemRevision,
 } from '@planemem/contracts';
 export type { WorkItemListQuery, WorkItemProjection } from '@planemem/contracts';
+export type {
+  MockContextDirectorySeed,
+  MockContextDirectoryAccess,
+} from './mock-context-directory.js';
 export {
   MockContextHistoryStore,
   type MockContextHistorySeed,

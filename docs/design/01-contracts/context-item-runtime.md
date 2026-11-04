@@ -1,5 +1,11 @@
 # ContextItem 录入与编辑开发说明
 
+## 2026-11-04 上下文目录Mock增量
+
+MockContextHistorySeed可新增directory配置及每条完整directory_record，开启目录必须覆盖全部条目；与原元数据及已提供详情/同版历史共有保存字段一致，目录保留微秒，跨详情/历史时间核对限它们可表达的毫秒精度。精确筛选/可见性先于分页，文本查询用显式完整命中集合，未知query明确失败，不用JavaScript近似数据库搜索。游标绑定独立store、完整模拟身份/权限/可见集合/筛选/页大小，旧种子不启用目录时原读保持。
+
+MockWcpServer沿context_history配置按operation=context接入SDK目录单页和按需迭代，与work_items共存；五类上下文读取共用每store两笔容量/30秒/取消，摘要未结束继续占槽。输入8 KiB、完整页2 MiB、总种子16 MiB/1000条目/总1000历史；session可选directory_access仅为compile/write/propose显示提示，缺省false，restricted沿原会话。不从目录补造详情/历史/确认、不启用写入。完整配置、查询与未执行示例见[上下文目录Mock](context-directory-mock-runtime.md)。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行Mock/SDK/产品/API/数据库或发布；R-003未完成、evidence为空，真实兼容和运行证据仍缺。
+
 ## 2026-11-04 MCP上下文目录完整读取增量
 
 `list_context_items`纳入既有mcp/context-history专用执行器，tools/list、客户端身份要求、prepareMcpTool及tools/call沿同一isContextReadTool识别。发现与调用均要求schema v1、可信未过期客户端、实际context.read、完整项目/actor/client和合法trace；admin不替代实际能力。prepareMcpTool先核对身份再返回MCP_TOOL_EXECUTOR_REQUIRED，要求调用dispatchMcp或专用executeContextReadTool，避免绕开完整解析、期限和容量。
@@ -12,7 +18,7 @@
 
 返回保持MCP content中的单个text，其中JSON为完整原目录封套（含data/next_cursor/scope/query/context_permissions/source_refs），二次转义包装最多4 MiB+4096。失败无部分页、不切换视图或自动缩页；下一次显式调用保留身份、筛选、归档及limit，把原next_cursor传入cursor。换条件或旧v1游标需回首页；没有自动翻页、重试、写入或来源刷新，不承诺跨页一致快照或来源真实性。资源目录、模板及当前详情资源不改变，它们的独立容量保持。
 
-兼容变化：直接prepareMcpTool调用不再生成通用目录请求，缺少scope/query/完整记录的旧替身不接受；身份不完整/过期或只有admin角色的调用不再发现或执行该工具。工具名与参数字段、data数组/next_cursor保留，目录说明同步告知完整读取上限和续页约束。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布；Mock目录、真实MCP客户端/权限/容量/期限及旧调用兼容证据待补，R-003未完成、evidence为空。
+兼容变化：直接prepareMcpTool调用不再生成通用目录请求，缺少scope/query/完整记录的旧替身不接受；身份不完整/过期或只有admin角色的调用不再发现或执行该工具。工具名与参数字段、data数组/next_cursor保留，目录说明同步告知完整读取上限和续页约束。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布；Mock目录源码见上方增量，真实MCP客户端/权限/容量/期限及旧调用兼容证据待补，R-003未完成、evidence为空。
 
 ## 2026-11-04 CLI上下文目录完整读取增量
 
@@ -26,7 +32,7 @@
 
 未执行用法：`workctx context list --json-file QUERY.json --timeout-ms 30000`。QUERY.json可为`{"archived":false,"limit":20,"layer":"L2"}`，可附加原成对身份条件；第二页保留上述字段并附加上次返回next_cursor。旧不完整嵌入替身必须提供规范scope/query/context_permissions及完整目录记录，不能回退通用未校验结果。目录仍是实时视图，不证明跨页一致性、来源实时状态或写权限。
 
-仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/SDK/产品/API/数据库或发布。真实凭据/权限/期限/容量、原调用兼容及文件/stdin行为证据待补；MCP专用适配见上方增量，Mock目录仍缺，R-003未完成、evidence为空。
+仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/SDK/产品/API/数据库或发布。真实凭据/权限/期限/容量、原调用兼容及文件/stdin行为证据待补；MCP与Mock目录专用适配见上方增量，R-003未完成、evidence为空。
 
 ## 2026-11-04 SDK上下文目录完整读取及按需分页增量
 
@@ -51,7 +57,7 @@ for await (const page of pages) {
 }
 ```
 
-兼容变化：listContextItems非法输入现在通过Promise拒绝；返回记录为明确类型，version/confidence为数值，时间为六位微秒，查询必须为普通JSON。旧仅data/source_refs的自定义transport或目录Mock需提供完整scope/query/context_permissions/记录且支持bounded-json/signal；当前Mock目录尚未接入，不回退到不完整响应。单页方法仍可省略actor/client相等约束，迭代则要求两者都有。CLI/MCP专用适配见上方增量，Mock适配和真实旧调用兼容证据后续处理。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布；R-003未完成、evidence为空。
+兼容变化：listContextItems非法输入现在通过Promise拒绝；返回记录为明确类型，version/confidence为数值，时间为六位微秒，查询必须为普通JSON。旧仅data/source_refs的自定义transport或目录Mock需提供完整scope/query/context_permissions/记录且支持bounded-json/signal，不回退到不完整响应。单页方法仍可省略actor/client相等约束，迭代则要求两者都有。CLI/MCP及可选Mock目录适配见上方增量，真实旧调用兼容证据后续处理。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布；R-003未完成、evidence为空。
 
 ## 2026-11-04 上下文目录完整读取与页大小增量
 
@@ -67,7 +73,7 @@ Web在等待会话前捕获原查询，清除写键；fetch开始后的同一30�
 
 网页新增Items per page数字输入，仅1–100正整数，缺省或显式25在规范链接中省略。筛选提交清除旧位置和选择，下一页、原页重试、条目链接、归档视图切换、清除筛选及历史/比较返回保留页大小；搜索返回仍遵守原item/return_to限制。目录失败保留原参数重试、同筛选首屏，并在页大小大于1时提供Smaller page with these filters：明确减半（向下取整且最小1），清除旧cursor/选择、保留筛选和指定包。不会自行缩页或返回部分列表。
 
-SDK专用目录读取及按需分页、CLI与MCP完整单页读取见上方增量；Mock目录尚未接入。旧消费方的数字字符串、毫秒时间、v1游标及无scope/query封套需要迁移，独立Schema、SQL成本与兼容证据后续处理。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行产品/浏览器/API/SQL/数据库或发布；R-003未完成、evidence为空。
+SDK专用目录读取及按需分页、CLI与MCP完整单页读取、可选Mock目录配置见上方增量。旧消费方的数字字符串、毫秒时间、v1游标及无scope/query封套需要迁移，独立Schema、SQL成本与兼容证据后续处理。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行产品/浏览器/API/SQL/数据库或发布；R-003未完成、evidence为空。
 
 ## 2026-11-04 当前与归档详情Mock增量
 

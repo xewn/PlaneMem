@@ -954,6 +954,26 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_item_directory_mock_development_increment:
+      date: "2026-11-04"
+      status: "Source-only optional context directory Mock integration; R-003 remains incomplete."
+      artifacts:
+        - "packages/sdk/src/mock-context-directory.ts"
+        - "packages/sdk/src/mock-context-history.ts"
+        - "packages/sdk/src/mock-server.ts"
+        - "packages/sdk/src/index.ts"
+        - "packages/sdk/README.md"
+        - "docs/design/01-contracts/context-directory-mock-runtime.md"
+        - "docs/design/01-contracts/context-item-mock-runtime.md"
+        - "docs/design/01-contracts/context-history-mock-runtime.md"
+      behavior: "Optional directory seed requires a complete directory_record for every item; validate current metadata and available same-version detail/history saved fields, with timestamp consistency limited to their millisecond precision while preserving directory microseconds. Apply explicit visibility/restricted and scalar filters before priority/microsecond/C-ID pagination. Text queries use configured complete match sets, rejecting unconfigured queries rather than imitating PostgreSQL lower/JSONB search. Shared v2 cursors bind store, identity, expiry, visibility, permissions, filters and page size. MockWcpServer dispatches operation=context through context_history alongside work_items. Five context reads share two store slots and 30-second/cancellation budgets, retaining slots until underlying digest settles. Optional directory_access only supplies display hints; complete responses are detached and bounded to 2 MiB, input to 8 KiB and combined seed to existing 16 MiB/1000 items/1000 revisions."
+      evidence: []
+      pending_evidence:
+        - "SDK single-page/iterator and shared MockWcpServer work-item routing compatibility"
+        - "Complete projection consistency, microsecond and Unicode ordering, configured text scenarios and cursor binding"
+        - "Explicit identity/visibility/hints, copied inputs/results, response limits, cancellation/deadlines and shared capacity"
+      remaining_scope: "Runtime/production compatibility evidence, standalone directory schema, database cost bounds, mutable context lifecycle and ContextPack reads. The required postgres wire source label is simulated, not database access/provenance. Explicit text matches are caller-supplied scenarios, not search-engine verification."
+      execution: "Source/docs, manual review and formatting/text checks only; no build, typecheck, tests, Mock/SDK/product/API/database execution or release. No production Gateway/CLI/MCP/Web/contracts/schema/dependency changes."
     mcp_context_item_directory_read_development_increment:
       date: "2026-11-04"
       status: "Source-only complete MCP context directory reads; R-003 remains incomplete."
@@ -968,7 +988,7 @@ requirements:
         - "MCP client discovery/call and prepare migration, complete Gateway directory compatibility"
         - "Strict inputs, invalid/oversized bodies, HTTP/trace/type/ETag, original scope/query and restricted data"
         - "Shared directory/detail/history capacity, expiry, timeouts, retained slots and escaped output limits"
-      remaining_scope: "Mock directory adapter and runtime evidence. Resource discovery/templates/reads remain separate. Synchronous parsing is not preemptible and network delivery is outside the executor deadline; cursor and permission hints are not authorization or a consistent cross-page snapshot."
+      remaining_scope: "Runtime evidence; optional Mock source integration is tracked in context_item_directory_mock_development_increment. Resource discovery/templates/reads remain separate. Synchronous parsing is not preemptible and network delivery is outside the executor deadline; cursor and permission hints are not authorization or a consistent cross-page snapshot."
       execution: "Source/docs, manual review and formatting/text checks only; no build, typecheck, tests, MCP/product/API/database execution or release. No protocol/SDK/CLI/Web/Mock/schema/dependency changes."
     cli_context_item_directory_read_development_increment:
       date: "2026-11-04"
@@ -986,7 +1006,7 @@ requirements:
         - "Network and embedded entry compatibility, complete directory metadata and malformed/oversized responses"
         - "Stable files, bounded stdin, duplicate/unknown options, optional and mismatched identity constraints"
         - "Shared directory/detail/history capacity, retained slots after timeout, expiry and restricted visibility"
-      remaining_scope: "Mock directory adapter and runtime evidence; MCP source integration is tracked in mcp_context_item_directory_read_development_increment. File/stdin capture precedes the SDK budget, generic SDK does not expose HTTP ETag, and cursor/permission hints do not prove authorization or a consistent cross-page snapshot."
+      remaining_scope: "Runtime evidence; MCP and Mock source integrations are tracked in their directory increments. File/stdin capture precedes the SDK budget, generic SDK does not expose HTTP ETag, and cursor/permission hints do not prove authorization or a consistent cross-page snapshot."
       execution: "Source/docs, manual review and formatting/text checks only; no build, typecheck, tests, CLI/SDK/product/API/database execution or release. No SDK/contracts/Gateway/MCP/Mock/schema/dependency changes."
     sdk_context_item_directory_read_development_increment:
       date: "2026-11-04"
@@ -1003,7 +1023,7 @@ requirements:
         - "Complete Gateway directory compatibility, invalid inputs and old custom transport/Mock migration"
         - "Original query/context and returned-page mutation, optional single-page and required iteration identity constraints"
         - "Demand-driven termination, explicit continuation, maximum pages, cancellation/deadlines and oversized/malformed responses"
-      remaining_scope: "Mock dedicated directory reads and runtime evidence; CLI/MCP source integrations are tracked in cli_context_item_directory_read_development_increment and mcp_context_item_directory_read_development_increment. Generic transport exposes no HTTP ETag. Permission hints and cursor binding are not authorization or a consistent cross-page snapshot; live changes may omit or repeat records."
+      remaining_scope: "Runtime evidence; CLI/MCP/Mock source integrations are tracked in their directory increments. Generic transport exposes no HTTP ETag. Permission hints and cursor binding are not authorization or a consistent cross-page snapshot; live changes may omit or repeat records."
       execution: "Source/docs, manual review and formatting/text checks only; no build, typecheck, tests, SDK/Mock/product/API/database execution or release. No contracts/Gateway/CLI/MCP/Mock/schema/dependency changes."
     context_item_directory_complete_read_development_increment:
       date: "2026-11-04"
@@ -1025,7 +1045,7 @@ requirements:
         - "Real PostgreSQL projections, safe number and microsecond normalization, C ordering and same-time/Unicode continuation"
         - "Old cursor migration, page-size/filter binding, malformed/oversized pages and preserved full source/content values"
         - "Web complete read limits, deadlines/session expiry, navigation/history return and explicit smaller-page recovery"
-      remaining_scope: "Runtime/SQL/browser and old consumer compatibility evidence; Mock dedicated directory reads, standalone schema and database scan/allocation bounds. SDK/CLI/MCP source integration is tracked in the corresponding directory read increments. Text search uses PostgreSQL lower/JSONB rendering and is bound by query echo, not recomputed in JavaScript. Cursor/permission hints are not authorization or a consistent cross-page snapshot."
+      remaining_scope: "Runtime/SQL/browser and old consumer compatibility evidence, standalone schema and database scan/allocation bounds. SDK/CLI/MCP/Mock source integration is tracked in the corresponding directory increments. Text search uses PostgreSQL lower/JSONB rendering and is bound by query echo, not recomputed in JavaScript. Cursor/permission hints are not authorization or a consistent cross-page snapshot."
       execution: "Source/docs, manual review and formatting/text checks only; no build, typecheck, tests, product/browser/API/SQL/database execution or release. No new REST route, schema, migration, dependency or write/pack changes."
     context_item_detail_mock_development_increment:
       date: "2026-11-04"
@@ -1043,7 +1063,7 @@ requirements:
         - "Real detail/archive/legacy confirmation fixtures, same-version consistency and historical gap compatibility"
         - "Identity, visibility, restricted and review permission combinations, saved observations and effective expiry"
         - "Canonical path and header rejection, complete response limits, immutable copies, cancellation/deadlines and shared history capacity"
-      remaining_scope: "Runtime and client compatibility evidence, context directory/pack reads and mutable context lifecycle simulation. Supplied observations are not live source validation; review hints do not authorize writes. No HTTP header, real authentication, persistence or audit guarantee."
+      remaining_scope: "Runtime and client compatibility evidence, ContextPack reads and mutable context lifecycle simulation; optional directory source coverage is tracked in context_item_directory_mock_development_increment. Supplied observations are not live source validation; review hints do not authorize writes. No HTTP header, real authentication, persistence or audit guarantee."
       execution: "Source/docs, manual review and formatting/text checks only; no build, typecheck, tests, SDK/Mock/product/API/database execution or release. No contracts/Gateway/CLI/Web/schema/dependency changes."
     mcp_context_item_resource_read_development_increment:
       date: "2026-11-04"

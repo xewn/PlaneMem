@@ -1,5 +1,7 @@
 # 上下文当前与归档详情 Mock（源码阶段）
 
+2026-11-04目录增量：原种子可选directory和各条目directory_record，详情/同版历史共有保存字段与完整目录投影核对，时间以可表达毫秒精度比对而目录保留微秒。目录启用时覆盖全部条目，与原四类读取共享两容量/30秒；缺详情仍不可用，不从目录补造。原review_access保持，新增directory_access只提供目录显示提示。配置、显式文本搜索与路由共存见[上下文目录Mock](context-directory-mock-runtime.md)，仅源码文档，未编译、测试、执行或发布。
+
 2026-11-04扩展既有MockContextHistoryStore、MockContextHistorySeed和MockContextHistorySession，沿MockWcpServer的context_history配置支持GET /v1/context-items/{item_id}与GET /v1/context-items/{item_id}/archived。SDK的getContextItem/getArchivedContextItem使用原有完整读取入口；历史列表、版本、比较和逐页读取仍使用同一数据集。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行SDK/Mock/API/产品/数据库或发布。
 
 ## 可选完整详情

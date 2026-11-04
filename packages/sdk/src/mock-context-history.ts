@@ -3,6 +3,9 @@ import {
   CONTEXT_HISTORY_RESPONSE_BYTES,
   CONTEXT_REVISION_RESPONSE_BYTES,
   CONTEXT_ITEM_READ_RESPONSE_BYTES,
+  CONTEXT_ITEM_DIRECTORY_RESPONSE_BYTES,
+  parseContextItemDirectoryPage,
+  parseContextItemDirectoryQuery,
   contextRevisionSnapshotJson,
   isSyncIdentifier,
   isUlid,
@@ -17,6 +20,8 @@ import {
   type ContextHistoryReadQuery,
   type ContextItemReadEnvelope,
   type ContextItemReadQuery,
+  type ContextItemDirectoryRecord,
+  type ContextItemDirectoryQuery,
   type ContextItemDocument,
   type ContextItemRevision,
   type ContextItemRevisionSummary,
@@ -25,10 +30,18 @@ import {
 } from '@planemem/contracts';
 import type { WcpRequest, WcpTransport } from './client.js';
 import { createRequestBudget } from './request-budget.js';
+import {
+  MockContextDirectory,
+  requireMatchingDirectoryRecord,
+  type MockContextDirectorySeed,
+  type MockContextDirectoryAccess,
+} from './mock-context-directory.js';
 
 type Scope = Pick<SyncCommandIdentity, 'tenant_id' | 'workspace_id' | 'project_id'>;
 export interface MockContextHistorySeed {
   scope: Scope;
+  /** Enable complete directory reads; every item must then supply directory_record. */
+  directory?: MockContextDirectorySeed;
   items: Array<{
     item_id: string;
     current_version: number;
@@ -36,6 +49,7 @@ export interface MockContextHistorySeed {
     current_classification: Classification;
     /** Complete supplied current observation, or archived detail; never derived from history. */
     current_detail?: ContextItemReadEnvelope;
+    directory_record?: ContextItemDirectoryRecord;
     revisions: ContextItemRevision[];
   }>;
 }
@@ -53,9 +67,17 @@ export interface MockContextHistorySession {
   read_restricted: boolean;
   visible_item_ids: string[];
   review_access?: MockContextReviewAccess;
+  directory_access?: MockContextDirectoryAccess;
 }
-type Session = MockContextHistorySession & { visible: Set<string>; can_review: boolean };
-type ReadQuery = ContextHistoryReadQuery | ContextItemReadQuery;
+type Session = MockContextHistorySession & {
+  visible: Set<string>;
+  can_review: boolean;
+  directory_access: MockContextDirectoryAccess;
+};
+type ReadQuery =
+  | ContextHistoryReadQuery
+  | ContextItemReadQuery
+  | { kind: 'list'; query: ContextItemDirectoryQuery };
 type Stored = Omit<MockContextHistorySeed['items'][number], 'revisions'> & {
   revisions: Map<number, ContextItemRevision>;
   ordered: ContextItemRevision[];
@@ -65,9 +87,10 @@ const configurationTrace = 'trace_mock_context_history_configuration';
 const classifications = ['public', 'internal', 'confidential', 'restricted'];
 const messages = {
   MOCK_CONTEXT_HISTORY_CONFIGURATION_INVALID:
-    'Supply a bounded context detail/history dataset and explicit simulated session',
+    'Supply a bounded context directory/detail/history dataset and explicit simulated session',
   MOCK_ROUTE_NOT_FOUND: 'Mock context read route not found',
-  INVALID_INPUT: 'Supply a valid context read query without body, write or cache conditions',
+  INVALID_INPUT:
+    'Supply a valid context read query without write or cache conditions; directory text queries must be configured and cursors retain their original identity, filters and page size',
   DENIED: 'The simulated session does not permit this context read',
   CONTEXT_ITEM_NOT_FOUND:
     'The selected item view or recorded version is unavailable in this simulated project',
@@ -180,6 +203,17 @@ export function isMockContextReadPath(path: unknown): path is string {
       /^\/v1\/context-items\/[^/?#]+(?:\/archived)?(?:[?#].*)?$/.test(path))
   );
 }
+/** Dispatch by a data property only; malformed/accessor bodies are never evaluated here. */
+export function isMockContextDirectoryRequest(request: WcpRequest): boolean {
+  return (
+    typeof request.path === 'string' &&
+    /^\/v1\/workbench\/query(?:[?#].*)?$/.test(request.path) &&
+    !!request.body &&
+    typeof request.body === 'object' &&
+    !Array.isArray(request.body) &&
+    Object.getOwnPropertyDescriptor(request.body, 'operation')?.value === 'context'
+  );
+}
 function queryFromPath(path: string): ReadQuery {
   if (new TextEncoder().encode(path).byteLength > 4096 || path.includes('#')) throw new TypeError();
   const detail = /^\/v1\/context-items\/([^/?]+)(\/archived)?$/.exec(path);
@@ -214,11 +248,12 @@ function queryFromPath(path: string): ReadQuery {
 export class MockContextHistoryStore {
   readonly #scope: Scope;
   readonly #items = new Map<string, Stored>();
+  #directory: MockContextDirectory | undefined;
   #active = 0;
 
   constructor(seed: MockContextHistorySeed) {
     this.#scope = checked('MOCK_CONTEXT_HISTORY_CONFIGURATION_INVALID', configurationTrace, () => {
-      const input = record(snapshot(seed, seedBytes), ['scope', 'items']);
+      const input = record(snapshot(seed, seedBytes), ['scope', 'items'], ['directory']);
       const rawScope = record(input.scope, ['tenant_id', 'workspace_id', 'project_id']);
       if (
         !isUlid(rawScope.tenant_id) ||
@@ -237,7 +272,7 @@ export class MockContextHistoryStore {
         const row = record(
           raw,
           ['item_id', 'current_version', 'current_archived', 'current_classification', 'revisions'],
-          ['current_detail'],
+          ['current_detail', 'directory_record'],
         );
         const target = parseContextHistoryReadQuery({ kind: 'history', item_id: row.item_id });
         const current_version = positive(row.current_version);
@@ -294,15 +329,45 @@ export class MockContextHistoryStore {
           const revision = revisions.get(current_version);
           if (revision) requireMatchingDetail(current_detail, revision);
         }
+        let directory_record: ContextItemDirectoryRecord | undefined;
+        if (Object.hasOwn(row, 'directory_record')) {
+          directory_record = parseContextItemDirectoryPage(
+            { data: [row.directory_record] },
+            { archived: row.current_archived, limit: 1 },
+          ).data[0]!;
+          if (
+            directory_record.id !== target.item_id ||
+            directory_record.version !== current_version ||
+            directory_record.classification !== row.current_classification
+          )
+            throw new TypeError();
+          if (current_detail)
+            requireMatchingDirectoryRecord(
+              directory_record,
+              current_detail.data,
+              'archived_at' in current_detail.data ? current_detail.data.archived_at : null,
+            );
+          const revision = revisions.get(current_version);
+          if (revision)
+            requireMatchingDirectoryRecord(directory_record, revision.item, revision.archived_at);
+        }
         this.#items.set(target.item_id, {
           item_id: target.item_id,
           current_version,
           current_archived: row.current_archived,
           current_classification: row.current_classification as Classification,
           ...(current_detail === undefined ? {} : { current_detail }),
+          ...(directory_record === undefined ? {} : { directory_record }),
           revisions,
           ordered: [...revisions.values()].sort((a, b) => b.version - a.version),
         });
+      }
+      if (Object.hasOwn(input, 'directory')) {
+        const records = [...this.#items.values()].map((item) => {
+          if (!item.directory_record) throw new TypeError();
+          return item.directory_record;
+        });
+        this.#directory = new MockContextDirectory(records, input.directory);
       }
       return scope;
     });
@@ -323,7 +388,7 @@ export class MockContextHistoryStore {
             'read_restricted',
             'visible_item_ids',
           ],
-          ['review_access'],
+          ['review_access', 'directory_access'],
         );
         const identity = parseSyncCommandIdentity(input.identity);
         for (const field of ['tenant_id', 'workspace_id', 'project_id'] as const)
@@ -348,6 +413,18 @@ export class MockContextHistoryStore {
             throw new TypeError();
           can_review = access.human && access.review_context;
         }
+        const directory_access: MockContextDirectoryAccess = {
+          compile: false,
+          write: false,
+          propose: false,
+        };
+        if (Object.hasOwn(input, 'directory_access')) {
+          const access = record(input.directory_access, ['compile', 'write', 'propose']);
+          for (const field of ['compile', 'write', 'propose'] as const) {
+            if (typeof access[field] !== 'boolean') throw new TypeError();
+            directory_access[field] = access[field];
+          }
+        }
         return {
           identity,
           expires_at,
@@ -357,6 +434,7 @@ export class MockContextHistoryStore {
           visible_item_ids: [...visible],
           visible,
           can_review,
+          directory_access,
         };
       },
     );
@@ -396,8 +474,14 @@ export class MockContextHistoryStore {
     };
     try {
       live();
-      if (method !== 'GET' || !isMockContextReadPath(path)) fail('MOCK_ROUTE_NOT_FOUND', trace);
-      if (body !== undefined) fail('INVALID_INPUT', trace);
+      const directory = path === '/v1/workbench/query';
+      if (
+        directory
+          ? method !== 'POST' || !this.#directory
+          : method !== 'GET' || !isMockContextReadPath(path)
+      )
+        fail('MOCK_ROUTE_NOT_FOUND', trace);
+      if (!directory && body !== undefined) fail('INVALID_INPUT', trace);
       for (const field of ['tenant_id', 'workspace_id', 'project_id'] as const)
         if (headers.get('x-' + field.replaceAll('_', '-')) !== session.identity[field])
           fail('DENIED', trace);
@@ -422,12 +506,22 @@ export class MockContextHistoryStore {
         ].some((key) => headers.has(key))
       )
         fail('INVALID_INPUT', trace);
-      const query = checked('INVALID_INPUT', trace, () => queryFromPath(path));
-      const responseBytes = isDetailQuery(query)
-        ? CONTEXT_ITEM_READ_RESPONSE_BYTES
-        : query.kind === 'history'
-          ? CONTEXT_HISTORY_RESPONSE_BYTES
-          : CONTEXT_REVISION_RESPONSE_BYTES;
+      const query = checked<ReadQuery>('INVALID_INPUT', trace, () => {
+        if (!directory) return queryFromPath(path);
+        const input = snapshot(body, 8192);
+        if (!input || typeof input !== 'object' || Array.isArray(input)) throw new TypeError();
+        const { operation, ...fields } = input as Record<string, unknown>;
+        if (operation !== 'context') throw new TypeError();
+        return { kind: 'list', query: parseContextItemDirectoryQuery(fields) };
+      });
+      const responseBytes =
+        query.kind === 'list'
+          ? CONTEXT_ITEM_DIRECTORY_RESPONSE_BYTES
+          : isDetailQuery(query)
+            ? CONTEXT_ITEM_READ_RESPONSE_BYTES
+            : query.kind === 'history'
+              ? CONTEXT_HISTORY_RESPONSE_BYTES
+              : CONTEXT_REVISION_RESPONSE_BYTES;
       const maximum = max_response_bytes === undefined ? responseBytes : max_response_bytes;
       if (
         !Number.isSafeInteger(maximum) ||
@@ -436,16 +530,17 @@ export class MockContextHistoryStore {
         (response_type === 'bounded-json' && max_response_bytes === undefined)
       )
         fail('INVALID_INPUT', trace);
-      const item = this.#items.get(query.item_id);
+      const item = query.kind === 'list' ? undefined : this.#items.get(query.item_id);
       if (
-        !item ||
-        !session.visible.has(item.item_id) ||
-        (item.current_classification === 'restricted' && !session.read_restricted)
+        query.kind !== 'list' &&
+        (!item ||
+          !session.visible.has(item.item_id) ||
+          (item.current_classification === 'restricted' && !session.read_restricted))
       )
         fail('CONTEXT_ITEM_NOT_FOUND', trace);
       if (
         isDetailQuery(query) &&
-        (!item.current_detail || item.current_archived !== (query.kind === 'archived'))
+        (!item!.current_detail || item!.current_archived !== (query.kind === 'archived'))
       )
         fail('CONTEXT_ITEM_NOT_FOUND', trace);
       if (this.#active >= 2) fail('RATE_LIMITED', trace);
@@ -453,6 +548,22 @@ export class MockContextHistoryStore {
         this.#active++;
         try {
           live();
+          if (query.kind === 'list') {
+            const result = await this.#directory!.read(
+              query.query,
+              this.#scope,
+              session,
+              trace,
+              live,
+            );
+            live();
+            const response = checked('GATEWAY_RESPONSE_INVALID', trace, () =>
+              snapshot(result, Math.min(maximum, responseBytes)),
+            );
+            live();
+            return response;
+          }
+          if (!item) fail('CONTEXT_ITEM_NOT_FOUND', trace);
           if (isDetailQuery(query)) {
             const supplied = item.current_detail!;
             let data = supplied.data;

@@ -1,5 +1,7 @@
 # 上下文历史 Mock（源码阶段）
 
+2026-11-04目录增量：原store可显式提供完整directory_record并启用directory，目录与可用同版本历史核对保存字段，时间一致性限历史毫秒精度，目录保留给定微秒。原缺历史/详情不补造，目录与详情/历史五类读取共用两容量/30秒；显式文本搜索场景及工作项路由共存见[上下文目录Mock](context-directory-mock-runtime.md)。仅源码文档，未编译、测试、执行或发布。
+
 2026-11-04详情扩展：同一store条目可选提供current_detail完整当前/归档封套，原context_history配置增加两个详情GET，四种读取共用身份/可见集合及容量。构造时核对current_detail与当前元数据和已有同版历史保存内容；没有详情不从历史推导，历史摘要验证方式保持。session可选review_access模拟human/review_context，仅影响详情中的确认就绪提示。完整约定、缺省兼容和未执行示例见[上下文详情Mock](context-item-mock-runtime.md)，仅源码，未运行。
 
 2026-11-04后续SDK增量：contextHistoryPages支持按next逐页读取，完整身份/条目/页大小固定，每页沿本Mock的同一history GET与权限/大小/期限。迭代器不预取或自行持久化，max_pages限制到达后由调用者显式续读；Mock不新增路由或跨页快照承诺，见[SDK历史按需分页](context-item-runtime.md#2026-11-04-sdk历史按需分页增量)。仅源码接线说明，未执行迭代器或Mock。
