@@ -1,5 +1,24 @@
 # ContextItem 录入与编辑开发说明
 
+## 2026-11-04 CLI当前与归档详情读取增量
+
+`context read`和`context read-archived`的main网络、callGateway及runWorkctx嵌入入口统一接入SDK当前/归档详情读取。沿用原`{item_id}`输入，可选增加成对expected_actor_id/expected_client_id；账号须ULID、客户端为合法本地ID，作用只是与服务端可信身份相等，不能授予权限。只接受明确原条目，不允许kind、历史version、写键或expected_version混入。
+
+参数要求恰一`--json OBJECT`或`--json-file PATH`，完整输入最多4 KiB，严格普通JSON和共享查询校验；可选`--timeout-ms`为1–2147483647整数，默认30000。网络支持有界`--json -`，嵌入拒绝stdin；文件复用稳定普通文件完整读取、UTF-8及大小限制。拒绝重复/未知选项、key、output和额外位置参数。文件/stdin输入先于SDK期限，等待EOF不提供取消保证。main先分发专用处理，callGateway绕开旧通用路由；已移除旧网络详情分支，嵌入在通用执行前分发。
+
+仅派发所选视图的GET，共享SDK完整2 MiB成功与默认30秒读取期限，Fetch错误最多16 KiB。完整核对条目/范围/版本/revision/正文ETag、正文/来源、归档状态/时间及当前来源诊断与原确认；输出保留原成功封套，旧confirmed记录允许null确认。JSON正文内ETag被校验，通用WcpTransport未暴露HTTP ETag，本命令不声称验证该响应头或来源真实性。无自动回退当前/归档、重试、落盘或部分输出。
+
+嵌入捕获原完整可信身份及token期限，要求实际context.read，admin不替代；清除继承写条件，成对预期身份若提供必须匹配。SDK每次请求核对原GET路径、顺序、完整身份头、bounded-json/大小与空正文，再调用对应context.item.read或context.item.archived.read。返回先经完整共享解析，额外复核restricted权限、期限和取消状态。当前/归档/历史/版本/比较五入口共用每router两笔在途容量，SDK停止等待后底层router未结束仍占槽；比较保留原双版本顺序与同一总预算。内部函数统一命名为ContextRead，既有context-history模块承载共用执行逻辑。
+
+以下仅为未执行的用法示例，item-query.json保存调用方明确选择的`{"item_id":"context-note-1"}`；根据目标视图选择一个命令：
+
+```sh
+workctx context read --json-file item-query.json --timeout-ms 15000
+workctx context read-archived --json-file item-query.json --timeout-ms 15000
+```
+
+用法错误沿现有退出码2，运行读取错误为1，成功为0，错误不输出成功正文。旧嵌入调用若缺可信身份/权限或只返回部分字段需要迁移；取消停止的是等待，不证明底层读取已结束。本增量不涉及包/目录、MCP/Mock、SDK、共享契约、Gateway、Web、数据库/schema或依赖改动。仅源码文档人工审阅和格式文本检查，未编译、类型检查、测试、执行CLI/SDK/产品/API/数据库或发布；参数/期限/权限/并发/退出码及历史兼容仍待运行证据，R-003未完成、evidence为空。
+
 ## 2026-11-04 SDK当前与归档详情读取增量
 
 `WcpClient.getContextItem(itemId, options?)` / `getArchivedContextItem(itemId, options?)`接入专用完整读取，返回原`WcpEnvelope<ContextItemReadDocument>` / `WcpEnvelope<ArchivedContextItemDocument>` Promise。根入口新增导出`WcpContextItemReadOptions`及两个文档类型。options只接受timeout_ms/signal，可选undefined省略；timeout_ms默认30,000毫秒，整数1–2,147,483,647，signal沿AbortSignal形状。项目必须完整且合法，actor/client仍为可选，提供时校验并固定为请求相等条件，由Gateway检查真实身份；GET不继承任何写键或版本条件。

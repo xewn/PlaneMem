@@ -954,6 +954,24 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    cli_context_item_detail_read_development_increment:
+      date: "2026-11-04"
+      status: "Source-only bounded CLI current/archived context detail reads; R-003 remains incomplete."
+      artifacts:
+        - "apps/workctx-cli/src/context-history.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "apps/workctx-cli/src/remote.ts"
+        - "apps/workctx-cli/README.md"
+        - "docs/design/01-contracts/context-item-runtime.md"
+      behavior: "Route context read/read-archived through shared SDK detail reads from main, callGateway and embedded runWorkctx. Strict 4 KiB item/paired identity input, one JSON/file source, bounded network stdin and optional timeout-ms default 30 seconds. Complete 2 MiB response validation, Fetch errors 16 KiB, original current/archived selection. Embedded verified context.read/expiry/restricted checks, exact SDK request checks and shared two-slot capacity with history/version/comparison until router work settles. No partial output, fallback, retry or save."
+      evidence: []
+      pending_evidence:
+        - "Real CLI argument/file/stdin/identity combinations and exit-code compatibility"
+        - "Complete current/archived response, bounds, deadline and body ETag consistency"
+        - "Embedded permission/expiry/restricted and shared capacity behavior; history/version/comparison regression"
+      remaining_scope: "MCP/Mock dedicated detail reads, bounded directory/pack reads and runtime evidence. Generic SDK transport does not expose HTTP ETag; source observations are not authenticity or write authorization."
+      execution: "Source/docs, manual review and formatting/text checks only; no build, typecheck, tests, CLI/SDK/product/API/database execution or release. No SDK/contracts/Gateway/MCP/Mock/Web/schema/dependency changes."
     sdk_context_item_detail_read_development_increment:
       date: "2026-11-04"
       status: "Source-only bounded SDK current/archived context detail reads; R-003 remains incomplete."

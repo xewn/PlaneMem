@@ -6,6 +6,8 @@
 
 ### 2026-11-04 开发补充（未编译、未发布、未测试）
 
+- P4/P0：CLI context read/read-archived接入SDK完整详情读取，网络main/callGateway及嵌入runWorkctx统一4 KiB输入、2 MiB成功/Fetch16 KiB错误、默认30秒timeout-ms；支持成对expected_actor_id/expected_client_id，恰一JSON/稳定文件，网络stdin有界。嵌入实际context.read/到期/完整身份、原路径/头/大小/无正文及restricted校验，五种详情/历史/比较命令共用每router两笔容量，超时底层未结束仍占槽；无视图替换/自动重试/保存。JSON内ETag/版本/来源诊断沿共享解析，通用SDK不暴露HTTP ETag。旧不完整嵌入返回、CLI参数/错误/期限和运行兼容证据待补，MCP/Mock专用接入仍缺，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行CLI/SDK/产品/API/数据库或发布。
+
 - P0/P2：SDK getContextItem/getArchivedContextItem新增可选WcpContextItemReadOptions（timeout_ms/signal），默认30秒，捕获原项目/可选actor/client约束且不继承写条件。共享4 KiB严格查询与2 MiB完整封套/正文/版本/JSON内ETag/来源诊断/历史确认校验，Fetch沿bounded-json完整读取及16 KiB错误；自定义transport返回普通JSON亦复制并完整核对。历史/比较/迭代复用提取的原fields/capture实现，公开行为保持；固定错误、取消后不交付迟到结果、finally清理，无重试/自动归档切换/写入。通用transport不暴露HTTP ETag，此处只核对正文ETag；CLI/MCP/Mock专用接入及运行兼容证据仍缺，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布。
 
 - P0/P5：当前/归档ContextItem新增共享4 KiB严格查询与2 MiB完整封套解析，核对原条目/项目范围、版本/ETag、保存字段/完整来源及归档状态；当前条目保留旧confirmed记录的null确认，校验原确认版本/身份/理由与实时来源诊断索引/状态/确认就绪。Web两GET入口固定查询，完整UTF-8/HTTP/trace/ETag及16 KiB错误沿原30秒期限，会话前后到期复核、固定错误与原目标重试；不截断正文或把来源观察当写权限。目录/包和SDK/CLI/MCP读取仍待完善，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、运行产品/浏览器/API/SQL或发布。

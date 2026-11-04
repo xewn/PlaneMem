@@ -101,7 +101,7 @@ import { callConflictReceiptArguments } from './conflict-receipt.js';
 import { callProposalCreateReceiptArguments } from './proposal-create-receipt.js';
 import { callProposalReviewReceiptArguments } from './proposal-review-receipt.js';
 import { isWorkItemReadCommand, callWorkItemReadArguments } from './work-item-reads.js';
-import { isContextHistoryCommand, callContextHistoryArguments } from './context-history.js';
+import { isContextReadCommand, callContextReadArguments } from './context-history.js';
 
 const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
 
@@ -332,18 +332,18 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   context compile                Save a context pack; optional budget_tokens/ttl_seconds and --key
   context get                    Read a pack; optional pack_id and format (json/markdown/mcp)
   context create                 Add proposed context; title/content/source_refs and --key
-  context read                   Read a source item by item_id
+  context read                   Read complete current item_id; bounded response and timeout
   context list                   Filter current source items by query/layer/classification/status/item_type
   context update                 Edit item_id with expected_version and --key
   context archive                Archive item_id with expected_version and --key
-  context read-archived          Read an archived item_id
+  context read-archived          Read complete archived item_id; bounded response and timeout
   context restore                Restore item_id as excluded with expected_version and --key
   context confirm                Human confirmation: item_id/expected_version/reason and --key
   context history                Bounded version history; item_id, optional before_version/limit
   context version                Read and hash-check a recorded item_id/version snapshot
   context compare                Compare explicit from_version/to_version with required identity constraints
-                                 These reads require one --json/--json-file (4 KiB); optional --timeout-ms
-                                 History/version accept paired expected_actor_id/expected_client_id
+                                 Read/read-archived/history/version/compare require one --json/--json-file (4 KiB)
+                                 Optional --timeout-ms; reads accept paired expected_actor_id/expected_client_id
                                  Compare requires expected_actor_id/expected_client_id; no --key/--output
   index status                   Read legacy index metadata by id, including deletion/expiry
   index list                     List legacy index metadata; query/state/managed_by/limit/cursor
@@ -1039,9 +1039,9 @@ export async function main(args: string[]): Promise<number> {
       return 0;
     }
     if (values.reviewed !== undefined) usage('--reviewed is only for audit export');
-    if (isContextHistoryCommand(name)) {
+    if (isContextReadCommand(name)) {
       print(
-        await callContextHistoryArguments(args, {
+        await callContextReadArguments(args, {
           base: process.env.WORKCTX_URL ?? 'http://127.0.0.1:3000',
           token: token(),
           trace,

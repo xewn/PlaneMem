@@ -35,7 +35,7 @@ import { prepareSessionActivity, sessionActivityResult } from './session-activit
 import { prepareSessionState, sessionStateResult } from './session-state.js';
 import { callSessionRegistry } from './session-registry.js';
 import { isWorkItemReadCommand, callWorkItemRead } from './work-item-reads.js';
-import { isContextHistoryCommand, callContextHistory } from './context-history.js';
+import { isContextReadCommand, callContextRead } from './context-history.js';
 import { callHandoffRegistry } from './handoff-registry.js';
 import { callCheckpointRegistry } from './checkpoint-registry.js';
 import { callCheckpointRead } from './checkpoint-reads.js';
@@ -191,18 +191,6 @@ function route(command: string, input: Record<string, unknown>) {
       };
     case 'context create':
       return { method: 'POST', path: '/v1/context-items' };
-    case 'context read':
-    case 'context read-archived': {
-      if (Object.keys(input).some((key) => key !== 'item_id'))
-        usage(command + ' accepts only item_id');
-      return {
-        method: 'GET',
-        path:
-          '/v1/context-items/' +
-          segment(input, 'item_id') +
-          (command === 'context read-archived' ? '/archived' : ''),
-      };
-    }
     case 'context update':
       return { method: 'POST', path: '/v1/context-items/' + segment(input, 'item_id') + '/update' };
     case 'context archive':
@@ -541,7 +529,7 @@ export async function callGateway(
   input: Record<string, unknown>,
   options: GatewayOptions,
 ) {
-  if (isContextHistoryCommand(command)) return callContextHistory(command, input, options);
+  if (isContextReadCommand(command)) return callContextRead(command, input, options);
   if (isWorkItemReadCommand(command)) return callWorkItemRead(command, input, options);
   if (isArtifactQueryCommand(command)) return callArtifactQuery(command, input, options);
   if (isSyncConsumerCommand(command)) return callSyncConsumer(command, input, options);
