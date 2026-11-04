@@ -25,6 +25,7 @@ import {
 import { inspectArtifactReceiptArguments } from './artifact-receipt-file.js';
 import { inspectContextPackBackupArguments } from './context-pack-backup-inspection.js';
 import { prepareContextPackBackupArguments } from './context-pack-backup-preparation.js';
+import { extractContextPackBackupReceipt } from './context-pack-backup-extraction.js';
 import { callArtifactPreparation } from './artifact-preparation.js';
 import { inspectArtifactRequestArguments } from './artifact-inspection.js';
 import { callAudit, isAuditCommand } from './audit.js';
@@ -360,6 +361,8 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
                                  Optional --binding-file BINDING.json, --expected-document-sha256 SHA256, --timeout-ms
   context prepare-backup          Save a backup in new --output DIRECTORY; --binding-file BINDING.json --format single|volumes
                                  Repeat --observation-file FILE or use --empty; optional --timeout-ms for input preparation
+  context extract-backup-receipt  Extract --observation-sha256 SHA256 from repeated --backup-file FILE to --output NEW_RECEIPT.json
+                                 Optional --binding-file, --expected-document-sha256 and --timeout-ms for full backup inspection
   context extract-original       Recover its original offline with --receipt-file RECEIPT.json --output NEW_ORIGINAL.json
                                  Optional --json-file ORIGINAL.json checks full binding; no query or pack save
   context recover-receipt         Save a captured observation offline from --result-file RESULT.json to --output NEW_RECEIPT.json
@@ -418,6 +421,7 @@ function parseOptions(args: string[]) {
         empty: { type: 'boolean' },
         'binding-file': { type: 'string' },
         'expected-document-sha256': { type: 'string' },
+        'observation-sha256': { type: 'string' },
         'receipt-output': { type: 'string' },
         'result-output': { type: 'string' },
         'dispatch-id': { type: 'string' },
@@ -687,6 +691,7 @@ export async function main(args: string[]): Promise<number> {
       'context inspect-receipt',
       'context inspect-backup',
       'context prepare-backup',
+      'context extract-backup-receipt',
       'context extract-original',
       'context recover-receipt',
       'context create',
@@ -723,12 +728,18 @@ export async function main(args: string[]): Promise<number> {
     )
       usage('Unknown or incomplete command. Run workctx --help');
     if (
-      name !== 'context inspect-backup' &&
+      !['context inspect-backup', 'context extract-backup-receipt'].includes(name) &&
       (values['backup-file'] !== undefined || values['expected-document-sha256'] !== undefined)
     )
-      usage('Backup inspection options are only supported by context inspect-backup');
+      usage(
+        'Backup inspection options are only supported by context inspect-backup or extract-backup-receipt',
+      );
     if (
-      !['context inspect-backup', 'context prepare-backup'].includes(name) &&
+      ![
+        'context inspect-backup',
+        'context prepare-backup',
+        'context extract-backup-receipt',
+      ].includes(name) &&
       values['binding-file'] !== undefined
     )
       usage('--binding-file is only supported by context backup commands');
@@ -739,6 +750,13 @@ export async function main(args: string[]): Promise<number> {
         values.empty !== undefined)
     )
       usage('Backup preparation options are only supported by context prepare-backup');
+    if (name !== 'context extract-backup-receipt' && values['observation-sha256'] !== undefined)
+      usage('--observation-sha256 is only supported by context extract-backup-receipt');
+    if (name === 'context extract-backup-receipt') {
+      const result = await extractContextPackBackupReceipt(args, trace);
+      print(result);
+      return result.data.local.state === 'save-failed' ? 1 : 0;
+    }
     if (name === 'context prepare-backup') {
       const result = await prepareContextPackBackupArguments(args, trace);
       print(result);

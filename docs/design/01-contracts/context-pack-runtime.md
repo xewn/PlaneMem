@@ -1209,3 +1209,27 @@ stdout保留schema_version/本地trace/source_refs:[]，data.status=backup-prepa
 local.state=saved-and-read-back表示本次所有目标均完成读回，退出0；local.files记录逐文件路径、摘要、字节数及临时文件清理信息。保存中任一失败返回save-failed、退出1，附directory_created、phase/current_path、此前文件的发布/读回观察及已知底层保存详情；此前文件状态是先前观察，不宣称失败时仍完整。保留目录、已发布文件及完整候选，不回滚删除、不覆盖或继续写入已有目录。可保留完整输出，使用原观察重跑到另一新目录，或独立inspect-backup核对现有文件；直接从失败stdout补存尚未实现。准备阶段错误退出1且不创建输出目录；用法错误2。
 
 data.storage_access=file-read-write，浏览器历史访问及恢复均未开始；身份未认证、服务器/正文未检查、save_dispatch_state=not-sent指未派发服务器保存。输入完整性只针对所供观察，不推断全量历史或跨文件原子快照。本增量未改文件格式、SDK语义、依赖或数据库；失败输出离线补存、更大流式集合、自动保留及运行证据仍待补。R-003未完成、evidence为空；仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/SDK/文件流程/浏览器/API/数据库或发布。
+
+## CLI从备份提取历史回执（2026-11-05源码增量）
+
+新增context extract-backup-receipt，在普通及内嵌入口离线执行。必填重复backup-file（1–11份）、observation-sha256（准确的64位小写观察document摘要）及output新回执文件，可选binding-file、expected-document-sha256和timeout-ms；后三者沿inspect-backup语义。不能按请求键猜选，因为同一原请求可以有多次不同时间或结果的观察。摘要可从inspect-backup输出中完整entries查看。
+
+```sh
+# Usage examples only; not executed.
+workctx context extract-backup-receipt --backup-file backup.json --observation-sha256 OBSERVATION_DIGEST --output new-receipt.json
+workctx context extract-backup-receipt --backup-file manifest.json --backup-file volume-1.json --backup-file volume-2.json --observation-sha256 OBSERVATION_DIGEST --binding-file binding.json --output new-receipt.json
+workctx context inspect-receipt --receipt-file new-receipt.json
+workctx context extract-original --receipt-file new-receipt.json --output new-original.json
+```
+
+专用参数解析拒绝stdin、无关/重复选项，只有backup-file允许重复。保留完整输入数组，由既有inspectContextPackBackupArguments核对路径、大小、原绑定、全部观察/卷/清单摘要及全局顺序；不只核对含目标观察的一卷。单份输入沿single-file-only，清单+全部卷沿relative-to-manifest，不能从缺卷或损坏集合提取。没有目标摘要时返回CONTEXT_BACKUP_OBSERVATION_NOT_FOUND，退出1且不创建文件。
+
+成功核验后按原格式规范化选中观察，原document/观察时间/原请求身份和键/回执trace及来源不变。输出只包含这一份ContextPackSaveReceiptFile，仍受既有32 KiB文件限制，可交既有inspect-receipt、extract-original、网页历史导入。导入或提取不触发保存请求、当前状态查询或自动浏览器恢复。
+
+保存先预检新目标，然后复读全部源备份及可选独立绑定文件，按初次捕获的实际长度/SHA-256核对；空白/BOM等实际字节改变也拒绝，不仅比较规范document。不会访问备份正文中的路径；所有复读路径均来自本次显式命令参数。复读为顺序观察，不提供跨文件原子快照或阻止之后的外部修改。通过后沿既有独占临时文件、sync、hard-link新目标发布，再完整读回回执并核对实际字节、文件SHA-256和规范内容，已有路径不覆盖、不删除。
+
+timeout-ms默认30000，仅约束整套备份核验（含其第一次输入读取）；随后新目标预检、源复读、发布与输出读回独立等待，不竞速计时器，不在调用方已收到失败后继续后台写。参数和新输出路径在首次await前捕获；输出路径控制字符、孤立代理字符、stdin和超4096字符均拒绝。
+
+stdout data.status=backup-receipt-extracted，保留完整receipt_file；extraction标注备份类型/根摘要/原完整性范围、清单卷号/卷摘要、本次所有source_inputs实际文件信息及可选matched_binding_file。单份备份的volume_index为1，不证明它是其他集合中的第一卷。保存成功local.state=saved-and-read-back，包含新路径/实际大小摘要/临时清理状态，退出0；预检/源变化/发布或读回失败local.state=save-failed，保留候选及candidate摘要/阶段/已知保存详情、退出1，不推断未确认目标不存在。用法错误退出2；整套核验失败不返回部分候选。
+
+身份未认证、服务器/正文/来源未检查，观察保持historical，save_dispatch_state=not-sent、browser_history_access=not-performed，storage_access=file-read-write只指本地文件。失败输出尚不能直接交recover-receipt，应保留完整候选和备份文件；该补存入口及运行证据仍待补。无共享格式、SDK、依赖或数据库变更；R-003未完成、evidence为空。仅源码文档人工审阅和格式文本检查，未编译、类型检查、测试、执行CLI/SDK/文件工作流/浏览器/API/数据库或发布。

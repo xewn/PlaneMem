@@ -4,6 +4,8 @@
 
 ## 当前基线
 
+- P4：新增context extract-backup-receipt，普通/内嵌共用重复backup-file完整核验，按必填observation-sha256精确选一份，output只能新文件；可选binding-file/根expected-document-sha256/timeout-ms保持。未命中或任一卷核验失败不写入；选中原回执不改时间/键/身份/正文，保存前重读全部源文件及独立绑定文件核对实际长度/SHA-256，独占发布/sync/完整回执读回。失败保留候选、来源摘要和local阶段，不覆盖/删除旧文件、不查服务器；成功文件可交inspect-receipt、extract-original或网页导入，整套完整性仍只相对清单。核验时限与后续本地保存独立，保存失败1、成功0、用法2；失败stdout直接补存及运行证据仍待补。R-003未完成、evidence为空，仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行CLI/SDK/文件流程/浏览器/API/数据库或发布。
+
 - P4：新增context prepare-backup，重复--observation-file或显式--empty，必填完整--binding-file、--format single|volumes及--output新目录。普通/内嵌均离线，30秒输入/构造预算内固定路径、稳定读取、调用SDK逐观察核验并整理100/1000条既有格式；构造后独占mkdir叶目录，固定摘要文件名，既有hard-link新文件发布/sync/读回、目录身份检查，分卷先清单后，末尾逐文件完整字节复查。保存不受输入计时器截断，不声明整套原子发布；成功saved-and-read-back退出0，保存失败stdout保留完整候选/计划摘要/阶段/历史已写文件且退出1，不覆盖已有路径或删除已写文件；用法2。无网络/凭据/浏览器访问/原请求发送，完整性仅所供观察；CLI批量构造/留存缺口已补源码，失败输出离线补存、流式集合/自动保留及运行证据仍缺。R-003未完成、evidence为空，仅人工源码审阅/格式文本检查，未编译、类型检查、测试、执行CLI/SDK/文件流程/数据库/API或发布。
 
 - P0/P5：SDK新增prepareContextPackReceiptBackup，必填原binding/format，捕获0–100/1000份已有观察文本或UTF-8字节，32 KiB单文件/共享规范节点预算，核对绑定/摘要并拒绝重复；排序后保留同键不同观察，不合并或改时间。single输出既有单份备份，volumes按100条分卷加完整清单，空集合一空卷；输出完整规范raw/文件/根摘要与字节数，prepared-not-saved且仅supplied-observations-only。抽取与inspect共用字节复制/WebCrypto内部helper，30秒/signal、无部分结果及原核验错误语义保持，无客户端/网络/凭据/文件或浏览器访问。SDK构造/拆分缺口由本源码覆盖，CLI批量构造/导出、更大或流式集合和运行证据仍缺；R-003未完成、evidence为空，仅源码人工审阅/格式文本检查，未编译、类型检查、测试、执行SDK/文件流程/API/数据库或发布。
