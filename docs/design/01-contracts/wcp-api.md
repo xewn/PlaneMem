@@ -69,6 +69,7 @@ traceparent: 00-...
 
 | 方法 | 路径 | 所有者 | 结果 |
 |---|---|---|---|
+| GET | `/v1/artifacts/{artifact_id}/versions` | Artifact | 真实artifact.read和当前/历史可见性；limit默认10最多20、at_version上界及before_version位置；完整next_query显式续页，摘要不读正文、无ETag。见[运行契约](artifact-versions-runtime.md)及[独立Schema](../../../packages/contracts/schemas/README.md)；仅源码，未运行验证 |
 | GET | `/v1/plane/events` | Plane Adapter / Admin | 当前范围可见的持久接收元数据分页 |
 | GET | `/v1/plane/events/{event_id}` | Plane Adapter / Admin | 单个事件的当前处理回执元数据 |
 | POST | `/v1/events:batch` | Sync | 接受/拒绝事件、server_cursor |

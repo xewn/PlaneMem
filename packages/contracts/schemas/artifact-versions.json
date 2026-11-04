@@ -1,0 +1,258 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/artifact-versions.json",
+  "title": "Artifact version directory v1",
+  "description": "Canonical success envelope for one explicit historical artifact page. Definitions also describe SDK, CLI and MCP query objects; HTTP query values are decoded and parsed separately.",
+  "$comment": "Source artifact only, not runtime evidence. Register this complete resource before resolving its anchors. The ID identifies the schema, not a hosted endpoint. The shared parseArtifactVersions* functions remain authoritative for byte limits, UTF-16 lengths, canonical timestamps, exact query/scope/trace binding, cross-field comparisons, descending versions and continuation. No authorization, content availability or upload outcome is established by this schema.",
+  "$ref": "#ArtifactVersionsEnvelope",
+  "$defs": {
+    "positiveInteger": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "nonnegativeInteger": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "artifactId": {
+      "type": "string",
+      "minLength": 26,
+      "maxLength": 26,
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "scopeIdentifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "\\S",
+      "allOf": [{ "not": { "pattern": "[\\u0000-\\u001f]" } }, { "not": { "enum": [".", ".."] } }],
+      "$comment": "Scope identifiers are not restricted to ULIDs. Runtime additionally rejects unpaired surrogates and enforces UTF-16 length and equality with the verified request scope."
+    },
+    "nonblankText": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S",
+      "not": { "pattern": "[\\u0000-\\u001f\\u007f]" }
+    },
+    "trace": {
+      "$ref": "#/$defs/nonblankText",
+      "maxLength": 1024
+    },
+    "timestamp": {
+      "type": "string",
+      "minLength": 24,
+      "maxLength": 24,
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$",
+      "$comment": "Format may be annotation-only in a validator. Runtime requires a valid exact ISO UTC millisecond round-trip and updated_at >= created_at."
+    },
+    "ArtifactVersionsQuery": {
+      "$anchor": "ArtifactVersionsQuery",
+      "title": "ArtifactVersionsQuery",
+      "description": "One explicit directory read. Input limit may be omitted; runtime normalizes it to ten. Retain the entire next_query for another page.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id"],
+      "properties": {
+        "artifact_id": { "$ref": "#/$defs/artifactId" },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "default": 10
+        },
+        "at_version": {
+          "$ref": "#/$defs/positiveInteger",
+          "description": "Inclusive ceiling. Must not exceed the currently visible artifact version."
+        },
+        "before_version": {
+          "$ref": "#/$defs/positiveInteger",
+          "description": "Exclusive position. Requires at_version and must not exceed that ceiling."
+        }
+      },
+      "dependentRequired": { "before_version": ["at_version"] },
+      "$comment": "The serialized input is limited to 4096 bytes at runtime. default is an annotation, not an instruction to mutate input. Comparing before_version to at_version requires the shared runtime parser.",
+      "examples": [
+        { "artifact_id": "01J000000000000000000000001" },
+        {
+          "artifact_id": "01J000000000000000000000001",
+          "limit": 2,
+          "at_version": 3,
+          "before_version": 2
+        }
+      ]
+    },
+    "ArtifactVersionsNormalizedQuery": {
+      "$anchor": "ArtifactVersionsNormalizedQuery",
+      "title": "Canonical echoed query",
+      "$ref": "#ArtifactVersionsQuery",
+      "required": ["limit"],
+      "$comment": "Every canonical producer returns limit explicitly. The runtime parser can normalize omitted input defaults before comparison."
+    },
+    "ArtifactVersionsNextQuery": {
+      "$anchor": "ArtifactVersionsNextQuery",
+      "title": "Complete continuation query",
+      "$ref": "#ArtifactVersionsNormalizedQuery",
+      "required": ["at_version", "before_version"],
+      "properties": {
+        "at_version": { "minimum": 2 },
+        "before_version": { "minimum": 2 }
+      },
+      "$comment": "Runtime binds artifact_id and limit to the original query, at_version to snapshot_version and before_version to the last returned version. A real continuation requires a last version greater than one."
+    },
+    "ArtifactVersionSummary": {
+      "$anchor": "ArtifactVersionSummary",
+      "title": "Historical artifact metadata summary",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "name",
+        "mime",
+        "classification",
+        "sha256",
+        "size",
+        "trace_id",
+        "created_at",
+        "updated_at",
+        "source_ref_count"
+      ],
+      "properties": {
+        "version": { "$ref": "#/$defs/positiveInteger" },
+        "name": { "$ref": "#/$defs/nonblankText", "maxLength": 255 },
+        "mime": {
+          "$ref": "#/$defs/nonblankText",
+          "maxLength": 255,
+          "pattern": "^[a-zA-Z0-9!#$&^_.+-]+/[a-zA-Z0-9!#$&^_.+-]+$"
+        },
+        "classification": {
+          "enum": ["public", "internal", "confidential", "restricted"]
+        },
+        "sha256": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "size": { "$ref": "#/$defs/nonnegativeInteger" },
+        "trace_id": { "$ref": "#/$defs/trace" },
+        "created_at": { "$ref": "#/$defs/timestamp" },
+        "updated_at": { "$ref": "#/$defs/timestamp" },
+        "source_ref_count": { "type": "integer", "minimum": 0, "maximum": 200 }
+      },
+      "$comment": "Metadata only: no storage key, object bytes, source list, receipt or write ETag. The hash is a saved descriptor; this read does not verify object content."
+    },
+    "ArtifactVersionsPage": {
+      "$anchor": "ArtifactVersionsPage",
+      "title": "Canonical artifact version page",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "workspace_id",
+        "project_id",
+        "query",
+        "snapshot_version",
+        "items",
+        "has_more",
+        "next_query",
+        "content_state"
+      ],
+      "properties": {
+        "tenant_id": { "$ref": "#/$defs/scopeIdentifier" },
+        "workspace_id": { "$ref": "#/$defs/scopeIdentifier" },
+        "project_id": { "$ref": "#/$defs/scopeIdentifier" },
+        "query": { "$ref": "#ArtifactVersionsNormalizedQuery" },
+        "snapshot_version": { "$ref": "#/$defs/positiveInteger" },
+        "items": {
+          "type": "array",
+          "maxItems": 20,
+          "items": { "$ref": "#ArtifactVersionSummary" }
+        },
+        "has_more": { "type": "boolean" },
+        "next_query": {
+          "oneOf": [{ "$ref": "#ArtifactVersionsNextQuery" }, { "type": "null" }]
+        },
+        "content_state": { "const": "not-checked" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "has_more": { "const": true } }, "required": ["has_more"] },
+          "then": {
+            "properties": {
+              "items": { "minItems": 1 },
+              "next_query": { "$ref": "#ArtifactVersionsNextQuery" }
+            }
+          },
+          "else": { "properties": { "next_query": { "const": null } } }
+        }
+      ],
+      "$comment": "Runtime checks items.length <= query.limit (equal when has_more), strictly descending unique versions within the ceiling/exclusive position, complete original-query equality and exact continuation binding. A sparse history is allowed; this is not an audit of all versions or a cross-page database snapshot."
+    },
+    "ArtifactVersionsEnvelope": {
+      "$anchor": "ArtifactVersionsEnvelope",
+      "title": "Artifact version directory success envelope v1",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "#/$defs/trace" },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "id"],
+            "properties": {
+              "type": { "const": "artifact" },
+              "id": { "$ref": "#/$defs/artifactId" }
+            }
+          }
+        },
+        "data": { "$ref": "#ArtifactVersionsPage" }
+      },
+      "$comment": "Complete serialized success is limited to 262144 bytes. Runtime requires original request trace/scope/target equality, with source_refs[0].id equal to query.artifact_id. No outer revision or ETag. HTTP separately requires 200, JSON, matching x-trace-id and no cache/write conditions."
+    }
+  },
+  "examples": [
+    {
+      "schema_version": 1,
+      "trace_id": "trace_example_history",
+      "source_refs": [{ "type": "artifact", "id": "01J000000000000000000000001" }],
+      "data": {
+        "tenant_id": "tenant_example",
+        "workspace_id": "workspace_example",
+        "project_id": "project_example",
+        "query": { "artifact_id": "01J000000000000000000000001", "limit": 1 },
+        "snapshot_version": 2,
+        "items": [
+          {
+            "version": 2,
+            "name": "notes.txt",
+            "mime": "text/plain",
+            "classification": "internal",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "size": 0,
+            "trace_id": "trace_example_saved_v2",
+            "created_at": "2026-11-04T00:00:00.000Z",
+            "updated_at": "2026-11-04T00:01:00.000Z",
+            "source_ref_count": 0
+          }
+        ],
+        "has_more": true,
+        "next_query": {
+          "artifact_id": "01J000000000000000000000001",
+          "limit": 1,
+          "at_version": 2,
+          "before_version": 2
+        },
+        "content_state": "not-checked"
+      }
+    }
+  ]
+}

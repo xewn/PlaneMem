@@ -53,7 +53,7 @@ const detail = await client.getArtifactVersion(artifactId, selectedVersion);
 
 错误使用现有有限错误码与固定信息、retryable=false，details.read_kind=versions及upload_dispatch_state=not-sent；不回显底层响应、不自动下载/查回执/恢复/上传。SDK根入口导出上述四个契约类型。
 
-独立JSON Schema生成物及跨存储/并发/权限/分页运行证据仍待开发，R-001保持未完成且本增量evidence为空。CLI、MCP、工作台与Mock源码接入见后续章节；现有指定版本各客户端读取仍保留。无依赖或数据库schema变更。
+独立JSON Schema源码及CLI、MCP、工作台与Mock接入见后续章节；自动生成/一致性及跨存储/并发/权限/分页运行证据仍待补齐，R-001保持未完成且本增量evidence为空。现有指定版本各客户端读取仍保留。无依赖或数据库schema变更。
 
 ## 命令行与 MCP（源码阶段）
 
@@ -83,7 +83,7 @@ MCP新增 `list_artifact_versions`，参数与共享查询相同；发现schema�
 
 空页、缺可信旧快照、当前文件不存在、403拒绝与503未配置/不可用各沿独立提示，失败不会伪装为空目录。页面刷新或项目切换后重新沿当前会话授权；URL只有目标和分页参数，没有身份凭据。跨页仍不是一个数据库事务，目录读取也不确认上传请求结果。
 
-范围仅工作台源码、协调与契约文档；无依赖、数据库schema或服务端目录行为变化。未编译、类型检查、测试、渲染浏览器、执行SDK/CLI/Mock/产品/API/数据库或发布；R-001保持未完成，evidence为空，独立schema和运行证据仍待补齐。Mock目录源码接入见下节。
+范围仅工作台源码、协调与契约文档；无依赖、数据库schema或服务端目录行为变化。未编译、类型检查、测试、渲染浏览器、执行SDK/CLI/Mock/产品/API/数据库或发布；R-001保持未完成，evidence为空，Schema一致性和运行证据仍待补齐。Mock目录与独立Schema源码见后续章节。
 
 ## Mock目录接入（源码阶段）
 
@@ -93,4 +93,14 @@ MCP新增 `list_artifact_versions`，参数与共享查询相同；发现schema�
 
 既有`MockWcpServer({artifacts:{store,session}})`自动接线`listArtifactVersions`，无新配置或导出类型。完整next_query用于显式续页；新版本追加不会改变旧查询上界。目录不读字节、不计算内容摘要、不查询上传回执、不产生下载释放记录，也不自动遍历或保存文件。详见[Mock历史版本目录](artifact-mock-runtime.md#历史版本目录)。
 
-模拟历史只能来自同一store中的既有上传，仍不提供历史损坏/缺失种子、动态权限/分类、SQL共享锁、持久事务或真实审计。此接入不能证明真实服务与Mock运行一致；独立schema及运行/并发/存储证据仍缺，R-001和P0-02不因此完成，evidence为空。仅源码文档人工审阅，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布。
+模拟历史只能来自同一store中的既有上传，仍不提供历史损坏/缺失种子、动态权限/分类、SQL共享锁、持久事务或真实审计。此接入不能证明真实服务与Mock运行一致；Schema一致性及运行/并发/存储证据仍缺，R-001和P0-02不因此完成，evidence为空。仅源码文档人工审阅，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布。
+
+## 独立JSON Schema（源码阶段）
+
+2026-11-04新增`packages/contracts/schemas/artifact-versions.json`，自包含JSON Schema 2020-12，根为规范成功ArtifactVersionsEnvelope；显式包子路径`@planemem/contracts/schemas/artifact-versions.json`可由消费者加载。资源`$id`仅标识契约，不保证存在远程文件。先注册完整Schema，再通过ArtifactVersionsQuery、ArtifactVersionsNormalizedQuery、ArtifactVersionsNextQuery、ArtifactVersionSummary、ArtifactVersionsPage或ArtifactVersionsEnvelope锚点选择结构，见[使用说明](../../../packages/contracts/schemas/README.md)。
+
+输入query允许省略limit，规范回显与next_query必需limit；next_query还必需at_version/before_version且二者至少为2。结构约束未知字段、正安全整数、1–20条页大小、摘要字段、分类、来源计数和单个artifact来源；before依赖at，has_more=true要求非空摘要及完整next_query，false要求null。default=10是描述性注释，不替调用方修改输入。静态examples是人工编写的开发样例，没有实际上传、查询或验证。
+
+JSON结构不表达实际授权、字节限额、原请求范围/trace/目标相等、before与at大小关系、严格倒序/条数与limit关系及完整next绑定，也不保证字符串按JS UTF-16长度限制或日期精确往返；这些仍由共享解析器和实际读路径执行。format在部分校验器里仅为注释。HTTP仍由路由验证单值URL参数、十进制形式、请求头及空正文。通过Schema不代表共享解析/权限/正文核验通过。
+
+旧`entities/Artifact.json`有不同核心实体字段，不能用于当前历史摘要；本次不改旧实体，也不把JSON导入生产运行路径。仅Schema源码、包子路径与文档，不安装依赖、生成SDK或发布包。完整OpenAPI目录、Schema自动生成/一致性及运行证据仍待补齐；R-001保持未完成且evidence为空，未编译、类型检查、测试、运行生成器/校验器/SDK/Mock/API/数据库或发布。

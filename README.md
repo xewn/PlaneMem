@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [附件历史目录独立 Schema](packages/contracts/schemas/README.md)：提供查询、摘要、分页结果和完整响应的结构定义，可通过 contracts 包的显式 JSON 子路径引用。版本排序、原请求匹配和权限等继续由运行时检查。仅源码文档，未编译、校验、测试或发布。
+
 新增 [附件历史目录 Mock](docs/design/01-contracts/artifact-mock-runtime.md#历史版本目录)：现有内存附件存储可通过 `listArtifactVersions` 分页浏览已上传历史，保持原版本上界、权限与响应限制，返回完整续页查询。仅源码文档，未编译、测试、运行 Mock 或发布。
 
 新增 [工作台文件历史目录](docs/design/01-contracts/artifact-versions-runtime.md#工作台历史目录源码阶段)：`/artifacts/versions` 可按文件 ID 浏览历史摘要、固定原版本上界翻页，并在新标签页打开指定版本详情。目录不读取正文，支持明确重新读取最新历史。仅源码文档，未编译、测试、执行或发布。
