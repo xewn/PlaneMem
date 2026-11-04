@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [文件版本比较独立 Schema](packages/contracts/schemas/README.md#文件版本比较)：覆盖共享查询、CLI身份条件、两份历史记录和完整差异结果，可通过contracts包子路径引用。结构校验与真实身份、原请求及差异重算的边界已注明；仅源码文档，未编译、执行校验器、测试或发布。
+
 新增 [MCP 文件版本对比](docs/design/01-contracts/artifact-versions-runtime.md#mcp版本对比源码阶段)：`compare_artifact_versions` 固定本次会话和两个保存版本，在统一期限内读取完整记录并返回字段、来源位置差异；失败不返回部分比较。仅源码文档，未编译、测试、运行或发布。
 
 新增 [命令行文件版本对比](docs/design/01-contracts/artifact-versions-runtime.md#命令行版本对比源码阶段)：`artifacts compare` 支持从 JSON、文件或网络入口标准输入选择两个版本，核对预期账号与客户端，在统一期限内返回完整字段和来源差异。仅源码文档，未编译、测试、执行命令或发布。

@@ -75,6 +75,12 @@ const result = await client.compareArtifactVersions(
 
 仅源码文档人工审阅，未编译、类型检查、测试、运行MCP/API/SDK/CLI/Mock/产品/数据库或发布。发现/直接调用/同步prepare边界、会话过期、容量/迟到结果、完整响应/输出限额、来源增删与真实客户端兼容仍待运行证据；R-001保持未完成且evidence为空。
 
+## 版本比较独立Schema（源码阶段）
+
+`packages/contracts/schemas/artifact-comparison.json`现提供自包含JSON Schema 2020-12，可从`@planemem/contracts/schemas/artifact-comparison.json`加载。根描述SDK/CLI返回及MCP文本中的本地ArtifactComparisonResult，不是HTTP/JSON-RPC外层。共享三字段查询、CLI带预期账号/客户端的五字段输入、身份、完整元数据/历史封套、八字段差异与来源位置各有锚点；使用前注册完整资源，详见[Schema使用说明](../../../packages/contracts/schemas/README.md#文件版本比较)。
+
+结构限制字段、分类、安全整数、固定八行顺序和最多200个来源位置；来源same/changed必须两侧、added/removed只含对应侧，保留重复和顺序。结构定义不能核对不同版本、真实身份、原query/trace/scope/ETag关系或重算差异，必须继续使用共享查询/身份/封套解析与compareArtifactMetadata，并保留各入口的实际授权、期限和字节限制。Schema不增加生产导入、依赖或比较行为；自动一致性与客户端证据仍缺。本增量只开发源码文档并人工审阅，未编译、类型检查、测试、执行校验器/SDK/CLI/MCP/Mock/API/产品/数据库或发布，R-001保持未完成。
+
 ## 查询与续页
 
 `GET /v1/artifacts/{artifact_id}/versions`，操作名`artifact.versions.list`，要求真实`artifact.read`。使用已验证令牌的租户、工作区、项目、账号和客户端；管理员角色不替代能力，原账号/客户端预期头仍只作相等约束。输入字段为：

@@ -1,0 +1,421 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/artifact-comparison.json",
+  "title": "Local artifact version comparison v1",
+  "description": "The local SDK/CLI comparison object and the JSON text returned by the MCP comparison tool. This is not a Gateway success envelope or a JSON-RPC response.",
+  "$comment": "Source artifact only, without runtime validation evidence. Register the complete resource before resolving anchors. The ID identifies a schema, not a hosted endpoint. Runtime parsers and comparison logic remain authoritative for byte and UTF-16 limits, ordinary JSON, valid timestamps, exact scope/query/trace/version binding, distinct versions and recomputed differences. Schema validity does not authenticate metadata, authorize access, verify content or establish an atomic snapshot.",
+  "$ref": "#ArtifactComparisonResult",
+  "$defs": {
+    "positiveInteger": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "nonnegativeInteger": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "artifactId": {
+      "type": "string",
+      "minLength": 26,
+      "maxLength": 26,
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "scopeIdentifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "\\S",
+      "allOf": [{ "not": { "pattern": "[\\u0000-\\u001f]" } }, { "not": { "enum": [".", ".."] } }],
+      "$comment": "Metadata and MCP scope identifiers are not limited to ULIDs. Runtime additionally rejects unpaired surrogates and checks UTF-16 length and actual scope equality. SDK context construction has its own ULID constraints."
+    },
+    "nonblankText": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S",
+      "not": { "pattern": "[\\u0000-\\u001f\\u007f]" }
+    },
+    "identityText": { "$ref": "#/$defs/nonblankText", "maxLength": 1024 },
+    "trace": { "$ref": "#/$defs/nonblankText", "maxLength": 1024 },
+    "name": { "$ref": "#/$defs/nonblankText", "maxLength": 255 },
+    "mime": {
+      "$ref": "#/$defs/nonblankText",
+      "maxLength": 255,
+      "pattern": "^[a-zA-Z0-9!#$&^_.+-]+/[a-zA-Z0-9!#$&^_.+-]+$"
+    },
+    "classification": { "enum": ["public", "internal", "confidential", "restricted"] },
+    "sha256": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64,
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "minLength": 24,
+      "maxLength": 24,
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$",
+      "$comment": "Format can be annotation-only. Runtime requires an exact valid UTC millisecond round-trip and updated_at >= created_at."
+    },
+    "sizeText": {
+      "$ref": "#/$defs/nonblankText",
+      "minLength": 1,
+      "maxLength": 16,
+      "pattern": "^(0|[1-9][0-9]{0,15})$",
+      "$comment": "A display row uses String(metadata.size), not a numeric JSON value. Runtime must recompute it from the safe integer in the original metadata."
+    },
+    "ArtifactComparisonQuery": {
+      "$anchor": "ArtifactComparisonQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id", "from_version", "to_version"],
+      "properties": {
+        "artifact_id": { "$ref": "#/$defs/artifactId" },
+        "from_version": { "$ref": "#/$defs/positiveInteger" },
+        "to_version": { "$ref": "#/$defs/positiveInteger" }
+      },
+      "$comment": "Shared SDK/MCP input and result query. Runtime limits input to 4096 bytes and requires from_version != to_version; direction is preserved, including comparison from newer to older.",
+      "examples": [
+        { "artifact_id": "01J000000000000000000000001", "from_version": 2, "to_version": 5 },
+        { "artifact_id": "01J000000000000000000000001", "from_version": 5, "to_version": 2 }
+      ]
+    },
+    "ArtifactComparisonCliQuery": {
+      "$anchor": "ArtifactComparisonCliQuery",
+      "description": "JSON supplied to workctx artifacts compare. Scope comes from configuration; actor/client fields are equality constraints, not credentials.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_id",
+        "from_version",
+        "to_version",
+        "expected_actor_id",
+        "expected_client_id"
+      ],
+      "properties": {
+        "artifact_id": { "$ref": "#/$defs/artifactId" },
+        "from_version": { "$ref": "#/$defs/positiveInteger" },
+        "to_version": { "$ref": "#/$defs/positiveInteger" },
+        "expected_actor_id": { "$ref": "#/$defs/artifactId" },
+        "expected_client_id": { "$ref": "#/$defs/identityText" }
+      },
+      "$comment": "The complete five-field input is limited to 4096 bytes; runtime requires distinct versions and the actual matching reader. The expected actor follows SDK context ULID rules, unlike general MCP identity text.",
+      "examples": [
+        {
+          "artifact_id": "01J000000000000000000000001",
+          "from_version": 2,
+          "to_version": 5,
+          "expected_actor_id": "01J000000000000000000000002",
+          "expected_client_id": "editor"
+        }
+      ]
+    },
+    "ArtifactComparisonIdentity": {
+      "$anchor": "ArtifactComparisonIdentity",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant_id", "workspace_id", "project_id", "actor_id", "client_id"],
+      "properties": {
+        "tenant_id": { "$ref": "#/$defs/scopeIdentifier" },
+        "workspace_id": { "$ref": "#/$defs/scopeIdentifier" },
+        "project_id": { "$ref": "#/$defs/scopeIdentifier" },
+        "actor_id": { "$ref": "#/$defs/identityText" },
+        "client_id": { "$ref": "#/$defs/identityText" }
+      },
+      "$comment": "Captures original identity constraints; no token or capability is carried or granted. Runtime binds both reads to the same identity."
+    },
+    "ArtifactComparisonSourceRef": {
+      "$anchor": "ArtifactComparisonSourceRef",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "$ref": "#/$defs/nonblankText", "maxLength": 128 },
+        "id": { "$ref": "#/$defs/nonblankText", "maxLength": 1024 },
+        "revision": { "$ref": "#/$defs/nonnegativeInteger" },
+        "uri": { "$ref": "#/$defs/nonblankText", "maxLength": 4096 }
+      },
+      "$comment": "Optional fields are absent, not null. revision zero is preserved. uri is stored reference text; no URI format or availability is inferred."
+    },
+    "ArtifactComparisonMetadata": {
+      "$anchor": "ArtifactComparisonMetadata",
+      "description": "Complete public saved metadata, excluding storage addresses and content bytes.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "tenant_id",
+        "workspace_id",
+        "project_id",
+        "artifact_id",
+        "name",
+        "mime",
+        "classification",
+        "source_refs",
+        "sha256",
+        "size",
+        "version",
+        "etag",
+        "trace_id",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "tenant_id": { "$ref": "#/$defs/scopeIdentifier" },
+        "workspace_id": { "$ref": "#/$defs/scopeIdentifier" },
+        "project_id": { "$ref": "#/$defs/scopeIdentifier" },
+        "artifact_id": { "$ref": "#/$defs/artifactId" },
+        "name": { "$ref": "#/$defs/name" },
+        "mime": { "$ref": "#/$defs/mime" },
+        "classification": { "$ref": "#/$defs/classification" },
+        "source_refs": {
+          "type": "array",
+          "maxItems": 200,
+          "items": { "$ref": "#ArtifactComparisonSourceRef" }
+        },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "size": { "$ref": "#/$defs/nonnegativeInteger" },
+        "version": { "$ref": "#/$defs/positiveInteger" },
+        "etag": { "$ref": "#/$defs/nonblankText", "pattern": "^W/\"version-[1-9][0-9]{0,15}\"$" },
+        "trace_id": { "$ref": "#/$defs/trace" },
+        "created_at": { "$ref": "#/$defs/timestamp" },
+        "updated_at": { "$ref": "#/$defs/timestamp" }
+      },
+      "$comment": "Runtime binds ETag to this saved version, checks timestamp order and limits each metadata input to 2 MiB. Source order and duplicates are meaningful. Saved trace_id describes the recorded version, not necessarily the current read."
+    },
+    "ArtifactComparisonHistoricalEnvelope": {
+      "$anchor": "ArtifactComparisonHistoricalEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "revision", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "#/$defs/trace" },
+        "revision": { "$ref": "#/$defs/positiveInteger" },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "id"],
+            "properties": {
+              "type": { "const": "artifact" },
+              "id": { "$ref": "#/$defs/artifactId" }
+            }
+          }
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["artifact", "snapshot", "content_state"],
+          "properties": {
+            "artifact": { "$ref": "#ArtifactComparisonMetadata" },
+            "snapshot": { "const": "historical" },
+            "content_state": { "const": "not-checked" }
+          }
+        }
+      },
+      "$comment": "Historical reads have no outer etag. Runtime checks the complete envelope against its selected version, artifact, scope and original read trace; metadata etag is descriptive, not a current write precondition. Each full success envelope is bounded to 2 MiB by the client entry."
+    },
+    "ArtifactComparisonFieldRow": {
+      "$anchor": "ArtifactComparisonFieldRow",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "label", "before", "after", "changed"],
+      "properties": {
+        "key": {
+          "enum": [
+            "name",
+            "mime",
+            "classification",
+            "size",
+            "sha256",
+            "created_at",
+            "updated_at",
+            "trace_id"
+          ]
+        },
+        "label": { "type": "string" },
+        "before": { "type": "string" },
+        "after": { "type": "string" },
+        "changed": { "type": "boolean" }
+      },
+      "$comment": "Canonical key/label order and value formats are imposed by ArtifactMetadataComparison.rows. Runtime recomputes before/after and changed from the original records."
+    },
+    "ArtifactComparisonSourcePosition": {
+      "$anchor": "ArtifactComparisonSourcePosition",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["position", "status"],
+      "properties": {
+        "position": { "type": "integer", "minimum": 1, "maximum": 200 },
+        "before": { "$ref": "#ArtifactComparisonSourceRef" },
+        "after": { "$ref": "#ArtifactComparisonSourceRef" },
+        "status": { "enum": ["same", "changed", "added", "removed"] }
+      },
+      "oneOf": [
+        {
+          "properties": { "status": { "enum": ["same", "changed"] } },
+          "required": ["before", "after"]
+        },
+        {
+          "properties": { "status": { "const": "added" } },
+          "required": ["after"],
+          "not": { "required": ["before"] }
+        },
+        {
+          "properties": { "status": { "const": "removed" } },
+          "required": ["before"],
+          "not": { "required": ["after"] }
+        }
+      ],
+      "$comment": "Runtime checks contiguous one-based positions, length=max(from sources,to sources), exact source copies and tuple equality. Add/remove refers to a position, not inferred semantic identity or reordered-source matching.",
+      "examples": [
+        {
+          "position": 1,
+          "status": "added",
+          "after": { "type": "issue", "id": "ISSUE-1", "revision": 0 }
+        },
+        { "position": 1, "status": "removed", "before": { "type": "issue", "id": "ISSUE-1" } }
+      ]
+    },
+    "ArtifactMetadataComparison": {
+      "$anchor": "ArtifactMetadataComparison",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rows",
+        "sources",
+        "content_descriptor_matches",
+        "changed_fields",
+        "changed_source_positions"
+      ],
+      "properties": {
+        "rows": {
+          "type": "array",
+          "minItems": 8,
+          "maxItems": 8,
+          "items": false,
+          "prefixItems": [
+            {
+              "$ref": "#ArtifactComparisonFieldRow",
+              "properties": {
+                "key": { "const": "name" },
+                "label": { "const": "Name" },
+                "before": { "$ref": "#/$defs/name" },
+                "after": { "$ref": "#/$defs/name" }
+              }
+            },
+            {
+              "$ref": "#ArtifactComparisonFieldRow",
+              "properties": {
+                "key": { "const": "mime" },
+                "label": { "const": "File type" },
+                "before": { "$ref": "#/$defs/mime" },
+                "after": { "$ref": "#/$defs/mime" }
+              }
+            },
+            {
+              "$ref": "#ArtifactComparisonFieldRow",
+              "properties": {
+                "key": { "const": "classification" },
+                "label": { "const": "Classification" },
+                "before": { "$ref": "#/$defs/classification" },
+                "after": { "$ref": "#/$defs/classification" }
+              }
+            },
+            {
+              "$ref": "#ArtifactComparisonFieldRow",
+              "properties": {
+                "key": { "const": "size" },
+                "label": { "const": "Size in bytes" },
+                "before": { "$ref": "#/$defs/sizeText" },
+                "after": { "$ref": "#/$defs/sizeText" }
+              }
+            },
+            {
+              "$ref": "#ArtifactComparisonFieldRow",
+              "properties": {
+                "key": { "const": "sha256" },
+                "label": { "const": "Saved SHA-256" },
+                "before": { "$ref": "#/$defs/sha256" },
+                "after": { "$ref": "#/$defs/sha256" }
+              }
+            },
+            {
+              "$ref": "#ArtifactComparisonFieldRow",
+              "properties": {
+                "key": { "const": "created_at" },
+                "label": { "const": "File first recorded" },
+                "before": { "$ref": "#/$defs/timestamp" },
+                "after": { "$ref": "#/$defs/timestamp" }
+              }
+            },
+            {
+              "$ref": "#ArtifactComparisonFieldRow",
+              "properties": {
+                "key": { "const": "updated_at" },
+                "label": { "const": "Version saved" },
+                "before": { "$ref": "#/$defs/timestamp" },
+                "after": { "$ref": "#/$defs/timestamp" }
+              }
+            },
+            {
+              "$ref": "#ArtifactComparisonFieldRow",
+              "properties": {
+                "key": { "const": "trace_id" },
+                "label": { "const": "Saved record trace" },
+                "before": { "$ref": "#/$defs/trace" },
+                "after": { "$ref": "#/$defs/trace" }
+              }
+            }
+          ]
+        },
+        "sources": {
+          "type": "array",
+          "maxItems": 200,
+          "items": { "$ref": "#ArtifactComparisonSourcePosition" }
+        },
+        "content_descriptor_matches": { "type": "boolean" },
+        "changed_fields": { "type": "integer", "minimum": 0, "maximum": 8 },
+        "changed_source_positions": { "type": "integer", "minimum": 0, "maximum": 200 }
+      },
+      "$comment": "Runtime recomputes all differences and counters using compareArtifactMetadata. content_descriptor_matches means only that saved size and SHA-256 agree; actual bytes remain unchecked."
+    },
+    "ArtifactComparisonResult": {
+      "$anchor": "ArtifactComparisonResult",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "kind",
+        "comparison_origin",
+        "read_consistency",
+        "content_state",
+        "query",
+        "identity_constraints",
+        "from",
+        "to",
+        "comparison"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "kind": { "const": "artifact-version-comparison" },
+        "comparison_origin": { "const": "local" },
+        "read_consistency": { "const": "separate-reads" },
+        "content_state": { "const": "not-checked" },
+        "query": { "$ref": "#ArtifactComparisonQuery" },
+        "identity_constraints": { "$ref": "#ArtifactComparisonIdentity" },
+        "from": { "$ref": "#ArtifactComparisonHistoricalEnvelope" },
+        "to": { "$ref": "#ArtifactComparisonHistoricalEnvelope" },
+        "comparison": { "$ref": "#ArtifactMetadataComparison" }
+      },
+      "$comment": "Local composite with no outer data, trace_id or ETag. Both original envelopes carry the caller's read trace and exact scope/artifact/version; stored metadata traces can differ. Runtime must compare the records to query and identity constraints and recompute the complete comparison. MCP additionally bounds the aggregate to 8 MiB and escaped content to 16 MiB+4096; that transport limit is not a new universal SDK limit."
+    }
+  }
+}

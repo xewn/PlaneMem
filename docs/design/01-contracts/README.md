@@ -18,6 +18,8 @@
 - [原页应用只读预览](sync-application-apply-preview-runtime.md)
 - [WCP API](wcp-api.md)
 - [附件历史版本目录](artifact-versions-runtime.md)
+- [文件版本比较独立 Schema](../../../packages/contracts/schemas/artifact-comparison.json)
+- [文件版本比较 Schema 使用说明](../../../packages/contracts/schemas/README.md#文件版本比较)
 - [项目文件目录](artifact-registry-runtime.md)
 - [项目文件目录独立 Schema](../../../packages/contracts/schemas/artifact-registry.json)
 - [附件目录独立 JSON Schema 使用说明](../../../packages/contracts/schemas/README.md)

@@ -2,6 +2,40 @@
 
 这些文件是开发源码，尚未经过本轮编译、生成器、Schema校验器、测试或运行验证。`$id`是契约标识，不代表已发布网站；消费者应从工作区或包子路径加载文件，不依赖远端下载。
 
+## 文件版本比较
+
+`artifact-comparison.json`采用JSON Schema 2020-12，包子路径为`@planemem/contracts/schemas/artifact-comparison.json`。文件自包含全部定义，根为`ArtifactComparisonResult`：SDK `compareArtifactVersions`的返回值、CLI `artifacts compare`的stdout对象，以及MCP `compare_artifact_versions`返回文本中的JSON。MCP外层JSON-RPC/content包装不属于根结构，需先取出文本并解析；旧Artifact实体Schema及目录Schema不能替代此文件。
+
+先注册完整资源，再按相对`$id`的片段选择结构；标识`https://planemem.local/schemas/artifact-comparison.json`不代表远端托管地址，也不需要联网下载。
+
+| 片段 | 对应内容 |
+| --- | --- |
+| `#ArtifactComparisonQuery` | SDK/MCP三字段输入及结果中的query；保留比较方向 |
+| `#ArtifactComparisonCliQuery` | CLI五字段输入，另含expected_actor_id/expected_client_id |
+| `#ArtifactComparisonIdentity` | 完整租户/工作区/项目/账号/客户端约束，不是凭据 |
+| `#ArtifactComparisonSourceRef` | 完整来源引用，保留可选revision/uri，revision可为0 |
+| `#ArtifactComparisonMetadata` | 完整公开保存元数据，含描述性版本ETag |
+| `#ArtifactComparisonHistoricalEnvelope` | 一份指定历史读取的完整封套，没有外层ETag |
+| `#ArtifactComparisonFieldRow` | 差异字段行的基础形状；精确标签/顺序在完整comparison内限制 |
+| `#ArtifactComparisonSourcePosition` | 一个来源位置的两侧值及same/changed/added/removed状态 |
+| `#ArtifactMetadataComparison` | 八项固定顺序字段行、完整来源位置、描述符一致性和计数 |
+| `#ArtifactComparisonResult` | 本地组合结果，也是根；没有外层data或伪造的服务端聚合封套 |
+
+CLI的账号字段沿SDK上下文要求ULID；共享身份结构允许MCP已验证账号文本。SDK自身的scope/actor构造约束仍需另外满足，Schema不把MCP身份缩窄为SDK输入。三字段查询不能带CLI身份字段，五字段CLI输入也不能当作结果中的query。
+
+字段封闭，限定安全整数、分类、来源最多200条和八行固定key/label顺序；size行是十进制字符串。来源位置为same/changed时必须有两侧，added仅after、removed仅before；省略缺失属性，不用null。来源数组不设置去重约束，原重复项和顺序均保留。URI只作保存文本，不附加可访问或URL格式要求。查询与来源位置examples是人工编写的开发示例，未执行且不是测试证据。
+
+仍须保留以下运行时检查；本Schema没有替代它们的动态跨字段机制：
+
+- 查询4 KiB、每份完整记录/元数据2 MiB，以及普通JSON、深度/节点、UTF-16长度、实际入口字符限制。MCP另外限制组合8 MiB、转义content 16 MiB+4096；不能据此宣称SDK也有同样的聚合上限。
+- `parseArtifactComparisonQuery`要求两个版本不同但不要求升序；`parseArtifactCommandIdentity`核验完整身份，真实凭据和权限由各入口检查。
+- 用`parseArtifactReadEnvelope`将每份记录与原query选定版本、artifact、scope和原读取trace核对；两份须同文件同范围，外层revision和元数据version一致，来源ID匹配，metadata.etag对应保存版本。保存记录的trace可与本次读取trace不同。
+- 有效且可精确往返的UTC毫秒时间、updated_at不早于created_at；`format`可能仅为注释，模式不能证明日期真实有效。
+- 重新调用`compareArtifactMetadata`核对完整差异：八行原值和changed，连续从1开始的来源位置、两侧完整引用和状态、统计数量，以及size/hash描述符一致性。仅通过结构校验的外部报告仍可能填错这些内容。
+- 不从结构有效推断记录真实性、实际读取权限、对象正文一致或跨请求事务快照；不据此上传、恢复版本或刷新原写请求。
+
+运行读取、超时/取消与权限边界见[版本比较契约](../../../docs/design/01-contracts/artifact-versions-runtime.md)。本次不增加生产JSON导入、运行时Schema校验依赖、生成器或发布包；Schema与实际解析/比较函数的自动一致性及客户端兼容证据仍待补齐。
+
 ## 附件历史版本目录
 
 文件`artifact-versions.json`采用JSON Schema 2020-12，包子路径为`@planemem/contracts/schemas/artifact-versions.json`。它自包含全部定义，根描述规范`ArtifactVersionsEnvelope`成功响应。先向支持该草案的校验器注册**完整文件**，再用以下资源片段选择结构；不要取出单个`$defs`对象后丢掉原引用上下文。
