@@ -954,6 +954,23 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_pack_mcp_resource_read_development_increment:
+      date: "2026-11-04"
+      status: "Source-only complete MCP saved ContextPack resource reads; R-003 remains incomplete."
+      artifacts:
+        - "apps/api-gateway/src/mcp/context-resource.ts"
+        - "apps/api-gateway/src/mcp/reads.ts"
+        - "docs/design/01-contracts/context-pack-runtime.md"
+        - "docs/design/01-contracts/mcp-runtime.md"
+      behavior: "Route project context-pack/{ULID|latest} through the existing context resource handler. Strict 4 KiB URI-only ordinary JSON and single decoding, original project and explicit saved ID/latest selection. Trusted unexpired actual context.read and full identity, clean write conditions, parent visibility and nested Policy/Audit with pre-handler deadline check. Shared 2 MiB complete JSON envelope parsing, original scope/ID/trace, JSON version/ETag/cursor, sources/budget and Node SHA-256 plus selected restricted-item validation. Preserve URI/MIME/contents/source_refs; 16 KiB fixed errors and 6 MiB+8192 escaped/repeated-source wrapper. Pack and current-item resources share two slots per router and 30-second handler budget, retained until underlying work settles."
+      evidence: []
+      pending_evidence:
+        - "Original project/URI/single-decoding and explicit/latest selection compatibility"
+        - "Trusted authority, parent visibility/nested policy/audit, complete shared structure/hash/restricted checks"
+        - "Shared item/pack capacity, slow policy/visibility/reads, timeouts and underlying completion"
+        - "Full resource envelope/size/error compatibility with existing direct item callers and real Gateway packs"
+      remaining_scope: "Resource candidate discovery boundaries, Mock/standalone schema adapters and runtime evidence. Inner router responses lack HTTP ETag/status; outer authorization/audit and HTTP sending are outside the handler budget. Excluded candidate visibility and freshness remain Gateway responsibilities."
+      execution: "Source/docs, manual review and formatting/text checks only; no build, typecheck, tests, MCP/product/API/database execution or release. No REST/SDK/CLI/Web/Mock/database/schema/dependency changes."
     context_pack_mcp_tool_read_development_increment:
       date: "2026-11-04"
       status: "Source-only complete MCP saved ContextPack tool reads; R-003 remains incomplete."

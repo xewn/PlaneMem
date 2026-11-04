@@ -1,7 +1,13 @@
+import { createHash } from 'node:crypto';
 import {
   ContractError,
   CONTEXT_ITEM_READ_ERROR_BYTES,
   CONTEXT_ITEM_READ_RESPONSE_BYTES,
+  CONTEXT_PACK_READ_ERROR_BYTES,
+  CONTEXT_PACK_READ_RESPONSE_BYTES,
+  contextPackReadHashJson,
+  parseContextPackReadEnvelope,
+  parseContextPackReadQuery,
   isSyncIdentifier,
   parseContextItemReadEnvelope,
   parseContextItemReadQuery,
@@ -13,10 +19,11 @@ import { canReadContextTool } from './context-history.js';
 import type { McpResourceDirectory } from './resource-directory.js';
 
 // The JSON text can double when escaped; the outer resource also repeats its sources.
-const resourceBytes = 3 * CONTEXT_ITEM_READ_RESPONSE_BYTES + 8192;
+const resourceBytes =
+  3 * Math.max(CONTEXT_ITEM_READ_RESPONSE_BYTES, CONTEXT_PACK_READ_RESPONSE_BYTES) + 8192;
 const activeReads = new WeakMap<CommandRouter, { active: number }>();
 const messages = {
-  INVALID_INPUT: 'Supply only one context item resource URI within 4 KiB',
+  INVALID_INPUT: 'Supply only one context item or saved pack resource URI within 4 KiB',
   DENIED: 'Use a verified unexpired client with actual context.read and record visibility',
   UNAUTHENTICATED: 'Renew the intended session before reading this context resource',
   MCP_RESOURCE_NOT_FOUND: 'The context resource is unavailable in this project',
@@ -25,6 +32,16 @@ const messages = {
   CONTEXT_ITEM_NOT_FOUND: 'The current context item is unavailable in this project',
   CONTEXT_ITEM_INVALID: 'The stored context item could not be validated',
   CONTEXT_ITEM_STORAGE_UNAVAILABLE: 'Context item storage is unavailable',
+  CONTEXT_PACK_NOT_FOUND: 'The saved context pack is unavailable in this project and selection',
+  CONTEXT_PACK_STALE:
+    'The saved pack sources changed; review current knowledge and prepare a fresh pack',
+  CONTEXT_PACK_EXPIRED: 'The saved context pack expired; prepare a fresh pack',
+  CONTEXT_PACK_INVALID: 'The saved context pack could not be validated',
+  CONTEXT_PACK_STORAGE_UNAVAILABLE: 'Context pack storage is unavailable',
+  CONTEXT_SOURCE_LIMIT: 'The saved context pack source checks exceeded their limit',
+  CONTEXT_PACK_INTEGRITY_UNAVAILABLE:
+    'Context pack integrity checking is unavailable; no unchecked pack was returned',
+  CONTEXT_PACK_HASH_MISMATCH: 'The complete context pack differs from its saved hash',
   WORKBENCH_AUTH_UNAVAILABLE: 'Gateway authentication is unavailable',
   AUDIT_PERSISTENCE_UNAVAILABLE: 'The context resource read audit could not be persisted',
   MCP_CONTEXT_RESOURCE_BUSY: 'MCP context resource read capacity is occupied',
@@ -41,7 +58,12 @@ export function isContextItemResourceUri(uri: unknown): uri is string {
   return typeof uri === 'string' && /^work:\/\/project\/[^/?#]+\/context-item(?:[/?#]|$)/.test(uri);
 }
 
-function captureQuery(raw: unknown, context: RequestContext) {
+/** Capture malformed pack suffixes too; none may fall through to generic resource reading. */
+export function isContextPackResourceUri(uri: unknown): uri is string {
+  return typeof uri === 'string' && /^work:\/\/project\/[^/?#]+\/context-pack(?:[/?#]|$)/.test(uri);
+}
+
+function captureQuery(raw: unknown, context: RequestContext, kind: 'item' | 'pack') {
   let uri: string;
   try {
     const value: unknown = JSON.parse(syncJsonSnapshot(raw, 4096));
@@ -59,24 +81,35 @@ function captureQuery(raw: unknown, context: RequestContext) {
     throw fail('INVALID_INPUT', context.trace_id);
   }
   try {
+    if (kind === 'pack') {
+      const match = /^work:\/\/project\/([^/?#]+)\/context-pack\/([^/?#]+)$/.exec(uri);
+      if (!match || decodeURIComponent(match[1]!) !== context.project_id) throw new TypeError();
+      const id = decodeURIComponent(match[2]!);
+      return {
+        kind: 'pack' as const,
+        uri,
+        query: parseContextPackReadQuery(id === 'latest' ? {} : { pack_id: id }),
+      };
+    }
     const match = /^work:\/\/project\/([^/?#]+)\/context-item\/([^/?#]+)$/.exec(uri);
     if (!match || decodeURIComponent(match[1]!) !== context.project_id) throw new TypeError();
     const query = parseContextItemReadQuery({
       kind: 'current',
       item_id: decodeURIComponent(match[2]!),
     });
-    return { uri, query };
+    return { kind: 'item' as const, uri, query };
   } catch {
     throw fail('MCP_RESOURCE_NOT_FOUND', context.trace_id);
   }
 }
 
 /** The outer mcp.resource authorization precedes this budget; nested reads retain policy/audit. */
-export async function executeContextItemResource(
+async function executeContextResource(
   router: CommandRouter,
   directory: McpResourceDirectory,
   raw: unknown,
   original: RequestContext,
+  kind: 'item' | 'pack',
 ): Promise<CommandResult> {
   const deadline = performance.now() + 30_000;
   const trace = isSyncIdentifier(original.trace_id) ? original.trace_id : 'trace_unknown';
@@ -91,7 +124,12 @@ export async function executeContextItemResource(
     if (!canReadContextTool(context)) throw fail('DENIED', trace);
   };
   active();
-  const { uri, query } = captureQuery(raw, context);
+  const selected = captureQuery(raw, context, kind);
+  const { uri } = selected;
+  const maximum =
+    selected.kind === 'pack' ? CONTEXT_PACK_READ_RESPONSE_BYTES : CONTEXT_ITEM_READ_RESPONSE_BYTES;
+  const errorBytes =
+    selected.kind === 'pack' ? CONTEXT_PACK_READ_ERROR_BYTES : CONTEXT_ITEM_READ_ERROR_BYTES;
   delete context.idempotency_key;
   delete context.expected_version;
   Reflect.deleteProperty(context, 'if_match');
@@ -110,9 +148,10 @@ export async function executeContextItemResource(
       active();
       const response = await router.execute(
         {
-          operation: 'context.item.read',
+          operation: selected.kind === 'pack' ? 'context.pack.read' : 'context.item.read',
           context: structuredClone(context),
-          input: { item_id: query.item_id },
+          input:
+            selected.kind === 'pack' ? { ...selected.query } : { item_id: selected.query.item_id },
         },
         async (run) => {
           // A slow policy/audit decision must not start a read after the budget expires.
@@ -121,14 +160,30 @@ export async function executeContextItemResource(
         },
       );
       active();
-      const document = parseContextItemReadEnvelope(response, query, context, trace);
-      if (
-        document.data.classification === 'restricted' &&
-        !context.capability.includes('data.restricted.read')
-      )
+      const document =
+        selected.kind === 'pack'
+          ? parseContextPackReadEnvelope(response, selected.query, context, trace)
+          : parseContextItemReadEnvelope(response, selected.query, context, trace);
+      const restricted =
+        'pack' in document.data
+          ? document.data.pack.items.some((item) => item.sensitivity === 'restricted')
+          : document.data.classification === 'restricted';
+      if (restricted && !context.capability.includes('data.restricted.read'))
         throw fail('DENIED', trace);
       active();
-      const text = syncJsonSnapshot(document, CONTEXT_ITEM_READ_RESPONSE_BYTES);
+      if ('pack' in document.data) {
+        const snapshot = contextPackReadHashJson(document.data.pack);
+        active();
+        let hash: string;
+        try {
+          hash = 'sha256:' + createHash('sha256').update(snapshot, 'utf8').digest('hex');
+        } catch {
+          throw fail('CONTEXT_PACK_INTEGRITY_UNAVAILABLE', trace);
+        }
+        if (hash !== document.data.pack.pack_hash) throw fail('CONTEXT_PACK_HASH_MISMATCH', trace);
+        active();
+      }
+      const text = syncJsonSnapshot(document, maximum);
       const result: CommandResult = {
         schema_version: 1,
         trace_id: trace,
@@ -145,7 +200,7 @@ export async function executeContextItemResource(
       if (error instanceof ContractError) {
         try {
           const envelope = validateErrorEnvelope(
-            JSON.parse(syncJsonSnapshot(error.envelope, CONTEXT_ITEM_READ_ERROR_BYTES)),
+            JSON.parse(syncJsonSnapshot(error.envelope, errorBytes)),
           );
           if (envelope.trace_id === trace && Object.hasOwn(messages, envelope.code))
             code = envelope.code as ErrorCode;
@@ -174,4 +229,22 @@ export async function executeContextItemResource(
   } finally {
     clearTimeout(timer);
   }
+}
+
+export function executeContextItemResource(
+  router: CommandRouter,
+  directory: McpResourceDirectory,
+  raw: unknown,
+  context: RequestContext,
+): Promise<CommandResult> {
+  return executeContextResource(router, directory, raw, context, 'item');
+}
+
+export function executeContextPackResource(
+  router: CommandRouter,
+  directory: McpResourceDirectory,
+  raw: unknown,
+  context: RequestContext,
+): Promise<CommandResult> {
+  return executeContextResource(router, directory, raw, context, 'pack');
 }

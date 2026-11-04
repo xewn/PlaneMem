@@ -1,5 +1,7 @@
 # PlaneMem
 
+完善 [MCP 保存包资源读取](docs/design/01-contracts/context-pack-runtime.md)：指定包与最新包 URI 接入完整内容和摘要校验，固定原项目，增加读取期限，并与条目资源共用容量限制。仅源码文档，未编译、测试、运行或发布。
+
 完善 [MCP 保存包工具读取](docs/design/01-contracts/context-pack-runtime.md)：统一发现与调用权限，核对完整内容、来源、版本及摘要，增加读取期限与共享容量限制。仅源码文档，未编译、测试、运行或发布。
 
 完善 [命令行保存包读取](docs/design/01-contracts/context-pack-runtime.md)：网络和嵌入入口统一完整内容与摘要校验，支持读取超时和可选身份约束，嵌入读取增加权限与共享容量检查。仅源码文档，未编译、测试、运行或发布。

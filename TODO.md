@@ -4,6 +4,8 @@
 
 ## 当前基线
 
+- P4/P0：MCP 保存包资源URI接入context-resource专用处理器，4 KiB仅uri、原项目/ULID或latest单次解码，可信未过期实际context.read/完整身份与父项目可见性、嵌套原策略审计保持；完整2 MiB json包/JSON内ETag/范围/来源/预算及Node SHA-256/入选restricted核验。包和当前条目资源共用每router两容量/处理器30秒，超时底层结束才释放；错误16 KiB固定提示，原URI/MIME/contents/source_refs保持、包装6 MiB+8192。不声称内层HTTP头/状态或外层审计/发送期限，无自动换包/重试/编译。模板/候选目录专用边界、Mock/Schema及运行兼容证据待补，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布。
+
 - P4/P0：MCP get_context_pack 接入上下文专用读取执行器，4 KiB可选pack_id/format、工具Schema用ULID；发现/prepare/调用与HTTP客户端门槛要求可信未过期实际context.read/完整身份。2 MiB成功/16 KiB错误，HTTP状态/type/trace/ETag及共享原范围/包/完整内容/来源/预算/rendered校验，Node SHA-256核对摘要和入选restricted权限；七工具共享两容量/30秒，超时底层结束才释放，包新增BUSY/TIMEOUT/完整性错误。输出原封套文本及4 MiB+4096转义上限，无换包/重试/编译/来源访问；prepare须迁专用执行器。resources/read与发现目录、Mock/独立Schema和运行兼容证据待补，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布。
 
 - P4/P0：CLI context get 接入现有上下文专用读取执行器，网络main/callGateway和嵌入runWorkctx复用SDK完整封套/格式/SHA-256；4 KiB可选单JSON/文件/网络有界stdin，默认latest，可选成对expected身份与默认30秒timeout-ms。完整成功2 MiB/Fetch错误16 KiB，嵌入可信未过期实际context.read、完整身份/真实GET/头/空正文/限额和入选restricted核验，与原六类读取共用每router两笔容量；超时底层router结束才释放。原编译保持，读取不回退/重试/写入/保存；通用SDK只见JSON内ETag，不宣称HTTP头/状态核验。MCP/Mock/Schema适配及CLI权限/取消/输入/旧返回运行兼容证据待补，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行CLI/SDK/产品/API/数据库或发布。

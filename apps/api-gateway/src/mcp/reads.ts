@@ -4,7 +4,12 @@ import type { PostgresLegacySearch } from '@planemem/search-service';
 import type { CommandRouter } from '../router.js';
 import type { WorkbenchDatabase, WorkbenchRepository } from '../workbench/repository.js';
 import { McpResourceDirectory } from './resource-directory.js';
-import { executeContextItemResource, isContextItemResourceUri } from './context-resource.js';
+import {
+  executeContextItemResource,
+  isContextItemResourceUri,
+  executeContextPackResource,
+  isContextPackResourceUri,
+} from './context-resource.js';
 import {
   listMcpPrompts,
   listMcpTools,
@@ -141,6 +146,8 @@ export function registerMcpReads(
     if (!uri.startsWith('work://')) return missing();
     if (isContextItemResourceUri(uri))
       return executeContextItemResource(router, directory, input, context);
+    if (isContextPackResourceUri(uri))
+      return executeContextPackResource(router, directory, input, context);
     await directory.requireProject(context);
     const savedMatch = /^work:\/\/project\/([^/?#]+)\/(overview|work-item\/([^/?#]+))$/.exec(uri);
     if (savedMatch) {
@@ -183,29 +190,6 @@ export function registerMcpReads(
         operation: 'proposal.read',
         context,
         input: { proposal_id: proposal },
-      });
-      return {
-        schema_version: 1,
-        trace_id: context.trace_id,
-        source_refs: document.source_refs,
-        data: { contents: [{ uri, mimeType: 'application/json', text: JSON.stringify(document) }] },
-      };
-    }
-    const packMatch = /^work:\/\/project\/([^/?#]+)\/context-pack\/([^/?#]+)$/.exec(uri);
-    if (packMatch) {
-      let project: string;
-      let packId: string;
-      try {
-        project = decodeURIComponent(packMatch[1]!);
-        packId = decodeURIComponent(packMatch[2]!);
-      } catch {
-        return missing();
-      }
-      if (project !== context.project_id) return missing();
-      const document = await router.execute({
-        operation: 'context.pack.read',
-        context,
-        input: packId === 'latest' ? {} : { pack_id: packId },
       });
       return {
         schema_version: 1,
