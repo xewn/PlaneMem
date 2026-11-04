@@ -1,22 +1,26 @@
 import Link from 'next/link';
-import { isSyncIdentifier, type ContextItemRevision } from '@planemem/contracts';
+import type { ContextItemRevision } from '@planemem/contracts';
 import { Badge, Panel } from '../../../components/ui';
 import { PageError, toneFor } from '../../../components/page-state';
 import { readWorkbenchContextHistory, readWorkbenchContextVersion } from '../../../lib/server-api';
+import {
+  parseContextHistoryParams,
+  contextHistoryHref,
+  contextBrowseHref,
+  type ContextHistoryNavigation,
+  type ContextSearchParams,
+} from '../navigation';
 
-type Params = Record<string, string | string[] | undefined>;
 export default async function ContextHistoryPage({
   searchParams,
 }: {
-  searchParams: Promise<Params>;
+  searchParams: Promise<ContextSearchParams>;
 }) {
+  let navigation: ContextHistoryNavigation | undefined;
   try {
-    const params = await searchParams;
-    if (!isSyncIdentifier(params.item) || params.item === '.' || params.item === '..')
-      throw new Error('Choose a context item to view its recorded history.');
-    const id = params.item;
-    const before = positiveParam(params.before);
-    const requested = positiveParam(params.version);
+    const current = parseContextHistoryParams(await searchParams);
+    navigation = current;
+    const { item_id: id, before, version: requested } = current;
     const page = (await readWorkbenchContextHistory(id, before)).data;
     const selectedVersion = requested ?? page.versions[0]?.version;
     let selected: ContextItemRevision | undefined;
@@ -28,12 +32,12 @@ export default async function ContextHistoryPage({
         detailError = error;
       }
     }
-    const href = (version?: number, older?: number) => {
-      const search = new URLSearchParams({ item: id });
-      if (version !== undefined) search.set('version', String(version));
-      if (older !== undefined) search.set('before', String(older));
-      return '/context/history?' + search;
-    };
+    const href = (version?: number, older?: number) =>
+      contextHistoryHref({
+        ...current,
+        version,
+        before: older,
+      });
     return (
       <>
         <div className="page-heading">
@@ -41,16 +45,23 @@ export default async function ContextHistoryPage({
             <h1>Context history</h1>
             <p>Inspect recorded versions and who changed this item.</p>
           </div>
-          <Link
-            className="panel-link"
-            href={
-              '/context?item=' +
-              encodeURIComponent(id) +
-              (page.current_archived ? '&view=archived' : '')
-            }
-          >
-            Open current item · version {page.current_version}
-          </Link>
+          <nav className="heading-actions" aria-label="Context history navigation">
+            {current.return_href && (
+              <Link className="panel-link" href={current.return_href} prefetch={false}>
+                Back to results
+              </Link>
+            )}
+            <Link
+              className="panel-link"
+              href={contextBrowseHref({
+                filters: { limit: 25, archived: page.current_archived },
+                item: id,
+              })}
+              prefetch={false}
+            >
+              Open current item · version {page.current_version}
+            </Link>
+          </nav>
         </div>
         <p className="muted">
           History starts when snapshots were first captured. A baseline preserves an existing
@@ -79,6 +90,7 @@ export default async function ContextHistoryPage({
                           className="panel-link"
                           href={href(entry.version, before)}
                           aria-current={entry.version === selectedVersion ? 'true' : undefined}
+                          prefetch={false}
                         >
                           v{entry.version}
                         </Link>
@@ -98,12 +110,16 @@ export default async function ContextHistoryPage({
             )}
             <nav className="heading-actions side-detail" aria-label="History pages">
               {before !== undefined && (
-                <Link className="panel-link" href={href()}>
+                <Link className="panel-link" href={href()} prefetch={false}>
                   Latest recorded versions
                 </Link>
               )}
               {page.next_before_version !== undefined && (
-                <Link className="panel-link" href={href(undefined, page.next_before_version)}>
+                <Link
+                  className="panel-link"
+                  href={href(undefined, page.next_before_version)}
+                  prefetch={false}
+                >
                   Older versions
                 </Link>
               )}
@@ -111,7 +127,17 @@ export default async function ContextHistoryPage({
           </Panel>
           <Panel title="Historical snapshot" icon="audit">
             <div className="side-detail">
-              {detailError !== undefined && <PageError error={detailError} />}
+              {detailError !== undefined && (
+                <>
+                  <PageError error={detailError} />
+                  {selectedVersion !== undefined && (
+                    <HistoryRetry
+                      navigation={{ ...current, version: selectedVersion }}
+                      label="Retry this version"
+                    />
+                  )}
+                </>
+              )}
               {selected && (
                 <>
                   <h2>{selected.item.title}</h2>
@@ -163,7 +189,11 @@ export default async function ContextHistoryPage({
                     <summary>View complete snapshot</summary>
                     <pre className="context-content">{JSON.stringify(selected, null, 2)}</pre>
                   </details>
-                  <Link className="panel-link" href={href(selected.version)}>
+                  <Link
+                    className="panel-link"
+                    href={href(selected.version, before)}
+                    prefetch={false}
+                  >
                     Link to this version
                   </Link>
                 </>
@@ -183,7 +213,24 @@ export default async function ContextHistoryPage({
           <h1>Context history</h1>
         </div>
         <PageError error={error} />
-        <Link className="panel-link" href="/context">
+        {navigation && (
+          <nav className="heading-actions" aria-label="Context history recovery">
+            <HistoryRetry navigation={navigation} label="Retry history page" />
+            <Link
+              className="panel-link"
+              href={contextHistoryHref({ ...navigation, before: undefined, version: undefined })}
+              prefetch={false}
+            >
+              Latest recorded versions
+            </Link>
+            {navigation.return_href && (
+              <Link className="panel-link" href={navigation.return_href} prefetch={false}>
+                Back to results
+              </Link>
+            )}
+          </nav>
+        )}
+        <Link className="panel-link" href="/context" prefetch={false}>
           Return to context
         </Link>
       </>
@@ -191,13 +238,22 @@ export default async function ContextHistoryPage({
   }
 }
 
-function positiveParam(value: string | string[] | undefined): number | undefined {
-  if (value === undefined) return undefined;
-  if (
-    typeof value !== 'string' ||
-    !/^[1-9]\d{0,15}$/.test(value) ||
-    !Number.isSafeInteger(Number(value))
-  )
-    throw new Error('History version parameters must be positive integers.');
-  return Number(value);
+function HistoryRetry({
+  navigation,
+  label,
+}: {
+  navigation: ContextHistoryNavigation;
+  label: string;
+}) {
+  const fields = new URLSearchParams(contextHistoryHref(navigation).split('?')[1]);
+  return (
+    <form action="/context/history" method="get">
+      {Array.from(fields).map(([name, value]) => (
+        <input key={name} type="hidden" name={name} value={value} />
+      ))}
+      <button className="secondary-button" type="submit">
+        {label}
+      </button>
+    </form>
+  );
 }

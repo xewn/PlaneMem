@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { parseWorkItemProjectionQuery } from '@planemem/contracts';
 import type {
   ContextPackReceipt,
   ContextItemConfirmation,
@@ -27,7 +26,13 @@ import {
   ConfirmContextItem,
   ContextItemEditor,
 } from './item-form';
-import { parseProjectSearchReturn } from '../search/navigation';
+import {
+  parseContextBrowseParams,
+  contextBrowseHref,
+  contextHistoryHref,
+  type ContextBrowseState,
+  type ContextSearchParams,
+} from './navigation';
 
 type ContextItem = Record<string, unknown> & {
   confirmation?: ContextItemConfirmation | null;
@@ -38,7 +43,6 @@ type ContextItem = Record<string, unknown> & {
   source_refs?: SourceRef[];
   confirmation_readiness?: ContextConfirmationReadiness;
 };
-type SearchParams = Record<string, string | string[] | undefined>;
 type SearchReturn = { item_id: string; return_href: string };
 const layers = [
   ['L0', 'Project Brief', 'cyan'],
@@ -53,45 +57,26 @@ const statuses = ['confirmed', 'proposed', 'expired', 'excluded'];
 export default async function ContextPage({
   searchParams,
 }: {
-  searchParams: Promise<SearchParams>;
+  searchParams: Promise<ContextSearchParams>;
 }) {
   let searchReturn: SearchReturn | undefined;
+  let navigation: ContextBrowseState | undefined;
   try {
-    const params = await searchParams;
-    if (params.return_to !== undefined) {
-      if (Object.keys(params).some((key) => !['item', 'return_to'].includes(key)))
-        throw new Error(
-          'Open the selected search result before changing the context browser filters.',
-        );
-      const { item_id } = parseWorkItemProjectionQuery({ item_id: params.item });
-      searchReturn = {
-        item_id,
-        return_href: parseProjectSearchReturn(params.return_to, {
-          type: 'context_item',
-          id: item_id,
-        }),
-      };
-    }
-    const query = typeof params.q === 'string' ? params.q.trim().slice(0, 500) : '';
-    const layer = layers.find(([value]) => value === params.layer)?.[0] ?? '';
-    const classification = classifications.find((value) => value === params.classification) ?? '';
-    const status = statuses.find((value) => value === params.status) ?? '';
-    const itemType = typeof params.type === 'string' ? params.type.trim().slice(0, 500) : '';
-    const packId = typeof params.pack === 'string' ? params.pack : undefined;
-    const archived = params.view === 'archived';
-    const cursor = typeof params.cursor === 'string' ? params.cursor : undefined;
-    const response = await queryWorkbench<ContextItem[]>('context', {
-      query,
-      layer,
-      classification,
-      status,
-      item_type: itemType,
-      limit: 25,
-      archived,
-      ...(cursor === undefined ? {} : { cursor }),
-    });
+    const browse = parseContextBrowseParams(await searchParams);
+    navigation = browse;
+    if (browse.return_to !== undefined && browse.item !== undefined)
+      searchReturn = { item_id: browse.item, return_href: browse.return_to };
+    const { filters, pack: packId } = browse;
+    const query = filters.query ?? '';
+    const layer = filters.layer ?? '';
+    const classification = filters.classification ?? '';
+    const status = filters.status ?? '';
+    const itemType = filters.item_type ?? '';
+    const archived = filters.archived === true;
+    const cursor = filters.cursor;
+    const response = await queryWorkbench<ContextItem[]>('context', { ...filters });
     const items = response.data;
-    const selectedId = typeof params.item === 'string' ? params.item : items[0]?.id;
+    const selectedId = browse.item ?? items[0]?.id;
     let selected: ContextItem | undefined;
     let itemError: unknown;
     if (typeof selectedId === 'string') {
@@ -122,22 +107,18 @@ export default async function ContextPage({
       } else packError = error;
     }
     function pageHref(id?: string, pageCursor?: string) {
-      const search = new URLSearchParams();
-      for (const [key, value] of Object.entries({
-        q: query,
-        layer,
-        classification,
-        status,
-        type: itemType,
-        pack: packId ?? '',
-        item: id ?? '',
-        cursor: pageCursor ?? '',
-        view: archived ? 'archived' : '',
-      }))
-        if (value) search.set(key, value);
-      if (searchReturn && id === searchReturn.item_id && pageCursor === undefined)
-        search.set('return_to', searchReturn.return_href);
-      return '/context?' + search;
+      const { cursor: _cursor, ...originalFilters } = filters;
+      return contextBrowseHref({
+        filters: {
+          ...originalFilters,
+          ...(pageCursor === undefined ? {} : { cursor: pageCursor }),
+        },
+        ...(packId === undefined ? {} : { pack: packId }),
+        ...(id === undefined ? {} : { item: id }),
+        ...(searchReturn && id === searchReturn.item_id && pageCursor === undefined
+          ? { return_to: searchReturn.return_href }
+          : {}),
+      });
     }
     const source = selected ? sourceUrl(selected) : undefined;
     const confirmationReadiness = !archived ? selected?.confirmation_readiness : undefined;
@@ -195,6 +176,7 @@ export default async function ContextPage({
               defaultValue={query}
               placeholder="Title, content or source"
               aria-label="Search context"
+              maxLength={500}
             />
           </label>
           <select
@@ -236,13 +218,18 @@ export default async function ContextPage({
               defaultValue={itemType}
               placeholder="Item type"
               aria-label="Item type"
+              maxLength={500}
             />
           </label>
           <button className="secondary-button" type="submit">
             Apply filters
           </button>
           {(query || layer || classification || status || itemType) && (
-            <Link className="panel-link" href={archived ? '/context?view=archived' : '/context'}>
+            <Link
+              className="panel-link"
+              href={contextBrowseHref({ filters: { archived, limit: 25 }, pack: packId })}
+              prefetch={false}
+            >
               Clear filters
             </Link>
           )}
@@ -281,18 +268,29 @@ export default async function ContextPage({
             }
             icon="context"
           >
-            {itemError !== undefined && <PageError error={itemError} />}
+            {itemError !== undefined && (
+              <>
+                <PageError error={itemError} />
+                {typeof selectedId === 'string' && (
+                  <ContextBrowseRetry
+                    navigation={{ ...browse, item: selectedId }}
+                    label="Retry this item"
+                  />
+                )}
+              </>
+            )}
             {itemError instanceof WorkbenchApiError &&
               itemError.status === 404 &&
               typeof selectedId === 'string' && (
                 <p className="side-detail">
                   <Link
                     className="panel-link"
-                    href={
-                      '/context?item=' +
-                      encodeURIComponent(selectedId) +
-                      (archived ? '' : '&view=archived')
-                    }
+                    href={contextBrowseHref({
+                      filters: { ...filters, archived: !archived, cursor: undefined },
+                      item: selectedId,
+                      pack: packId,
+                    })}
+                    prefetch={false}
                   >
                     {archived
                       ? 'Look for this item in the active view'
@@ -370,12 +368,16 @@ export default async function ContextPage({
             </div>
             <nav className="heading-actions side-detail" aria-label="Context pages">
               {cursor && (
-                <Link className="panel-link" href={pageHref()}>
+                <Link className="panel-link" href={pageHref()} prefetch={false}>
                   First page
                 </Link>
               )}
               {response.next_cursor && (
-                <Link className="panel-link" href={pageHref(undefined, response.next_cursor)}>
+                <Link
+                  className="panel-link"
+                  href={pageHref(undefined, response.next_cursor)}
+                  prefetch={false}
+                >
                   Next page
                 </Link>
               )}
@@ -472,7 +474,11 @@ export default async function ContextPage({
                 <p>
                   <Link
                     className="panel-link"
-                    href={'/context/history?item=' + encodeURIComponent(String(selected.id))}
+                    href={contextHistoryHref({
+                      item_id: String(selected.id),
+                      return_href: contextBrowseHref({ ...browse, item: String(selected.id) }),
+                    })}
+                    prefetch={false}
                   >
                     View recorded version history
                   </Link>
@@ -654,12 +660,49 @@ export default async function ContextPage({
         </div>
         <PageError error={error} />
         {searchReturn && <SearchContextReturn navigation={searchReturn} retry />}
-        <Link className="panel-link" href="/context">
+        {navigation && !searchReturn && <ContextBrowseRecovery navigation={navigation} />}
+        <Link className="panel-link" href="/context" prefetch={false}>
           Return to the first page
         </Link>
       </>
     );
   }
+}
+
+function ContextBrowseRecovery({ navigation }: { navigation: ContextBrowseState }) {
+  const { cursor: _cursor, ...filters } = navigation.filters;
+  return (
+    <nav className="heading-actions" aria-label="Context read recovery">
+      <ContextBrowseRetry navigation={navigation} label="Retry this page" />
+      <Link
+        className="panel-link"
+        href={contextBrowseHref({ filters, pack: navigation.pack })}
+        prefetch={false}
+      >
+        First page with these filters
+      </Link>
+    </nav>
+  );
+}
+
+function ContextBrowseRetry({
+  navigation,
+  label,
+}: {
+  navigation: ContextBrowseState;
+  label: string;
+}) {
+  const fields = new URLSearchParams(contextBrowseHref(navigation).split('?')[1] ?? '');
+  return (
+    <form action="/context" method="get">
+      {Array.from(fields).map(([name, value]) => (
+        <input key={name} type="hidden" name={name} value={value} />
+      ))}
+      <button className="secondary-button" type="submit">
+        {label}
+      </button>
+    </form>
+  );
 }
 
 function SearchContextReturn({

@@ -1,5 +1,7 @@
 # 架构决策记录摘要
 
+2026-11-04 上下文浏览与历史返回协接（ADR-015 / T5.1）：源码编辑前登记，新增Web context/navigation统一严格单值URL、共享ContextItem筛选、条目/包ID、历史页版本参数和内部返回地址解析；拒绝未知/重复/超长/非法条件，不再静默截断或降级筛选。浏览错误页可按原条件重试/回首屏，保留归档视图/指定包；历史入口及分页/选版/失败重试保留原浏览筛选/游标/选择/包和有效搜索返回链。返回地址限/context固定内部路径，绑定相同条目，非法参数不读数据或生成重试目标；当前条目链接仍根据历史报告的归档状态另行读取。范围Web新navigation、context page/history page、根README/TODO、ContextItem运行契约、R003/T5.1/ADR；不改Gateway/共享契约/写表单/数据库/依赖。仅源码文档人工审阅/格式文本检查，不编译、类型检查、测试、运行页面/API/数据库或发布；独立提交push main带[skip ci]。
+
 2026-11-04 工作项截止日期排序协接（ADR-015 / T0.3/T0.5/T4.1/T4.2/T4.3/T5.1）：源码编辑前登记，列表新增sort=updated_desc/due_asc，省略/空串/显式updated_desc统一原默认，due_asc按保存截止日期升序、null最后、相同日期按ID的C顺序。Gateway以真实微秒due_at及ID进行键集分页，null区段只续读null；新排序独立v5查询绑定及v2位置编码，默认保持原v1–v4键/位置。Mock显式固定数据集用微秒/Unicode标量ID同方向排序和独立新游标；SDK字段、CLI帮助/MCP schema、Web选择与分页/详情返回/失败恢复同步。范围contracts/Gateway/SDK/Mock/CLI/MCP/Web及运行契约、根README/TODO/R002与任务文档，无新路由/数据库schema/迁移/索引/依赖，不改变保存日期、过滤、状态或默认排序。只源码文档人工审阅和格式文本检查，不编译/类型检查/测试/执行产品/SQL/Mock/浏览器/发布；独立提交push main带[skip ci]。
 
 2026-11-04 工作项截止日期筛选协接（ADR-015 / T0.3/T0.5/T4.1/T4.2/T4.3/T5.1）：源码编辑前登记，WorkItemListQuery新增due=scheduled/unscheduled、due_from含起始日及due_before不含结束日，两日期为严格有效YYYY-MM-DD、UTC零时且起始早于结束。unscheduled仅due_at=null且与日期区间互斥，区间排除null；不推断逾期或自动采用当前日期。共享解析/完整页校验、Gateway权限之后LIMIT之前参数化筛选、v4游标绑定全部条件（无新筛选保持v1–v3）、SDK字段白名单/Mock过滤及独立绑定、CLI帮助/MCP schema与输入、Web日期控件/导航/恢复接入。范围上述源码、根/SDK/CLI README、TODO、工作项/Mock/WCP/MCP契约、R002及任务记录，无新路由/迁移/schema/依赖，不改变原到期时间、排序或状态。只开发源码文档和人工审阅/格式文本检查，不编译、类型检查、测试、执行产品/Mock/API/数据库/浏览器或发布；本任务独立提交push main带[skip ci]。

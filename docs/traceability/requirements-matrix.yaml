@@ -954,6 +954,22 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_history_return_navigation_development_increment:
+      date: "2026-11-04"
+      status: "Source-only strict context browsing and original history return/retry navigation; R-003 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/context/navigation.ts"
+        - "apps/web-console/src/app/context/page.tsx"
+        - "apps/web-console/src/app/context/history/page.tsx"
+        - "docs/design/01-contracts/context-item-runtime.md"
+      behavior: "Validate single known URL parameters and shared filters before reads; reject truncation, invalid enums, IDs, packs, versions and duplicate fields. Rebuild only internal same-item context return URLs, preserving filters/cursor/archive view/pack/selection and validated search returns across history paging/version links/retry. Directory and item errors preserve original GET retry targets; history detail failures pin the actual requested version. First-page recovery clears cursor/selection while retaining filters/view/pack. Current-item entry uses observed archive status separately from original-result return. No writes or automatic redirects."
+      evidence: []
+      pending_evidence:
+        - "Invalid/duplicate/unknown/oversized parameters, local ID/ULID boundaries and safe version limits"
+        - "Later-page history/back/version links, active/archive switches, pack preservation and nested search returns"
+        - "Directory/item/version failure retry identity, changed results, permission/scope changes and old direct links"
+      remaining_scope: "Runtime/browser/authorization evidence and read-response budgets/validation; navigation is not an access or source-validity guarantee."
+      execution: "Source/docs and manual review plus formatting/text checks only; no build, typecheck, tests, browser/page/API/database execution or release. No changes to write forms, Gateway/shared contracts, database or dependencies."
     project_search_return_navigation_development_increment:
       date: "2026-11-04"
       status: "Source-only search/detail navigation and read-failure recovery; no runtime evidence or R-003 completion."

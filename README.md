@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [上下文浏览与历史返回](docs/design/01-contracts/context-item-runtime.md)：版本历史保留原筛选、分页和所选条目，读取失败可重试原页或原版本；无效筛选明确报错。仅源码文档，未编译、测试、运行或发布。
+
 新增 [工作项截止日期排序](docs/design/01-contracts/work-item-projection-runtime.md)：可按截止日期从近到远浏览，无日期任务排在最后；网页列表和卡片显示保存的截止日期，各客户端翻页保留排序条件。仅源码文档，未编译、测试、运行或发布。
 
 新增 [工作项截止日期筛选](docs/design/01-contracts/work-item-projection-runtime.md)：网页、SDK、CLI、MCP和Mock支持有无截止日期及UTC日期区间，翻页、详情返回和失败重试保留条件。仅筛选已保存任务信息，未编译、测试、运行或发布。
