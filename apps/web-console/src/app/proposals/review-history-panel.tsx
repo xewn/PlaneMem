@@ -14,6 +14,8 @@ import {
 import { ReviewHistoryBackupPanel } from './review-history-backup-panel';
 import { ReviewHistoryCleanupPanel } from './review-history-cleanup-panel';
 import { subscribeReviewHistoryChanges } from './review-history-changes';
+import { historyDateRangeError } from './history-date-range';
+import { HistoryDateRangeFields } from './history-date-range-fields';
 import {
   REVIEW_HISTORY_FILE_BYTES,
   reviewObservationStatus,
@@ -64,7 +66,10 @@ export function ReviewHistoryPanel({
     request_key: '',
     status: '',
     source: '',
+    observed_from: '',
+    observed_through: '',
   });
+  const dateRangeError = historyDateRangeError(filters.observed_from, filters.observed_through);
   const [digest, setDigest] = useState('');
   const [busy, setBusy] = useState(false);
   const [localStorageEpoch, setStorageEpoch] = useState(0);
@@ -217,6 +222,7 @@ export function ReviewHistoryPanel({
     );
   }
   function browse(continuation: ReviewHistoryQuery | null) {
+    if (dateRangeError) return;
     void run(
       (signal, check) =>
         listReviewHistory(
@@ -227,6 +233,8 @@ export function ReviewHistoryPanel({
               request_key: filters.request_key || null,
               status: filters.status || null,
               source: filters.source || null,
+              observed_from: filters.observed_from || null,
+              observed_through: filters.observed_through || null,
               after: null,
             },
           ),
@@ -247,7 +255,7 @@ export function ReviewHistoryPanel({
         start: clearDirectory,
         requireUnchangedStorage: true,
         failureMessage:
-          'History search could not be completed. Check the exact proposal ID and request key. Invalid filters, damaged stored records or an expired read stop the whole page; no partial results are shown. Inspected copies are retained.',
+          'History search could not be completed. Check the exact proposal ID, request key and UTC observation dates. Invalid filters, damaged stored records or an expired read stop the whole page; no partial results are shown. Inspected copies are retained.',
       },
     );
   }
@@ -379,6 +387,11 @@ export function ReviewHistoryPanel({
             <option value="receipt-query">Receipt query</option>
           </select>
         </label>
+        <HistoryDateRangeFields
+          from={filters.observed_from}
+          through={filters.observed_through}
+          onChange={changeFilter}
+        />
         <p>
           Filters are combined. Each read checks up to {REVIEW_HISTORY_SCAN_LIMIT} saved
           observations and returns up to {REVIEW_HISTORY_PAGE_SIZE} matches. Continue even when a
@@ -390,7 +403,7 @@ export function ReviewHistoryPanel({
         <button
           type="button"
           className="secondary-button"
-          disabled={locked}
+          disabled={locked || !!dateRangeError}
           onClick={() => browse(null)}
         >
           Find saved review history
@@ -399,7 +412,7 @@ export function ReviewHistoryPanel({
           <button
             type="button"
             className="secondary-button"
-            disabled={locked}
+            disabled={locked || !!dateRangeError}
             onClick={() => browse(page.next)}
           >
             Continue history search

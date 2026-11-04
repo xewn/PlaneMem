@@ -32,6 +32,8 @@ import {
 import { CreationHistoryBackupPanel } from './creation-history-backup-panel';
 import { CreationHistoryCleanupPanel } from './creation-history-cleanup-panel';
 import { subscribeCreationHistoryChanges } from './creation-history-changes';
+import { historyDateRangeError } from './history-date-range';
+import { HistoryDateRangeFields } from './history-date-range-fields';
 
 export function CreationHistoryPanel({
   binding,
@@ -63,7 +65,10 @@ export function CreationHistoryPanel({
     request_key: '',
     status: '',
     source: '',
+    observed_from: '',
+    observed_through: '',
   });
+  const dateRangeError = historyDateRangeError(filters.observed_from, filters.observed_through);
   const [digest, setDigest] = useState('');
   const [localStorageEpoch, setStorageEpoch] = useState(0);
   const storageGeneration = useRef(0);
@@ -229,6 +234,7 @@ export function CreationHistoryPanel({
     );
   }
   function browse(continuation: CreationHistoryQuery | null) {
+    if (dateRangeError) return;
     void run(
       (signal, check) =>
         listCreationHistory(
@@ -239,6 +245,8 @@ export function CreationHistoryPanel({
               request_key: filters.request_key || null,
               status: filters.status || null,
               source: filters.source || null,
+              observed_from: filters.observed_from || null,
+              observed_through: filters.observed_through || null,
               after: null,
             },
           ),
@@ -259,7 +267,7 @@ export function CreationHistoryPanel({
         start: clearDirectory,
         requireUnchangedStorage: true,
         failureMessage:
-          'History search could not be completed. Check the exact proposal ID and request key. Invalid filters, damaged stored records or an expired read stop the whole page; no partial results are shown. Inspected copies are retained.',
+          'History search could not be completed. Check the exact proposal ID, request key and UTC observation dates. Invalid filters, damaged stored records or an expired read stop the whole page; no partial results are shown. Inspected copies are retained.',
       },
     );
   }
@@ -430,6 +438,11 @@ export function CreationHistoryPanel({
             <option value="receipt-query">Receipt query</option>
           </select>
         </label>
+        <HistoryDateRangeFields
+          from={filters.observed_from}
+          through={filters.observed_through}
+          onChange={changeFilter}
+        />
         <p>
           Filters are combined. Each search checks up to {CREATION_HISTORY_SCAN_LIMIT} saved
           observations and shows the matches. Continue even when a scan has no matches. A result
@@ -440,7 +453,7 @@ export function CreationHistoryPanel({
         <button
           type="button"
           className="secondary-button"
-          disabled={locked}
+          disabled={locked || !!dateRangeError}
           onClick={() => browse(null)}
         >
           Find saved creation history
@@ -449,7 +462,7 @@ export function CreationHistoryPanel({
           <button
             type="button"
             className="secondary-button"
-            disabled={locked}
+            disabled={locked || !!dateRangeError}
             onClick={() => browse(page.next)}
           >
             Continue history search

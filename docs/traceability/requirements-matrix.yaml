@@ -3452,6 +3452,26 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_history_observation_date_development_increment:
+      date: "2026-11-04"
+      status: "Source-only inclusive UTC observation-date filters for creation and review history; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/history-date-range.ts"
+        - "apps/web-console/src/app/proposals/history-date-range-fields.tsx"
+        - "apps/web-console/src/app/proposals/creation-history-query.ts"
+        - "apps/web-console/src/app/proposals/creation-history-panel.tsx"
+        - "apps/web-console/src/app/proposals/review-history-query.ts"
+        - "apps/web-console/src/app/proposals/review-history-panel.tsx"
+        - "docs/design/01-contracts/proposal-creation-history-runtime.md"
+        - "docs/design/01-contracts/proposal-review-history-runtime.md"
+      behavior: "Shared strict calendar-date parsing accepts optional inclusive UTC start/end dates and rejects malformed, nonexistent or reversed dates without normalization. Both seven-field history queries combine dates with existing exact filters and retain all conditions in digest continuations. UI preserves partial input, explains UTC observation time and disables searching while dates are invalid; date changes revoke old directory/removal qualifications while retained files remain exportable. Creation still scans at most five full observations; review scans at most 100 and returns at most 20 matches. Scanned nonmatches still receive complete validation, empty pages can continue and digest ordering remains unchanged. Full-scope backup and direct digest reads remain independent of date filters."
+      evidence: []
+      pending_evidence:
+        - "Real calendar and leap-day validation, year bounds, whitespace/partial input rejection and inclusive same-day/open-ended ranges"
+        - "Combined filters and continuation dates, unchanged scan bounds, corruption outside dates rejecting the entire page"
+        - "Both history entry points, accessible validation messages, retained exports and directory/removal invalidation"
+      remaining_scope: "Time indexes, cross-page snapshots and runtime/compatibility evidence; filtering does not establish event time or current proposal state."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, product/browser/API/database execution or release. No schema, file format or dependency changes."
     proposal_review_history_cross_page_development_increment:
       date: "2026-11-04"
       status: "Source-only review history cross-page invalidation and shared transport extraction; R-009 remains incomplete."

@@ -1,5 +1,10 @@
 import { isUlid, validateIdempotencyKey } from '@planemem/contracts';
 import {
+  matchesHistoryDateRange,
+  parseHistoryDateRange,
+  type HistoryDateRange,
+} from './history-date-range';
+import {
   creationObservationStatus,
   creationRecordedReceipt,
   type CreationObservation,
@@ -7,7 +12,7 @@ import {
 
 // Creation observations can contain two copies of a large draft; retain the existing read bound.
 export const CREATION_HISTORY_SCAN_LIMIT = 5;
-export interface CreationHistoryQuery {
+export interface CreationHistoryQuery extends HistoryDateRange {
   proposal_id: string | null;
   request_key: string | null;
   status: 'recorded' | 'not-observed' | null;
@@ -19,7 +24,15 @@ export interface CreationHistoryQuery {
 export function parseCreationHistoryQuery(value: unknown): CreationHistoryQuery {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError();
   const row = value as Record<string, unknown>;
-  const fields = ['proposal_id', 'request_key', 'status', 'source', 'after'];
+  const fields = [
+    'proposal_id',
+    'request_key',
+    'status',
+    'source',
+    'observed_from',
+    'observed_through',
+    'after',
+  ];
   if (
     Object.keys(row).length !== fields.length ||
     fields.some((field) => !Object.hasOwn(row, field))
@@ -34,6 +47,7 @@ export function parseCreationHistoryQuery(value: unknown): CreationHistoryQuery 
   if (row.after !== null && (typeof row.after !== 'string' || !/^[a-f0-9]{64}$/.test(row.after)))
     throw new TypeError();
   return {
+    ...parseHistoryDateRange(row.observed_from, row.observed_through),
     proposal_id: row.proposal_id,
     request_key,
     status: row.status,
@@ -48,6 +62,7 @@ export function matchesCreationHistory(document: CreationObservation, query: Cre
       creationRecordedReceipt(document)?.proposal_id === query.proposal_id) &&
     (query.request_key === null || document.original.request_key === query.request_key) &&
     (query.status === null || creationObservationStatus(document) === query.status) &&
-    (query.source === null || document.source === query.source)
+    (query.source === null || document.source === query.source) &&
+    matchesHistoryDateRange(document.observed_at, query)
   );
 }
