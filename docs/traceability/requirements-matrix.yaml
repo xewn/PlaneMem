@@ -3452,6 +3452,21 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_creation_history_autosave_development_increment:
+      date: "2026-11-04"
+      status: "Source-only opt-in retention of new valid creation responses with independent local recovery; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/original-submission.tsx"
+        - "apps/web-console/src/app/proposals/creation-history-panel.tsx"
+        - "docs/design/01-contracts/proposal-creation-history-runtime.md"
+      behavior: "Page-local, default-off retention runs only after a new send/query observation is fully validated and retained, including not-observed and conflicting later creation facts without replacing the previous confirmation. A separate 30-second local save keeps the parent lock and preserves the original time/trace/request/response. Local failure or cancellation disables retention and retains one complete failed observation; re-enabling is blocked until an explicit idempotent local retry succeeds. Later responses cannot replace that failed candidate. External storage epochs synchronously revoke single/selected removal and backup qualifications while retained copies remain exportable. No backfill, preference persistence, proposal resend or server state changes."
+      evidence: []
+      pending_evidence:
+        - "Default-off and future-only behavior, complete send/query validation, not-observed and conflicting later facts"
+        - "Separate local failure status, exact same-observation retry, stop/timeout after confirmed response and retained failed candidate"
+        - "Shared lock, external epoch invalidation, late results/unmount and original timestamps/digests"
+      remaining_scope: "Automatic backup and capacity cleanup, cross-page coordination and runtime/compatibility evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, product/browser/database execution or release. Existing browser v1 reused; no schema or dependency changes."
     proposal_creation_history_cleanup_development_increment:
       date: "2026-11-04"
       status: "Source-only selected creation-history inspection, recovery export and atomic removal; R-009 remains incomplete."

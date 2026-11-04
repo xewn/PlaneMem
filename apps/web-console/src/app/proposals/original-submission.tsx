@@ -9,6 +9,8 @@ import {
   type CreationObservation,
 } from './creation-history-model';
 import { CreationHistoryPanel } from './creation-history-panel';
+import { prepareCreationHistory } from './creation-history-file';
+import { saveCreationHistory } from './creation-history-store';
 import { backupOperation } from '../sync/receipt/backup-operation';
 import { submitSavedProposal, readSavedProposalReceipt } from './actions';
 import {
@@ -34,6 +36,13 @@ export function OriginalProposalSubmission({
   const [receipt, setReceipt] = useState<ProposalMutationReceipt>();
   const [observation, setObservation] = useState<CreationObservation>();
   const [confirmedObservation, setConfirmedObservation] = useState<CreationObservation>();
+  const [automaticHistory, setAutomaticHistory] = useState(false);
+  const [historyStorageEpoch, setHistoryStorageEpoch] = useState(0);
+  const [automaticAttempt, setAutomaticAttempt] = useState<{
+    document: CreationObservation;
+    status: 'saving' | 'saved' | 'unknown';
+    digest?: string;
+  }>();
   const active = useRef(false);
   const mounted = useRef(false);
   const operation = useRef<AbortController | undefined>(undefined);
@@ -91,6 +100,44 @@ export function OriginalProposalSubmission({
     if (!mounted.current || !active.current || !operation.current) return;
     // Abort only the local wait. An already dispatched server action can still complete.
     operation.current.abort();
+  }
+  /** A local history failure must not overwrite an already received creation result. */
+  async function retainObservation(document: CreationObservation, controller: AbortController) {
+    if (!mounted.current || operation.current !== controller) return;
+    setAutomaticAttempt({ document, status: 'saving' });
+    setHistoryStorageEpoch((value) => value + 1);
+    try {
+      const saved = await backupOperation(controller.signal, async (signal, check) => {
+        const candidate = await prepareCreationHistory(document, check);
+        check();
+        return saveCreationHistory(candidate.raw, request.binding, signal, check);
+      });
+      if (!mounted.current || operation.current !== controller) return;
+      if (controller.signal.aborted) throw new TypeError();
+      setAutomaticAttempt({ document, status: 'saved', digest: saved.file.document_sha256 });
+    } catch {
+      if (!mounted.current || operation.current !== controller) return;
+      setAutomaticHistory(false);
+      setAutomaticAttempt({ document, status: 'unknown' });
+    }
+  }
+  async function retryHistorySave() {
+    if (!mounted.current || active.current || automaticAttempt?.status !== 'unknown') return;
+    const document = automaticAttempt.document;
+    const controller = new AbortController();
+    operation.current = controller;
+    active.current = true;
+    setBusy(true);
+    setConfirmed(false);
+    try {
+      await retainObservation(document, controller);
+    } finally {
+      if (operation.current === controller) {
+        operation.current = undefined;
+        active.current = false;
+        if (mounted.current) setBusy(false);
+      }
+    }
   }
   function download() {
     if (active.current || !mounted.current) return;
@@ -162,6 +209,7 @@ export function OriginalProposalSubmission({
         setMessage(
           'The gateway confirmed the original submission. Keep the saved request for your records.',
         );
+        if (automaticHistory) await retainObservation(document, controller);
       } else setMessage(result.message);
     } catch {
       if (mounted.current && operation.current === controller)
@@ -216,17 +264,15 @@ export function OriginalProposalSubmission({
         setMessage(
           'No matching original creation receipt was observed in this read. This does not prove failure or cancel an in-flight submission. Keep the original unchanged; no new creation request was sent.',
         );
+      } else if (
+        confirmedObservation &&
+        proposalReceiptJson(creationRecordedReceipt(confirmedObservation)) !==
+          proposalReceiptJson(creationRecordedReceipt(document))
+      ) {
+        setMessage(
+          'This query returned different creation facts from the retained confirmed result. Both observations remain available for inspection and export. The previous confirmation is retained; no new submission was sent.',
+        );
       } else {
-        if (
-          confirmedObservation &&
-          proposalReceiptJson(creationRecordedReceipt(confirmedObservation)) !==
-            proposalReceiptJson(creationRecordedReceipt(document))
-        ) {
-          setMessage(
-            'This query returned different creation facts from the retained confirmed result. Both observations remain available for inspection and export. The previous confirmation is retained; no new submission was sent.',
-          );
-          return;
-        }
         setConfirmedObservation(document);
         const saved = view.receipt;
         setReceipt({
@@ -241,6 +287,7 @@ export function OriginalProposalSubmission({
           'The original creation was confirmed from its historical receipt. The proposal may since have been reviewed or expired; open its details for current information.',
         );
       }
+      if (automaticHistory) await retainObservation(document, controller);
     } catch {
       if (mounted.current && operation.current === controller)
         setMessage(
@@ -300,7 +347,9 @@ export function OriginalProposalSubmission({
       <p className="muted">
         This page waits up to 30 seconds for each save, save-and-send attempt or receipt query.
         Stopping the wait keeps the original request. A submission already sent may still complete;
-        check its original receipt before deciding whether to retry.
+        check its original receipt before deciding whether to retry. When automatic history saving
+        is enabled, a received result starts a separate local save with up to 30 seconds of waiting.
+        Stopping that save preserves the received result.
       </p>
       {busy && operation.current && (
         <button type="button" className="secondary-button" onClick={stopWaiting}>
@@ -349,10 +398,65 @@ export function OriginalProposalSubmission({
           Open confirmed submission
         </Link>
       )}
+      <section className="side-detail" aria-label="Automatic creation history retention">
+        <label>
+          <input
+            type="checkbox"
+            checked={automaticHistory}
+            disabled={busy || automaticAttempt?.status === 'unknown'}
+            onChange={(event) => {
+              if (!active.current && automaticAttempt?.status !== 'unknown')
+                setAutomaticHistory(event.target.checked);
+            }}
+          />{' '}
+          Automatically save newly received creation results in this browser
+        </label>
+        <p>
+          Applies to future valid send and receipt-query results on this page, including reads that
+          found no matching receipt or differ from a retained confirmation. Enabling does not query,
+          send or save earlier observations. Other actions wait for each local save attempt. This
+          choice resets when you leave; keep exported files for longer-term recovery.
+        </p>
+        {automaticAttempt && (
+          <div role="status">
+            <p>
+              Last local retention attempt · {automaticAttempt.document.observed_at} ·{' '}
+              {automaticAttempt.status === 'saving'
+                ? 'Saving the complete received observation…'
+                : automaticAttempt.status === 'saved'
+                  ? 'The complete history copy was saved and read back. This does not establish the current proposal state.'
+                  : 'Local saving could not be confirmed and may already have completed. Automatic retention is off. The complete observation is retained below for inspection and export; the received creation result is unchanged.'}
+            </p>
+            {automaticAttempt.digest && (
+              <p>
+                History checksum · <code>{automaticAttempt.digest}</code>
+              </p>
+            )}
+            {automaticAttempt.status === 'unknown' && (
+              <>
+                <p>
+                  Retry this same local save before enabling automatic retention again. This keeps
+                  the original observation time and response; it does not query or send a proposal.
+                </p>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  disabled={busy}
+                  onClick={() => void retryHistorySave()}
+                >
+                  Retry saving the retained observation locally
+                </button>
+              </>
+            )}
+          </div>
+        )}
+      </section>
       <CreationHistoryPanel
         binding={request.binding}
         live={observation}
         confirmedLive={confirmedObservation}
+        retainedAutomatic={automaticAttempt?.document}
+        externalStorageEpoch={historyStorageEpoch}
         disabled={busy}
         begin={beginHistory}
         end={endHistory}

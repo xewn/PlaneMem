@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [创建结果自动留存](docs/design/01-contracts/proposal-creation-history-runtime.md#新收到结果的自动留存)：可选择为本页后续有效回执保存完整历史；本地失败单独提示并关闭自动留存，保留原观察供导出或显式补存，不重发创建请求。仅源码文档，未编译、测试、运行或发布。
+
 新增 [创建历史所选批量整理](docs/design/01-contracts/proposal-creation-history-runtime.md#当前结果页的批量整理)：从当前筛选页选择最多5份，完整审阅并导出可恢复子集，独立确认后原子移除完全同文副本；冲突拒绝整批，未知保留副本并要求重新读取。仅源码文档，未编译、测试、运行或发布。
 
 新增 [创建历史组合筛选](docs/design/01-contracts/proposal-creation-history-runtime.md#组合筛选与继续查找)：按建议ID、原请求键、历史结果和响应来源交集查找，每次核验最多5份完整记录，空匹配仍可续查；切换条件撤销旧目录和删除资格，整批备份不受筛选限制。仅源码文档，未编译、测试、运行或发布。

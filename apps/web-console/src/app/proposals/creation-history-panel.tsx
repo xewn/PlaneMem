@@ -36,6 +36,8 @@ export function CreationHistoryPanel({
   binding,
   live,
   confirmedLive,
+  retainedAutomatic,
+  externalStorageEpoch = 0,
   disabled = false,
   begin,
   end,
@@ -43,6 +45,8 @@ export function CreationHistoryPanel({
   binding: ProposalSubmissionBinding;
   live?: CreationObservation;
   confirmedLive?: CreationObservation;
+  retainedAutomatic?: CreationObservation;
+  externalStorageEpoch?: number;
   disabled?: boolean;
   begin?: () => boolean;
   end?: () => void;
@@ -60,7 +64,10 @@ export function CreationHistoryPanel({
     source: '',
   });
   const [digest, setDigest] = useState('');
-  const [storageEpoch, setStorageEpoch] = useState(0);
+  const [localStorageEpoch, setStorageEpoch] = useState(0);
+  // Revoke old qualifications in this render, before the effect clears the visible directory.
+  const storageEpoch = localStorageEpoch + externalStorageEpoch;
+  const lastExternalEpoch = useRef(externalStorageEpoch);
   const [removalFresh, setRemovalFresh] = useState(false);
   const [removeConfirmed, setRemoveConfirmed] = useState(false);
   const [removalStatus, setRemovalStatus] = useState<BrowserRemovalResult | 'unknown'>();
@@ -107,6 +114,16 @@ export function CreationHistoryPanel({
     setRemovalFresh(false);
     setRemoveConfirmed(false);
   }, []);
+  useEffect(() => {
+    if (lastExternalEpoch.current === externalStorageEpoch) return;
+    lastExternalEpoch.current = externalStorageEpoch;
+    setPage(undefined);
+    setRemovalFresh(false);
+    setRemoveConfirmed(false);
+    setMessage(
+      'Browser history may have changed. Find saved creation history again, and compare a retained backup again before restoring. Received results and inspected copies are retained.',
+    );
+  }, [externalStorageEpoch]);
   async function run<T>(
     work: (signal: AbortSignal, check: () => void) => Promise<T>,
     receive: (value: T) => void,
@@ -302,6 +319,9 @@ export function CreationHistoryPanel({
         ...(live ? [{ label: 'Latest received result', value: live }] : []),
         ...(confirmedLive && confirmedLive !== live
           ? [{ label: 'Retained confirmed result', value: confirmedLive }]
+          : []),
+        ...(retainedAutomatic && retainedAutomatic !== live && retainedAutomatic !== confirmedLive
+          ? [{ label: 'Retained automatic-save observation', value: retainedAutomatic }]
           : []),
       ].map(({ label, value }) => (
         <div key={label}>
