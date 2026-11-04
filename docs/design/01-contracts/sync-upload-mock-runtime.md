@@ -37,7 +37,7 @@ client_cursor 独立于服务端高水位，按完整发送身份从零开始。
 
 普通事件追加 ClientEventRecorded，仅保存原类型及 payload，不执行其中操作。FieldChangeProposed 必须提供已支持的实体类型/字段、有效实体 ID、明确 value、安全 base_version；缺失或不合法返回 VALIDATION_ERROR。来源未配置、不可用、会话不可见、restricted 无读取权限或字段缺失返回 SOURCE_UNAVAILABLE。base_version 高于来源当前版本返回 VALIDATION_ERROR。
 
-原版本与当前版本相同，或版本较旧但 value 与当前字段规范 JSON 相同，记录 ClientEventRecorded；旧版本且 value 不同，记录 ConflictDetected 并返回 VERSION_CONFLICT、conflict_id 和投递信息。冲突只是内存历史观察，不创建真实冲突服务对象、不更新来源字段或版本，也不提供冲突解决路由。分类继承为原事件与来源的较高者；来源引用保留并追加 client-event 及关联实体。
+原版本与当前版本相同，或版本较旧但 value 与当前字段规范 JSON 相同，记录 ClientEventRecorded；旧版本且 value 不同，记录 ConflictDetected 并返回 VERSION_CONFLICT、conflict_id 和投递信息。冲突是内存历史观察，不创建真实冲突服务对象、不更新来源字段或版本。已补[冲突生命周期Mock](conflict-mock-runtime.md)：上传批次同步保存双方原值，显式冲突权限可查询与解决，并追加同流历史事件；原上传回执保持。分类继承为原事件与来源的较高者；来源引用保留并追加 client-event 及关联实体。
 
 新增 canonical event 保留原 trace、生成时间、原 client ID、payload 内的发送者和 client_event_id；actor_id 为 ULID 时才出现在事件顶层。每个实际记录占用新的服务端游标，外层下载项 accepted=true 表示流已接收该历史事件，不能误解为原字段提议已应用。冲突上传回执 accepted=false，两者语义不同。
 
@@ -89,4 +89,4 @@ const receipt = await client.getSyncEventReceipt({ identity: session.identity, e
 const page = await client.getSyncChanges({ cursor: 0 }, { expected_identity: session.identity });
 ```
 
-真实 Policy/认证/审计、动态来源版本变化、冲突详情/解决、上传账本持久化和种子恢复、网络未知/重启恢复及其余 Mock 路由仍缺。未声明运行兼容性通过；批次重放/事件规范化、序号间隙、冲突与来源可见性、历史回执、同流下载/确认衔接、取消/容量和复制隔离均待后续获准后补运行证据。
+冲突详情/解决和原决定回执已接入独立契约。真实 Policy/认证/审计、动态来源版本变化、外部旧冲突导入、上传账本持久化和种子恢复、网络未知/重启恢复及其余 Mock 路由仍缺。未声明运行兼容性通过；批次重放/事件规范化、序号间隙、冲突与来源可见性、历史回执、同流下载/确认衔接、取消/容量和复制隔离均待后续获准后补运行证据。

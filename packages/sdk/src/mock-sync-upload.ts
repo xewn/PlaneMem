@@ -20,6 +20,7 @@ import {
   type SyncRecordedEventReceipt,
   type SyncUploadResult,
 } from '@planemem/contracts';
+import { MockSyncConflictLedger, type MockSyncConflictSeed } from './mock-sync-conflicts.js';
 
 export interface MockSyncFieldSource {
   entity_type: ProposedFieldChange['entity_type'];
@@ -116,6 +117,7 @@ type Delivery = {
 
 /** Internal synchronous ledger. The parent validates the complete response/stream before commit. */
 export class MockSyncUploadLedger {
+  readonly conflicts = new MockSyncConflictLedger();
   readonly #sources = new Map<string, MockSyncFieldSource>();
   readonly #batches = new Map<string, { fingerprint: string; result: SyncUploadResult }>();
   readonly #deliveries = new Map<string, Delivery>();
@@ -203,6 +205,11 @@ export class MockSyncUploadLedger {
       (delivery.source === null || this.sourceVisible(delivery.source, access))
     );
   }
+  canReadConflict(source: string, sensitivity: Classification, access: MockSyncUploadAccess) {
+    return (
+      (sensitivity !== 'restricted' || access.read_restricted) && this.sourceVisible(source, access)
+    );
+  }
   visible(
     id: string,
     identity: SyncCommandIdentity,
@@ -210,7 +217,14 @@ export class MockSyncUploadLedger {
     explicitlyVisible: boolean,
   ): boolean | undefined {
     const delivery = this.#serverDeliveries.get(id);
-    if (!delivery) return undefined;
+    if (!delivery)
+      return this.conflicts.visibleEvent(
+        id,
+        identity,
+        explicitlyVisible,
+        access?.include_own_uploads ?? false,
+        (source, sensitivity) => !!access && this.canReadConflict(source, sensitivity, access),
+      );
     return (
       !!access &&
       this.readable(delivery, access) &&
@@ -267,6 +281,7 @@ export class MockSyncUploadLedger {
     const result: SyncUploadResult = { accepted: [], rejected: [], next_cursor: currentCursor };
     const additions: { key: string; delivery: Delivery }[] = [];
     const changes: SyncChange[] = [];
+    const conflicts: MockSyncConflictSeed[] = [];
     const deliver = (receipt: SyncRecordedEventReceipt) => {
       const common = {
         event_id: receipt.event_id,
@@ -374,6 +389,37 @@ export class MockSyncUploadLedger {
         { type: 'client-event', id: event.event_id },
         ...(change ? [{ type: change.entity_type, id: change.entity_id }] : []),
       ];
+      if (conflict && change && source)
+        conflicts.push({
+          source: sourceKey(change),
+          sensitivity,
+          origin: identity,
+          record: {
+            conflict_id: conflict,
+            entity_type: change.entity_type,
+            entity_id: change.entity_id,
+            field: change.field,
+            base_version: String(change.base_version),
+            local_version: String(change.base_version + 1),
+            server_version: String(source.version),
+            version: '1',
+            local_value_json: JSON.stringify(change.value),
+            local_value_state: 'recorded',
+            server_value_json: JSON.stringify(source.fields[change.field]),
+            server_value_state: 'recorded',
+            status: 'open',
+            decision_state: 'none',
+            resolution: null,
+            resolved_value_json: null,
+            resolved_value_state: 'not-recorded',
+            actor_id: identity.actor_id,
+            resolved_at: null,
+            resolved_by_client: null,
+            resolution_event_id: null,
+            trace_id: trace,
+            source_refs: refs,
+          },
+        });
       changes.push({
         schema_version: 1,
         event_id: serverId,
@@ -436,10 +482,12 @@ export class MockSyncUploadLedger {
       }),
     ).byteLength;
     if (this.#retainedBytes + retainedBytes > MAX_RETAINED_BYTES) fail('RATE_LIMITED', trace);
+    const commitConflicts = this.conflicts.prepareCreated(conflicts, trace);
     return {
       response,
       changes,
       commit: () => {
+        commitConflicts();
         this.#batches.set(batchKey, { fingerprint, result });
         for (const entry of additions) {
           this.#deliveries.set(entry.key, entry.delivery);

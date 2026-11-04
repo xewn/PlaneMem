@@ -19,6 +19,12 @@ import {
   SYNC_CURSOR_RESPONSE_BYTES,
   SYNC_UPLOAD_RESPONSE_BYTES,
   SYNC_EVENT_RECEIPT_RESPONSE_BYTES,
+  CONFLICT_COMMAND_CONTEXT_BYTES,
+  CONFLICT_READ_RESPONSE_BYTES,
+  CONFLICT_RECEIPT_RESPONSE_BYTES,
+  CONFLICT_REGISTRY_RESPONSE_BYTES,
+  CONFLICT_SUBMISSION_RESPONSE_BYTES,
+  type Classification,
   type SyncChange,
   type SyncChangesQuery,
   type SyncCommandIdentity,
@@ -31,6 +37,13 @@ import {
   type MockSyncFieldSource,
   type MockSyncUploadAccess,
 } from './mock-sync-upload.js';
+import {
+  mockConflictRoute,
+  mockConflictId,
+  parseMockSyncConflictAccess,
+  type MockSyncConflictAccess,
+  type MockSyncMutationPlan,
+} from './mock-sync-conflicts.js';
 
 const MAX_CHANGES = 10_000;
 const MAX_CONSUMERS = 1_000;
@@ -65,6 +78,7 @@ export interface MockSyncSession {
   project_readable: boolean;
   visible_event_ids: string[];
   upload_access?: MockSyncUploadAccess;
+  conflict_access?: MockSyncConflictAccess;
 }
 
 const messages = {
@@ -74,6 +88,7 @@ const messages = {
   INVALID_INPUT: 'Supply a valid sync request without extra parameters or write conditions',
   DENIED: 'The simulated session does not permit this request or original identity',
   NOT_FOUND: 'The simulated project is unavailable to this session',
+  CONFLICT_NOT_FOUND: 'The simulated conflict is unavailable to this session',
   CURSOR_GAP: 'The requested cursor is ahead of the simulated stream',
   CURSOR_REGRESSION: 'The simulated acknowledgement cannot move backwards',
   RATE_LIMITED: 'The simulated store reached its consumer limit',
@@ -136,7 +151,10 @@ function checked<T>(code: keyof typeof messages, trace: string, operation: () =>
   }
 }
 export function isMockSyncPath(path: string) {
-  return typeof path === 'string' && routes.has(path.split('?')[0]!);
+  return (
+    typeof path === 'string' &&
+    (routes.has(path.split('?')[0]!) || mockConflictRoute(path.split('?')[0]!) !== undefined)
+  );
 }
 
 /** Shared only when explicitly passed to multiple MockWcpServer instances; never persisted. */
@@ -242,7 +260,7 @@ export class MockSyncStore {
           'project_readable',
           'visible_event_ids',
         ],
-        ['upload_access'],
+        ['upload_access', 'conflict_access'],
       );
       const identity = parseSyncCommandIdentity(input.identity);
       assertSyncIdentityScope(identity, this.#scope);
@@ -268,6 +286,10 @@ export class MockSyncStore {
       const upload_access = Object.hasOwn(input, 'upload_access')
         ? this.#uploads!.access(input.upload_access)
         : undefined;
+      if (Object.hasOwn(input, 'conflict_access') && !upload_access) throw new TypeError();
+      const conflict_access = Object.hasOwn(input, 'conflict_access')
+        ? parseMockSyncConflictAccess(input.conflict_access)
+        : undefined;
       return {
         identity,
         expires_at: input.expires_at,
@@ -276,6 +298,7 @@ export class MockSyncStore {
         project_readable: input.project_readable,
         visible,
         upload_access,
+        conflict_access,
       };
     });
     return {
@@ -294,6 +317,7 @@ export class MockSyncStore {
       project_readable: boolean;
       visible: Set<string>;
       upload_access: MockSyncUploadAccess | undefined;
+      conflict_access: MockSyncConflictAccess | undefined;
     },
   ): unknown {
     let trace = 'trace_unknown';
@@ -321,7 +345,8 @@ export class MockSyncStore {
     checkLive();
     if (typeof request.path !== 'string') throw fail('INVALID_INPUT', trace);
     const path = request.path.split('?')[0]!;
-    const method = routes.get(path);
+    const conflict = mockConflictRoute(path);
+    const method = conflict?.method ?? routes.get(path);
     if (method === undefined || method !== request.method)
       throw fail('MOCK_ROUTE_NOT_FOUND', trace);
     if (request.path.length > SYNC_CHANGES_QUERY_BYTES || request.path.includes('#'))
@@ -330,8 +355,19 @@ export class MockSyncStore {
     const isAck = path === '/v1/sync/ack';
     const isUpload = path === '/v1/events:batch';
     const isReceipt = path === '/v1/sync/events/receipt';
-    if ((isUpload || isReceipt) && !this.#uploads) throw fail('MOCK_ROUTE_NOT_FOUND', trace);
-    if (!(isIdentity || isUpload || isReceipt ? session.write_sync : session.read_sync))
+    const isResolve = conflict?.kind === 'resolve';
+    if ((isUpload || isReceipt || conflict) && !this.#uploads)
+      throw fail('MOCK_ROUTE_NOT_FOUND', trace);
+    if (conflict) {
+      if (
+        !session.upload_access ||
+        !session.conflict_access ||
+        !(conflict.kind === 'list' || conflict.kind === 'get'
+          ? session.conflict_access.read
+          : session.conflict_access.resolve)
+      )
+        throw fail('DENIED', trace);
+    } else if (!(isIdentity || isUpload || isReceipt ? session.write_sync : session.read_sync))
       throw fail('DENIED', trace);
     if ((isUpload || isReceipt) && !session.upload_access) throw fail('DENIED', trace);
     for (const field of ['tenant_id', 'workspace_id', 'project_id'] as const)
@@ -346,9 +382,10 @@ export class MockSyncStore {
     if (isAck && headers.has('x-expected-actor-id') !== headers.has('x-expected-client-id'))
       throw fail('DENIED', trace);
     if (
-      ['if-match', 'x-expected-version'].some((key) => headers.has(key)) ||
-      (!isUpload && headers.has('idempotency-key')) ||
-      ((isUpload || isReceipt) &&
+      headers.has('x-expected-version') ||
+      (!isResolve && headers.has('if-match')) ||
+      (!isUpload && !isResolve && headers.has('idempotency-key')) ||
+      ((isUpload || isReceipt || conflict) &&
         [
           'if-none-match',
           'if-modified-since',
@@ -372,8 +409,16 @@ export class MockSyncStore {
     const parameters = new URLSearchParams(
       request.path.includes('?') ? request.path.slice(request.path.indexOf('?') + 1) : '',
     );
-    if (path !== '/v1/sync/changes' && parameters.size) throw fail('INVALID_INPUT', trace);
-    if (!isAck && !isUpload && !isReceipt && request.body !== undefined)
+    if (path !== '/v1/sync/changes' && conflict?.kind !== 'list' && parameters.size)
+      throw fail('INVALID_INPUT', trace);
+    if (
+      !isAck &&
+      !isUpload &&
+      !isReceipt &&
+      !isResolve &&
+      conflict?.kind !== 'receipt' &&
+      request.body !== undefined
+    )
       throw fail('INVALID_INPUT', trace);
     // Every response is detached and bounded before its synchronous state mutations below.
     const finish = (value: unknown, cap: number) => {
@@ -385,6 +430,87 @@ export class MockSyncStore {
       checkLive();
       return result;
     };
+    const publish = (plan: MockSyncMutationPlan, cap: number) => {
+      if (this.#changes.length + plan.changes.length > MAX_CHANGES)
+        throw fail('RATE_LIMITED', trace);
+      const ids = new Set<string>();
+      let cursor = this.#serverCursor;
+      const next = plan.changes.at(-1)?.server_cursor ?? cursor;
+      const additions = checked('SYNC_CHANGES_INVALID', trace, () =>
+        plan.changes.map((change) => {
+          if (!validateEvent(change).valid) throw new TypeError();
+          const result = parseSyncChangesEnvelope(
+            page(this.#scope, [change], next, false, trace),
+            { cursor, limit: 1 },
+            this.#scope,
+            trace,
+          ).data.changes[0]!;
+          if (this.#eventIds.has(result.event_id) || ids.has(result.event_id))
+            throw new TypeError();
+          ids.add(result.event_id);
+          cursor = result.server_cursor;
+          return result;
+        }),
+      );
+      if (
+        new TextEncoder().encode(JSON.stringify([...this.#changes, ...additions])).byteLength >
+        SEED_BYTES
+      )
+        throw fail('RATE_LIMITED', trace);
+      const response = finish(plan.response, cap);
+      // No await or caller callback between validation and committing records and stream.
+      plan.commit();
+      this.#changes.push(...additions);
+      for (const change of additions) this.#eventIds.add(change.event_id);
+      if (additions.length) this.#serverCursor = cursor;
+      return response;
+    };
+    if (conflict) {
+      const ledger = this.#uploads!.conflicts;
+      const visible = (source: string, sensitivity: Classification) =>
+        this.#uploads!.canReadConflict(source, sensitivity, session.upload_access!);
+      if (conflict.kind === 'identity')
+        return finish(
+          ledger.identity(session.identity, session.expires_at, trace),
+          CONFLICT_COMMAND_CONTEXT_BYTES,
+        );
+      if (!session.project_readable)
+        throw fail(conflict.kind === 'list' ? 'NOT_FOUND' : 'CONFLICT_NOT_FOUND', trace);
+      if (conflict.kind === 'list')
+        return ledger
+          .list(
+            parameters,
+            session.identity,
+            session.conflict_access!,
+            session.upload_access!,
+            visible,
+            trace,
+          )
+          .then((result) => finish(result, CONFLICT_REGISTRY_RESPONSE_BYTES));
+      if (conflict.kind === 'receipt')
+        return finish(
+          ledger.receipt(request.body, session.identity, visible, trace),
+          CONFLICT_RECEIPT_RESPONSE_BYTES,
+        );
+      const id = mockConflictId(conflict.encodedId, trace);
+      if (conflict.kind === 'get')
+        return finish(
+          ledger.detail(id, session.identity, visible, trace),
+          CONFLICT_READ_RESPONSE_BYTES,
+        );
+      return publish(
+        ledger.resolve(
+          id,
+          request.body,
+          headers,
+          session.identity,
+          visible,
+          trace,
+          this.#serverCursor,
+        ),
+        CONFLICT_SUBMISSION_RESPONSE_BYTES,
+      );
+    }
     if (isIdentity) {
       const result = checked('SYNC_COMMAND_CONTEXT_INVALID', trace, () =>
         parseSyncCommandContextEnvelope(
@@ -423,39 +549,7 @@ export class MockSyncStore {
         trace,
         this.#serverCursor,
       );
-      if (this.#changes.length + plan.changes.length > MAX_CHANGES)
-        throw fail('RATE_LIMITED', trace);
-      const ids = new Set<string>();
-      let cursor = this.#serverCursor;
-      const additions = checked('SYNC_CHANGES_INVALID', trace, () =>
-        plan.changes.map((change) => {
-          if (!validateEvent(change).valid) throw new TypeError();
-          const result = parseSyncChangesEnvelope(
-            page(this.#scope, [change], plan.response.data.next_cursor, false, trace),
-            { cursor, limit: 1 },
-            this.#scope,
-            trace,
-          ).data.changes[0]!;
-          if (this.#eventIds.has(result.event_id) || ids.has(result.event_id))
-            throw new TypeError();
-          ids.add(result.event_id);
-          cursor = result.server_cursor;
-          return result;
-        }),
-      );
-      if (
-        new TextEncoder().encode(JSON.stringify([...this.#changes, ...additions])).byteLength >
-        SEED_BYTES
-      )
-        throw fail('RATE_LIMITED', trace);
-      const response = finish(plan.response, SYNC_UPLOAD_RESPONSE_BYTES);
-      // No await or caller callback between validation and committing the ledger and stream.
-      plan.commit();
-      this.#changes.push(...additions);
-      for (const change of additions) this.#eventIds.add(change.event_id);
-      // A replay returns its historical watermark; it cannot move the live stream backwards.
-      if (additions.length) this.#serverCursor = cursor;
-      return response;
+      return publish(plan, SYNC_UPLOAD_RESPONSE_BYTES);
     }
     const key = consumerKey(session.identity);
     const savedCursor = this.#acknowledgements.get(key);
