@@ -1714,13 +1714,7 @@ async function gatewayPost<T>(
   return gatewayRequest(path, body, key, 'POST', identity);
 }
 
-export function compileWorkbenchContextPack(budget: number, ttl: number, key: string) {
-  return gatewayPost<ContextPackReceipt>(
-    '/v1/context-pack/compile',
-    { budget_tokens: budget, ttl_seconds: ttl },
-    key,
-  );
-}
+export { compileWorkbenchContextPack } from './context-pack-compile-server';
 
 export function readWorkbenchContextPack(packId?: string) {
   const read = parseContextPackReadQuery(packId === undefined ? {} : { pack_id: packId });

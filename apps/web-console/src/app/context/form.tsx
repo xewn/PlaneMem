@@ -71,18 +71,19 @@ export function CompilePackForm({ initialKey, allowed }: { initialKey: string; a
       )}
       {uncertain && (
         <p role="status">
-          The save result is unknown. Keep this page open and retry the original budget, lifetime
-          and request key. Later sign-in or permission errors do not establish whether it was saved.
+          The save result is unknown. Keep this page and the original project, account, client,
+          budget, lifetime and request key. Later sign-in or permission errors do not establish
+          whether it was saved. This form does not store recovery data after closing the page.
         </p>
       )}
-      {current && state.status === 'error' && !uncertain && (
+      {current && state.status === 'error' && (!uncertain || unusable) && (
         <button
           type="button"
           className="secondary-button"
           disabled={pending}
           onClick={() => setRevision((value) => value + 1)}
         >
-          {unusable ? 'Prepare a fresh pack request' : 'Start a new request'}
+          {unusable ? 'Start a separate fresh request' : 'Start a new request'}
         </button>
       )}
     </form>

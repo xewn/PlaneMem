@@ -4,6 +4,8 @@
 
 ## 当前基线
 
+- P5：网页compileWorkbenchContextPack改专用server helper，原函数签名保持；固定本次session/范围/Gateway/参数/键，单POST及30秒本地等待，完整2 MiB成功/16 KiB错误、HTTP/type/trace/ETag、共享预算/最大TTL及Node SHA-256核验。自有派发错误使提交后401/权限/4xx/到期仍保留unknown；表单原参数锁定，已核验过期/来源变化可显式另起新请求但不宣称原保存失败。重复表单字段拒绝，原键不trim改写；完整成功才跳转，缓存刷新失败不要求重发。当前session获取在期限外，跨重登录账号/客户端及原范围未固定，无本地恢复存储或取消远端保证；运行/兼容和身份恢复闭环仍待补，R-003未完成、evidence为空。仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、渲染/浏览器/API/保存请求或发布。
+
 - P2/P4：MCP compile_context_pack接入专用保存执行器，发现/prepare/调用统一可信未过期实际context.read和完整身份；严格4 KiB参数/相等原键，保留可信context键回退，规范预算/期限、单次内部POST。完整2 MiB成功/16 KiB错误、原范围/trace/预算/最大TTL、HTTP状态/type/ETag、Node SHA-256及restricted核对，4 MiB+4096转义文本包装。独立每ApiGateway两笔保存/30秒期限，底层结束才释放；阶段/派发/unknown固定诊断，无自动重试/换键/读回/持久化。prepare现要求专用executor，旧不完整返回或无可信实际能力的替身须迁移。内部请求不可取消、授权等待超时后仍可能写入，恢复存储/Mock保存及运行证据待补；R-003未完成、evidence为空。仅源码文档人工审阅和格式文本检查，未编译、类型检查、测试、执行MCP/API/保存或发布。
 
 - P2/P4：`context compile`的main/callGateway/runWorkctx接入SDK完整保存核验，单一4 KiB JSON/稳定文件、网络有界stdin、默认{}与30秒timeout-ms；预算/期限规范化，可选成对expected身份，--key/正文idempotency_key/嵌入原context键必须一致。嵌入实际未过期context.read及完整身份，严格单次POST/头/正文/2 MiB限额，授权审计后复查取消/到期，结果restricted过滤补查，独立每router两笔提交容量直到底层结束。完整回执/摘要及预算/最大TTL沿SDK，派发后任何失败保留unknown；不自动重试/换键/读回/保存文件。旧不完整返回及无可信身份嵌入替身需迁移，MCP专用保存核验、运行兼容及恢复存储待补；R-003未完成、evidence为空。仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/SDK/API/保存请求或发布。

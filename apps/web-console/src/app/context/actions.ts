@@ -2,13 +2,10 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { field } from '../../lib/command-feedback';
-import { validatePackReceipt } from '../../lib/mutation-receipts';
 import {
-  AuthRequiredError,
-  WorkbenchApiError,
+  ContextPackSaveError,
   compileWorkbenchContextPack,
-} from '../../lib/server-api';
+} from '../../lib/context-pack-compile-server';
 
 export interface PackFeedback {
   status: 'idle' | 'error';
@@ -20,10 +17,14 @@ export interface PackFeedback {
 }
 
 export async function compilePack(previous: PackFeedback, data: FormData): Promise<PackFeedback> {
-  const key = field(data, 'key');
+  const field = (name: string) => {
+    const values = data.getAll(name);
+    return values.length === 1 && typeof values[0] === 'string' ? values[0] : '';
+  };
+  const key = field('key');
   const unresolved = previous.key === key && previous.uncertain === true;
-  const budget = Number(field(data, 'budget'));
-  const ttl = Number(field(data, 'ttl'));
+  const budget = Number(field('budget'));
+  const ttl = Number(field('ttl'));
   if (
     !key ||
     !Number.isSafeInteger(budget) ||
@@ -42,27 +43,23 @@ export async function compilePack(previous: PackFeedback, data: FormData): Promi
   let packId: string;
   try {
     const result = await compileWorkbenchContextPack(budget, ttl, key);
-    validatePackReceipt(result.data, budget, ttl);
     packId = result.data.pack_id;
-    revalidatePath('/context');
   } catch (error) {
-    if (error instanceof AuthRequiredError)
-      return { status: 'error', key, uncertain: unresolved, message: 'Sign in again to continue.' };
-    if (error instanceof WorkbenchApiError) {
-      // These responses are produced only after finding the original saved pack.
-      // Other 4xx responses do not settle a previously unknown write outcome.
+    if (error instanceof ContextPackSaveError) {
+      // A verified stale/expired response permits a deliberate new request, but does not
+      // turn this invocation's unknown outcome into evidence that no save happened.
       const unusable =
-        (error.status === 409 && error.code === 'CONTEXT_PACK_STALE') ||
-        (error.status === 410 && error.code === 'CONTEXT_PACK_EXPIRED');
+        (error.status === 409 && error.envelope.code === 'CONTEXT_PACK_STALE') ||
+        (error.status === 410 && error.envelope.code === 'CONTEXT_PACK_EXPIRED');
       return {
         status: 'error',
         key,
-        trace: error.trace_id,
+        trace: error.envelope.trace_id,
         message: unusable
-          ? 'The original request saved a pack, but that pack is now expired or its sources changed. Start a new request to prepare a fresh pack.'
+          ? 'The gateway reports that the original pack is expired or its sources changed. You may deliberately start a separate fresh request; this does not mean the original save failed.'
           : error.message,
         unusable,
-        uncertain: !unusable && (unresolved || error.status === undefined || error.status >= 500),
+        uncertain: unresolved || error.dispatched,
       };
     }
     return {
@@ -71,6 +68,11 @@ export async function compilePack(previous: PackFeedback, data: FormData): Promi
       uncertain: true,
       message: 'The gateway did not confirm the saved pack. Retry with the original settings.',
     };
+  }
+  try {
+    revalidatePath('/context');
+  } catch {
+    // Cache refresh failure must not ask the user to resubmit an already verified save.
   }
   redirect('/context?pack=' + encodeURIComponent(packId));
 }
