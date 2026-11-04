@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/artifact-upload.json",
+  "title": "Artifact create and append upload results v1",
+  "description": "Complete successful upload envelope, including first save or exact original replay. This is not the read-only receipt query envelope or multipart wire body.",
+  "$comment": "Source-only contract for parseArtifactUploadEnvelope. Load artifact-upload.json, artifact-original.json and artifact-comparison.json locally under complete IDs. Runtime remains authoritative for exact original identity/command, scope/hash/size/version/source/trace binding, byte limits and content integrity. No schema validity proves a transaction committed or that content remains available. No validator, generator or upload execution was performed.",
+  "$ref": "#ArtifactUploadEnvelope",
+  "$defs": {
+    "ArtifactCreateOriginal": {
+      "$anchor": "ArtifactCreateOriginal",
+      "$ref": "artifact-original.json#ArtifactReceiptQuery",
+      "properties": { "command": { "$ref": "artifact-original.json#ArtifactCreateCommand" } },
+      "$comment": "Decoded JSON in the request file part for create. Original five-field identity and complete create command, with no content bytes."
+    },
+    "ArtifactPutOriginal": {
+      "$anchor": "ArtifactPutOriginal",
+      "$ref": "artifact-original.json#ArtifactReceiptQuery",
+      "properties": { "command": { "$ref": "artifact-original.json#ArtifactPutCommand" } },
+      "$comment": "Decoded JSON in the request file part for append. Runtime binds artifact_id to the path and expected_version to If-Match."
+    },
+    "ArtifactUploadData": {
+      "$anchor": "ArtifactUploadData",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "command", "status", "artifact", "replayed", "content_state"],
+      "properties": {
+        "identity": { "$ref": "artifact-original.json#ArtifactCommandIdentity" },
+        "command": { "$ref": "artifact-original.json#ArtifactWriteCommand" },
+        "status": { "const": "recorded" },
+        "artifact": { "$ref": "artifact-comparison.json#ArtifactComparisonMetadata" },
+        "replayed": { "type": "boolean" },
+        "content_state": { "enum": ["verified-at-save", "not-checked"] }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "replayed": { "const": false },
+            "content_state": { "const": "verified-at-save" }
+          }
+        },
+        {
+          "properties": {
+            "replayed": { "const": true },
+            "content_state": { "const": "not-checked" }
+          }
+        }
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "command": {
+                "properties": { "operation": { "const": "artifact.create" } },
+                "required": ["operation"]
+              }
+            },
+            "required": ["command"]
+          },
+          "then": { "properties": { "artifact": { "properties": { "version": { "const": 1 } } } } }
+        }
+      ],
+      "$comment": "No not-observed success on upload. First save pairs false/verified-at-save and requires metadata.trace_id equal to the request trace at runtime. Replay pairs true/not-checked and preserves the original saved metadata trace. Original scope/hash/size always match metadata; create also binds name/mime/classification/ordered sources and equal creation/update times, append binds artifact ID and expected_version+1."
+    },
+    "ArtifactUploadEnvelope": {
+      "$anchor": "ArtifactUploadEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "artifact-comparison.json#/$defs/trace" },
+        "source_refs": {
+          "$ref": "artifact-original.json#/$defs/ArtifactReceiptEnvelope/properties/source_refs",
+          "minItems": 1
+        },
+        "data": { "$ref": "#ArtifactUploadData" }
+      },
+      "$comment": "Exactly one artifact/version source, bound to saved metadata by runtime. No outer revision, etag, storage address or object bytes. The nested ETag describes the saved version, including on replay after current state advanced. Dedicated clients limit full success to 4 MiB; this shared structural parser and Gateway writer response do not impose that uniform byte budget."
+    },
+    "ArtifactCreateUploadEnvelope": {
+      "$anchor": "ArtifactCreateUploadEnvelope",
+      "$ref": "#ArtifactUploadEnvelope",
+      "properties": {
+        "data": {
+          "properties": { "command": { "$ref": "artifact-original.json#ArtifactCreateCommand" } }
+        }
+      }
+    },
+    "ArtifactPutUploadEnvelope": {
+      "$anchor": "ArtifactPutUploadEnvelope",
+      "$ref": "#ArtifactUploadEnvelope",
+      "properties": {
+        "data": {
+          "properties": { "command": { "$ref": "artifact-original.json#ArtifactPutCommand" } }
+        }
+      }
+    }
+  }
+}

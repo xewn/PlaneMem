@@ -1,5 +1,7 @@
 # WCP API 契约 v1
 
+2026-11-05，TODO P0-01：[文件创建与追加上传 OpenAPI](../../../packages/contracts/openapi/README.md#文件创建与追加上传)新增已有 POST /v1/artifacts 和 POST /v1/artifacts/{artifact_id}/versions 的机器描述。复用原身份/命令，独立完整成功 Schema 严格配对首次保存与重放状态，描述原键/版本、文件部件、两笔容量/120 秒仅正文预算和错误。未改运行逻辑或执行上传、校验器、生成器、编译、测试、数据库及发布；P0-01/R-001 未完成、evidence 为空。
+
 2026-11-05，TODO P0-01：[文件上传身份与原请求回执 OpenAPI](../../../packages/contracts/openapi/README.md#文件上传身份与原请求回执)新增现有 GET upload-context 与只读 POST receipt 的机器描述，完整 Schema 覆盖原五项身份、创建/追加命令、recorded/not-observed 和当前能力提示。原回执只读且不等待并发上传完成，未观察到不是原上传失败证明；客户端限额不冒称服务端保证。未改运行行为，未执行校验器、生成器、编译、测试、接口、数据库或发布；P0-01/R-001 未完成、evidence 为空。
 
 2026-11-05，TODO P0-01：[文件元数据读取 OpenAPI](../../../packages/contracts/openapi/README.md#文件元数据读取)覆盖现有文件目录、当前详情、版本目录和指定历史详情四路 GET。新增详情完整 Schema，复用原目录和公开元数据/历史封套；区分真实权限/客户端检查、分页、当前与历史 ETag、错误和服务端/客户端限额。仅机器契约源码，未改运行行为或执行校验器、生成器、编译、测试、接口、数据库及发布；P0-01/R-001 未完成、evidence 为空。

@@ -1,5 +1,9 @@
 # 独立契约结构定义
 
+2026-11-05，TODO **P0-01**：新增 `artifact-upload.json`，包子路径 `@planemem/contracts/schemas/artifact-upload.json`。根为完整 `ArtifactUploadEnvelope`，数据封闭且严格配对 false/verified-at-save 与 true/not-checked，status 只为 recorded；单个版本来源、无外层 revision/etag。`ArtifactCreateOriginal`/`ArtifactPutOriginal` 在原 ReceiptQuery 上约束命令操作，`ArtifactCreateUploadEnvelope`/`ArtifactPutUploadEnvelope` 区分各路完整成功。新资源本地依赖 artifact-original 与 artifact-comparison 两份完整资源，需一起注册 `$id`。
+
+Schema 不描述 multipart 字节本身，不给原始文件套字符串/base64 或字符长度限制；部件编码、文件 disposition、120 秒正文读取与两笔上传容量见[文件创建与追加上传 OpenAPI](../openapi/README.md#文件创建与追加上传)。原身份/命令/版本加一/hash/size/来源/双 trace 绑定仍由共享解析器完成；首次保存不证明未来仍可下载，历史重放不重新读取对象。客户端完整成功 4 MiB 不冒称 Gateway 统一限额。未修改原 Schema 或运行代码，未执行校验器/生成器、编译或测试。
+
 2026-11-05，TODO **P0-01**：新增 `artifact-original.json`（包子路径 `@planemem/contracts/schemas/artifact-original.json`），根为原上传回执完整成功。锚点包含 `ArtifactCommandIdentity`、创建/追加/联合命令、`ArtifactReceiptQuery`、两种状态的数据对象和完整 `ArtifactReceiptEnvelope`；上传身份使用 `ArtifactUploadContextEnvelope`，不使用回执根。完整对象拒绝未知字段，recorded 必须有一个带版本来源且 replayed=true/not-checked，not-observed 来源为空且无结果元数据；回执及身份均无外层 revision/ETag。
 
 新资源本地依赖 `artifact-comparison.json` 的公开元数据、来源及标量，两份完整 `$id` 须一起注册。原命令 expected_version 留出加一空间，size 不以当前上传限额截断，键沿原非空/无空白规则；身份和 trace 保持一般文本。expires_at 保留现有 Date.toISOString 规则（含扩展年份），日历/原身份/原文/来源/版本关系和到期检查由运行代码完成，Schema 不授予权限或证明正文/回执真实性。客户端回执 4 MiB、内嵌原请求 1 MiB、身份 16 KiB 与服务端通用 POST 1 MiB 分层说明，未新增运行校验器或更改旧结构。参见[文件上传身份与原请求回执 OpenAPI](../openapi/README.md#文件上传身份与原请求回执)。

@@ -1,6 +1,28 @@
 # OpenAPI 源码契约
 
-这里的文档描述已有HTTP实现，尚未经过OpenAPI校验器、生成器、编译、类型检查、测试或运行验证。文档中的版本不表示已发布或部署；目前覆盖五个保存包接口、四个文件元数据读取接口及两个文件上传身份/原回执接口，共十一个接口，尚不是完整WCP接口目录。
+这里的文档描述已有HTTP实现，尚未经过OpenAPI校验器、生成器、编译、类型检查、测试或运行验证。文档中的版本不表示已发布或部署；目前覆盖五个保存包接口、四个文件元数据读取接口、两个上传身份/原回执接口及两个文件上传接口，共十三个接口，尚不是完整WCP接口目录。
+
+## 文件创建与追加上传
+
+2026-11-05，TODO **P0-01** / T0.3 / T4.1 / R-001：新增 `artifact-upload.json`（OpenAPI 3.1.0），包子路径为 `@planemem/contracts/openapi/artifact-upload.json`。描述已有 `POST /v1/artifacts` 和 `POST /v1/artifacts/{artifact_id}/versions`，不执行上传或修改运行逻辑。
+
+本地加载此 OpenAPI 和 `schemas/artifact-upload.json`、`artifact-original.json`、`artifact-comparison.json` 三份完整 Schema，保留相对目录并注册 `$id`。新 Schema 根为完整上传成功，另有按创建/追加操作区分的原请求与成功锚点；复用原五项身份/命令/公开元数据，不将原回执查询的 replayed=true 限制误套到首次保存。
+
+两路只接受恰好两个带 filename 的文件部件：`request` 为 application/json，严格 UTF-8 解码后的完整 `{ identity, command }`；`content` 为原始文件字节。拒绝普通文本表单字段、多余/重复部件、URL 查询和压缩编码；Content-Encoding 仅允许缺省或 identity。原文件名不参与存储地址或 Artifact 元数据，request JSON 不做重复键专用拒绝。
+
+OpenAPI 用 multipart Encoding 的 contentType 与 Content-Disposition 表达文件部件；request 的 Schema 描述**解码后的 JSON 对象**，工具仍须保留带 filename 的文件发送形式。原始 content 使用无类型/文本编码/字符长度限制的 Schema 与 application/octet-stream 编码提示，不伪装成 base64 JSON；实际 parser 不限制 content 部件的媒体类型，SDK 使用 octet-stream。此次查阅 [OpenAPI 3.1 官方文件/Multipart/Encoding 说明](https://spec.openapis.org/oas/v3.1.0.html#considerations-for-file-uploads)，没有运行生成器或证明任一客户端兼容。
+
+读正文前核对 Bearer 范围、可信客户端、实际 artifact.write、已配置 writer 和写条件；完整原身份/路径/参数与 Policy/决定审计检查发生在 multipart 解析后。两路 Idempotency-Key 都必须等于原 request_key；创建禁止 If-Match，追加必须提供对应原 expected_version 的弱版本标签，均禁止 If-Match-Version。现有 parseEtag 接受前导零后按数字比较，SDK 发送规范形式；不是一般 HTTP ETag 列表/通配符语义。
+
+持久服务先核对本次完整字节/size/hash，即使原键已记录也不跳过输入核验；父项目和原身份/键锁内优先查回执。精确重放返回原历史保存结果，可以早于当前版本；无回执的追加才检查当前版本与原预期一致，沿用原名称/MIME/分类/来源并保存下一版本。首次不可变对象 put/readback 核验后，同一数据库事务保存当前元数据、历史快照、原回执；对象与数据库不构成跨系统事务，数据库失败可能留下未引用对象。
+
+两种成功都为 200、status=recorded：首次 `replayed=false/content_state=verified-at-save`，历史重放 `true/not-checked`。首次保存 trace 等于外层请求 trace，重放保留原元数据 trace。只有一个精确 Artifact/版本来源，无外层 revision、JSON/HTTP ETag 或 Location；内层 ETag 描述保存版本，不能当最新写前提。上传不会返回 not-observed；未知/丢失结果保留原身份/键/命令/版本/内容并显式查原回执，不能自动换键或改版本。
+
+每服务器两笔上传容量覆盖正文读取、原生解析及下游处理，等待结束才释放。配置内容限额 0–1 GiB，未提供时通常为 64 MiB 或继承存储设置；request 最多 1 MiB，整个正文最多内容限额+1 MiB+64 KiB。120 秒仅约束正文读取；解析/授权/审计/持久化不在该总期限内，没有流式或全局内存上限承诺。客户端完整成功 4 MiB/错误 16 KiB、SDK 默认 180 秒与 transport 自身预算不等于 Gateway 统一响应或事务时限。无存储后会话到期复查保证。
+
+错误区分 400 输入/摘要/中断、401/403、404 不存在/不可见、408 正文超时、409 原键异文/版本冲突/旧快照、413 Gateway 超限、429 通用限流、500 坏存储/返回异常、503 缺 writer/两槽占满/存储不可用。持久服务自身较低上传限额当前报 INVALID_INPUT；缺 writer 的 retryable=false、容量占满为 true，外层/命令层 INTERNAL_ERROR 的默认值也不同。上传应用入口在认证前设 connection: close 和 x-trace-id，代理/parser 在此之前的错误不在该保证内。失败不否定此前提交。
+
+源码依据为 Gateway server/http/artifact-upload/artifact-writes、PersistentArtifactService、contracts/artifact-upload 和 SDK 上传器。仅人工源码审阅、指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/上传/API/数据库或发布。P0-01/R-001 未完成、evidence 为空；其余 WCP/MCP、SDK/Mock 机器契约接线与破坏性差异 CI 仍缺。
 
 ## 文件上传身份与原请求回执
 

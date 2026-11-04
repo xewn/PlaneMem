@@ -11,6 +11,26 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    artifact_upload_openapi_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only create/append multipart OpenAPI and complete upload-result schema; P0-01 and R-001 remain incomplete."
+      artifacts:
+        - "packages/contracts/openapi/artifact-upload.json"
+        - "packages/contracts/schemas/artifact-upload.json"
+        - "packages/contracts/package.json"
+        - "packages/contracts/openapi/README.md"
+        - "packages/contracts/schemas/README.md"
+      behavior: "Two existing upload POSTs with exactly two filename-bearing JSON/binary parts, original key/identity/path/version binding and complete operation-specific successes. Reuses original commands and public metadata; strictly pairs first-save false/verified-at-save and replay true/not-checked. Documents receipt-first replay, immutable content verification, per-server two-upload capacity, body-only 120-second limit and actual failure mappings."
+      boundaries: "No runtime/schema changes to existing handlers, no streaming/total transaction deadline or uniform server 4 MiB response guarantee. Raw binary has no string encoding/character maxLength; generated-tool filename support remains unverified. Client cancellation or failed response does not prove a save failed. No SDK/Mock contract wiring, dependency/database changes or deployment."
+      evidence: []
+      remaining_scope: "Remaining WCP/MCP machine contracts, SDK/Mock machine-contract consumption, breaking-change CI and tool/runtime/release evidence."
+      pending_evidence:
+        - "Multipart JSON file disposition, native byte transfer, duplicate/extra parts, UTF-8 and configured body/content limits"
+        - "Original path/key/If-Match/identity equality, exact replay after version advance and current restricted visibility"
+        - "First-save/replay pairing, source/version/trace binding, immutable object and transaction uncertainty"
+        - "Two-slot reservation lifetime, body-only timeout, differing status/retryable origins and local OpenAPI/schema references"
+      execution: "Manual source/docs review plus explicit formatting/Git text checks only; no build, typecheck, tests, validators, generators, upload/product/API/database execution or release."
     artifact_original_openapi_development_increment:
       date: "2026-11-05"
       todo: "P0-01"

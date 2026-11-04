@@ -1,0 +1,374 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem original artifact multipart uploads",
+    "version": "0.1.0",
+    "description": "Source-only contract for two existing upload POSTs. Load the adjacent artifact-upload, artifact-original and artifact-comparison schema resources locally under complete IDs. Filename-bearing JSON/file parts require consumer tooling support; no generated client compatibility is asserted. No validator, generator, build, test, upload/API/database execution or release was performed."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Relative Gateway base; configure the intended deployment origin and base path."
+    }
+  ],
+  "security": [{ "GatewayBearer": [] }],
+  "tags": [{ "name": "Artifact upload" }],
+  "x-todo": "P0-01",
+  "x-runtime-boundaries": {
+    "original-json-part-bytes": 1048576,
+    "default-content-bytes": 67108864,
+    "maximum-configurable-content-bytes": 1073741824,
+    "extra-framing-bytes": 65536,
+    "body-read-timeout-ms": 120000,
+    "concurrent-uploads-per-server": 2,
+    "client-complete-success-bytes": 4194304,
+    "client-error-bytes": 16384,
+    "description": "Configured content limit permits zero and normally defaults to 64 MiB, or the configured artifact-storage limit. Total body is bounded to content limit + 1 MiB + 64 KiB, both declared and received. The two shared upload reservations cover body reading, multipart parsing and downstream execution, released only when that call settles. 120 seconds covers body reading only, not parsing, authorization/audit, storage or the complete operation. Full body and additional copies are retained in memory; this is neither streaming nor S3 multipart. Dedicated SDK default 180-second local budget and transport budgets are separate; their response limits are not a uniform Gateway response bound."
+  },
+  "paths": {
+    "/v1/artifacts": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" },
+        { "$ref": "#/components/parameters/IdempotencyKey" }
+      ],
+      "post": {
+        "operationId": "createArtifact",
+        "tags": ["Artifact upload"],
+        "summary": "Save an original artifact creation or replay its saved result",
+        "description": "Verify Bearer scope/client and actual artifact.write, configured writer and write headers before reading the body. Reject URL query parameters, If-Match and If-Match-Version. Parsed original identity must equal all five trusted session fields; command.operation must be artifact.create and request_key must exactly match Idempotency-Key. Policy/decision audit runs after bounded multipart parsing, before dispatch. The persistent writer checks exact bytes/size/SHA-256 and current parent visibility, serializes the original identity/key, and replays a matching saved receipt before attempting a new save. Otherwise create version 1 with command metadata, immutable object put/readback verification and a transaction saving current metadata, historical snapshot and original receipt. Restricted creation requires data.restricted.read. There is no final session-expiry recheck after storage. A lost or invalid response does not prove failure: retain the complete original and exact bytes, then explicitly query its receipt; never automatically rotate key or identity.",
+        "x-wcp-operation": "artifact.create",
+        "x-policy-action": "artifact.write",
+        "requestBody": {
+          "required": true,
+          "description": "Exactly two filename-bearing file parts. request contains the complete original UTF-8 JSON object (not a text form field); content contains its exact raw bytes. No duplicate/extra parts. Filenames are arbitrary labels and never determine storage paths or artifact metadata. Native multipart normalization is used; duplicate JSON keys are not explicitly rejected. Content-Encoding must be absent or exactly identity. Unsupported media type/framing is 400, not 415.",
+          "content": {
+            "multipart/form-data": {
+              "schema": { "$ref": "#/components/schemas/CreateMultipart" },
+              "encoding": {
+                "request": {
+                  "contentType": "application/json",
+                  "headers": {
+                    "Content-Disposition": { "$ref": "#/components/headers/RequestPartDisposition" }
+                  }
+                },
+                "content": {
+                  "contentType": "application/octet-stream",
+                  "headers": {
+                    "Content-Disposition": { "$ref": "#/components/headers/ContentPartDisposition" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Complete recorded creation receipt, for both first save and original replay; never 201 or not-observed. First save has replayed=false/verified-at-save and matching saved/request traces; replay has true/not-checked and preserves its historical metadata. No outer revision, JSON etag, HTTP ETag or Location; one versioned artifact source.",
+            "headers": {
+              "cache-control": { "$ref": "#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "#/components/headers/Trace" },
+              "connection": { "$ref": "#/components/headers/Close" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "../schemas/artifact-upload.json#ArtifactCreateUploadEnvelope" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "408": { "$ref": "#/components/responses/Timeout" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "413": { "$ref": "#/components/responses/TooLarge" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/artifacts/{artifact_id}/versions": {
+      "parameters": [
+        { "$ref": "#/components/parameters/ArtifactId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" },
+        { "$ref": "#/components/parameters/IdempotencyKey" },
+        { "$ref": "#/components/parameters/IfMatch" }
+      ],
+      "post": {
+        "operationId": "putArtifactVersion",
+        "tags": ["Artifact upload"],
+        "summary": "Append the original expected version or replay its saved result",
+        "description": "Verify Bearer scope/client, actual artifact.write, configured writer and required original Idempotency-Key/If-Match before reading the body. Reject URL query parameters and If-Match-Version. Multipart parsing and all five original identity fields, operation, artifact_id/path, key and expected_version/header must agree. Policy/decision audit runs after body parsing. The persistent writer verifies supplied bytes/size/hash even for replay, then locks the parent and original identity/key and looks up the matching saved receipt before comparing a new append to current version. Exact replay can therefore succeed after current version advanced, returning the original historical result. With no saved receipt, lock current metadata and require exact original expected_version; append expected_version+1 while retaining current name/MIME/classification/source_refs. Object put/readback precedes transactional metadata/snapshot/receipt persistence. Current/historical restricted visibility is rechecked. Do not refresh the original version/key after conflict or an ambiguous result; use the separate original receipt read. No final session-expiry recheck after storage is promised.",
+        "x-wcp-operation": "artifact.put-version",
+        "x-policy-action": "artifact.write",
+        "requestBody": {
+          "required": true,
+          "description": "Exactly request and content file parts, each with filename. request is application/json with strict UTF-8 original identity/append command; content is raw bytes of exactly command.size. Filenames and content-part media type do not replace saved Artifact name/MIME. SDK sends application/octet-stream; runtime does not separately constrain content.type. No extra/duplicate parts, text fields, URL query or compressed Content-Encoding. JSON duplicate-key rejection is not implemented.",
+          "content": {
+            "multipart/form-data": {
+              "schema": { "$ref": "#/components/schemas/PutMultipart" },
+              "encoding": {
+                "request": {
+                  "contentType": "application/json",
+                  "headers": {
+                    "Content-Disposition": { "$ref": "#/components/headers/RequestPartDisposition" }
+                  }
+                },
+                "content": {
+                  "contentType": "application/octet-stream",
+                  "headers": {
+                    "Content-Disposition": { "$ref": "#/components/headers/ContentPartDisposition" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Complete recorded original append result with version=expected_version+1 and matching artifact ID. false/verified-at-save denotes first save; true/not-checked denotes exact replay. Current state can already be newer. No outer revision/ETag/Location; nested metadata ETag describes the saved version, not a newly read current write condition.",
+            "headers": {
+              "cache-control": { "$ref": "#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "#/components/headers/Trace" },
+              "connection": { "$ref": "#/components/headers/Close" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "../schemas/artifact-upload.json#ArtifactPutUploadEnvelope" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "408": { "$ref": "#/components/responses/Timeout" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "413": { "$ref": "#/components/responses/TooLarge" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "GatewayBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Verified issuer token with nonblank authenticated client and actual artifact.write, plus Policy approval. Admin alone is insufficient. Original five-field identity and expected headers are equality constraints, never credentials. Restricted metadata requires data.restricted.read. HTTP authentication/capability checks precede body reading, router Policy/audit and persistent visibility checks follow parsing."
+      }
+    },
+    "parameters": {
+      "ArtifactId": {
+        "name": "artifact_id",
+        "in": "path",
+        "required": true,
+        "description": "Exact original append target; decoded once and equal to command.artifact_id.",
+        "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/artifactId" }
+      },
+      "TenantId": {
+        "name": "x-tenant-id",
+        "in": "header",
+        "required": true,
+        "description": "Exact authorized/original tenant; general scope identifier, not necessarily ULID.",
+        "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/scopeIdentifier" }
+      },
+      "WorkspaceId": {
+        "name": "x-workspace-id",
+        "in": "header",
+        "required": true,
+        "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/scopeIdentifier" }
+      },
+      "ProjectId": {
+        "name": "x-project-id",
+        "in": "header",
+        "required": true,
+        "description": "Exact authorized/original project, rechecked for current visibility by the persistent writer.",
+        "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/scopeIdentifier" }
+      },
+      "TraceParent": {
+        "name": "traceparent",
+        "in": "header",
+        "description": "Nonempty opaque value takes precedence over x-trace-id; generic selection does not parse W3C Trace Context or enforce equality between both headers.",
+        "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/trace" }
+      },
+      "TraceId": {
+        "name": "x-trace-id",
+        "in": "header",
+        "description": "Used when traceparent is absent/empty; otherwise generated as trace_http_<ULID>. Supply a trace compatible with shared full-response rules.",
+        "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/trace" }
+      },
+      "ExpectedActorId": {
+        "name": "x-expected-actor-id",
+        "in": "header",
+        "description": "Independently optional comparison to verified actor; body identity remains required and separately compared.",
+        "schema": { "type": "string" }
+      },
+      "ExpectedClientId": {
+        "name": "x-expected-client-id",
+        "in": "header",
+        "description": "Independently optional comparison to verified client; never supplies identity.",
+        "schema": { "type": "string" }
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "description": "Exactly original command.request_key; no automatic replacement. Original identity/key and canonical full command determine replay. HTTP encoding can impose additional representability limits on the shared JSON key rule.",
+        "schema": { "$ref": "../schemas/artifact-original.json#/$defs/requestKey" }
+      },
+      "IfMatch": {
+        "name": "If-Match",
+        "in": "header",
+        "required": true,
+        "description": "Original weak version tag W/\"version-N\", with the parsed N exactly command.expected_version. SDK sends canonical decimal; existing parseEtag also accepts leading zeros. Numeric safe range and the positive original version are checked at runtime. Required only for append, forbidden for creation; If-Match-Version is forbidden on both. The original expectation stays unchanged on replay even if current version advanced. This is application version syntax, not general HTTP ETag-list or wildcard matching.",
+        "schema": { "type": "string", "pattern": "^W/\"version-0*[1-9][0-9]*\"$" }
+      }
+    },
+    "headers": {
+      "RequestPartDisposition": {
+        "description": "File part named request with a filename. A plain JSON form field without filename is rejected. The filename is not prescribed; request.json is an example. Tooling must preserve this file disposition even though the decoded schema is an object.",
+        "required": true,
+        "schema": { "type": "string" },
+        "example": "form-data; name=\"request\"; filename=\"request.json\""
+      },
+      "ContentPartDisposition": {
+        "description": "File part named content with a filename. Filename is ignored for artifact identity/storage paths; empty content is allowed when original size is zero.",
+        "required": true,
+        "schema": { "type": "string" },
+        "example": "form-data; name=\"content\"; filename=\"content.bin\""
+      },
+      "NoStore": {
+        "description": "Application JSON response cache policy.",
+        "required": true,
+        "schema": { "type": "string", "const": "private, no-store" }
+      },
+      "Trace": {
+        "description": "Selected read/write trace, equal to outer body.trace_id; upload path sets it before authentication/body parsing. Saved replay metadata can retain a different trace. Proxy/parser failures before the application are outside this contract.",
+        "required": true,
+        "schema": { "type": "string", "minLength": 1 }
+      },
+      "Close": {
+        "description": "Application closes the upload HTTP connection, including early failures with unread body bytes. This does not undo a dispatched transaction.",
+        "required": true,
+        "schema": { "type": "string", "const": "close" }
+      }
+    },
+    "schemas": {
+      "RawContent": {
+        "description": "Unencoded binary octets in a filename-bearing part, not a JSON string, base64 text or character-counted value. Content-Type application/octet-stream is the SDK convention; native runtime accepts other content-part media types. Actual bytes must equal command.size and its SHA-256; runtime enforces configured byte limits. OpenAPI 3.1 leaves raw binary schema unconstrained and uses the multipart Encoding contentType.",
+        "x-file-part": true
+      },
+      "CreateMultipart": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["request", "content"],
+        "properties": {
+          "request": {
+            "$ref": "../schemas/artifact-upload.json#ArtifactCreateOriginal",
+            "description": "Decoded UTF-8 JSON of the application/json file part; filename-bearing disposition is required separately.",
+            "x-file-part": true
+          },
+          "content": { "$ref": "#/components/schemas/RawContent" }
+        }
+      },
+      "PutMultipart": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["request", "content"],
+        "properties": {
+          "request": {
+            "$ref": "../schemas/artifact-upload.json#ArtifactPutOriginal",
+            "description": "Decoded original append request in an application/json file part; filename-bearing disposition is required separately.",
+            "x-file-part": true
+          },
+          "content": { "$ref": "#/components/schemas/RawContent" }
+        }
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message", "details", "trace_id", "retryable"],
+        "properties": {
+          "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]+$" },
+          "message": { "type": "string", "minLength": 1 },
+          "details": { "type": "object", "additionalProperties": true },
+          "trace_id": { "type": "string", "minLength": 1 },
+          "retryable": { "type": "boolean" }
+        },
+        "description": "Existing application error. Flags vary by failure origin and differ from SDK's conservative false/unknown mapping. No error proves a previously dispatched save failed or authorizes automatic retry."
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Application error without a partial success. A failed/lost response after dispatch can leave a committed receipt or unreferenced immutable object; retain the complete original and explicitly inspect its receipt. Earlier proxy/HTTP-parser failures may have another representation.",
+        "headers": {
+          "cache-control": { "$ref": "#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "#/components/headers/Trace" },
+          "connection": { "$ref": "#/components/headers/Close" }
+        },
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } }
+        }
+      },
+      "BadInput": {
+        "$ref": "#/components/responses/Error",
+        "description": "INVALID_INPUT for bad media/framing/part counts, nonfile parts, invalid UTF-8/JSON/original, size mismatch, operation/path/key/version mismatch, unsupported query or write conditions. INVALID_REQUEST_CONTEXT for malformed If-Match; ARTIFACT_HASH_MISMATCH for input or readback digest/length mismatch; ARTIFACT_UPLOAD_INTERRUPTED for body/socket interruption when an HTTP response is still possible. Persistent-service lower content-limit rejection is INVALID_INPUT, not necessarily 413. These sources set retryable=false."
+      },
+      "Unauthenticated": {
+        "$ref": "#/components/responses/Error",
+        "description": "UNAUTHENTICATED for missing/rejected Bearer token, retryable=false. No WWW-Authenticate guarantee. Body is not read by the upload parser."
+      },
+      "Denied": {
+        "$ref": "#/components/responses/Error",
+        "description": "DENIED or ARTIFACT_ACCESS_DENIED for scope/expected identity/original identity mismatch, missing verified client or actual write capability, Policy expiry/denial or restricted classification. retryable=false. Generic capability checks precede body parsing; original-field/Policy checks follow it."
+      },
+      "NotFound": {
+        "$ref": "#/components/responses/Error",
+        "description": "ARTIFACT_NOT_FOUND for missing/deleted/invisible parent or current append/replay target; ARTIFACT_VERSION_NOT_FOUND for missing original replay snapshot. retryable=false."
+      },
+      "Timeout": {
+        "$ref": "#/components/responses/Error",
+        "description": "ARTIFACT_UPLOAD_TIMEOUT after the 120-second body-read budget, retryable=false. This is not a total transaction timeout. Client/local timeout or disconnect does not roll back server work."
+      },
+      "Conflict": {
+        "$ref": "#/components/responses/Error",
+        "description": "IDEMPOTENCY_KEY_REUSED for original identity/key with different canonical parameters; ARTIFACT_VERSION_CONFLICT for a new append that no longer matches; ARTIFACT_LEGACY_UNVERIFIED for missing trusted current/historical snapshot. retryable=false; never refresh original version or key automatically."
+      },
+      "TooLarge": {
+        "$ref": "#/components/responses/Error",
+        "description": "ARTIFACT_TOO_LARGE for declared/received multipart body, request file or content file exceeding the Gateway limits, or a persistent object read limit. retryable=false. Limits are bytes, not string maxLength."
+      },
+      "RateLimited": {
+        "$ref": "#/components/responses/Error",
+        "description": "RATE_LIMITED from general actor/path limiter after multipart parsing, retryable=true. Upload two-slot saturation instead returns 503. Retry-After is not promised."
+      },
+      "InvalidStored": {
+        "$ref": "#/components/responses/Error",
+        "description": "ARTIFACT_STORED_INVALID for invalid/inconsistent metadata, original receipt or writer output (retryable=false). Unexpected INTERNAL_ERROR has retryable=false at the outer upload catch, but generic command serialization defaults to true. A writer-output error can occur after commit; retain the original."
+      },
+      "Unavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "ARTIFACT_UPLOAD_BUSY for occupied two-slot gate (retryable=true), ARTIFACT_STORAGE_UNAVAILABLE for absent writer (false) or persistent storage uncertainty (true), ARTIFACT_OBJECT_UNAVAILABLE/MISSING for immutable object I/O failure/missing readback (true/false respectively), or outer WORKBENCH_AUTH_UNAVAILABLE/AUDIT_PERSISTENCE_UNAVAILABLE (true). No in-memory fallback. Neither retryable flag resolves an unknown save outcome."
+      }
+    }
+  }
+}

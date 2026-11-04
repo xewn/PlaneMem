@@ -1,5 +1,7 @@
 # Artifact 持久化服务基础（源码阶段）
 
+2026-11-05，TODO P0-01：[文件创建与追加上传 OpenAPI](../../../packages/contracts/openapi/README.md#文件创建与追加上传)补齐已有两个 POST 的 multipart 请求与完整成功机器结构。原请求与公开元数据复用，首次 false/verified-at-save、重放 true/not-checked 分别约束；准确记录写入前输入核验、原键回执优先、追加版本相等、对象读回与数据库事务、容量/正文期限和失败恢复语义。无运行/数据库/依赖变更，未执行校验器、生成器、编译、测试、实际上传或发布。
+
 2026-11-05，TODO P0-01：[文件上传身份与原请求回执 OpenAPI](../../../packages/contracts/openapi/README.md#文件上传身份与原请求回执)覆盖 GET upload-context、只读 POST receipt，新增 artifact-original Schema 的原身份/两种命令/两种回执和身份提示锚点，复用公开保存元数据。写能力、客户端、原文精确绑定、历史当前可见性、双层 trace/无外层 ETag 及客户端/服务端限额按现有实现记录；上传身份不证明存储/项目就绪，not-observed 不证明并发保存失败。仅机器契约源码，未修改持久逻辑、依赖或数据库，未运行校验器、编译、测试、接口或发布。
 
 2026-11-05，TODO P0-01：[文件元数据读取 OpenAPI](../../../packages/contracts/openapi/README.md#文件元数据读取)覆盖当前/历史详情及两种目录。新增 artifact-read Schema 的完整封套和查询锚点，复用 comparison 公开元数据/历史封套，不使用比较结果根。准确记录当前快照一致性、历史不回退、公开投影无 storage_key、当前外层 ETag/历史仅内层 ETag及 content_state=not-checked。详情客户端 2 MiB 不冒称服务端统一限额；未改持久化逻辑、数据库或依赖，未运行校验器、编译、测试、接口及数据库。
