@@ -1,5 +1,29 @@
 # ContextItem 录入与编辑开发说明
 
+## 2026-11-04 SDK当前与归档详情读取增量
+
+`WcpClient.getContextItem(itemId, options?)` / `getArchivedContextItem(itemId, options?)`接入专用完整读取，返回原`WcpEnvelope<ContextItemReadDocument>` / `WcpEnvelope<ArchivedContextItemDocument>` Promise。根入口新增导出`WcpContextItemReadOptions`及两个文档类型。options只接受timeout_ms/signal，可选undefined省略；timeout_ms默认30,000毫秒，整数1–2,147,483,647，signal沿AbortSignal形状。项目必须完整且合法，actor/client仍为可选，提供时校验并固定为请求相等条件，由Gateway检查真实身份；GET不继承任何写键或版本条件。
+
+调用在第一次异步等待前捕获项目、原条目/视图、trace、身份和选项，查询复用共享4 KiB解析，随后建立包含凭据等待、网络、完整正文与结构校验的统一预算。只派发指定current或archived GET，不尝试另一视图、最新历史或自动重试。完整成功2 MiB，由共享解析复制普通JSON、核对原范围/条目/版本/revision/正文ETag/封套来源、完整正文、归档状态及实时诊断/原人工确认；缺字段、错误目标、不一致诊断和超限均拒绝整份。旧confirmed记录合法null确认保持，不生成来源/确认信息或快照摘要。
+
+FetchWcpTransport沿既有bounded-json路径校验完整UTF-8/媒体类型/成功200与trace、声明长度及16 KiB错误限制，传输自己的超时可比本次更短。WcpTransport接口只返回JSON，详情适配器检查正文ETag与revision一致，不声称取得或核对HTTP ETag；自定义transport负责自身字节/HTTP读取，但返回对象仍受共享完整结构/2 MiB/深度/节点预算和独立副本检查。取消或期限超出优先于迟到结果，finally移除本次外部监听并关闭计时器；停止本地等待不证明服务器停止处理。
+
+错误保留固定已知code与本次trace，retryable=false；未知错误或不同trace映射固定GATEWAY_UNAVAILABLE文案，输入/选项错误通过Promise拒绝为INVALID_INPUT。相比旧通用envelope路径，自定义transport须支持bounded-json/max_response_bytes/signal并返回完整原封套，不能继续使用只有少量字段的替身。历史读取/比较/迭代的原平面字段与捕获实现提取到内部context-read-input，公开签名和接受范围保持；没有新增Mock当前条目路由，也未扩展CLI/MCP专用读取。
+
+以下仅为未执行的调用示例，client已按真实目标构造，itemId来自调用方的明确选择：
+
+```ts
+import type { WcpContextItemReadOptions } from '@planemem/sdk';
+
+const stop = new AbortController();
+const options: WcpContextItemReadOptions = { timeout_ms: 15_000, signal: stop.signal };
+const current = await client.getContextItem(itemId, options);
+// Only use the explicit archived view when that is the caller's intended selection.
+const archived = await client.getArchivedContextItem(archivedItemId, { timeout_ms: 15_000 });
+```
+
+仅源码文档人工审阅和格式文本检查，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布。SDK真实超时/取消/旧传输兼容、历史提取回归、CLI/MCP/Mock接入与运行证据仍待补；R-003未完成、evidence为空。
+
 ## 2026-11-04 当前与归档详情完整读取增量
 
 新增contracts `parseContextItemReadQuery` / `parseContextItemReadEnvelope` 及公开类型、大小常量。查询最多4 KiB，只接受明确的current/archived与合法原item_id，拒绝未知字段、点路径及非普通JSON；完整成功封套最多2 MiB，核对schema、请求trace、原条目与完整租户/工作区/项目、正安全版本、revision和规范ETag。完整内容保留普通JSON语义及来源顺序/重复/可选字段，拒绝缺失正文、无效保存字段或日期，封套来源必须是当前条目版本加完整原来源。这里没有历史快照摘要，也不把ETag当成内容真实性证明。

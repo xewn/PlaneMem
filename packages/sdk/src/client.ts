@@ -116,8 +116,6 @@ import {
   type SessionToolCallPage,
   type SessionToolCallDetail,
   type CompileContextPackRequest,
-  type ContextItemReadDocument,
-  type ArchivedContextItemDocument,
   type ContextItemMutationReceipt,
   type CreateContextItemRequest,
   type UpdateContextItemRequest,
@@ -171,6 +169,11 @@ import {
 } from './artifact-reads.js';
 import { downloadArtifactVersion, type WcpArtifactDownloadOptions } from './artifact-download.js';
 import { compareArtifactVersions } from './artifact-comparison.js';
+import {
+  readCurrentContextItem,
+  readArchivedContextItem,
+  type WcpContextItemReadOptions,
+} from './context-item-read.js';
 import {
   readContextItemHistory,
   readContextItemVersion,
@@ -455,18 +458,12 @@ export class WcpClient {
     return this.command<ContextItemMutationReceipt>('/v1/context-items', body, options);
   }
 
-  getContextItem(itemId: string) {
-    return this.envelope<ContextItemReadDocument>(
-      'GET',
-      '/v1/context-items/' + this.segment(itemId),
-    );
+  getContextItem(itemId: string, options: WcpContextItemReadOptions = {}) {
+    return readCurrentContextItem(this.transport, this.context, itemId, options);
   }
 
-  getArchivedContextItem(itemId: string) {
-    return this.envelope<ArchivedContextItemDocument>(
-      'GET',
-      '/v1/context-items/' + this.segment(itemId) + '/archived',
-    );
+  getArchivedContextItem(itemId: string, options: WcpContextItemReadOptions = {}) {
+    return readArchivedContextItem(this.transport, this.context, itemId, options);
   }
 
   listContextItemHistory(

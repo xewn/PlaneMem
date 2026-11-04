@@ -4,8 +4,6 @@ import {
   CONTEXT_REVISION_RESPONSE_BYTES,
   compareContextSnapshots,
   contextRevisionSnapshotJson,
-  isSyncIdentifier,
-  isUlid,
   parseContextComparisonQuery,
   parseContextHistoryReadEnvelope,
   parseContextHistoryReadQuery,
@@ -20,6 +18,10 @@ import {
 import type { WcpTransport } from './client.js';
 import type { WcpEnvelope } from './continuity.js';
 import { createRequestBudget, type RequestBudget } from './request-budget.js';
+import {
+  captureContextRead as capture,
+  contextReadFields as fields,
+} from './context-read-input.js';
 
 export interface WcpContextHistoryReadOptions {
   /** Defaults to 30 seconds, including complete response validation and snapshot hashing. */
@@ -80,76 +82,6 @@ function failure(code: string, trace: string) {
   return new ContractError(code, messages[code]!, { trace_id: trace, retryable: false });
 }
 
-/** Flat optional undefined values are allowed; accessors and inherited/custom fields are not. */
-function fields(value: unknown, allowed: readonly string[]): Record<string, unknown> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError();
-  const prototype: unknown = Object.getPrototypeOf(value);
-  const keys = Object.keys(value);
-  if (
-    (prototype !== null && prototype !== Object.prototype) ||
-    Reflect.ownKeys(value).length !== keys.length ||
-    keys.some(
-      (key) =>
-        !allowed.includes(key) ||
-        !Object.hasOwn(Object.getOwnPropertyDescriptor(value, key)!, 'value'),
-    )
-  )
-    throw new TypeError();
-  return Object.fromEntries(
-    keys.map((key) => [key, Object.getOwnPropertyDescriptor(value, key)!.value]),
-  );
-}
-
-function capture(original: RequestContext, options: WcpContextHistoryReadOptions) {
-  const row = fields(original, [
-    'trace_id',
-    'tenant_id',
-    'workspace_id',
-    'project_id',
-    'actor_id',
-    'client_id',
-    'idempotency_key',
-    'expected_version',
-    'if_match',
-  ]);
-  if (
-    !isSyncIdentifier(row.trace_id) ||
-    !isUlid(row.tenant_id) ||
-    !isUlid(row.workspace_id) ||
-    !isUlid(row.project_id) ||
-    (row.actor_id !== undefined && !isUlid(row.actor_id)) ||
-    (row.client_id !== undefined && !isSyncIdentifier(row.client_id))
-  )
-    throw new TypeError();
-  const settings = fields(options, ['timeout_ms', 'signal']);
-  const timeout = settings.timeout_ms === undefined ? 30_000 : settings.timeout_ms;
-  const signal = settings.signal as AbortSignal | undefined;
-  if (
-    typeof timeout !== 'number' ||
-    !Number.isSafeInteger(timeout) ||
-    timeout < 1 ||
-    timeout > 2_147_483_647 ||
-    (signal !== undefined &&
-      (!signal ||
-        typeof signal !== 'object' ||
-        typeof signal.aborted !== 'boolean' ||
-        typeof signal.addEventListener !== 'function' ||
-        typeof signal.removeEventListener !== 'function'))
-  )
-    throw new TypeError();
-  return {
-    context: {
-      trace_id: row.trace_id,
-      tenant_id: row.tenant_id,
-      workspace_id: row.workspace_id,
-      project_id: row.project_id,
-      ...(row.actor_id === undefined ? {} : { actor_id: row.actor_id }),
-      ...(row.client_id === undefined ? {} : { client_id: row.client_id }),
-    },
-    timeout,
-    signal,
-  };
-}
 type CapturedContext = ReturnType<typeof capture>['context'];
 
 /** Capture inputs before dispatch; one budget also covers all asynchronous digest work. */
