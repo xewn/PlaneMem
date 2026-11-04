@@ -12,7 +12,12 @@ import {
   type PackSaveBinding,
 } from '@planemem/contracts';
 import { backupHash } from '../sync/receipt/backup-operation';
-import { inBrowserStores, readBrowserPair } from '../sync/receipt/browser-store';
+import {
+  inBrowserStores,
+  readBrowserPair,
+  removeBrowserPair,
+  type BrowserRemovalResult,
+} from '../sync/receipt/browser-store';
 import {
   PACK_RECEIPT_HISTORY_PAGE_SIZE,
   PACK_RECEIPT_HISTORY_SCAN_LIMIT,
@@ -147,6 +152,40 @@ export async function preservePackReceiptHistory(
   });
   check();
   return candidate;
+}
+/** Delete only the complete reviewed pair; absence never initializes the history database. */
+export async function removePackReceiptHistory(
+  raw: string,
+  input: PackSaveBinding,
+  signal: AbortSignal,
+  check: () => void,
+): Promise<BrowserRemovalResult> {
+  check();
+  const binding = parsePackSaveBinding(input);
+  const candidate = await inspectPackReceiptHistory(raw, binding, check);
+  const key = slot(binding, candidate.file.document_sha256);
+  check();
+  const result = await inBrowserStores<BrowserRemovalResult>(
+    layout,
+    'readwrite',
+    signal,
+    () => 'not-present',
+    (context) => {
+      readBrowserPair(context, key, (saved, digest, exists) => {
+        check();
+        if (!exists) {
+          context.accept('not-present');
+          return;
+        }
+        if (pair(saved, digest, key, binding).raw !== candidate.raw) return invalid();
+        check();
+        removeBrowserPair(context, key);
+      });
+    },
+    { create: false },
+  );
+  check();
+  return result;
 }
 /** Verify every scanned pair, including nonmatches, before returning a bounded filtered page. */
 export async function listPackReceiptHistory(

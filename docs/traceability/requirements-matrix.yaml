@@ -954,6 +954,22 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_pack_web_receipt_removal_development_increment:
+      date: "2026-11-05"
+      status: "Source-only explicit removal of one fully reviewed browser history observation; R-003 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/context/save-receipt-store.ts"
+        - "apps/web-console/src/app/context/save-receipt-entry.tsx"
+        - "apps/web-console/src/app/context/packs/receipts/loader.tsx"
+        - "docs/design/01-contracts/context-pack-runtime.md"
+      behavior: "Enable removal only on the history page after a review checkbox tied to the current page operation generation. Recheck complete binding/document digest, then compare the exact content and digest pair inside a non-creating readwrite transaction before deleting both slots and reading back absence. Missing database/pair returns not-present; partial/corrupt/different pairs are rejected. Preserve the complete selected observation for export or explicit saving, and invalidate directory/continuation on local save/removal attempts. Cancellation/failure remains uncertain; server packs and the original-request store are untouched."
+      evidence: []
+      pending_evidence:
+        - "Exact full-pair comparison, paired deletion/readback, missing database without creation and corrupt/partial-slot rejection"
+        - "Confirmation invalidation across batched parent operations/filters, double clicks, cancellation and unmount"
+        - "Retained export/re-save copy, stale directory invalidation, concurrent re-add and unchanged submission confirmation; no runtime verification performed"
+      remaining_gaps:
+        - "Batch cleanup, complete backup/restore, cross-tab notifications, orphan-slot auditing, quota management and runtime evidence"
     context_pack_web_receipt_filter_development_increment:
       date: "2026-11-05"
       status: "Source-only explicit filtered browser history lookup with complete bounded scanning; R-003 remains incomplete."
@@ -970,7 +986,7 @@ requirements:
         - "100-scan/20-match boundaries, empty continuation, full-filter preservation and corrupt nonmatching records"
         - "Filter/page reference invalidation, selected-copy retention, independent import and cancel/late-result guards; no runtime verification performed"
       remaining_gaps:
-        - "Time ordering, automatic retention, deletion, complete backup/restore/cleanup, orphan-slot auditing, quota management and runtime evidence"
+        - "Time ordering, automatic retention, complete backup/restore/batch cleanup, orphan-slot auditing, quota management and runtime evidence; single removal has a separate source-only increment"
     context_pack_receipt_output_recovery_development_increment:
       date: "2026-11-05"
       status: "Source-only offline CLI recovery of a captured receipt from query or recovery stdout; R-003 remains incomplete."
@@ -1024,7 +1040,7 @@ requirements:
         - "Atomic paired insertion/readback, concurrent tabs, cancellation/unknown commit and bounded complete paging"
         - "Parent/child lifecycle exclusion, old live confirmation preservation and explicit original export; no runtime verification performed"
       remaining_gaps:
-        - "Automatic retention, time ordering, deletion, complete backup/restore/cleanup, orphan-slot auditing and quota management; bounded filtering has a separate source-only increment"
+        - "Automatic retention, time ordering, complete backup/restore/batch cleanup, orphan-slot auditing and quota management; bounded filtering and single removal have separate source-only increments"
     context_pack_save_receipt_file_development_increment:
       date: "2026-11-05"
       status: "Source-only historical save observation file and CLI explicit publication/offline inspection; R-003 remains incomplete."

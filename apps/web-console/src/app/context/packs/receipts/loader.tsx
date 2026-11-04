@@ -38,6 +38,7 @@ export function PackReceiptHistoryBrowser({ binding }: { binding: PackSaveBindin
   const helpId = useId();
   const [selected, setSelected] = useState<PackReceiptCandidate>();
   const [busy, setBusy] = useState(false);
+  const [reviewGeneration, setReviewGeneration] = useState(0);
   const [message, setMessage] = useState(
     'Read saved observations for this identity, or import a receipt file for review. Nothing is saved automatically.',
   );
@@ -62,6 +63,7 @@ export function PackReceiptHistoryBrowser({ binding }: { binding: PackSaveBindin
   function begin() {
     if (!mounted.current || active.current) return false;
     active.current = true;
+    setReviewGeneration((value) => value + 1);
     setBusy(true);
     return true;
   }
@@ -71,6 +73,7 @@ export function PackReceiptHistoryBrowser({ binding }: { binding: PackSaveBindin
   }
   function changeFilters(next: Filters) {
     if (active.current) return;
+    setReviewGeneration((value) => value + 1);
     filtersRef.current = next;
     setFilters(next);
     pageRef.current = undefined;
@@ -90,6 +93,13 @@ export function PackReceiptHistoryBrowser({ binding }: { binding: PackSaveBindin
   function readNextPage() {
     const next = pageRef.current?.next;
     if (next) void load(next);
+  }
+  function historyWriteStarted() {
+    pageRef.current = undefined;
+    setPage(undefined);
+    setMessage(
+      'A browser history change was requested. The selected review copy is retained. Read the first matching page again after the operation finishes.',
+    );
   }
   async function load(query: PackReceiptHistoryQuery | null, file?: File) {
     if (!file && !query) return;
@@ -314,6 +324,9 @@ export function PackReceiptHistoryBrowser({ binding }: { binding: PackSaveBindin
             disabled={busy}
             begin={begin}
             end={end}
+            allowRemoval
+            onHistoryWrite={historyWriteStarted}
+            reviewGeneration={reviewGeneration}
           />
         </div>
       )}
