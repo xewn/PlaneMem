@@ -102,6 +102,7 @@ import { callProposalCreateReceiptArguments } from './proposal-create-receipt.js
 import { callProposalReviewReceiptArguments } from './proposal-review-receipt.js';
 import { isWorkItemReadCommand, callWorkItemReadArguments } from './work-item-reads.js';
 import { isContextReadCommand, callContextReadArguments } from './context-history.js';
+import { callContextCompileArguments } from './context-pack-compile.js';
 
 const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
 
@@ -329,7 +330,9 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   conflicts prepare              Save a new original with --json-file DECISION.json --output NEW_ORIGINAL.json; never sends the decision
   conflicts resolve              Resolve conflict_id with expected_version and --key
   doctor                         Read gateway readiness
-  context compile                Save a context pack; optional budget_tokens/ttl_seconds and --key
+  context compile                Save and hash-check a complete pack; stable --key or JSON idempotency_key
+                                 Optional --json/--json-file (4 KiB), budget_tokens/ttl_seconds and --timeout-ms
+                                 Optional paired expected_actor_id/expected_client_id; failed saves can remain unknown
   context get                    Read and hash-check a complete pack; optional pack_id/format (json/markdown/mcp)
                                  Optional --json/--json-file (4 KiB), default {}; optional --timeout-ms
   context list-packs             List saved pack metadata by optional pack_id/limit/cursor; content/sources unchecked
@@ -1046,6 +1049,21 @@ export async function main(args: string[]): Promise<number> {
       return 0;
     }
     if (values.reviewed !== undefined) usage('--reviewed is only for audit export');
+    if (name === 'context compile') {
+      print(
+        await callContextCompileArguments(args, {
+          base: process.env.WORKCTX_URL ?? 'http://127.0.0.1:3000',
+          token: token(),
+          trace,
+          scope: {
+            tenant_id: envId('WORKCTX_TENANT_ID'),
+            workspace_id: envId('WORKCTX_WORKSPACE_ID'),
+            project_id: envId('WORKCTX_PROJECT_ID'),
+          },
+        }),
+      );
+      return 0;
+    }
     if (isContextReadCommand(name)) {
       print(
         await callContextReadArguments(args, {

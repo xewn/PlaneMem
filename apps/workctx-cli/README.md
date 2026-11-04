@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+2026-11-05：`context compile`的网络main/callGateway和嵌入runWorkctx接入SDK完整保存回执及SHA-256核验。默认{}，最多一个4 KiB `--json`/`--json-file`，网络支持有界stdin；稳定键沿--key或正文idempotency_key，嵌入还可沿原context键，多来源必须相等。新增默认30秒 `--timeout-ms`，可选成对expected_actor_id/expected_client_id；完整回执2 MiB、Fetch错误16 KiB，失败不返回部分内容，派发后保留结果未知。嵌入要求可信未过期实际context.read/完整身份，授权后复查取消及到期，独立每router两笔提交容量到底层结束才释放；无自动重试、新键、读回或文件保存。详见[CLI保存包提交核验](../../docs/design/01-contracts/context-pack-runtime.md#cli-保存包提交核验2026-11-05源码增量)。仅源码文档，未编译、类型检查、测试、执行CLI/SDK/API/保存命令或发布。
+
 2026-11-05：新增`context list-packs`，网络main/callGateway和嵌入runWorkctx复用SDK listContextPacks完整元数据读取。最多一个4 KiB `--json`/`--json-file`，默认{}，仅网络支持有界`--json -`；可选pack_id/limit/cursor及成对expected_actor_id/expected_client_id，默认30秒timeout-ms。每次一页、完整256 KiB封套，保留筛选和续页，不读取正文/hash/来源，过期或来源变化记录仍可能列出；打开具体包另行检查。嵌入原handler负责父项目/read_restricted过滤，九类上下文读共用每router两容量、底层结束才释放。无自动翻页/重试/换包/写入，详见[CLI保存包目录](../../docs/design/01-contracts/context-pack-runtime.md#cli-保存包目录读取2026-11-05源码增量)。仅源码文档，未编译、类型检查、测试、执行CLI/SDK或发布。
 
 2026-11-04：新增 `context compare-packs`，要求不同的 from_pack_id/to_pack_id 及 expected_actor_id/expected_client_id；网络 main/callGateway 和嵌入 runWorkctx 共用 SDK 双包读取、摘要核对与比较。恰一 4 KiB JSON/稳定文件，网络支持有界 stdin，默认30秒总等待期限；完整结果包含两侧内容和原方向差异，失败不输出半份结果。详见[CLI保存包对比](../../docs/design/01-contracts/context-pack-runtime.md#cli-指定保存包对比2026-11-04源码增量)。仅源码文档，未编译、类型检查、测试、执行 CLI/SDK 或发布。
@@ -626,7 +628,7 @@ observed-item.json 示例：`{"work_item_id":"plane-item-42"}`。CLI 核对返�
 | `outbox restore-get ID` | 必须 --outbox EXISTING_FILE；不接受 JSON | 无；完整核验历史回执及原查询 |
 | `outbox restore-export ID` | 必须 --outbox EXISTING_FILE、--output NEW_FILE；不接受 JSON | 独占保存历史中的完整原档案，不改当前队列 |
 | `sync ack` | 保存的五字段 `expected_identity` 和非负安全整数 `cursor` | 不接受键/版本 |
-| `context compile` | 可选 `budget_tokens`、`ttl_seconds` | `--key` |
+| `context compile` | 可选 `budget_tokens`、`ttl_seconds`、成对 `expected_actor_id/expected_client_id` | `--key`或JSON内`idempotency_key`，可选`--timeout-ms` |
 | `context get` | 可选 `pack_id`、`format`，及成对 expected_actor_id/expected_client_id；可选 --timeout-ms | 无 |
 | `context list-packs` | 可选 pack_id/limit/cursor，及成对 expected_actor_id/expected_client_id | 最多一个4 KiB --json/--json-file，默认{}；可选 --timeout-ms，无写键 |
 | `context create` | `title`、`content`、`source_refs`，可选层级、分类等 | `--key` |
@@ -716,7 +718,9 @@ Proposal 审核使用 `expected_revision`，要求令牌含 `actor_type=human` �
 
 `context confirm` 是独立人工确认命令，JSON 包含 item_id、expected_version、reason，并提供固定 `--key`。需要签名 human 身份、有效客户端和 context.review，context.write 不足以确认。只接受未过期 proposed 条目，核对直接本地来源的版本、状态和分类；成功增加版本、记录理由，后续编辑撤去确认。`context read` 与历史详情可读取确认元数据。未知结果用原版本、原理由、原键重试。022 迁移文件尚未执行，命令未在本轮运行。
 
-`context compile` 默认以 4096 的估计内容 token 预算、3600 秒最大寿命生成项目上下文包，预算范围为 128–32768，寿命范围为 60–86400。`context get` 不带 ID 时读取最新可见完整包；默认输入 `{}`，可选单一 4 KiB `--json` 或 `--json-file`，网络 `--json -` 有界读取 stdin。`format` 支持 `json`、`markdown`、`mcp`；后两者仍输出 JSON，并在 `data.rendered.text` 提供完整匹配的 Markdown。`--timeout-ms` 默认 30000，覆盖 SDK 读取及 SHA-256；输入可加成对 expected_actor_id/expected_client_id。完整成功上限 2 MiB，不截断包；拒绝 --key/--output/未知或重复参数。源记录改变或包过期时，需要显式使用新请求键重新编译；编译网络结果不确定时保留原键重试。文件/stdin 采集在 SDK 期限之前；通用传输仅提供 JSON 内 ETag，读取不会自动编译、换包或保存文件。详见 [ContextPack 运行时](../../docs/design/01-contracts/context-pack-runtime.md)。
+`context compile` 默认以4096的估计内容token预算、3600秒最大寿命生成项目上下文包，范围128–32768和60–86400。最多一个4 KiB `--json`或`--json-file`，省略为{}；网络可用有界`--json -`，嵌入不读stdin。必需稳定--key或正文idempotency_key，多个键来源须相同；可加成对expected_actor_id/expected_client_id。`--timeout-ms`默认30000，完整保存回执和SHA-256核对成功后输出；取消、超时或回执异常不证明保存失败，恢复须显式沿原项目、身份约束、预算、期限和键。只有明确要创建不同的新请求时才使用新键。详见[提交核验及兼容变化](../../docs/design/01-contracts/context-pack-runtime.md#cli-保存包提交核验2026-11-05源码增量)。
+
+`context get`不带ID时读取最新可见完整包；默认输入{}，可选单一4 KiB `--json`或`--json-file`，网络`--json -`有界读取stdin。format支持json、markdown、mcp；后两者仍输出JSON，并在data.rendered.text提供完整匹配的Markdown。`--timeout-ms`默认30000，覆盖SDK读取及SHA-256；输入可加成对expected_actor_id/expected_client_id。完整成功上限2 MiB，不截断包；读取拒绝--key/--output/未知或重复参数。文件/stdin采集在SDK期限之前，stdout发送在期限之外；通用传输仅提供JSON内ETag，读取不会自动编译、换包或保存文件。
 
 ```text
 workctx context compile --key pack-001

@@ -1,5 +1,7 @@
 # 持久化 ContextPack 开发说明
 
+2026-11-05完善[CLI保存包提交核验](#cli-保存包提交核验2026-11-05源码增量)：三个入口共用SDK完整回执/摘要核验，增加有界输入、等待期限及原身份约束；嵌入保存容量和授权后检查独立管理，失败保留unknown。仅编辑源码文档，未运行保存命令、编译构建、类型检查、测试或发布。
+
 2026-11-05完善[SDK保存包提交核验](#sdk-保存包提交核验2026-11-05源码增量)：专用单次POST捕获原请求、限定等待期限，核对完整返回包与摘要、原预算及最大有效期；派发后失败保留结果未知，不自动重试。此处仅开发保存方法源码，未实际执行包编排/保存请求、编译构建、类型检查、测试或发布。
 
 2026-11-05新增[网页双包对比候选查找](#网页双包对比候选查找2026-11-05源码增量)：按编号或任一侧保存内容查找候选，叠加只看变化，保留原两包/显示模式/返回链；匹配为空不会改变完整报告总计或来源比较。仅源码文档，未编译、测试、渲染或发布。
@@ -490,3 +492,36 @@ R-003未完成、`evidence: []`。三入口一致性、参数/文件/stdin边界
 ```
 
 R-003未完成、`evidence: []`。工具发现/客户端/prepare/协议兼容、完整查询与身份捕获、错误状态/页边界/转义输出、页序/续页及容量/超时/真实MCP兼容尚缺运行证据。Mock目录和独立目录Schema及局部OpenAPI见本文顶部链接，全量OpenAPI和自动一致性待补；本轮仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布。无新REST路由、SDK/CLI/Web/Mock/schema/依赖/迁移变更。
+
+## CLI 保存包提交核验（2026-11-05源码增量）
+
+`context compile`从通用提交迁移至独立CLI适配，网络main、程序调用callGateway与嵌入runWorkctx统一使用SDK compileContextPack。保留既有命令及默认预算4096/最大寿命3600秒，增加完整回执/摘要核验和总等待期限；不实际执行本节命令，只开发源码。
+
+- 输入最多一个 `--json` 或 `--json-file`，省略为{}，包括身份约束和正文键在内共4 KiB；文件沿稳定普通文件/严格UTF-8读取，内联文本也按UTF-8字节限额，兼容开头BOM。仅网络入口允许有界 `--json -`，嵌入拒绝stdin。`--timeout-ms`默认30000，接受1–2147483647规范正整数文本；未知/重复选项、多输入源、--output、业务未知字段和版本/写条件均拒绝。文件/stdin采集在SDK期限之前，EOF等待不可用该期限取消，stdout输出也在期限之外。
+- JSON允许budget_tokens/ttl_seconds、可选idempotency_key，以及可选但必须成对的expected_actor_id/expected_client_id。预算/期限共享严格整数范围128–32768/60–86400，规范默认值明确发送。请求键必需，可来自--key或JSON；嵌入另允许原可信context.idempotency_key，程序调用允许options.key，所有提供的来源必须逐字相等，冲突不覆盖也不生成新键。键限1–255 UTF-16单元，拒绝空白、C0/DEL和孤立代理项。账号为ULID，客户端为有效非空、最多255单元标识；身份约束剥离出业务正文，只用于相等头或嵌入原身份比较。
+- 网络范围来自原CLI配置/传入options，token、范围、trace、参数、键在异步保存前捕获。显式身份约束成对发送，省略时沿旧认证方式，不能固定未指定的身份。Fetch与SDK共用所选期限配置，SDK总期限覆盖凭据/网络/完整响应/摘要；完整成功2 MiB、Fetch错误体16 KiB，通用transport无HTTP状态/响应头，核对JSON内ETag。
+- 嵌入要求已验证、未过期的实际context.read及完整项目/账号/客户端，管理员角色不代替实际能力或restricted权限。原context复制后仅以一致原键提交，清除expected_version/if_match；严格核对一次POST的路径、八个头、规范正文、bounded-json及2 MiB限额。原router仍负责策略/审计，授权审计之后再次检查取消和身份有效期，才允许handler执行；handler结束后复查，完整封套核验后另拒绝无data.restricted.read却含restricted入选内容的结果，SDK继续摘要核验，交付前再检查身份有效期。父项目可见性、真实来源、存储及请求键归属仍由可信原handler负责，客户端检查不能替代。
+- 嵌入每router独立最多两笔保存，与九类上下文读取容量分开。SDK超时只停止等待，底层router实际结束前不释放保存名额；卡住的底层操作仍占容量。取消发生在授权等待期间时，授权结束后不会继续派发handler；已经进入handler的操作仍可能完成保存，返回前取消/过期/结构/摘要检查失败也不能撤销保存。
+
+成功退出0、stdout为完整原WCP封套，不裁剪包或添加自造键归属证明。参数/文件错误沿USAGE_ERROR退出2；请求/权限/回执失败退出1，不输出半份内容。SDK错误的compile_stage/compile_dispatch_state/server_outcome和固定恢复说明保留：尚未调用传输为not-sent/not-checked，调用传输后包括4xx、嵌入容量拒绝或回执异常在内的失败均保守started/unknown；该标记不是“handler已经执行”的证明，也不否定过去的同键保存。没有自动重试、读回、换键或本地持久化；调用方保留原项目、账号/客户端约束、预算、期限和键，仅显式以相同请求恢复。
+
+兼容性变化：旧不完整自定义/模拟回执会失败；嵌入替身需要可信有效身份、实际context.read和完整可校验回执。新增严格输入白名单、字节上限和重复选项检查；以前被忽略的嵌入选项不再静默忽略。当前MockContextPackStore仍不提供保存实现。SDK无原键/请求TTL回显，完整预算、最大有效期和摘要匹配仍不能证明原键归属；省略身份约束的旧网络调用不能获得身份固定保证。没有新增进程信号处理或stdout交付保证，进程终止/输出失败也不能据此否定远端保存。
+
+仅源码示例，未执行；`saved-pack-request.json`需由调用方保留，账号/客户端填写自己的原身份：
+
+```sh
+workctx context compile --key pack-001 --timeout-ms 30000
+workctx context compile --json-file saved-pack-request.json --timeout-ms 30000
+```
+
+```json
+{
+  "budget_tokens": 4096,
+  "ttl_seconds": 3600,
+  "idempotency_key": "pack-001",
+  "expected_actor_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+  "expected_client_id": "workctx-cli"
+}
+```
+
+R-003未完成，evidence为空。三入口/输入和文件边界、旧键兼容、授权等待取消、过期及容量保留、完整真实回执/摘要和未知结果恢复均待运行证据。本轮只源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行CLI/SDK/Mock/API/保存命令、数据库或发布；未改变Gateway、SDK、共享契约、Web、MCP、Mock、Schema、依赖或迁移。

@@ -35,6 +35,7 @@ import { prepareSessionState, sessionStateResult } from './session-state.js';
 import { callSessionRegistry } from './session-registry.js';
 import { isWorkItemReadCommand, callWorkItemRead } from './work-item-reads.js';
 import { isContextReadCommand, callContextRead } from './context-history.js';
+import { callContextCompile } from './context-pack-compile.js';
 import { callHandoffRegistry } from './handoff-registry.js';
 import { callCheckpointRegistry } from './checkpoint-registry.js';
 import { callCheckpointRead } from './checkpoint-reads.js';
@@ -199,8 +200,6 @@ function route(command: string, input: Record<string, unknown>) {
         method: 'POST',
         path: '/v1/context-items/' + segment(input, 'item_id') + '/' + command.split(' ')[1],
       };
-    case 'context compile':
-      return { method: 'POST', path: '/v1/context-pack/compile' };
     case 'sessions get':
       return { method: 'GET', path: '/v1/sessions/' + segment(input, 'session_id') };
     case 'handoffs get':
@@ -519,6 +518,7 @@ export async function callGateway(
   options: GatewayOptions,
 ) {
   if (isContextReadCommand(command)) return callContextRead(command, input, options);
+  if (command === 'context compile') return callContextCompile(input, options);
   if (isWorkItemReadCommand(command)) return callWorkItemRead(command, input, options);
   if (isArtifactQueryCommand(command)) return callArtifactQuery(command, input, options);
   if (isSyncConsumerCommand(command)) return callSyncConsumer(command, input, options);

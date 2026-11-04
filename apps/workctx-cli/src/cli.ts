@@ -8,6 +8,7 @@ import type { CommandRouter, CommandResult, RequestContext } from '@planemem/api
 import { prepareObservedRead, observedReadResult } from './observed.js';
 import { isWorkItemReadCommand, runWorkItemRead } from './work-item-reads.js';
 import { isContextReadCommand, runContextRead } from './context-history.js';
+import { runContextCompile } from './context-pack-compile.js';
 import { prepareHandoffClaim, handoffClaimResult } from './handoff-claim.js';
 import { prepareHandoffCreate, handoffCreateResult } from './handoff-create.js';
 import { prepareSessionStart, sessionStartResult } from './session-start.js';
@@ -364,6 +365,10 @@ export async function runWorkctx(
   try {
     if (command && isContextReadCommand(command)) {
       const result = await runContextRead(argv, router, context);
+      return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
+    }
+    if (command === 'context compile') {
+      const result = await runContextCompile(argv, router, context);
       return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
     }
     if (command && isWorkItemReadCommand(command)) {
