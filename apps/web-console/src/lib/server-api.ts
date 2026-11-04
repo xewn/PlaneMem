@@ -3,6 +3,11 @@ import { readWorkbenchJsonResponse } from './workbench-response';
 import { contextHistoryReadFailure, readContextHistoryResponse } from './context-history-response';
 import { contextItemReadFailure, readContextItemResponse } from './context-item-read-response';
 import {
+  contextDirectoryFailure,
+  prepareContextDirectoryQuery,
+  readContextDirectoryResponse,
+} from './context-directory-response';
+import {
   prepareWorkItemReadBody,
   readWorkItemResponse,
   workItemReadFailure,
@@ -1997,6 +2002,14 @@ async function gatewayRequest<T>(
     method === 'POST' &&
     (body.operation === 'work_items' || body.operation === 'work_item');
   if (workItemRequest) body = prepareWorkItemReadBody(body);
+  const contextDirectoryQuery =
+    requestPath === '/v1/workbench/query' && method === 'POST' && body.operation === 'context'
+      ? prepareContextDirectoryQuery(body)
+      : undefined;
+  if (contextDirectoryQuery) {
+    body = { operation: 'context', ...contextDirectoryQuery };
+    key = undefined;
+  }
   const session = await getSession();
   if (!session) throw new AuthRequiredError();
   const trace_id = `trace_web_${crypto.randomUUID()}`;
@@ -2022,6 +2035,7 @@ async function gatewayRequest<T>(
   if (
     artifactLookupKind !== undefined ||
     workItemRequest ||
+    contextDirectoryQuery ||
     contextHistoryQuery ||
     contextItemQuery
   )
@@ -2113,6 +2127,16 @@ async function gatewayRequest<T>(
       ...(method === 'POST' ? { body: JSON.stringify(body) } : {}),
     });
   } catch {
+    if (contextDirectoryQuery) {
+      assertReadSession();
+      const error = contextDirectoryFailure(
+        requestSignal.aborted || Date.now() >= requestDeadline
+          ? 'GATEWAY_REQUEST_TIMEOUT'
+          : 'GATEWAY_UNAVAILABLE',
+        trace_id,
+      );
+      throw new WorkbenchApiError(error.envelope.message, trace_id, 502, error.envelope.code);
+    }
     if (contextItemQuery) {
       assertReadSession();
       const error = contextItemReadFailure(
@@ -2193,6 +2217,7 @@ async function gatewayRequest<T>(
   }
   if (response.status === 401) {
     if (
+      contextDirectoryQuery ||
       contextItemQuery ||
       contextHistoryQuery ||
       workItemRequest ||
@@ -2209,6 +2234,37 @@ async function gatewayRequest<T>(
     )
       void response.body?.cancel().catch(() => undefined);
     throw new AuthRequiredError();
+  }
+  if (contextDirectoryQuery) {
+    try {
+      assertReadSession();
+      const result = await readContextDirectoryResponse(
+        response,
+        requestSignal,
+        trace_id,
+        requestDeadline,
+        contextDirectoryQuery,
+        scope,
+      );
+      assertReadSession();
+      return { ...result, data: result.data as unknown as T };
+    } catch (error) {
+      void response.body?.cancel().catch(() => undefined);
+      assertReadSession();
+      const failure =
+        error instanceof ContractError
+          ? error
+          : contextDirectoryFailure('GATEWAY_RESPONSE_INVALID', trace_id);
+      throw new WorkbenchApiError(
+        failure.envelope.message,
+        trace_id,
+        response.ok ||
+        ['GATEWAY_RESPONSE_INVALID', 'GATEWAY_REQUEST_TIMEOUT'].includes(failure.envelope.code)
+          ? 502
+          : response.status,
+        failure.envelope.code,
+      );
+    }
   }
   if (contextItemQuery) {
     try {

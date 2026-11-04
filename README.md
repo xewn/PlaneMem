@@ -1,5 +1,7 @@
 # PlaneMem
 
+完善 [上下文目录读取与页大小](docs/design/01-contracts/context-item-runtime.md)：完整校验目录内容和翻页位置，网页可选择每页1–100条；读取失败可保留筛选重试或缩小页面。旧游标需从第一页重新开始。仅源码文档，未编译、测试、运行或发布。
+
 新增 [上下文详情 Mock](docs/design/01-contracts/context-item-mock-runtime.md)：同一模拟数据集支持当前、归档和历史读取，核对同版内容一致性，并按显式模拟权限返回确认提示；缺少详情不从历史拼造。仅源码文档，未编译、测试、运行或发布。
 
 完善 [MCP 上下文资源读取](docs/design/01-contracts/context-item-runtime.md)：资源 URI 读取保留原项目与条目，完整校验正文、来源和确认信息，增加等待期限与并发限制，并保留原资源格式。仅源码文档，未编译、测试、运行或发布。

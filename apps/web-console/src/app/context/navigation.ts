@@ -36,6 +36,7 @@ const browseFields = [
   'type',
   'view',
   'cursor',
+  'limit',
   'item',
   'pack',
   'return_to',
@@ -68,6 +69,13 @@ function positive(value: string | string[] | undefined): number | undefined {
 /** Invalid URL filters fail before reads instead of silently widening the requested directory. */
 export function parseContextBrowseParams(params: ContextSearchParams): ContextBrowseState {
   singleValues(params, browseFields);
+  if (
+    params.limit !== undefined &&
+    (typeof params.limit !== 'string' ||
+      !/^[1-9][0-9]{0,2}$/.test(params.limit) ||
+      Number(params.limit) > 100)
+  )
+    throw new Error('Choose between 1 and 100 items per page.');
   if (params.view !== undefined && params.view !== 'active' && params.view !== 'archived')
     throw new Error('Choose active or archived context items.');
   if (
@@ -82,7 +90,7 @@ export function parseContextBrowseParams(params: ContextSearchParams): ContextBr
     status: params.status ?? '',
     item_type: params.type ?? '',
     archived: params.view === 'archived',
-    limit: 25,
+    limit: params.limit === undefined ? 25 : Number(params.limit),
     ...(params.cursor === undefined ? {} : { cursor: params.cursor }),
   });
   const item = params.item === undefined ? undefined : itemId(params.item);
@@ -108,8 +116,6 @@ export function parseContextBrowseParams(params: ContextSearchParams): ContextBr
 /** Rebuild fixed internal URLs; return data never grants access or redirects automatically. */
 export function contextBrowseHref(state: ContextBrowseState): string {
   const filters = parseContextItemListQuery(state.filters);
-  if (filters.limit !== undefined && filters.limit !== 25)
-    throw new Error('Use the context browser page size.');
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries({
     q: filters.query,
@@ -120,6 +126,8 @@ export function contextBrowseHref(state: ContextBrowseState): string {
     cursor: filters.cursor,
   }))
     if (value !== undefined) search.set(key, value);
+  if (filters.limit !== undefined && filters.limit !== 25)
+    search.set('limit', String(filters.limit));
   if (filters.archived) search.set('view', 'archived');
   if (state.item !== undefined) search.set('item', itemId(state.item));
   if (state.pack !== undefined) {

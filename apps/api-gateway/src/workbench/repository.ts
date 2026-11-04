@@ -39,6 +39,10 @@ import {
   type WorkItemProjection,
   type WorkItemListQuery,
   type ContextItemListQuery,
+  parseContextItemDirectoryQuery,
+  parseContextItemDirectoryPage,
+  contextItemDirectoryPosition,
+  type ContextItemDirectoryEnvelope,
   parseWorkbenchOverview,
   parseWorkbenchAdminEnvelope,
   workbenchAdminSources,
@@ -350,7 +354,18 @@ export class WorkbenchRepository {
     scope: WorkbenchScope,
     trace_id: string,
     filters: ContextFilters = {},
-  ): Promise<WorkbenchEnvelope<Record<string, unknown>[]> & { next_cursor?: string }> {
+  ): Promise<Omit<ContextItemDirectoryEnvelope, 'context_permissions'>> {
+    let query;
+    try {
+      query = parseContextItemDirectoryQuery(filters);
+    } catch {
+      throw new ContractError(
+        'INVALID_INPUT',
+        'Restart context browsing with valid filters and page size',
+        { trace_id },
+      );
+    }
+    filters = query;
     this.ensureDb(trace_id);
     const limit = filters.limit ?? 25;
     const queryKey = contextQueryKey(scope, filters);
@@ -359,7 +374,10 @@ export class WorkbenchRepository {
     const params: unknown[] = [scope.tenant_id, scope.workspace_id, scope.project_id];
     const clauses: string[] = [];
     for (const field of ['layer', 'classification', 'status', 'item_type'] as const)
-      if (filters[field]) clauses.push(`AND c.${field} = $${params.push(filters[field])}`);
+      if (filters[field])
+        clauses.push(
+          `AND c.${field}::text COLLATE "C" = $${params.push(filters[field])}::text COLLATE "C"`,
+        );
     if (filters.query?.trim())
       clauses.push(
         `AND strpos(lower(concat_ws(' ', c.title, c.source_ref, c.content::text)), lower($${params.push(filters.query.trim())}::text)) > 0`,
@@ -369,42 +387,71 @@ export class WorkbenchRepository {
       const time = params.push(after.updated);
       const id = params.push(after.id);
       clauses.push(`AND ((${rank}) > $${r} OR ((${rank}) = $${r} AND
-        (c.updated_at < $${time}::timestamptz OR (c.updated_at = $${time}::timestamptz AND c.id > $${id}))))`);
+        (c.updated_at < $${time}::timestamptz OR (c.updated_at = $${time}::timestamptz AND c.id COLLATE "C" > $${id}::text COLLATE "C"))))`);
     }
-    const rows = await this.query<
-      Record<string, unknown> & { id: string; page_rank: number; page_updated: string }
-    >(
+    const rows = await this.query<Record<string, unknown>>(
       `SELECT c.id, c.title, c.item_type, c.layer, c.classification, c.status,
-              c.source_ref, c.expires_at, c.confidence, c.priority, c.content,
-              c.source_refs, c.trace_id, c.updated_at, c.version, c.deleted_at AS archived_at,
-              (${rank}) AS page_rank,
-              to_char(c.updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS page_updated
+              c.source_ref, c.confidence, c.priority, c.content, c.source_refs, c.trace_id,
+              c.version::text AS version,
+              to_char(c.expires_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS expires_at,
+              to_char(c.deleted_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS archived_at,
+              to_char(c.updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS updated_at
          FROM wcp_context_items c
         WHERE c.tenant_id = $1 AND c.workspace_id = $2 AND c.project_id = $3
           AND ${readableProject(scope, 'c')}
           AND c.deleted_at IS ${filters.archived === true ? 'NOT NULL' : 'NULL'}
           ${scope.read_restricted ? '' : "AND c.classification <> 'restricted'"}
           ${clauses.join(' ')}
-        ORDER BY (${rank}), c.updated_at DESC, c.id
+        ORDER BY (${rank}), c.updated_at DESC, c.id COLLATE "C"
         LIMIT $${params.push(limit + 1)}`,
       params,
     );
-    const page = rows.slice(0, limit);
-    const last = page.at(-1);
-    return {
-      schema_version: 1,
-      data: page.map(({ page_rank, page_updated, ...item }) => item),
-      trace_id,
-      source_refs: source('wcp_context_items'),
-      ...(rows.length > limit && last
-        ? {
-            next_cursor: encodeContextCursor(
-              { rank: last.page_rank, updated: last.page_updated, id: last.id },
-              queryKey,
-            ),
-          }
-        : {}),
-    };
+    try {
+      if (rows.length > limit + 1) throw new TypeError();
+      const page = parseContextItemDirectoryPage(
+        {
+          data: rows.slice(0, limit).map((item) => ({
+            ...item,
+            version:
+              typeof item.version === 'string' && /^[1-9][0-9]*$/.test(item.version)
+                ? Number(item.version)
+                : item.version,
+            confidence:
+              typeof item.confidence === 'string' && /^(?:0|1)(?:\.[0-9]+)?$/.test(item.confidence)
+                ? Number(item.confidence)
+                : item.confidence,
+          })),
+        },
+        query,
+      );
+      const last = page.data.at(-1);
+      const next_cursor =
+        rows.length > limit && last
+          ? encodeContextCursor(contextItemDirectoryPosition(last), queryKey)
+          : undefined;
+      const result = parseContextItemDirectoryPage(
+        { ...page, ...(next_cursor === undefined ? {} : { next_cursor }) },
+        query,
+      );
+      return {
+        schema_version: 1,
+        ...result,
+        trace_id,
+        scope: {
+          tenant_id: scope.tenant_id,
+          workspace_id: scope.workspace_id,
+          project_id: scope.project_id,
+        },
+        query,
+        source_refs: source('wcp_context_items'),
+      };
+    } catch {
+      throw new ContractError(
+        'CONTEXT_ITEM_INVALID',
+        'The complete context directory page is invalid or exceeds its read limit',
+        { trace_id },
+      );
+    }
   }
 
   async getSessionState(

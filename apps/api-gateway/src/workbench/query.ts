@@ -1,6 +1,7 @@
 import {
   ContractError,
-  parseContextItemListQuery,
+  parseContextItemDirectoryQuery,
+  parseContextItemDirectoryEnvelope,
   parseWorkItemProjectionQuery,
   parseWorkItemListQuery,
   isUlid,
@@ -92,7 +93,7 @@ export async function queryWorkbench(
       let filters: ContextFilters;
       try {
         const { operation, ...query } = input;
-        filters = parseContextItemListQuery(query);
+        filters = parseContextItemDirectoryQuery(query);
       } catch (error) {
         throw new ContractError(
           'INVALID_INPUT',
@@ -100,7 +101,7 @@ export async function queryWorkbench(
           { trace_id },
         );
       }
-      return {
+      const result = {
         ...(await repository.listContext(scope, trace_id, filters)),
         context_permissions: {
           compile: hasClient && (admin || context.capability.includes('context.read')),
@@ -113,6 +114,15 @@ export async function queryWorkbench(
             (admin || context.capability.includes('proposal.write')),
         },
       };
+      try {
+        return parseContextItemDirectoryEnvelope(result, filters, scope, trace_id);
+      } catch {
+        throw new ContractError(
+          'CONTEXT_ITEM_INVALID',
+          'The complete context directory could not be validated',
+          { trace_id },
+        );
+      }
     }
     case 'sessions': {
       let query;

@@ -1,5 +1,21 @@
 # ContextItem 录入与编辑开发说明
 
+## 2026-11-04 上下文目录完整读取与页大小增量
+
+现有POST /v1/workbench/query的operation=context新增共享context-item-directory契约。parseContextItemDirectoryQuery先复制最多8 KiB普通JSON，沿原筛选解析并固定archived=false、limit=25默认值；默认页大小25，允许1–100。parseContextItemDirectoryPage/Envelope最多2 MiB完整JSON，拒绝未知字段、不完整记录、重复条目、无效数字/时间/来源、错序、错误归档视图、与精确筛选不符或续页位置不匹配；不截断正文或以少量记录冒充完整页。
+
+响应仍为data数组和可选外层next_cursor，新增完整scope及规范query回显（含默认archived/limit和本次cursor）。完整封套要求schema_version、原trace、精确wcp_context_items来源，以及四个布尔context_permissions提示；restricted=false时不能含受限记录。投影保留原完整content/source_refs等字段，version规范为正安全整数、confidence为0–1数值，updated_at/expires_at/archived_at统一UTC六位微秒，后两者允许null。目录不带HTTP或正文ETag，不含实时来源诊断或人工确认授权；完整详情仍须独立读取。
+
+Gateway沿原项目/分类可见性查询，明确High→Medium→Low、updated_at倒序、ID的C顺序，比较与排序使用同一规则。v2游标编码完整微秒位置及规范绑定摘要，绑定项目范围、restricted能力、全部筛选、归档视图和页大小；不绑定临时查询trace，也不是身份凭据。客户端可核对位置和续页格式，真实绑定由Gateway重新计算；改变页大小或筛选必须清除cursor，旧v1游标明确失效。next_cursor只能对应满页末条记录，续页首条必须严格位于原位置之后，边界记录不必仍存在。
+
+query文本搜索继续使用原PostgreSQL lower/concat_ws和JSONB文本表示的字面包含逻辑；共享解析只核对其规范回显，不用JavaScript字符串转换重算匹配，避免Unicode大小写和JSON对象顺序/空白差异。layer/classification/status/item_type按精确保存值核对。SQL仍最多读取limit+1条完整投影后校验，响应上限不代表数据库扫描、原始结果分配或前瞻正文的成本上限；超大条目仍留在存储，但可能无法通过目录完整返回。
+
+Web在等待会话前捕获原查询，清除写键；fetch开始后的同一30秒期限覆盖完整UTF-8/JSON、字节和契约校验，成功2 MiB、错误16 KiB。要求HTTP200或有效错误状态、匹配trace、合法媒体类型和无ETag；错误只映射固定提示。请求前、响应到达后、成功/失败交付前复核原会话期限，401或失效要求重新登录；不重新选择项目/筛选或自动重试。
+
+网页新增Items per page数字输入，仅1–100正整数，缺省或显式25在规范链接中省略。筛选提交清除旧位置和选择，下一页、原页重试、条目链接、归档视图切换、清除筛选及历史/比较返回保留页大小；搜索返回仍遵守原item/return_to限制。目录失败保留原参数重试、同筛选首屏，并在页大小大于1时提供Smaller page with these filters：明确减半（向下取整且最小1），清除旧cursor/选择、保留筛选和指定包。不会自行缩页或返回部分列表。
+
+SDK/CLI/MCP通用入口继续收到原data数组及新增元数据，但尚未增加专用目录客户端解析/期限；Mock目录尚未接入。旧消费方的数字字符串、毫秒时间、v1游标及无scope/query封套需要迁移，独立Schema、SQL成本与兼容证据后续处理。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行产品/浏览器/API/SQL/数据库或发布；R-003未完成、evidence为空。
+
 ## 2026-11-04 当前与归档详情Mock增量
 
 既有MockContextHistoryStore增加可选条目current_detail，供getContextItem/getArchivedContextItem读取完整原详情；MockWcpServer原context_history配置接入，历史/版本/详情共享模拟身份、可见集合、两笔容量与30秒预算。单详情2 MiB、合计种子16 MiB，核对当前版本/归档/分类与已有同版历史保存内容；不从历史补造缺失详情或刷新来源观察。可选review_access的human/review_context均true时才保留原确认就绪，confirm_allowed仅按给定原提示、模拟权限及有效期降级，不授予写权限。外层trace随请求，保存正文/来源/原确认与诊断时间保持。配置、原历史兼容、响应边界及未执行示例见[上下文详情Mock](context-item-mock-runtime.md)。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布；R-003未完成、evidence为空。
@@ -212,7 +228,7 @@ Web历史读取使用单独响应处理：目录成功最多256KiB、版本成�
 
 ## 2026-11-04 上下文浏览与历史返回增量
 
-Web context/navigation统一主页面及历史导航。主页面只接受q/layer/classification/status/type/view/cursor/item/pack/return_to的单值已知字段，筛选复用parseContextItemListQuery和固定25条页大小；view仅active/archived（省略active），拒绝未知枚举、数组、重复字段、超长文本或非法游标，不再截断文本或忽略无效筛选。item沿既有历史ID规则，拒绝空白、控制字符和点路径；pack必须ULID。原搜索返回仍只允许item/return_to，绑定已验证搜索页的context_item及同一ID。
+Web context/navigation统一主页面及历史导航。主页面只接受q/layer/classification/status/type/view/cursor/limit/item/pack/return_to的单值已知字段，筛选复用parseContextItemListQuery，页大小默认25、可选1–100（后续目录增量）；view仅active/archived（省略active），拒绝未知枚举、数组、重复字段、超长文本或非法游标，不再截断文本或忽略无效筛选。item沿既有历史ID规则，拒绝空白、控制字符和点路径；pack必须ULID。原搜索返回仍只允许item/return_to，绑定已验证搜索页的context_item及同一ID。
 
 主页面目录失败时提供原参数GET重试及保留原筛选/归档视图/指定包的第一页入口；回第一页清除旧游标及选择。选中条目读取失败时显式重试固定原ID及当前浏览条件，不替换成另一条目；查找相反归档视图清除旧游标、保留其余筛选和包，继续独立读取相同ID。清除筛选保留归档视图及指定包。筛选输入标明500字符上限，非法参数仅显示固定重新浏览入口，不能构造读取或重试目标。
 
@@ -245,7 +261,7 @@ restricted 内容的新增、读取、修改、归档和恢复要求 `data.restr
 
 ## 列表分页
 
-`POST /v1/workbench/query` 的 `operation=context` 支持 query/layer/classification/status/item_type，以及 `limit`、`cursor` 和布尔值 `archived`。默认每页 25 条，limit 必须是 1–100 的整数。archived 默认为 false；true 只返回已归档条目，列表中的 archived_at 为归档时间，活动条目为 null。空筛选值表示不筛选，query/item_type 会去除首尾空白；未知字段、非法游标或超限参数返回 `INVALID_INPUT`。列表继续返回原有投影字段和正文，数据库数字仍可能为字符串。
+`POST /v1/workbench/query` 的 `operation=context` 支持 query/layer/classification/status/item_type，以及 `limit`、`cursor` 和布尔值 `archived`。默认每页 25 条，limit 必须是 1–100 的整数。archived 默认为 false；true 只返回已归档条目，列表中的 archived_at 为归档时间，活动条目为 null。空筛选值表示不筛选，query/item_type 会去除首尾空白；未知字段、非法游标或超限参数返回 `INVALID_INPUT`。列表继续返回原有投影字段和正文；完整目录增量将version规范为安全整数、confidence为数值，并统一UTC微秒时间。
 
 ```json
 {
@@ -256,11 +272,11 @@ restricted 内容的新增、读取、修改、归档和恢复要求 `data.restr
 }
 ```
 
-响应保持 `data: [...]`，有后续条目时在**外层**增加字符串 `next_cursor`。下一次请求将它传为 `cursor`，保留同一筛选条件；没有 next_cursor 时停止。旧调用方不能再把一次列表请求当作全部数据，需要显式处理分页。该游标与同步接口 `data.next_cursor` 的数字含义不同。
+响应保持 `data: [...]`，增加原scope/query回显，有后续条目时在**外层**增加字符串 `next_cursor`。下一次请求将它传为 `cursor`，保留同一筛选条件和页大小；没有 next_cursor 时停止。旧调用方不能再把一次列表请求当作全部数据，需要显式处理分页。该游标与同步接口 `data.next_cursor` 的数字含义不同。
 
-排序保持优先级 High → Medium → Low，然后 updated_at 倒序、ID 升序。使用最后一条的排序位置继续，不要求边界条目仍然存在；SQL 读取最多 limit + 1 条。时间边界保留 PostgreSQL 微秒精度，避免同一毫秒内的记录被跳过。019 迁移提供匹配排序的部分索引，仅创建了迁移文件，尚未执行；列表功能不依赖该索引存在。
+排序保持优先级 High → Medium → Low，然后 updated_at 倒序、ID按C顺序升序。使用最后一条的排序位置继续，不要求边界条目仍然存在；SQL 读取最多 limit + 1 条。时间边界保留 PostgreSQL 微秒精度，避免同一毫秒内的记录被跳过。019 原排序部分索引仅创建了迁移文件，尚未执行；C排序下的索引计划尚无运行证据，列表功能不依赖该索引存在。
 
-游标包含排序位置及范围/筛选摘要，绑定 tenant/workspace/project、restricted 读取能力、归档视图和规范化筛选条件。切换项目、权限、归档视图或筛选后应从第一页开始；limit 可改变。新增归档维度前产生的游标需要重新从第一页获取。游标不是授权凭据，每页仍独立检查鉴权、范围和当前分类。
+v2游标包含排序位置及范围/筛选摘要，绑定 tenant/workspace/project、restricted 读取能力、归档视图、规范化筛选条件和limit。切换项目、权限、归档视图、筛选或页大小后应从第一页开始；旧v1游标也需要重新从第一页获取。游标不是授权凭据，每页仍独立检查鉴权、范围和当前分类。
 
 分页展示实时数据，不提供跨请求数据库快照。翻页期间发生编辑、优先级调整或归档时，条目可能改变位置；需要刷新完整视图时从第一页重新读取并按 ID 去重。本接口不承担一致性导出或同步职责。ContextPack 的编译候选查询不使用此分页，原有候选数量限制不变。
 

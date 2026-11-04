@@ -156,7 +156,15 @@ export default async function ContextPage({
           className="filters work-item-filters"
           action="/context"
           method="get"
-          key={JSON.stringify([query, layer, classification, status, itemType, archived])}
+          key={JSON.stringify([
+            query,
+            layer,
+            classification,
+            status,
+            itemType,
+            archived,
+            filters.limit,
+          ])}
         >
           {packId && <input type="hidden" name="pack" value={packId} />}
           <select
@@ -221,13 +229,29 @@ export default async function ContextPage({
               maxLength={500}
             />
           </label>
+          <label className="filter-input">
+            <span>Items per page</span>
+            <input
+              type="number"
+              name="limit"
+              min={1}
+              max={100}
+              step={1}
+              defaultValue={filters.limit ?? 25}
+              aria-label="Items per page"
+              required
+            />
+          </label>
           <button className="secondary-button" type="submit">
             Apply filters
           </button>
           {(query || layer || classification || status || itemType) && (
             <Link
               className="panel-link"
-              href={contextBrowseHref({ filters: { archived, limit: 25 }, pack: packId })}
+              href={contextBrowseHref({
+                filters: { archived, limit: filters.limit ?? 25 },
+                pack: packId,
+              })}
               prefetch={false}
             >
               Clear filters
@@ -681,6 +705,18 @@ function ContextBrowseRecovery({ navigation }: { navigation: ContextBrowseState 
       >
         First page with these filters
       </Link>
+      {(filters.limit ?? 25) > 1 && (
+        <Link
+          className="panel-link"
+          prefetch={false}
+          href={contextBrowseHref({
+            filters: { ...filters, limit: Math.max(1, Math.floor((filters.limit ?? 25) / 2)) },
+            pack: navigation.pack,
+          })}
+        >
+          Smaller page with these filters
+        </Link>
+      )}
     </nav>
   );
 }

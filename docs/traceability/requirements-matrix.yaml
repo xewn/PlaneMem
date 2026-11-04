@@ -954,6 +954,28 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_item_directory_complete_read_development_increment:
+      date: "2026-11-04"
+      status: "Source-only complete context directory contract, Gateway normalization and bounded Web browsing; R-003 remains incomplete."
+      artifacts:
+        - "packages/contracts/src/context-item-directory.ts"
+        - "packages/contracts/src/index.ts"
+        - "apps/api-gateway/src/workbench/context-pagination.ts"
+        - "apps/api-gateway/src/workbench/repository.ts"
+        - "apps/api-gateway/src/workbench/query.ts"
+        - "apps/web-console/src/lib/context-directory-response.ts"
+        - "apps/web-console/src/lib/server-api.ts"
+        - "apps/web-console/src/app/context/navigation.ts"
+        - "apps/web-console/src/app/context/page.tsx"
+        - "docs/design/01-contracts/context-item-runtime.md"
+      behavior: "Strict 8 KiB captured directory query and complete 2 MiB response with scope/query echo, original trace, exact sources, permissions, saved record fields and full content. Gateway normalizes safe numbers and UTC microsecond timestamps, orders IDs with C collation and emits v2 cursors bound to scope/restricted/filter/view/page size. Shared parsing verifies archive/scalar filters, unique ordered records, strict after-position and full-page continuation. Web reads complete UTF-8/JSON under the original 30-second fetch budget, rejects HTTP/type/trace/ETag failures and rechecks session expiry. Browser supports 1-100 items per page, preserves size in navigation/history/retry and explicitly offers smaller first-page recovery with original filters."
+      evidence: []
+      pending_evidence:
+        - "Real PostgreSQL projections, safe number and microsecond normalization, C ordering and same-time/Unicode continuation"
+        - "Old cursor migration, page-size/filter binding, malformed/oversized pages and preserved full source/content values"
+        - "Web complete read limits, deadlines/session expiry, navigation/history return and explicit smaller-page recovery"
+      remaining_scope: "Runtime/SQL/browser and old consumer compatibility evidence; SDK/CLI/MCP/Mock dedicated directory reads, standalone schema and database scan/allocation bounds. Text search uses PostgreSQL lower/JSONB rendering and is bound by query echo, not recomputed in JavaScript. Cursor/permission hints are not authorization or a consistent cross-page snapshot."
+      execution: "Source/docs, manual review and formatting/text checks only; no build, typecheck, tests, product/browser/API/SQL/database execution or release. No new REST route, schema, migration, dependency or write/pack changes."
     context_item_detail_mock_development_increment:
       date: "2026-11-04"
       status: "Source-only optional current/archived context detail Mock integration; R-003 remains incomplete."
