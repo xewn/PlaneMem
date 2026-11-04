@@ -106,7 +106,7 @@ const result = await pages.next();
 await pages.return(undefined); // 没有预取下一页。
 ```
 
-MockWorkItemStore沿现有bounded-json和取消信号接入，无新增Mock路由。CLI单页/详情的后续适配见下节；MCP/Web未增加这些SDK选项或遍历命令，生产Gateway/共享投影/数据库/依赖不变。仅源码文档人工审阅，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布；真实取消/迟到/超限/错误、旧传输兼容、重复游标/页数上限及分页消费仍待运行证据，R-001/R-002保持未完成且evidence为空。
+MockWorkItemStore沿现有bounded-json和取消信号接入，无新增Mock路由。CLI单页/详情及MCP专用读取的后续适配见下文；Web未增加这些SDK选项或遍历命令，生产REST/共享投影/数据库/依赖不变。仅源码文档人工审阅，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布；真实取消/迟到/超限/错误、旧传输兼容、重复游标/页数上限及分页消费仍待运行证据，R-001/R-002保持未完成且evidence为空。
 
 ### 命令行有界读取（2026-11-04，仅源码）
 
@@ -132,11 +132,29 @@ filters.json示例为`{"assignment":"unassigned","limit":25}`；selection.json�
 
 本次只修改CLI源码和文档，MCP/Web/生产Gateway/数据库/schema/依赖不变；SDK先前开发的有界实现直接复用。未编译、类型检查、测试、执行CLI/SDK/Mock/API/产品/数据库或发布。真实网络/嵌入兼容、身份头、稳定文件/stdin边界、超限/超时/迟到/容量及退出码证据仍缺，R-001/R-002保持未完成。
 
-### 其他读取入口
+### MCP 有界读取（2026-11-04，仅源码）
+
+`list_work_item_projections`和`get_work_item_projection`改由专用executeWorkItemReadTool执行。tools/list、prepareMcpTool、直接执行器及HTTP tools/call的客户端要求保持一致：必须是schema_version=1、authenticated_client=true、有实际context.read、明确未到期token_expires_at及有效完整范围/账号/客户端/trace的上下文。admin角色不替代context.read能力，发现时可见不保证之后调用仍获授权；真实Router仍执行原Policy/Audit，父项目与记录可见性沿原数据库读取。没有注册新的工具名、REST路由或读取资源。
+
+两工具内层arguments普通JSON最多8 KiB。列表字段仍是query/status/priority/owner/assignment/cursor/limit，默认25最多100条，详情只接受本地item_id。复用共享解析及原MCP schema语义：不筛选status/priority/owner/assignment时省略，不能发送空串；unassigned不能与非空owner组合。拒绝未知字段、写条件、范围、账号及CLI专用expected_actor_id/expected_client_id；身份只来自已验证的MCP上下文，不接受参数覆盖。不提供工具内timeout参数或自动翻页选项，保留原筛选显式传回next_cursor读取下一页。
+
+参数和上下文先复制，清除继承idempotency_key/expected_version/if_match，只派发一次固定POST /v1/workbench/query，使用work_items或work_item操作。交给ApiGateway的请求是额外副本，不能通过Handler修改它来改变原查询或权限校验依据。prepareMcpTool只准备请求和检查权限/输入；完整预算与响应校验由dispatchMcp或专用执行器提供，直接自行调用api.handle不是本节的有界工具执行流程。
+
+成功必须HTTP 200、JSON类型、正确x-trace-id且无ETag；只接受有界400–599错误封套及本次trace。完整成功业务JSON最多2 MiB、错误最多16 KiB，采用普通有限JSON快照与共享复杂度限制。外层只允许schema_version/trace_id/source_refs/data和列表可选next_cursor，详情不能携带续页；检查详情目标或整页记录、重复ID、状态/优先级/负责人/分配条件、页大小及续页结构。记录若附带范围字段，必须等于原上下文；原投影本身没有强制范围回显，不把内容校验当作授权证明。没有data.restricted.read却返回restricted时整份DENIED，不删掉记录后伪造成功页。
+
+成功结果仍为MCP content中的一段JSON文本，文本内容是完整WCP封套，保留记录十进制版本、时间、来源/trace和外层本次trace。再次约束文本封套2 MiB及转义后的MCP result为4 MiB+4096字节；超限、错trace、错误条目/目标/筛选或非法返回整份失败，无部分成功、截断正文或减少条数。描述和来源仍是不可信保存资料，不认证外部来源或实时Plane状态；MCP不重做数据库locale文本搜索和ID排序。
+
+每ApiGateway两工具共用两笔活动容量，固定30秒单调时钟预算覆盖输入、等待、完整解析和结果编码。第三笔返回MCP_WORK_ITEM_READ_BUSY；到期返回MCP_WORK_ITEM_READ_TIMEOUT。超时只停止外层等待，底层api.handle未结束仍占名额，结束后才释放；迟到结果不交付，不把超时解释为数据库读取/审计已取消。同步解析不能中途抢占，返回前重查期限及令牌权限。没有排队、自动重试、翻页、保存或写入。
+
+错误使用固定允许代码、固定消息、本次trace和retryable=false，不回显底层异常、原错误details或数据。dispatchMcp沿既有工具错误包装返回isError=true；HTTP入口对缺少可信客户端仍可先行返回403。未知底层错误和损坏封套归为GATEWAY_RESPONSE_INVALID。普通MCP HTTP请求正文预算不扩容；这里限制的是工具arguments和结果，未提供新的跨请求取消协议。
+
+未认证/缺期限/只有admin但无context.read的旧调用方不再可发现或调用这两工具；超限、额外封套字段、Date或undefined属性等旧fixture需迁移为完整规范JSON。开发调用形状（未执行）：`list_work_item_projections({assignment:'unassigned',status:'todo',limit:25})`及`get_work_item_projection({item_id:'local-work-1'})`。本次仅源码文档人工审阅，无共享契约/数据库/schema/依赖变化，未编译、类型检查、测试、执行MCP/API/产品或发布；真实授权/发现调用一致性、封套/错误/超限、到期/迟到/并发容量及旧客户端兼容证据仍缺，R-001/R-002保持未完成且evidence为空。
+
+### 入口汇总
 
 - SDK：`getWorkItemProjection(itemId, options?)`，共享输入/响应解析器，返回 WCP 封套；有界读取及取消见上节。
 - CLI：`workctx work-items get --json-file work-item.json [--timeout-ms 30000]`，文件内容 `{"item_id":"本地 ID"}`，拒绝 --key；单页/详情大小与可选身份条件见上节。
-- MCP：`get_work_item_projection`，输入 item_id，要求 context.read，声明只读。
+- MCP：`get_work_item_projection`，输入 item_id，要求可信未过期context.read客户端，声明只读；完整限制见上节。
 - 工作台：`/work-items/detail?item=...` 独立读取指定任务，展示描述、版本、时间和来源；刷新表单重新请求详情。来源 URI 作为文本展示，不自动访问。
 - 看板/列表提供详情入口。显式指定 item 不在筛选结果中时，不选择另一条任务；保留原 ID 并提供独立读取入口。没有指定 item 时仍默认选择第一条。
 

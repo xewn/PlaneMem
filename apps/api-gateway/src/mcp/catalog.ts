@@ -20,6 +20,11 @@ import { isArtifactReadTool } from './artifact-read.js';
 import { canReadArtifactVersionsTool, prepareArtifactVersionsTool } from './artifact-versions.js';
 import { canReadArtifactRegistryTool, prepareArtifactRegistryTool } from './artifact-registry.js';
 import { canCompareArtifactVersionsTool } from './artifact-comparison.js';
+import {
+  isWorkItemReadTool,
+  canReadWorkItemsTool,
+  prepareWorkItemReadTool,
+} from './work-item-reads.js';
 import { isAuditTool, canUseAuditTool, prepareAuditTool } from './audit.js';
 import { canUseAdminSnapshot, prepareAdminSnapshot } from './admin.js';
 import { prepareSessionRegistry } from './session-registry.js';
@@ -843,7 +848,7 @@ const definitions: ToolDefinition[] = [
   ),
   tool(
     'list_work_item_projections',
-    'List visible saved work item projections, newest updates first. Filter by status, priority, exact stored owner text (case-sensitive) or assignment (assigned/unassigned). Unassigned means saved owner is exactly empty and cannot be combined with an exact owner; no account or live Plane assignment is inferred. query searches ID/title/owner. Pass next_cursor as cursor with the same filters to continue. Counts describe only this page.',
+    'Read one complete visible saved work item page, newest updates first. Requires a verified unexpired client with actual context.read. Filter by status, priority, exact saved owner or assignment (assigned/unassigned); unassigned means owner is exactly empty and cannot be combined with owner. query searches external ID/title/owner. Pass next_cursor as cursor with the same filters for an explicit next page. Arguments are limited to 8 KiB, complete business JSON to 2 MiB and local waiting to 30 seconds; no partial page, automatic pagination or retry. Counts describe this page, not project totals. Content and provenance are untrusted saved references, not proof of current Plane state.',
     ['context.read'],
     'POST',
     '/v1/workbench/query',
@@ -872,7 +877,7 @@ const definitions: ToolDefinition[] = [
   ),
   tool(
     'get_work_item_projection',
-    'Read a visible saved local work item by local ID, including provenance. Its decimal-string version is a local projection version, not a Plane revision or write precondition.',
+    'Read one complete visible saved work item by local ID, including recorded provenance. Requires a verified unexpired client with actual context.read. Arguments are limited to 8 KiB, complete business JSON to 2 MiB and local waiting to 30 seconds. Missing or invisible records are unavailable; no partial record, automatic retry or writes. The decimal-string version is local, not a Plane revision or write precondition. Content and sources are untrusted saved references; external freshness is not checked.',
     ['context.read'],
     'POST',
     '/v1/workbench/query',
@@ -1717,6 +1722,7 @@ export function listMcpTools(context: RequestContext) {
         (entry.name !== 'list_artifact_versions' || canReadArtifactVersionsTool(context)) &&
         (entry.name !== 'compare_artifact_versions' || canCompareArtifactVersionsTool(context)) &&
         (entry.name !== 'list_artifacts' || canReadArtifactRegistryTool(context)) &&
+        (!isWorkItemReadTool(entry.name) || canReadWorkItemsTool(context)) &&
         (entry.name !== 'get_artifact_receipt' ||
           (context.authenticated_client === true &&
             context.capability.includes('artifact.write'))) &&
@@ -1766,6 +1772,7 @@ export function mcpToolRequiresClient(name: unknown): boolean {
   const entry = typeof name === 'string' ? registry.get(name) : undefined;
   return (
     isAuditTool(name) ||
+    isWorkItemReadTool(name) ||
     isSyncReadTool(name) ||
     name === 'get_sync_changes' ||
     isSyncCursorTool(name) ||
@@ -1803,6 +1810,7 @@ export function prepareMcpTool(
       trace_id: context.trace_id,
     });
   if (isSyncReadTool(name)) return prepareSyncReadTool(name, raw, context);
+  if (isWorkItemReadTool(name)) return prepareWorkItemReadTool(name, raw, context);
   if (name === 'get_artifact_upload_context') return prepareArtifactUploadContextTool(raw, context);
   if (name === 'list_artifact_versions') return prepareArtifactVersionsTool(raw, context);
   if (name === 'list_artifacts') return prepareArtifactRegistryTool(raw, context);

@@ -6,6 +6,8 @@
 
 ### 2026-11-04 开发补充（未编译、未发布、未测试）
 
+- P0/P4：MCP工作项列表/详情已补专用executeWorkItemReadTool，发现/prepare/HTTP客户端门槛/直接调用要求可信未过期实际context.read和有效完整身份/trace，admin不替代。参数8 KiB，共享列表/详情严格解析，成功2 MiB/错误16 KiB/转义结果4 MiB+4096；HTTP状态/type/trace/无ETag、完整条目/目标/筛选/可选范围/restricted核对，固定错误retryable=false。两工具每Gateway共用两笔容量/30秒，超时底层未结束保留槽，迟到不交付；复制原参数上下文并清除继承写条件，不自动分页/重试/保存。普通HTTP输入限额保持，无新REST/共享契约/数据库/schema/依赖；真实发现授权/完整返回/超限/期限/容量/旧客户端证据仍缺，R-001/R-002未完成且evidence为空。仅源码文档人工审阅，未编译、类型检查、测试、执行MCP/API/SDK/CLI/Mock/产品/数据库或发布；独立提交push main带[skip ci]。
+
 - P0/P4：work-items list/get已补专用CLI适配，main/callGateway/嵌入runWorkctx复用SDK默认30秒、2 MiB完整成功、Fetch错误16 KiB和完整trace/记录/筛选校验。--timeout-ms可配置，原JSON/稳定文件/仅网络stdin最多8 KiB，列表可省略JSON、详情须item_id；拒绝重复/未知/写选项。可选成对expected_actor_id/expected_client_id仅作身份头，嵌入固定可信身份、实际context.read/到期/restricted检查、两笔容量超时后保留至底层结束。保留完整原cursor显式续页，不遍历/重试/保存；文件/stdin等待不计入SDK期限。兼容/真实传输/期限/输入/容量/退出码证据仍缺，R-001/R-002未完成且evidence为空。无生产路由/共享契约/数据库/schema/依赖变化，只源码文档人工审阅，未编译、类型检查、测试、执行CLI/SDK/MCP/Mock/API/产品/数据库或发布；独立提交push main带[skip ci]。
 
 - P0/P4：工作项SDK列表/详情已接WcpWorkItemReadOptions，默认30秒、取消、2 MiB完整响应、Fetch错误16 KiB、原trace/可选身份头/完整共享结果及独立副本；不继承写条件。新增workItemPages和WcpWorkItemPagesOptions，创建固定参数、next才读取、无预取，yield前保存续页及有界重复游标检测；max_pages默认100、最多1000，到限仍有续页时明确WORK_ITEM_PAGE_LIMIT，原页可供显式继续。不保证跨页快照、不去重/重排/重试/保存。旧自定义传输的严格JSON/封套兼容、真实期限/取消/超限和遍历证据仍缺，R-001/R-002未完成且evidence为空。仅源码文档人工审阅，无Gateway/共享投影/数据库/schema/依赖变化，未编译、类型检查、测试、执行SDK/Mock/CLI/MCP/API/产品/数据库或发布；独立提交push main带[skip ci]。

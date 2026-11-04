@@ -11,6 +11,24 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    mcp_work_item_reads_development_increment:
+      date: "2026-11-04"
+      status: "Source-only dedicated bounded MCP work item list/detail reads; R-001 and R-002 remain incomplete."
+      artifacts:
+        - "apps/api-gateway/src/mcp/work-item-reads.ts"
+        - "apps/api-gateway/src/mcp/catalog.ts"
+        - "apps/api-gateway/src/mcp/protocol.ts"
+        - "docs/design/01-contracts/work-item-projection-runtime.md"
+        - "docs/design/01-contracts/mcp-runtime.md"
+        - "docs/design/01-contracts/mcp-interface.md"
+      behavior: "Existing list/get work item tools use a dedicated executor. Discovery, request preparation and direct execution require verified unexpired actual context.read plus valid identity/trace; both tools require an authenticated client at HTTP ingress. Bound arguments to 8 KiB and preserve shared query/schema semantics without identity/write overrides. Copy request/context, remove inherited write conditions and dispatch one workbench query through Policy/Audit. Validate status/type/trace/no ETag, 2 MiB success/16 KiB error, closed envelope, complete records/filters/continuation/optional scope and restricted permission. Return complete WCP JSON text within a 4 MiB+4096 escaped result budget. Share two slots per Gateway and a 30-second deadline, retaining timed-out slots until underlying settlement; sanitize errors and never return late/partial results or automatically paginate/retry/write."
+      evidence: []
+      pending_evidence:
+        - "Discovery/prepare/direct-call/HTTP authority parity, expiry and old client/fixture migration"
+        - "Input bounds, shared filters, original query isolation, complete output and restricted/scope mismatch rejection"
+        - "Error/trace/type/size boundaries, timeout/late completion, shared capacity and preserved Policy/Audit behavior"
+      remaining_scope: "Real MCP/Gateway/client evidence and source freshness; Web read budgets and broader parity remain incomplete. No cross-page snapshot or external source verification."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, MCP/API/SDK/CLI/Mock/product/database execution or release. No new REST route, shared contract, database schema or dependency change."
     cli_work_item_reads_development_increment:
       date: "2026-11-04"
       status: "Source-only bounded work item CLI list/detail reads; R-001 and R-002 remain incomplete."
@@ -27,7 +45,7 @@ requirements:
         - "Network/embedded routing, optional identity equality constraints and migration of old embedded fixtures"
         - "Inline/file/stdin UTF-8, size/stability, duplicate/unknown/write argument rejection and exit codes"
         - "SDK response limits, exact trace and filters, deadlines, late settlement, restricted responses and retained capacity"
-      remaining_scope: "Real CLI/SDK/transport/runtime evidence and source freshness. MCP/Web adapter budgets and broader client parity remain incomplete."
+      remaining_scope: "Real CLI/SDK/transport/runtime evidence and source freshness. MCP budget source coverage is recorded separately; Web budgets and broader client parity remain incomplete."
       execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/SDK/MCP/Mock/product/API/database execution or release. No production route, shared contract, database schema or dependency change."
     sdk_work_item_reads_development_increment:
       date: "2026-11-04"

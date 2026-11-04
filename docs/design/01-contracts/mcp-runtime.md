@@ -1,5 +1,7 @@
 # MCP HTTP 运行时开发说明
 
+2026-11-04 工作项读取增补：list_work_item_projections/get_work_item_projection已接专用执行器，发现/prepare/调用要求可信未过期实际context.read及有效身份/trace，admin不替代。8 KiB参数、2 MiB完整成功/16 KiB错误、4 MiB+4096转义结果，原目标/整页筛选/trace/可选范围/restricted权限核对；两工具每Gateway共用两笔容量与30秒期限，超时底层未结束仍占槽。无部分成功/自动翻页/重试/写入，清除继承写条件，普通HTTP输入预算不变。源码与兼容限制见[工作项MCP读取](work-item-projection-runtime.md)。仅源码文档人工审阅，未编译、测试、执行或发布。
+
 2026-11-04 版本对比增补：新增`compare_artifact_versions({artifact_id,from_version,to_version})`，发现和调用要求已验证未过期实际artifact.read。捕获同一身份，两次固定历史读取共用30秒/两笔比较容量，超时保留底层名额；4 KiB查询、每份2 MiB成功/16 KiB错误、8 MiB本地组合/16 MiB+4096转义结果，完整核对后返回两份原封套和共享字段/来源位置差异。`prepareMcpTool`明确要求专用执行器，不生成单请求替代；普通HTTP输入预算不变，无正文下载/当前替代/部分成功/重试。详见 [MCP版本对比](artifact-versions-runtime.md#mcp版本对比源码阶段)。仅源码文档，未编译、类型检查、测试、运行或发布。
 
 2026-11-04 项目文件目录增补：新增`list_artifacts`专用执行器，发现、prepare及直接调用均要求已验证未过期实际artifact.read；严格query/classification/limit/cursor共享查询，8 KiB内层输入、256 KiB成功/16 KiB错误、二次转义结果512 KiB+4096字节。每Gateway独立两笔目录读取和固定30秒本地期限，底层未结束仍占用超时名额；完整scope/trace/筛选/排序/next_query和restricted权限检查，固定错误、retryable=false、read_kind=registry。清除继承写条件，仍沿普通HTTP正文限额，不自动翻页/下载/写文件；详见 [项目目录客户端](artifact-registry-runtime.md#命令行与-mcp源码阶段)。仅源码文档人工审阅，未编译、测试、执行MCP/API/数据库或发布。

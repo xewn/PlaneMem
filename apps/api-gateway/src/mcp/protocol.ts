@@ -17,6 +17,7 @@ import { isArtifactReadTool, artifactReadToolResult } from './artifact-read.js';
 import { executeArtifactVersionsTool } from './artifact-versions.js';
 import { executeArtifactRegistryTool } from './artifact-registry.js';
 import { executeArtifactComparisonTool } from './artifact-comparison.js';
+import { isWorkItemReadTool, executeWorkItemReadTool } from './work-item-reads.js';
 import { isAuditTool, executeAuditTool } from './audit.js';
 import { executeAdminSnapshot } from './admin.js';
 import { isSyncReadTool, executeSyncReadTool } from './sync-reads.js';
@@ -173,6 +174,15 @@ export async function dispatchMcp(
             { trace_id },
           );
         try {
+          if (isWorkItemReadTool(params.name)) {
+            result = await executeWorkItemReadTool(
+              api,
+              params.name,
+              params.arguments ?? {},
+              context,
+            );
+            break;
+          }
           if (params.name === 'get_proposal_create_receipt') {
             result = await executeProposalCreateReceiptTool(api, params.arguments ?? {}, context);
             break;

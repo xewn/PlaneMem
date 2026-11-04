@@ -1,5 +1,7 @@
 # MCP 接口契约 v1
 
+2026-11-04 工作项读取增补：原list_work_item_projections/get_work_item_projection保留原输入/封套JSON文本形状，发现与调用均要求可信未过期实际context.read客户端。专用读取限制8 KiB参数、2 MiB完整成功、16 KiB错误、两笔容量及30秒本地期限，完整核对后才返回；不接收身份/写条件覆盖，不自动翻页或重试。旧缺客户端/期限/能力或非完整JSON封套的fixture需迁移。详见[工作项MCP读取](work-item-projection-runtime.md)，仅源码文档，未编译、测试、调用或发布。
+
 2026-11-04 项目文件目录增补：新增只读`list_artifacts({query?,classification?,limit?,cursor?})`，已验证未过期客户端且实际artifact.read才可发现/调用。默认20最多20，名称字面子串/ASCII大小写折叠、分类精确、ID倒序，完整next_query显式续页；每页使用当前可见性，非跨页快照。完整响应及权限核验、两笔容量/30秒期限、固定错误见 [项目目录客户端](artifact-registry-runtime.md#命令行与-mcp源码阶段)。不提供新资源、正文、写条件或自动分页；仅源码文档，未编译、测试、调用或发布。
 
 2026-11-04 上传身份读取增补：新增只读工具 `get_artifact_upload_context({})`，发现与调用要求可信未过期客户端和实际artifact.write，admin不代替。返回完整身份/期限/上传上限/读取能力提示；不接受范围/身份/键或额外参数，不准备文件/命令或上传。独立两笔准备容量、30秒本地期限、成功/错误16 KiB、二次转义36 KiB；超时保留底层名额，核对完整原可信身份/期限/能力，错误固定且不重试。见 [CLI/MCP上传身份](artifact-persistence-runtime.md#cli-与-mcp-上传身份读取源码阶段)。仅源码文档，未编译、测试、调用或发布。
