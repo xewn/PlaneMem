@@ -122,7 +122,6 @@ import {
   type ContextItemListQuery,
   type ContextItemHistoryQuery,
   type ContextComparisonQuery,
-  parseContextItemListQuery,
   parseCreateContextItem,
   parseUpdateContextItem,
   parseConfirmContextItem,
@@ -174,6 +173,12 @@ import {
   readArchivedContextItem,
   type WcpContextItemReadOptions,
 } from './context-item-read.js';
+import {
+  readContextDirectory,
+  iterateContextDirectory,
+  type WcpContextDirectoryReadOptions,
+  type WcpContextDirectoryPagesOptions,
+} from './context-directory.js';
 import {
   readContextItemHistory,
   readContextItemVersion,
@@ -499,17 +504,16 @@ export class WcpClient {
     return compareContextItemVersions(this.transport, this.context, query, options);
   }
 
-  listContextItems(input: ContextItemListQuery = {}) {
-    let query: ContextItemListQuery;
-    try {
-      query = parseContextItemListQuery(input);
-    } catch (error) {
-      throw this.invalid(error instanceof Error ? error.message : 'Invalid context query');
-    }
-    return this.envelope<Record<string, unknown>[]>('POST', '/v1/workbench/query', {
-      ...query,
-      operation: 'context',
-    });
+  listContextItems(input: ContextItemListQuery = {}, options: WcpContextDirectoryReadOptions = {}) {
+    return readContextDirectory(this.transport, this.context, input, options);
+  }
+
+  /** Complete pages on demand; requires account and client constraints in the context. */
+  contextItemPages(
+    input: ContextItemListQuery = {},
+    options: WcpContextDirectoryPagesOptions = {},
+  ) {
+    return iterateContextDirectory(this.transport, this.context, input, options);
   }
 
   updateContextItem(

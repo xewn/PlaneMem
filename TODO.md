@@ -6,6 +6,8 @@
 
 ### 2026-11-04 开发补充（未编译、未发布、未测试）
 
+- P0/P2：SDK listContextItems接入专用8 KiB查询/2 MiB完整封套及默认30秒timeout_ms/signal，固定原项目和可选actor/client，清除写条件；完整核对scope/query/trace/来源/权限提示/记录/归档/排序及续页，自定义transport结果同样复制解析，错误只给固定提示。新增contextItemPages，创建时固定完整身份/筛选/页大小，next才读取、逐页预算、yield前保存原续页；max_pages默认100/最多1000，到限仍有续页时下一next明确报CONTEXT_DIRECTORY_PAGE_LIMIT。无预取/重试/自动缩页/去重，不承诺跨页快照或权限凭据。CLI/MCP/Mock专用目录适配、旧自定义transport迁移和运行证据待补，R-003未完成、evidence为空。仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行SDK/产品/API/数据库或发布。
+
 - P0/P4/P5：上下文目录新增共享8 KiB严格查询、2 MiB完整页/16 KiB错误、原scope/query/trace/来源/权限提示与记录/筛选/排序/续页校验，保留完整正文。Gateway规范安全数字与UTC微秒时间，C排序/比较，v2游标绑定页大小及原范围/权限/筛选，旧游标重回首屏；Web完整读取覆盖原30秒期限，校验HTTP/type/trace/无ETag并复核会话。网页支持1–100页大小，默认25规范省略，导航/历史/重试保留；失败可显式减半页大小回原筛选首屏。PG文本查询不由JS重算，不声称数据库分配/扫描上限，SDK/CLI/MCP/Mock专用目录适配及运行/兼容证据待补，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行产品/浏览器/API/SQL/数据库或发布。
 
 - P0/P2：既有MockContextHistoryStore条目可选current_detail完整当前/归档封套，MockWcpServer原context_history配置接入两详情GET，与历史/版本共用每store两笔容量及30秒/取消。种子总16 MiB/1000条目/1000历史限制保持，单详情2 MiB，核对当前范围/版本/归档/分类及已有同版历史保存字段与确认；缺详情或视图不符明确不可用，不造历史或来源观察。可选review_access={human,review_context}显式约束确认提示，缺省false并隐藏严格就绪，已过期提示降为false；正文/来源诊断/记录时间保持，外层trace随请求，独立完整返回。旧历史种子仍可使用，Mock真实兼容/取消/大小/权限证据待补，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布。

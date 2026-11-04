@@ -1,5 +1,30 @@
 # ContextItem 录入与编辑开发说明
 
+## 2026-11-04 SDK上下文目录完整读取及按需分页增量
+
+`listContextItems(query?, options?)`改用专用目录读取器，返回`Promise<ContextItemDirectoryEnvelope>`，保留data数组/next_cursor并公开已校验scope/query/context_permissions。options为`WcpContextDirectoryReadOptions`，支持timeout_ms（默认30000、正安全整数且不超过2147483647）和signal。等待前复制原合法项目、trace、已有actor/client相等约束和最多8 KiB普通JSON查询；不发送继承的写键/版本条件。默认archived=false、limit=25，limit允许1–100，v1游标拒绝并需重新开始。
+
+完整响应最多2 MiB，共享解析核对原trace/项目/规范查询回显/精确来源/权限提示、完整记录与正文、数字/微秒时间、归档/精确筛选/排序/续页；自定义transport返回普通JSON也须通过同样有界复制及完整解析。实际POST正文与用于校验的查询分开保存。Fetch沿原bounded-json完整UTF-8读取、成功HTTP200/type/trace核对及16 KiB错误预算；通用transport不暴露HTTP头，不承诺目录无HTTP ETag的独立核验。默认30秒预算覆盖等待及解析前后检查，取消/超时后不交付迟到结果、finally清理计时器；同步解析不能被中途抢占。已知错误只返回固定提示且retryable=false，不外泄上游消息，无自动重试、归档回退、缩小页面或部分结果。
+
+新增`contextItemPages(query?, options?)`，返回`AsyncGenerator<ContextItemDirectoryEnvelope, void, unknown>`。options为`WcpContextDirectoryPagesOptions`，除timeout_ms/signal外接受max_pages（默认100、允许1–1000）。创建时同步核对并复制查询、页大小、原项目及**必填actor_id/client_id**，非法输入立即抛INVALID_INPUT；首次next才发送一页，每页独立期限，无空闲计时器或预取。yield前保存完整页的原next_cursor，修改返回页/输入/客户端上下文不改变后续请求；位置和绑定随每页共享解析核对。不记录跨页ID集合，不去重或把实时目录当一致快照，条目变化仍可能造成遗漏或重复。
+
+到达max_pages且最后一页仍有next_cursor时，下次next抛`CONTEXT_DIRECTORY_PAGE_LIMIT`，不会静默宣布遍历完成，也不会为检查上限多发请求。保留最后完整页可供调用方在同一身份/查询/页大小下显式续读；到达真正末页正常结束。break阻止后续读取，已在途读取用signal取消；排队next遵循异步生成器顺序。权限和来源提示不证明写权限、身份真实性或实时来源状态。
+
+未执行示例（client构造上下文须已含原项目、actor_id及client_id）：
+
+```ts
+const pages = client.contextItemPages(
+  { archived: false, limit: 20 },
+  { timeout_ms: 30_000, signal: controller.signal, max_pages: 10 },
+);
+for await (const page of pages) {
+  // 保存完整页及next_cursor，供显示或显式继续；不修改原筛选或页大小。
+  consume(page);
+}
+```
+
+兼容变化：listContextItems非法输入现在通过Promise拒绝；返回记录为明确类型，version/confidence为数值，时间为六位微秒，查询必须为普通JSON。旧仅data/source_refs的自定义transport或目录Mock需提供完整scope/query/context_permissions/记录且支持bounded-json/signal；当前Mock目录尚未接入，不回退到不完整响应。单页方法仍可省略actor/client相等约束，迭代则要求两者都有。CLI/MCP/Mock专用适配和真实旧调用兼容证据后续处理。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布；R-003未完成、evidence为空。
+
 ## 2026-11-04 上下文目录完整读取与页大小增量
 
 现有POST /v1/workbench/query的operation=context新增共享context-item-directory契约。parseContextItemDirectoryQuery先复制最多8 KiB普通JSON，沿原筛选解析并固定archived=false、limit=25默认值；默认页大小25，允许1–100。parseContextItemDirectoryPage/Envelope最多2 MiB完整JSON，拒绝未知字段、不完整记录、重复条目、无效数字/时间/来源、错序、错误归档视图、与精确筛选不符或续页位置不匹配；不截断正文或以少量记录冒充完整页。
@@ -14,7 +39,7 @@ Web在等待会话前捕获原查询，清除写键；fetch开始后的同一30�
 
 网页新增Items per page数字输入，仅1–100正整数，缺省或显式25在规范链接中省略。筛选提交清除旧位置和选择，下一页、原页重试、条目链接、归档视图切换、清除筛选及历史/比较返回保留页大小；搜索返回仍遵守原item/return_to限制。目录失败保留原参数重试、同筛选首屏，并在页大小大于1时提供Smaller page with these filters：明确减半（向下取整且最小1），清除旧cursor/选择、保留筛选和指定包。不会自行缩页或返回部分列表。
 
-SDK/CLI/MCP通用入口继续收到原data数组及新增元数据，但尚未增加专用目录客户端解析/期限；Mock目录尚未接入。旧消费方的数字字符串、毫秒时间、v1游标及无scope/query封套需要迁移，独立Schema、SQL成本与兼容证据后续处理。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行产品/浏览器/API/SQL/数据库或发布；R-003未完成、evidence为空。
+SDK专用目录读取及按需分页见上方增量；CLI/MCP通用入口继续收到原data数组及新增元数据，尚未增加专用目录客户端解析/期限，Mock目录尚未接入。旧消费方的数字字符串、毫秒时间、v1游标及无scope/query封套需要迁移，独立Schema、SQL成本与兼容证据后续处理。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行产品/浏览器/API/SQL/数据库或发布；R-003未完成、evidence为空。
 
 ## 2026-11-04 当前与归档详情Mock增量
 
@@ -357,7 +382,7 @@ v2游标包含排序位置及范围/筛选摘要，绑定 tenant/workspace/proje
 
 ## 客户端
 
-- SDK：`createContextItem`、`getContextItem`、`listContextItems`、`updateContextItem`、`archiveContextItem`；类型和写入字段解析位于 `@planemem/contracts`。列表保留投影视图格式，其中数据库数字可能为字符串，编辑前应转为安全正整数，或直接 GET 获取已规范化版本。
+- SDK：`createContextItem`、`getContextItem`、`listContextItems`、`updateContextItem`、`archiveContextItem`；类型和写入字段解析位于 `@planemem/contracts`。列表完整读取契约将version规范为正安全整数、confidence为数值，并核对微秒时间；编辑前仍需GET获取完整当前详情和版本。
 - CLI：`context create/read/list/update/archive`；`context get` 继续表示读取 ContextPack，避免与来源条目混淆。
 - MCP：`create_context_item`、`get_context_item`、`list_context_items`、`update_context_item`、`archive_context_item`；资源模板为 `work://project/{project_id}/context-item/{item_id}`。
 - 工作台 `/context`：授权用户可新增、编辑、排除和归档；每页 25 条，下一页保留筛选，修改筛选回到第一页，层级统计仅反映当前页。指定 item 的详情通过独立 GET 读取，可以打开其他页或不匹配筛选的可见条目；不可见/归档时展示读取错误，不替换为另一条。编辑与归档入口位于条目详情，不依赖保存包存在。新增和编辑均支持 1–32 条来源的类型、标识、固定 revision 与 URI，编辑保持原分类。只提交实际编辑字段，未改动的旧 JSON 正文和来源保持原结构。网络结果不确定时锁定原草稿并允许重试；版本冲突时保留草稿，显式重新加载后才替换为最新数据。

@@ -1,6 +1,16 @@
 export * from './client.js';
 export * from './mock-server.js';
 export type { WcpContextItemReadOptions } from './context-item-read.js';
+export type {
+  WcpContextDirectoryReadOptions,
+  WcpContextDirectoryPagesOptions,
+} from './context-directory.js';
+export type {
+  ContextItemListQuery,
+  ContextItemDirectoryQuery,
+  ContextItemDirectoryRecord,
+  ContextItemDirectoryEnvelope,
+} from '@planemem/contracts';
 export type { ContextItemReadDocument, ArchivedContextItemDocument } from '@planemem/contracts';
 export type { WcpWorkItemReadOptions, WcpWorkItemPagesOptions } from './work-item-reads.js';
 export type {
