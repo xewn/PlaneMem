@@ -23,6 +23,12 @@ import {
 } from './creation-history-model';
 import { inspectCreationHistory, type CreationHistoryCandidate } from './creation-history-file';
 import {
+  CREATION_HISTORY_SCAN_LIMIT,
+  matchesCreationHistory,
+  parseCreationHistoryQuery,
+  type CreationHistoryQuery,
+} from './creation-history-query';
+import {
   CREATION_HISTORY_BACKUP_DOCUMENT_BYTES,
   CREATION_HISTORY_BACKUP_MAX_ENTRIES,
   parseCreationHistoryBackupDocument,
@@ -30,8 +36,6 @@ import {
 } from './creation-history-backup-model';
 
 const layout = { databaseName: 'planemem-proposal-creation-history', contentStore: 'observations' };
-// A creation observation can include two full copies of its original draft.
-export const CREATION_HISTORY_PAGE_SIZE = 5;
 const summary = (file: CreationHistoryFile) => ({
   digest: file.document_sha256,
   request_key: file.document.original.request_key,
@@ -43,7 +47,9 @@ const summary = (file: CreationHistoryFile) => ({
 export type CreationHistorySummary = ReturnType<typeof summary>;
 export interface CreationHistoryPage {
   entries: CreationHistorySummary[];
-  next: string | null;
+  scanned: number;
+  query: CreationHistoryQuery;
+  next: CreationHistoryQuery | null;
 }
 function key(binding: ProposalSubmissionBinding, digest: string) {
   if (typeof digest !== 'string' || !/^[a-f0-9]{64}$/.test(digest)) throw new TypeError();
@@ -149,12 +155,14 @@ export async function loadCreationHistory(
 }
 export async function listCreationHistory(
   input: ProposalSubmissionBinding,
-  after: string | null,
+  queryInput: CreationHistoryQuery,
   signal: AbortSignal,
   check: () => void,
 ): Promise<CreationHistoryPage> {
   check();
   const binding = parseProposalSubmissionBinding(input);
+  const query = parseCreationHistoryQuery(queryInput);
+  const after = query.after;
   key(binding, '0'.repeat(64));
   const prefix = proposalOriginalStoragePrefix(binding);
   const lower = after === null ? prefix : key(binding, after);
@@ -176,7 +184,7 @@ export async function listCreationHistory(
           return;
         }
         // Read only the lookahead key; it is not a verified observation in this page.
-        if (entries.length === CREATION_HISTORY_PAGE_SIZE) {
+        if (entries.length === CREATION_HISTORY_SCAN_LIMIT) {
           context.accept({ entries, next: entries[entries.length - 1]!.file.document_sha256 });
           return;
         }
@@ -195,10 +203,17 @@ export async function listCreationHistory(
   const entries: CreationHistorySummary[] = [];
   for (const candidate of page.entries) {
     check();
-    entries.push(summary((await inspectCreationHistory(candidate.raw, binding, check)).file));
+    // Verify nonmatching observations too, so a filter never hides damaged scanned content.
+    const verified = await inspectCreationHistory(candidate.raw, binding, check);
+    if (matchesCreationHistory(verified.file.document, query)) entries.push(summary(verified.file));
   }
   check();
-  return { entries, next: page.next };
+  return {
+    entries,
+    scanned: page.entries.length,
+    query,
+    next: page.next === null ? null : { ...query, after: page.next },
+  };
 }
 /** Only a fully inspected browser copy qualifies in the UI; recheck exact pairs before deletion. */
 export async function removeCreationHistory(

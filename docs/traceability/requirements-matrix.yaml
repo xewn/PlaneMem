@@ -3452,6 +3452,22 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_creation_history_filter_development_increment:
+      date: "2026-11-04"
+      status: "Source-only bounded creation-history filtering and resumable directory search; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/creation-history-query.ts"
+        - "apps/web-console/src/app/proposals/creation-history-store.ts"
+        - "apps/web-console/src/app/proposals/creation-history-panel.tsx"
+        - "docs/design/01-contracts/proposal-creation-history-runtime.md"
+      behavior: "Strict exact intersection of proposal ID, original request key, recorded/not-observed result and response source. Every read preserves the five-complete-observation bound, validates all scanned pairs and digests before exposing matches, and returns the scanned count plus the original filters and last scanned digest for continuation even without matches. Filter changes and directory rereads revoke old directory/removal eligibility while preserving inspected content. Full scoped backups remain independent of directory filters."
+      evidence: []
+      pending_evidence:
+        - "Strict fields, exact key/ID validation, combined filters, nullable proposal IDs and incompatible combinations"
+        - "Five-observation boundary, complete verification of nonmatches, empty continuing scans, last-scanned cursor and end-of-read semantics"
+        - "Filter changes, stale deletion eligibility, operation locking, retained candidates and backup scope independence"
+      remaining_scope: "Batch cleanup, automatic retention, cross-page coordination and runtime/compatibility evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, product/browser/database execution or release. No schema or dependency changes."
     proposal_creation_history_backup_development_increment:
       date: "2026-11-04"
       status: "Source-only complete scoped creation-history backup, comparison and atomic missing-only restore; R-009 remains incomplete."

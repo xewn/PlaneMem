@@ -17,7 +17,6 @@ import {
   type CreationHistoryCandidate,
 } from './creation-history-file';
 import {
-  CREATION_HISTORY_PAGE_SIZE,
   listCreationHistory,
   loadCreationHistory,
   saveCreationHistory,
@@ -25,6 +24,11 @@ import {
   type CreationHistoryPage,
   type CreationHistorySummary,
 } from './creation-history-store';
+import {
+  CREATION_HISTORY_SCAN_LIMIT,
+  parseCreationHistoryQuery,
+  type CreationHistoryQuery,
+} from './creation-history-query';
 import { CreationHistoryBackupPanel } from './creation-history-backup-panel';
 
 export function CreationHistoryPanel({
@@ -48,6 +52,12 @@ export function CreationHistoryPanel({
     epoch: number;
   }>();
   const [page, setPage] = useState<CreationHistoryPage>();
+  const [filters, setFilters] = useState({
+    proposal_id: '',
+    request_key: '',
+    status: '',
+    source: '',
+  });
   const [digest, setDigest] = useState('');
   const [storageEpoch, setStorageEpoch] = useState(0);
   const [removalFresh, setRemovalFresh] = useState(false);
@@ -142,22 +152,50 @@ export function CreationHistoryPanel({
       'The complete historical observation is available for inspection and export. Its checksum establishes internal consistency, not authenticity or the proposal’s current state.',
     );
   }
-  function browse(after: string | null) {
+  function clearDirectory() {
+    setPage(undefined);
+    setRemovalFresh(false);
+    setRemoveConfirmed(false);
+  }
+  function changeFilter(name: keyof typeof filters, value: string) {
+    if (active.current || disabled) return;
+    setFilters((previous) => ({ ...previous, [name]: value }));
+    clearDirectory();
+    setMessage(
+      'History filters changed. Find saved creation history to search from the beginning.',
+    );
+  }
+  function browse(continuation: CreationHistoryQuery | null) {
     void run(
-      (signal, check) => listCreationHistory(binding, after, signal, check),
+      (signal, check) =>
+        listCreationHistory(
+          binding,
+          parseCreationHistoryQuery(
+            continuation ?? {
+              proposal_id: filters.proposal_id || null,
+              request_key: filters.request_key || null,
+              status: filters.status || null,
+              source: filters.source || null,
+              after: null,
+            },
+          ),
+          signal,
+          check,
+        ),
       (value) => {
         setPage(value);
         setMessage(
           value.entries.length
-            ? 'Choose a saved creation observation to inspect. Entries follow content checksums, not time; pages are separate reads.'
-            : 'No saved creation history was found on this page for the current gateway and account.',
+            ? 'Choose a matching creation observation to inspect. Entries follow content checksums, not time; pages are separate reads.'
+            : value.next
+              ? 'No matches in this scan. Continue searching for later matches with the same filters.'
+              : 'No matches in this final scan. Earlier pages and records added since searching began are not included.',
         );
       },
       {
-        start: () => {
-          setPage(undefined);
-          setRemovalFresh(false);
-        },
+        start: clearDirectory,
+        failureMessage:
+          'History search could not be completed. Check the exact proposal ID and request key. Invalid filters, damaged stored records or an expired read stop the whole page; no partial results are shown. Inspected copies are retained.',
       },
     );
   }
@@ -285,6 +323,52 @@ export function CreationHistoryPanel({
           </button>
         </div>
       ))}
+      <fieldset disabled={locked}>
+        <legend>Filter saved creation history</legend>
+        <label>
+          Proposal ID (exact, optional)
+          <input
+            value={filters.proposal_id}
+            maxLength={26}
+            onChange={(event) => changeFilter('proposal_id', event.target.value)}
+          />
+        </label>
+        <label>
+          Original request key (exact, optional)
+          <input
+            value={filters.request_key}
+            maxLength={255}
+            onChange={(event) => changeFilter('request_key', event.target.value)}
+          />
+        </label>
+        <label>
+          Historical result
+          <select
+            value={filters.status}
+            onChange={(event) => changeFilter('status', event.target.value)}
+          >
+            <option value="">All results</option>
+            <option value="recorded">Creation recorded</option>
+            <option value="not-observed">No matching receipt observed</option>
+          </select>
+        </label>
+        <label>
+          Response source
+          <select
+            value={filters.source}
+            onChange={(event) => changeFilter('source', event.target.value)}
+          >
+            <option value="">All sources</option>
+            <option value="submission">Creation submission</option>
+            <option value="receipt-query">Receipt query</option>
+          </select>
+        </label>
+        <p>
+          Filters are combined. Each search checks up to {CREATION_HISTORY_SCAN_LIMIT} saved
+          observations and shows the matches. Continue even when a scan has no matches. A result
+          with no matching receipt has no proposal ID; leave that filter empty to find it.
+        </p>
+      </fieldset>
       <div className="heading-actions">
         <button
           type="button"
@@ -301,14 +385,23 @@ export function CreationHistoryPanel({
             disabled={locked}
             onClick={() => browse(page.next)}
           >
-            Next history entries
+            Continue history search
           </button>
         )}
       </div>
       <p>
-        Each page fully checks up to {CREATION_HISTORY_PAGE_SIZE} saved observations. Pages follow
-        content checksums, not observation time.
+        Pages follow content checksums, not observation time. Each page is a separate read; newly
+        saved or removed copies can affect later results. Find saved creation history starts again
+        from the beginning.
       </p>
+      {page && (
+        <p role="status">
+          This scan checked {page.scanned} observations and found {page.entries.length} matches.
+          {page.next
+            ? ' More saved observations remain to search.'
+            : ' Reached the end of this read.'}
+        </p>
+      )}
       {page && (
         <ul>
           {page.entries.map((entry) => (
@@ -487,6 +580,10 @@ export function CreationHistoryPanel({
         </div>
       )}
       <p role="status">{message}</p>
+      <p>
+        Filters apply to this directory only. The backup below includes all saved creation history
+        for the current gateway and account, regardless of these filters.
+      </p>
       <CreationHistoryBackupPanel
         binding={binding}
         disabled={locked}

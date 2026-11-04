@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [创建历史组合筛选](docs/design/01-contracts/proposal-creation-history-runtime.md#组合筛选与继续查找)：按建议ID、原请求键、历史结果和响应来源交集查找，每次核验最多5份完整记录，空匹配仍可续查；切换条件撤销旧目录和删除资格，整批备份不受筛选限制。仅源码文档，未编译、测试、运行或发布。
+
 新增 [创建历史整批备份与恢复](docs/design/01-contracts/proposal-creation-history-runtime.md#当前范围整批备份与恢复)：完整备份当前身份范围，载入后核验内外摘要、只读比较并确认补入缺失记录；异文或损坏拒绝整批，未知保留备份，不发送建议。仅源码文档，未编译、测试、运行或发布。
 
 新增 [创建历史浏览器保存与找回](docs/design/01-contracts/proposal-creation-history-runtime.md#浏览器保存目录与单份移除)：完整观察可显式保存，每页核验5份、按摘要找回；从浏览器完整审阅后可独立确认移除，未知保留导出副本，不影响原请求或提交状态。仅源码文档，未编译、测试、运行或发布。
