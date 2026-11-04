@@ -3,6 +3,7 @@ import {
   CONTEXT_PACK_READ_RESPONSE_BYTES,
   CONTEXT_PACK_DIRECTORY_RESPONSE_BYTES,
   CONTEXT_PACK_SAVE_CONTEXT_BYTES,
+  CONTEXT_PACK_SAVE_RECEIPT_RESPONSE_BYTES,
   compareContextPackDirectoryPositions,
   createUlid,
   encodeContextPackDirectoryCursor,
@@ -18,6 +19,8 @@ import {
   parseContextPackCompileEnvelope,
   parseContextPackCompileParameters,
   parseContextPackSaveContextEnvelope,
+  parseContextPackSaveReceiptQuery,
+  parseContextPackSaveReceiptEnvelope,
   parseSyncCommandIdentity,
   syncJsonSnapshot,
   validateIdempotencyKey,
@@ -26,6 +29,8 @@ import {
   type ContextPackReadQuery,
   type ContextPackDirectoryQuery,
   type ContextPackDirectoryRecord,
+  type ContextPackSaveReceiptQuery,
+  type ContextPackRecordedSave,
   type SyncCommandIdentity,
 } from '@planemem/contracts';
 import type { WcpRequest, WcpTransport } from './client.js';
@@ -65,6 +70,7 @@ export interface MockContextPackSession {
 }
 type Stored = MockContextPackSeed['packs'][number];
 type DirectoryStored = { record: ContextPackDirectoryRecord; read_restricted: boolean };
+type ReceiptStored = { receipt: ContextPackRecordedSave; read_restricted: boolean };
 type Session = MockContextPackSession & { visible: Set<string> };
 const configurationTrace = 'trace_mock_context_pack_configuration';
 const messages = {
@@ -80,6 +86,7 @@ const messages = {
   CONTEXT_PACK_EXPIRED: 'The selected saved context pack expired',
   CONTEXT_PACK_STALE: 'The simulated sources of the selected saved pack changed',
   CONTEXT_PACK_INVALID: 'The complete simulated saved context pack could not be validated',
+  CONTEXT_PACK_RECEIPT_INVALID: 'The simulated historical save metadata could not be validated',
   CONTEXT_PACK_INTEGRITY_UNAVAILABLE: 'Saved context pack integrity checking is unavailable',
   CONTEXT_PACK_HASH_MISMATCH: 'The complete simulated saved pack differs from its saved hash',
   GATEWAY_RESPONSE_INVALID: 'The complete simulated saved pack exceeds its response limit',
@@ -128,7 +135,7 @@ function expiry(value: unknown): string {
 export function isMockContextPackPath(path: unknown): path is string {
   return (
     typeof path === 'string' &&
-    /^\/v1\/context-pack(?:s|\/(?:compile|save-context))?(?:[?#].*)?$/.test(path)
+    /^\/v1\/context-pack(?:s|\/(?:compile|save-context|save-receipt))?(?:[?#].*)?$/.test(path)
   );
 }
 function saveKey(value: unknown): string {
@@ -171,10 +178,12 @@ export class MockContextPackStore {
   readonly #packs = new Map<string, Stored>();
   readonly #ordered: Stored[];
   readonly #directory: DirectoryStored[];
+  readonly #receipts = new Map<string, ReceiptStored>();
   readonly #compilations: Map<string, MockContextPackCompilation> | undefined;
   readonly #pending = new Set<string>();
   #active = 0;
   #saving = 0;
+  #observing = 0;
 
   constructor(seed: MockContextPackSeed) {
     const prepared = checked('MOCK_CONTEXT_PACK_CONFIGURATION_INVALID', configurationTrace, () => {
@@ -284,6 +293,20 @@ export class MockContextPackStore {
     for (const id of prepared.pending) this.#pending.add(id);
     this.#directory = prepared.directory;
     for (const pack of prepared.packs) this.#packs.set(pack.response.data.pack_id, pack);
+    // Historical lookup reads scalars only; it must not revalidate current content or sources.
+    for (const entry of prepared.directory) {
+      const response = this.#packs.get(entry.record.pack_id)!.response;
+      this.#receipts.set(entry.record.pack_id, {
+        read_restricted: entry.read_restricted,
+        receipt: {
+          ...entry.record,
+          pack_hash: response.data.pack.pack_hash,
+          server_cursor: response.server_cursor,
+          content_state: 'not-checked',
+          source_state: 'not-checked',
+        },
+      });
+    }
     // Match the production latest selection, without filtering stale or expired candidates first.
     this.#ordered = prepared.packs.sort((a, b) => {
       const left = a.response.data;
@@ -424,10 +447,67 @@ export class MockContextPackStore {
     return result;
   }
 
+  private readSaveReceipt(
+    query: ContextPackSaveReceiptQuery,
+    session: Session,
+    trace: string,
+    maximum: number,
+    live: () => void,
+  ) {
+    live();
+    if (
+      Object.entries(query.identity).some(
+        ([field, value]) => session.identity[field as keyof SyncCommandIdentity] !== value,
+      ) ||
+      query.read_restricted !== session.read_restricted
+    )
+      fail('DENIED', trace);
+    const scenario = this.#compilations!.get(
+      compilationBinding(query.identity.actor_id, query.identity.client_id, query.request_key),
+    );
+    let receipt: ContextPackRecordedSave | undefined;
+    // Pending fixtures constrain future simulated saves; they are not recorded commands.
+    if (scenario && !this.#pending.has(scenario.pack_id)) {
+      if (!session.visible.has(scenario.pack_id)) fail('CONTEXT_PACK_NOT_FOUND', trace);
+      const saved = this.#receipts.get(scenario.pack_id);
+      if (!saved) fail('CONTEXT_PACK_RECEIPT_INVALID', trace);
+      if (
+        scenario.parameters.budget_tokens !== query.parameters.budget_tokens ||
+        scenario.parameters.ttl_seconds !== query.parameters.ttl_seconds ||
+        saved.read_restricted !== query.read_restricted
+      )
+        fail('IDEMPOTENCY_KEY_REUSED', trace);
+      receipt = saved.receipt;
+    }
+    const result = checked('CONTEXT_PACK_RECEIPT_INVALID', trace, () =>
+      parseContextPackSaveReceiptEnvelope(
+        {
+          schema_version: 1,
+          trace_id: trace,
+          source_refs: receipt
+            ? [{ type: 'context-pack', id: receipt.pack_id, revision: receipt.version }]
+            : [],
+          data: receipt
+            ? { original: query, status: 'recorded', receipt }
+            : { original: query, status: 'not-observed' },
+        },
+        query,
+        trace,
+      ),
+    );
+    checked('GATEWAY_RESPONSE_INVALID', trace, () =>
+      snapshot(result, Math.min(maximum, CONTEXT_PACK_SAVE_RECEIPT_RESPONSE_BYTES)),
+    );
+    live();
+    return result;
+  }
+
   private async respond(raw: WcpRequest, session: Session): Promise<unknown> {
     const { method, path, body, response_type, max_response_bytes, signal } = raw;
     const saveContext =
       typeof path === 'string' && path.startsWith('/v1/context-pack/save-context');
+    const saveReceipt =
+      typeof path === 'string' && path.startsWith('/v1/context-pack/save-receipt');
     let trace = 'trace_unknown';
     const headers = checked('INVALID_INPUT', trace, () => {
       const input = snapshot(raw.headers, 16 * 1024);
@@ -440,7 +520,10 @@ export class MockContextPackStore {
       return result;
     });
     const suppliedTrace = headers.get('x-trace-id') ?? headers.get('traceparent');
-    if (!isSyncIdentifier(suppliedTrace) || (saveContext && /\u007f/.test(suppliedTrace)))
+    if (
+      !isSyncIdentifier(suppliedTrace) ||
+      ((saveContext || saveReceipt) && /\u007f/.test(suppliedTrace))
+    )
       fail('INVALID_INPUT', trace);
     trace = suppliedTrace;
     const budget = checked('INVALID_INPUT', trace, () =>
@@ -456,20 +539,27 @@ export class MockContextPackStore {
       live();
       if (!isMockContextPackPath(path)) fail('MOCK_ROUTE_NOT_FOUND', trace);
       const compile = path.startsWith('/v1/context-pack/compile');
-      if (method !== (compile ? 'POST' : 'GET')) fail('MOCK_ROUTE_NOT_FOUND', trace);
-      if (compile && !this.#compilations) fail('MOCK_ROUTE_NOT_FOUND', trace);
-      if (compile ? path !== '/v1/context-pack/compile' : body !== undefined)
+      if (method !== (compile || saveReceipt ? 'POST' : 'GET')) fail('MOCK_ROUTE_NOT_FOUND', trace);
+      if ((compile || saveReceipt) && !this.#compilations) fail('MOCK_ROUTE_NOT_FOUND', trace);
+      if (
+        compile
+          ? path !== '/v1/context-pack/compile'
+          : saveReceipt
+            ? path !== '/v1/context-pack/save-receipt'
+            : body !== undefined
+      )
         fail('INVALID_INPUT', trace);
       if (saveContext && path !== '/v1/context-pack/save-context') fail('INVALID_INPUT', trace);
       const directory = path.startsWith('/v1/context-packs');
       if (
-        (directory || compile || saveContext) &&
+        (directory || compile || saveContext || saveReceipt) &&
         (headers.has('transfer-encoding') ||
-          (headers.has('content-length') && (compile || headers.get('content-length') !== '0')))
+          (headers.has('content-length') &&
+            (compile || saveReceipt || headers.get('content-length') !== '0')))
       )
         fail('INVALID_INPUT', trace);
       if (
-        compile &&
+        (compile || saveReceipt) &&
         !/^application\/json(?:\s*;\s*charset\s*=\s*(?:utf-8|"utf-8"))?\s*$/i.test(
           headers.get('content-type') ?? '',
         )
@@ -503,23 +593,27 @@ export class MockContextPackStore {
       const selection = checked('INVALID_INPUT', trace, () =>
         saveContext
           ? { kind: 'save-context' as const }
-          : compile
-            ? {
-                kind: 'compile' as const,
-                parameters: parseContextPackCompileParameters(body),
-                key: saveKey(headers.get('idempotency-key')),
-              }
-            : directory
-              ? { kind: 'directory' as const, query: directoryQueryFromPath(path) }
-              : { kind: 'pack' as const, query: queryFromPath(path) },
+          : saveReceipt
+            ? { kind: 'save-receipt' as const, query: parseContextPackSaveReceiptQuery(body) }
+            : compile
+              ? {
+                  kind: 'compile' as const,
+                  parameters: parseContextPackCompileParameters(body),
+                  key: saveKey(headers.get('idempotency-key')),
+                }
+              : directory
+                ? { kind: 'directory' as const, query: directoryQueryFromPath(path) }
+                : { kind: 'pack' as const, query: queryFromPath(path) },
       );
       const maximum =
         max_response_bytes === undefined
           ? saveContext
             ? CONTEXT_PACK_SAVE_CONTEXT_BYTES
-            : directory
-              ? CONTEXT_PACK_DIRECTORY_RESPONSE_BYTES
-              : CONTEXT_PACK_READ_RESPONSE_BYTES
+            : saveReceipt
+              ? CONTEXT_PACK_SAVE_RECEIPT_RESPONSE_BYTES
+              : directory
+                ? CONTEXT_PACK_DIRECTORY_RESPONSE_BYTES
+                : CONTEXT_PACK_READ_RESPONSE_BYTES
           : max_response_bytes;
       if (
         !Number.isSafeInteger(maximum) ||
@@ -549,6 +643,25 @@ export class MockContextPackStore {
         );
         live();
         return result;
+      }
+      if (selection.kind === 'save-receipt') {
+        if (this.#observing >= 2) fail('RATE_LIMITED', trace);
+        return await budget.wait(async () => {
+          this.#observing++;
+          try {
+            const result = await this.readSaveReceipt(
+              selection.query,
+              session,
+              trace,
+              maximum,
+              live,
+            );
+            live();
+            return result;
+          } finally {
+            this.#observing--;
+          }
+        });
       }
       if (selection.kind === 'directory') {
         if (this.#active >= 2) fail('RATE_LIMITED', trace);
@@ -677,7 +790,9 @@ export class MockContextPackStore {
       return fail(
         envelope?.trace_id === trace && Object.hasOwn(messages, envelope.code)
           ? (envelope.code as ErrorCode)
-          : 'CONTEXT_PACK_INVALID',
+          : saveReceipt
+            ? 'CONTEXT_PACK_RECEIPT_INVALID'
+            : 'CONTEXT_PACK_INVALID',
         trace,
       );
     } finally {

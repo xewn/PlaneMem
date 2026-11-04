@@ -1,5 +1,7 @@
 # 保存 ContextPack Mock（源码阶段）
 
+2026-11-05新增[原保存请求历史回执](#原保存请求历史回执2026-11-05源码增量)：显式compilations场景接入只读POST /v1/context-pack/save-receipt和SDK查询，pending/未知键仅未观察到，saved/已激活返回历史标量，不重新保存或核验当前内容。仅源码文档，未编译、类型检查、测试、执行Mock/SDK/API或发布。
+
 2026-11-05新增GET /v1/context-pack/save-context及SDK getContextPackSaveContext接线，沿原显式会话返回完整身份/期限/compile和read_restricted提示；无需compilations、项目可读或可见包，不读取/摘要核验/激活任何包。完整16 KiB或调用方更小限额、原身份条件及过期检查，沿30秒/signal但不占读包或保存槽。仅源码文档，未执行Mock/SDK/API、编译、类型检查、测试或发布。协议及限制见[保存前可信身份读取](context-pack-runtime.md#保存前可信身份读取2026-11-05源码增量)。
 
 2026-11-05新增[显式保存与重放](#显式保存与重放2026-11-05源码增量)：可选compilations把预置完整包绑定到原请求，pending包在提交核验后激活，读取与目录共享状态。仅源码文档，未执行Mock/SDK、保存请求、编译、类型检查、测试或发布。
@@ -141,6 +143,36 @@ const after = await client.listContextPacks(); // activated fixture is now visib
 ```
 
 R-003未完成、evidence为空。旧配置兼容、首次激活/重放、跨连接可见性、并发/取消/容量、摘要/到期/来源失败、响应超限后的恢复、目录跨页变化及SDK实际接线仍待运行证据。仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行校验器/Mock/SDK/API/保存请求、数据库或发布；无生产接口、共享契约、依赖或迁移变化。
+
+## 原保存请求历史回执（2026-11-05源码增量）
+
+MockContextPackStore直接connect和MockWcpServer的原context_packs配置均接入POST /v1/context-pack/save-receipt，SDK getContextPackSaveReceipt沿相同共享格式调用。必须显式提供compilations；空数组表示已配置但没有原命令历史，省略则仍为MOCK_ROUTE_NOT_FOUND，不把尚未配置的模拟能力当作查询成功。未绑定compilations的普通可读种子包不自动生成原命令回执；不增加种子/会话字段，16 MiB数据集和100项限制保持。
+
+请求路径必须精确且无查询/片段，正文沿共享4 KiB严格原查询，含完整五字段identity、精确read_restricted、原request_key和明确budget_tokens/ttl_seconds。沿原16 KiB头复制、大小写重复拒绝、trace优先级/一致性和三范围/可选身份检查，回执trace另拒绝DEL；要求JSON类型，拒绝idempotency-key、版本/缓存/Range/编码及传输层长度头。Mock接收对象正文，因此content-length/transfer-encoding均不接受，这不等于生产HTTP收包规则。response_type仅json/bounded-json，bounded-json需正安全整数max_response_bytes，最终同时受16 KiB和调用方较小限额约束。
+
+先要求会话未过期、实际read_context及项目可读，原查询五字段身份和restricted必须精确匹配当前配置会话；参数不能改换身份或权限。按actor/client/key查找固定项目下的场景，读取行为如下：
+
+| 记录状态 | 查询结果 |
+| --- | --- |
+| compilations未提供 | 路由未配置，不产生观察回执 |
+| 已配置但无对应原键 | not-observed，空source_refs |
+| 对应场景仍pending | not-observed，不预留键或激活包 |
+| 初始saved或提交后已激活 | 检查可见ID、原预算/TTL与保存权限桶后返回recorded |
+| 已保存但目标不在可见集合 | CONTEXT_PACK_NOT_FOUND |
+| 已保存但原参数或保存权限桶与查询不同 | IDEMPOTENCY_KEY_REUSED |
+| 查询身份或权限桶与当前会话不同 | DENIED |
+
+pending场景的预置参数只约束将来的模拟保存，不属于已记录命令，所以回执查询不会对其返回参数冲突。not-observed仅表示这次内存状态中没有记录，不能证明生产保存失败，也不会授权或执行重发。当前查询与另一个保存的激活可能先后发生，没有等待进行中的保存、自动重查或原键替换。
+
+构造时从完整已解析种子中额外提取包ID/版本/时间/预算用量/hash/server_cursor等独立历史标量。回执查询只读这些标量、原场景和pending状态，不访问正文、渲染、计算WebCrypto摘要或检查sources_current，也不因包已过期而拒绝历史；输出content_state/source_state均为not-checked，source_refs仅标识对应包和历史版本。元数据自身仍必须通过共享完整回执解析器，参数/TTL/原查询回显/trace/来源引用相互核对。形状合法但内容摘要不正确的saved场景仍可返回历史元数据；它不意味着当前完整包读取会成功。
+
+回执查询不改变pending、目录、场景参数、包版本/时间/游标或任何保存状态，也不调用compile路径。显式保存已激活但响应因调用方限额等原因失败时，后续原请求回执仍可返回recorded；读取失败不会回滚激活。返回封套由共享解析器独立复制，调用方修改结果不改变store。进程退出/重建store仍不保留激活状态，历史范围限显式模拟内存，无真实数据库、认证/审计或HTTP响应头/状态保证。
+
+每store回执查询独立两笔容量，与读包/目录和保存容量分开，沿30秒本地预算与外部signal；请求阶段及交付前再次检查取消/会话到期，底层读取返回后释放槽。标量读取是同步有界工作，只能阶段性检查期限，SDK外层更小期限仍可先结束等待。完整响应超限为GATEWAY_RESPONSE_INVALID，历史元数据不合法为CONTEXT_PACK_RECEIPT_INVALID；其余沿既有固定错误，不泄漏种子正文。Mock专用未配置错误经过SDK可能映射为GATEWAY_UNAVAILABLE。
+
+在前述保存示例中，可构造`{ identity, read_restricted: false, request_key: originalKey, parameters }`并显式调用`client.getContextPackSaveReceipt(query)`：pending时观察not-observed，成功激活后观察recorded。此处仅说明源码用法，没有执行示例或Mock。
+
+R-003未完成、evidence为空。直接/路由/SDK接线、空/省略配置、pending与已激活/初始saved、原身份/权限/参数/可见性拒绝、旧种子兼容、响应限额/取消/容量及保存返回失败后的历史观察均缺运行证据。嵌入CLI在线回执、独立Schema/OpenAPI与真实客户端兼容待补。本轮仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行Mock/SDK/API/产品/数据库或发布；无生产接口、共享契约、其他客户端、依赖或迁移变化。
 
 ## 未执行的接线示例
 
