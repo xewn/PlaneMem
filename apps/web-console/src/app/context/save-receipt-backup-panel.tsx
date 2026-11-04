@@ -32,6 +32,7 @@ export function PackReceiptBackupPanel({
   binding,
   disabled,
   reviewGeneration,
+  getStorageGeneration,
   begin,
   end,
   onHistoryWrite,
@@ -39,6 +40,7 @@ export function PackReceiptBackupPanel({
   binding: PackSaveBinding;
   disabled: boolean;
   reviewGeneration: number;
+  getStorageGeneration: () => number;
   begin: () => boolean;
   end: () => void;
   onHistoryWrite: () => void;
@@ -75,6 +77,7 @@ export function PackReceiptBackupPanel({
     if (kind === 'import' && !source) return;
     if (kind === 'restore' && reviewedRef.current !== reviewGeneration) return;
     if (!mounted.current || active.current || disabled || !begin()) return;
+    const startedGeneration = getStorageGeneration();
     const captured = backup;
     active.current = true;
     reviewedRef.current = null;
@@ -125,6 +128,12 @@ export function PackReceiptBackupPanel({
       });
       if (!mounted.current || operation.current !== controller) return;
       if (result.kind === 'backup') {
+        if (kind === 'prepare' && startedGeneration !== getStorageGeneration()) {
+          setMessage(
+            'Browser history may have changed while preparing this backup. Prepare it again. Any earlier complete backup remains available below.',
+          );
+          return;
+        }
         setBackup(result.backup);
         setMessage(
           'The complete backup and every observation checksum match this identity. Review or export it; no history was restored.',

@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { CONTEXT_PACK_SAVE_RECEIPT_FILE_BYTES, type PackSaveBinding } from '@planemem/contracts';
 import { backupOperation } from '../../../sync/receipt/backup-operation';
 import { PackReceiptHistoryEntry } from '../../save-receipt-entry';
 import { PackReceiptBackupPanel } from '../../save-receipt-backup-panel';
+import { subscribePackReceiptHistoryChanges } from '../../save-receipt-changes';
 import { historyDateRangeError } from '../../../proposals/history-date-range';
 import {
   PACK_RECEIPT_HISTORY_PAGE_SIZE,
@@ -40,12 +41,30 @@ export function PackReceiptHistoryBrowser({ binding }: { binding: PackSaveBindin
   const [selected, setSelected] = useState<PackReceiptCandidate>();
   const [busy, setBusy] = useState(false);
   const [reviewGeneration, setReviewGeneration] = useState(0);
+  const reviewGenerationRef = useRef(0);
+  const storageGeneration = useRef(0);
+  const getStorageGeneration = useCallback(() => storageGeneration.current, []);
   const [message, setMessage] = useState(
     'Read saved observations for this identity, or import a receipt file for review. Nothing is saved automatically.',
   );
   const active = useRef(false);
   const mounted = useRef(false);
   const operation = useRef<AbortController | undefined>(undefined);
+  const revokeReview = useCallback(() => {
+    reviewGenerationRef.current += 1;
+    setReviewGeneration(reviewGenerationRef.current);
+  }, []);
+  const historyChanged = useCallback(() => {
+    if (!mounted.current) return;
+    // Revoke old handlers synchronously, before React renders the invalidated directory.
+    storageGeneration.current += 1;
+    revokeReview();
+    pageRef.current = undefined;
+    setPage(undefined);
+    setMessage(
+      'Browser history may have changed. Review copies and backups are retained; removal and restore confirmations were cleared. Read the first matching page again after any active operation finishes.',
+    );
+  }, [revokeReview]);
   let filterError: string | null = null;
   try {
     firstQuery(filters);
@@ -61,10 +80,29 @@ export function PackReceiptHistoryBrowser({ binding }: { binding: PackSaveBindin
       operation.current?.abort();
     };
   }, []);
+  useEffect(() => {
+    const unsubscribe = subscribePackReceiptHistoryChanges(binding, historyChanged);
+    const visible = () => {
+      if (document.visibilityState === 'visible') historyChanged();
+    };
+    const restored = (event: PageTransitionEvent) => {
+      if (event.persisted) historyChanged();
+    };
+    window.addEventListener('focus', historyChanged);
+    document.addEventListener('visibilitychange', visible);
+    window.addEventListener('pageshow', restored);
+    return () => {
+      unsubscribe();
+      window.removeEventListener('focus', historyChanged);
+      document.removeEventListener('visibilitychange', visible);
+      window.removeEventListener('pageshow', restored);
+    };
+  }, [binding, historyChanged]);
   function begin() {
-    if (!mounted.current || active.current) return false;
+    if (!mounted.current || active.current || reviewGenerationRef.current !== reviewGeneration)
+      return false;
     active.current = true;
-    setReviewGeneration((value) => value + 1);
+    revokeReview();
     setBusy(true);
     return true;
   }
@@ -74,7 +112,7 @@ export function PackReceiptHistoryBrowser({ binding }: { binding: PackSaveBindin
   }
   function changeFilters(next: Filters) {
     if (active.current) return;
-    setReviewGeneration((value) => value + 1);
+    revokeReview();
     filtersRef.current = next;
     setFilters(next);
     pageRef.current = undefined;
@@ -96,15 +134,12 @@ export function PackReceiptHistoryBrowser({ binding }: { binding: PackSaveBindin
     if (next) void load(next);
   }
   function historyWriteStarted() {
-    pageRef.current = undefined;
-    setPage(undefined);
-    setMessage(
-      'A browser history change was requested. Existing review copies are retained. Read the first matching page again after the operation finishes.',
-    );
+    historyChanged();
   }
   async function load(query: PackReceiptHistoryQuery | null, file?: File) {
     if (!file && !query) return;
     if (!begin()) return;
+    const startedGeneration = getStorageGeneration();
     const controller = new AbortController();
     operation.current = controller;
     if (!file) {
@@ -140,6 +175,12 @@ export function PackReceiptHistoryBrowser({ binding }: { binding: PackSaveBindin
           'The complete file and digest match this original identity. It has not been saved here or queried against the gateway.',
         );
       } else {
+        if (startedGeneration !== getStorageGeneration()) {
+          setMessage(
+            'Browser history may have changed during this read. The old directory was discarded. Read the first matching page again; review copies and backups are retained.',
+          );
+          return;
+        }
         pageRef.current = result.page;
         setPage(result.page);
         setMessage(
@@ -320,6 +361,7 @@ export function PackReceiptHistoryBrowser({ binding }: { binding: PackSaveBindin
         binding={binding}
         disabled={busy}
         reviewGeneration={reviewGeneration}
+        getStorageGeneration={getStorageGeneration}
         begin={begin}
         end={end}
         onHistoryWrite={historyWriteStarted}
@@ -342,6 +384,9 @@ export function PackReceiptHistoryBrowser({ binding }: { binding: PackSaveBindin
       <p>
         Pages follow the saved digest order, not time order. Refresh the first page to include newer
         browser copies. Clearing browser data may remove these observations; keep exported files.
+        Changes reported by another page, or returning to this page, clear the directory and action
+        confirmations. Notifications do not read history automatically or establish a shared
+        snapshot.
       </p>
     </div>
   );

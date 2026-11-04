@@ -12,6 +12,7 @@ import {
   type PackSaveBinding,
 } from '@planemem/contracts';
 import { backupHash } from '../sync/receipt/backup-operation';
+import { withPackReceiptHistoryChange } from './save-receipt-changes';
 import {
   inBrowserStores,
   readBrowserPair,
@@ -141,25 +142,28 @@ export async function preservePackReceiptHistory(
   const binding = parsePackSaveBinding(input);
   const candidate = await inspectPackReceiptHistory(raw, binding, check);
   const key = slot(binding, candidate.file.document_sha256);
-  await inBrowserStores<void>(layout, 'readwrite', signal, invalid, (context) => {
-    readBrowserPair(context, key, (saved, digest, exists) => {
-      check();
-      if (exists) {
-        if (pair(saved, digest, key, binding).raw !== candidate.raw) return invalid();
-        context.accept(undefined);
-        return;
-      }
-      context.content.add(candidate.raw, key);
-      context.directory.add(candidate.file.document_sha256, key);
+  return withPackReceiptHistoryChange(binding, async () => {
+    check();
+    await inBrowserStores<void>(layout, 'readwrite', signal, invalid, (context) => {
       readBrowserPair(context, key, (saved, digest, exists) => {
         check();
-        if (!exists || pair(saved, digest, key, binding).raw !== candidate.raw) return invalid();
-        context.accept(undefined);
+        if (exists) {
+          if (pair(saved, digest, key, binding).raw !== candidate.raw) return invalid();
+          context.accept(undefined);
+          return;
+        }
+        context.content.add(candidate.raw, key);
+        context.directory.add(candidate.file.document_sha256, key);
+        readBrowserPair(context, key, (saved, digest, exists) => {
+          check();
+          if (!exists || pair(saved, digest, key, binding).raw !== candidate.raw) return invalid();
+          context.accept(undefined);
+        });
       });
     });
+    check();
+    return candidate;
   });
-  check();
-  return candidate;
 }
 /** Delete only the complete reviewed pair; absence never initializes the history database. */
 export async function removePackReceiptHistory(
@@ -172,28 +176,30 @@ export async function removePackReceiptHistory(
   const binding = parsePackSaveBinding(input);
   const candidate = await inspectPackReceiptHistory(raw, binding, check);
   const key = slot(binding, candidate.file.document_sha256);
-  check();
-  const result = await inBrowserStores<BrowserRemovalResult>(
-    layout,
-    'readwrite',
-    signal,
-    () => 'not-present',
-    (context) => {
-      readBrowserPair(context, key, (saved, digest, exists) => {
-        check();
-        if (!exists) {
-          context.accept('not-present');
-          return;
-        }
-        if (pair(saved, digest, key, binding).raw !== candidate.raw) return invalid();
-        check();
-        removeBrowserPair(context, key);
-      });
-    },
-    { create: false },
-  );
-  check();
-  return result;
+  return withPackReceiptHistoryChange(binding, async () => {
+    check();
+    const result = await inBrowserStores<BrowserRemovalResult>(
+      layout,
+      'readwrite',
+      signal,
+      () => 'not-present',
+      (context) => {
+        readBrowserPair(context, key, (saved, digest, exists) => {
+          check();
+          if (!exists) {
+            context.accept('not-present');
+            return;
+          }
+          if (pair(saved, digest, key, binding).raw !== candidate.raw) return invalid();
+          check();
+          removeBrowserPair(context, key);
+        });
+      },
+      { create: false },
+    );
+    check();
+    return result;
+  });
 }
 /** Verify every scanned pair, including nonmatches, before returning a bounded filtered page. */
 export async function listPackReceiptHistory(
@@ -384,57 +390,61 @@ export async function restorePackReceiptBackup(
   }));
   check();
   if (!entries.length) return { total: 0, added: 0, already_present: 0 };
-  const result = await inBrowserStores<{ total: number; added: number; already_present: number }>(
-    layout,
-    'readwrite',
-    signal,
-    invalid,
-    (context) => {
-      const missing: typeof entries = [];
-      let position = 0;
-      let verified = 0;
-      const readback = () => {
-        check();
-        const entry = entries[verified];
-        if (!entry) {
-          context.accept({
-            total: entries.length,
-            added: missing.length,
-            already_present: entries.length - missing.length,
-          });
-          return;
-        }
-        readBrowserPair(context, entry.key, (raw, digest, exists) => {
+  return withPackReceiptHistoryChange(binding, async () => {
+    check();
+    const result = await inBrowserStores<{ total: number; added: number; already_present: number }>(
+      layout,
+      'readwrite',
+      signal,
+      invalid,
+      (context) => {
+        const missing: typeof entries = [];
+        let position = 0;
+        let verified = 0;
+        const readback = () => {
           check();
-          if (!exists || pair(raw, digest, entry.key, binding).raw !== entry.raw) return invalid();
-          verified += 1;
-          readback();
-        });
-      };
-      const preflight = () => {
-        check();
-        const entry = entries[position];
-        if (!entry) {
-          for (const item of missing) {
-            check();
-            context.content.add(item.raw, item.key);
-            context.directory.add(item.digest, item.key);
+          const entry = entries[verified];
+          if (!entry) {
+            context.accept({
+              total: entries.length,
+              added: missing.length,
+              already_present: entries.length - missing.length,
+            });
+            return;
           }
-          readback();
-          return;
-        }
-        readBrowserPair(context, entry.key, (raw, digest, exists) => {
+          readBrowserPair(context, entry.key, (raw, digest, exists) => {
+            check();
+            if (!exists || pair(raw, digest, entry.key, binding).raw !== entry.raw)
+              return invalid();
+            verified += 1;
+            readback();
+          });
+        };
+        const preflight = () => {
           check();
-          if (exists) {
-            if (pair(raw, digest, entry.key, binding).raw !== entry.raw) return invalid();
-          } else missing.push(entry);
-          position += 1;
-          preflight();
-        });
-      };
-      preflight();
-    },
-  );
-  check();
-  return result;
+          const entry = entries[position];
+          if (!entry) {
+            for (const item of missing) {
+              check();
+              context.content.add(item.raw, item.key);
+              context.directory.add(item.digest, item.key);
+            }
+            readback();
+            return;
+          }
+          readBrowserPair(context, entry.key, (raw, digest, exists) => {
+            check();
+            if (exists) {
+              if (pair(raw, digest, entry.key, binding).raw !== entry.raw) return invalid();
+            } else missing.push(entry);
+            position += 1;
+            preflight();
+          });
+        };
+        preflight();
+      },
+    );
+    check();
+    return result;
+  });
 }
