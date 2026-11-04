@@ -40,8 +40,9 @@ export default async function PackReceiptHistoryPage() {
         <div>
           <h1>Historical context pack save observations</h1>
           <p>
-            Read browser copies or import a CLI or browser receipt file. These copies retain past
-            observations and do not establish current server state.
+            Find browser copies by request key, result and observation dates, or import a CLI or
+            browser receipt file. These copies retain past observations and do not establish current
+            server state.
           </p>
         </div>
       </div>

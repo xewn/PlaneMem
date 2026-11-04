@@ -13,11 +13,24 @@ import {
 } from '@planemem/contracts';
 import { backupHash } from '../sync/receipt/backup-operation';
 import { inBrowserStores, readBrowserPair } from '../sync/receipt/browser-store';
+import {
+  PACK_RECEIPT_HISTORY_PAGE_SIZE,
+  PACK_RECEIPT_HISTORY_SCAN_LIMIT,
+  matchesPackReceiptHistory,
+  parsePackReceiptHistoryQuery,
+  type PackReceiptHistoryQuery,
+} from './save-receipt-query';
 
 const layout = { databaseName: 'planemem-context-pack-save-history', contentStore: 'observations' };
 export interface PackReceiptCandidate {
   file: ContextPackSaveReceiptFile;
   raw: string;
+}
+export interface PackReceiptHistoryPage {
+  query: PackReceiptHistoryQuery;
+  entries: PackReceiptCandidate[];
+  scanned: number;
+  next: PackReceiptHistoryQuery | null;
 }
 function invalid(): never {
   throw new Error(
@@ -135,15 +148,17 @@ export async function preservePackReceiptHistory(
   check();
   return candidate;
 }
-/** Read complete paired files and verify each digest before returning a page. No implicit creation. */
+/** Verify every scanned pair, including nonmatches, before returning a bounded filtered page. */
 export async function listPackReceiptHistory(
   input: PackSaveBinding,
-  after: string | null,
+  queryInput: PackReceiptHistoryQuery,
   signal: AbortSignal,
   check: () => void,
-) {
+): Promise<PackReceiptHistoryPage> {
   check();
   const binding = parsePackSaveBinding(input);
+  const query = parsePackReceiptHistoryQuery(queryInput);
+  const { after } = query;
   const start = prefix(binding);
   slot(binding, '0'.repeat(64));
   if (after !== null) checkedKey(after, binding);
@@ -154,6 +169,7 @@ export async function listPackReceiptHistory(
     () => ({ entries: [], next: null }),
     (context) => {
       const entries: PackReceiptCandidate[] = [];
+      let matches = 0;
       let last: string | null = null;
       const request = context.directory.openKeyCursor(
         IDBKeyRange.bound(after ?? start, start + '\uffff', after !== null, true),
@@ -166,14 +182,19 @@ export async function listPackReceiptHistory(
           return;
         }
         const key = checkedKey(cursor.primaryKey, binding);
-        if (entries.length === 20) {
+        if (
+          matches === PACK_RECEIPT_HISTORY_PAGE_SIZE ||
+          entries.length === PACK_RECEIPT_HISTORY_SCAN_LIMIT
+        ) {
           context.accept({ entries, next: last });
           return;
         }
         readBrowserPair(context, key, (raw, digest, exists) => {
           check();
           if (!exists) return invalid();
-          entries.push(pair(raw, digest, key, binding));
+          const candidate = pair(raw, digest, key, binding);
+          entries.push(candidate);
+          if (matchesPackReceiptHistory(candidate.file.document, query)) matches += 1;
           last = key;
           cursor.continue();
         });
@@ -182,6 +203,7 @@ export async function listPackReceiptHistory(
   );
   check();
   for (const entry of result.entries) {
+    check();
     if (
       (await backupHash(contextPackSaveReceiptDocumentJson(entry.file.document))) !==
       entry.file.document_sha256
@@ -189,5 +211,12 @@ export async function listPackReceiptHistory(
       return invalid();
     check();
   }
-  return result;
+  return {
+    query,
+    entries: result.entries.filter((entry) =>
+      matchesPackReceiptHistory(entry.file.document, query),
+    ),
+    scanned: result.entries.length,
+    next: result.next === null ? null : { ...query, after: result.next },
+  };
 }

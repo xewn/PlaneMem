@@ -4,11 +4,13 @@
 
 ## 当前基线
 
+- P5：ContextPack网页历史目录新增精确原请求键、recorded/not-observed及含首尾UTC观察日期筛选，完整五字段查询随最后扫描槽续页，每轮最多100份完整双槽/绑定/摘要检查、20条匹配，非匹配损坏也拒绝整页；空匹配可继续，展示扫描/匹配数，不自动扫描全库。编辑/清除条件同步撤销旧目录/续页，保留审阅副本，导入不受筛选影响，本页操作互斥/取消保持。时间排序、删除、备份恢复/配额/孤立槽审计、自动留存和运行证据仍缺，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、渲染、执行浏览器/产品/API/数据库或发布。
+
 - P4：新增ContextPack `context recover-receipt --result-file RESULT.json --output NEW_RECEIPT.json [--json-file ORIGINAL.json]`，main及嵌入离线补存完整查询stdout中已有的历史候选，也接本命令输出再次恢复。96 KiB稳定UTF-8/有限JSON、闭合封套、完整原文/回执/trace/source_refs及规范document和已有本地摘要一致性核对，不重造时间、不访问旧路径。新目标预检、输入实际字节复读、独占发布/同步/完整读回，本地失败保留候选和本次local状态退出1。批量恢复/备份清理、其他命令stdout导入、Mock/嵌入在线查询及运行证据仍缺；R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行CLI/文件流程/API/数据库或发布。
 
 - P4：新增ContextPack `context extract-original --receipt-file RECEIPT.json --output NEW_ORIGINAL.json [--json-file ORIGINAL.json]`，普通与嵌入CLI均离线，复用32 KiB完整历史摘要/8 KiB独立原文绑定检查；预检新路径、发布前原回执实际字节重读、独占发布/同步/完整原文件读回。成功与本地失败均保留完整历史/原请求及独立local状态，失败退出1；不改身份/参数/键，不重查或重发，仍需独立审阅。查询stdout补存已有独立源码增量，原请求提取stdout导入、批量备份清理、Mock/嵌入在线查询及运行证据仍缺；R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行CLI/文件工作流/API/数据库或发布。
 
-- P5：ContextPack原保存查询观察已接显式浏览器留存/历史文件导出及原请求导出，复用CLI共享32 KiB文件，保留查询完成时的本地观察时间和完整原文/回执。新独立IndexedDB正文/摘要双槽按原Gateway/五身份/restricted+document摘要寻址，缺失才原子添加、同文保留、异文或部分槽拒绝，完整读回后确认；not-observed不覆盖recorded。新增/context/packs/receipts按完整原绑定每页20份完整摘要核验目录及文件导入/明确保存，导入不联网查询或替换当前保存确认；页内操作互斥、取消及迟到结果丢弃，失败保留可导出内容。原请求库保持独立，历史只增不清理；查询后自动留存、条件查找/时间排序、逐份清理、完整备份/恢复、孤立槽审计与运行证据仍缺，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、渲染、执行浏览器/API/数据库或发布。
+- P5：ContextPack原保存查询观察已接显式浏览器留存/历史文件导出及原请求导出，复用CLI共享32 KiB文件，保留查询完成时的本地观察时间和完整原文/回执。新独立IndexedDB正文/摘要双槽按原Gateway/五身份/restricted+document摘要寻址，缺失才原子添加、同文保留、异文或部分槽拒绝，完整读回后确认；not-observed不覆盖recorded。新增/context/packs/receipts按完整原绑定显示每页20份完整摘要核验结果及文件导入/明确保存，筛选扫描已另行扩展；导入不联网查询或替换当前保存确认，页内操作互斥、取消及迟到结果丢弃，失败保留可导出内容。原请求库保持独立，历史只增不清理；查询后自动留存、时间排序、逐份清理、完整备份/恢复、孤立槽审计与运行证据仍缺，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、渲染、执行浏览器/API/数据库或发布。
 
 - P0/P4：新增ContextPack历史观察文件共享格式，28 KiB document/32 KiB file，含完整原请求（含Gateway）、本地观察时间、完整recorded/not-observed回执及规范document SHA-256。CLI context save-receipt可选--output新文件，路径预检后查询，查询预算结束后独占发布/同步/完整读回；stdout保留完整原请求/回执/候选与独立local状态，本地失败退出1、不重查或重发。新增context inspect-receipt --receipt-file [--json-file ORIGINAL]，main及嵌入离线有界稳定读取/摘要实算/可选原文精确匹配，不需登录或路由，不把历史文件当服务端签名或当前状态。浏览器持久回执/目录、CLI原请求提取与查询输出离线补存已有独立源码增量；批量备份清理、Mock/嵌入在线查询及运行证据仍待补，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行CLI/API/数据库或发布。
 

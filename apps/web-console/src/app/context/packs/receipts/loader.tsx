@@ -1,17 +1,41 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { CONTEXT_PACK_SAVE_RECEIPT_FILE_BYTES, type PackSaveBinding } from '@planemem/contracts';
 import { backupOperation } from '../../../sync/receipt/backup-operation';
 import { PackReceiptHistoryEntry } from '../../save-receipt-entry';
+import { historyDateRangeError } from '../../../proposals/history-date-range';
+import {
+  PACK_RECEIPT_HISTORY_PAGE_SIZE,
+  PACK_RECEIPT_HISTORY_SCAN_LIMIT,
+  parsePackReceiptHistoryQuery,
+  type PackReceiptHistoryQuery,
+} from '../../save-receipt-query';
 import {
   inspectPackReceiptHistory,
   listPackReceiptHistory,
   type PackReceiptCandidate,
+  type PackReceiptHistoryPage,
 } from '../../save-receipt-store';
 
+const emptyFilters = { request_key: '', status: '', observed_from: '', observed_through: '' };
+type Filters = typeof emptyFilters;
+function firstQuery(filters: Filters) {
+  return parsePackReceiptHistoryQuery({
+    request_key: filters.request_key || null,
+    status: filters.status || null,
+    observed_from: filters.observed_from || null,
+    observed_through: filters.observed_through || null,
+    after: null,
+  });
+}
+
 export function PackReceiptHistoryBrowser({ binding }: { binding: PackSaveBinding }) {
-  const [page, setPage] = useState<{ entries: PackReceiptCandidate[]; next: string | null }>();
+  const [filters, setFilters] = useState(emptyFilters);
+  const filtersRef = useRef(emptyFilters);
+  const [page, setPage] = useState<PackReceiptHistoryPage>();
+  const pageRef = useRef<PackReceiptHistoryPage | undefined>(undefined);
+  const helpId = useId();
   const [selected, setSelected] = useState<PackReceiptCandidate>();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(
@@ -20,6 +44,14 @@ export function PackReceiptHistoryBrowser({ binding }: { binding: PackSaveBindin
   const active = useRef(false);
   const mounted = useRef(false);
   const operation = useRef<AbortController | undefined>(undefined);
+  let filterError: string | null = null;
+  try {
+    firstQuery(filters);
+  } catch {
+    filterError =
+      historyDateRangeError(filters.observed_from, filters.observed_through) ??
+      'Use an exact request key of 1–255 characters without whitespace or control characters, or leave it empty.';
+  }
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -37,10 +69,37 @@ export function PackReceiptHistoryBrowser({ binding }: { binding: PackSaveBindin
     active.current = false;
     if (mounted.current) setBusy(false);
   }
-  async function load(after: string | null, file?: File) {
+  function changeFilters(next: Filters) {
+    if (active.current) return;
+    filtersRef.current = next;
+    setFilters(next);
+    pageRef.current = undefined;
+    setPage(undefined);
+    setMessage(
+      'Filters changed. Read the first matching page. Any selected observation remains available below.',
+    );
+  }
+  function readFirstPage() {
+    if (active.current) return;
+    try {
+      void load(firstQuery(filtersRef.current));
+    } catch {
+      setMessage('Check the request key and UTC observation dates before reading history.');
+    }
+  }
+  function readNextPage() {
+    const next = pageRef.current?.next;
+    if (next) void load(next);
+  }
+  async function load(query: PackReceiptHistoryQuery | null, file?: File) {
+    if (!file && !query) return;
     if (!begin()) return;
     const controller = new AbortController();
     operation.current = controller;
+    if (!file) {
+      pageRef.current = undefined;
+      setPage(undefined);
+    }
     try {
       const result = await backupOperation(controller.signal, async (signal, check) => {
         if (file) {
@@ -60,7 +119,7 @@ export function PackReceiptHistoryBrowser({ binding }: { binding: PackSaveBindin
         }
         return {
           kind: 'page' as const,
-          page: await listPackReceiptHistory(binding, after, signal, check),
+          page: await listPackReceiptHistory(binding, query!, signal, check),
         };
       });
       if (!mounted.current || operation.current !== controller) return;
@@ -70,15 +129,19 @@ export function PackReceiptHistoryBrowser({ binding }: { binding: PackSaveBindin
           'The complete file and digest match this original identity. It has not been saved here or queried against the gateway.',
         );
       } else {
+        pageRef.current = result.page;
         setPage(result.page);
         setMessage(
           result.page.entries.length
-            ? 'Every observation on this page was read in full and checked against its digest. These are historical copies, not fresh gateway results.'
-            : 'No observations were found on this page. Missing local history does not prove that a save failed.',
+            ? 'Every scanned observation was read in full and checked against its digest before showing these matches. These remain historical copies.'
+            : result.page.next
+              ? 'No matches in this batch. Continue with the same filters to inspect later records. This does not prove that a save failed.'
+              : 'No matches in the remaining records for these filters. Missing local history does not prove that a save failed.',
         );
       }
     } catch {
       if (mounted.current && operation.current === controller) {
+        pageRef.current = undefined;
         setPage(undefined);
         setMessage(
           'History could not be read completely or matched to this identity. Any earlier selected observation below is unchanged. Keep all copies. No gateway query or pack save was sent.',
@@ -100,22 +163,100 @@ export function PackReceiptHistoryBrowser({ binding }: { binding: PackSaveBindin
         Account · {binding.identity.actor_id} · Client · {binding.identity.client_id}
       </p>
       <p>Restricted context · {binding.read_restricted ? 'allowed' : 'excluded'}</p>
-      <button
-        type="button"
-        className="secondary-button"
-        disabled={busy}
-        onClick={() => void load(null)}
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          readFirstPage();
+        }}
       >
-        Read first page of history
-      </button>
-      {page?.next && (
-        <button
-          type="button"
-          className="secondary-button"
+        <fieldset
+          className="handoff-form"
           disabled={busy}
-          onClick={() => void load(page.next)}
+          aria-describedby={`${helpId}${filterError ? ` ${helpId}-error` : ''}`}
+          style={{ minWidth: 0 }}
         >
-          Read next page of history
+          <legend>Find saved observations</legend>
+          <label>
+            Exact original request key (optional)
+            <input
+              type="text"
+              value={filters.request_key}
+              maxLength={255}
+              autoComplete="off"
+              spellCheck={false}
+              onChange={(event) =>
+                changeFilters({ ...filtersRef.current, request_key: event.target.value })
+              }
+            />
+          </label>
+          <label>
+            Historical result
+            <select
+              value={filters.status}
+              onChange={(event) =>
+                changeFilters({ ...filtersRef.current, status: event.target.value })
+              }
+            >
+              <option value="">All results</option>
+              <option value="recorded">Recorded</option>
+              <option value="not-observed">Not observed</option>
+            </select>
+          </label>
+          <label>
+            Observation date from (UTC, optional)
+            <input
+              type="text"
+              placeholder="YYYY-MM-DD"
+              value={filters.observed_from}
+              maxLength={10}
+              autoComplete="off"
+              spellCheck={false}
+              onChange={(event) =>
+                changeFilters({ ...filtersRef.current, observed_from: event.target.value })
+              }
+            />
+          </label>
+          <label>
+            Observation date through (UTC, optional)
+            <input
+              type="text"
+              placeholder="YYYY-MM-DD"
+              value={filters.observed_through}
+              maxLength={10}
+              autoComplete="off"
+              spellCheck={false}
+              onChange={(event) =>
+                changeFilters({ ...filtersRef.current, observed_through: event.target.value })
+              }
+            />
+          </label>
+          <p id={helpId}>
+            Use YYYY-MM-DD. Both dates are included and refer to when the result was observed, not
+            when the pack was created or expires. Leave either date empty for no limit on that side.
+            Each read checks at most {PACK_RECEIPT_HISTORY_SCAN_LIMIT} complete observations and
+            shows at most {PACK_RECEIPT_HISTORY_PAGE_SIZE} matches. Imported files are reviewed
+            separately.
+          </p>
+          {filterError && (
+            <p id={`${helpId}-error`} role="status">
+              {filterError}
+            </p>
+          )}
+          <button type="submit" className="secondary-button" disabled={busy || !!filterError}>
+            Read first matching page
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => changeFilters(emptyFilters)}
+          >
+            Clear filters
+          </button>
+        </fieldset>
+      </form>
+      {page?.next && (
+        <button type="button" className="secondary-button" disabled={busy} onClick={readNextPage}>
+          Continue with the same filters
         </button>
       )}
       <label>
@@ -141,6 +282,11 @@ export function PackReceiptHistoryBrowser({ binding }: { binding: PackSaveBindin
         </button>
       )}
       <p role="status">{message}</p>
+      {page && (
+        <p>
+          Checked {page.scanned} observations in this batch · {page.entries.length} matches.
+        </p>
+      )}
       {page?.entries.map((entry) => (
         <div key={entry.file.document_sha256}>
           <p>
@@ -151,20 +297,25 @@ export function PackReceiptHistoryBrowser({ binding }: { binding: PackSaveBindin
             type="button"
             className="secondary-button"
             disabled={busy}
-            onClick={() => setSelected(entry)}
+            onClick={() => {
+              if (!active.current && pageRef.current?.entries.includes(entry)) setSelected(entry);
+            }}
           >
             Review complete observation
           </button>
         </div>
       ))}
       {selected && (
-        <PackReceiptHistoryEntry
-          key={selected.file.document_sha256}
-          document={selected.file.document}
-          disabled={busy}
-          begin={begin}
-          end={end}
-        />
+        <div>
+          <p>Selected observation for review. It may be outside the current filters.</p>
+          <PackReceiptHistoryEntry
+            key={selected.file.document_sha256}
+            document={selected.file.document}
+            disabled={busy}
+            begin={begin}
+            end={end}
+          />
+        </div>
       )}
       <p>
         Pages follow the saved digest order, not time order. Refresh the first page to include newer
