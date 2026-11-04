@@ -1,0 +1,267 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/artifact-registry.json",
+  "title": "Project file directory v1",
+  "description": "Canonical success envelope for one explicit page of currently visible project files. Query anchors describe SDK, CLI and MCP objects; public HTTP uses separately parsed URL parameters.",
+  "$comment": "Source artifact only, not runtime evidence. Register this complete resource before resolving its anchors. The ID is a schema identifier, not a hosted endpoint. Shared parseArtifactRegistry* functions remain authoritative for byte/UTF-16 limits, canonical cursor decoding, timestamps, exact request scope/trace/query binding, filter matching, descending IDs and complete continuation. Server-side identity/permission binding and current visibility remain mandatory. This schema grants no authority and establishes no content availability, upload outcome or cross-page snapshot.",
+  "$ref": "#ArtifactRegistryEnvelope",
+  "$defs": {
+    "positiveInteger": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "nonnegativeInteger": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "artifactId": {
+      "type": "string",
+      "minLength": 26,
+      "maxLength": 26,
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "scopeIdentifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "\\S",
+      "allOf": [{ "not": { "pattern": "[\\u0000-\\u001f]" } }, { "not": { "enum": [".", ".."] } }],
+      "$comment": "Scopes are not restricted to ULIDs. Runtime additionally rejects unpaired surrogates and checks UTF-16 lengths and exact equality to the verified request scope."
+    },
+    "nonblankText": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S",
+      "not": { "pattern": "[\\u0000-\\u001f\\u007f]" }
+    },
+    "trace": {
+      "$ref": "#/$defs/nonblankText",
+      "maxLength": 1024
+    },
+    "timestamp": {
+      "type": "string",
+      "minLength": 24,
+      "maxLength": 24,
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$",
+      "$comment": "Format can be annotation-only. Runtime requires a real exact ISO UTC millisecond round-trip and updated_at >= created_at."
+    },
+    "classification": {
+      "enum": ["public", "internal", "confidential", "restricted"]
+    },
+    "nameQuery": {
+      "type": "string",
+      "maxLength": 255,
+      "not": { "pattern": "[\\u0000-\\u001f\\u007f]" },
+      "description": "Literal file-name substring, with ASCII A-Z case folding only. Runtime trims outer whitespace and omits empty names; percent and underscore are not wildcards.",
+      "$comment": "Runtime rejects unpaired surrogates and measures JavaScript UTF-16 code units. Only query input permits an empty or untrimmed value."
+    },
+    "cursor": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z0-9_-]+$",
+      "description": "Use the complete previous next_query unchanged. This cursor text is not an authorization token.",
+      "$comment": "Runtime requires canonical base64url of JSON [1, binding SHA-256, last artifact ID] with an exact round-trip. Text matching this pattern alone is insufficient. The service rechecks binding to scope, actor/client, restricted-read permission, normalized filters and page size."
+    },
+    "ArtifactRegistryQuery": {
+      "$anchor": "ArtifactRegistryQuery",
+      "title": "Project file query input",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "query": { "$ref": "#/$defs/nameQuery" },
+        "classification": { "$ref": "#/$defs/classification" },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "default": 20
+        },
+        "cursor": { "$ref": "#/$defs/cursor" }
+      },
+      "$comment": "Input is limited to 8192 serialized bytes at runtime. All input fields are optional. default is descriptive and does not mutate input. Omit classification to read every allowed classification; empty classification is invalid. A cursor without its original complete filters and page size may pass this shape and still fail request binding.",
+      "examples": [{}, { "query": " report ", "classification": "internal", "limit": 2 }]
+    },
+    "ArtifactRegistryNormalizedQuery": {
+      "$anchor": "ArtifactRegistryNormalizedQuery",
+      "title": "Canonical echoed project file query",
+      "$ref": "#ArtifactRegistryQuery",
+      "required": ["limit"],
+      "properties": {
+        "query": { "minLength": 1, "not": { "pattern": "^\\s|\\s$" } }
+      },
+      "$comment": "Canonical producers include limit and omit query when trimming leaves an empty string. Shared runtime parsing can normalize input before comparison; these output definitions describe the normalized result."
+    },
+    "ArtifactRegistryNextQuery": {
+      "$anchor": "ArtifactRegistryNextQuery",
+      "title": "Complete project file continuation query",
+      "$ref": "#ArtifactRegistryNormalizedQuery",
+      "required": ["cursor"],
+      "$comment": "Runtime requires identical original filters/limit, the last returned artifact ID as the exclusive next position and the same cursor binding across continuation pages. Do not preserve only cursor or silently replace other fields."
+    },
+    "ArtifactRegistryItem": {
+      "$anchor": "ArtifactRegistryItem",
+      "title": "Current saved version summary with file ID",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_id",
+        "version",
+        "name",
+        "mime",
+        "classification",
+        "sha256",
+        "size",
+        "trace_id",
+        "created_at",
+        "updated_at",
+        "source_ref_count"
+      ],
+      "properties": {
+        "artifact_id": { "$ref": "#/$defs/artifactId" },
+        "version": { "$ref": "#/$defs/positiveInteger" },
+        "name": { "$ref": "#/$defs/nonblankText", "maxLength": 255 },
+        "mime": {
+          "$ref": "#/$defs/nonblankText",
+          "maxLength": 255,
+          "pattern": "^[a-zA-Z0-9!#$&^_.+-]+/[a-zA-Z0-9!#$&^_.+-]+$"
+        },
+        "classification": { "$ref": "#/$defs/classification" },
+        "sha256": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "size": { "$ref": "#/$defs/nonnegativeInteger" },
+        "trace_id": { "$ref": "#/$defs/trace" },
+        "created_at": { "$ref": "#/$defs/timestamp" },
+        "updated_at": { "$ref": "#/$defs/timestamp" },
+        "source_ref_count": { "type": "integer", "minimum": 0, "maximum": 200 }
+      },
+      "$comment": "The fields other than artifact_id use the shared ArtifactVersionSummary contract, parsed separately within 16384 bytes. Metadata only: no storage address, object bytes, full source list, ETag or upload receipt. The saved hash does not verify content during this read."
+    },
+    "ArtifactRegistryPage": {
+      "$anchor": "ArtifactRegistryPage",
+      "title": "Canonical current project file page",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "workspace_id",
+        "project_id",
+        "query",
+        "items",
+        "has_more",
+        "next_query",
+        "content_state"
+      ],
+      "properties": {
+        "tenant_id": { "$ref": "#/$defs/scopeIdentifier" },
+        "workspace_id": { "$ref": "#/$defs/scopeIdentifier" },
+        "project_id": { "$ref": "#/$defs/scopeIdentifier" },
+        "query": { "$ref": "#ArtifactRegistryNormalizedQuery" },
+        "items": {
+          "type": "array",
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": { "$ref": "#ArtifactRegistryItem" }
+        },
+        "has_more": { "type": "boolean" },
+        "next_query": {
+          "oneOf": [{ "$ref": "#ArtifactRegistryNextQuery" }, { "type": "null" }]
+        },
+        "content_state": { "const": "not-checked" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "has_more": { "const": true } }, "required": ["has_more"] },
+          "then": {
+            "properties": {
+              "items": { "minItems": 1 },
+              "next_query": { "$ref": "#ArtifactRegistryNextQuery" }
+            }
+          },
+          "else": { "properties": { "next_query": { "const": null } } }
+        }
+      ],
+      "$comment": "Runtime enforces full original query/scope equality, items.length <= limit (equal when has_more), name/classification matches, unique descending artifact IDs below the cursor and exact next_query binding. uniqueItems checks whole objects only, not ID uniqueness. Each page reads current visibility; there is no historical ceiling, total count or cross-page snapshot."
+    },
+    "ArtifactRegistryEnvelope": {
+      "$anchor": "ArtifactRegistryEnvelope",
+      "title": "Project file directory success envelope v1",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "#/$defs/trace" },
+        "source_refs": {
+          "type": "array",
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "id"],
+            "properties": {
+              "type": { "const": "artifact" },
+              "id": { "$ref": "#/$defs/artifactId" }
+            }
+          }
+        },
+        "data": { "$ref": "#ArtifactRegistryPage" }
+      },
+      "$comment": "Complete serialized success is limited to 262144 bytes. Runtime requires original request trace and scope, plus one source reference per item in the same order with the same ID. Empty pages must have empty source_refs. No revision, receipt or outer ETag. HTTP status, response headers and request conditions are checked separately."
+    }
+  },
+  "examples": [
+    {
+      "schema_version": 1,
+      "trace_id": "trace_example_directory_empty",
+      "source_refs": [],
+      "data": {
+        "tenant_id": "tenant_example",
+        "workspace_id": "workspace_example",
+        "project_id": "project_example",
+        "query": { "limit": 20 },
+        "items": [],
+        "has_more": false,
+        "next_query": null,
+        "content_state": "not-checked"
+      }
+    },
+    {
+      "schema_version": 1,
+      "trace_id": "trace_example_directory",
+      "source_refs": [{ "type": "artifact", "id": "01J000000000000000000000001" }],
+      "data": {
+        "tenant_id": "tenant_example",
+        "workspace_id": "workspace_example",
+        "project_id": "project_example",
+        "query": { "query": "report", "classification": "internal", "limit": 20 },
+        "items": [
+          {
+            "artifact_id": "01J000000000000000000000001",
+            "version": 1,
+            "name": "REPORT.txt",
+            "mime": "text/plain",
+            "classification": "internal",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "size": 0,
+            "trace_id": "trace_example_saved",
+            "created_at": "2026-11-04T00:00:00.000Z",
+            "updated_at": "2026-11-04T00:00:00.000Z",
+            "source_ref_count": 0
+          }
+        ],
+        "has_more": false,
+        "next_query": null,
+        "content_state": "not-checked"
+      }
+    }
+  ]
+}

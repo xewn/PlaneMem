@@ -11,6 +11,23 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    artifact_project_registry_schema_development_increment:
+      date: "2026-11-04"
+      status: "Source-only standalone project file directory schema; R-001 remains incomplete."
+      artifacts:
+        - "packages/contracts/schemas/artifact-registry.json"
+        - "packages/contracts/schemas/README.md"
+        - "packages/contracts/package.json"
+        - "docs/design/01-contracts/artifact-registry-runtime.md"
+        - "docs/design/01-contracts/wcp-api.md"
+      behavior: "Add a self-contained JSON Schema 2020-12 resource and explicit package subpath with the canonical success envelope as root. Anchors cover optional-field input, normalized query with explicit limit/nonempty trimmed name, full next_query with cursor, current file summary, page and envelope. Close fields, bound safe integers/classification/page sizes/source shapes and relate has_more to nonempty items and complete continuation. Provide manual empty/terminal-page examples and document registration of the complete resource. Preserve shared runtime checks for byte/UTF-16/timestamp constraints, canonical cursor tuples and permission binding, exact request scope/trace/query, filters/descending unique IDs/exclusive position, source-to-item correspondence and exact next_query. No production JSON import or change to old Artifact/history schemas."
+      evidence: []
+      pending_evidence:
+        - "Schema dialect/anchor/ref support, explicit package path resolution and canonical producer examples"
+        - "Input versus normalized query, empty/trimmed names, next_query shape, page limits and additional-field rejection"
+        - "Automated schema/runtime compatibility, Unicode/date differences and documented structural-only limits"
+      remaining_scope: "Complete OpenAPI, automated generation/compatibility and runtime evidence. Schema matching does not authorize reading, authenticate cursor binding, verify content or establish a cross-page snapshot."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, generator/validator/SDK/Mock/API/database execution or release. No production route, dependency or database schema change."
     mock_artifact_project_registry_development_increment:
       date: "2026-11-04"
       status: "Source-only Mock project file directory; R-001 remains incomplete."
@@ -25,7 +42,7 @@ requirements:
         - "Empty/current project pages, ASCII versus Unicode search, restricted visibility, classification and exact next_query binding"
         - "Create/list/history route separation, long encoded names, duplicate/unknown parameters and forbidden request conditions"
         - "Hash failure, cancellation/expiry, retained capacity, response/summary bounds and mutation isolation after paging"
-      remaining_scope: "Standalone schema/OpenAPI and runtime parity; Mock does not simulate corrupt/missing snapshot seeds, dynamic permissions/classification, deletion, SQL locks, durable audit or cross-page snapshots."
+      remaining_scope: "Schema compatibility automation, OpenAPI and runtime parity; standalone schema source is recorded separately. Mock does not simulate corrupt/missing snapshot seeds, dynamic permissions/classification, deletion, SQL locks, durable audit or cross-page snapshots."
       execution: "Source/docs and manual review only; no build, typecheck, tests, SDK/Mock/product/API/database execution or release. No real server, dependency or database schema change."
     cli_mcp_artifact_project_registry_development_increment:
       date: "2026-11-04"
@@ -47,7 +64,7 @@ requirements:
         - "CLI network/embedded/direct routing, empty query, complete continuation, stable file/stdin bounds and invalid flags"
         - "MCP discovery/direct permissions, restricted classification, expiry, retained capacity after timeout and bounded errors"
         - "Full trace/scope/query/filter/order/next_query binding, escaped output and unchanged historical/metadata/receipt paths"
-      remaining_scope: "Standalone schema/OpenAPI and runtime evidence; Mock source integration is recorded separately. File/stdin waits precede the CLI read deadline; local timeout cannot stop underlying router/database work. Current pages are not a cross-page snapshot."
+      remaining_scope: "Schema compatibility automation, OpenAPI and runtime evidence; Mock and standalone schema source increments are recorded separately. File/stdin waits precede the CLI read deadline; local timeout cannot stop underlying router/database work. Current pages are not a cross-page snapshot."
       execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/MCP/SDK/API/database execution or release. No directory-server, dependency or database schema change."
     web_artifact_project_registry_development_increment:
       date: "2026-11-04"
@@ -66,7 +83,7 @@ requirements:
         - "URL duplicates/unknowns, filter normalization, invalid cursor recovery and complete next_query navigation"
         - "Explicit first-page reload, session/project changes, authorization and bounded response/deadline failures"
         - "Saved/current/history links, absence of prefetch, accessible responsive forms and browser rendering"
-      remaining_scope: "Standalone schema/OpenAPI and runtime/browser evidence; CLI/MCP/Mock source integration is recorded separately. Pages do not form a cross-page snapshot or establish content availability or write authorization."
+      remaining_scope: "Schema compatibility automation, OpenAPI and runtime/browser evidence; CLI/MCP/Mock/schema source increments are recorded separately. Pages do not form a cross-page snapshot or establish content availability or write authorization."
       execution: "Source/docs and manual review only; no build, typecheck, tests, browser rendering, SDK/product/API/database execution or release. No server directory, dependency or database schema change."
     artifact_project_registry_development_increment:
       date: "2026-11-04"
@@ -89,7 +106,7 @@ requirements:
         - "Scoped SQL locks, bounded JSON projections, timestamp conversion, legacy/corrupt snapshots and lookahead validation"
         - "Literal Unicode/ASCII search, classification visibility, canonical cursor identity/filter/permission binding and concurrent changes"
         - "HTTP/SDK routing, explicit configuration, response bounds, cancellation and preserved historical/metadata behavior"
-      remaining_scope: "Standalone schema/OpenAPI, performance and runtime/concurrency/storage evidence; workbench, CLI/MCP and Mock source integration are recorded separately. Current registry pages are not a cross-page snapshot, content verification or write authorization."
+      remaining_scope: "Schema compatibility automation, OpenAPI, performance and runtime/concurrency/storage evidence; workbench, CLI/MCP, Mock and standalone schema source increments are recorded separately. Current registry pages are not a cross-page snapshot, content verification or write authorization."
       execution: "Source/docs and manual review only; no build, typecheck, tests, SDK/product/API/SQL/database/migration execution or release. No dependency or database schema change."
     artifact_versions_schema_development_increment:
       date: "2026-11-04"

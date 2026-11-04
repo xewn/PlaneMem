@@ -6,6 +6,8 @@
 
 ### 2026-11-04 开发补充（未编译、未发布、未测试）
 
+- P0：已补contracts/schemas/artifact-registry.json自包含2020-12结构定义和显式包子路径，根为完整项目目录封套，提供输入/规范回显/完整续页/摘要项/页面/封套锚点及静态空页和单项示例。输入可省略limit，规范输出必填limit且名称非空无外围空白，续页必填cursor；闭合字段/分类/安全整数/条数/来源形状及has_more-next_query关联。规范游标解码、原身份权限/范围/trace/完整query绑定、筛选/ID倒序/排他位置、来源逐项对应及UTF-16/日期/字节限制仍由运行时执行，结构不授予读取或写权限。独立Schema源码已补，自动契约一致性、完整OpenAPI和运行证据仍缺，R-001未完成；旧实体/历史目录Schema及生产代码不变，无依赖/迁移，仅源码文档人工审阅，未编译/类型检查/测试/执行生成器、校验器、SDK、Mock、API、数据库或发布。
+
 - P0：已补MockArtifactStore项目目录GET，与创建POST及历史目录分开；listArtifacts可经既有MockWcpServer配置读取当前已上传文件。仅目录GET路径8192字符、内层查询8 KiB，严格单值名称/分类/页大小/游标、默认20最多20；权限/名称ASCII字面子串/分类先过滤、ID倒序，Web Crypto绑定原五项身份/受限能力/筛选/limit，异步后同步读取当前状态。每store两笔目录容量持有到底层结束，核对取消/到期；最多21份元数据各限2 MiB且核对版本Map和完整摘要，封套256 KiB/调用方更低限额，探测行也核验。无正文读取/内容摘要/回执或释放记录写入/自动翻页；动态权限、损坏种子、真实SQL锁/审计、独立Schema和运行证据仍缺，R-001未完成。无真实服务/schema/依赖变更，仅源码文档人工审阅，未编译/类型检查/测试/执行SDK、Mock、产品、API、数据库或发布。
 
 - P0/P4：已补CLI artifacts list与MCP list_artifacts当前项目文件目录，查询8 KiB、默认20最多20、名称/分类过滤与完整next_query显式续页。CLI网络/嵌入复用SDK listArtifacts的256 KiB封套、30秒期限与固定错误；嵌入核对有效实际reader、规范路径/方法/范围/限额，稳定文件/网络有界stdin沿原入口。MCP发现/prepare/直接执行均核对有效已验证实际artifact.read，独立每Gateway两笔/30秒等待，底层超时未结束仍占槽；成功/错误256/16 KiB，转义文本另限，完整scope/trace/query/排序/next_query和restricted检查。SDK registry错误补齐项目不可见及重新查询提示，不改旧读取错误。无自动分页/下载/上传/回执查询/本地输出，当前目录非跨页快照；独立Schema/OpenAPI及运行证据仍缺；Mock目录源码接入见独立增量，R-001未完成。无服务端目录/schema/依赖变更，仅源码文档人工审阅，未编译/类型检查/测试/执行CLI、MCP、SDK、API、数据库或发布。

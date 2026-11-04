@@ -1,5 +1,7 @@
 # WCP API 契约 v1
 
+2026-11-04 项目文件目录结构增补：`GET /v1/artifacts`的独立JSON Schema源码现为`packages/contracts/schemas/artifact-registry.json`，可通过contracts显式子路径引用。输入/规范查询/续页/当前摘要/页面/封套均有资源锚点；游标规范解码、身份权限绑定、原查询与来源/排序关系等仍由运行时执行，不把结构有效当作授权。见[Schema说明](../../../packages/contracts/schemas/README.md#项目文件目录)和[项目目录契约](artifact-registry-runtime.md)。未编译、执行校验器、测试或发布，完整OpenAPI和自动一致性证据仍缺。
+
 2026-11-03 独立恢复身份增补：新增只读 `GET /v1/sessions/command-context`，无业务参数/写条件，强制可信有效客户端，按既有读/写/领取能力或 admin 语义执行策略及入口审计；只返回当前身份、到期和权限提示，来源为空，不读取目录或业务记录。完整封套限 16 KiB，SDK/CLI/MCP/Web 接入，专用 `/handoffs/recover` 保留原创建请求；不授予后续权限或证明项目存在/原请求成功。详见 [独立恢复身份](session-command-context-runtime.md)，无新迁移，未编译、测试或运行。
 
 2026-11-03 检查点目录分页增补：`POST /v1/workbench/query` 的 operation=checkpoints 在不带 session_id 时接收 query/checkpoint_id/limit/cursor，默认 25、最多 100 条；带 session_id 时仅允许 before_revision，保持原历史模式。项目分页新增 scope/has_more/next_cursor、微秒时间、摘要 8 KiB 省略状态和完整 2 MiB 封套，SDK/CLI/MCP/Web 源码接入。048 索引只写文件，016–048 均未执行；详见 [检查点目录分页](checkpoint-registry-runtime.md)。未编译、测试、运行或发布。

@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [项目文件目录独立 Schema](packages/contracts/schemas/README.md#项目文件目录)：提供输入查询、规范回显、完整续页、文件摘要和响应结构，可通过 contracts 包子路径引用；权限和分页绑定继续由运行时检查。仅源码文档，未编译、执行校验、测试或发布。
+
 新增 [项目文件目录 Mock](docs/design/01-contracts/artifact-mock-runtime.md#项目文件目录)：`listArtifacts` 可通过既有内存上传存储按名称、分类分页查找当前文件，续页绑定原身份、权限和筛选；仅返回摘要。仅源码文档，未编译、测试、运行 Mock 或发布。
 
 新增 [项目文件目录 CLI 与 MCP](docs/design/01-contracts/artifact-registry-runtime.md#命令行与-mcp源码阶段)：`artifacts list` 和 `list_artifacts` 支持按名称、分类查找文件，显式使用完整 `next_query` 读取下一页；沿用权限、响应大小与等待期限限制。仅源码文档，未编译、测试、执行或发布。

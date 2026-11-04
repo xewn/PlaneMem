@@ -65,7 +65,7 @@ if (selected) {
 
 取消或本地超时丢弃迟到结果，不能保证底层数据库工作停止。目录不会保存本地文件、获取对象正文、查询上传结果或修改原写请求。
 
-独立Schema/OpenAPI、性能与权限/并发/错误运行证据后续补齐；工作台、CLI/MCP和Mock源码接入见后续章节。不新增依赖或数据库schema，不编译、测试、运行服务、执行SQL/迁移或发布。
+OpenAPI、Schema自动一致性、性能与权限/并发/错误运行证据后续补齐；独立Schema源码及工作台、CLI/MCP和Mock接入见后续章节。不新增依赖或数据库schema，不编译、测试、运行服务、执行SQL/迁移或发布。
 
 ## 工作台目录（源码阶段）
 
@@ -95,7 +95,7 @@ MCP新增`list_artifacts`，参数与共享查询相同，允许空对象首屏�
 
 成功需200、JSON、原trace响应头且无ETag，完整封套256 KiB，错误16 KiB且trace一致；共享解析完整核对范围/查询/摘要/ID顺序/筛选/续页。返回前再次核对身份期限和本地期限；返回单项文本JSON，MCP转义后content整体再限512 KiB+4096字节。失败只保留有限代码与固定消息、retryable=false、read_kind=registry、content_state=not-checked、upload_dispatch_state=not-sent，沿协议isError=true输出，不泄露上游message/details或返回部分目录。
 
-CLI/MCP不会自动翻页、下载正文、上传、查询原回执、写本地文件或恢复旧版，也没有新增资源URI。无服务端目录、数据库schema、迁移或依赖变化；仅源码文档人工审阅，未编译、类型检查、测试、执行CLI/MCP/SDK/API/数据库或发布。独立Schema/OpenAPI及运行证据待补，Mock源码接入见下节，R-001保持未完成，evidence为空。
+CLI/MCP不会自动翻页、下载正文、上传、查询原回执、写本地文件或恢复旧版，也没有新增资源URI。无服务端目录、数据库schema、迁移或依赖变化；仅源码文档人工审阅，未编译、类型检查、测试、执行CLI/MCP/SDK/API/数据库或发布。OpenAPI、Schema自动一致性及运行证据待补，Mock和独立Schema源码见后续章节，R-001保持未完成，evidence为空。
 
 ## Mock目录接入（源码阶段）
 
@@ -103,4 +103,14 @@ CLI/MCP不会自动翻页、下载正文、上传、查询原回执、写本地�
 
 项目目录GET允许8192字符路径以容纳Unicode编码，内层查询8 KiB；其他路径仍限512。Web Crypto仅计算游标绑定，沿同一命名空间和字段顺序，摘要后再检查取消/到期并同步选择当前记录；每store独立最多两笔目录读取，底层摘要未结束仍占名额。当前与探测记录各先在2 MiB内复制并核对当前版本Map一致，摘要独立16 KiB、完整封套256 KiB及更低调用方限额；不读取正文、不增加版本/回执/释放记录或自动翻页。详见[Mock项目文件目录](artifact-mock-runtime.md#项目文件目录)。
 
-模拟数据仍从空store的实际模拟上传产生，没有缺失/损坏历史种子、动态权限/分类、真实数据库锁或持久审计；同形游标不证明不同store数据相同，当前分页不是跨页快照。只开发源码与文档，不运行SDK/Mock或测试，不编译、类型检查、执行API/数据库或发布。独立Schema/OpenAPI、真实服务兼容性及运行证据仍缺，R-001保持未完成且evidence为空。
+模拟数据仍从空store的实际模拟上传产生，没有缺失/损坏历史种子、动态权限/分类、真实数据库锁或持久审计；同形游标不证明不同store数据相同，当前分页不是跨页快照。只开发源码与文档，不运行SDK/Mock或测试，不编译、类型检查、执行API/数据库或发布。OpenAPI、Schema自动一致性、真实服务兼容性及运行证据仍缺，独立Schema源码见下节，R-001保持未完成且evidence为空。
+
+## 独立JSON Schema（源码阶段）
+
+2026-11-04新增自包含JSON Schema 2020-12文件`packages/contracts/schemas/artifact-registry.json`及显式包子路径`@planemem/contracts/schemas/artifact-registry.json`。根为规范ArtifactRegistryEnvelope，提供ArtifactRegistryQuery、ArtifactRegistryNormalizedQuery、ArtifactRegistryNextQuery、ArtifactRegistryItem、ArtifactRegistryPage和ArtifactRegistryEnvelope锚点。先注册完整资源再解析片段；$id仅是契约标识，不是托管网址。详见[Schema使用说明](../../../packages/contracts/schemas/README.md#项目文件目录)。
+
+输入四字段可省略，limit注释默认20；规范回显必须包含limit，名称若存在则非空且没有外围空白；续页还必须包含cursor。闭合对象限制未知字段，约束分类、页大小、安全整数、公开摘要、来源形状及has_more-next_query关系。静态示例包括空页与结束单项页，均为手工开发示例，没有上传、查询、游标生成或运行校验。
+
+Schema不会执行base64url元组解码、身份/权限绑定、原scope/trace/query比较、名称与分类匹配、ID倒序及排他位置、来源逐项对应、完整next_query比较、UTF-16/字节限额或日期精确往返。这些继续由共享解析及真实服务端处理；仅满足cursor字符模式并不代表有效游标，结构通过也不表示有读取/下载/写权限或正文可用。
+
+资源不依赖历史目录Schema，不修改旧Artifact实体或生产解析器；无新依赖、数据库schema、生成SDK或发布包。此次只修改Schema源码、包路径和文档，未编译、类型检查、测试、执行生成器/校验器/SDK/Mock/API/数据库或发布。完整OpenAPI、自动生成/兼容性及运行证据仍待补齐，R-001保持未完成，evidence为空。
