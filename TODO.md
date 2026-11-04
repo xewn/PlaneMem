@@ -4,6 +4,8 @@
 
 ## 当前基线
 
+- P0/P2/P5：新增 ContextPack 完整读取共享契约与 Web 专用读取，4 KiB 查询、2 MiB 成功/16 KiB 错误、原 30 秒期限；核对完整内容/来源/预算/原 ID 与项目/版本/游标/trace/HTTP ETag，并按现有编译器规则重算 SHA-256。显式空 ID 不回退 latest，保存 trace 保持，rendered 需匹配具体 URI 与全文；页面失败保留原包和目录选择重试。原编译/命令解析保持，来源实时有效性仍由 Gateway 负责。SDK/CLI/MCP/Mock/Schema 专用接入与运行兼容证据待补，R-003 未完成、evidence 为空。仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、运行产品/浏览器/API/数据库或发布。
+
 ### 2026-11-04 开发补充（未编译、未发布、未测试）
 
 - P0/P2：MockContextHistorySeed可启用directory并要求全条目directory_record，完整投影与元数据/可用详情及同版历史核对，目录保留微秒，跨详情时间比对限原毫秒精度。精确筛选/原可见性先分页，文本搜索用显式query命中集合，未配置报错；共享v2游标绑定store/身份/到期/权限/可见集/筛选/页大小。MockWcpServer按operation=context衔接原SDK单页/迭代，与工作项共存；session可选directory_access仅三项显示提示，缺省false。五类读共用store两容量/30秒/取消，摘要未结束仍占槽；输入8 KiB/完整页2 MiB，种子仍16 MiB/1000条目/总1000历史，不补造详情/历史或数据库搜索。运行/真实兼容/微秒排序/权限/期限证据待补，R-003未完成、evidence为空。仅源码文档人工审阅和格式文本检查，未编译、类型检查、测试、执行Mock/SDK/产品/API/数据库或发布。

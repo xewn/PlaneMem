@@ -2,6 +2,7 @@ import { readWorkbenchAuditResponse } from './audit-response';
 import { readWorkbenchJsonResponse } from './workbench-response';
 import { contextHistoryReadFailure, readContextHistoryResponse } from './context-history-response';
 import { contextItemReadFailure, readContextItemResponse } from './context-item-read-response';
+import { contextPackReadFailure, readContextPackResponse } from './context-pack-read-response';
 import {
   contextDirectoryFailure,
   prepareContextDirectoryQuery,
@@ -43,6 +44,8 @@ import {
   type ContextHistoryReadQuery,
   parseContextItemReadQuery,
   type ContextItemReadQuery,
+  parseContextPackReadQuery,
+  type ContextPackReadQuery,
   parseConflictReadQuery,
   parseConflictReadEnvelope,
   type ConflictReadRecord,
@@ -1720,11 +1723,18 @@ export function compileWorkbenchContextPack(budget: number, ttl: number, key: st
 }
 
 export function readWorkbenchContextPack(packId?: string) {
+  const read = parseContextPackReadQuery(packId === undefined ? {} : { pack_id: packId });
   return gatewayRequest<ContextPackReceipt>(
-    '/v1/context-pack' + (packId ? '?pack_id=' + encodeURIComponent(packId) : ''),
+    '/v1/context-pack' +
+      (read.pack_id === undefined ? '' : '?pack_id=' + encodeURIComponent(read.pack_id)),
     {},
     undefined,
     'GET',
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    read,
   );
 }
 
@@ -1990,7 +2000,10 @@ async function gatewayRequest<T>(
   ) => WorkbenchResponse<T>,
   contextHistoryInput?: ContextHistoryReadQuery,
   contextItemInput?: ContextItemReadQuery,
+  contextPackInput?: ContextPackReadQuery,
 ): Promise<WorkbenchResponse<T>> {
+  const contextPackQuery =
+    contextPackInput === undefined ? undefined : parseContextPackReadQuery(contextPackInput);
   const contextItemQuery =
     contextItemInput === undefined ? undefined : parseContextItemReadQuery(contextItemInput);
   const contextHistoryQuery =
@@ -2037,7 +2050,8 @@ async function gatewayRequest<T>(
     workItemRequest ||
     contextDirectoryQuery ||
     contextHistoryQuery ||
-    contextItemQuery
+    contextItemQuery ||
+    contextPackQuery
   )
     assertReadSession();
   const artifactVersionsRequest =
@@ -2127,6 +2141,16 @@ async function gatewayRequest<T>(
       ...(method === 'POST' ? { body: JSON.stringify(body) } : {}),
     });
   } catch {
+    if (contextPackQuery) {
+      assertReadSession();
+      const error = contextPackReadFailure(
+        requestSignal.aborted || Date.now() >= requestDeadline
+          ? 'GATEWAY_REQUEST_TIMEOUT'
+          : 'GATEWAY_UNAVAILABLE',
+        trace_id,
+      );
+      throw new WorkbenchApiError(error.envelope.message, trace_id, 502, error.envelope.code);
+    }
     if (contextDirectoryQuery) {
       assertReadSession();
       const error = contextDirectoryFailure(
@@ -2217,6 +2241,7 @@ async function gatewayRequest<T>(
   }
   if (response.status === 401) {
     if (
+      contextPackQuery ||
       contextDirectoryQuery ||
       contextItemQuery ||
       contextHistoryQuery ||
@@ -2234,6 +2259,37 @@ async function gatewayRequest<T>(
     )
       void response.body?.cancel().catch(() => undefined);
     throw new AuthRequiredError();
+  }
+  if (contextPackQuery) {
+    try {
+      assertReadSession();
+      const result = await readContextPackResponse(
+        response,
+        requestSignal,
+        trace_id,
+        requestDeadline,
+        contextPackQuery,
+        scope,
+      );
+      assertReadSession();
+      return { ...result, data: result.data as unknown as T };
+    } catch (error) {
+      void response.body?.cancel().catch(() => undefined);
+      assertReadSession();
+      const failure =
+        error instanceof ContractError
+          ? error
+          : contextPackReadFailure('GATEWAY_RESPONSE_INVALID', trace_id);
+      throw new WorkbenchApiError(
+        failure.envelope.message,
+        trace_id,
+        response.ok ||
+        ['GATEWAY_RESPONSE_INVALID', 'GATEWAY_REQUEST_TIMEOUT'].includes(failure.envelope.code)
+          ? 502
+          : response.status,
+        failure.envelope.code,
+      );
+    }
   }
   if (contextDirectoryQuery) {
     try {

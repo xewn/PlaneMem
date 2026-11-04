@@ -99,7 +99,12 @@ export default async function ContextPage({
     try {
       saved = (await readWorkbenchContextPack(packId)).data;
     } catch (error) {
-      if (error instanceof WorkbenchApiError && [404, 409, 410].includes(error.status ?? 0)) {
+      if (
+        error instanceof WorkbenchApiError &&
+        ((error.status === 404 && error.code === 'CONTEXT_PACK_NOT_FOUND') ||
+          (error.status === 409 && error.code === 'CONTEXT_PACK_STALE') ||
+          (error.status === 410 && error.code === 'CONTEXT_PACK_EXPIRED'))
+      ) {
         packMessage = error.message;
         packNeedsReplacement =
           (error.status === 409 && error.code === 'CONTEXT_PACK_STALE') ||
@@ -591,7 +596,14 @@ export default async function ContextPage({
                   snapshots keep their original sources and cannot be refreshed in place.
                 </p>
               )}
-              {packError !== undefined && <PageError error={packError} />}
+              {packError !== undefined && (
+                <>
+                  <PageError error={packError} />
+                  <Link className="panel-link" href={pageHref(selectedId, cursor)} prefetch={false}>
+                    Retry this saved pack selection
+                  </Link>
+                </>
+              )}
               {saved && (
                 <>
                   <div className="pack-version">

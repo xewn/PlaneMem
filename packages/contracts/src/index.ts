@@ -37,6 +37,7 @@ export * from './session-state.js';
 export * from './session-resume.js';
 export * from './resume-clients.js';
 export * from './context-pack-response.js';
+export * from './context-pack-read.js';
 export * from './handoff-claim.js';
 export * from './handoff-create.js';
 export * from './handoff-read.js';
