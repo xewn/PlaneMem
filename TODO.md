@@ -4,6 +4,8 @@
 
 ## 当前基线
 
+- P2/P4：新增MCP list_context_packs，4 KiB可选pack_id/limit/cursor，默认25最大100；发现/prepare/协议调用和HTTP客户端要求沿原动态门禁，身份来自可信会话，必须实际未过期context.read与完整范围/账号/客户端，拒绝参数覆盖身份或写条件。内部GET原context.pack.list处理器执行父项目/read_restricted过滤，完整256 KiB元数据页/16 KiB错误、HTTP状态/type/trace/无ETag及原范围/查询/排序/续页核验，错误code/status一致且固定文本；文本包装512 KiB+4096。九类上下文工具共用每Gateway两容量和30秒期限，新增目录busy/timeout码，底层结束才释放；无正文/hash/来源读取、自动翻页/重试/换包/编译/写入。元数据不证明当前可读/来源有效，内部请求不可中止，无跨页快照，外层HTTP认证/发送不计期限。Mock目录、独立Schema/OpenAPI和运行证据待补，R-003未完成、evidence为空；仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布。
+
 - P2/P4：新增CLI context list-packs，网络main/callGateway与嵌入runWorkctx复用SDK单页保存包目录。最多一个4 KiB JSON/稳定文件，默认{}，仅网络有界stdin；可选pack_id/limit/cursor及成对expected_actor_id/expected_client_id，默认30秒timeout-ms。嵌入核对完整原GET/头/无正文/256 KiB限额、可信未过期实际context.read，授权审计后复查取消/身份；原handler执行父项目/read_restricted过滤，六字段元数据不另推断分类。共享九类上下文读每router两容量、底层结束才释放；完整页复用scope/query/trace/排序/续页核验，无局部结果/自动翻页/重试/换包/编译/保存。过期/来源变化包仍可列出，文件/stdin/stdout在读取期限外、通用transport无HTTP状态/ETag头。MCP/Mock目录适配、独立Schema/OpenAPI和运行证据待补；R-003未完成、evidence为空，仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/SDK/产品/API/数据库或发布。
 
 - P0/P2：新增SDK listContextPacks及按需contextPackPages，固定原范围/trace/可选账号客户端约束，GET /v1/context-packs显式页大小和原筛选游标，无正文/写条件。复用共享4 KiB查询、2 KiB记录、256 KiB完整元数据页，验证原scope/query/trace/排序/续页及metadata-only/not-checked标记；默认30秒含凭据/读取/校验、signal取消、固定错误。分页创建时要求完整账号客户端，next才发请求、每页独立期限，max_pages默认100最大1000；yield前保存续页、仍有续页时超过上限明确报错，无预取/重试/缩页/去重。泛型transport无HTTP状态/头，Fetch沿原bounded-json及16 KiB错误，SDK不验HTTP ETag或错误状态映射；没有跨页快照/新并发限制/内容摘要核验。CLI/MCP/Mock目录适配、独立Schema/OpenAPI和运行兼容仍待补；R-003未完成、evidence为空，仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布。

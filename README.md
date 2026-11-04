@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [MCP 保存包列表](docs/design/01-contracts/context-pack-runtime.md#mcp-保存包目录读取2026-11-05源码增量)：`list_context_packs`按当前身份读取一页保存包元数据，支持编号筛选和显式续页，选中后可另行读取或对比完整包。仅源码文档，未编译、测试、执行或发布。
+
 新增 [CLI 保存包列表](docs/design/01-contracts/context-pack-runtime.md#cli-保存包目录读取2026-11-05源码增量)：`context list-packs`按编号筛选或分页查找保存包，保留完整元数据和续页信息，再显式读取或对比选中的包。支持超时及可选账号、客户端约束。仅源码文档，未编译、测试、执行或发布。
 
 新增 [SDK 保存包列表](docs/design/01-contracts/context-pack-runtime.md#sdk-保存包目录读取2026-11-05源码增量)：`listContextPacks`读取完整元数据页，`contextPackPages`按需继续翻页，支持超时、取消和页数上限。列表中的包仍需打开后检查内容与来源。仅源码文档，未编译、测试、运行或发布。

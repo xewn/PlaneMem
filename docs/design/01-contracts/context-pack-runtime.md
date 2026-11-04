@@ -1,5 +1,7 @@
 # 持久化 ContextPack 开发说明
 
+2026-11-05新增[MCP保存包目录读取](#mcp-保存包目录读取2026-11-05源码增量)：`list_context_packs`提供严格身份下的单页元数据发现，保留原筛选/续页，不逐包读取正文或核验来源。仅源码文档，未编译、测试、运行或发布。
+
 2026-11-05新增[CLI保存包目录读取](#cli-保存包目录读取2026-11-05源码增量)：`context list-packs`网络及嵌入入口读取完整元数据页，支持精确编号和显式续页；不改变已保存包。仅源码文档，未编译、测试、运行或发布。
 
 2026-11-05新增[SDK保存包目录读取](#sdk-保存包目录读取2026-11-05源码增量)：完整单页读取及固定身份的按需分页，支持取消/超时和页数上限；不读取正文或核验来源。仅源码文档，未编译、测试、运行或发布。
@@ -337,7 +339,7 @@ R-003未完成、`evidence: []`。独立读取与目录故障隔离、有效/非
 - 资源边界：每router独立两笔目录读取容量，30秒单调处理器期限覆盖事务等待、元数据校验与封套生成；容量占用返回RATE_LIMITED/429，超时返回CONTEXT_PACK_DIRECTORY_TIMEOUT/503，底层工作实际结束才释放。不能保证取消已发出的数据库调用、限制全局SQL扫描成本或同步工作耗时；外层认证/授权/审计和HTTP发送不计该期限。异常元数据CONTEXT_PACK_INVALID/500，存储不可用CONTEXT_PACK_STORAGE_UNAVAILABLE/503，非法参数/绑定INVALID_INPUT/400。
 - Web：在当前会话范围内读取一页，完整校验HTTP状态/JSON/trace/无ETag及共享封套，成功256 KiB、错误16 KiB；另有30秒读取期限和阶段性会话到期检查。会话获取、渲染和发送不计读取期限。失败保留原筛选/游标显式重试，另可回首屏；无自动翻页、重试或缩页。网页参数pack/limit/cursor/base均单值，空pack表单表示不筛选；base为已选基础包ULID，仅用于导航，不发送Gateway。基础包随筛选/翻页保留，从任意页选择不同包后进入原对比页；read/compare返回保留目录位置及base，目录没有return_to，返回解析保持有限层级。
 
-本轮无新依赖或迁移，SQL源码复用016索引，未执行SQL。SDK和CLI目录适配见下文；MCP/Mock的专用目录适配、独立Schema/OpenAPI与权限/分页/超时/真实浏览器兼容证据待补；现有MCP资源候选目录仍按其原协议执行，不能与本元数据目录混同。R-003未完成、`evidence: []`；仅源码文档人工审阅和格式文本检查，未编译、类型检查、测试、渲染、执行产品/CLI/SDK/MCP/Mock/API/数据库或发布。
+本轮无新依赖或迁移，SQL源码复用016索引，未执行SQL。SDK、CLI和MCP目录适配见下文；Mock目录适配、独立Schema/OpenAPI与权限/分页/超时/真实浏览器兼容证据待补；现有MCP资源候选目录仍按其原协议执行，不能与本元数据目录混同。R-003未完成、`evidence: []`；仅源码文档人工审阅和格式文本检查，未编译、类型检查、测试、渲染、执行产品/CLI/SDK/MCP/Mock/API/数据库或发布。
 
 ## SDK 保存包目录读取（2026-11-05，源码增量）
 
@@ -407,3 +409,30 @@ workctx context list-packs --json-file saved-pack-list.json --timeout-ms 30000
 ```
 
 R-003未完成、`evidence: []`。三入口一致性、参数/文件/stdin边界、身份与权限/取消、元数据排序/分页/错误、底层容量保留及真实CLI/Gateway兼容尚无运行证据；MCP/Mock目录适配、独立Schema/OpenAPI待补。本轮仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/SDK/产品/API/数据库或发布；无SDK/共享契约/Gateway/Web/MCP/Mock/schema/依赖/迁移变化。
+
+## MCP 保存包目录读取（2026-11-05，源码增量）
+
+`list_context_packs`通过tools/call列出当前项目的一页已保存ContextPack元数据，供选择具体pack_id后调用get_context_pack或compare_context_packs。仅六字段保存元数据，不读取包正文、hash或来源；过期/来源变化包仍可能列出，metadata-only与not-checked标记必须保留。它不替代resources/list现有候选目录的逐包检查、扫描预算或资源URI返回协议。
+
+- 工具Schema是封闭对象，仅可选pack_id（精确ULID）、limit（默认25，1–100）和cursor（规范base64url，最多2048字符）；完整输入4 KiB，空对象合法，未知字段、外部身份、写条件、format/latest均拒绝。入口使用共享严格解析器，直接调用执行器也不能绕过字段与大小边界。
+- 工具发现、HTTP已验证客户端要求、prepare和协议调用复用上下文读取门禁：必须完整可信tenant/workspace/project/actor/client/trace、未过期且含实际context.read，管理员不替代。prepareMcpTool对合格调用返回MCP_TOOL_EXECUTOR_REQUIRED，避免绕过有界执行器；使用dispatchMcp或executeContextReadTool。身份在异步读取前捕获，原写条件移除，不能从arguments补入或替换。
+- 内部ApiGateway请求为GET /v1/context-packs，按既有内部约定把规范化查询放入内部body；公开HTTP GET仍使用URL查询参数。沿原router策略审计与目录处理器当前父项目/read_restricted过滤。六字段元数据没有分类/正文证据，执行器不据此独立推断restricted可见性；可信原处理器必须负责过滤。
+- 成功必须HTTP200、application/json、相同x-trace-id、无ETag；完整业务封套上限256 KiB，包含schema_version/trace_id/source_refs/scope/query/content_state/source_state/data/next_cursor。共享解析器核对原范围/查询/trace、固定目录来源标记、全部记录及排序/唯一性/筛选/游标/下一位置。错误正文上限16 KiB、相同trace且code/status一致：INVALID_INPUT=400、DENIED=403、NOT_FOUND或CONTEXT_PACK_NOT_FOUND=404、RATE_LIMITED=429、CONTEXT_PACK_INVALID=500、存储/目录等待/认证或审计服务不可用=503；未知code或不一致响应变成GATEWAY_RESPONSE_INVALID。输出只用固定文本和retryable=false，不泄漏任意内部异常。
+- MCP结果是单个content文本项，text中保留完整业务JSON，业务上限256 KiB；转义后的content包装另限512 KiB+4096。整体JSON-RPC外壳/请求ID和网络发送不在该文本包装上限内。超限或不完整均整次失败，不截断或交付半页；错误沿现有tools/call isError结果封装。
+- 九类上下文工具共用每ApiGateway两笔容量，30秒单调期限覆盖内部Gateway读取等待、完整解析和MCP包装；阶段性重验当前捕获身份的到期/能力。目录容量占满为MCP_CONTEXT_PACK_DIRECTORY_BUSY，本地超时为MCP_CONTEXT_PACK_DIRECTORY_TIMEOUT，服务端目录处理器超时沿CONTEXT_PACK_DIRECTORY_TIMEOUT。底层工作结束才释放，超时不能保证中止内部ApiGateway/数据库调用，也不能抢占同步校验；外层HTTP认证/发送不计该期限。未新增独立并发池或全局SQL限额。
+
+每次只取一页；next_cursor作为下一次cursor时保留原limit/pack_id、账号客户端与角色能力，绑定改变需显式重新开始。无自动翻页、缩页、重试、换包、编译或写入，页与页不是同一快照，列表显示不代表完整包现在可读或来源真实有效。仅源码调用示例，未执行：
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "saved-pack-list",
+  "method": "tools/call",
+  "params": {
+    "name": "list_context_packs",
+    "arguments": { "limit": 25 }
+  }
+}
+```
+
+R-003未完成、`evidence: []`。工具发现/客户端/prepare/协议兼容、完整查询与身份捕获、错误状态/页边界/转义输出、页序/续页及容量/超时/真实MCP兼容尚缺运行证据。Mock目录适配、独立Schema/OpenAPI后续；本轮仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布。无新REST路由、SDK/CLI/Web/Mock/schema/依赖/迁移变更。

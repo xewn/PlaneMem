@@ -954,6 +954,23 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_pack_mcp_directory_development_increment:
+      date: "2026-11-05"
+      status: "Source-only MCP saved ContextPack metadata listing; R-003 remains incomplete."
+      artifacts:
+        - "apps/api-gateway/src/mcp/context-history.ts"
+        - "apps/api-gateway/src/mcp/catalog.ts"
+        - "docs/design/01-contracts/context-pack-runtime.md"
+        - "docs/design/01-contracts/mcp-runtime.md"
+      behavior: "list_context_packs accepts only optional pack_id/limit/cursor within 4 KiB; default 25/max 100. Existing dynamic discovery/client/prepare/protocol gates require verified unexpired actual context.read and complete captured identity. Internal GET /v1/context-packs uses the original handler's parent-project/read_restricted filter; metadata-only/not-checked records may include expired/stale packs without content/hash/source reads. Complete 256 KiB envelope, 16 KiB errors, original HTTP/type/trace/no ETag, known error status mapping and shared scope/query/order/filter/continuation validation. Escaped MCP content wrapper 512 KiB+4096. Nine context tools share two reads per Gateway and one 30-second executor deadline, retaining slots until underlying work settles, with distinct MCP_CONTEXT_PACK_DIRECTORY_BUSY/TIMEOUT. No partial pages, automatic pagination/retry/fallback/compile/write."
+      evidence: []
+      pending_evidence:
+        - "Discovery/client/prepare/direct protocol parity and strict immutable identity/query constraints"
+        - "Original handler visibility, expired/stale metadata versus full read behavior and no content access"
+        - "Complete HTTP/error status/body bindings, ordering/cursor and escaped text size limits"
+        - "Shared capacity, retained slots/timeouts and real Gateway/MCP client compatibility"
+      remaining_scope: "Mock directory adapter, standalone Schema/OpenAPI and runtime evidence. Metadata does not prove full-pack readability or freshness, trusted handler supplies visibility, and cursors are not cross-page snapshots. Internal requests cannot be canceled; outer HTTP authentication/sending and JSON-RPC wrapper are outside executor/text limits."
+      execution: "Source/docs, manual review and formatting/text checks only; no build, typecheck, tests, MCP/product/API/database execution or release. No new REST route/SDK/CLI/Web/Mock/schema/dependency/migration changes."
     context_pack_cli_directory_development_increment:
       date: "2026-11-05"
       status: "Source-only CLI saved ContextPack metadata listing; R-003 remains incomplete."
@@ -971,7 +988,7 @@ requirements:
         - "Default/explicit filters, UTF-8 stable file/bounded stdin, duplicate/unknown options and input limits"
         - "Complete metadata/ordering/continuation, expiry/binding changes and error/empty stdout behavior"
         - "Deadline/authorization waits, shared retained capacity and real CLI/SDK/Gateway compatibility"
-      remaining_scope: "MCP/Mock directory adapters, standalone Schema/OpenAPI and runtime evidence. Metadata is not full-pack readability; trusted handler supplies visibility. Input capture/stdout sending are outside SDK deadline; generic transport has no HTTP status/ETag headers and pages are not one snapshot."
+      remaining_scope: "MCP source is tracked above; Mock directory adapter, standalone Schema/OpenAPI and runtime evidence remain. Metadata is not full-pack readability; trusted handler supplies visibility. Input capture/stdout sending are outside SDK deadline; generic transport has no HTTP status/ETag headers and pages are not one snapshot."
       execution: "Source/docs, manual review and formatting/text checks only; no build, typecheck, tests, CLI/SDK/product/API/database execution or release. No SDK/shared contract/Gateway/Web/MCP/Mock/schema/dependency/migration changes."
     context_pack_sdk_directory_development_increment:
       date: "2026-11-05"
