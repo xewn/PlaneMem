@@ -9,6 +9,7 @@ import { prepareObservedRead, observedReadResult } from './observed.js';
 import { isWorkItemReadCommand, runWorkItemRead } from './work-item-reads.js';
 import { isContextReadCommand, runContextRead } from './context-history.js';
 import { runContextCompile } from './context-pack-compile.js';
+import { inspectContextPackOriginal } from './context-pack-original.js';
 import { prepareHandoffClaim, handoffClaimResult } from './handoff-claim.js';
 import { prepareHandoffCreate, handoffCreateResult } from './handoff-create.js';
 import { prepareSessionStart, sessionStartResult } from './session-start.js';
@@ -285,6 +286,7 @@ export async function runWorkctx(
     'context get': 'context.pack.read',
     'context list-packs': 'context.pack.list',
     'context save-identity': 'context.pack.save-context',
+    'context inspect-save': 'context.pack.original.inspect',
     'context create': 'context.item.create',
     'context read': 'context.item.read',
     'context read-archived': 'context.item.archived.read',
@@ -364,6 +366,10 @@ export async function runWorkctx(
       }),
     };
   try {
+    if (command === 'context inspect-save') {
+      const result = await inspectContextPackOriginal(argv, context.trace_id);
+      return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
+    }
     if (command && isContextReadCommand(command)) {
       const result = await runContextRead(argv, router, context);
       return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };

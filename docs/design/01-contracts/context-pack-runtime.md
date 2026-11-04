@@ -1,5 +1,7 @@
 # 持久化 ContextPack 开发说明
 
+2026-11-05新增[CLI完整保存原请求](#cli完整保存原请求2026-11-05源码增量)：与Web共用8 KiB原格式，新文件准备/离线审阅/明确确认提交；Gateway路径、身份权限及原参数键固定，同token复核后完整保存回执检查。仅源码文档，未编译、类型检查、测试、执行客户端/接口或发布。
+
 2026-11-05新增[CLI/MCP保存身份入口](#climcp保存身份入口2026-11-05源码增量)：CLI context save-identity及MCP get_context_pack_save_context读取完整可信身份/期限/权限提示，沿原上下文读期限与容量，不保存包或替换原请求。仅源码文档，未编译、类型检查、测试、执行客户端/接口或发布。
 
 2026-11-05新增[网页原请求准备与恢复](#网页原请求准备与恢复2026-11-05源码增量)：完整原请求固定网关/身份/权限桶/参数/键，浏览器双槽保存和完整分页找回，文件导入导出；每次发送同token复核原save-context，身份变化不改绑。仅源码文档，未编译、类型检查、测试、渲染、执行浏览器/API/保存请求或发布。
@@ -673,4 +675,38 @@ workctx context save-identity --json-file original-identity.json
 
 第二条的文件必须只包含成对`expected_actor_id`和`expected_client_id`，取自原请求，不接受完整网页原请求文件；Gateway与项目仍由原CLI环境配置提供。MCP tools/call示例为`{"name":"get_context_pack_save_context","arguments":{}}`，不调用compile工具。
 
-R-003未完成，evidence为空。真实网络/嵌入/MCP调用、权限发现、参数/身份不符、损坏/过期响应、超时/容量与旧工具兼容证据待补；CLI/MCP完整原请求持久化和恢复、历史回执及独立Schema/OpenAPI仍待开发。仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/MCP/SDK/API/产品/数据库或发布；无共享契约、SDK、REST保存器、Web、Mock、独立schema、依赖或迁移变化。
+R-003未完成，evidence为空。真实网络/嵌入/MCP调用、权限发现、参数/身份不符、损坏/过期响应、超时/容量与旧工具兼容证据待补；CLI完整原请求文件流程由下节补充，MCP完整恢复、历史回执及独立Schema/OpenAPI仍待开发。本节身份入口增量仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/MCP/SDK/API/产品/数据库或发布；当轮无共享契约、SDK、REST保存器、Web、Mock、独立schema、依赖或迁移变化。
+
+## CLI完整保存原请求（2026-11-05源码增量）
+
+共享`context-pack-save-original.ts`接收原Web的PACK_ORIGINAL_BYTES、PackSaveBinding/PackSaveOriginal及规范Gateway/身份/原请求解析、编码、相等检查。根导出供Web与CLI使用，Web save-model保留同名重导出和原浏览器槽键计算。既有schema_version=1/kind=context-pack-save、Gateway含路径/五身份/restricted/显式预算TTL/原键的8 KiB封闭格式和规范字段顺序保持，无浏览器数据迁移；原文件不包含token/cookie、会话期限或成功回执，也不是签名/保存证据。
+
+CLI网络main新增以下三条命令。下面只是未执行的用法示例，ORIGINAL_KEY由调用者为这份新请求明确选择，重试保留同一文件及键：
+
+```text
+workctx context prepare-save --key ORIGINAL_KEY --output NEW_ORIGINAL.json --json-file DRAFT.json
+workctx context inspect-save --json-file NEW_ORIGINAL.json
+workctx context submit-save --json-file NEW_ORIGINAL.json --reviewed --timeout-ms 30000
+```
+
+prepare-save要求--key和新--output，最多一个可选--json-file草稿（4 KiB），只接受budget_tokens/ttl_seconds，省略草稿为{}并使用4096/3600默认值，最终原文两参数均显式。禁止草稿身份/键/未知字段，原键精确保留、不trim或生成；同键不同参数的最终拒绝仍由服务器决定。先核对输出目录/新目标和稳定普通草稿，再读取一次可信save-context，捕获当前完整身份、权限桶、规范配置Gateway和原参数键。准备从不POST保存包。
+
+原文复用既有文件输出工具：在已存在目录内独占建立临时普通文件（模式0600），写入、sync、同句柄读回SHA-256、关闭后以独占硬链接发布新目标；目标已有文件或链接均不覆盖，文件系统不支持硬链接时明确失败。发布后再完整稳定读取最终路径，核对精确字节及规范原文；失败保留已发布目标和可用恢复路径，不删除用户目标。仅清理工具自身仍拥有的临时文件；清理失败返回cleanup_pending/temporary_path。输出路径预检和本地发布不与网络超时竞速，发布开始后等待真实结果，避免先报超时后迟到写文件。该流程不承诺目录项fsync或设备掉电后的持久性。
+
+准备成功输出完整原请求、original_file、规范request_sha256、identity_observed_expires_at、saved-and-read-back及not-sent/not-checked。观察到的期限只在准备结果中，原文件不冻结旧会话到期时间；后续同身份续期允许重新提交。准备完成不证明项目记录可读、未来保存获准或同键历史不存在。占用目标/本地失败不会自动选择新文件或请求键。
+
+inspect-save只接受一个--json-file（8 KiB），不要求网络凭据或环境项目；main在读取环境变量前分发，嵌入runWorkctx也支持这一离线命令。稳定普通文件经严格UTF-8和完整共享模型解析，输出规范完整original、原路径、规范request_sha256及原字节file_sha256，明确structure-checked/not-checked/not-sent。格式空白/字段顺序不同可产生不同file_sha256和相同request_sha256；摘要不是签名、远端回执或原文件历史证明。
+
+submit-save必须提供完整--json-file及--reviewed，只可另给timeout-ms；不接受新键、预算、TTL、账号、输出路径、内联JSON或stdin。第一次稳定读取原文件后，比较配置WORKCTX_URL规范基址（含路径）及三范围与原binding；不匹配时不发身份GET或保存POST，也不采用文件URL作为独立网络目标。认证token从本次配置捕获一次，身份GET和保存POST使用同一token，GET携带原actor/client相等条件。完整16 KiB可信身份核对原五身份、未过期会话及restricted桶，任何变化均停止，不自动更新绑定。
+
+身份通过后再次稳定读取相同文件路径，核对全部原字节和规范原文，变化、缺失或读取失败停止本次保存；仅通过后允许一次原参数/原键POST。读取采用文件大小/mtime/ctime前后检查及完整内容，没有跨进程文件锁；最后读取后的外部文件变化不能改变已捕获的发送副本，也不构成永久文件保留保证。文件不是认证资料，用户必须自行保留原文，不从重新登录或损坏文件猜造缺失身份。
+
+新流程复用FetchWcpTransport和SDK完整读取/提交器，通过受限fetch适配保留规范Gateway的路径前缀：SDK的根/v1路径只可为save-context GET和compile POST，适配再追加到捕获的配置基址；输入URL必须仍为配置origin，无query/hash，重定向沿error。没有修改通用SDK的URL行为，旧compile不获得新文件保证；此适配不会把token发往原文件指定的另一基址。
+
+默认30秒或显式1..2147483647毫秒覆盖身份GET、第二次文件读取、最多一次POST、完整2 MiB封套/预算最大TTL/HTTP ETag/SHA-256及restricted内容检查。第一次原文件/草稿采集和新文件发布、stdout输出在网络期限外；准备网络预算只覆盖身份读取。每阶段核对单调时钟、AbortController及所读会话期限，第二次文件读取即使迟到也必须再次检查才允许发送。响应除早期401外核对状态200或4xx/5xx与原trace，身份及错误响应无ETag；SDK有界UTF-8/JSON读取和固定错误继续生效，成功保存HTTP ETag必须与已核验JSON一致。原restricted=false时拒绝回执中的入选restricted内容。
+
+本适配器只在即将调用真实POST fetch时标记started；身份GET和本地失败不会标记保存派发。此后任何失败包括HTTP错误、过期、超时、摘要/ETag不符均unknown，不能借SDK或上游details改称未保存。输出固定错误说明及自有compile_dispatch_state/server_outcome/recovery，不透传远端details；未发送本次POST也不能否定过去同键保存。超时停止本地等待并取消可用响应体，不保证服务器撤销提交；无自动重试、换键、读回、删除原文件或自动写成功回执。成功stdout保持完整原SDK保存封套，不伪造键归属证明。
+
+这三条命令不读stdin，拒绝重复/未知/无关选项；CLI用法错误退出2，原文件不可用/网络/身份/保存失败退出1。准备/提交由具有明确Gateway配置和token的网络main执行；嵌入runWorkctx不从裸router推断远端Gateway，只开放离线审阅，callGateway通用对象接口尚未增加文件工作流。Web导出原文件可由CLI审阅/提交；CLI新文件可在Web原恢复页导入，但仍必须匹配当前原Gateway、完整身份和权限桶。旧无绑定表单不迁造，原context compile及MCP保存工具保持兼容行为。
+
+R-003未完成、evidence为空。跨Web/CLI规范字节与导入恢复、真实权限续期/路径前缀、文件并发/硬链接/故障/读回、取消与迟到工作、完整回执/ETag/restricted及旧调用兼容仍缺运行证据。MCP和嵌入完整原请求流程、历史回执持久化/只读查询、恢复目录/备份清理和独立Schema/OpenAPI仍待补。仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/SDK/网页/API/产品/数据库或发布；无SDK、后端保存器、MCP、Mock、独立schema、依赖、数据库、样式或迁移变化。

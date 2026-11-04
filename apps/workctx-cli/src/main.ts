@@ -102,6 +102,11 @@ import { callProposalCreateReceiptArguments } from './proposal-create-receipt.js
 import { callProposalReviewReceiptArguments } from './proposal-review-receipt.js';
 import { isWorkItemReadCommand, callWorkItemReadArguments } from './work-item-reads.js';
 import { isContextReadCommand, callContextReadArguments } from './context-history.js';
+import {
+  isContextPackOriginalCommand,
+  inspectContextPackOriginal,
+  callContextPackOriginal,
+} from './context-pack-original.js';
 import { callContextCompileArguments } from './context-pack-compile.js';
 
 const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
@@ -339,6 +344,9 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
                                  Optional --json/--json-file (4 KiB), default {}; limit 25 (1-100), one page per call
   context save-identity          Read current save account/client/project/permissions; no save
                                  Optional --json/--json-file (4 KiB), default {}; paired expected_actor_id/expected_client_id, optional --timeout-ms
+  context prepare-save           Save a complete original to a new --output file; requires --key, optional --json-file draft
+  context inspect-save           Review a complete --json-file original locally, without connecting
+  context submit-save            Send the unchanged --json-file original after --reviewed; optional --timeout-ms
   context create                 Add proposed context; title/content/source_refs and --key
   context read                   Read complete current item_id; bounded response and timeout
   context list                   Read one complete page by query/layer/classification/status/item_type/archived/limit/cursor
@@ -649,6 +657,9 @@ export async function main(args: string[]): Promise<number> {
       'context get',
       'context list-packs',
       'context save-identity',
+      'context prepare-save',
+      'context inspect-save',
+      'context submit-save',
       'context create',
       'context read',
       'context list',
@@ -682,6 +693,25 @@ export async function main(args: string[]): Promise<number> {
         : positionals.length > 2)
     )
       usage('Unknown or incomplete command. Run workctx --help');
+    if (name === 'context inspect-save') {
+      print(await inspectContextPackOriginal(args, trace));
+      return 0;
+    }
+    if (isContextPackOriginalCommand(name)) {
+      print(
+        await callContextPackOriginal(args, {
+          base: process.env.WORKCTX_URL ?? 'http://127.0.0.1:3000',
+          token: token(),
+          trace,
+          scope: {
+            tenant_id: envId('WORKCTX_TENANT_ID'),
+            workspace_id: envId('WORKCTX_WORKSPACE_ID'),
+            project_id: envId('WORKCTX_PROJECT_ID'),
+          },
+        }),
+      );
+      return 0;
+    }
     if (name === 'artifacts inspect-request') {
       print(await inspectArtifactRequestArguments(args, trace));
       return 0;
