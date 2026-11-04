@@ -1,0 +1,236 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem saved ContextPack metadata directory",
+    "version": "0.1.0",
+    "description": "Source-only description of the existing GET /v1/context-packs operation. This document covers only saved-pack metadata listing, not the complete WCP API. No validator, generator or runtime verification was executed. Load this document and the adjacent ../schemas/context-pack-directory.json resource locally, preserving relative paths and registering the schema's full $id; do not fetch planemem.local."
+  },
+  "servers": [
+    { "url": "/", "description": "Use the intended Gateway origin; no deployed host is implied." }
+  ],
+  "tags": [
+    {
+      "name": "Saved ContextPack directory",
+      "description": "Current permission-filtered saved metadata; content and sources are not read."
+    }
+  ],
+  "paths": {
+    "/v1/context-packs": {
+      "get": {
+        "operationId": "listSavedContextPacks",
+        "tags": ["Saved ContextPack directory"],
+        "summary": "List one page of saved ContextPack metadata",
+        "description": "Require a verified unexpired Bearer session, complete scope/actor/client and normalized context.read capability. Existing workbench authentication may map workbench.read or its designated client's Base capability to context.read; admin alone is insufficient. The Gateway checks the parent project and filters saved read_restricted buckets using data.restricted.read before paging. Records contain only version, pack_id, created_at, expires_at, budget_tokens and used_tokens; expired/stale packs may appear and an exact absent or invisible pack returns an empty page. An unavailable parent project returns 404. Sort by version descending then pack_id ASCII/C descending; the cursor binds identity, scope, roles/capabilities, page size and exact filter. Preserve those conditions for continuation; it is not a credential or a cross-page snapshot. Query fields must occur at most once; unknown/empty/null fields are rejected. Do not send a body, transfer-encoding, write conditions, conditional-cache headers or Range. Content-length must be absent or the literal 0. The response never includes ETag, revision or content/hash/source manifests. Inspect a full pack through its separate read operation when needed. HTTP expected identity headers are independently optional; CLI's paired JSON constraints are a different input contract.",
+        "security": [{ "GatewayBearer": [] }],
+        "x-wcp-operation": "context.pack.list",
+        "x-required-normalized-capabilities": ["context.read"],
+        "x-runtime-limits": {
+          "parsed-query-bytes": 4096,
+          "record-bytes": 2048,
+          "success-envelope-bytes": 262144,
+          "handler-timeout-ms": 30000,
+          "handler-concurrency-per-router": 2,
+          "description": "Annotations only, enforced by existing code. Parsed query budget is not a raw URL byte limit. Handler deadline excludes outer authentication, authorization/audit and response sending. Timed-out database work retains its slot until it settles. Client error readers impose their own 16 KiB limits; no global server error-size guarantee is asserted."
+        },
+        "x-rejected-request-headers": [
+          "transfer-encoding",
+          "idempotency-key",
+          "if-match",
+          "if-match-version",
+          "if-none-match",
+          "if-modified-since",
+          "if-unmodified-since",
+          "range",
+          "if-range"
+        ],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantId" },
+          { "$ref": "#/components/parameters/WorkspaceId" },
+          { "$ref": "#/components/parameters/ProjectId" },
+          { "$ref": "#/components/parameters/TraceParent" },
+          { "$ref": "#/components/parameters/TraceId" },
+          { "$ref": "#/components/parameters/ExpectedActorId" },
+          { "$ref": "#/components/parameters/ExpectedClientId" },
+          {
+            "name": "pack_id",
+            "in": "query",
+            "required": false,
+            "style": "form",
+            "explode": false,
+            "description": "Optional exact saved pack ID. Empty is invalid; omit to list all visible metadata. At most one result, with no next_cursor, when provided.",
+            "schema": { "$ref": "../schemas/context-pack-directory.json#/$defs/ulid" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "style": "form",
+            "explode": false,
+            "description": "Page size, default 25. On the wire use one canonical positive decimal integer 1..100: no sign, leading zero, fraction, exponent or whitespace. Response query always echoes the normalized integer. Changing the limit invalidates an existing cursor binding.",
+            "schema": { "$ref": "../schemas/context-pack-directory.json#/$defs/limit" }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "style": "form",
+            "explode": false,
+            "description": "Opaque original next_cursor for explicit continuation with unchanged conditions. Omit on the first page; empty is invalid. Runtime decodes and re-encodes the canonical base64url position and verifies its binding; lexical validity alone is insufficient. Restart without cursor when original conditions change.",
+            "schema": {
+              "$ref": "../schemas/context-pack-directory.json#ContextPackDirectoryCursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Complete metadata page, including a valid empty page. The complete JSON envelope is at most 256 KiB. Every original scope/query/trace/source binding, record and page position is checked by the shared parser. No ETag is sent and conditional requests are rejected rather than producing 304.",
+            "headers": {
+              "cache-control": { "$ref": "#/components/headers/NoStore" },
+              "x-trace-id": {
+                "description": "Required on successful directory reads; equals body.trace_id and the selected inbound trace.",
+                "required": true,
+                "schema": { "$ref": "../schemas/context-pack-directory.json#/$defs/requestTrace" }
+              }
+            },
+            "content": {
+              "application/json": { "schema": { "$ref": "../schemas/context-pack-directory.json" } }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error",
+            "description": "INVALID_INPUT for unknown/repeated/invalid query, forbidden body or condition headers, or invalid/changed cursor binding; retryable=false. Early input rejection may omit x-trace-id; use body.trace_id. Unexpected boundary errors retain the shared error envelope."
+          },
+          "401": {
+            "$ref": "#/components/responses/Error",
+            "description": "UNAUTHENTICATED for missing or rejected Bearer credentials; retryable=false. This early authentication response does not guarantee x-trace-id or WWW-Authenticate headers. Renew the intended session explicitly."
+          },
+          "403": {
+            "$ref": "#/components/responses/Error",
+            "description": "DENIED for scope or expected-identity mismatch, policy/capability denial, missing valid actor/client or a session that expires before completion; retryable=false. Early authentication/identity denial may omit x-trace-id."
+          },
+          "404": {
+            "$ref": "#/components/responses/Error",
+            "description": "CONTEXT_PACK_NOT_FOUND when the parent project is unavailable or not visible; retryable=false. A missing/invisible exact pack within a visible project instead yields 200 with an empty data array."
+          },
+          "429": {
+            "$ref": "#/components/responses/Error",
+            "description": "RATE_LIMITED: shared actor/path request-rate limiter sets retryable=true; occupied two-slot directory handler capacity sets retryable=false. No Retry-After header or automatic retry is promised."
+          },
+          "500": {
+            "$ref": "#/components/responses/Error",
+            "description": "CONTEXT_PACK_INVALID for invalid or incomplete stored metadata/page (retryable=false), or INTERNAL_ERROR for an unexpected command failure (generic serializer uses retryable=true). No partial page is returned."
+          },
+          "503": {
+            "$ref": "#/components/responses/Error",
+            "description": "CONTEXT_PACK_STORAGE_UNAVAILABLE or CONTEXT_PACK_DIRECTORY_TIMEOUT set retryable=false; WORKBENCH_AUTH_UNAVAILABLE and AUDIT_PERSISTENCE_UNAVAILABLE set retryable=true. The authentication path may omit x-trace-id. Timeout stops waiting but does not cancel SQL or release occupied capacity before underlying work ends."
+          },
+          "default": {
+            "$ref": "#/components/responses/Error",
+            "description": "Other application boundary errors retain the shared error shape. This does not guarantee the format of errors produced by proxies or HTTP parsing before the application."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "GatewayBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Send Authorization: Bearer <token>. The Gateway verifies issuer/session claims and expiration. Scope headers select and constrain an authorized project; actor/client/roles/capabilities come from verified claims. This scheme declares transport syntax, not authorization or an OAuth acquisition flow."
+      }
+    },
+    "parameters": {
+      "TenantId": {
+        "name": "x-tenant-id",
+        "in": "header",
+        "required": true,
+        "description": "Requested tenant; must match the verified authorized scope.",
+        "schema": { "$ref": "../schemas/context-pack-directory.json#/$defs/ulid" }
+      },
+      "WorkspaceId": {
+        "name": "x-workspace-id",
+        "in": "header",
+        "required": true,
+        "description": "Requested workspace; must match the verified authorized scope.",
+        "schema": { "$ref": "../schemas/context-pack-directory.json#/$defs/ulid" }
+      },
+      "ProjectId": {
+        "name": "x-project-id",
+        "in": "header",
+        "required": true,
+        "description": "Requested project; must match the verified authorized scope. The visible parent project is checked on every page.",
+        "schema": { "$ref": "../schemas/context-pack-directory.json#/$defs/ulid" }
+      },
+      "TraceParent": {
+        "name": "traceparent",
+        "in": "header",
+        "required": false,
+        "description": "The current runtime treats this as an opaque trace identifier and prefers a nonempty value over x-trace-id. It does not perform W3C Trace Context parsing here. Must satisfy the shared trace rule for a successful read.",
+        "schema": { "$ref": "../schemas/context-pack-directory.json#/$defs/requestTrace" }
+      },
+      "TraceId": {
+        "name": "x-trace-id",
+        "in": "header",
+        "required": false,
+        "description": "Used when traceparent is absent/empty. If neither has a nonempty value, the server generates trace_http_<ULID>. Prefer supplying one trace header; success echoes the selected value in the response body and x-trace-id.",
+        "schema": { "$ref": "../schemas/context-pack-directory.json#/$defs/requestTrace" }
+      },
+      "ExpectedActorId": {
+        "name": "x-expected-actor-id",
+        "in": "header",
+        "required": false,
+        "description": "Optional equality constraint on the verified actor, never an identity input. HTTP permits this independently of the client constraint. A mismatch yields DENIED.",
+        "schema": { "$ref": "../schemas/context-pack-directory.json#/$defs/ulid" }
+      },
+      "ExpectedClientId": {
+        "name": "x-expected-client-id",
+        "in": "header",
+        "required": false,
+        "description": "Optional equality constraint on the verified client, never a credential. HTTP permits this independently of the actor constraint. Runtime counts at most 255 UTF-16 units and rejects C0/unpaired surrogates; this is the shared trace/identifier rule, not the CLI rule that additionally excludes DEL.",
+        "schema": { "$ref": "../schemas/context-pack-directory.json#/$defs/requestTrace" }
+      }
+    },
+    "headers": {
+      "NoStore": {
+        "description": "All JSON responses emitted by this application boundary use this cache policy.",
+        "required": true,
+        "schema": { "type": "string", "const": "private, no-store" }
+      },
+      "ErrorTrace": {
+        "description": "Present for command-layer errors and equals body.trace_id; early authentication/input errors may omit it. Read the body trace without assuming this header exists.",
+        "required": false,
+        "schema": { "type": "string", "minLength": 1 }
+      }
+    },
+    "schemas": {
+      "ErrorEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message", "details", "trace_id", "retryable"],
+        "properties": {
+          "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]+$" },
+          "message": { "type": "string", "minLength": 1 },
+          "details": { "type": "object", "additionalProperties": true },
+          "trace_id": { "type": "string", "minLength": 1 },
+          "retryable": { "type": "boolean" }
+        },
+        "description": "The existing five-field serialized error envelope. Details are open JSON diagnostic fields, not a directory record. Early errors can echo a trace that would fail a successful read's stricter trace constraint. Code/message/retryable depend on the failing stage; do not treat a retryable flag as an instruction to retry automatically or substitute credentials."
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Application JSON error, never a partial directory page. The status-specific descriptions list current known codes, not a new exhaustive error enum.",
+        "headers": {
+          "cache-control": { "$ref": "#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "#/components/headers/ErrorTrace" }
+        },
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } }
+        }
+      }
+    }
+  }
+}

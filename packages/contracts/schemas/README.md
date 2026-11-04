@@ -4,6 +4,8 @@
 
 ## 保存 ContextPack 元数据目录
 
+HTTP路径、认证/范围头、查询编码、成功头和错误映射另见[目录OpenAPI源码](../openapi/README.md#保存包元数据目录)，它从本地引用此完整Schema；HTTP定义不改变本资源的JSON输入或封套形状。
+
 `context-pack-directory.json`采用JSON Schema 2020-12，包子路径为`@planemem/contracts/schemas/context-pack-directory.json`。文件自包含全部定义，根`ContextPackDirectoryEnvelope`描述GET /v1/context-packs完整成功页、SDK `listContextPacks`与`contextPackPages`每页、CLI `context list-packs`输出和MCP `list_context_packs`文本中的JSON，也适用于Mock返回的同形封套。它不包含HTTP状态/头、MCP外层包装、Mock种子/会话或SDK读取/迭代选项。
 
 从本地文件或包子路径加载完整资源，以其`$id`注册后再解析锚点；无需加载完整读取或对比Schema，也不向planemem.local联网取文件。目录仅保存六个标量，自包含定义避免为了元数据引入完整包内容结构。Schema和运行时的一致性尚未自动验证。
@@ -31,7 +33,7 @@
 - pack_id唯一、筛选匹配、版本/ASCII（数据库C排序）ID降序、每项都在原游标之后、条数不超过query.limit。`uniqueItems`只拒绝完全相同记录，不能检查相同ID但其他值不同的记录。
 - 游标须规范无填充base64url，解码为`[1, 64位小写十六进制绑定, 正安全版本, ULID]`并精确重新编码。next_cursor只能用于完整非空页，位置必须是末项；已有cursor时绑定必须相同。服务另核对当前身份/权限/筛选绑定，Mock使用独立场景绑定，游标不是签名、授权或跨页快照。
 
-元数据没有正文、hash、ETag、revision、分类或包内来源；metadata-only/not-checked明确没有检查完整内容或来源。需要完整内容时再调用原读取入口。示例仅为人工编写的输入，不是运行证据。接入边界见[保存包运行契约](../../../docs/design/01-contracts/context-pack-runtime.md)。本次无生产JSON导入或校验器依赖；未运行Schema校验、生成器、编译、类型检查、测试或发布，OpenAPI对齐、本地加载和自动一致性证据仍待补。
+元数据没有正文、hash、ETag、revision、分类或包内来源；metadata-only/not-checked明确没有检查完整内容或来源。需要完整内容时再调用原读取入口。示例仅为人工编写的输入，不是运行证据。接入边界见[保存包运行契约](../../../docs/design/01-contracts/context-pack-runtime.md)。本次无生产JSON导入或校验器依赖；未运行Schema校验、生成器、编译、类型检查、测试或发布，目录OpenAPI源码见本节链接，全量接口目录、本地加载和自动一致性证据仍待补。
 
 ## 保存 ContextPack 对比
 

@@ -954,6 +954,24 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_pack_directory_openapi_development_increment:
+      date: "2026-11-05"
+      status: "Source-only OpenAPI description of the existing saved ContextPack metadata directory; R-003 remains incomplete."
+      artifacts:
+        - "packages/contracts/openapi/context-pack-directory.json"
+        - "packages/contracts/openapi/README.md"
+        - "packages/contracts/package.json"
+        - "docs/design/01-contracts/wcp-api.md"
+        - "docs/design/01-contracts/context-pack-runtime.md"
+      behavior: "Scoped OpenAPI 3.1.0 GET /v1/context-packs document and package subpath reuse the local standalone metadata schema. Describe verified Bearer and required scope headers, independently optional HTTP identity constraints, opaque traceparent precedence, single known query parameters/canonical numeric limit, no body/write/cache/range conditions. Complete 200 metadata and five-field errors preserve actual header/status behavior: early errors may omit x-trace-id, application JSON uses no-store, no success ETag. Distinguish retryable for shared rate limit versus occupied directory slots and authentication/audit versus storage/timeout. Extensions annotate existing authority/size/capacity/deadline rules; they do not implement enforcement."
+      evidence: []
+      pending_evidence:
+        - "Local package/document resolution, relative external schema IDs/anchors and OpenAPI 3.1 tool compatibility"
+        - "HTTP query/header/status/body parity with existing server/authentication/router/handler boundaries"
+        - "Source-specific retryable and early-error trace headers versus client fixed error mappings"
+        - "Generated-client compatibility, automated schema consistency and real Gateway behavior"
+      remaining_scope: "Only the saved metadata directory is described; full WCP OpenAPI and tool/runtime evidence remain. No generated client or production validator was introduced. Authorization, cursor/request binding and byte/UTF-16/time budgets remain runtime checks."
+      execution: "Source/docs, manual review and formatting/text checks only; no validator/generator, build, typecheck, tests, client/API/database execution or release. No runtime/dependency/migration changes."
     context_pack_directory_schema_development_increment:
       date: "2026-11-05"
       status: "Source-only standalone saved ContextPack metadata directory schema; R-003 remains incomplete."
@@ -969,7 +987,7 @@ requirements:
         - "Schema/parser acceptance parity for input, normalized echo, CLI identities, metadata and continuation branches"
         - "Runtime enforcement of cross-field/request/visibility bindings, byte/UTF-16 limits and canonical cursors"
         - "SDK/CLI/MCP/Mock and real Gateway compatibility with the directory schema"
-      remaining_scope: "OpenAPI alignment, automated consistency and runtime evidence. Structure cannot prove saved content/source validity, current readability, authorization or a cross-page snapshot. HTTP/MCP wrappers, SDK options and Mock configuration are outside this resource."
+      remaining_scope: "Scoped directory OpenAPI source is tracked above; full API coverage, automated consistency and runtime evidence remain. Structure cannot prove saved content/source validity, current readability, authorization or a cross-page snapshot. HTTP/MCP wrappers, SDK options and Mock configuration are outside this resource."
       execution: "Source/docs, manual review and formatting/text checks only; no validator/generator, build, typecheck, tests, product/client/API/database execution or release. No parser/client/route/dependency/migration changes."
     context_pack_mock_directory_development_increment:
       date: "2026-11-05"

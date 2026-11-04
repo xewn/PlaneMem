@@ -1,6 +1,8 @@
 # 持久化 ContextPack 开发说明
 
-2026-11-05新增[独立保存包目录Schema](../../../packages/contracts/schemas/README.md#保存-contextpack-元数据目录)：`@planemem/contracts/schemas/context-pack-directory.json`自包含输入/规范/CLI查询、游标词法、六字段记录、范围/来源标记和完整metadata-only/not-checked分页封套。完整本地资源注册后解析锚点，无需完整读取Schema或联网加载。时间/用量关系、原请求绑定、唯一ID/排序/页大小、规范游标、字节和UTF-16预算仍由原实现核对，真实权限与可见性由可信处理器决定；结构不能证明包内容/来源有效。仅源码文档人工审阅与格式文本检查，未执行校验器/生成器、编译、类型检查、测试或发布；OpenAPI、本地加载和自动一致性证据仍待补。
+2026-11-05新增[保存包目录OpenAPI源码](../../../packages/contracts/openapi/README.md)：`@planemem/contracts/openapi/context-pack-directory.json`仅描述既有GET /v1/context-packs，复用本地目录Schema。按实际HTTP入口区分可分别提供的身份条件、traceparent优先级、早期错误可缺x-trace-id头，以及429/503不同错误来源的retryable；全量OpenAPI和工具/自动一致性/运行证据仍待补。未改运行时，只源码文档人工审阅与格式文本检查，未执行校验器/生成器、编译、类型检查、测试、API/数据库或发布。
+
+2026-11-05新增[独立保存包目录Schema](../../../packages/contracts/schemas/README.md#保存-contextpack-元数据目录)：`@planemem/contracts/schemas/context-pack-directory.json`自包含输入/规范/CLI查询、游标词法、六字段记录、范围/来源标记和完整metadata-only/not-checked分页封套。完整本地资源注册后解析锚点，无需完整读取Schema或联网加载。时间/用量关系、原请求绑定、唯一ID/排序/页大小、规范游标、字节和UTF-16预算仍由原实现核对，真实权限与可见性由可信处理器决定；结构不能证明包内容/来源有效。仅源码文档人工审阅与格式文本检查，未执行校验器/生成器、编译、类型检查、测试或发布；目录OpenAPI源码见本文顶部链接，全量接口目录、本地加载和自动一致性证据仍待补。
 
 2026-11-05新增[保存包Mock目录](context-pack-mock-runtime.md#保存包元数据目录2026-11-05源码增量)：既有固定保存包数据接入SDK单页/分页元数据读取，保持可见范围和独立游标绑定；不在列表阶段核验包正文或来源。仅源码文档，未执行Mock/SDK、编译、测试或发布。
 
@@ -343,7 +345,7 @@ R-003未完成、`evidence: []`。独立读取与目录故障隔离、有效/非
 - 资源边界：每router独立两笔目录读取容量，30秒单调处理器期限覆盖事务等待、元数据校验与封套生成；容量占用返回RATE_LIMITED/429，超时返回CONTEXT_PACK_DIRECTORY_TIMEOUT/503，底层工作实际结束才释放。不能保证取消已发出的数据库调用、限制全局SQL扫描成本或同步工作耗时；外层认证/授权/审计和HTTP发送不计该期限。异常元数据CONTEXT_PACK_INVALID/500，存储不可用CONTEXT_PACK_STORAGE_UNAVAILABLE/503，非法参数/绑定INVALID_INPUT/400。
 - Web：在当前会话范围内读取一页，完整校验HTTP状态/JSON/trace/无ETag及共享封套，成功256 KiB、错误16 KiB；另有30秒读取期限和阶段性会话到期检查。会话获取、渲染和发送不计读取期限。失败保留原筛选/游标显式重试，另可回首屏；无自动翻页、重试或缩页。网页参数pack/limit/cursor/base均单值，空pack表单表示不筛选；base为已选基础包ULID，仅用于导航，不发送Gateway。基础包随筛选/翻页保留，从任意页选择不同包后进入原对比页；read/compare返回保留目录位置及base，目录没有return_to，返回解析保持有限层级。
 
-本轮无新依赖或迁移，SQL源码复用016索引，未执行SQL。SDK、CLI和MCP目录适配见下文，Mock目录见[模拟保存包目录](context-pack-mock-runtime.md#保存包元数据目录2026-11-05源码增量)；独立目录Schema见本文顶部链接，OpenAPI与权限/分页/超时/真实浏览器兼容证据待补。现有MCP资源候选目录仍按其原协议执行，不能与本元数据目录混同。R-003未完成、`evidence: []`；仅源码文档人工审阅和格式文本检查，未编译、类型检查、测试、渲染、执行产品/CLI/SDK/MCP/Mock/API/数据库或发布。
+本轮无新依赖或迁移，SQL源码复用016索引，未执行SQL。SDK、CLI和MCP目录适配见下文，Mock目录见[模拟保存包目录](context-pack-mock-runtime.md#保存包元数据目录2026-11-05源码增量)；独立目录Schema及局部OpenAPI见本文顶部链接，全量OpenAPI与权限/分页/超时/真实浏览器兼容证据待补。现有MCP资源候选目录仍按其原协议执行，不能与本元数据目录混同。R-003未完成、`evidence: []`；仅源码文档人工审阅和格式文本检查，未编译、类型检查、测试、渲染、执行产品/CLI/SDK/MCP/Mock/API/数据库或发布。
 
 ## SDK 保存包目录读取（2026-11-05，源码增量）
 
@@ -383,7 +385,7 @@ for await (const page of pages) {
 }
 ```
 
-R-003未完成、`evidence: []`。原条件/身份捕获、空页/精确筛选/分页顺序、变更输入与返回值、错误/取消/迟到结果、页数上限/生成器关闭及真实transport/Gateway兼容仍缺运行证据；独立目录Schema见本文顶部链接，OpenAPI和自动一致性待补。本轮仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行SDK/Mock/CLI/MCP/产品/API/数据库或发布；无共享契约/Gateway/Web/依赖/迁移改动。
+R-003未完成、`evidence: []`。原条件/身份捕获、空页/精确筛选/分页顺序、变更输入与返回值、错误/取消/迟到结果、页数上限/生成器关闭及真实transport/Gateway兼容仍缺运行证据；独立目录Schema及局部OpenAPI见本文顶部链接，全量OpenAPI和自动一致性待补。本轮仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行SDK/Mock/CLI/MCP/产品/API/数据库或发布；无共享契约/Gateway/Web/依赖/迁移改动。
 
 ## CLI 保存包目录读取（2026-11-05，源码增量）
 
@@ -412,7 +414,7 @@ workctx context list-packs --json-file saved-pack-list.json --timeout-ms 30000
 }
 ```
 
-R-003未完成、`evidence: []`。三入口一致性、参数/文件/stdin边界、身份与权限/取消、元数据排序/分页/错误、底层容量保留及真实CLI/Gateway兼容尚无运行证据；MCP目录见下节，Mock目录和独立目录Schema见本文顶部链接，OpenAPI和自动一致性待补。本轮仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/SDK/产品/API/数据库或发布；无SDK/共享契约/Gateway/Web/MCP/Mock/schema/依赖/迁移变化。
+R-003未完成、`evidence: []`。三入口一致性、参数/文件/stdin边界、身份与权限/取消、元数据排序/分页/错误、底层容量保留及真实CLI/Gateway兼容尚无运行证据；MCP目录见下节，Mock目录和独立目录Schema及局部OpenAPI见本文顶部链接，全量OpenAPI和自动一致性待补。本轮仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/SDK/产品/API/数据库或发布；无SDK/共享契约/Gateway/Web/MCP/Mock/schema/依赖/迁移变化。
 
 ## MCP 保存包目录读取（2026-11-05，源码增量）
 
@@ -439,4 +441,4 @@ R-003未完成、`evidence: []`。三入口一致性、参数/文件/stdin边界
 }
 ```
 
-R-003未完成、`evidence: []`。工具发现/客户端/prepare/协议兼容、完整查询与身份捕获、错误状态/页边界/转义输出、页序/续页及容量/超时/真实MCP兼容尚缺运行证据。Mock目录和独立目录Schema见本文顶部链接，OpenAPI和自动一致性待补；本轮仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布。无新REST路由、SDK/CLI/Web/Mock/schema/依赖/迁移变更。
+R-003未完成、`evidence: []`。工具发现/客户端/prepare/协议兼容、完整查询与身份捕获、错误状态/页边界/转义输出、页序/续页及容量/超时/真实MCP兼容尚缺运行证据。Mock目录和独立目录Schema及局部OpenAPI见本文顶部链接，全量OpenAPI和自动一致性待补；本轮仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布。无新REST路由、SDK/CLI/Web/Mock/schema/依赖/迁移变更。
