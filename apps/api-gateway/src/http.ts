@@ -395,6 +395,7 @@ export class ApiGateway {
                       serialized.code === 'CONTEXT_PERSISTENCE_UNAVAILABLE' ||
                       serialized.code === 'RUNTIME_PERSISTENCE_UNAVAILABLE' ||
                       serialized.code === 'CONTEXT_PACK_STORAGE_UNAVAILABLE' ||
+                      serialized.code === 'CONTEXT_PACK_DIRECTORY_TIMEOUT' ||
                       serialized.code === 'SESSION_RECEIPT_STORAGE_UNAVAILABLE' ||
                       serialized.code === 'SESSION_STORAGE_UNAVAILABLE' ||
                       serialized.code === 'CONTEXT_ITEM_STORAGE_UNAVAILABLE' ||

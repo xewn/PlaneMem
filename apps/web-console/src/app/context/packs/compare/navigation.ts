@@ -1,4 +1,5 @@
 import { isUlid, syncJsonSnapshot } from '@planemem/contracts';
+import { packDirectoryHref, parsePackDirectoryParams } from '../navigation';
 import {
   contextBrowseHref,
   parseContextBrowseParams,
@@ -13,19 +14,25 @@ export interface PackComparisonNavigation {
 }
 
 function returnHref(value: unknown): string {
+  const directory =
+    typeof value === 'string' &&
+    (value === '/context/packs' || value.startsWith('/context/packs?'));
+  const path = directory ? '/context/packs' : '/context';
   if (
     typeof value !== 'string' ||
     value.length > 16 * 1024 ||
     value.includes('#') ||
-    (value !== '/context' && !value.startsWith('/context?'))
+    (value !== path && !value.startsWith(path + '?'))
   )
     throw new Error('Return to a context page in this application.');
   const params: ContextSearchParams = Object.create(null) as ContextSearchParams;
-  for (const [key, entry] of new URLSearchParams(value.slice('/context'.length))) {
+  for (const [key, entry] of new URLSearchParams(value.slice(path.length))) {
     if (Object.hasOwn(params, key)) throw new Error('Use one value per context return parameter.');
     params[key] = entry;
   }
-  return contextBrowseHref(parseContextBrowseParams(params));
+  return directory
+    ? packDirectoryHref(parsePackDirectoryParams(params))
+    : contextBrowseHref(parseContextBrowseParams(params));
 }
 
 /** Partial selections fill the form only; neither side silently selects latest. */

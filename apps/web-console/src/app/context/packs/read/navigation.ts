@@ -5,6 +5,7 @@ import {
   type ContextSearchParams,
 } from '../../navigation';
 import { packComparisonHref, parsePackComparisonParams } from '../compare/navigation';
+import { packDirectoryHref, parsePackDirectoryParams } from '../navigation';
 
 export interface PackReadNavigation {
   pack_id?: string;
@@ -17,7 +18,8 @@ function returnHref(value: unknown): string {
     throw new Error('Choose a context page in this application as the return destination.');
   const comparison =
     value === '/context/packs/compare' || value.startsWith('/context/packs/compare?');
-  const path = comparison ? '/context/packs/compare' : '/context';
+  const directory = value === '/context/packs' || value.startsWith('/context/packs?');
+  const path = comparison ? '/context/packs/compare' : directory ? '/context/packs' : '/context';
   if (value !== path && !value.startsWith(path + '?'))
     throw new Error('Return to a context browser or saved pack comparison in this application.');
   const params: ContextSearchParams = Object.create(null) as ContextSearchParams;
@@ -25,10 +27,12 @@ function returnHref(value: unknown): string {
     if (Object.hasOwn(params, key)) throw new Error('Use one value per return parameter.');
     params[key] = entry;
   }
-  // Comparison returns may contain one validated context return; read-page returns cannot nest.
+  // Comparison returns may contain one validated directory return; read-page returns cannot nest.
   return comparison
     ? packComparisonHref(parsePackComparisonParams(params))
-    : contextBrowseHref(parseContextBrowseParams(params));
+    : directory
+      ? packDirectoryHref(parsePackDirectoryParams(params))
+      : contextBrowseHref(parseContextBrowseParams(params));
 }
 
 /** An empty page is a lookup form. Latest is an explicit action, never an invalid-ID fallback. */

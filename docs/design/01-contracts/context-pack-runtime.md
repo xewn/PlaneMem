@@ -1,5 +1,7 @@
 # 持久化 ContextPack 开发说明
 
+2026-11-05新增[保存包元数据目录](#保存包元数据目录2026-11-05源码增量)：GET /v1/context-packs及网页分页浏览，跨页选择基础包和对比包；目录不证明完整内容或来源当前可用。仅源码文档，未编译、测试、渲染或发布。
+
 2026-11-04新增[网页独立查看](#网页保存包独立查看2026-11-04源码增量)：保存包读取不再必须经过上下文目录页面；提供显式编号/最新选择、完整内容、原请求重试与目录/对比返回入口。仅源码文档，未编译、测试、渲染或发布。
 
 2026-11-04新增[独立保存包对比Schema](../../../packages/contracts/schemas/README.md#保存-contextpack-对比)：`@planemem/contracts/schemas/context-pack-comparison.json`提供查询、候选/报告、SDK/CLI/MCP完整结果及网页内部组合锚点。需与本地context-pack-read资源一起注册，复用完整json封套；不联网加载。跨字段绑定、真实摘要及精确差异仍由原实现核对；仅源码文档，未执行Schema校验器、生成器、编译、类型检查、测试或发布。
@@ -16,8 +18,9 @@
 | --- | --- | --- |
 | POST | `/v1/context-pack/compile` | 从当前项目的 ContextItem 生成并保存新包 |
 | GET | `/v1/context-pack` | 读取最新可见包，或由 `pack_id` 指定历史包 |
+| GET | `/v1/context-packs` | 按权限列出保存包元数据，供选择编号；不读取完整包 |
 
-两条路由均要求 Bearer token 和 `x-tenant-id`、`x-workspace-id`、`x-project-id`，范围必须与令牌一致。读取及编译使用 `context.read` 策略动作，编译还要求有效客户端身份和 `Idempotency-Key`。身份、能力、来源内容不能从请求正文覆盖。`data.restricted.read` 决定是否允许纳入或读取 restricted 数据，管理员角色不自动绕过这个内容过滤。
+这些路由均要求 Bearer token 和 `x-tenant-id`、`x-workspace-id`、`x-project-id`，范围必须与令牌一致。读取及编译使用 `context.read` 策略动作，编译还要求有效客户端身份和 `Idempotency-Key`；目录要求有效客户端身份及实际context.read，拒绝写条件。身份、能力、来源内容不能从请求正文覆盖。`data.restricted.read` 决定是否允许纳入或读取 restricted 数据，管理员角色不自动绕过这个内容过滤。
 
 编译、读取与检查点/续接的绑定消费均在自身事务内检查当前父项目存在、未删除及分类可见；写入路径取得项目同步流锁后持有父项目共享锁直至事务结束。项目不可见返回 CONTEXT_PACK_NOT_FOUND，不复用历史包或请求回执绕过当前访问条件。
 
@@ -311,10 +314,23 @@ workctx context compare-packs --json-file pack-comparison.json --timeout-ms 3000
 
 参数只允许单个`pack`、`latest`、`return_to`。`pack`要求完整ULID，显式空串或非法编号直接失败；`latest`只能为字符串`1`，并与pack互斥。用户可输入编号，也可点击独立的“Read the latest visible pack”按钮。latest每次重新选择最新可见包，成功后提供实际保存ID的固定链接；不把latest当作失效编号或读失败后的回退。
 
-`return_to`只能是本应用`/context`目录或`/context/packs/compare`对比地址，逐字段使用已有导航解析器重新构建。单个返回地址最多64 KiB字符，完整导航输入JSON最多96 KiB；原context 16 KiB、compare 24 KiB等内部约束仍执行。拒绝未知/重复/数组参数、外部地址、片段和任意读页嵌套；对比页原来已验证的context返回可以保留一层。目录筛选/游标、对比两个ID/显示方式/原目录返回在返回按钮中保留，链接不会自动重定向或授予权限。
+`return_to`只能是本应用`/context`目录、`/context/packs`保存包目录或`/context/packs/compare`对比地址，逐字段使用已有导航解析器重新构建。单个返回地址最多64 KiB字符，完整导航输入JSON最多96 KiB；原context 16 KiB、compare 24 KiB等内部约束仍执行。拒绝未知/重复/数组参数、外部地址、片段和任意读页嵌套；对比页已验证的context或保存包目录返回可以保留一层，保存包目录本身没有return_to。目录筛选/游标/基础包、对比两个ID/显示方式/原目录返回在返回按钮中保留，链接不会自动重定向或授予权限。
 
 读取使用原当前会话与项目边界，沿用完整json包2 MiB、错误16 KiB、HTTP状态/type/trace/ETag、保存范围/预算/来源/内容及Node SHA-256核对和30秒读取期限。页面只有完整读取成功后才显示版本、创建/到期、预算、摘要、原编号及完整入选条目正文/保存字段；排除原因和完整来源、完整响应封套也可展开。内容按文本显示，来源仅作为保存引用，不执行其中的HTML或指令，不访问外部来源。过期、来源变化、不可读和完整性异常均沿原错误失败。
 
 失败保留原pack或latest选择以及return_to，用GET表单显式重试；不会自动刷新、换包、重试、重新编译或写入。latest重试可能选择不同包，界面有说明；固定ID重试始终使用原ID。成功可用具体包ID预填新的对比，也可返回原对比页继续原两侧选择。原编译和目录页面行为不变；页面渲染、交互及HTTP发送不在读取期限内，不承诺总页面容量或来源持续有效。
 
 R-003未完成、`evidence: []`。独立读取与目录故障隔离、有效/非法URL、身份/过期/来源/摘要错误、完整正文空白/Unicode显示、返回/重试/最新固定链接和真实浏览器兼容仍缺运行证据。本轮只源码文档人工审阅及格式文本检查，未编译、类型检查、测试、渲染、执行浏览器/产品/API/数据库或发布。
+
+## 保存包元数据目录（2026-11-05，源码增量）
+
+`GET /v1/context-packs`与`/context/packs`网页提供保存包编号发现。该目录只显示已保存的`pack_id`、`version`、`created_at`、`expires_at`、`budget_tokens`、`used_tokens`，不读取pack_document正文、摘要或source_manifest，不逐包核对当前来源。过期或来源变化的记录仍可能出现；点击完整读取/对比时沿原路径检查内容、摘要、来源和当前权限，失败不会自动换包。
+
+- 身份：已验证且未过期的客户端、合法账号/项目范围及实际context.read；管理员不替代该能力。只读repeatable-read事务先检查父项目存在、未删除及分类可见，再按同范围、pack_document非空和保存read_restricted过滤。没有restricted读取能力时隐藏restricted包；不返回隐藏总数。父项目不可见返回CONTEXT_PACK_NOT_FOUND/404。
+- 查询：只接受单值可选`pack_id`（完整ULID）、`limit`（默认25、1–100）、`cursor`。HTTP页大小只接受无前导零的正整数文本，拒绝未知/重复查询、非空正文/transfer-encoding、幂等/写条件、条件缓存与Range。共享JSON查询限4 KiB。精确编号无匹配时返回空页，不回退latest。
+- 分页：按version DESC、pack_id的ASCII/C顺序DESC，先过滤后取limit+1；逐条检查，包括多取的一条。游标为规范base64url编码的位置及SHA-256绑定，绑定范围/账号/客户端/actor_type/角色能力/页大小/精确筛选；身份或条件改变须重新开始。游标不是签名、授权或冻结跨页快照，每页重新授权；并发变更可能改变后续可见记录。精确编号查询不产生next_cursor。
+- 响应：schema_version=1、原trace_id、单个`{type:'context-pack-directory',id:project_id}`来源标记、完整scope、规范化原query（显式limit）、`content_state='metadata-only'`、`source_state='not-checked'`、data数组和可选next_cursor。单条快照2 KiB、完整响应256 KiB，核对安全整数版本、UTC毫秒创建/到期先后、预算128–32768及used不超预算、唯一编号、顺序/游标位置与原筛选。异常整页失败，不显示部分结果；来源标记仅指目录项目，不是包来源引用或内容真实性证明。无HTTP/外层ETag。
+- 资源边界：每router独立两笔目录读取容量，30秒单调处理器期限覆盖事务等待、元数据校验与封套生成；容量占用返回RATE_LIMITED/429，超时返回CONTEXT_PACK_DIRECTORY_TIMEOUT/503，底层工作实际结束才释放。不能保证取消已发出的数据库调用、限制全局SQL扫描成本或同步工作耗时；外层认证/授权/审计和HTTP发送不计该期限。异常元数据CONTEXT_PACK_INVALID/500，存储不可用CONTEXT_PACK_STORAGE_UNAVAILABLE/503，非法参数/绑定INVALID_INPUT/400。
+- Web：在当前会话范围内读取一页，完整校验HTTP状态/JSON/trace/无ETag及共享封套，成功256 KiB、错误16 KiB；另有30秒读取期限和阶段性会话到期检查。会话获取、渲染和发送不计读取期限。失败保留原筛选/游标显式重试，另可回首屏；无自动翻页、重试或缩页。网页参数pack/limit/cursor/base均单值，空pack表单表示不筛选；base为已选基础包ULID，仅用于导航，不发送Gateway。基础包随筛选/翻页保留，从任意页选择不同包后进入原对比页；read/compare返回保留目录位置及base，目录没有return_to，返回解析保持有限层级。
+
+本轮无新依赖或迁移，SQL源码复用016索引，未执行SQL。SDK/CLI/MCP/Mock的专用目录适配、独立Schema/OpenAPI与权限/分页/超时/真实浏览器兼容证据待补；现有MCP资源候选目录仍按其原协议执行，不能与本元数据目录混同。R-003未完成、`evidence: []`；仅源码文档人工审阅和格式文本检查，未编译、类型检查、测试、渲染、执行产品/CLI/SDK/MCP/Mock/API/数据库或发布。

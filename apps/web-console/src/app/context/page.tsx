@@ -139,6 +139,9 @@ export default async function ContextPage({
             <p>Browse project knowledge and compile a saved context pack for the next session.</p>
           </div>
           <div className="heading-actions">
+            <Link className="secondary-button" href="/context/packs" prefetch={false}>
+              Browse saved packs
+            </Link>
             <Link
               className="secondary-button"
               prefetch={false}

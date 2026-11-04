@@ -41,7 +41,9 @@ export default async function SavedPackReadPage({
         <Link className="panel-link" href={navigation.return_href ?? '/context'} prefetch={false}>
           {navigation.return_href?.startsWith('/context/packs/compare')
             ? 'Back to comparison'
-            : 'Back to context'}
+            : navigation.return_href?.startsWith('/context/packs')
+              ? 'Back to saved packs'
+              : 'Back to context'}
         </Link>
       </div>
       <Panel title="Choose a saved pack" icon="context">
@@ -79,6 +81,9 @@ export default async function SavedPackReadPage({
             changed remain unavailable. Latest is selected again on each read; use a fixed pack link
             to keep the same selection.
           </p>
+          <Link className="panel-link" href="/context/packs" prefetch={false}>
+            Browse saved packs
+          </Link>
         </div>
       </Panel>
       {navigation.pack_id !== undefined || navigation.latest ? (

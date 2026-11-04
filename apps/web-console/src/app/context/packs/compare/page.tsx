@@ -9,6 +9,7 @@ import { Badge, Panel } from '../../../../components/ui';
 import { getWorkbenchContextPackComparison } from '../../../../lib/context-pack-comparison-server';
 import type { ContextSearchParams } from '../../navigation';
 import { packReadHref } from '../read/navigation';
+import { packDirectoryHref } from '../navigation';
 import {
   packComparisonHref,
   parsePackComparisonParams,
@@ -56,11 +57,24 @@ export default async function SavedPackComparisonPage({
           <p>Review changes in selected knowledge, exclusions, sources and token budgets.</p>
         </div>
         <Link className="panel-link" href={navigation.return_href ?? '/context'} prefetch={false}>
-          Back to context
+          {navigation.return_href?.startsWith('/context/packs?') ||
+          navigation.return_href === '/context/packs'
+            ? 'Back to saved packs'
+            : 'Back to context'}
         </Link>
       </div>
       <Panel title="Choose two saved packs" icon="context">
         <div className="side-detail">
+          <Link
+            className="panel-link"
+            prefetch={false}
+            href={packDirectoryHref({
+              query: { limit: 25 },
+              base_pack_id: navigation.from_pack_id,
+            })}
+          >
+            Choose from saved packs
+          </Link>
           <form
             action="/context/packs/compare"
             method="get"

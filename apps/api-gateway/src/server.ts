@@ -87,6 +87,7 @@ import { MCP_PROPOSAL_RECEIPT_HTTP_BYTES } from './mcp/proposal-create-receipt.j
 import { dispatchMcp, rpcError, MCP_PROTOCOL_VERSIONS } from './mcp/protocol.js';
 import { registerMcpReads, resourceKey, type RuntimeResource } from './mcp/reads.js';
 import { registerContextPacks, withSavedContextPack } from './context-packs.js';
+import { registerContextPackDirectory } from './context-pack-directory.js';
 import { registerCheckpointReceipts } from './checkpoint-receipts.js';
 import { registerCheckpointRead } from './checkpoint-read.js';
 import { registerCheckpointHistory } from './checkpoint-history.js';
@@ -1416,6 +1417,7 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
   router.register('workbench.query', (request) => queryWorkbench(workbench, request, version));
   registerAuditExport(router, workbench, policy, auditExport);
   registerContextPacks(router, auditDb);
+  registerContextPackDirectory(router, auditDb);
   registerCheckpointReceipts(router, auditDb);
   registerCheckpointRead(router, auditDb);
   registerCheckpointHistory(router, workbench);
@@ -1457,6 +1459,7 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
   api.route('POST', '/v1/audit/export', 'audit.export');
   api.route('POST', '/v1/context-pack/compile', 'context.pack.compile');
   api.route('GET', '/v1/context-pack', 'context.pack.read');
+  api.route('GET', '/v1/context-packs', 'context.pack.list');
   api.routeTemplate('GET', '/v1/artifacts/{artifact_id}', 'artifact.read');
   api.route('GET', '/v1/artifacts/upload-context', 'artifact.upload-context');
   api.route('POST', '/v1/artifacts/receipt', 'artifact.receipt');
@@ -1981,9 +1984,11 @@ async function handleRequest(
       request.method === 'GET' &&
       !conflictCommandContextRoute &&
       /^\/v1\/conflicts\/[^/]+$/.test(url.pathname);
-    const contextPackRoute = ['/v1/context-pack', '/v1/context-pack/compile'].includes(
-      url.pathname,
-    );
+    const contextPackRoute = [
+      '/v1/context-pack',
+      '/v1/context-pack/compile',
+      '/v1/context-packs',
+    ].includes(url.pathname);
     const syncRoute = [
       '/v1/sync/changes',
       '/v1/sync/cursor',
@@ -2034,6 +2039,7 @@ async function handleRequest(
           artifactDownload ||
           artifactRegistryRoute ||
           url.pathname === '/v1/artifacts/upload-context' ||
+          url.pathname === '/v1/context-packs' ||
           (artifactRoute && request.method === 'POST') ||
           (contextIndexRoute && request.method === 'POST') ||
           (planeInboxRoute && request.method === 'POST') ||
@@ -2544,17 +2550,43 @@ async function handleRequest(
           }
         }
         if (contextPackRoute && request.method === 'GET') {
+          const directory = url.pathname === '/v1/context-packs';
+          if (
+            directory &&
+            (header(request, 'transfer-encoding') !== undefined ||
+              !['0', undefined].includes(header(request, 'content-length')) ||
+              [
+                'idempotency-key',
+                'if-match',
+                'if-match-version',
+                'if-none-match',
+                'if-modified-since',
+                'if-unmodified-since',
+                'range',
+                'if-range',
+              ].some((name) => header(request, name) !== undefined))
+          )
+            throw new ContractError(
+              'INVALID_INPUT',
+              'Saved pack directory is a read without body, cache or write conditions',
+              { trace_id: traceId },
+            );
           for (const [field, value] of url.searchParams) {
             if (
-              !['pack_id', 'format'].includes(field) ||
-              url.searchParams.getAll(field).length !== 1
+              !(directory ? ['pack_id', 'limit', 'cursor'] : ['pack_id', 'format']).includes(
+                field,
+              ) ||
+              url.searchParams.getAll(field).length !== 1 ||
+              (directory && field === 'limit' && !/^[1-9][0-9]{0,2}$/.test(value))
             )
               throw new ContractError(
                 'INVALID_INPUT',
-                'Only single pack_id and format query parameters are accepted',
+                directory
+                  ? 'Use single pack_id, limit and cursor parameters'
+                  : 'Only single pack_id and format query parameters are accepted',
                 { trace_id: traceId },
               );
-            body[field] = value;
+            body[field] = directory && field === 'limit' ? Number(value) : value;
           }
         }
         if (syncRoute && request.method === 'GET') {
