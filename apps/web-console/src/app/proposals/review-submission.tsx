@@ -19,6 +19,7 @@ import {
 import { saveReviewOriginal } from './review-store';
 import type { ReviewObservation } from './review-history-model';
 import { ReviewHistoryPanel } from './review-history-panel';
+import { prepareReviewHistory, saveReviewHistory } from './review-history-store';
 
 export function OriginalProposalReview({
   original,
@@ -34,6 +35,13 @@ export function OriginalProposalReview({
   const [observed, setObserved] = useState<ProposalReviewRecordedReceipt>();
   const [observation, setObservation] = useState<ReviewObservation>();
   const [confirmedObservation, setConfirmedObservation] = useState<ReviewObservation>();
+  const [automaticHistory, setAutomaticHistory] = useState(false);
+  const [historyStorageEpoch, setHistoryStorageEpoch] = useState(0);
+  const [automaticAttempt, setAutomaticAttempt] = useState<{
+    document: ReviewObservation;
+    status: 'saving' | 'saved' | 'unknown';
+    digest?: string;
+  }>();
   const [message, setMessage] = useState(
     'The original decision is fixed. Save or export it, then review it before explicitly sending.',
   );
@@ -86,6 +94,44 @@ export function OriginalProposalReview({
       active.current = false;
     };
   }, [save, saveOnMount]);
+
+  /** Local archival failure must never turn an already received review into a network failure. */
+  async function retainObservation(document: ReviewObservation, controller: AbortController) {
+    if (!mounted.current || operation.current !== controller || controller.signal.aborted) return;
+    setAutomaticAttempt({ document, status: 'saving' });
+    setHistoryStorageEpoch((value) => value + 1);
+    try {
+      const saved = await backupOperation(controller.signal, async (signal, check) => {
+        const candidate = await prepareReviewHistory(document, check);
+        check();
+        return saveReviewHistory(candidate.raw, request.binding, signal, check);
+      });
+      if (!mounted.current || operation.current !== controller || controller.signal.aborted) return;
+      setAutomaticAttempt({ document, status: 'saved', digest: saved.file.document_sha256 });
+    } catch {
+      if (!mounted.current || operation.current !== controller) return;
+      setAutomaticHistory(false);
+      setAutomaticAttempt({ document, status: 'unknown' });
+    }
+  }
+  async function retryHistorySave() {
+    if (!mounted.current || active.current || automaticAttempt?.status !== 'unknown') return;
+    const document = automaticAttempt.document;
+    const controller = new AbortController();
+    operation.current = controller;
+    active.current = true;
+    setBusy(true);
+    setConfirmed(false);
+    try {
+      await retainObservation(document, controller);
+    } finally {
+      if (operation.current === controller) {
+        operation.current = undefined;
+        active.current = false;
+        if (mounted.current) setBusy(false);
+      }
+    }
+  }
   async function send() {
     if (!mounted.current || active.current || !confirmed || receipt || observed) return;
     const controller = new AbortController();
@@ -130,6 +176,7 @@ export function OriginalProposalReview({
         setMessage(
           'The gateway confirmed the original review. This is its historical result; open the proposal for current details.',
         );
+        if (automaticHistory) await retainObservation(document, controller);
       } else setMessage(result.message);
     } catch {
       if (mounted.current && operation.current === controller)
@@ -194,6 +241,7 @@ export function OriginalProposalReview({
           'No matching receipt was observed in this read. This does not prove the original failed or cancel an in-flight request. Keep the original; this lookup did not send a review.',
         );
       }
+      if (automaticHistory) await retainObservation(document, controller);
     } catch {
       if (mounted.current && operation.current === controller)
         setMessage(
@@ -346,10 +394,66 @@ export function OriginalProposalReview({
           {observed.occurred_at} · event {observed.event_id}
         </p>
       )}
+      <section className="side-detail" aria-label="Automatic review history retention">
+        <label>
+          <input
+            type="checkbox"
+            checked={automaticHistory}
+            disabled={busy || automaticAttempt?.status === 'unknown'}
+            onChange={(event) => {
+              if (!active.current && automaticAttempt?.status !== 'unknown')
+                setAutomaticHistory(event.target.checked);
+            }}
+          />{' '}
+          Automatically save newly received review results in this browser
+        </label>
+        <p>
+          Applies to future valid send and receipt-query results on this page, including reads that
+          found no matching receipt. Enabling does not query, send or save earlier observations.
+          Other actions wait for the local save attempt. This choice resets when you leave; keep
+          exported files for longer-term recovery.
+        </p>
+        {automaticAttempt && (
+          <div role="status">
+            <p>
+              Last local retention attempt · {automaticAttempt.document.observed_at} ·{' '}
+              {automaticAttempt.status === 'saving'
+                ? 'Saving the complete received observation…'
+                : automaticAttempt.status === 'saved'
+                  ? 'The complete history copy was saved and read back. This does not establish the current proposal state.'
+                  : 'Local saving could not be confirmed and may already have completed. Automatic retention is off. The complete observation is retained below for inspection and export; the received review result is unchanged.'}
+            </p>
+            {automaticAttempt.digest && (
+              <p>
+                History checksum · <code>{automaticAttempt.digest}</code>
+              </p>
+            )}
+            {automaticAttempt.status === 'unknown' && (
+              <>
+                <p>
+                  Retry this same local save before enabling automatic retention again. This
+                  preserves the original observation time and response; it does not query or send
+                  the review.
+                </p>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  disabled={busy}
+                  onClick={() => void retryHistorySave()}
+                >
+                  Retry saving the retained observation locally
+                </button>
+              </>
+            )}
+          </div>
+        )}
+      </section>
       <ReviewHistoryPanel
         binding={request.binding}
         live={observation}
         confirmedLive={confirmedObservation}
+        retainedAutomatic={automaticAttempt?.document}
+        externalStorageEpoch={historyStorageEpoch}
         disabled={busy}
         begin={beginHistory}
         end={endHistory}

@@ -28,6 +28,8 @@ export function ReviewHistoryPanel({
   binding,
   live,
   confirmedLive,
+  retainedAutomatic,
+  externalStorageEpoch = 0,
   disabled = false,
   begin,
   end,
@@ -35,6 +37,8 @@ export function ReviewHistoryPanel({
   binding: ProposalSubmissionBinding;
   live?: ReviewObservation;
   confirmedLive?: ReviewObservation;
+  retainedAutomatic?: ReviewObservation;
+  externalStorageEpoch?: number;
   disabled?: boolean;
   begin?: () => boolean;
   end?: () => void;
@@ -50,7 +54,10 @@ export function ReviewHistoryPanel({
   const [page, setPage] = useState<ReviewHistoryPage>();
   const [digest, setDigest] = useState('');
   const [busy, setBusy] = useState(false);
-  const [storageEpoch, setStorageEpoch] = useState(0);
+  const [localStorageEpoch, setStorageEpoch] = useState(0);
+  // External writes invalidate eligibility in this render, before the clearing effect runs.
+  const storageEpoch = localStorageEpoch + externalStorageEpoch;
+  const lastExternalEpoch = useRef(externalStorageEpoch);
   const [message, setMessage] = useState(
     'Save complete historical observations explicitly. Loading a history copy does not query the gateway or send a review.',
   );
@@ -93,6 +100,11 @@ export function ReviewHistoryPanel({
       release.current = undefined;
     };
   }, []);
+  useEffect(() => {
+    if (lastExternalEpoch.current === externalStorageEpoch) return;
+    lastExternalEpoch.current = externalStorageEpoch;
+    storageChanged();
+  }, [externalStorageEpoch, storageChanged]);
   useEffect(() => {
     if (disabled) setRemoveConfirmed(false);
   }, [disabled]);
@@ -213,6 +225,9 @@ export function ReviewHistoryPanel({
         ...(live ? [{ label: 'Latest received result', value: live }] : []),
         ...(confirmedLive && confirmedLive !== live
           ? [{ label: 'Retained confirmed result', value: confirmedLive }]
+          : []),
+        ...(retainedAutomatic && retainedAutomatic !== live && retainedAutomatic !== confirmedLive
+          ? [{ label: 'Retained automatic-save observation', value: retainedAutomatic }]
           : []),
       ].map(({ label, value }) => (
         <div key={label}>

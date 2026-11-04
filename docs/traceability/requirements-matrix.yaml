@@ -3452,6 +3452,24 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_review_history_automatic_retention_development_increment:
+      date: "2026-11-04"
+      status: "Source-only opt-in retention of newly received review observations with isolated local retry; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/review-submission.tsx"
+        - "apps/web-console/src/app/proposals/review-history-panel.tsx"
+        - "apps/web-console/src/app/proposals/review-history-store.ts"
+        - "docs/design/01-contracts/proposal-review-history-runtime.md"
+        - "docs/design/01-contracts/proposal-review-recovery-runtime.md"
+      behavior: "Default-off page-local opt-in retains only future fully validated send/query responses, including not-observed, after retaining the received result and before releasing the shared page lock. Independent 30-second local archival uses existing 128 KiB observation/checksum/exact dual-store save semantics without changing original timestamps or responses. Local failure never changes the received review result: stop automatic retention, keep the complete attempted observation independently of future query results and block re-enabling until explicit same-observation local retry confirms storage. Retry does not query or send. Historical inspection/export can access the retained observation without gaining removal eligibility. External write epochs invalidate single/batch/backup qualifications immediately; unmount cancels waiting, with no unload-save promise or automatic retry."
+      evidence: []
+      pending_evidence:
+        - "Default-off nonpersistent opt-in, no retroactive writes, validated submission/recorded/not-observed paths and no capture on invalid/error results"
+        - "Independent network/local deadlines, shared operation lock, immutable original observation and complete dual-store readback"
+        - "Local unknown after commit, preserved confirmed network result, later query retention, same-document local retry and re-enable gate"
+        - "Immediate external epoch invalidation, standalone history behavior, unmount cancellation, manual deletion without automatic resurrection and no network dispatch from retry"
+      remaining_scope: "Automatic backup/cleanup, capacity retention, cross-scope synchronization, server archival and runtime/compatibility evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, product/browser/database execution or release. Existing v1 history format and store reused; no schema or dependency changes."
     proposal_creation_original_selection_cleanup_development_increment:
       date: "2026-11-04"
       status: "Source-only selected original-submission inspection, recoverable subset export and atomic confirmed browser-copy removal; R-009 remains incomplete."
