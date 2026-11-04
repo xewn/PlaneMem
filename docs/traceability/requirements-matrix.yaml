@@ -5264,6 +5264,25 @@ requirements:
     statement: "Tenant, workspace, project, work-item, client, and tool permissions are enforced and audited."
     design: ["governance-plane", "tool-capabilities"]
     subprojects: ["P6"]
+    audit_export_mock_development_increment:
+      date: "2026-11-05"
+      status: "Source-only reviewed audit export Mock; R-007 remains incomplete."
+      artifacts:
+        - "packages/sdk/src/mock-audit.ts"
+        - "packages/sdk/src/index.ts"
+        - "packages/sdk/README.md"
+        - "docs/design/01-contracts/audit-mock-runtime.md"
+        - "docs/design/01-contracts/audit-export-runtime.md"
+      behavior: "Optional explicit export capabilities and policy decision gate the original SDK exportAuditView route. Capture the complete 4 KiB scope/ID/digest selection, select visible bounded seed content, hash its canonical document and recheck visibility, expiry, permissions and canonical text. Complete 128 KiB or smaller response validation precedes synchronous simulated release recording. Independent two-export capacity and 75-second budget retain slots until canceled native digests settle."
+      observations: "getExportRelease returns a detached local simulation:true metadata observation with identity, original selection, classification, bytes, availability states, trace and time. At most 1000 records/16 MiB, 16 KiB each, without document copies or query-seed mutation. Repeated successful selections produce independent IDs. A stopped outer wait does not roll back an existing release; errors retain a known release ID."
+      remaining_scope: "Simulated release-recorded is not durable audit or confirmed delivery. No denial audit, production redaction, dynamic record/permission races, HTTP/Policy/database execution, persistence, restart recovery, file saving or runtime compatibility evidence."
+      evidence: []
+      pending_evidence:
+        - "Legacy query behavior and disabled-by-default export; explicit public/general/restricted export decisions"
+        - "Full scope/identity constraints, invisible or missing IDs, expired sessions, canonical digest mismatch and too-large placeholders"
+        - "Detached request/session/response/release data, complete response limit failures and bounded release capacity before commit"
+        - "Independent read/export capacity, canceled pending digests, late results and post-commit error release-ID preservation"
+        - "Existing SDK exportAuditView structure/digest compatibility; no build, typecheck, tests or SDK/Mock/runtime/release executed"
     audit_mock_development_increment:
       date: "2026-11-05"
       status: "Source-only SDK audit query Mock; no runtime evidence and R-007 remains incomplete."

@@ -1,6 +1,12 @@
 export * from './client.js';
 export * from './mock-server.js';
-export { MockAuditStore, type MockAuditSeed, type MockAuditSession } from './mock-audit.js';
+export {
+  MockAuditStore,
+  type MockAuditSeed,
+  type MockAuditSession,
+  type MockAuditExportAccess,
+  type MockAuditExportRelease,
+} from './mock-audit.js';
 export {
   MockContextPackStore,
   type MockContextPackSeed,

@@ -1,10 +1,17 @@
 import {
+  AUDIT_EXPORT_REQUEST_BYTES,
+  AUDIT_EXPORT_RESPONSE_BYTES,
   ContractError,
   WORKBENCH_AUDIT_LIMIT,
   WORKBENCH_AUDIT_RESPONSE_BYTES,
+  auditExportDocument,
+  auditExportDocumentJson,
   compareWorkbenchAuditPositions,
   createUlid,
   encodeWorkbenchAuditCursor,
+  isUlid,
+  parseAuditExportEnvelope,
+  parseAuditExportRequest,
   parseSyncCommandIdentity,
   parseWorkbenchAuditCursor,
   parseWorkbenchAuditEnvelope,
@@ -12,6 +19,8 @@ import {
   parseWorkbenchAuditQuery,
   parseWorkbenchAuditRecord,
   syncJsonSnapshot,
+  type AuditExportEnvelope,
+  type AuditExportRequest,
   type SyncCommandIdentity,
   type WorkbenchAuditQuery,
   type WorkbenchAuditRecord,
@@ -21,11 +30,34 @@ import type { WcpRequest, WcpTransport } from './client.js';
 import { createRequestBudget } from './request-budget.js';
 
 const seedBytes = 16 * 1024 * 1024;
+const releaseBytes = 16 * 1024 * 1024;
+const releaseRecordBytes = 16 * 1024;
 const configurationTrace = 'trace_mock_audit_configuration';
 export interface MockAuditSeed {
   scope: WorkbenchAuditScope;
   /** Complete supplied projections, including explicit unavailable-field states and sizes. */
   records: WorkbenchAuditRecord[];
+}
+/** Explicit simulated export decisions, never credentials or a real policy evaluation. */
+export interface MockAuditExportAccess {
+  export_data: boolean;
+  export_restricted: boolean;
+  policy_allowed: boolean;
+}
+/** Store-owner development observation; not durable audit or confirmed client delivery. */
+export interface MockAuditExportRelease {
+  schema_version: 1;
+  simulation: true;
+  audit_id: string;
+  identity: SyncCommandIdentity;
+  selection: AuditExportRequest;
+  classification: WorkbenchAuditRecord['classification'];
+  document_bytes: number;
+  details_state: WorkbenchAuditRecord['details_state'];
+  source_refs_state: WorkbenchAuditRecord['source_refs_state'];
+  trace_id: string;
+  occurred_at: string;
+  client_delivery_state: 'not-confirmed';
 }
 /** Explicit simulated decisions; historical authors and request headers never grant permission. */
 export interface MockAuditSession {
@@ -35,26 +67,31 @@ export interface MockAuditSession {
   read_audit: boolean;
   read_restricted: boolean;
   visible_audit_ids: string[];
+  export_access?: MockAuditExportAccess;
 }
 type Session = MockAuditSession & { visible: Set<string> };
 const messages = {
   MOCK_AUDIT_CONFIGURATION_INVALID: 'Supply a bounded audit dataset and explicit simulated session',
   MOCK_ROUTE_NOT_FOUND: 'Mock audit route or operation not found',
   INVALID_INPUT:
-    'Supply an exact audit query without write conditions; preserve filters when continuing',
+    'Supply an exact audit query or reviewed export selection without write conditions',
   UNAUTHENTICATED: 'The simulated audit session has expired',
-  DENIED: 'The simulated session does not permit this audit read',
-  AUDIT_INTEGRITY_UNAVAILABLE: 'The simulated audit cursor binding could not be calculated',
+  DENIED: 'The simulated session does not permit this audit operation',
+  NOT_FOUND: 'The selected audit record is not visible in this simulated project',
+  AUDIT_EXPORT_BUSY: 'Simulated audit export capacity is occupied',
+  AUDIT_EXPORT_CONFLICT: 'Read and review the audit view again before preparing an export',
+  AUDIT_PERSISTENCE_UNAVAILABLE: 'The simulated export release could not be recorded',
+  AUDIT_INTEGRITY_UNAVAILABLE: 'The simulated audit digest could not be calculated',
   WORKBENCH_AUDIT_INVALID: 'The complete simulated audit response is invalid',
   GATEWAY_RESPONSE_INVALID:
     'The complete simulated response exceeds its size or representation limit',
-  GATEWAY_REQUEST_CANCELED: 'Stopped waiting for the simulated audit read',
-  GATEWAY_REQUEST_TIMEOUT: 'The simulated audit read exceeded its local deadline',
+  GATEWAY_REQUEST_CANCELED: 'Stopped waiting for the simulated audit operation',
+  GATEWAY_REQUEST_TIMEOUT: 'The simulated audit operation exceeded its local deadline',
   RATE_LIMITED: 'Simulated audit read capacity is occupied',
 } as const;
 type ErrorCode = keyof typeof messages;
-function fail(code: ErrorCode, trace: string): never {
-  throw new ContractError(code, messages[code], { trace_id: trace, retryable: false });
+function fail(code: ErrorCode, trace: string, details: Record<string, unknown> = {}): never {
+  throw new ContractError(code, messages[code], { trace_id: trace, retryable: false, details });
 }
 function checked<T>(code: ErrorCode, trace: string, read: () => T): T {
   try {
@@ -77,8 +114,10 @@ function record(value: unknown, required: string[], optional: string[] = []) {
   return row;
 }
 
-/** Dispatch only a supplied operation data property; do not evaluate body accessors. */
+/** Export routes use the path; query dispatch inspects only an own operation data property. */
 export function isMockAuditRequest(request: WcpRequest): boolean {
+  if (typeof request.path === 'string' && /^\/v1\/audit\/export(?:[?#].*)?$/.test(request.path))
+    return true;
   return (
     typeof request.path === 'string' &&
     /^\/v1\/workbench\/query(?:[?#].*)?$/.test(request.path) &&
@@ -89,12 +128,15 @@ export function isMockAuditRequest(request: WcpRequest): boolean {
   );
 }
 
-/** Immutable simulated audit projections. Never connects to PostgreSQL or appends audit records. */
+/** Immutable seed projections with optional in-memory export observations; no PostgreSQL access. */
 export class MockAuditStore {
   readonly #id = createUlid();
   readonly #scope: WorkbenchAuditScope;
   readonly #records = new Map<string, WorkbenchAuditRecord>();
   readonly #ordered: WorkbenchAuditRecord[];
+  readonly #releases = new Map<string, MockAuditExportRelease>();
+  #releaseBytes = 0;
+  #activeExports = 0;
   #active = 0;
 
   constructor(seed: MockAuditSeed) {
@@ -139,14 +181,18 @@ export class MockAuditStore {
 
   connect(session: MockAuditSession): WcpTransport {
     const saved = checked('MOCK_AUDIT_CONFIGURATION_INVALID', configurationTrace, (): Session => {
-      const input = record(snapshot(session, 1024 * 1024), [
-        'identity',
-        'expires_at',
-        'project_readable',
-        'read_audit',
-        'read_restricted',
-        'visible_audit_ids',
-      ]);
+      const input = record(
+        snapshot(session, 1024 * 1024),
+        [
+          'identity',
+          'expires_at',
+          'project_readable',
+          'read_audit',
+          'read_restricted',
+          'visible_audit_ids',
+        ],
+        ['export_access'],
+      );
       const identity = parseSyncCommandIdentity(input.identity);
       for (const field of ['tenant_id', 'workspace_id', 'project_id'] as const)
         if (identity[field] !== this.#scope[field]) throw new TypeError();
@@ -164,6 +210,20 @@ export class MockAuditStore {
           throw new TypeError();
         visible.add(id);
       }
+      let access: MockAuditExportAccess | undefined;
+      if (input.export_access !== undefined) {
+        const row = record(input.export_access, [
+          'export_data',
+          'export_restricted',
+          'policy_allowed',
+        ]);
+        if (Object.values(row).some((value) => typeof value !== 'boolean')) throw new TypeError();
+        access = {
+          export_data: row.export_data as boolean,
+          export_restricted: row.export_restricted as boolean,
+          policy_allowed: row.policy_allowed as boolean,
+        };
+      }
       return {
         identity,
         expires_at,
@@ -172,12 +232,136 @@ export class MockAuditStore {
         read_restricted: input.read_restricted as boolean,
         visible_audit_ids: [...visible].sort(),
         visible,
+        ...(access === undefined ? {} : { export_access: access }),
       };
     });
     return {
       request: async <T = unknown>(request: WcpRequest): Promise<T> =>
         (await this.respond(request, saved)) as T,
     };
+  }
+
+  /** Trusted store-owner inspection only; this is not a public WCP audit route. */
+  getExportRelease(auditId: string): MockAuditExportRelease | undefined {
+    if (!isUlid(auditId)) fail('INVALID_INPUT', configurationTrace);
+    const saved = this.#releases.get(auditId);
+    return saved === undefined
+      ? undefined
+      : (snapshot(saved, releaseRecordBytes) as MockAuditExportRelease);
+  }
+
+  private async exportView(
+    selection: AuditExportRequest,
+    session: Session,
+    maximum: number,
+    trace: string,
+    live: () => void,
+    released: (id: string) => void,
+  ): Promise<AuditExportEnvelope> {
+    if (this.#activeExports >= 2) fail('AUDIT_EXPORT_BUSY', trace);
+    this.#activeExports++;
+    try {
+      const select = () => {
+        live();
+        const access = session.export_access;
+        // Even public records require an explicitly configured export capability.
+        if (!access || !access.policy_allowed || (!access.export_data && !access.export_restricted))
+          fail('DENIED', trace);
+        const entry = this.#records.get(selection.audit_id);
+        if (
+          !entry ||
+          !session.visible.has(entry.audit_id) ||
+          (entry.classification === 'restricted' && !session.read_restricted)
+        )
+          fail('NOT_FOUND', trace);
+        if (entry.classification === 'restricted' && !access.export_restricted)
+          fail('DENIED', trace);
+        return entry;
+      };
+      const entry = select();
+      const json = checked('WORKBENCH_AUDIT_INVALID', trace, () =>
+        auditExportDocumentJson(auditExportDocument(this.#scope, entry)),
+      );
+      const documentBytes = new TextEncoder().encode(json);
+      let digest: string;
+      try {
+        live();
+        const hash = await globalThis.crypto.subtle.digest('SHA-256', documentBytes);
+        if (!(hash instanceof ArrayBuffer) || hash.byteLength !== 32) throw new TypeError();
+        digest = Array.from(new Uint8Array(hash), (byte) =>
+          byte.toString(16).padStart(2, '0'),
+        ).join('');
+      } catch {
+        live();
+        return fail('AUDIT_INTEGRITY_UNAVAILABLE', trace);
+      }
+      const current = select();
+      if (
+        digest !== selection.sha256 ||
+        checked('WORKBENCH_AUDIT_INVALID', trace, () =>
+          auditExportDocumentJson(auditExportDocument(this.#scope, current)),
+        ) !== json
+      )
+        fail('AUDIT_EXPORT_CONFLICT', trace);
+      const auditId = checked('AUDIT_PERSISTENCE_UNAVAILABLE', trace, () => createUlid());
+      if (this.#records.has(auditId) || this.#releases.has(auditId))
+        fail('AUDIT_PERSISTENCE_UNAVAILABLE', trace);
+      const result = checked('GATEWAY_RESPONSE_INVALID', trace, () =>
+        parseAuditExportEnvelope(
+          snapshot(
+            {
+              schema_version: 1,
+              trace_id: trace,
+              source_refs: [
+                { type: 'audit', id: selection.audit_id },
+                { type: 'audit', id: auditId },
+              ],
+              data: {
+                document: JSON.parse(json),
+                document_sha256: digest,
+                document_bytes: documentBytes.byteLength,
+                release_audit_id: auditId,
+                audit_state: 'release-recorded',
+                client_delivery_state: 'not-confirmed',
+              },
+            },
+            Math.min(maximum, AUDIT_EXPORT_RESPONSE_BYTES),
+          ),
+          selection,
+          trace,
+        ),
+      );
+      const release: MockAuditExportRelease = {
+        schema_version: 1,
+        simulation: true,
+        audit_id: auditId,
+        identity: session.identity,
+        selection,
+        classification: current.classification,
+        document_bytes: documentBytes.byteLength,
+        details_state: current.details_state,
+        source_refs_state: current.source_refs_state,
+        trace_id: trace,
+        occurred_at: new Date().toISOString(),
+        client_delivery_state: 'not-confirmed',
+      };
+      const serialized = checked('AUDIT_PERSISTENCE_UNAVAILABLE', trace, () =>
+        syncJsonSnapshot(release, releaseRecordBytes),
+      );
+      const bytes = new TextEncoder().encode(serialized).byteLength;
+      if (this.#releases.size >= 1000 || this.#releaseBytes + bytes > releaseBytes)
+        fail('AUDIT_PERSISTENCE_UNAVAILABLE', trace);
+      const saved = JSON.parse(serialized) as MockAuditExportRelease;
+      live();
+      // No await after this simulated commit. A later stopped outer wait cannot undo it.
+      this.#releases.set(auditId, saved);
+      this.#releaseBytes += bytes;
+      released(auditId);
+      return result;
+    } finally {
+      // Keep capacity occupied until any pending native digest has actually settled.
+      this.#activeExports--;
+    }
   }
 
   private async page(
@@ -262,6 +446,8 @@ export class MockAuditStore {
 
   private async respond(raw: WcpRequest, session: Session): Promise<unknown> {
     const { method, path, body, response_type, max_response_bytes, signal } = raw;
+    const exporting = path === '/v1/audit/export';
+    let release: string | undefined;
     let trace = 'trace_unknown';
     const headers = checked('INVALID_INPUT', trace, () => {
       const input = snapshot(raw.headers, 16 * 1024);
@@ -287,7 +473,7 @@ export class MockAuditStore {
       fail('INVALID_INPUT', trace);
     trace = suppliedTrace;
     const budget = checked('INVALID_INPUT', trace, () =>
-      createRequestBudget(trace, 30_000, signal),
+      createRequestBudget(trace, exporting ? 75_000 : 30_000, signal),
     );
     const live = () => {
       budget.check();
@@ -296,7 +482,8 @@ export class MockAuditStore {
     };
     try {
       live();
-      if (method !== 'POST' || path !== '/v1/workbench/query') fail('MOCK_ROUTE_NOT_FOUND', trace);
+      if (method !== 'POST' || (!exporting && path !== '/v1/workbench/query'))
+        fail('MOCK_ROUTE_NOT_FOUND', trace);
       for (const field of ['tenant_id', 'workspace_id', 'project_id'] as const)
         if (headers.get('x-' + field.replaceAll('_', '-')) !== session.identity[field])
           fail('DENIED', trace);
@@ -323,7 +510,12 @@ export class MockAuditStore {
         ].some((key) => headers.has(key))
       )
         fail('INVALID_INPUT', trace);
-      const maximum = max_response_bytes ?? WORKBENCH_AUDIT_RESPONSE_BYTES;
+      const maximum =
+        max_response_bytes === undefined
+          ? exporting
+            ? AUDIT_EXPORT_RESPONSE_BYTES
+            : WORKBENCH_AUDIT_RESPONSE_BYTES
+          : max_response_bytes;
       if (
         !Number.isSafeInteger(maximum) ||
         maximum < 1 ||
@@ -331,6 +523,20 @@ export class MockAuditStore {
         (response_type === 'bounded-json' && max_response_bytes === undefined)
       )
         fail('INVALID_INPUT', trace);
+      if (exporting) {
+        const selection = checked('INVALID_INPUT', trace, () =>
+          parseAuditExportRequest(
+            record(snapshot(body, AUDIT_EXPORT_REQUEST_BYTES), ['scope', 'audit_id', 'sha256']),
+          ),
+        );
+        for (const field of ['tenant_id', 'workspace_id', 'project_id'] as const)
+          if (selection.scope[field] !== this.#scope[field]) fail('DENIED', trace);
+        return await budget.wait(() =>
+          this.exportView(selection, session, maximum, trace, live, (id) => {
+            release = id;
+          }),
+        );
+      }
       const query = checked('INVALID_INPUT', trace, () => {
         const input = record(
           snapshot(body, 16 * 1024),
@@ -374,6 +580,13 @@ export class MockAuditStore {
           ? (envelope.code as ErrorCode)
           : 'WORKBENCH_AUDIT_INVALID',
         trace,
+        exporting
+          ? {
+              audit_state: release === undefined ? 'unconfirmed' : 'release-recorded',
+              ...(release === undefined ? {} : { release_audit_id: release }),
+              client_delivery_state: 'not-confirmed',
+            }
+          : {},
       );
     } finally {
       budget.close();
