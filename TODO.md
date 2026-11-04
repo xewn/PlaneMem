@@ -6,6 +6,8 @@
 
 ### 2026-11-04 开发补充（未编译、未发布、未测试）
 
+- P0/P2：新增SDK contextHistoryPages(itemId, query?, options?)与WcpContextHistoryPagesOptions，创建时捕获完整项目/账号/客户端约束及原条目/页大小/初始位置，next才派发、无预取；每页沿256 KiB完整读取与默认30秒期限/取消，yield前保存严格递减续页位置。max_pages默认100/最多1000，到限仍有续页时下次next抛CONTEXT_HISTORY_PAGE_LIMIT，已交付页保留供显式继续；提前break不再读取，不承诺跨页快照或来源真实性。仅源码文档/人工审阅/格式文本检查，未编译、类型检查、测试、运行或发布；运行/并发/真实历史证据仍待补，R-003未完成。
+
 - P0/P2：新增MockContextHistoryStore/Seed/Session及MockWcpServer context_history配置，固定单项目当前可见状态与原历史快照，最多1000条目/总1000版本/16 MiB；共享完整结构/分页/来源校验、请求指定版本SHA-256、明确权限/到期/可见集合，支持SDK历史与两版本比较。目录256 KiB/版本2 MiB、30秒/每store两并发，取消后底层摘要结束才释放；不造历史/摘要/确认，不写库。仅源码文档及格式文本检查，未编译、类型检查、测试、执行或发布；R-003未完成，运行/真实数据兼容与旧调用迁移证据待补。
 
 - P4/P0：MCP list_context_item_history/get_context_item_version接入专用有界执行器，新增compare_context_item_versions；可信未过期实际context.read身份用于发现与调用，4 KiB严格输入、256 KiB目录/2 MiB版本/16 KiB错误、完整响应和SHA-256核对。两版本共享30秒预算，三工具每Gateway共用两笔容量，超时到底层结束才释放；比较输出原本地形状、16 MiB业务/32 MiB+4096转义上限，无自动分页/重试/写入。仅源码文档和格式/文本检查，未编译、类型检查、测试、运行或发布；R-003未完成，Mock源码接入见后续增量，运行证据待补。

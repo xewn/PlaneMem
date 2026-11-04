@@ -1,5 +1,31 @@
 # ContextItem 录入与编辑开发说明
 
+## 2026-11-04 SDK历史按需分页增量
+
+新增WcpClient.contextHistoryPages(itemId, query?, options?)，返回AsyncGenerator<WcpEnvelope<ContextItemHistoryPage>, void, unknown>；options为WcpContextHistoryPagesOptions，沿timeout_ms/signal并增加max_pages。创建时同步捕获合法普通平面字段及完整项目/actor/client上下文；actor与client均必填，在每页请求携带同一相等约束，服务端才负责验证实际身份。单页listContextItemHistory的可选身份规则保持。创建时输入/选项错误同步抛INVALID_INPUT，合法可选undefined仍省略；没有读取、计时器或后台预取。
+
+第一次及后续next才派发一页，调用方显式for await消费才会连续读取。默认limit=25、最多100，保留原item_id、limit与可选起始before_version。每页沿原完整256 KiB/trace/来源/版本排序/分页校验和默认30秒本地预算；timeout_ms不是整个遍历总时限，消费者处理或等待期间不运行读取计时器。返回页面前捕获next_before_version并要求比上一位置严格降低，调用方修改返回对象/原参数或原构造上下文不会改变之后请求。新记录、权限变化及当前版本信息以各页读取为准，不能将遍历当作跨页一致性快照或历史完整性证明。
+
+max_pages默认100、允许1–1000正安全整数。达到上限时先正常交付最后一份完整页；若它还有续页，下一次next抛CONTEXT_HISTORY_PAGE_LIMIT，retryable=false，不再发请求。若该页已无续页，下一次正常结束。调用方保留最后完整页及data.next_before_version，可明确决定另建迭代器继续；不会自动重置页数、跳过页或换身份。续页读取失败不返回半页，也不撤销先前交付的页面，原位置需要调用者保留。
+
+每页请求复用原signal；仍有待读页面时，取消发生在空闲期会让下一次next在派发前拒绝。并发next由异步生成器按请求顺序排队处理，不并发拉取；break/return停止尚未发起的页，原生生成器return不能抢占已经等待的next，调用者应使用AbortController取消在途读取。错误固定、不自动重试、不保存、不读取单版本正文或确认当前状态。目录摘要仍只是记录字段，若需核对快照必须另调getContextItemVersion。
+
+以下为未执行示例，client已配置完整项目、actor/client上下文；调用者自行处理页数上限或读取失败，并保留最后完整页的续页位置：
+
+```ts
+const pages = client.contextHistoryPages(itemId, { limit: 25 }, {
+  timeout_ms: 30_000, max_pages: 10, signal: controller.signal,
+});
+const first = await pages.next(); // 此时才读取第一页
+if (!first.done) {
+  const continuation = first.value.data.next_before_version;
+  // 处理完整页，并按需要保存原 continuation。
+}
+await pages.return(); // 不再读取下一页
+```
+
+MockContextHistoryStore沿相同GET与原分页自然接入，每store固定30秒期限可比SDK预算更早结束。无Gateway/CLI/MCP/共享Schema/数据库/依赖变化；capture收拢原timeout/signal形状校验以便创建时发现非法选项，单页/比较接受范围保持。仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行SDK/Mock/API/数据库或发布。迭代器取消/排队/可变输入、页数上限及生产数据兼容仍无运行证据，R-003未完成。
+
 ## 2026-11-04 上下文历史Mock增量
 
 SDK新增可选MockContextHistoryStore及MockWcpServer context_history配置：固定单项目当前可见状态和完整原历史版本，允许空历史/版本缺口，显式完整模拟身份/到期/权限/可见集合。目录和单版沿共享封套与分页规则，指定快照WebCrypto SHA-256核对保存摘要；SDK比较沿两次指定读取接入，不增加比较路由或伪造版本。种子16 MiB/最多1000条目与总1000版本，目录256 KiB/版本2 MiB、固定30秒等待及每store两笔容量，超时后保留名额直到摘要结束。仅源码文档，未编译、测试、执行或发布；完整边界和未执行示例见[上下文历史Mock](context-history-mock-runtime.md)。模拟响应不是生产认证、来源真实性或持久审计证明，R-003仍缺运行/真实数据/客户端证据。

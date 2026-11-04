@@ -27,6 +27,11 @@ export interface WcpContextHistoryReadOptions {
   signal?: AbortSignal;
 }
 
+export interface WcpContextHistoryPagesOptions extends WcpContextHistoryReadOptions {
+  /** Defaults to 100, at most 1000. Further continuation raises CONTEXT_HISTORY_PAGE_LIMIT. */
+  max_pages?: number;
+}
+
 export interface WcpContextComparisonResult {
   schema_version: 1;
   kind: 'context-version-comparison';
@@ -49,7 +54,7 @@ export interface WcpContextComparisonResult {
 
 const messages: Record<string, string> = {
   INVALID_INPUT:
-    'Supply a valid context item, history positions, project context and read options; comparison also requires account and client constraints',
+    'Supply a valid context item, history positions, project context and read options; comparison and page iteration also require account and client constraints',
   DENIED: 'The current account or client cannot read the selected context history',
   UNAUTHENTICATED: 'Renew the intended session before reading context history',
   CONTEXT_ITEM_NOT_FOUND:
@@ -68,6 +73,8 @@ const messages: Record<string, string> = {
   CONTEXT_HISTORY_INTEGRITY_UNAVAILABLE:
     'Snapshot integrity checking is unavailable; no unchecked version was returned',
   CONTEXT_HISTORY_HASH_MISMATCH: 'The complete context snapshot differs from its saved hash',
+  CONTEXT_HISTORY_PAGE_LIMIT:
+    'The requested history page limit was reached; preserve the last complete page and its continuation',
 };
 function failure(code: string, trace: string) {
   return new ContractError(code, messages[code]!, { trace_id: trace, retryable: false });
@@ -115,6 +122,21 @@ function capture(original: RequestContext, options: WcpContextHistoryReadOptions
   )
     throw new TypeError();
   const settings = fields(options, ['timeout_ms', 'signal']);
+  const timeout = settings.timeout_ms === undefined ? 30_000 : settings.timeout_ms;
+  const signal = settings.signal as AbortSignal | undefined;
+  if (
+    typeof timeout !== 'number' ||
+    !Number.isSafeInteger(timeout) ||
+    timeout < 1 ||
+    timeout > 2_147_483_647 ||
+    (signal !== undefined &&
+      (!signal ||
+        typeof signal !== 'object' ||
+        typeof signal.aborted !== 'boolean' ||
+        typeof signal.addEventListener !== 'function' ||
+        typeof signal.removeEventListener !== 'function'))
+  )
+    throw new TypeError();
   return {
     context: {
       trace_id: row.trace_id,
@@ -124,8 +146,8 @@ function capture(original: RequestContext, options: WcpContextHistoryReadOptions
       ...(row.actor_id === undefined ? {} : { actor_id: row.actor_id }),
       ...(row.client_id === undefined ? {} : { client_id: row.client_id }),
     },
-    timeout: (settings.timeout_ms === undefined ? 30_000 : settings.timeout_ms) as number,
-    signal: settings.signal as AbortSignal | undefined,
+    timeout,
+    signal,
   };
 }
 type CapturedContext = ReturnType<typeof capture>['context'];
@@ -274,6 +296,74 @@ export function readContextItemVersion(
     return async (budget) =>
       (await read(transport, snapshot, query, budget)) as WcpEnvelope<ContextItemRevision>;
   });
+}
+
+/** Capture now; each next() alone starts one bounded read. No idle timer or prefetch. */
+export function iterateContextItemHistory(
+  transport: WcpTransport,
+  original: RequestContext,
+  itemId: string,
+  input: ContextItemHistoryQuery,
+  options: WcpContextHistoryPagesOptions,
+): AsyncGenerator<WcpEnvelope<ContextItemHistoryPage>, void, unknown> {
+  const trace = original.trace_id;
+  const prepared = (() => {
+    try {
+      const row = fields(options, ['timeout_ms', 'signal', 'max_pages']);
+      const maximum = row.max_pages === undefined ? 100 : row.max_pages;
+      if (
+        typeof maximum !== 'number' ||
+        !Number.isSafeInteger(maximum) ||
+        maximum < 1 ||
+        maximum > 1000
+      )
+        throw new TypeError();
+      const settings = capture(original, {
+        ...(row.timeout_ms === undefined ? {} : { timeout_ms: row.timeout_ms as number }),
+        ...(row.signal === undefined ? {} : { signal: row.signal as AbortSignal }),
+      });
+      if (settings.context.actor_id === undefined || settings.context.client_id === undefined)
+        throw new TypeError();
+      const fieldsInput = fields(input, ['before_version', 'limit']);
+      const query = parseContextHistoryReadQuery({
+        kind: 'history',
+        item_id: itemId,
+        ...(fieldsInput.before_version === undefined
+          ? {}
+          : { before_version: fieldsInput.before_version }),
+        ...(fieldsInput.limit === undefined ? {} : { limit: fieldsInput.limit }),
+      });
+      if (query.kind !== 'history') throw new TypeError();
+      return { settings, query, maximum };
+    } catch {
+      throw failure('INVALID_INPUT', trace);
+    }
+  })();
+  const { settings, query, maximum } = prepared;
+  return (async function* () {
+    let before = query.before_version;
+    for (let count = 0; ; count++) {
+      if (settings.signal?.aborted) throw failure('GATEWAY_REQUEST_CANCELED', trace);
+      if (count >= maximum) throw failure('CONTEXT_HISTORY_PAGE_LIMIT', trace);
+      const page = await readContextItemHistory(
+        transport,
+        settings.context,
+        query.item_id,
+        { limit: query.limit, ...(before === undefined ? {} : { before_version: before }) },
+        {
+          timeout_ms: settings.timeout,
+          ...(settings.signal === undefined ? {} : { signal: settings.signal }),
+        },
+      );
+      // Retain the validated continuation before exposing the mutable page to the consumer.
+      const next = page.data.next_before_version;
+      if (next !== undefined && before !== undefined && next >= before)
+        throw failure('GATEWAY_RESPONSE_INVALID', trace);
+      yield page;
+      if (next === undefined) return;
+      before = next;
+    }
+  })();
 }
 
 export function compareContextItemVersions(

@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-04：新增`contextHistoryPages(itemId, {before_version?,limit?}, {timeout_ms?,signal?,max_pages?})`，返回完整历史页异步迭代器。创建时固定原参数与完整项目/actor/client相等约束，身份必填；每次next才读取，没有预取或空闲计时器，每页256 KiB/默认30秒，signal可取消等待。max_pages默认100、范围1–1000；到限仍有续页时下一次next抛`CONTEXT_HISTORY_PAGE_LIMIT`，不静默当作全部读完。yield前保存原next_before_version，修改返回页或原参数不会改变续页；break停止后续读，已在途读需用signal取消。每页仍反映当次可见状态，不读取版本正文/核对全部快照、不自动重试或保存。契约和未执行示例见[SDK历史逐页浏览](../../docs/design/01-contracts/context-item-runtime.md#2026-11-04-sdk历史按需分页增量)。仅源码文档，未编译、测试、执行SDK/Mock或发布。
+
 2026-11-04：新增`MockContextHistoryStore/MockContextHistorySeed/MockContextHistorySession`及`MockWcpServer({context_history:{store,session}})`，支持历史列表与指定版本GET，SDK比较沿两次读取接入。固定单项目种子最多1000条目/总1000版本/16 MiB，保留显式当前可见状态、版本缺口和完整原快照；结构校验在构造时完成，单版读取核对保存的WebCrypto SHA-256，不自动生成摘要/历史/确认。显式完整身份/到期/权限/可见集合，目录256 KiB、版本2 MiB、每store两并发/固定30秒预算，取消后底层摘要未结束仍占槽。输出遵守共享原来源/trace契约，但模拟数据不是生产认证或审计证据。接线示例及边界见[上下文历史Mock](../../docs/design/01-contracts/context-history-mock-runtime.md)。仅源码文档人工审阅，未编译、测试、运行Mock/SDK或发布。
 
 2026-11-04：`listContextItemHistory(id, query?, options?)`和`getContextItemVersion(id, version, options?)`新增`WcpContextHistoryReadOptions`（timeout_ms/signal），默认30秒，完整目录256KiB、版本2MiB，版本读取核对WebCrypto SHA-256。新增`compareContextItemVersions({item_id,from_version,to_version}, options?)`，要求构造上下文含完整project_id/actor_id/client_id，固定两版本并在同一总预算内读取、校验和比较；任一失败无部分结果。结果为`WcpContextComparisonResult`本地组合对象，保存原from/to封套与query/identity_constraints，明确snapshot-hashes-checked、source_state=not-checked，非新Gateway响应或来源真实性证明。根入口导出共享`parseContextComparisonQuery/compareContextSnapshots`及相关类型；本地函数做结构比较，不独立核对摘要或权限。接口、兼容变化与未执行示例见[SDK上下文历史读取](../../docs/design/01-contracts/context-item-runtime.md#2026-11-04-sdk历史读取与双版本对比增量)。仅源码文档，未编译、测试、执行SDK/Mock或发布。
@@ -292,6 +294,7 @@ const handoff = await client.createHandoff(started.data.session_id, originalHand
 - 来源条目：`createContextItem`、`getContextItem`、`listContextItems`、`updateContextItem`、`archiveContextItem`。
 - 归档管理：`getArchivedContextItem`、`restoreContextItem`；列表传入 `{ archived: true }`。
 - 版本历史：`listContextItemHistory(id, { before_version?, limit? }, options?)`、`getContextItemVersion(id, version, options?)`，options支持timeout_ms/signal。
+- 按需历史分页：`contextHistoryPages(id, { before_version?, limit? }, { timeout_ms?, signal?, max_pages? })`，构造上下文需完整actor/client约束；返回完整页，未预取。
 - 版本对比：`compareContextItemVersions({ item_id, from_version, to_version }, options?)`，两版本不同，要求完整项目、账号与客户端上下文。
 - 人工确认：`confirmContextItem(id, reason, { expected_version, idempotency_key })`，要求签名 human、客户端身份和 context.review。
 - 建议审核：`createProposal`、`listProposals`、`getProposal`、`confirmProposal`、`rejectProposal`。

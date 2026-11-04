@@ -174,8 +174,10 @@ import { compareArtifactVersions } from './artifact-comparison.js';
 import {
   readContextItemHistory,
   readContextItemVersion,
+  iterateContextItemHistory,
   compareContextItemVersions,
   type WcpContextHistoryReadOptions,
+  type WcpContextHistoryPagesOptions,
 } from './context-history.js';
 import { uploadArtifact, type WcpArtifactUploadOptions } from './artifact-upload.js';
 import { uploadSyncEvents, type WcpSyncUploadOptions } from './sync-upload.js';
@@ -481,6 +483,15 @@ export class WcpClient {
     options: WcpContextHistoryReadOptions = {},
   ) {
     return readContextItemVersion(this.transport, this.context, itemId, version, options);
+  }
+
+  /** Explicit demand-driven history pages; requires account/client constraints for every read. */
+  contextHistoryPages(
+    itemId: string,
+    input: ContextItemHistoryQuery = {},
+    options: WcpContextHistoryPagesOptions = {},
+  ) {
+    return iterateContextItemHistory(this.transport, this.context, itemId, input, options);
   }
 
   /** Local comparison of two complete historical snapshots under one total read budget. */

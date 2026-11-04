@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [SDK 上下文历史逐页浏览](docs/design/01-contracts/context-item-runtime.md)：按需读取下一页，固定原条目与身份，支持逐页超时、取消和页数上限，不预取或自动保存。仅源码文档，未编译、测试、运行或发布。
+
 新增 [上下文历史 Mock](docs/design/01-contracts/context-history-mock-runtime.md)：可配置固定历史快照与模拟读取权限，支持 SDK 历史分页、指定版本和双版本比较，保留版本缺口并核对保存摘要。仅源码文档，未编译、测试、运行或发布。
 
 新增 [MCP 上下文历史与对比](docs/design/01-contracts/context-item-runtime.md)：历史列表和指定版本读取加入完整响应校验，新增两版本对比工具；核对快照摘要、读取权限并限制等待时间。仅源码文档，未编译、测试、运行或发布。

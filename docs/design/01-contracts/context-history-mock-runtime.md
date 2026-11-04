@@ -1,5 +1,7 @@
 # 上下文历史 Mock（源码阶段）
 
+2026-11-04后续SDK增量：contextHistoryPages支持按next逐页读取，完整身份/条目/页大小固定，每页沿本Mock的同一history GET与权限/大小/期限。迭代器不预取或自行持久化，max_pages限制到达后由调用者显式续读；Mock不新增路由或跨页快照承诺，见[SDK历史按需分页](context-item-runtime.md#2026-11-04-sdk历史按需分页增量)。仅源码接线说明，未执行迭代器或Mock。
+
 2026-11-04新增SDK MockContextHistoryStore、MockContextHistorySeed、MockContextHistorySession和可选MockWcpServer({context_history:{store,session}})。实现既有GET /v1/context-items/{item_id}/history与GET /v1/context-items/{item_id}/versions/{version}，接入listContextItemHistory/getContextItemVersion；compareContextItemVersions沿两次指定读取得到原本地比较对象，不增加比较路由。仅源码文档人工审阅和格式/文本检查，未编译、类型检查、测试、执行SDK/Mock/API/数据库或发布。
 
 ## 固定数据集
