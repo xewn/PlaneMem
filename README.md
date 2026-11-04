@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [生成日志恢复新目录](docs/design/01-contracts/proposal-generation-journal-restore-runtime.md)：预览并确认备份摘要后，恢复全部原请求、领取和结果，支持查询与结果取回；恢复目录阻止新的模型调用，失败保留已写文件和来源。仅源码文档，未编译、测试、运行或发布。
+
 新增 [生成请求日志完整备份](docs/design/01-contracts/proposal-generation-journal-backup-runtime.md)：按原项目与身份将请求、领取标记和结果一起保存，检测读取期间的变化，支持离线核验及失败副本补存。保留原时间、摘要和未知调用状态，不重新生成或发送。仅源码文档，未编译、测试、运行或发布。
 
 新增 [备份生成记录取回](docs/design/01-contracts/proposal-queue-backup-runtime.md#备份生成记录目录与独立导出)：按备份摘要和任务查找生成记录，审阅完整来源、模型结果及原草稿，并导出既有独立记录文件；保留原时间和摘要，不重新生成或发送。仅源码文档，未编译、测试、运行或发布。

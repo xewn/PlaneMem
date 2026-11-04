@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { ContractError, syncJsonSnapshot } from '@planemem/contracts';
 import { normalizeQueueBinding, type ProposalQueueBinding } from './queue-binding.js';
+import { readGenerationJournalDispatchPolicy } from './generation-journal-guard.js';
 import {
   directory,
   readOptional,
@@ -189,6 +190,7 @@ export async function listGenerationRequests(
             ? 'byte-limit'
             : 'scan-limit',
       consistency: 'per-request',
+      journal_dispatch: await readGenerationJournalDispatchPolicy(root),
     };
   } catch (error) {
     if (

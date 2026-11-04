@@ -6,6 +6,8 @@
 
 ## 配置与命令
 
+新增 [生成日志恢复新目录](../../docs/design/01-contracts/proposal-generation-journal-restore-runtime.md)：`generation-journal-restore --file BACKUP.json --binding binding.json --output NEW_JOURNAL_DIR --preview` 预览后，以 `--confirm-sha256 BACKUP_SHA256` 替换preview恢复。先独占保存隔离标记和原备份，再保存原请求/领取/结果，全量读回后才报告成功；已有目标不覆盖，失败保留目录/文件/阶段。恢复目录支持status/result和原领取结果补存，阻止新增请求与模型调用，prepared也不放行；状态和目录返回journal_dispatch。必须保留隔离标记与原备份，旧worker不具备此门禁；原进程协调、已有日志合并与解除隔离仍缺。仅源码，未运行命令。
+
 新增 [生成请求日志完整备份](../../docs/design/01-contracts/proposal-generation-journal-backup-runtime.md)：`generation-journal-backup --journal EXISTING_DIR --binding binding.json --output NEW_BACKUP.json` 将同范围原请求、领取和结果一起保存，最多100请求/32 MiB；两轮完整读取与目录集合核对，损坏/孤立文件/变化拒绝整份。先暂停日志写者；该观察不构成事务快照或重发资格。`inspect-generation-journal-backup --file BACKUP.json` 离线核验；`generation-journal-backup-recover --file BACKUP_OR_ERROR.json --output NEW_BACKUP.json [--preview]` 从保留备份或完整失败封套另存新副本，原时间/摘要保持，失败保留完整内容。三个入口均不调用模型、不打开队列或改变原日志；整套日志恢复仍待开发。仅源码，未执行命令。
 
 新增 [备份生成记录目录与导出](../../docs/design/01-contracts/proposal-queue-backup-runtime.md#备份生成记录目录与独立导出)：`queue-backup-generation-list --file BACKUP.json --sha256 BACKUP_SHA256 --id JOB_ID [--after RECORD_SHA256] [--limit 10]`返回生成关联元数据及下一查询；`queue-backup-generation-get`使用同一备份/任务，并以`--record-sha256 RECORD_SHA256`选取完整记录，可加`--output NEW_RECORD.json`独占保存为既有proposal-generation文件。每次核验完整源和父任务，记录原时间/来源/模型/草稿/摘要保持；保存失败保留完整记录与阶段。导出可接`inspect-generation --file NEW_RECORD.json`，不打开队列、联网或触发模型/入队/发送。仅源码，未执行命令。

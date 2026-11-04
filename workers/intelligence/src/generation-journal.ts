@@ -10,6 +10,10 @@ import { prepareGenerationOutput, saveGenerationFile } from './generation-output
 import type { ProposalQueueBinding } from './queue-binding.js';
 import { directory, paths, readOptional, readState, failure } from './generation-journal-read.js';
 import {
+  assertGenerationJournalDispatchAllowed,
+  readGenerationJournalDispatchPolicy,
+} from './generation-journal-guard.js';
+import {
   inspectGenerationRecovery,
   matchesGenerationRecovery,
   type PreparedGenerationRecovery,
@@ -87,7 +91,9 @@ export async function readGenerationRequest(
   binding: ProposalQueueBinding,
   key: string,
 ) {
-  return readState(await directory(directoryPath), binding, key);
+  const root = await directory(directoryPath);
+  const current = await readState(root, binding, key);
+  return { ...current, journal_dispatch: await readGenerationJournalDispatchPolicy(root) };
 }
 
 function compareRecovery(
@@ -223,6 +229,7 @@ export async function prepareGenerationRequest(
       'PROPOSAL_GENERATION_REQUEST_INVALID',
       'Attempt or outcome files exist without their original request',
     );
+  await assertGenerationJournalDispatchAllowed(root);
   try {
     const output = await publish(files.request, candidate, candidate);
     return {
@@ -293,6 +300,7 @@ export async function runGenerationRequest(
         state: current.state,
       },
     );
+  await assertGenerationJournalDispatchAllowed(root);
   // Check common local mistakes before claiming; credentials remain exclusively in this invocation.
   if (
     !options ||
@@ -325,6 +333,7 @@ export async function runGenerationRequest(
   const attempt = createGenerationAttempt(request);
   const files = paths(root, key);
   let claim: Awaited<ReturnType<typeof publish>>;
+  await assertGenerationJournalDispatchAllowed(root);
   try {
     claim = await publish(files.attempt, attempt, request, 8192);
   } catch (error) {
@@ -333,6 +342,9 @@ export async function runGenerationRequest(
   let generated: GeneratedProposalDraft | undefined;
   let errorResult: ProposalGenerationFailure | null = null;
   try {
+    // A restore marker appearing after the claim must still prevent provider dispatch.
+    // Preserve the winning attempt and save a not-sent failure through the normal outcome path.
+    await assertGenerationJournalDispatchAllowed(root);
     generated = await generateProposalDraft(
       request.preparation.preparation.input,
       request.provider,

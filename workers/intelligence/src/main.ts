@@ -95,6 +95,7 @@ import {
   saveGenerationJournalBackup,
 } from './generation-journal-backup.js';
 import { readGenerationJournalBackupRecovery } from './generation-journal-backup-recovery.js';
+import { restoreGenerationJournalBackup } from './generation-journal-restore.js';
 
 const help = `Proposal submission queue (Node.js 24)
   proposal-worker prepare-generation --binding binding.json --file selection.json --output NEW_SOURCES.json [--record]
@@ -110,6 +111,8 @@ const help = `Proposal submission queue (Node.js 24)
   proposal-worker generation-journal-backup --journal EXISTING_DIR --binding binding.json --output NEW_BACKUP.json
   proposal-worker inspect-generation-journal-backup --file BACKUP.json
   proposal-worker generation-journal-backup-recover --file BACKUP_OR_ERROR.json --output NEW_BACKUP.json [--preview]
+  proposal-worker generation-journal-restore --file BACKUP.json --binding binding.json --output NEW_JOURNAL_DIR --preview
+  proposal-worker generation-journal-restore --file BACKUP.json --binding binding.json --output NEW_JOURNAL_DIR --confirm-sha256 BACKUP_SHA256
   proposal-worker enqueue-generated --queue queue.sqlite --binding binding.json --file GENERATION_RECORD.json --key KEY
   proposal-worker generation-list --queue queue.sqlite --binding binding.json --id JOB_ID [--after SHA256] [--limit 10]
   proposal-worker generation-get --queue queue.sqlite --binding binding.json --id JOB_ID --sha256 SHA256 [--output NEW_RECORD.json]
@@ -156,6 +159,7 @@ generation-recover imports retained outcomes for the original existing attempt; 
 generation-requests discovers requests for the original binding; follow next_cursor even when a filtered page is empty.
 generation-journal-backup retains complete requests, attempts and outcomes for the original binding after two matching read passes. Pause writers first; this is not a transactional snapshot or permission to resend.
 inspect-generation-journal-backup verifies the retained file offline; generation-journal-backup-recover saves a new copy of a complete retained backup. Preview writes nothing; neither restores a live journal or calls the model.
+generation-journal-restore creates a new guarded directory after digest confirmation, preserving original requests, attempts and outcomes. It blocks new generation requests and model calls, including prepared observations; status/result and existing-outcome recovery remain available. Keep the marker, source backup and original directory; older workers do not implement this guard.
 prepare-generation reads pinned sources; flush submits known-unsent drafts or reads receipts for unknown outcomes.
 Both use PROPOSAL_WORKER_ACCESS_TOKEN. retry preserves unknown outcomes and never clears uncertainty.
 retry schedules the original draft/key; it does not send or regenerate content.
@@ -213,6 +217,7 @@ export async function main(args: string[]): Promise<number> {
       'generation-journal-backup': ['journal', 'binding', 'output'],
       'inspect-generation-journal-backup': ['file'],
       'generation-journal-backup-recover': ['file', 'output', 'preview'],
+      'generation-journal-restore': ['file', 'binding', 'output', 'preview', 'confirm-sha256'],
       'enqueue-generated': ['file', 'key'],
       'generation-list': ['id', 'after', 'limit'],
       'generation-get': ['id', 'sha256', 'output'],
@@ -266,6 +271,7 @@ export async function main(args: string[]): Promise<number> {
             'generation-journal-backup',
             'inspect-generation-journal-backup',
             'generation-journal-backup-recover',
+            'generation-journal-restore',
           ].includes(command)
             ? []
             : ['queue', 'binding']),
@@ -296,6 +302,30 @@ export async function main(args: string[]): Promise<number> {
       const backup = await readGenerationJournalBackup(required('file'));
       process.stdout.write(JSON.stringify(generationJournalBackupSummary(backup), null, 2) + '\n');
       return 0;
+    }
+    if (command === 'generation-journal-restore') {
+      const backup = await readGenerationJournalBackup(required('file'));
+      const binding = (await readJson(required('binding'), 16_384)) as ProposalQueueBinding;
+      try {
+        const restored = await restoreGenerationJournalBackup(backup, binding, required('output'), {
+          ...(values.preview === undefined ? {} : { preview: values.preview }),
+          ...(values['confirm-sha256'] === undefined
+            ? {}
+            : { confirm_sha256: values['confirm-sha256'] }),
+        });
+        process.stdout.write(JSON.stringify(restored, null, 2) + '\n');
+        return 0;
+      } catch (error) {
+        if (
+          error instanceof ContractError &&
+          error.envelope.code.startsWith('PROPOSAL_GENERATION_JOURNAL_RESTORE_')
+        ) {
+          // Restore errors include bounded provenance, phase and retained paths, never source text.
+          process.stderr.write(JSON.stringify(error.envelope, null, 2) + '\n');
+          return 1;
+        }
+        throw error;
+      }
     }
     if (
       command === 'generation-journal-backup' ||
@@ -829,8 +859,12 @@ export async function main(args: string[]): Promise<number> {
           ? await prepareGenerationOutput(required('output'))
           : undefined;
       const state = await readGenerationRequest(journal, binding, key);
+      const stateSummary = {
+        ...generationRequestSummary(state),
+        journal_dispatch: state.journal_dispatch,
+      };
       if (!output) {
-        process.stdout.write(JSON.stringify(generationRequestSummary(state), null, 2) + '\n');
+        process.stdout.write(JSON.stringify(stateSummary, null, 2) + '\n');
         return 0;
       }
       const record = state.outcome?.record;
@@ -847,15 +881,13 @@ export async function main(args: string[]): Promise<number> {
         );
       try {
         const saved = await saveProposalGenerationRecord(output, record);
-        process.stdout.write(
-          JSON.stringify({ ...generationRequestSummary(state), output: saved }, null, 2) + '\n',
-        );
+        process.stdout.write(JSON.stringify({ ...stateSummary, output: saved }, null, 2) + '\n');
       } catch (error) {
         process.stderr.write(
           JSON.stringify(
             {
               code: 'PROPOSAL_GENERATION_REQUEST_EXPORT_FAILED',
-              ...generationRequestSummary(state),
+              ...stateSummary,
               record,
               output: {
                 output_path: output.path,
@@ -1235,6 +1267,13 @@ export async function main(args: string[]): Promise<number> {
       process.stderr.write(
         JSON.stringify({ ...error.envelope, recovery: error.recovery }, null, 2) + '\n',
       );
+      return 1;
+    }
+    if (
+      error instanceof ContractError &&
+      error.envelope.code === 'PROPOSAL_GENERATION_JOURNAL_QUARANTINED'
+    ) {
+      process.stderr.write(JSON.stringify(error.envelope, null, 2) + '\n');
       return 1;
     }
     // Never echo database contents, draft text, raw provider responses or credentials.
