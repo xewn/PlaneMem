@@ -954,6 +954,24 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_pack_cli_comparison_development_increment:
+      date: "2026-11-04"
+      status: "Source-only CLI complete saved ContextPack comparison; R-003 remains incomplete."
+      artifacts:
+        - "apps/workctx-cli/src/context-history.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "apps/workctx-cli/README.md"
+        - "docs/design/01-contracts/context-pack-runtime.md"
+      behavior: "Add context compare-packs to network main/callGateway and embedded runWorkctx through SDK compareContextPacks. Require one 4 KiB JSON/stable file, distinct from/to ULIDs and expected actor/client; bounded stdin only on network entry. Default 30-second total SDK budget and optional timeout-ms. Embedded exact ordered json reads, trusted unexpired actual context.read, original complete request headers/path/no body/2 MiB limit and selected restricted checks. Pack branch rechecks cancellation and authority after router authorization/audit, including existing context get. Eight read commands share two slots per router until underlying work settles. Reuse SDK SHA-256, 8 MiB comparison and 12 MiB complete result; no partial output/latest fallback/retry/compile/save."
+      evidence: []
+      pending_evidence:
+        - "Network main/callGateway and embedded dispatch, strict four-field input and SDK compatibility"
+        - "Stable file/bounded stdin, duplicate or unknown options, required identity and exact ordered requests"
+        - "Both complete digests/results, second-read failure, expiry/restricted access and unchanged input"
+        - "Shared capacity, authorization/audit waits, retained slots after timeout and complete stdout"
+      remaining_scope: "MCP comparison, standalone result schema and runtime evidence. Input acquisition and stdout sending are outside the SDK deadline. Generic transport lacks HTTP status/ETag headers; separate reads are not a database snapshot and hashes do not authenticate sources."
+      execution: "Source/docs, manual review and formatting/text checks only; no build, typecheck, tests, CLI/SDK/Mock/product/API/database execution or release. No SDK/contracts/Web/Gateway/MCP/Mock/schema/dependency changes."
     context_pack_sdk_comparison_development_increment:
       date: "2026-11-04"
       status: "Source-only SDK complete saved ContextPack comparison; R-003 remains incomplete."

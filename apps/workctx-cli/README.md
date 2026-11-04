@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+2026-11-04：新增 `context compare-packs`，要求不同的 from_pack_id/to_pack_id 及 expected_actor_id/expected_client_id；网络 main/callGateway 和嵌入 runWorkctx 共用 SDK 双包读取、摘要核对与比较。恰一 4 KiB JSON/稳定文件，网络支持有界 stdin，默认30秒总等待期限；完整结果包含两侧内容和原方向差异，失败不输出半份结果。详见[CLI保存包对比](../../docs/design/01-contracts/context-pack-runtime.md#cli-指定保存包对比2026-11-04源码增量)。仅源码文档，未编译、类型检查、测试、执行 CLI/SDK 或发布。
+
 2026-11-04：`context get` 接入保存包专用完整读取，网络 main/callGateway 与嵌入 runWorkctx 均复用 SDK getContextPack 的结构/范围/版本/来源/预算/格式与 SHA-256 校验。最多一个 `--json`/`--json-file`（4 KiB），默认 `{}` 读取 latest，网络支持有界 `--json -`；可选 `--timeout-ms` 默认 30000，以及 JSON 内成对 expected_actor_id/expected_client_id。完整成功 2 MiB、Fetch 错误 16 KiB，不输出部分或未核对内容；嵌入要求可信未过期实际 context.read，核对原 GET/头/空正文/限额和入选 restricted 分类，与其他六类上下文读取共用每 router 两笔容量，底层 router 未结束则超时后仍占槽。共享 SDK 仅核对 JSON 内 ETag，不宣称通用传输可见 HTTP ETag/状态；无自动换包、重试、编译或保存。见[CLI保存包读取](../../docs/design/01-contracts/context-pack-runtime.md#cli-保存包完整读取2026-11-04源码增量)。仅源码文档，未编译、类型检查、测试、执行 CLI/SDK 或发布。
 
 2026-11-04：`context list`接入SDK完整目录读取，支持最多一个`--json`/`--json-file`（8 KiB），省略为{}，网络支持有界`--json -`；可选`--timeout-ms`默认30000及JSON内成对expected_actor_id/expected_client_id。完整响应2 MiB、Fetch错误16 KiB，核对原项目/trace/筛选回显/完整记录/归档/排序/续页，失败不返回局部结果。嵌入实际未过期context.read、完整身份/POST正文/头及restricted核验，六类上下文读取共用每router两笔容量，超时底层未结束仍占槽。每次一页，下一页保留原身份/筛选/归档/limit并传回next_cursor，换页大小或旧游标须回首屏；无自动翻页/重试/缩页/保存。拒绝key/output/写字段/重复未知参数，文件/stdin等待在SDK期限前，其他五类读取仍要求恰一4 KiB输入。见[CLI上下文目录](../../docs/design/01-contracts/context-item-runtime.md#2026-11-04-cli上下文目录完整读取增量)。仅源码文档，未编译、类型检查、测试、执行CLI/SDK或发布。
@@ -634,6 +636,7 @@ observed-item.json 示例：`{"work_item_id":"plane-item-42"}`。CLI 核对返�
 | `context history` | `item_id`，可选 before_version/limit、成对 expected_actor_id/expected_client_id | 无 |
 | `context version` | `item_id`、正安全整数 version，可选成对身份约束 | 无 |
 | `context compare` | `item_id`、不同正安全整数 from_version/to_version、expected_actor_id/expected_client_id | 无 |
+| `context compare-packs` | 不同 ULID from_pack_id/to_pack_id、expected_actor_id/expected_client_id | 恰一 `--json`/`--json-file`，可选 `--timeout-ms`；无写键 |
 | `proposals create` | kind/title/content/source_refs/model_version/prompt_version | `--key` |
 | `proposals receipt` | 原 identity/request_key/完整规范 draft | `--json-file` 或 `--json`，可选 `--timeout-ms`；不接受 `--key` |
 | `proposals review-receipt` | 原 identity/request_key/proposal_id/decision/expected_revision/reason | `--json-file` 或 `--json`，可选 `--timeout-ms`；不接受 `--key` |
@@ -705,6 +708,8 @@ Proposal 审核使用 `expected_revision`，要求令牌含 `actor_type=human` �
 查询归档条目时给 `context list` 传入 `archived: true`，归档详情使用 `context read-archived`。`context restore` 需要 context.write、归档版本和请求键，恢复后条目仍为 excluded，保留原分类和到期时间；确认内容后可另行 update 为 proposed。旧包/旧来源引用不会自动有效。活动和归档视图不能共用分页游标。020 迁移文件尚未执行。
 
 `context history` 返回已记录的版本摘要，默认 25 条（limit 为 1–100），将 data.next_before_version 传为下一次 before_version。`context version` 读取指定版本的完整快照，未记录或不可见的版本返回 404。baseline 表示首次修改前捕获的旧状态，原作者未知；更早内容不重建。历史只读，不能把旧版本直接当作当前写入前提。依赖未执行的 021 迁移。
+
+`context compare-packs --json-file pack-comparison.json --timeout-ms 30000` 比较两个指定保存包。文件包含 `{from_pack_id,to_pack_id,expected_actor_id,expected_client_id}`，也可使用 `--json`；4 KiB、严格UTF-8/稳定普通文件，仅网络可用有界 `--json -`。默认30秒覆盖SDK两次读取/摘要/比较，输入采集和stdout发送在期限外。输出完整原query/identity_constraints/from/to/comparison，各侧2 MiB、差异8 MiB、组合12 MiB；第二次读取失败也不返回半份。嵌入要求原可信未过期实际context.read，核对两次请求、入选restricted和授权审计后取消；八类上下文读取共用每router两笔容量，底层结束才释放。无写键、output、自动重试/换包/编译/文件保存；两次读取不是同一数据库快照，摘要不证明外部来源真实性，通用transport无HTTP状态/ETag头。详见[完整输入示例及边界](../../docs/design/01-contracts/context-pack-runtime.md#cli-指定保存包对比2026-11-04源码增量)。示例未执行，尚无运行兼容证据。
 
 `context confirm` 是独立人工确认命令，JSON 包含 item_id、expected_version、reason，并提供固定 `--key`。需要签名 human 身份、有效客户端和 context.review，context.write 不足以确认。只接受未过期 proposed 条目，核对直接本地来源的版本、状态和分类；成功增加版本、记录理由，后续编辑撤去确认。`context read` 与历史详情可读取确认元数据。未知结果用原版本、原理由、原键重试。022 迁移文件尚未执行，命令未在本轮运行。
 

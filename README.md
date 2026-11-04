@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [CLI 保存包对比](docs/design/01-contracts/context-pack-runtime.md#cli-指定保存包对比2026-11-04源码增量)：`context compare-packs` 接受两个包编号和账号、客户端约束，输出完整两侧内容与差异；网络和嵌入入口共用 SDK 校验及总等待期限。仅源码文档，未编译、测试、运行或发布。
+
 新增 [SDK 保存包对比](docs/design/01-contracts/context-pack-runtime.md#sdk-指定保存包对比2026-11-04源码增量)：固定两个包和完整身份，返回经摘要核对的原内容与差异，支持总超时及取消；任一读取失败不返回半份结果。仅源码文档，未编译、测试、运行或发布。
 
 新增 [保存包对比](docs/design/01-contracts/context-pack-runtime.md#网页指定保存包对比2026-11-04源码增量)：选择两个保存包，查看候选新增、移除、入选/排除、顺序、正文、来源和预算变化；支持只看变化、反向比较及保留原选择重试。仅源码文档，未编译、测试、渲染或发布。

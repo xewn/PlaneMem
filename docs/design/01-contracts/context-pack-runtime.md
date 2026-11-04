@@ -199,7 +199,7 @@ Web先捕获同一会话/项目范围及Gateway基址，随后两次顺序GET都
 - 单列保存ID、版本、创建时间、保存游标、包摘要、保存trace、预算、估算用量、到期时间及入选/排除数量。原HTTP读取trace不当作保存内容变化，单独显示供定位。包内容摘要相同并不要求保存ID/版本相同。
 - 聚合来源保留两侧完整引用及顺序，独立显示变化。每候选可展开两侧正文及完整保存字段；只看变化隐藏same候选及相同元数据，来源相同时保留提示。候选无变化时仍显示可能变化的包信息，不把空差异当成同一保存记录。
 
-Web与下节SDK已接入双包对比，CLI/MCP双包对比和专用Schema后续开发；旧完整读取Schema描述各侧封套，不描述本地组合比较结果。R-003未完成、`evidence: []`；双侧完整性/摘要、状态迁移/位置/字段、原范围/期限、导航与真实页面兼容都缺运行证据。本轮只源码文档人工审阅和格式文本检查，未编译、类型检查、测试、渲染、启动浏览器/产品/API/数据库或发布。
+Web、下节SDK及CLI已接入双包对比，MCP双包对比和专用Schema后续开发；旧完整读取Schema描述各侧封套，不描述本地组合比较结果。R-003未完成、`evidence: []`；双侧完整性/摘要、状态迁移/位置/字段、原范围/期限、导航与真实页面兼容都缺运行证据。本轮只源码文档人工审阅和格式文本检查，未编译、类型检查、测试、渲染、启动浏览器/产品/API/数据库或发布。
 
 ## SDK 指定保存包对比（2026-11-04，源码增量）
 
@@ -243,4 +243,31 @@ const result = await client.compareContextPacks(selection, {
 // 需取消时由调用方调用cancellation.abort()；不会重发或编译包。
 ```
 
-CLI/MCP对比适配、组合Schema、自动一致性和SDK/Mock/真实Gateway兼容、身份刷新/总预算/取消/完整结果边界运行证据仍待补。R-003保持未完成、`evidence: []`；本轮仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布。
+CLI对比适配见下节；MCP对比适配、组合Schema、自动一致性和SDK/Mock/真实Gateway兼容、身份刷新/总预算/取消/完整结果边界运行证据仍待补。R-003保持未完成、`evidence: []`；本轮仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布。
+
+## CLI 指定保存包对比（2026-11-04，源码增量）
+
+`workctx context compare-packs` 在网络 main/callGateway 与嵌入 runWorkctx 中调用上节 SDK `compareContextPacks`。它与条目版本命令 `context compare` 独立；两侧均为指定的已保存包，不能省略编号读取 latest。输入恰含四字段：不同 ULID `from_pack_id`、`to_pack_id`，以及 `expected_actor_id`、`expected_client_id`。账号及客户端必须与当前可信读取身份一致，项目沿用原配置。
+
+必须选择一个 `--json` 或 `--json-file`，UTF-8 输入上限4 KiB。文件沿用稳定普通文件读取；仅网络入口允许 `--json -` 有界读取标准输入，嵌入入口拒绝 stdin。拒绝额外/重复选项、写字段、`--key` 和 `--output`。`--timeout-ms` 为1至2147483647的整数，默认30000，覆盖两次SDK读取、摘要核对、比较和结果复制；文件/stdin采集及stdout发送不计入该期限。
+
+嵌入入口捕获并清理原上下文写条件，要求已认证、未过期、实际具有 `context.read` 的完整身份。按from/to原顺序，仅允许两次显式 `format=json` 包读取；核对GET路径、完整身份/范围/trace头、无正文及2 MiB响应限额。沿用Gateway原授权与审计，并在包处理器执行前再次检查取消及权限；该检查也覆盖原 `context get` 包分支。完整解析后核对入选restricted条目权限，SDK继续执行SHA-256核对。八种上下文读命令共用每router两笔容量，等待超时后仍保留名额至底层router真正结束。
+
+stdout返回上节完整SDK结果：原query/identity_constraints、from/to及comparison；差异上限8 MiB、完整组合上限12 MiB，仍受既有JSON深度/节点限制。保留local、separate-reads、pack-hashes-checked、source_state=not-checked语义；候选移除不表示项目知识删除。任一包过期、来源变化、不可读、摘要异常、超时或第二次读取失败，整次命令失败；不返回半份结果，不自动换包、重试、编译或保存。通用transport不暴露HTTP状态/ETag头，只核对JSON内ETag；两次读取不构成同一数据库快照。
+
+示例仅供使用说明，本轮未执行。先准备 `pack-comparison.json`，将示例身份替换为原项目下实际账号/客户端，两包编号替换为可读保存包：
+
+```json
+{
+  "from_pack_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+  "to_pack_id": "01ARZ3NDEKTSV4RRFFQ69G5FAW",
+  "expected_actor_id": "01ARZ3NDEKTSV4RRFFQ69G5FAX",
+  "expected_client_id": "workctx-local"
+}
+```
+
+```text
+workctx context compare-packs --json-file pack-comparison.json --timeout-ms 30000
+```
+
+反向比较须显式交换两个包编号；命令不会覆盖输入文件。R-003未完成、`evidence: []`，网络/嵌入/SDK兼容、总期限/授权等待/容量、文件/stdin输入和完整输出仍缺运行证据；MCP对比与独立组合Schema待补。本轮仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/SDK/产品/API/数据库或发布。

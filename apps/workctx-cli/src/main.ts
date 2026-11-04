@@ -344,9 +344,10 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   context history                Bounded version history; item_id, optional before_version/limit
   context version                Read and hash-check a recorded item_id/version snapshot
   context compare                Compare explicit from_version/to_version with required identity constraints
-                                 Read/read-archived/history/version/compare require one --json/--json-file (4 KiB)
+  context compare-packs          Compare two saved pack IDs with required account/client constraints
+                                 Read/read-archived/history/version/compare/compare-packs require one --json/--json-file (4 KiB)
                                  Optional --timeout-ms; reads accept paired expected_actor_id/expected_client_id
-                                 Compare requires expected_actor_id/expected_client_id; no --key/--output
+                                 Both comparisons require expected_actor_id/expected_client_id; no --key/--output
   index status                   Read legacy index metadata by id, including deletion/expiry
   index list                     List legacy index metadata; query/state/managed_by/limit/cursor
   index delete                   Soft-delete manual index: id/expected_revision/reason and --key
@@ -650,6 +651,7 @@ export async function main(args: string[]): Promise<number> {
       'context history',
       'context version',
       'context compare',
+      'context compare-packs',
       'proposals create',
       'proposals receipt',
       'proposals review-receipt',

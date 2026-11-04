@@ -9,6 +9,7 @@ import {
   CONTEXT_PACK_READ_RESPONSE_BYTES,
   parseContextPackReadEnvelope,
   parseContextPackReadQuery,
+  parseContextPackComparisonQuery,
   parseContextItemDirectoryEnvelope,
   parseContextItemDirectoryQuery,
   parseContextItemReadEnvelope,
@@ -24,6 +25,7 @@ import {
   type ContextItemReadQuery,
   type ContextItemDirectoryQuery,
   type ContextPackReadQuery,
+  type ContextPackComparisonQuery,
 } from '@planemem/contracts';
 import { FetchWcpTransport, WcpClient, type WcpRequest, type WcpTransport } from '@planemem/sdk';
 import type { CommandRouter, RequestContext } from '@planemem/api-gateway';
@@ -34,7 +36,11 @@ type Expected = { actor_id: string; client_id: string };
 type DirectoryQuery = { kind: 'list'; query: ContextItemDirectoryQuery };
 type PackQuery = { kind: 'pack'; query: ContextPackReadQuery };
 type ReadQuery = ContextHistoryReadQuery | ContextItemReadQuery | DirectoryQuery | PackQuery;
-type Target = (ReadQuery | { kind: 'compare'; query: ContextComparisonQuery }) & {
+type Target = (
+  | ReadQuery
+  | { kind: 'compare'; query: ContextComparisonQuery }
+  | { kind: 'compare-packs'; query: ContextPackComparisonQuery }
+) & {
   expected?: Expected;
 };
 interface Options {
@@ -62,12 +68,13 @@ export function isContextReadCommand(command: string) {
     'context history',
     'context version',
     'context compare',
+    'context compare-packs',
   ].includes(command);
 }
 function invalid(trace: string) {
   return new ContractError(
     'USAGE_ERROR',
-    'Use context get/list/read/read-archived/history/version/compare with --json or --json-file and optional --timeout-ms (1..2147483647). Get accepts at most one input (4 KiB), defaults to {}, and accepts optional pack_id/format (json/markdown/mcp). List accepts at most one input (8 KiB), defaults to {}, and preserves filters/view/limit/cursor for explicit continuation. Other reads require exactly one input (4 KiB): details accept item_id; history adds optional before_version/limit, version requires version, compare requires distinct from_version/to_version. Optional expected_actor_id/expected_client_id must be paired; compare requires both. No --key, --output, write fields, repeated or unknown options.',
+    'Use context get/list/read/read-archived/history/version/compare/compare-packs with --json or --json-file and optional --timeout-ms (1..2147483647). Get accepts at most one input (4 KiB), defaults to {}, and accepts optional pack_id/format (json/markdown/mcp). List accepts at most one input (8 KiB), defaults to {}, and preserves filters/view/limit/cursor for explicit continuation. Other reads require exactly one input (4 KiB): details accept item_id; history adds optional before_version/limit, version requires version, compare requires item_id and distinct from_version/to_version; compare-packs requires distinct from_pack_id/to_pack_id. Optional expected_actor_id/expected_client_id must be paired; both comparison commands require them. No --key, --output, write fields, repeated or unknown options.',
     { trace_id: trace, retryable: false },
   );
 }
@@ -91,6 +98,7 @@ function prepare(command: string, input: unknown, scope: Scope, trace: string): 
     let expected: Expected | undefined;
     if (
       command === 'context compare' ||
+      command === 'context compare-packs' ||
       Object.hasOwn(row, 'expected_actor_id') ||
       Object.hasOwn(row, 'expected_client_id')
     ) {
@@ -103,6 +111,12 @@ function prepare(command: string, input: unknown, scope: Scope, trace: string): 
       expected = { actor_id: identity.actor_id, client_id: identity.client_id };
     }
     const { expected_actor_id: _actor, expected_client_id: _client, ...query } = row;
+    if (command === 'context compare-packs')
+      return {
+        kind: 'compare-packs',
+        query: parseContextPackComparisonQuery(query),
+        expected: expected!,
+      };
     if (command === 'context get')
       return {
         kind: 'pack',
@@ -199,6 +213,8 @@ async function argumentsFor(argv: string[], scope: Scope, trace: string, allowSt
   }
 }
 function execute(client: WcpClient, target: Target, timeout_ms: number) {
+  if (target.kind === 'compare-packs')
+    return client.compareContextPacks(target.query, { timeout_ms });
   if (target.kind === 'pack') return client.getContextPack(target.query, { timeout_ms });
   if (target.kind === 'list') return client.listContextItems(target.query, { timeout_ms });
   if (isDetailQuery(target))
@@ -334,26 +350,33 @@ export async function runContextRead(
           item_id: target.query.item_id,
           version,
         }))
-      : [
-          target.kind === 'pack'
-            ? { kind: 'pack', query: parseContextPackReadQuery(target.query) }
-            : target.kind === 'list'
-              ? { kind: 'list', query: parseContextItemDirectoryQuery(target.query) }
-              : isDetailQuery(target)
-                ? parseContextItemReadQuery({ kind: target.kind, item_id: target.item_id })
-                : parseContextHistoryReadQuery(
-                    target.kind === 'history'
-                      ? {
-                          kind: 'history',
-                          item_id: target.item_id,
-                          limit: target.limit,
-                          ...(target.before_version === undefined
-                            ? {}
-                            : { before_version: target.before_version }),
-                        }
-                      : { kind: 'version', item_id: target.item_id, version: target.version },
-                  ),
-        ];
+      : target.kind === 'compare-packs'
+        ? [target.query.from_pack_id, target.query.to_pack_id].map(
+            (pack_id): PackQuery => ({
+              kind: 'pack',
+              query: { pack_id, format: 'json' },
+            }),
+          )
+        : [
+            target.kind === 'pack'
+              ? { kind: 'pack', query: parseContextPackReadQuery(target.query) }
+              : target.kind === 'list'
+                ? { kind: 'list', query: parseContextItemDirectoryQuery(target.query) }
+                : isDetailQuery(target)
+                  ? parseContextItemReadQuery({ kind: target.kind, item_id: target.item_id })
+                  : parseContextHistoryReadQuery(
+                      target.kind === 'history'
+                        ? {
+                            kind: 'history',
+                            item_id: target.item_id,
+                            limit: target.limit,
+                            ...(target.before_version === undefined
+                              ? {}
+                              : { before_version: target.before_version }),
+                          }
+                        : { kind: 'version', item_id: target.item_id, version: target.version },
+                    ),
+          ];
   let step = 0;
   const transport: WcpTransport = {
     async request<T = unknown>(request: WcpRequest): Promise<T> {
@@ -404,11 +427,17 @@ export async function runContextRead(
             context: structuredClone(context),
           });
         } else if (query.kind === 'pack') {
-          raw = await router.execute({
-            operation: 'context.pack.read',
-            input: { ...query.query },
-            context: structuredClone(context),
-          });
+          raw = await router.execute(
+            {
+              operation: 'context.pack.read',
+              input: { ...query.query },
+              context: structuredClone(context),
+            },
+            async (run) => {
+              active();
+              return run();
+            },
+          );
         } else {
           const { kind, ...input } = query;
           raw = await router.execute({

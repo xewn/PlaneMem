@@ -293,6 +293,7 @@ export async function runWorkctx(
     'context history': 'context.item.history',
     'context version': 'context.item.version.read',
     'context compare': 'context.local.compare',
+    'context compare-packs': 'context.pack.local.compare',
     'proposals create': 'proposal.create',
     'proposals receipt': 'proposal.create.receipt',
     'proposals review-receipt': 'proposal.review.receipt',

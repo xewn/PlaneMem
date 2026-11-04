@@ -4,6 +4,8 @@
 
 ## 当前基线
 
+- P2：新增CLI `context compare-packs`，网络main/callGateway和嵌入runWorkctx复用SDK双保存包比较。恰一4 KiB JSON/稳定文件，网络支持有界stdin；必需不同from_pack_id/to_pack_id和expected_actor_id/expected_client_id，默认30秒总预算及可选timeout-ms。嵌入按原方向核对两次json GET、身份/实际未过期context.read和入选restricted，沿用每router两笔共享容量，底层结束才释放；保存包分支授权审计后复查取消/权限。完整两侧各2 MiB、差异8 MiB、组合12 MiB，无半份、换包、重试、写入。输入采集/stdout发送不计SDK期限，通用transport无HTTP状态/ETag头；MCP对比、独立组合Schema与运行兼容证据待补，R-003未完成、evidence为空。仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/SDK/产品/API/数据库或发布。
+
 - P0/P2：新增SDK compareContextPacks(query, options?)及WcpContextPackComparisonResult，要求原完整scope/actor/client、4 KiB双不同ULID，清除写条件并固定两次json GET相等约束。复用原2 MiB完整封套/WebCrypto SHA-256读取、共享8 MiB差异模型，完整from/to/query/identity_constraints/comparison组合12 MiB，默认30秒总预算和signal覆盖两次读取/摘要/比较/复制，超时或取消不交付半份/迟到结果，finally清理。标记local/separate-reads/pack-hashes-checked/source not-checked，不回退latest/重试/编译/写入；根导出纯比较及类型，纯函数不验摘要权限。通用transport不提供HTTP状态/ETag头，无额外SDK并发限制；既有Mock原样支持两次显式读，CLI/MCP/独立对比Schema及SDK/Mock真实兼容运行证据待补，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布。
 
 - P0/P5：新增共享context-pack-comparison与Web /context/packs/compare显式双包对比，4 KiB两不同ULID、每侧完整2 MiB原范围json封套；逐ID联合selected/excluded/absent与原列表位置，完整两侧、字段变化、来源顺序/预算/保存元数据及added/removed/changed/same统计。共享函数只比结构，Web固定原会话/范围/基址，两次完整HTTP/trace/ETag/Node SHA-256读取与比较共用30秒，8 MiB比较/12 MiB组合及原JSON复杂度限制，失败不交付半份、不回退latest。目录头和保存包入口、部分选择只预填、全部/变化筛选、反向比较、原ID重试及受限原目录返回已接入，沿原读拒绝过期/失效包。无新Gateway路径/写入，SDK/CLI/MCP与专用Schema及真实兼容/导航/显示运行证据待补，R-003未完成、evidence为空；只源码文档人工审阅/格式文本检查，未编译、类型检查、测试、渲染、执行浏览器/产品/API/数据库或发布。
