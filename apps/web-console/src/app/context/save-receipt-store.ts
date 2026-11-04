@@ -464,6 +464,103 @@ export async function comparePackReceiptBackup(
   };
 }
 
+/** Remove only the reviewed matching subset; never expand it to newly appearing backup targets. */
+export async function removePackReceiptBackup(
+  raw: string,
+  input: PackSaveBinding,
+  selectedDigests: readonly string[],
+  signal: AbortSignal,
+  check: () => void,
+) {
+  // Capture the caller's selection before hashing yields to other activity.
+  if (!Array.isArray(selectedDigests) || selectedDigests.length > PACK_RECEIPT_BACKUP_MAX_ENTRIES)
+    return invalid();
+  const selected = [...selectedDigests];
+  for (let index = 0; index < selected.length; index += 1) {
+    const digest = selected[index];
+    if (
+      typeof digest !== 'string' ||
+      !/^[a-f0-9]{64}$/.test(digest) ||
+      (index > 0 && selected[index - 1]! >= digest)
+    )
+      return invalid();
+  }
+  const binding = parsePackSaveBinding(input);
+  const candidate = await inspectPackReceiptBackup(raw, binding, check);
+  const requested = new Set(selected);
+  const entries = candidate.file.document.entries
+    .filter((file) => requested.has(file.document_sha256))
+    .map((file) => ({
+      key: slot(binding, file.document_sha256),
+      raw: contextPackSaveReceiptFileJson(file),
+    }));
+  if (entries.length !== selected.length) return invalid();
+  check();
+  if (!entries.length) return { total: 0, removed: 0, already_absent: 0 };
+  return withPackReceiptHistoryChange(binding, async () => {
+    check();
+    const result = await inBrowserStores<{
+      total: number;
+      removed: number;
+      already_absent: number;
+    }>(
+      layout,
+      'readwrite',
+      signal,
+      () => ({ total: entries.length, removed: 0, already_absent: entries.length }),
+      (context) => {
+        const matching: typeof entries = [];
+        let position = 0;
+        let verified = 0;
+        const readback = () => {
+          check();
+          const entry = entries[verified];
+          if (!entry) {
+            context.accept({
+              total: entries.length,
+              removed: matching.length,
+              already_absent: entries.length - matching.length,
+            });
+            return;
+          }
+          readBrowserPair(context, entry.key, (_raw, _digest, exists) => {
+            check();
+            if (exists) return invalid();
+            verified += 1;
+            readback();
+          });
+        };
+        const preflight = () => {
+          check();
+          const entry = entries[position];
+          if (!entry) {
+            for (const item of matching) {
+              check();
+              context.content.delete(item.key);
+              context.directory.delete(item.key);
+            }
+            readback();
+            return;
+          }
+          readBrowserPair(context, entry.key, (raw, digest, exists) => {
+            check();
+            if (exists) {
+              if (pair(raw, digest, entry.key, binding).raw !== entry.raw) return invalid();
+              matching.push(entry);
+            }
+            position += 1;
+            preflight();
+          });
+        };
+        preflight();
+      },
+      { create: false },
+    );
+    check();
+    return result;
+  });
+}
+
 /** Preflight every target in one transaction before adding any missing immutable observation. */
 export async function restorePackReceiptBackup(
   raw: string,

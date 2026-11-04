@@ -12,11 +12,12 @@ import {
   comparePackReceiptBackup,
   inspectPackReceiptBackup,
   preparePackReceiptBackup,
+  removePackReceiptBackup,
   restorePackReceiptBackup,
   type PackReceiptRestoreComparison,
 } from './save-receipt-store';
 
-interface RestorePreview {
+interface BackupPreview {
   comparison: PackReceiptRestoreComparison;
   backupRaw: string;
   reviewGeneration: number;
@@ -24,9 +25,9 @@ interface RestorePreview {
 }
 
 const comparisonLabels = {
-  missing: 'Will be added',
-  identical: 'Identical copy retained',
-  conflict: 'Conflict — restore blocked',
+  missing: 'No browser copy',
+  identical: 'Matching browser copy',
+  conflict: 'Conflict — changes blocked',
 };
 
 function download(raw: string) {
@@ -63,7 +64,7 @@ export function PackReceiptBackupPanel({
   onHistoryWrite: () => void;
 }) {
   const [backup, setBackup] = useState<PackReceiptBackupCandidate>();
-  const [preview, setPreview] = useState<RestorePreview>();
+  const [preview, setPreview] = useState<BackupPreview>();
   const currentPreview =
     preview?.reviewGeneration === reviewGeneration && preview.backupRaw === backup?.raw
       ? preview
@@ -72,9 +73,15 @@ export function PackReceiptBackupPanel({
     !!currentPreview &&
     currentPreview.comparison.conflicting === 0 &&
     currentPreview.comparison.missing > 0;
+  const canRemove =
+    !!currentPreview &&
+    currentPreview.comparison.conflicting === 0 &&
+    currentPreview.comparison.identical > 0;
   const [busy, setBusy] = useState(false);
   const [reviewed, setReviewed] = useState<number | null>(null);
   const reviewedRef = useRef<number | null>(null);
+  const [removalReviewed, setRemovalReviewed] = useState<number | null>(null);
+  const removalReviewedRef = useRef<number | null>(null);
   const [message, setMessage] = useState(
     'Prepare the complete history for this identity, or import a backup for review. Directory filters do not limit a backup.',
   );
@@ -86,6 +93,8 @@ export function PackReceiptBackupPanel({
     if (disabled) {
       reviewedRef.current = null;
       setReviewed(null);
+      removalReviewedRef.current = null;
+      setRemovalReviewed(null);
     }
   }, [disabled]);
   useEffect(() => {
@@ -98,18 +107,36 @@ export function PackReceiptBackupPanel({
     };
   }, []);
 
-  async function run(kind: 'prepare' | 'import' | 'export' | 'compare' | 'restore', source?: File) {
-    if ((kind === 'export' || kind === 'compare' || kind === 'restore') && !backup) return;
+  function previewIsCurrent() {
+    return (
+      !!currentPreview &&
+      currentPreview.reviewGeneration === getReviewGeneration() &&
+      currentPreview.storageGeneration === getStorageGeneration()
+    );
+  }
+
+  async function run(
+    kind: 'prepare' | 'import' | 'export' | 'compare' | 'restore' | 'remove',
+    source?: File,
+  ) {
+    if (kind !== 'prepare' && kind !== 'import' && !backup) return;
     if (kind === 'import' && !source) return;
     if (
       kind === 'restore' &&
-      (!canRestore ||
-        !currentPreview ||
-        reviewedRef.current !== reviewGeneration ||
-        currentPreview.reviewGeneration !== getReviewGeneration() ||
-        currentPreview.storageGeneration !== getStorageGeneration())
+      (!canRestore || reviewedRef.current !== reviewGeneration || !previewIsCurrent())
     )
       return;
+    if (
+      kind === 'remove' &&
+      (!canRemove || removalReviewedRef.current !== reviewGeneration || !previewIsCurrent())
+    )
+      return;
+    const removalDigests =
+      kind === 'remove'
+        ? currentPreview!.comparison.entries
+            .filter((entry) => entry.status === 'identical')
+            .map((entry) => entry.document_sha256)
+        : [];
     if (!mounted.current || active.current || disabled || !begin()) return;
     const startedGeneration = getStorageGeneration();
     const startedReviewGeneration = getReviewGeneration();
@@ -118,12 +145,14 @@ export function PackReceiptBackupPanel({
     active.current = true;
     reviewedRef.current = null;
     setReviewed(null);
+    removalReviewedRef.current = null;
+    setRemovalReviewed(null);
     release.current = end;
     const controller = new AbortController();
     operation.current = controller;
     setBusy(true);
     try {
-      if (kind === 'restore') {
+      if (kind === 'restore' || kind === 'remove') {
         try {
           onHistoryWrite();
         } catch {
@@ -162,6 +191,17 @@ export function PackReceiptBackupPanel({
             kind: 'restored' as const,
             restored: await restorePackReceiptBackup(captured.raw, binding, signal, check),
           };
+        if (kind === 'remove')
+          return {
+            kind: 'removed' as const,
+            removed: await removePackReceiptBackup(
+              captured.raw,
+              binding,
+              removalDigests,
+              signal,
+              check,
+            ),
+          };
         return {
           kind: 'export' as const,
           backup: await inspectPackReceiptBackup(captured.raw, binding, check),
@@ -186,7 +226,7 @@ export function PackReceiptBackupPanel({
           startedReviewGeneration !== getReviewGeneration()
         ) {
           setMessage(
-            'History may have changed during comparison. Compare again before restoring. Your complete backup is retained.',
+            'History may have changed during comparison. Compare again before restoring or removing copies. Your complete backup is retained.',
           );
           return;
         }
@@ -198,16 +238,20 @@ export function PackReceiptBackupPanel({
         });
         setMessage(
           result.comparison.conflicting
-            ? 'Some target copies differ or are incomplete. Restore is blocked. Keep this backup; no history was changed.'
+            ? 'Some target copies differ or are incomplete. Restore and removal are blocked. Keep this backup; no history was changed.'
             : result.comparison.missing
-              ? 'Comparison is ready. Review the observations below, then confirm restoration. No history has been changed.'
+              ? 'Comparison is ready. Review the observations below before choosing restore or removal. No history has been changed.'
               : result.comparison.total
                 ? 'Every backup observation already has an identical browser copy. Nothing needs to be restored.'
-                : 'This backup contains no observations. Nothing needs to be restored.',
+                : 'This backup contains no observations. There is nothing to restore or remove.',
         );
       } else if (result.kind === 'restored') {
         setMessage(
           `Restore completed: ${result.restored.added} added, ${result.restored.already_present} identical copies retained (${result.restored.total} total). The backup remains here. Read history again to see the current directory.`,
+        );
+      } else if (result.kind === 'removed') {
+        setMessage(
+          `Removal completed: ${result.removed.removed} browser copies removed, ${result.removed.already_absent} already absent (${result.removed.total} selected). This backup remains available for export or a new comparison and explicit restore. Read history again to see the current directory.`,
         );
       } else {
         download(result.backup.raw);
@@ -220,9 +264,11 @@ export function PackReceiptBackupPanel({
         setMessage(
           kind === 'restore'
             ? 'Restore could not be confirmed; the transaction may have committed. This backup remains available. Keep it and compare again before another explicit restore. No gateway request was sent.'
-            : kind === 'compare'
-              ? 'Comparison could not be completed. No partial preview was accepted and no history was changed. Your complete backup remains available; compare again before restoring.'
-              : 'The complete backup could not be prepared, imported or exported. It may exceed the limit, contain damaged records, differ from this identity, or the operation may have stopped. Any earlier backup below is unchanged; no partial backup was accepted.',
+            : kind === 'remove'
+              ? 'Removal could not be confirmed; the transaction may have committed. Keep or export this complete backup and compare again before another explicit change. No gateway request was sent.'
+              : kind === 'compare'
+                ? 'Comparison could not be completed. No partial preview was accepted and no history was changed. Your complete backup remains available; compare again before restoring or removing copies.'
+                : 'The complete backup could not be prepared, imported or exported. It may exceed the limit, contain damaged records, differ from this identity, or the operation may have stopped. Any earlier backup below is unchanged; no partial backup was accepted.',
         );
     } finally {
       if (operation.current === controller) {
@@ -237,7 +283,7 @@ export function PackReceiptBackupPanel({
 
   return (
     <section aria-label="Context pack history backup" className="handoff-form">
-      <h2>Back up and restore browser history</h2>
+      <h2>Back up, restore or remove browser history copies</h2>
       <p>
         A complete backup covers this gateway, project, account, client and permission scope,
         regardless of the list filters. At most {PACK_RECEIPT_BACKUP_MAX_ENTRIES} observations fit
@@ -299,19 +345,19 @@ export function PackReceiptBackupPanel({
             <div>
               <p>
                 {currentPreview.comparison.total} observations compared ·{' '}
-                {currentPreview.comparison.missing} to add · {currentPreview.comparison.identical}{' '}
-                identical · {currentPreview.comparison.conflicting} conflicts
+                {currentPreview.comparison.missing} absent · {currentPreview.comparison.identical}{' '}
+                matching browser copies · {currentPreview.comparison.conflicting} conflicts
               </p>
               {!!currentPreview.comparison.entries.length && (
                 <details>
-                  <summary>Review each observation before restoring</summary>
+                  <summary>Review each observation before making changes</summary>
                   <table>
                     <caption>Backup observations compared with browser copies</caption>
                     <thead>
                       <tr>
                         <th scope="col">Original request</th>
                         <th scope="col">Observed (UTC)</th>
-                        <th scope="col">Restore action</th>
+                        <th scope="col">Browser copy</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -334,7 +380,9 @@ export function PackReceiptBackupPanel({
               )}
             </div>
           ) : (
-            <p>Compare this backup with browser history before confirming a restore.</p>
+            <p>
+              Compare this backup with browser history before confirming restoration or removal.
+            </p>
           )}
           <label className="confirmation-box">
             <input
@@ -342,18 +390,12 @@ export function PackReceiptBackupPanel({
               checked={canRestore && reviewed === reviewGeneration}
               disabled={busy || disabled || !canRestore}
               onChange={(event) => {
-                if (
-                  active.current ||
-                  disabled ||
-                  !canRestore ||
-                  !currentPreview ||
-                  currentPreview.reviewGeneration !== getReviewGeneration() ||
-                  currentPreview.storageGeneration !== getStorageGeneration()
-                )
-                  return;
+                if (active.current || disabled || !canRestore || !previewIsCurrent()) return;
                 const value = event.target.checked ? reviewGeneration : null;
                 reviewedRef.current = value;
                 setReviewed(value);
+                removalReviewedRef.current = null;
+                setRemovalReviewed(null);
               }}
             />
             I reviewed this comparison and backup and want to add its missing observations to this
@@ -373,6 +415,50 @@ export function PackReceiptBackupPanel({
           >
             Restore missing observations
           </button>
+          <fieldset
+            className="handoff-form"
+            disabled={busy || disabled || !canRemove}
+            style={{ minWidth: 0 }}
+          >
+            <legend>Remove matching browser copies from this backup</legend>
+            <p>
+              {currentPreview
+                ? `${currentPreview.comparison.identical} matching copies were found in the preview.`
+                : 'A current comparison is required to select matching copies.'}{' '}
+              Only those copies are selected for removal. Observations absent in the preview and
+              history outside this backup are kept. The backup here remains available; keep an
+              exported file before leaving this page.
+            </p>
+            <label className="confirmation-box">
+              <input
+                type="checkbox"
+                checked={canRemove && removalReviewed === reviewGeneration}
+                onChange={(event) => {
+                  if (active.current || disabled || !canRemove || !previewIsCurrent()) return;
+                  const value = event.target.checked ? reviewGeneration : null;
+                  removalReviewedRef.current = value;
+                  setRemovalReviewed(value);
+                  reviewedRef.current = null;
+                  setReviewed(null);
+                }}
+              />
+              I have kept a separate backup and reviewed the selected matching copies. Remove those
+              browser copies.
+            </label>
+            <p>
+              Every selected copy is checked again before any deletion. A changed or incomplete copy
+              rejects the whole removal. Copies already absent are skipped. Server packs and
+              original requests are unchanged.
+            </p>
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={busy || disabled || !canRemove || removalReviewed !== reviewGeneration}
+              onClick={() => void run('remove')}
+            >
+              Remove selected matching browser copies
+            </button>
+          </fieldset>
         </>
       )}
       {busy && (
@@ -386,7 +472,7 @@ export function PackReceiptBackupPanel({
       )}
       <p role="status">
         {preview && !currentPreview
-          ? 'The previous comparison no longer applies after page activity or a possible history change. Your backup is retained; compare again before restoring.'
+          ? 'The previous comparison no longer applies after page activity or a possible history change. Your backup is retained; compare again before restoring or removing copies.'
           : message}
       </p>
     </section>
