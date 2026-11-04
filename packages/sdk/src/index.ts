@@ -1,5 +1,10 @@
 export * from './client.js';
 export * from './mock-server.js';
+export {
+  MockContextPackStore,
+  type MockContextPackSeed,
+  type MockContextPackSession,
+} from './mock-context-packs.js';
 export type { WcpContextItemReadOptions } from './context-item-read.js';
 export type { WcpContextPackReadOptions } from './context-pack-read.js';
 export type { ContextPackReadQuery, ContextPackReadEnvelope } from '@planemem/contracts';

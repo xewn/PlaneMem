@@ -2,6 +2,11 @@ import { ContractError, type ProjectEntity, validateEntity } from '@planemem/con
 import type { WcpRequest, WcpTransport } from './client.js';
 import type { MockWorkItemSession, MockWorkItemStore } from './mock-work-items.js';
 import {
+  isMockContextPackPath,
+  type MockContextPackSession,
+  type MockContextPackStore,
+} from './mock-context-packs.js';
+import {
   isMockContextReadPath,
   isMockContextDirectoryRequest,
   type MockContextHistorySession,
@@ -26,6 +31,7 @@ export interface MockWcpServerOptions {
   proposals?: { store: MockProposalStore; session: MockProposalSession };
   work_items?: { store: MockWorkItemStore; session: MockWorkItemSession };
   context_history?: { store: MockContextHistoryStore; session: MockContextHistorySession };
+  context_packs?: { store: MockContextPackStore; session: MockContextPackSession };
 }
 
 export class MockWcpServer implements WcpTransport {
@@ -35,6 +41,7 @@ export class MockWcpServer implements WcpTransport {
   private readonly artifacts: WcpTransport | undefined;
   private readonly workItems: WcpTransport | undefined;
   private readonly contextHistory: WcpTransport | undefined;
+  private readonly contextPacks: WcpTransport | undefined;
 
   constructor(private readonly options: MockWcpServerOptions = {}) {
     this.sync = options.sync?.store.connect(options.sync.session);
@@ -42,10 +49,13 @@ export class MockWcpServer implements WcpTransport {
     this.artifacts = options.artifacts?.store.connect(options.artifacts.session);
     this.workItems = options.work_items?.store.connect(options.work_items.session);
     this.contextHistory = options.context_history?.store.connect(options.context_history.session);
+    this.contextPacks = options.context_packs?.store.connect(options.context_packs.session);
   }
 
   async request<T = unknown>(request: WcpRequest): Promise<T> {
     this.options.onRequest?.(request);
+    if (this.contextPacks && isMockContextPackPath(request.path))
+      return this.contextPacks.request<T>(request);
     if (
       this.contextHistory &&
       (isMockContextReadPath(request.path) || isMockContextDirectoryRequest(request))
