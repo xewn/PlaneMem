@@ -1,0 +1,278 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/context-pack-save.json",
+  "title": "ContextPack original save requests and historical observations v1",
+  "description": "Complete historical save receipt response, with anchors for verified identity metadata, original requests and local observation files. A recorded receipt does not check current content or sources; not-observed does not prove save failure.",
+  "$comment": "Source artifact only; no validator, generator or runtime verification was executed. Register this whole self-contained local resource before resolving anchors. Its ID is an identifier, not a hosted endpoint. Retain the existing save context/original/receipt/file parsers and adapter digest, authority, binding and byte-limit checks. This is not an HTTP schema, a compile success envelope, a CLI stdout wrapper, an MCP wrapper or a browser history backup.",
+  "$ref": "#ContextPackSaveReceiptEnvelope",
+  "$defs": {
+    "ulid": {
+      "type": "string",
+      "minLength": 26,
+      "maxLength": 26,
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+      "$comment": "Existing isUlid characters and length, without a new first-character restriction."
+    },
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "\\S",
+      "not": { "pattern": "[\\u0000-\\u001f\\u007f]" },
+      "$comment": "Trace and client text retain whitespace but require a non-whitespace character. Runtime also rejects unpaired surrogates and counts UTF-16 units, not JSON Schema code points."
+    },
+    "requestKey": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "not": { "pattern": "[\\s\\u0000-\\u001f\\u007f]" },
+      "$comment": "Unlike client/trace text, the complete original key permits no whitespace anywhere. Runtime also checks UTF-16 length and unpaired surrogates. Preserve exact text; never generate a replacement on recovery."
+    },
+    "timestamp": {
+      "type": "string",
+      "minLength": 24,
+      "maxLength": 24,
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$",
+      "not": { "pattern": "^0000" },
+      "$comment": "Runtime requires a valid exact UTC millisecond round-trip and rejects year 0000. Format may be annotation-only. Historical observation and pack timestamps need not be future dates."
+    },
+    "positiveInteger": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "budgetTokens": { "type": "integer", "minimum": 128, "maximum": 32768 },
+    "ttlSeconds": { "type": "integer", "minimum": 60, "maximum": 86400 },
+    "ContextPackSaveIdentity": {
+      "$anchor": "ContextPackSaveIdentity",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant_id", "workspace_id", "project_id", "actor_id", "client_id"],
+      "properties": {
+        "tenant_id": { "$ref": "#/$defs/ulid" },
+        "workspace_id": { "$ref": "#/$defs/ulid" },
+        "project_id": { "$ref": "#/$defs/ulid" },
+        "actor_id": { "$ref": "#/$defs/ulid" },
+        "client_id": { "$ref": "#/$defs/identifier" }
+      },
+      "$comment": "Complete original identity, not authentication credentials or an authority override. All five fields must match the trusted caller."
+    },
+    "ContextPackSaveDraft": {
+      "$anchor": "ContextPackSaveDraft",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "budget_tokens": { "$ref": "#/$defs/budgetTokens", "default": 4096 },
+        "ttl_seconds": { "$ref": "#/$defs/ttlSeconds", "default": 3600 }
+      },
+      "$comment": "At most 4096 bytes at runtime. Optional draft/compile parameters only; defaults are annotations and normalization remains in parseContextPackCompileParameters. Null is not omission. Does not include CLI key/identity/timeout options or the complete original request.",
+      "examples": [{}, { "budget_tokens": 4096, "ttl_seconds": 3600 }]
+    },
+    "ContextPackSaveParameters": {
+      "$anchor": "ContextPackSaveParameters",
+      "$ref": "#ContextPackSaveDraft",
+      "required": ["budget_tokens", "ttl_seconds"],
+      "$comment": "Both values are mandatory in an original file and receipt query/echo. No default insertion or replacement is allowed in those structures."
+    },
+    "ContextPackSaveContextEnvelope": {
+      "$anchor": "ContextPackSaveContextEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "#/$defs/identifier" },
+        "source_refs": { "type": "array", "maxItems": 0 },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["identity", "expires_at", "permissions"],
+          "properties": {
+            "identity": { "$ref": "#ContextPackSaveIdentity" },
+            "expires_at": { "$ref": "#/$defs/timestamp" },
+            "permissions": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["compile", "read_restricted"],
+              "properties": {
+                "compile": { "const": true },
+                "read_restricted": { "type": "boolean" }
+              }
+            }
+          }
+        }
+      },
+      "$comment": "Complete 16384-byte save-context success envelope. Runtime binds trace/identity and adapters enforce current expiry and actual permissions. This metadata neither reserves a request key nor proves a save."
+    },
+    "PackSaveBinding": {
+      "$anchor": "PackSaveBinding",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gateway_url", "identity", "read_restricted"],
+      "properties": {
+        "gateway_url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "^https?://",
+          "$comment": "Lexical boundary only, deliberately not an RFC URI assertion. Runtime requires exact packGateway WHATWG normalization, no surrounding whitespace, user/password, nonempty search/hash, and removal of trailing slashes. Includes deployment path. Caller must compare with the actual trusted destination; the server receipt does not echo or authenticate it."
+        },
+        "identity": { "$ref": "#ContextPackSaveIdentity" },
+        "read_restricted": { "type": "boolean" }
+      },
+      "$comment": "At most 8192 bytes at runtime. Complete equality is checked by assertPackSaveBinding; structural validity is not permission to submit."
+    },
+    "PackSaveOriginal": {
+      "$anchor": "PackSaveOriginal",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "kind", "binding", "request_key", "parameters"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "kind": { "const": "context-pack-save" },
+        "binding": { "$ref": "#PackSaveBinding" },
+        "request_key": { "$ref": "#/$defs/requestKey" },
+        "parameters": { "$ref": "#ContextPackSaveParameters" }
+      },
+      "$comment": "Complete 8192-byte CLI/Web original request document. No trace, token, review flag or request hash field. A review flag belongs to the submitting interface, not to this transferable document."
+    },
+    "ContextPackSaveReceiptQuery": {
+      "$anchor": "ContextPackSaveReceiptQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "read_restricted", "request_key", "parameters"],
+      "properties": {
+        "identity": { "$ref": "#ContextPackSaveIdentity" },
+        "read_restricted": { "type": "boolean" },
+        "request_key": { "$ref": "#/$defs/requestKey" },
+        "parameters": { "$ref": "#ContextPackSaveParameters" }
+      },
+      "$comment": "Complete 4096-byte historical lookup body and response echo; derived from the original request, without gateway_url. Exact request/echo equality and actual destination binding remain runtime checks. A receipt lookup never submits the save."
+    },
+    "ContextPackRecordedSave": {
+      "$anchor": "ContextPackRecordedSave",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pack_id",
+        "version",
+        "created_at",
+        "expires_at",
+        "budget_tokens",
+        "used_tokens",
+        "pack_hash",
+        "server_cursor",
+        "content_state",
+        "source_state"
+      ],
+      "properties": {
+        "pack_id": { "$ref": "#/$defs/ulid" },
+        "version": { "$ref": "#/$defs/positiveInteger" },
+        "created_at": { "$ref": "#/$defs/timestamp" },
+        "expires_at": { "$ref": "#/$defs/timestamp" },
+        "budget_tokens": { "$ref": "#/$defs/budgetTokens" },
+        "used_tokens": { "type": "integer", "minimum": 0, "maximum": 32768 },
+        "pack_hash": {
+          "type": "string",
+          "minLength": 71,
+          "maxLength": 71,
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "server_cursor": { "$ref": "#/$defs/positiveInteger" },
+        "content_state": { "const": "not-checked" },
+        "source_state": { "const": "not-checked" }
+      },
+      "$comment": "Exactly ten historical scalar fields. Runtime requires created_at < expires_at, used_tokens <= budget_tokens, budget equality with original parameters and lifetime <= original ttl_seconds. Six directory metadata fields are also checked within 2048 bytes. Hash syntax does not check content; expired packs may have valid historical receipts."
+    },
+    "ContextPackSaveReceiptSourceRef": {
+      "$anchor": "ContextPackSaveReceiptSourceRef",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id", "revision"],
+      "properties": {
+        "type": { "const": "context-pack" },
+        "id": { "$ref": "#/$defs/ulid" },
+        "revision": { "$ref": "#/$defs/positiveInteger" }
+      },
+      "$comment": "The sole recorded-result source must match receipt.pack_id/version; this is not a full content/source-validity assertion."
+    },
+    "ContextPackSaveReceiptEnvelope": {
+      "$anchor": "ContextPackSaveReceiptEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "#/$defs/identifier" },
+        "source_refs": {
+          "type": "array",
+          "maxItems": 1,
+          "items": { "$ref": "#ContextPackSaveReceiptSourceRef" }
+        },
+        "data": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["original", "status"],
+              "properties": {
+                "original": { "$ref": "#ContextPackSaveReceiptQuery" },
+                "status": { "const": "not-observed" }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["original", "status", "receipt"],
+              "properties": {
+                "original": { "$ref": "#ContextPackSaveReceiptQuery" },
+                "status": { "const": "recorded" },
+                "receipt": { "$ref": "#ContextPackRecordedSave" }
+              }
+            }
+          ]
+        }
+      },
+      "if": {
+        "properties": {
+          "data": { "properties": { "status": { "const": "recorded" } }, "required": ["status"] }
+        },
+        "required": ["data"]
+      },
+      "then": { "properties": { "source_refs": { "minItems": 1 } } },
+      "else": { "properties": { "source_refs": { "maxItems": 0 } } },
+      "$comment": "Complete 16384-byte success envelope. Recorded requires one matching source; not-observed requires no source or receipt. Runtime compares the full original echo and trace, cross-checks all metadata and authenticates the reader. Not-observed is a successful observation, not proof of failure or permission to resend. No outer revision, ETag or server_cursor."
+    },
+    "ContextPackSaveReceiptDocument": {
+      "$anchor": "ContextPackSaveReceiptDocument",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "kind", "observed_at", "original", "receipt"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "kind": { "const": "context-pack-save-observation" },
+        "observed_at": { "$ref": "#/$defs/timestamp" },
+        "original": { "$ref": "#PackSaveOriginal" },
+        "receipt": { "$ref": "#ContextPackSaveReceiptEnvelope" }
+      },
+      "$comment": "Complete local 28672-byte document. Runtime derives the receipt query from original and compares it to receipt.data.original. observed_at is local query completion time, not a server signature or a new save time; no ordering relative to server timestamps is asserted."
+    },
+    "ContextPackSaveReceiptFile": {
+      "$anchor": "ContextPackSaveReceiptFile",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["document", "document_sha256"],
+      "properties": {
+        "document": { "$ref": "#ContextPackSaveReceiptDocument" },
+        "document_sha256": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "$comment": "Complete 32768-byte CLI/Web file. Adapters must recompute SHA-256 of UTF-8 contextPackSaveReceiptDocumentJson(document) and compare the unprefixed lowercase digest. This covers the canonical parsed document, not raw file bytes or the outer file. A digest is not a signature, authority or current content check. No CLI path/local-state/output wrapper is stored here."
+    }
+  }
+}

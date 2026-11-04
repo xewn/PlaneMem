@@ -4,6 +4,8 @@
 
 ## 当前基线
 
+- P0：新增自包含context-pack-save.json及包子路径，根为完整历史查询封套，锚点覆盖身份/草稿/显式参数/身份封套/Gateway绑定/原文件/原查询/十字段历史记录/来源/document/file。闭合字段并联动recorded与not-observed来源数量，沿原数字/标识/时间/hash词法；不以格式代替完整绑定、WHATWG规范化、字节/UTF-16预算、时间/TTL关系、摘要或真实权限。原请求及历史回执独立Schema源码缺口补齐，OpenAPI/自动一致性和真实客户端证据仍缺，R-003未完成、evidence为空；仅源码文档人工审阅及格式文本检查，未运行Schema校验、生成器、编译、类型检查、测试、解析器/产品/API或发布。
+
 - P4：runWorkctx新增context submit-save --json-file ORIGINAL --reviewed [--timeout-ms N]，固定宿主gateway_url、五字段身份/restricted与完整8 KiB原文件，复用save-identity核对后沿现有compile发送原参数/键；授权后复读全部原字节，变化或不可读拒绝。首次读文件在期限前，之后身份/授权/复读/保存/完整封套/hash共用总期限，单调复查与取消阻止迟到派发；实际router两提交容量与旧compile共享，底层结束才释放。派发前失败not-sent/not-checked，派发后失败started/unknown，不自动重试或换键，不写原文件。补齐内嵌原请求准备/审阅/提交/回执源码流程，独立Schema/OpenAPI和真实兼容证据仍缺，R-003未完成、evidence为空；仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/文件流程/API/数据库或发布。
 
 - P4：runWorkctx新增context prepare-save --key ORIGINAL_KEY --output NEW_ORIGINAL [--json-file DRAFT] [--timeout-ms N]，沿宿主第四参数gateway_url和复制的完整可信身份。与网络入口共用输出预检、4 KiB预算/TTL草稿、8 KiB完整原请求、规范摘要、独占保存/同步/完整读回；身份读取经原save-identity适配，复核五字段身份、restricted及会话期限，沿上下文两读容量并新增单调期限检查。文件I/O不计入身份查询超时，发布前复查到期，失败保留恢复路径，不发送保存包请求。内嵌原请求提交、独立Schema/OpenAPI和运行兼容仍待补，R-003未完成、evidence为空；仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/文件流程/API/数据库或发布。

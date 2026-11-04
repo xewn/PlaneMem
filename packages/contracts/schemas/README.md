@@ -2,6 +2,41 @@
 
 这些文件是开发源码，尚未经过本轮编译、生成器、Schema校验器、测试或运行验证。`$id`是契约标识，不代表已发布网站；消费者应从工作区或包子路径加载文件，不依赖远端下载。
 
+## ContextPack 原请求与历史回执
+
+`context-pack-save.json`采用JSON Schema 2020-12，包子路径为`@planemem/contracts/schemas/context-pack-save.json`。根`ContextPackSaveReceiptEnvelope`对应历史回执查询的完整成功封套，供Gateway、SDK、CLI无output查询、MCP文本内JSON及Mock同形结果使用。本地文件须选择`#ContextPackSaveReceiptFile`；CLI指定output的stdout还含original/receipt/local等包装，不能把整个stdout当作回执文件。
+
+文件自包含全部定义，不依赖目录或完整包Schema；从工作区或包子路径加载整份资源，以其`$id`注册，再解析锚点。标识`https://planemem.local/schemas/context-pack-save.json`不代表托管服务，无需联网下载。没有生产JSON导入、校验器或生成器依赖，Schema与运行时的一致性尚未自动验证。
+
+| 锚点 | 内容 |
+| --- | --- |
+| `#ContextPackSaveIdentity` | 原tenant/workspace/project/actor/client五字段身份 |
+| `#ContextPackSaveDraft` | 可省略预算/TTL的准备草稿或编译参数，默认值只作注解 |
+| `#ContextPackSaveParameters` | 原文件、查询及回显中的显式预算/TTL，两项必填 |
+| `#ContextPackSaveContextEnvelope` | 完整可信身份、会话到期和compile/read_restricted提示 |
+| `#PackSaveBinding` | 规范Gateway基址、完整身份及restricted桶 |
+| `#PackSaveOriginal` | CLI/网页共享完整原请求文件，不含token、trace或reviewed |
+| `#ContextPackSaveReceiptQuery` | 完整历史查询及回显，不含Gateway |
+| `#ContextPackRecordedSave` | 十字段历史记录，content/source均为not-checked |
+| `#ContextPackSaveReceiptSourceRef` | 唯一历史包引用，版本须与记录相等 |
+| `#ContextPackSaveReceiptEnvelope` | 根；recorded带记录及一个来源，not-observed不带记录且来源为空 |
+| `#ContextPackSaveReceiptDocument` | 本地观察时间、完整原请求及历史封套 |
+| `#ContextPackSaveReceiptFile` | 完整document和不带前缀的document_sha256 |
+
+对象字段封闭，预算128–32768、TTL 60–86400、版本/游标为正安全整数；ULID沿既有26字符规则。trace/client最多255码点、拒绝C0/DEL且至少一个非空白字符，原键另外禁止任何空白。运行时按UTF-16单元计长并拒绝孤立代理项，不能由Schema长度替代。时间词法固定UTC毫秒且拒绝0000年；format可能只作注解，历史时间不要求位于未来。
+
+Gateway只限定http(s)前缀和4096字符上界，刻意不添加可能与WHATWG序列化不同的RFC URI断言；必须另用packGateway核对规范形式、凭据/查询/片段限制、尾部斜杠处理及实际目标（含部署路径）。服务器历史封套没有Gateway，不能从该封套单独证明目标地址。身份信息是约束，不是凭据；compile=true仅是所返回权限提示，不证明后续提交一定获准。
+
+以下检查继续由共享解析器、可信服务及文件适配器负责：
+
+- 普通有限JSON、深度/节点预算、UTF-16和有效字符；草稿/查询4 KiB、原文/绑定8 KiB、身份/历史封套16 KiB、观察document 28 KiB、文件32 KiB；历史记录中的六字段目录元数据另限2 KiB。结构长度不等于UTF-8字节大小。
+- 当前可信身份、权限桶、实际Gateway与原文完整相等；完整查询回显与原查询一致，trace与请求一致，来源id/revision与记录pack_id/version一致。读取身份的当前期限由入口检查；离线文件不重新认证。
+- 时间有效且UTC毫秒精确往返，created_at小于expires_at、用量不超预算、预算等于原参数，保存时长不超过原TTL。历史过期不影响其作为历史记录；not-observed不证明原保存失败，也不授予重发。
+- document.original派生的查询与document.receipt.data.original完整一致；observed_at是本地观察时间，不设与服务端时间的先后关系，也不是服务器签名。
+- 对解析后的document调用contextPackSaveReceiptDocumentJson取得规范UTF-8内容并实算SHA-256，与外层64位小写document_sha256比较。不是对原文件字节或包含摘要的外层文件求hash。历史pack_hash带sha256:前缀，但不在历史查询中重算正文摘要。
+
+格式通过不证明来源真实、当前内容有效、授权有效或摘要正确。HTTP头/状态、保存成功的完整包封套、CLI输出与恢复包装、MCP外层、浏览器批量历史备份均不在此根内。完整包成功形状沿已有读取Schema并由compile解析器核对原参数；本次未新增这些接口或格式。详见[原请求与历史回执格式定义](../../../docs/design/01-contracts/context-pack-runtime.md#原请求与历史回执格式定义2026-11-05源码增量)。仅源码人工审阅及格式文本检查，未运行Schema校验、生成器、编译、类型检查、测试、产品流程或发布；OpenAPI及自动一致性/真实客户端证据仍待补。
+
 ## 保存 ContextPack 元数据目录
 
 HTTP路径、认证/范围头、查询编码、成功头和错误映射另见[目录OpenAPI源码](../openapi/README.md#保存包元数据目录)，它从本地引用此完整Schema；HTTP定义不改变本资源的JSON输入或封套形状。

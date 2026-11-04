@@ -14,6 +14,7 @@
     "./schemas/context-pack-read.json": "./schemas/context-pack-read.json",
     "./schemas/context-pack-comparison.json": "./schemas/context-pack-comparison.json",
     "./schemas/context-pack-directory.json": "./schemas/context-pack-directory.json",
+    "./schemas/context-pack-save.json": "./schemas/context-pack-save.json",
     "./openapi/context-pack-directory.json": "./openapi/context-pack-directory.json"
   },
   "type": "module",

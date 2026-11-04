@@ -954,6 +954,23 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_pack_save_schema_development_increment:
+      date: "2026-11-05"
+      status: "Source-only independent original save and historical receipt JSON Schema; R-003 remains incomplete."
+      artifacts:
+        - "packages/contracts/schemas/context-pack-save.json"
+        - "packages/contracts/schemas/README.md"
+        - "packages/contracts/package.json"
+        - "docs/design/01-contracts/context-pack-runtime.md"
+      behavior: "Add a self-contained JSON Schema 2020-12 resource and explicit package subpath. Root is the complete historical receipt envelope; anchors cover full identity, optional draft versus explicit parameters, save-context metadata, gateway binding, complete original, query/echo, recorded metadata/source and local observation document/file. Close object fields and couple recorded/not-observed to one/zero sources. Match existing numeric, identifier, UTC timestamp and hash syntax without asserting canonical WHATWG URLs through an incompatible RFC URI format. Keep original binding, byte/UTF-16 limits, valid timestamps/lifetime relations, digest recomputation and actual authority checks in existing runtime parsers/adapters."
+      evidence: []
+      pending_evidence:
+        - "Local package resource/anchor resolution and structural parity with the shared original/context/receipt/document/file parsers"
+        - "Closed fields, required explicit parameters, status/source cardinality and numeric/identifier/time/hash boundaries"
+        - "Real client interoperability and automatic consistency; no Schema validator, generator or runtime verification performed"
+      remaining_gaps:
+        - "Save identity/history OpenAPI, automatic consistency and runtime evidence; R-003 remains incomplete"
+        - "Schema alone cannot authenticate authority, bind original requests, verify canonical hashes or prove content/source availability"
     context_pack_embedded_cli_submit_development_increment:
       date: "2026-11-05"
       status: "Source-only embedded CLI reviewed original save submission; R-003 remains incomplete."
