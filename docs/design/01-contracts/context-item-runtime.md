@@ -1,5 +1,17 @@
 # ContextItem 录入与编辑开发说明
 
+## 2026-11-04 MCP当前上下文资源读取增量
+
+`resources/read`的`work://project/{project_id}/context-item/{item_id}`经原mcp.resource路由进入专用context-resource处理器，直接内部资源调用也使用同一路径。处理器输入仅uri、完整普通JSON最多4 KiB；URI必须完整匹配当前条目模板，无查询串/片段/额外路径，项目与条目标识符各百分号解码一次。项目必须等于原可信项目，条目沿共享本地ID规则，拒绝空值、`.`和`..`；保留原合法URI形式，不将编码后的分隔符再解释成路径，不提供归档资源或自动视图回退。协议层仍只向内部资源操作传递uri。
+
+要求schema v1、可信未过期客户端、实际context.read及完整项目/账号/客户端/trace，admin不替代。处理器开始时复制原上下文、清除继承写条件；父项目可见性检查与嵌套context.item.read各使用独立副本，原外层资源授权/审计和内层条目授权/审计保持。完整详情沿共享2 MiB解析，核对原项目/条目、版本/revision/JSON内ETag、完整内容/来源、当前来源诊断和确认信息，restricted内容需对应能力；旧confirmed可保留null确认。内层通过router读取，没有独立HTTP响应头，不能声称检查HTTP ETag。
+
+保持原资源结构：外层schema_version/trace_id/source_refs，data.contents中一项原uri、application/json与完整原详情封套的JSON文本。正文不截断；转义文本与重复来源合计的完整包装封套最多6 MiB+8192字节，超限返回MCP_RESOURCE_INVALID。已知读取错误先按16 KiB完整校验，再映射固定提示，拒绝原异常正文/详情透传；未知或不匹配错误同样返回固定无效资源错误，retryable=false。
+
+每CommandRouter独立两笔上下文资源读取名额，与tools/call容量分开。处理器从捕获输入起共用30秒期限，覆盖父项目检查、嵌套授权/审计、读取、完整解析和包装；占满返回MCP_CONTEXT_RESOURCE_BUSY，超时返回MCP_CONTEXT_RESOURCE_TIMEOUT。超时只停止等待，底层项目检查或条目读取未结束仍占槽；迟到项目检查后不再派发条目读取，迟到正文不交付。处理器前的外层mcp.resource授权/审计、网络收发和同步CPU抢占不在此保证内。
+
+模板与资源目录仍是发现提示，不新增权限证明或全目录读取预算；其他资源、工具、包和归档路径保持。无自动重试、外部来源访问、保存或写入。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布；URI/真实资源兼容、旧身份调用迁移、来源与确认、错误/大小、超时/容量及审计行为均待运行证据，R-003未完成、evidence为空。
+
 ## 2026-11-04 MCP当前与归档详情读取增量
 
 `get_context_item`和`get_archived_context_item`接入原context-history专用执行器，内部入口统一命名ContextRead。参数仅接受明确的item_id，严格普通JSON且最多4 KiB；视图由工具名决定，拒绝kind、调用方身份、写条件和额外字段。保留原完整成功封套，不自动切换当前/归档视图、重试、保存或读取外部来源。

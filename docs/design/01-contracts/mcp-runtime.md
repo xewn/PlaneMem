@@ -1,5 +1,7 @@
 # MCP HTTP 运行时开发说明
 
+2026-11-04 当前上下文资源增补：work://project/{project_id}/context-item/{item_id}的原mcp.resource路由接入专用完整读取。处理器要求可信未过期实际context.read，4 KiB仅uri输入、原项目/单次解码ID，保留父项目可见性和内层策略/审计；完整2 MiB详情校验，原contents文本/URI/MIME与source_refs保留，含转义文本及重复来源的包装封套限6 MiB+8192，错误限16 KiB后映射固定提示。每router独立两笔资源容量和处理器30秒，超时底层结束才释放，使用MCP_CONTEXT_RESOURCE_BUSY/TIMEOUT；工具容量独立。内层只核对JSON内ETag，处理器前外层审计与网络发送不在期限内，目录/模板/其他资源保持。详见[上下文资源读取](context-item-runtime.md#2026-11-04-mcp当前上下文资源读取增量)。仅源码文档，运行与兼容证据待补，未编译、测试、执行或发布。
+
 2026-11-04 上下文详情增补：get_context_item/get_archived_context_item接入专用执行器，发现/prepare/调用统一要求可信未过期实际context.read与完整身份。4 KiB严格item_id输入、2 MiB完整详情/16 KiB错误、HTTP状态/type/trace与HTTP/正文ETag一致性、完整范围/版本/内容/来源诊断/确认及restricted核验。两详情与原历史/版本/比较五工具共用每Gateway两笔容量，每次30秒，超时到底层结束才释放；详情新增MCP_CONTEXT_ITEM_BUSY/TIMEOUT，历史错误码保留，详情转义结果限4 MiB+4096。prepare要求专用执行器，无回退/重试/写入；resources/read、Mock及包目录另行完善。详见[上下文MCP详情读取](context-item-runtime.md#2026-11-04-mcp当前与归档详情读取增量)。仅源码文档，运行与兼容证据待补，未编译、测试、执行或发布。
 
 2026-11-04 上下文历史增补：list_context_item_history/get_context_item_version迁到专用执行器，新增compare_context_item_versions；发现和调用统一要求可信未过期实际context.read及完整身份。4 KiB参数、完整目录256 KiB/版本2 MiB/错误16 KiB、快照SHA-256，三工具每Gateway共用两笔容量和每调用30秒期限，超时保留底层名额。比较两次指定读取共享期限，16 MiB本地结果/32 MiB+4096转义输出；首读失败不继续、无部分结果/自动翻页/重试。prepareMcpTool明确要求专用执行器，普通HTTP输入及外层发送行为保持；详见[上下文MCP历史读取与对比](context-item-runtime.md#2026-11-04-mcp上下文历史与对比增量)。仅源码文档，未编译、测试、执行或发布。

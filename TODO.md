@@ -6,6 +6,8 @@
 
 ### 2026-11-04 开发补充（未编译、未发布、未测试）
 
+- P4/P0：MCP当前context-item资源接入专用读取处理器，4 KiB仅uri输入、原项目/单次解码本地ID与可信未过期实际context.read校验；父项目可见性及嵌套context.item.read策略/审计保留，2 MiB完整正文/版本/JSON内ETag/来源诊断/确认/restricted核对。处理器30秒、每router独立两笔资源容量，超时底层未结束继续占槽；转义正文加重复来源的包装封套限6 MiB+8192，错误16 KiB后映射固定提示。保持contents URI/MIME/完整文本和source_refs，无归档回退/重试/写入。目录/模板及其他资源保持，工具容量独立；不声称内层HTTP ETag或外层审计/网络发送期限。运行/旧资源调用兼容证据待补，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布。
+
 - P4/P0：MCP get_context_item/get_archived_context_item接入专用完整读取，发现/prepare/调用要求可信未过期实际context.read及完整身份，admin不替代；仅item_id的4 KiB输入、2 MiB完整成功/16 KiB错误、30秒期限，核对HTTP状态/type/trace/ETag、完整范围/版本/正文/来源诊断/确认及restricted权限。五种详情/历史/比较工具共用每Gateway两笔容量，超时到底层结束才释放；详情使用MCP_CONTEXT_ITEM_BUSY/TIMEOUT，历史错误码保留，详情转义输出最多4 MiB+4096，无视图回退/重试/写入。resources/read、Mock、包与目录仍待完善，运行与旧调用兼容证据待补，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布。
 
 - P4/P0：CLI context read/read-archived接入SDK完整详情读取，网络main/callGateway及嵌入runWorkctx统一4 KiB输入、2 MiB成功/Fetch16 KiB错误、默认30秒timeout-ms；支持成对expected_actor_id/expected_client_id，恰一JSON/稳定文件，网络stdin有界。嵌入实际context.read/到期/完整身份、原路径/头/大小/无正文及restricted校验，五种详情/历史/比较命令共用每router两笔容量，超时底层未结束仍占槽；无视图替换/自动重试/保存。JSON内ETag/版本/来源诊断沿共享解析，通用SDK不暴露HTTP ETag。旧不完整嵌入返回、CLI参数/错误/期限和运行兼容证据待补，MCP/Mock专用接入仍缺，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行CLI/SDK/产品/API/数据库或发布。

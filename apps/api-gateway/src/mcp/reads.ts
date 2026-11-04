@@ -4,6 +4,7 @@ import type { PostgresLegacySearch } from '@planemem/search-service';
 import type { CommandRouter } from '../router.js';
 import type { WorkbenchDatabase, WorkbenchRepository } from '../workbench/repository.js';
 import { McpResourceDirectory } from './resource-directory.js';
+import { executeContextItemResource, isContextItemResourceUri } from './context-resource.js';
 import {
   listMcpPrompts,
   listMcpTools,
@@ -138,6 +139,8 @@ export function registerMcpReads(
       };
     }
     if (!uri.startsWith('work://')) return missing();
+    if (isContextItemResourceUri(uri))
+      return executeContextItemResource(router, directory, input, context);
     await directory.requireProject(context);
     const savedMatch = /^work:\/\/project\/([^/?#]+)\/(overview|work-item\/([^/?#]+))$/.exec(uri);
     if (savedMatch) {
@@ -180,29 +183,6 @@ export function registerMcpReads(
         operation: 'proposal.read',
         context,
         input: { proposal_id: proposal },
-      });
-      return {
-        schema_version: 1,
-        trace_id: context.trace_id,
-        source_refs: document.source_refs,
-        data: { contents: [{ uri, mimeType: 'application/json', text: JSON.stringify(document) }] },
-      };
-    }
-    const itemMatch = /^work:\/\/project\/([^/?#]+)\/context-item\/([^/?#]+)$/.exec(uri);
-    if (itemMatch) {
-      let project: string;
-      let itemId: string;
-      try {
-        project = decodeURIComponent(itemMatch[1]!);
-        itemId = decodeURIComponent(itemMatch[2]!);
-      } catch {
-        return missing();
-      }
-      if (project !== context.project_id) return missing();
-      const document = await router.execute({
-        operation: 'context.item.read',
-        context,
-        input: { item_id: itemId },
       });
       return {
         schema_version: 1,

@@ -954,6 +954,22 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    mcp_context_item_resource_read_development_increment:
+      date: "2026-11-04"
+      status: "Source-only bounded MCP current context item resource reads; R-003 remains incomplete."
+      artifacts:
+        - "apps/api-gateway/src/mcp/context-resource.ts"
+        - "apps/api-gateway/src/mcp/reads.ts"
+        - "docs/design/01-contracts/context-item-runtime.md"
+        - "docs/design/01-contracts/mcp-runtime.md"
+      behavior: "The existing mcp.resource handler dispatches current context-item URIs to a dedicated reader. Capture verified unexpired actual context.read identity and strict 4 KiB URI-only input; decode project/item once, bind original project and preserve URI. Retain parent project visibility and nested policy/audit. Validate complete 2 MiB detail, original scope/item/version/body ETag/sources/diagnostics/confirmation and restricted permission. Preserve resource contents and source_refs within a 6 MiB+8192 wrapped envelope limit; bound known errors to 16 KiB and emit fixed messages. Two per-router resource slots independent of tools; one 30-second handler budget retains slots until underlying work settles. No partial result, archive fallback, retry or write."
+      evidence: []
+      pending_evidence:
+        - "Percent-encoded IDs, invalid/cross-project URIs, original URI preservation and direct resource/client compatibility"
+        - "Trusted identity and expiry, project/restricted visibility, nested policy/audit, complete source and confirmation compatibility"
+        - "Complete and escaped response bounds, fixed error mapping, busy/timeout, late project/read settlement and retained capacity"
+      remaining_scope: "Other resource kinds, directory/pack bounds, Mock detail integration and runtime evidence. Directory/templates remain discovery hints. Inner router exposes no HTTP ETag. Handler deadline excludes preceding outer authorization/audit and network delivery; synchronous CPU is not preempted."
+      execution: "Source/docs, manual review and formatting/text checks only; no build, typecheck, tests, MCP/product/API/database execution or release. No protocol/contracts/SDK/CLI/Web/schema/dependency changes."
     mcp_context_item_detail_read_development_increment:
       date: "2026-11-04"
       status: "Source-only bounded MCP current/archived context detail reads; R-003 remains incomplete."
