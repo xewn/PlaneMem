@@ -16,7 +16,8 @@
     "./schemas/context-pack-directory.json": "./schemas/context-pack-directory.json",
     "./schemas/context-pack-save.json": "./schemas/context-pack-save.json",
     "./openapi/context-pack-directory.json": "./openapi/context-pack-directory.json",
-    "./openapi/context-pack-save.json": "./openapi/context-pack-save.json"
+    "./openapi/context-pack-save.json": "./openapi/context-pack-save.json",
+    "./openapi/context-pack-operations.json": "./openapi/context-pack-operations.json"
   },
   "type": "module",
   "name": "@planemem/contracts",

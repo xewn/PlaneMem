@@ -1014,6 +1014,26 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_pack_operations_openapi_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only OpenAPI for existing saved-pack creation and complete reads; P0-01 and R-003 remain incomplete."
+      artifacts:
+        - "packages/contracts/openapi/context-pack-operations.json"
+        - "packages/contracts/openapi/README.md"
+        - "packages/contracts/package.json"
+        - "docs/design/01-contracts/wcp-api.md"
+        - "docs/design/01-contracts/context-pack-runtime.md"
+      behavior: "OpenAPI 3.1.0 for POST /v1/context-pack/compile and GET /v1/context-pack. Reuse complete read schemas/format anchors and save budget/TTL scalar definitions. Describe original identity/key/header-body matching, normalized parameters/restricted replay, explicit/latest selection, all three JSON-wrapped formats, original ETag/cursor and nested creation trace, stale/expired/idempotency errors and per-source retryability."
+      boundaries: "No runtime/schema-field changes. Document rather than conceal legacy HTTP gaps: generic 1 MiB POST parsing before auth, GET bodies unread, no dedicated 30-second/two-slot or 2 MiB response guard, no strict compile Content-Type/query/UTF-8/duplicate-key handling, version syntax without CAS/304, no post-database expiry check. Client 4 KiB/2 MiB/16 KiB budgets are not server guarantees."
+      evidence: []
+      remaining_scope: "Complete WCP/MCP contracts, SDK/Mock machine-contract consumption, breaking-change CI, legacy HTTP boundary improvements and runtime/tool compatibility evidence."
+      pending_evidence:
+        - "Local external references/anchors, OpenAPI 3.1 and 2020-12 tool support, package resource loading"
+        - "Header/body key coupling, original normalized parameters/identity/visibility replay and uncertain-save recovery"
+        - "Explicit/latest selection, all format shapes, current sources, stale/expired results, ETag/cursor/trace relationships"
+        - "Actual HTTP authentication/headers/status/retryability and separate client/server bounds"
+      execution: "Manual source/docs review and formatting/Git text checks only; no validators, generators, compile-pack operation, build, typecheck, tests, API/product/database execution or release."
     web_context_pack_receipt_backup_comparison_development_increment:
       date: "2026-11-05"
       status: "Source-only Web comparison of two complete file backup sets with full report download; R-003 remains incomplete."

@@ -2,6 +2,8 @@
 
 这些文件是开发源码，尚未经过本轮编译、生成器、Schema校验器、测试或运行验证。`$id`是契约标识，不代表已发布网站；消费者应从工作区或包子路径加载文件，不依赖远端下载。
 
+2026-11-05，TODO P0-01：新增[保存包生成与完整读取 OpenAPI](../openapi/README.md#保存包生成与完整读取)，复用这里的 context-pack-read 完整成功/格式锚点及 context-pack-save 预算/TTL标量。生成 POST 的可选正文幂等键另在 OpenAPI 描述，保留旧 HTTP 与严格 SDK/原请求文件规则差异；现有两份 Schema 未修改，未运行解析器或生成器。
+
 ## ContextPack 原请求与历史回执
 
 身份GET及历史回执POST的HTTP请求头、状态和错误差异另见[保存身份与历史回执OpenAPI](../openapi/README.md#保存身份与历史回执)。它本地引用本资源，未改变JSON结构，也不描述保存包提交接口。

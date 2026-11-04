@@ -1,6 +1,58 @@
 # OpenAPI 源码契约
 
-这里的文档描述已有HTTP实现，尚未经过OpenAPI校验器、生成器、编译、类型检查、测试或运行验证。文档中的版本不表示已发布或部署；目前包含下述保存身份/历史回执和保存包目录切片，尚不是完整WCP接口目录。
+这里的文档描述已有HTTP实现，尚未经过OpenAPI校验器、生成器、编译、类型检查、测试或运行验证。文档中的版本不表示已发布或部署；目前覆盖保存包生成/完整读取、保存身份/历史回执和保存包目录五个接口，尚不是完整WCP接口目录。
+
+## 保存包生成与完整读取
+
+2026-11-05，TODO **P0-01** / T0.3 / T4.1 / R-003：新增 `context-pack-operations.json`（OpenAPI 3.1.0），包子路径为 `@planemem/contracts/openapi/context-pack-operations.json`。描述已有 `POST /v1/context-pack/compile` 与 `GET /v1/context-pack`，不执行接口、不修改路由或现有处理逻辑。
+
+| 接口 | 选择/输入 | 成功内容 |
+| --- | --- | --- |
+| POST `/v1/context-pack/compile` | 可省略 budget_tokens/ttl_seconds；原幂等键必须在头或正文提供 | 新保存或原请求重放均为 200；完整 JSON 保存封套，无 rendered |
+| GET `/v1/context-pack` | 单值可选 pack_id/format；省略 ID 选最新可见版本 | 三种 format 都返回完整 JSON；markdown/mcp 另含 data.rendered |
+
+本地加载 OpenAPI 及相邻 `schemas/context-pack-read.json`、`schemas/context-pack-save.json` 两份完整资源，保留相对目录和各自 `$id`。成功结构引用 read Schema；生成请求的预算/TTL复用 save Schema 标量。正文幂等键采用现有 HTTP handler 的较宽规则，没有把 SDK/原请求文件的更严格文本规则套给旧 HTTP。无须加载目录/比较 Schema，也不要联网请求 planemem.local。
+
+### 原身份、幂等与完整读取
+
+两接口均验证 Bearer、三个项目范围头，并经 `context.read` Policy action；实际许可取决于当前策略及经认证规范化的能力。生成另外要求可信非空 client claim；旧完整 GET 没有这一专用门槛，缺少 client claim 时仍沿 authenticatedContext 的已有 fallback，不能把目录/身份/回执入口的严格要求套到它。两个 expected-identity 头分别可选，仅与已验证身份精确比较。traceparent 非空时优先于 x-trace-id，旧入口不强制两者一致或解析 W3C 格式；两个都缺省才生成 trace。
+
+生成请求默认预算 4096、TTL 3600 秒，范围分别为 128–32768 和 60–86400。正文仅接受 budget_tokens、ttl_seconds、idempotency_key；推荐原键放 Idempotency-Key 头，正文 `{}` 可使用默认参数。键在头或正文至少一处，双处必须同文；原 handler 检查 1–255 UTF-16 单元且无空白，SDK/历史原请求格式还有控制字符/代理项限制。跨头/正文的必填与相等关系由运行时处理，OpenAPI body Schema 无法单独表达。
+
+保存按原 scope/actor/client/key 定位，指纹包含规范参数、restricted 权限桶和已有 expected_version；锁内写入完整包/来源清单、版本/游标及 ContextPackIssued。相同原请求重放仍检查当前项目、原包正文、有效期与来源。参数/可见性变更返回 409；过期 410、来源陈旧 409，不生成替代包。响应不回显原键、请求 TTL 或“新建/重放”标记。发送后失败或超时应保留完整原请求并查询已有 save-receipt，不能推断未保存或自动换键。
+
+读取在只读 repeatable-read 事务内检查父项目和保存 restricted 可见性，按版本/ID降序选择。省略 ID 并不表示“找一个未过期包”：先选最新，再检查它；过期/陈旧就返回错误，不回退旧包。指定不可见/不存在或无可见最新包返回 404。完整检查包含原包摘要、保存元数据、候选和排除项的来源清单、依赖快照及当前来源状态；历史回执查询与元数据目录不做这类完整读取。
+
+`format=json`（含省略）不带 rendered；markdown 和 mcp 都增加 `data.rendered={uri,mimeType,text}`，其中 mimeType 为 text/markdown。HTTP 仍是 application/json，包含完整 pack；format=mcp 不是 JSON-RPC 包装，也没有发起 MCP 调用。根成功 Schema 接受两种结构，格式专用锚点由扩展注解提供，消费方须结合原查询选用并继续核对完整正文/摘要。
+
+成功 ETag 等于正文 etag，并对应 data.version/revision；server_cursor 是原保存事件游标，不是读取时最新高水位。外层 trace 属于当前调用，内层 pack.trace_id 保留创建时的值；两者不必相同，重放也不会重写原包。
+
+### 现有服务端与客户端边界
+
+本文件据实记录这两个旧入口，不能从目录/回执文档复制更强保证：
+
+- POST 在认证前使用通用 JSON reader，实际正文最多 1 MiB，缺失/非对象/非法或超限统一 400 INVALID_JSON；没有专门强制 Content-Type、空查询、严格 UTF-8 或重复 JSON 键策略。调用者应发送 application/json、无 URL 查询的规范对象。
+- GET 不解析请求正文，也没有目录入口的正文/条件头拒绝检查。应不带正文或写入、缓存、Range 条件；接受某些条件头语法不表示支持条件读取。通用 If-Match/If-Match-Version 会检查语法和相互一致性，但这两个 handler 不做 CAS，读取不会返回 304/206。生成时额外版本值还影响原请求指纹，应省略。
+- 两 handler 没有专用两笔容量或 30 秒等待上限，也没有服务端统一 2 MiB 成功/16 KiB 错误限制。4 KiB 规范查询/参数、2 MiB 完整成功及 16 KiB 错误是共享客户端的检查；客户端期限不证明 SQL 已取消或写入已回滚。
+- 授权时检查 token 有效性；这两个 handler 没有数据库工作后的专门到期复查。成功包的来源/有效期判断发生于处理器读取，不能保证其在送达后一直新鲜。
+- 早期 JSON/认证/输入拒绝可能不带 x-trace-id；命令错误带该头，所有应用 JSON 响应均 private, no-store。未承诺 WWW-Authenticate、Retry-After 或 Connection: close。
+
+这些差异作为尚待开发的边界记录，文档不会自动修复实现。所有 x-* 都是说明注解，不是运行时限制。结构 Schema 仍不能证明权限、原键归属、摘要、跨字段关系或完整字节预算。
+
+| HTTP状态 | 原HTTP错误码及 retryable |
+| --- | --- |
+| 400 | INVALID_JSON、INVALID_INPUT、INVALID_REQUEST_CONTEXT；生成候选/来源图超限 CONTEXT_SOURCE_LIMIT 也为400，均false |
+| 401 / 403 | UNAUTHENTICATED / DENIED，false |
+| 404 | CONTEXT_PACK_NOT_FOUND，false |
+| 409 | CONTEXT_PACK_STALE；生成还可能 IDEMPOTENCY_KEY_REUSED，false |
+| 410 | CONTEXT_PACK_EXPIRED，false |
+| 429 | 通用actor/path RATE_LIMITED，true；无专用容量错误 |
+| 500 | CONTEXT_PACK_INVALID为false；意外边界INTERNAL_ERROR通常true |
+| 503 | CONTEXT_PACK_STORAGE_UNAVAILABLE、WORKBENCH_AUTH_UNAVAILABLE、AUDIT_PERSISTENCE_UNAVAILABLE，true |
+
+错误 details 保持开放，客户端可能重新映射 retryable；它不授权自动重发。存储 helper 将缺少数据库或非 ContractError 的内部异常归为存储不可用，不能把每个503都解释成数据库未提交。反向代理/HTTP解析层的错误不保证这份 JSON 结构。
+
+源码依据：Gateway 的 server/http/authenticated-context/context-packs，共享 metadata/context-pack-read/context-pack-compile 及 SDK 对应适配器。只做人工源码审阅和格式/Git文本检查，未执行校验器、生成器、接口、数据库、编译、类型检查、测试或发布；P0-01/R-003 保持未完成、evidence 为空。
 
 ## 保存身份与历史回执
 

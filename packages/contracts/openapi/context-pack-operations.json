@@ -1,0 +1,356 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem saved ContextPack creation and complete reads",
+    "version": "0.1.0",
+    "description": "Source-only description of the existing compile/save POST and complete saved-pack GET. Load this document plus the adjacent context-pack-read.json and context-pack-save.json schema resources locally with their full $id mappings. No server-side compiler, schema validator, client generator, build, test or API execution was performed. This is not the complete WCP API or proof of deployment."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Relative Gateway base; configure the actual deployment origin and base path."
+    }
+  ],
+  "security": [{ "GatewayBearer": [] }],
+  "tags": [
+    {
+      "name": "Saved ContextPack",
+      "description": "Explicit creation and current-authority reads of complete saved packs."
+    }
+  ],
+  "x-todo": "P0-01",
+  "x-source-boundaries": {
+    "server-post-body-bytes": 1048576,
+    "client-normalized-parameters-or-query-bytes": 4096,
+    "client-complete-success-bytes": 2097152,
+    "client-error-bytes": 16384,
+    "description": "Annotations only. The two legacy handlers have no dedicated 30-second/two-slot guard and do not impose the clients' 2 MiB response limit. The generic POST reader limits raw body bytes to 1 MiB before authentication. Shared client parsers apply 4 KiB query/parameters and 2 MiB success limits; client readers apply 16 KiB errors and their own deadlines. These are different enforcement layers, not server-wide guarantees."
+  },
+  "paths": {
+    "/v1/context-pack/compile": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "post": {
+        "operationId": "compileSavedContextPack",
+        "tags": ["Saved ContextPack"],
+        "summary": "Create a saved ContextPack or replay the exact original save",
+        "description": "This operation writes a saved pack, not merely a preview. Require verified Bearer identity with a nonblank authenticated client and a Policy decision for context.read; the parent project must remain readable. The handler normalizes omitted budget_tokens to 4096 and ttl_seconds to 3600, accepts at most 1000 context-item candidates, checks the bounded source graph and compiles under the selected restricted-read capability. A project transaction lock protects the version/cursor allocation, saved document/source manifest and ContextPackIssued event. Idempotency is scoped by tenant/workspace/project and the original actor/client/key; its fingerprint includes normalized parameters, restricted visibility and any legacy expected_version. Exact replay returns the existing pack only after checking its content, expiry and source dependencies again. Changed parameters/visibility produce 409, stale packs 409, expired packs 410; none creates a replacement. Success is always 200, including first creation. A transport failure after dispatch does not prove the save failed: preserve the original identity/key/parameters and use the separate save-receipt operation, never automatically rotate keys or recompile.",
+        "x-wcp-operation": "context.pack.compile",
+        "x-policy-action": "context.read",
+        "x-current-http-parser": "Send application/json without query parameters or conditional headers. Existing generic POST parsing does not enforce Content-Type, reject URL query parameters, strictly reject invalid UTF-8 or check duplicate JSON keys. It parses a JSON object from a nonempty body before authentication within 1 MiB; {} is allowed. Missing/malformed/nonobject/oversize JSON returns 400 INVALID_JSON. Generic If-Match/If-Match-Version values are syntax-checked and enter the receipt fingerprint but do not perform a saved-pack compare-and-swap. These are existing gaps, not guarantees added by this document.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Preferred location for the stable original key. Required here or in body.idempotency_key; if both exist their exact strings must match. Reuse only with the original identity, normalized budget/TTL and visibility. Runtime checks 1..255 UTF-16 units and no whitespace. The current SDK applies additional C0/DEL/surrogate restrictions. Cross-header/body requirements are enforced by the handler, not this parameter schema.",
+            "schema": { "$ref": "#/components/schemas/HttpIdempotencyKey" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "A JSON object is required, even when only defaults are wanted. Use {} together with Idempotency-Key for default budget/TTL. Legacy body.idempotency_key remains accepted; actor/client/scope fields are not command parameters. Neither the 4 KiB client parameter budget nor strict content encoding is enforced by this legacy HTTP handler.",
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/CompileInput" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Complete original saved receipt with the full pack; no rendered field. revision and JSON/header ETag describe data.version; server_cursor is the original issuance cursor, not the current stream high-water mark. The outer trace is this request's trace, while pack.trace_id remains the creation trace on replay. The response does not echo the idempotency key, original requested TTL or an explicit created-versus-replayed flag. Shared consumers additionally check digest, bounds and budget/TTL relationships.",
+            "headers": {
+              "cache-control": { "$ref": "#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "#/components/headers/SuccessTrace" },
+              "ETag": { "$ref": "#/components/headers/PackEtag" }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../schemas/context-pack-read.json#ContextPackReadJsonEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error",
+            "description": "INVALID_JSON from generic body parsing, INVALID_INPUT for unknown command fields, invalid budget/TTL, missing/disagreeing keys or invalid compile scope, INVALID_REQUEST_CONTEXT for malformed/disagreeing legacy version headers, or CONTEXT_SOURCE_LIMIT for more than 1000 candidates/bounded graph overflow. These errors are nonretryable; the source limit is not mapped to 413."
+          },
+          "401": {
+            "$ref": "#/components/responses/Error",
+            "description": "UNAUTHENTICATED: missing or rejected Bearer token; retryable=false. Early authentication does not guarantee WWW-Authenticate or an x-trace-id response header."
+          },
+          "403": {
+            "$ref": "#/components/responses/Error",
+            "description": "DENIED: unauthorized scope, expected identity mismatch, missing authenticated client or Policy denial, including expiry at authorization. retryable=false. There is no final token-expiry check in this handler after database work."
+          },
+          "404": {
+            "$ref": "#/components/responses/Error",
+            "description": "CONTEXT_PACK_NOT_FOUND: parent project is missing, deleted or outside current restricted-read visibility; retryable=false."
+          },
+          "409": {
+            "$ref": "#/components/responses/Error",
+            "description": "IDEMPOTENCY_KEY_REUSED for a changed request or visibility bucket, or CONTEXT_PACK_STALE when replayed saved sources/dependencies changed or their snapshot is unavailable; retryable=false. Do not silently create a new request."
+          },
+          "410": {
+            "$ref": "#/components/responses/Error",
+            "description": "CONTEXT_PACK_EXPIRED: the existing pack for the original save is expired; retryable=false. This is not evidence that the original save failed."
+          },
+          "429": {
+            "$ref": "#/components/responses/Error",
+            "description": "RATE_LIMITED from the general actor/path limiter, retryable=true. No dedicated compile capacity code or Retry-After header is promised."
+          },
+          "500": {
+            "$ref": "#/components/responses/Error",
+            "description": "CONTEXT_PACK_INVALID for corrupt/inconsistent saved data (retryable=false) or an unexpected command-boundary INTERNAL_ERROR (serializer default retryable=true). No partial success receipt is returned."
+          },
+          "503": {
+            "$ref": "#/components/responses/Error",
+            "description": "CONTEXT_PACK_STORAGE_UNAVAILABLE for absent database or non-ContractError storage/handler failure; WORKBENCH_AUTH_UNAVAILABLE or AUDIT_PERSISTENCE_UNAVAILABLE at outer boundaries. These sources set retryable=true; an ambiguous dispatched request still requires original-receipt recovery."
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/context-pack": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "get": {
+        "operationId": "readSavedContextPack",
+        "tags": ["Saved ContextPack"],
+        "summary": "Read an explicit saved pack or the latest visible saved pack",
+        "description": "Require verified Bearer scope and a Policy decision for context.read. Unlike compile and the metadata directory, this legacy HTTP read does not itself require a verified client claim; absent client claims use the existing authenticated-context fallback. A repeatable-read read-only transaction checks parent-project visibility and saved read_restricted access, then selects an explicit pack_id or the highest visible version/pack_id. Selection does not filter expiry/staleness first: an unusable latest pack returns its error rather than falling back to an older pack. checkedDocument verifies content/hash/metadata, expiry and the saved source/dependency manifest, including excluded candidates; changed or missing sources invalidate the saved result. No pack is created or refreshed. All three formats return application/json and the complete pack; markdown and mcp additionally include data.rendered with text/markdown text and a work:// URI. Format=mcp does not produce a JSON-RPC response or imply an MCP transport call.",
+        "x-wcp-operation": "context.pack.read",
+        "x-policy-action": "context.read",
+        "x-current-http-parser": "Use no GET body or write/cache/range conditions. The existing route ignores unread GET body bytes instead of explicitly rejecting them, and does not implement the directory route's forbidden-header checks. Generic version headers are syntax-checked but not evaluated against the saved pack. Conditional-cache and Range headers do not produce 304/206 or conditional reads. Only pack_id and format are accepted as single URL query fields; there is no server 4 KiB query guard here. This document does not repair those gaps.",
+        "x-response-format-schemas": {
+          "json-or-omitted": "../schemas/context-pack-read.json#ContextPackReadJsonEnvelope",
+          "markdown-or-mcp": "../schemas/context-pack-read.json#ContextPackReadRenderedEnvelope",
+          "description": "Annotations for request-dependent validation; OpenAPI does not bind a query value to a response branch automatically."
+        },
+        "parameters": [
+          {
+            "name": "pack_id",
+            "in": "query",
+            "required": false,
+            "style": "form",
+            "explode": false,
+            "description": "Exact saved pack ID; omit to select latest visible version. Empty/null/duplicate values are invalid. Explicit not-found/invisible and no visible latest pack return 404, not an empty success. The stored latest status is not the selector; version and pack_id descending determine the result.",
+            "schema": { "$ref": "../schemas/context-pack-read.json#/$defs/ulid" }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "style": "form",
+            "explode": false,
+            "description": "Default json. markdown and mcp both retain the JSON envelope/full pack and add rendered; neither changes the HTTP media type. Empty or repeated values are invalid.",
+            "schema": { "$ref": "../schemas/context-pack-read.json#/$defs/readFormat" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Complete saved receipt and full document, with optional rendered only for markdown/mcp. ETag equals the JSON etag, revision equals data.version, and server_cursor is the original issuance cursor. Outer trace belongs to this read; nested pack trace remains the creation trace. The schema does not prove current source access, digest validity, freshness at delivery or cross-request snapshot consistency. Clients additionally check the selected ID/format, full scope, source order, rendering, hash and size budget.",
+            "headers": {
+              "cache-control": { "$ref": "#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "#/components/headers/SuccessTrace" },
+              "ETag": { "$ref": "#/components/headers/PackEtag" }
+            },
+            "content": {
+              "application/json": { "schema": { "$ref": "../schemas/context-pack-read.json" } }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error",
+            "description": "INVALID_INPUT for unknown/repeated query fields, invalid ID or format; INVALID_REQUEST_CONTEXT for malformed/disagreeing legacy version headers. retryable=false. Sending conditions is unsupported even where the parser accepts their syntax."
+          },
+          "401": {
+            "$ref": "#/components/responses/Error",
+            "description": "UNAUTHENTICATED: missing or rejected Bearer token; retryable=false. No early x-trace-id or WWW-Authenticate guarantee."
+          },
+          "403": {
+            "$ref": "#/components/responses/Error",
+            "description": "DENIED: scope/expected identity mismatch or Policy denial, including expiry at authorization; retryable=false. This handler does not add a post-database token-expiry check."
+          },
+          "404": {
+            "$ref": "#/components/responses/Error",
+            "description": "CONTEXT_PACK_NOT_FOUND for an unavailable parent project, invisible/absent explicit pack or no visible saved pack; retryable=false."
+          },
+          "409": {
+            "$ref": "#/components/responses/Error",
+            "description": "CONTEXT_PACK_STALE: saved candidates or dependencies changed, disappeared, exceeded current inspection bounds or lack a saved dependency snapshot; retryable=false. No older-pack fallback or automatic recompile."
+          },
+          "410": {
+            "$ref": "#/components/responses/Error",
+            "description": "CONTEXT_PACK_EXPIRED: selected pack has expired; retryable=false. Omitted pack_id still refers to the selected latest record, not latest unexpired record."
+          },
+          "429": {
+            "$ref": "#/components/responses/Error",
+            "description": "RATE_LIMITED from the general actor/path limiter, retryable=true. No dedicated read capacity limit or Retry-After header is declared."
+          },
+          "500": {
+            "$ref": "#/components/responses/Error",
+            "description": "CONTEXT_PACK_INVALID for inconsistent saved data/content/manifest/budget (retryable=false), or unexpected command-boundary INTERNAL_ERROR (serializer default retryable=true)."
+          },
+          "503": {
+            "$ref": "#/components/responses/Error",
+            "description": "CONTEXT_PACK_STORAGE_UNAVAILABLE, WORKBENCH_AUTH_UNAVAILABLE or AUDIT_PERSISTENCE_UNAVAILABLE; retryable=true for these sources. This route has no dedicated read-timeout error."
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "GatewayBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Authorization: Bearer <token>, verified by the configured issuer. Scope headers constrain authorized claims (or the configured fallback project); identity/roles/capabilities come from verified claims. Policy action for both operations is context.read. Existing workbench.read/designated-client Base normalization may supply that capability; final authorization is the Policy decision, not a permission granted by this security scheme."
+      }
+    },
+    "parameters": {
+      "TenantId": {
+        "name": "x-tenant-id",
+        "in": "header",
+        "required": true,
+        "description": "Requested tenant, exactly matching the authorized scope. Expected saved scope uses ULIDs; authentication compares the original string to its allowed claim/configuration.",
+        "schema": { "$ref": "../schemas/context-pack-read.json#/$defs/ulid" }
+      },
+      "WorkspaceId": {
+        "name": "x-workspace-id",
+        "in": "header",
+        "required": true,
+        "description": "Requested workspace, exactly matching the authorized scope.",
+        "schema": { "$ref": "../schemas/context-pack-read.json#/$defs/ulid" }
+      },
+      "ProjectId": {
+        "name": "x-project-id",
+        "in": "header",
+        "required": true,
+        "description": "Requested project, exactly matching the authorized scope and checked for current visibility by the handler.",
+        "schema": { "$ref": "../schemas/context-pack-read.json#/$defs/ulid" }
+      },
+      "TraceParent": {
+        "name": "traceparent",
+        "in": "header",
+        "required": false,
+        "description": "Current HTTP code treats a nonempty value as opaque and prefers it over x-trace-id; it does not parse W3C Trace Context here or require equality between both headers. Use one trace header satisfying the shared consumer requestTrace rule.",
+        "schema": { "$ref": "../schemas/context-pack-read.json#/$defs/requestTrace" }
+      },
+      "TraceId": {
+        "name": "x-trace-id",
+        "in": "header",
+        "required": false,
+        "description": "Used when traceparent is absent/empty. If both headers are absent or empty, the server generates trace_http_<ULID>. Shared consumers constrain this value more strictly than the generic HTTP reader.",
+        "schema": { "$ref": "../schemas/context-pack-read.json#/$defs/requestTrace" }
+      },
+      "ExpectedActorId": {
+        "name": "x-expected-actor-id",
+        "in": "header",
+        "required": false,
+        "description": "Independently optional exact equality constraint on the verified actor. It never supplies identity. HTTP comparison does not add the CLI's paired-field or identity-shape rules.",
+        "schema": { "type": "string" }
+      },
+      "ExpectedClientId": {
+        "name": "x-expected-client-id",
+        "in": "header",
+        "required": false,
+        "description": "Independently optional exact equality constraint on the verified client (or existing read fallback); never a credential. Compile separately requires an authenticated client claim.",
+        "schema": { "type": "string" }
+      }
+    },
+    "headers": {
+      "NoStore": {
+        "description": "All application JSON responses use this policy; proxy/parser responses are outside this contract.",
+        "required": true,
+        "schema": { "type": "string", "const": "private, no-store" }
+      },
+      "SuccessTrace": {
+        "description": "Selected inbound trace, exactly equal to outer body.trace_id. Nested pack.trace_id may differ on read or replay.",
+        "required": true,
+        "schema": { "type": "string", "minLength": 1 }
+      },
+      "PackEtag": {
+        "description": "Weak saved-version tag, exactly matching body.etag and data.version. Its presence does not implement conditional GET or compare-and-swap for these operations.",
+        "required": true,
+        "schema": {
+          "$ref": "../schemas/context-pack-read.json#/$defs/ContextPackReadEnvelope/properties/etag"
+        }
+      },
+      "ErrorTrace": {
+        "description": "Command-boundary errors include this header; early body/authentication/input failures may omit it. Preserve the error body's trace_id.",
+        "required": false,
+        "schema": { "type": "string", "minLength": 1 }
+      }
+    },
+    "schemas": {
+      "HttpIdempotencyKey": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 255,
+        "not": { "pattern": "\\s" },
+        "description": "Current validateIdempotencyKey lexical rule. Runtime length counts UTF-16 units; JSON Schema counts code points. Unlike stricter original-request/SDK rules, this legacy handler does not additionally reject C0/DEL/unpaired surrogates. HTTP header encoding may restrict values further."
+      },
+      "CompileInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "budget_tokens": {
+            "$ref": "../schemas/context-pack-save.json#/$defs/budgetTokens",
+            "default": 4096
+          },
+          "ttl_seconds": {
+            "$ref": "../schemas/context-pack-save.json#/$defs/ttlSeconds",
+            "default": 3600
+          },
+          "idempotency_key": { "$ref": "#/components/schemas/HttpIdempotencyKey" }
+        },
+        "description": "Only these three fields are accepted by the command. A key is mandatory in the header or body and both must agree when present; header/body coupling is not expressible in this body schema. Defaults are annotations, applied by the handler only to omitted numeric fields; null is invalid.",
+        "examples": [
+          { "budget_tokens": 4096, "ttl_seconds": 3600 },
+          { "idempotency_key": "pack-save-example-001" }
+        ]
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message", "details", "trace_id", "retryable"],
+        "properties": {
+          "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]+$" },
+          "message": { "type": "string", "minLength": 1 },
+          "details": { "type": "object", "additionalProperties": true },
+          "trace_id": { "type": "string", "minLength": 1 },
+          "retryable": { "type": "boolean" }
+        },
+        "description": "Existing five-field application error; details stay open. No global server 16 KiB bound is asserted. Raw HTTP retryable is distinct from client error mapping and never authorizes automatic resubmission of an ambiguous save."
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Application error, without a partial success receipt. Proxy or HTTP-parser errors before this boundary may have another representation. Status/trace and retryability are determined by the actual error source.",
+        "headers": {
+          "cache-control": { "$ref": "#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "#/components/headers/ErrorTrace" }
+        },
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } }
+        }
+      }
+    }
+  }
+}

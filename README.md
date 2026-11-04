@@ -1,5 +1,7 @@
 # PlaneMem
 
+按 TODO **P0-01** 补充[保存包生成与完整读取 OpenAPI](packages/contracts/openapi/README.md#保存包生成与完整读取)：覆盖已有 POST 生成保存包、GET 显式或最新包及三种读取格式，复用完整结构并描述原请求重放和错误。连同已有目录/身份/历史回执，现已提供五个保存包接口的 OpenAPI 源码；完整 WCP 和机器契约接线仍待补。仅源码文档，未运行校验器、生成器、编译、测试、接口或发布。
+
 按 TODO **P0-01** 补充 [Canonical Event v1 与 CloudEvents 双格式 AsyncAPI 消息目录](packages/events/asyncapi/README.md) 和独立 [CloudEvents 结构化配置](docs/design/01-contracts/canonical-cloudevents.md)：两种目录各覆盖当前 38 类默认事件，提供完整封套 Schema、CloudEvents 双向转换及包子路径；结构化目录逐类约束外层 type 与内层事件类型，转换保留完整原事件、绑定显式来源并核对映射。实际总线通道、结构化格式传输/消费者接线及契约自动核对仍待补。仅源码，未运行校验器、生成器、编译、测试或发布。
 
 按 TODO **P0-02** 补充 [SDK 管理快照 Mock](docs/design/01-contracts/admin-mock-runtime.md)：显式管理员/能力配置、受限读取场景与计数权限屏蔽，接入原 getAdminSnapshot；模拟数据不证明数据库或外部服务健康。仅源码文档，未编译、测试、运行 Mock 或发布。

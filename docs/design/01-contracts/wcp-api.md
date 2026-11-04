@@ -1,5 +1,7 @@
 # WCP API 契约 v1
 
+2026-11-05，TODO P0-01：[保存包生成与完整读取 OpenAPI](../../../packages/contracts/openapi/README.md#保存包生成与完整读取)新增现有 POST /v1/context-pack/compile 和 GET /v1/context-pack 的机器描述。成功复用完整包 Schema，覆盖稳定键/参数与原身份重放、显式或最新读取、三种格式、ETag/原游标/双层trace及404/409/410等错误。准确区分旧HTTP通用1MiB正文与客户端4KiB/2MiB/16KiB预算，不声称具有目录入口的专用期限/容量/禁止头检查。仅源码文档，未运行校验器、生成器、接口、数据库、编译、测试或发布；完整WCP/机器契约接线仍缺。
+
 2026-11-05保存身份/历史回执OpenAPI增补：独立`context-pack-save.json`描述已有GET save-context及POST save-receipt，复用原请求独立Schema，明确认证/原身份/双trace、无查询/禁止条件、正文与响应限额、两接口不同的期限/容量/早期响应头及错误状态。使用说明见[保存身份与历史回执OpenAPI](../../../packages/contracts/openapi/README.md#保存身份与历史回执)，不新增路由或改变JSON，不涵盖保存提交和完整WCP目录。仅源码文档，未运行校验器、生成器、编译、类型检查、测试、API/SQL或发布。
 
 2026-11-05原保存回执增补：新增只读`POST /v1/context-pack/save-receipt` → `context.pack.save-receipt`，4 KiB完整原身份/restricted/键/显式参数查询；真实未过期context.read、认证客户端、原身份及权限桶相等、父项目可见后，在只读快照中匹配既有保存指纹。16 KiB闭合封套返回recorded历史元数据或not-observed；不访问包正文/来源，不保存、预留键或自动重发。成功200、private/no-store、原trace且无ETag；无查询参数，拒绝重复/写/缓存/Range/编码头。SDK与网络CLI已接源码，详细形状、错误及限制见[原保存请求回执查询](context-pack-runtime.md#原保存请求回执查询2026-11-05源码增量)。仅源码文档，未编译、类型检查、测试、执行接口/客户端/数据库或发布。
