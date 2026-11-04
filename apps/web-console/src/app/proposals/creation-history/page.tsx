@@ -13,8 +13,8 @@ export default async function CreationHistoryPage() {
       <>
         <PageError error={error} />
         <p>
-          Restore the original gateway, project, account and client, then reload to inspect your
-          history file. No saved file or request has been changed.
+          Restore the original gateway, project, account and client, then reload to find saved
+          history or inspect a file. No saved copy or request has been changed.
         </p>
         <Link href="/proposals/creation-history" prefetch={false}>
           Reload creation history
@@ -26,10 +26,11 @@ export default async function CreationHistoryPage() {
     <>
       <div className="page-heading">
         <div>
-          <h1>Inspect creation history files</h1>
+          <h1>Saved creation history</h1>
           <p>
-            Read an exported original request and its complete historical response. Imported history
-            does not confirm a new submission or the proposal’s current state.
+            Find saved browser observations or import an exported original request and its complete
+            historical response. Inspect, save, export or remove a browser copy; history does not
+            confirm a new submission or the proposal’s current state.
           </p>
         </div>
       </div>

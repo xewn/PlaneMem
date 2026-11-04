@@ -37,7 +37,7 @@ export default async function ProposalRecoveryPage() {
       {content}
       <p>
         <Link href="/proposals/creation-history" prefetch={false}>
-          Inspect a creation history file or extract its original request
+          Find saved creation history, inspect a file or extract its original request
         </Link>
       </p>
       <p>

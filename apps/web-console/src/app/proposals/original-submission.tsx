@@ -364,7 +364,7 @@ export function OriginalProposalSubmission({
           target="_blank"
           rel="noopener noreferrer"
         >
-          Open creation history file inspection ↗
+          Open saved creation history ↗
         </Link>
       </p>
     </div>

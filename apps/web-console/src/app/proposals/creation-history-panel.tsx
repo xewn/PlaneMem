@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { backupOperation } from '../sync/receipt/backup-operation';
+import type { BrowserRemovalResult } from '../sync/receipt/browser-store';
 import { encodeProposalOriginal, type ProposalSubmissionBinding } from './original-model';
 import {
   CREATION_HISTORY_FILE_BYTES,
@@ -15,6 +16,15 @@ import {
   prepareCreationHistory,
   type CreationHistoryCandidate,
 } from './creation-history-file';
+import {
+  CREATION_HISTORY_PAGE_SIZE,
+  listCreationHistory,
+  loadCreationHistory,
+  saveCreationHistory,
+  removeCreationHistory,
+  type CreationHistoryPage,
+  type CreationHistorySummary,
+} from './creation-history-store';
 
 export function CreationHistoryPanel({
   binding,
@@ -33,11 +43,18 @@ export function CreationHistoryPanel({
 }) {
   const [selected, setSelected] = useState<{
     candidate: CreationHistoryCandidate;
-    source: 'received' | 'file';
+    source: 'received' | 'file' | 'browser';
+    epoch: number;
   }>();
+  const [page, setPage] = useState<CreationHistoryPage>();
+  const [digest, setDigest] = useState('');
+  const [storageEpoch, setStorageEpoch] = useState(0);
+  const [removalFresh, setRemovalFresh] = useState(false);
+  const [removeConfirmed, setRemoveConfirmed] = useState(false);
+  const [removalStatus, setRemovalStatus] = useState<BrowserRemovalResult | 'unknown'>();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(
-    'Inspect a received result or import a complete history file. Files are historical copies and do not update this page’s submission result.',
+    'Find a saved browser observation, inspect a received result or import a complete file. History copies do not update this page’s submission result.',
   );
   const mounted = useRef(false);
   const operation = useRef<AbortController | undefined>(undefined);
@@ -52,23 +69,36 @@ export function CreationHistoryPanel({
       release.current = undefined;
     };
   }, []);
-  async function run(
-    work: (check: () => void) => Promise<CreationHistoryCandidate>,
-    receive: (value: CreationHistoryCandidate) => void,
+  useEffect(() => {
+    if (disabled) setRemoveConfirmed(false);
+  }, [disabled]);
+  function storageChanged() {
+    setStorageEpoch((value) => value + 1);
+    setPage(undefined);
+    setRemovalFresh(false);
+    setRemoveConfirmed(false);
+  }
+  async function run<T>(
+    work: (signal: AbortSignal, check: () => void) => Promise<T>,
+    receive: (value: T) => void,
+    options: { start?: () => void; failureMessage?: string } = {},
   ) {
     if (!mounted.current || disabled || operation.current || (begin && !begin())) return;
     const controller = new AbortController();
     operation.current = controller;
     release.current = end;
     setBusy(true);
+    setRemoveConfirmed(false);
     try {
-      const candidate = await backupOperation(controller.signal, (_signal, check) => work(check));
+      options.start?.();
+      const candidate = await backupOperation(controller.signal, work);
       if (mounted.current && operation.current === controller && !controller.signal.aborted)
         receive(candidate);
     } catch {
       if (mounted.current && operation.current === controller)
         setMessage(
-          'The complete history file or download could not be confirmed. Keep the source file and any retained observation; the inspected copy remains available. No proposal was sent or saved by this action.',
+          options.failureMessage ??
+            'The history operation could not be confirmed. Keep the source file and any retained observation; the inspected copy remains available. No proposal was submitted. Existing damaged or different copies are never replaced.',
         );
     } finally {
       if (operation.current === controller) {
@@ -79,16 +109,99 @@ export function CreationHistoryPanel({
       }
     }
   }
-  function inspect(candidate: CreationHistoryCandidate, source: 'received' | 'file') {
-    setSelected({ candidate, source });
+  function inspect(
+    candidate: CreationHistoryCandidate | null,
+    source: 'received' | 'file' | 'browser',
+  ) {
+    if (!candidate) {
+      setPage(undefined);
+      setRemovalFresh(false);
+      setMessage(
+        'No complete history copy was found at that checksum. Any previously inspected copy is retained; missing local history does not establish a submission outcome.',
+      );
+      return;
+    }
+    setSelected({ candidate, source, epoch: storageEpoch });
+    setRemovalFresh(source === 'browser');
+    setRemoveConfirmed(false);
+    setRemovalStatus(undefined);
     setMessage(
       'The complete historical observation is available for inspection and export. Its checksum establishes internal consistency, not authenticity or the proposal’s current state.',
+    );
+  }
+  function browse(after: string | null) {
+    void run(
+      (signal, check) => listCreationHistory(binding, after, signal, check),
+      (value) => {
+        setPage(value);
+        setMessage(
+          value.entries.length
+            ? 'Choose a saved creation observation to inspect. Entries follow content checksums, not time; pages are separate reads.'
+            : 'No saved creation history was found on this page for the current gateway and account.',
+        );
+      },
+      {
+        start: () => {
+          setPage(undefined);
+          setRemovalFresh(false);
+        },
+      },
+    );
+  }
+  function read(value: string, entry?: CreationHistorySummary) {
+    void run(
+      (signal, check) => loadCreationHistory(binding, value, signal, check, entry),
+      (candidate) => inspect(candidate, 'browser'),
+      { start: () => setRemovalFresh(false) },
+    );
+  }
+  function save() {
+    if (!selected) return;
+    void run(
+      (signal, check) => saveCreationHistory(selected.candidate.raw, binding, signal, check),
+      () => {
+        setMessage(
+          'The complete history copy was saved, read back and committed in this browser. Find saved history again to refresh the directory. Saving does not confirm a submission or change its observation time.',
+        );
+      },
+      {
+        start: storageChanged,
+        failureMessage:
+          'Browser history saving could not be confirmed and may already have completed. Keep or export the inspected copy; retrying the same content preserves its original time and response. Damaged or different copies are never replaced.',
+      },
+    );
+  }
+  const canRemove =
+    selected?.source === 'browser' &&
+    selected.epoch === storageEpoch &&
+    removalFresh &&
+    removalStatus === undefined;
+  function remove() {
+    if (!selected || !canRemove || !removeConfirmed) return;
+    void run(
+      (signal, check) => removeCreationHistory(selected.candidate.raw, binding, signal, check),
+      (result) => {
+        setRemovalStatus(result);
+        setMessage(
+          result === 'removed'
+            ? 'The inspected creation history copy was removed from this browser. Its complete retained content remains available for export. No original request or proposal was removed.'
+            : 'This history copy was absent when checked. The retained content is still available for export; this does not prove whether an earlier removal completed.',
+        );
+      },
+      {
+        start: () => {
+          storageChanged();
+          setRemovalStatus('unknown');
+        },
+        failureMessage:
+          'History removal could not be confirmed and may already have completed. Keep or export the inspected copy. Read the browser copy again before another removal attempt. No proposal was cancelled.',
+      },
     );
   }
   function download(originalOnly: boolean) {
     if (!selected) return;
     void run(
-      (check) => inspectCreationHistory(selected.candidate.raw, binding, check),
+      (_signal, check) => inspectCreationHistory(selected.candidate.raw, binding, check),
       (candidate) => {
         const raw = originalOnly
           ? encodeProposalOriginal(candidate.file.document.original)
@@ -123,15 +236,15 @@ export function CreationHistoryPanel({
   return (
     <section
       className="side-detail"
-      aria-label="Creation history files"
+      aria-label="Creation history"
       aria-busy={busy}
       style={{ overflowWrap: 'anywhere' }}
     >
-      <h3>Creation history files</h3>
+      <h3>Creation history</h3>
       <p>
-        Keep the complete original request and received response together. This page retains
-        observations in memory; export a file before leaving. Importing does not save browser
-        copies, query the gateway or send a proposal.
+        Keep the complete original request and received response together. Inspect a result, then
+        explicitly save it in this browser or export a separate file. Browser clearing can remove
+        saved history. Importing does not save browser copies, query the gateway or send a proposal.
       </p>
       {[
         ...(live ? [{ label: 'Latest received result', value: live }] : []),
@@ -149,15 +262,83 @@ export function CreationHistoryPanel({
             disabled={locked}
             onClick={() =>
               void run(
-                (check) => prepareCreationHistory(value, check),
+                (_signal, check) => prepareCreationHistory(value, check),
                 (candidate) => inspect(candidate, 'received'),
+                { start: () => setRemovalFresh(false) },
               )
             }
           >
-            Inspect {label.toLowerCase()} for export
+            Inspect {label.toLowerCase()} for saving or export
           </button>
         </div>
       ))}
+      <div className="heading-actions">
+        <button
+          type="button"
+          className="secondary-button"
+          disabled={locked}
+          onClick={() => browse(null)}
+        >
+          Find saved creation history
+        </button>
+        {page?.next && (
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={locked}
+            onClick={() => browse(page.next)}
+          >
+            Next history entries
+          </button>
+        )}
+      </div>
+      <p>
+        Each page fully checks up to {CREATION_HISTORY_PAGE_SIZE} saved observations. Pages follow
+        content checksums, not observation time.
+      </p>
+      {page && (
+        <ul>
+          {page.entries.map((entry) => (
+            <li key={entry.digest}>
+              <p>
+                {entry.proposal_id ?? 'No proposal observed'} · {entry.status} · {entry.source} ·
+                observed {entry.observed_at} · request <code>{entry.request_key}</code>
+              </p>
+              <button
+                type="button"
+                className="secondary-button"
+                disabled={locked}
+                onClick={() => read(entry.digest, entry)}
+              >
+                Inspect saved creation observation
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <label>
+        History content checksum
+        <input
+          value={digest}
+          maxLength={64}
+          disabled={locked}
+          onChange={(event) => {
+            if (!operation.current && !disabled) {
+              setDigest(event.target.value);
+              setRemovalFresh(false);
+              setRemoveConfirmed(false);
+            }
+          }}
+        />
+      </label>
+      <button
+        type="button"
+        className="secondary-button"
+        disabled={locked || !/^[a-f0-9]{64}$/.test(digest)}
+        onClick={() => read(digest)}
+      >
+        Read history by checksum
+      </button>
       <label>
         Import complete creation history file
         <input
@@ -169,7 +350,7 @@ export function CreationHistoryPanel({
             event.target.value = '';
             if (!file) return;
             void run(
-              async (check) => {
+              async (_signal, check) => {
                 check();
                 if (file.size < 1 || file.size > CREATION_HISTORY_FILE_BYTES) throw new TypeError();
                 const bytes = await file.arrayBuffer();
@@ -186,6 +367,7 @@ export function CreationHistoryPanel({
                 );
               },
               (candidate) => inspect(candidate, 'file'),
+              { start: () => setRemovalFresh(false) },
             );
           }}
         />
@@ -195,7 +377,11 @@ export function CreationHistoryPanel({
           <h4>Inspected creation observation</h4>
           <p>
             Loaded from ·{' '}
-            {selected.source === 'received' ? 'this page’s received response' : 'an imported file'}
+            {selected.source === 'received'
+              ? 'this page’s received response'
+              : selected.source === 'browser'
+                ? 'browser storage'
+                : 'an imported file'}
           </p>
           <p>
             {creationObservationStatus(observation)} · {observation.source} · observed{' '}
@@ -234,6 +420,9 @@ export function CreationHistoryPanel({
             <textarea readOnly rows={16} spellCheck={false} value={selected.candidate.raw} />
           </details>
           <div className="heading-actions">
+            <button type="button" className="secondary-button" disabled={locked} onClick={save}>
+              Save inspected creation history in this browser
+            </button>
             <button
               type="button"
               className="secondary-button"
@@ -251,6 +440,37 @@ export function CreationHistoryPanel({
               Export its original request
             </button>
           </div>
+          <p>
+            Only a freshly read browser copy can be removed. Files and received results must be
+            saved and read back through the browser entry first. Removal keeps the inspected content
+            available for export and does not cancel a proposal or delete its original request.
+          </p>
+          <label>
+            <input
+              type="checkbox"
+              checked={removeConfirmed}
+              disabled={locked || !canRemove}
+              onChange={(event) => {
+                if (!operation.current && !disabled && canRemove)
+                  setRemoveConfirmed(event.target.checked);
+              }}
+            />{' '}
+            I reviewed this complete browser history copy and want to remove it from this browser.
+          </label>
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={locked || !canRemove || !removeConfirmed}
+            onClick={remove}
+          >
+            Remove inspected browser history copy
+          </button>
+          {removalStatus && (
+            <p role="status">
+              Removal result · {removalStatus}. Read the browser copy again before another removal
+              attempt.
+            </p>
+          )}
         </div>
       )}
       <p role="status">{message}</p>

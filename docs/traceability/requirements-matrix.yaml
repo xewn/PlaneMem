@@ -3452,6 +3452,23 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_creation_history_browser_development_increment:
+      date: "2026-11-04"
+      status: "Source-only immutable browser creation history, bounded discovery and confirmed single-copy removal; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/creation-history-store.ts"
+        - "apps/web-console/src/app/proposals/creation-history-panel.tsx"
+        - "apps/web-console/src/app/proposals/creation-history/page.tsx"
+        - "docs/design/01-contracts/proposal-creation-history-runtime.md"
+      behavior: "Independent v1 observations/directory database keyed by the complete original binding and observation digest. Explicit saves validate the complete file/hash then add only missing exact pairs, retain identical copies and reject conflicting or half-paired data; success waits for full readback and transaction completion. Five-entry readonly pages verify all complete documents and hashes; direct digest reads revalidate stored pairs. Only freshly read browser copies qualify for independent confirmed removal, with exact transaction recheck and absent readback. Writes and rereads invalidate stale eligibility; unknown outcomes retain exportable candidates and require fresh reads. No original request or remote state changes."
+      evidence: []
+      pending_evidence:
+        - "Immutable save, identical replay, different/half-pair rejection, post-commit unknown and original timestamp retention"
+        - "Five-entry boundaries, complete-page checksum failures, scope isolation, stale summary checks and missing database without initialization"
+        - "File/received candidate removal exclusion, fresh browser-read confirmation, concurrent target changes, exact pair deletion and unknown recovery"
+        - "Parent operation locking, storage epoch invalidation, retained export after removal, deadline/unmount and standalone history page"
+      remaining_scope: "Batch backup/restore/cleanup, automatic retention, query filtering, cross-page coordination and runtime/compatibility evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, product/browser/database execution or release. New browser v1 structure in source only; no server schema or dependency changes."
     proposal_creation_history_file_development_increment:
       date: "2026-11-04"
       status: "Source-only complete creation observation files, inspection and original-request extraction; R-009 remains incomplete."
