@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [上下文详情 Mock](docs/design/01-contracts/context-item-mock-runtime.md)：同一模拟数据集支持当前、归档和历史读取，核对同版内容一致性，并按显式模拟权限返回确认提示；缺少详情不从历史拼造。仅源码文档，未编译、测试、运行或发布。
+
 完善 [MCP 上下文资源读取](docs/design/01-contracts/context-item-runtime.md)：资源 URI 读取保留原项目与条目，完整校验正文、来源和确认信息，增加等待期限与并发限制，并保留原资源格式。仅源码文档，未编译、测试、运行或发布。
 
 完善 [MCP 上下文详情读取](docs/design/01-contracts/context-item-runtime.md)：当前与归档详情统一完整内容、来源诊断和 HTTP ETag 校验，发现与调用使用相同权限要求，并与历史读取共用并发限制。仅源码文档，未编译、测试、运行或发布。

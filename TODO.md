@@ -6,6 +6,8 @@
 
 ### 2026-11-04 开发补充（未编译、未发布、未测试）
 
+- P0/P2：既有MockContextHistoryStore条目可选current_detail完整当前/归档封套，MockWcpServer原context_history配置接入两详情GET，与历史/版本共用每store两笔容量及30秒/取消。种子总16 MiB/1000条目/1000历史限制保持，单详情2 MiB，核对当前范围/版本/归档/分类及已有同版历史保存字段与确认；缺详情或视图不符明确不可用，不造历史或来源观察。可选review_access={human,review_context}显式约束确认提示，缺省false并隐藏严格就绪，已过期提示降为false；正文/来源诊断/记录时间保持，外层trace随请求，独立完整返回。旧历史种子仍可使用，Mock真实兼容/取消/大小/权限证据待补，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布。
+
 - P4/P0：MCP当前context-item资源接入专用读取处理器，4 KiB仅uri输入、原项目/单次解码本地ID与可信未过期实际context.read校验；父项目可见性及嵌套context.item.read策略/审计保留，2 MiB完整正文/版本/JSON内ETag/来源诊断/确认/restricted核对。处理器30秒、每router独立两笔资源容量，超时底层未结束继续占槽；转义正文加重复来源的包装封套限6 MiB+8192，错误16 KiB后映射固定提示。保持contents URI/MIME/完整文本和source_refs，无归档回退/重试/写入。目录/模板及其他资源保持，工具容量独立；不声称内层HTTP ETag或外层审计/网络发送期限。运行/旧资源调用兼容证据待补，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布。
 
 - P4/P0：MCP get_context_item/get_archived_context_item接入专用完整读取，发现/prepare/调用要求可信未过期实际context.read及完整身份，admin不替代；仅item_id的4 KiB输入、2 MiB完整成功/16 KiB错误、30秒期限，核对HTTP状态/type/trace/ETag、完整范围/版本/正文/来源诊断/确认及restricted权限。五种详情/历史/比较工具共用每Gateway两笔容量，超时到底层结束才释放；详情使用MCP_CONTEXT_ITEM_BUSY/TIMEOUT，历史错误码保留，详情转义输出最多4 MiB+4096，无视图回退/重试/写入。resources/read、Mock、包与目录仍待完善，运行与旧调用兼容证据待补，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布。

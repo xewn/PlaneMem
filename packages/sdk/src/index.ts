@@ -21,6 +21,7 @@ export {
   MockContextHistoryStore,
   type MockContextHistorySeed,
   type MockContextHistorySession,
+  type MockContextReviewAccess,
 } from './mock-context-history.js';
 export {
   MockWorkItemStore,

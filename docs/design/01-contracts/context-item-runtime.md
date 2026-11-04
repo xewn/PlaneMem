@@ -1,5 +1,9 @@
 # ContextItem 录入与编辑开发说明
 
+## 2026-11-04 当前与归档详情Mock增量
+
+既有MockContextHistoryStore增加可选条目current_detail，供getContextItem/getArchivedContextItem读取完整原详情；MockWcpServer原context_history配置接入，历史/版本/详情共享模拟身份、可见集合、两笔容量与30秒预算。单详情2 MiB、合计种子16 MiB，核对当前版本/归档/分类与已有同版历史保存内容；不从历史补造缺失详情或刷新来源观察。可选review_access的human/review_context均true时才保留原确认就绪，confirm_allowed仅按给定原提示、模拟权限及有效期降级，不授予写权限。外层trace随请求，保存正文/来源/原确认与诊断时间保持。配置、原历史兼容、响应边界及未执行示例见[上下文详情Mock](context-item-mock-runtime.md)。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布；R-003未完成、evidence为空。
+
 ## 2026-11-04 MCP当前上下文资源读取增量
 
 `resources/read`的`work://project/{project_id}/context-item/{item_id}`经原mcp.resource路由进入专用context-resource处理器，直接内部资源调用也使用同一路径。处理器输入仅uri、完整普通JSON最多4 KiB；URI必须完整匹配当前条目模板，无查询串/片段/额外路径，项目与条目标识符各百分号解码一次。项目必须等于原可信项目，条目沿共享本地ID规则，拒绝空值、`.`和`..`；保留原合法URI形式，不将编码后的分隔符再解释成路径，不提供归档资源或自动视图回退。协议层仍只向内部资源操作传递uri。

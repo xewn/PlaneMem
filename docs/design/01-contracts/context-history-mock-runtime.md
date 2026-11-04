@@ -1,5 +1,7 @@
 # 上下文历史 Mock（源码阶段）
 
+2026-11-04详情扩展：同一store条目可选提供current_detail完整当前/归档封套，原context_history配置增加两个详情GET，四种读取共用身份/可见集合及容量。构造时核对current_detail与当前元数据和已有同版历史保存内容；没有详情不从历史推导，历史摘要验证方式保持。session可选review_access模拟human/review_context，仅影响详情中的确认就绪提示。完整约定、缺省兼容和未执行示例见[上下文详情Mock](context-item-mock-runtime.md)，仅源码，未运行。
+
 2026-11-04后续SDK增量：contextHistoryPages支持按next逐页读取，完整身份/条目/页大小固定，每页沿本Mock的同一history GET与权限/大小/期限。迭代器不预取或自行持久化，max_pages限制到达后由调用者显式续读；Mock不新增路由或跨页快照承诺，见[SDK历史按需分页](context-item-runtime.md#2026-11-04-sdk历史按需分页增量)。仅源码接线说明，未执行迭代器或Mock。
 
 2026-11-04新增SDK MockContextHistoryStore、MockContextHistorySeed、MockContextHistorySession和可选MockWcpServer({context_history:{store,session}})。实现既有GET /v1/context-items/{item_id}/history与GET /v1/context-items/{item_id}/versions/{version}，接入listContextItemHistory/getContextItemVersion；compareContextItemVersions沿两次指定读取得到原本地比较对象，不增加比较路由。仅源码文档人工审阅和格式/文本检查，未编译、类型检查、测试、执行SDK/Mock/API/数据库或发布。
@@ -22,7 +24,7 @@ connect(session)或MockWcpServer配置需要显式{identity,expires_at,project_r
 
 ## 请求和完整响应
 
-仅接受两个GET路径，无正文。完整路径/查询最多4 KiB；item段须为encodeURIComponent的规范编码，排除空标识和点路径。history查询只允许一次before_version/limit，使用无前导零的正十进制整数；version路径为相同正安全整数规则且不接受查询参数。拒绝未知/重复字段、非法编码、片段、其他方法与写路径。SDK构造的路径符合此约定。
+历史读取使用上述两个GET路径，无正文；新增当前/归档详情路径见详情Mock契约。完整路径/查询最多4 KiB；item段须为encodeURIComponent的规范编码，排除空标识和点路径。history查询只允许一次before_version/limit，使用无前导零的正十进制整数；version路径为相同正安全整数规则且不接受查询参数。拒绝未知/重复字段、非法编码、片段、其他方法与写路径。SDK构造的路径符合此约定。
 
 头部纯JSON最多16 KiB，大小写重复头拒绝；trace取x-trace-id或备用traceparent且须为本地标识。写键/版本条件、缓存条件、Range、If-Range与content-encoding拒绝。默认json和显式bounded-json均支持，后者必须给出正安全整数max_response_bytes；响应受目录256 KiB或版本2 MiB与调用方更小上限共同约束，不截断或静默少返回记录。
 
@@ -34,7 +36,7 @@ connect(session)或MockWcpServer配置需要显式{identity,expires_at,project_r
 
 头部捕获后创建固定30秒本地等待预算，覆盖查询、权限、筛选、摘要和输出复制；直接transport支持signal，SDK原有timeout_ms/signal可更早停止读取或整次比较。每store最多两笔在途请求，跨连接会话共享；版本摘要直接等待底层digest结束，外层取消/超时后名额仍保留到实际结束。迟到结果不会返回，模拟会话期限在工作前后再次检查。不抢占同步CPU，不提供数据库取消、真实鉴权/撤销、网络/HTTP发送或持久审计保证。
 
-错误仅有限代码、固定消息、原trace与retryable=false，不输出底层异常或自动重试。完整输出超限可以由调用者显式降低列表limit后重读，单版超限整份失败。未配置context_history时MockWcpServer保持原路由行为；配置后仍不接管当前条目读取、创建/编辑、ContextPack、Proposal或MCP外层协议。
+错误仅有限代码、固定消息、原trace与retryable=false，不输出底层异常或自动重试。完整输出超限可以由调用者显式降低列表limit后重读，单版超限整份失败。未配置context_history时MockWcpServer保持原路由行为；配置后支持显式提供的当前/归档详情，仍不接管创建/编辑、ContextPack、Proposal或MCP外层协议。
 
 ## 未执行的接线示例
 

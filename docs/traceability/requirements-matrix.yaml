@@ -954,6 +954,24 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_item_detail_mock_development_increment:
+      date: "2026-11-04"
+      status: "Source-only optional current/archived context detail Mock integration; R-003 remains incomplete."
+      artifacts:
+        - "packages/sdk/src/mock-context-history.ts"
+        - "packages/sdk/src/mock-server.ts"
+        - "packages/sdk/src/index.ts"
+        - "packages/sdk/README.md"
+        - "docs/design/01-contracts/context-item-mock-runtime.md"
+        - "docs/design/01-contracts/context-history-mock-runtime.md"
+      behavior: "Existing context history seeds accept optional complete current_detail envelopes. Validate 2 MiB details against current scope/item/version/classification/archive metadata and any recorded same-version saved content and confirmation. Existing context_history configuration routes current/archived GETs through the same immutable store, explicit session/visibility checks, 4 KiB canonical paths, 30-second budget/cancellation and two-slot capacity as history/version reads. Missing detail or wrong view fails without history fallback. Optional review_access human/review_context gates supplied readiness and only lowers original confirmation hints, including expired readiness. Preserve saved content, source observations and timestamps; replace outer trace and return a bounded detached result."
+      evidence: []
+      pending_evidence:
+        - "Real detail/archive/legacy confirmation fixtures, same-version consistency and historical gap compatibility"
+        - "Identity, visibility, restricted and review permission combinations, saved observations and effective expiry"
+        - "Canonical path and header rejection, complete response limits, immutable copies, cancellation/deadlines and shared history capacity"
+      remaining_scope: "Runtime and client compatibility evidence, context directory/pack reads and mutable context lifecycle simulation. Supplied observations are not live source validation; review hints do not authorize writes. No HTTP header, real authentication, persistence or audit guarantee."
+      execution: "Source/docs, manual review and formatting/text checks only; no build, typecheck, tests, SDK/Mock/product/API/database execution or release. No contracts/Gateway/CLI/Web/schema/dependency changes."
     mcp_context_item_resource_read_development_increment:
       date: "2026-11-04"
       status: "Source-only bounded MCP current context item resource reads; R-003 remains incomplete."
@@ -968,7 +986,7 @@ requirements:
         - "Percent-encoded IDs, invalid/cross-project URIs, original URI preservation and direct resource/client compatibility"
         - "Trusted identity and expiry, project/restricted visibility, nested policy/audit, complete source and confirmation compatibility"
         - "Complete and escaped response bounds, fixed error mapping, busy/timeout, late project/read settlement and retained capacity"
-      remaining_scope: "Other resource kinds, directory/pack bounds, Mock detail integration and runtime evidence. Directory/templates remain discovery hints. Inner router exposes no HTTP ETag. Handler deadline excludes preceding outer authorization/audit and network delivery; synchronous CPU is not preempted."
+      remaining_scope: "Other resource kinds, directory/pack bounds and runtime evidence; Mock detail source integration is tracked in context_item_detail_mock_development_increment. Directory/templates remain discovery hints. Inner router exposes no HTTP ETag. Handler deadline excludes preceding outer authorization/audit and network delivery; synchronous CPU is not preempted."
       execution: "Source/docs, manual review and formatting/text checks only; no build, typecheck, tests, MCP/product/API/database execution or release. No protocol/contracts/SDK/CLI/Web/schema/dependency changes."
     mcp_context_item_detail_read_development_increment:
       date: "2026-11-04"
@@ -985,7 +1003,7 @@ requirements:
         - "Discovery, HTTP client gate, dedicated preparation and direct invocation compatibility; actual permissions, identity and expiry"
         - "Complete current/archived response, legacy confirmation, restricted records, HTTP/body ETag and malformed or oversized errors"
         - "Five-tool shared capacity, total deadline, late settlement, escaped output bounds and history/version/comparison compatibility"
-      remaining_scope: "resources/read, Mock dedicated detail reads, bounded directory/pack reads and runtime evidence. ETag and source observations are not authenticity or write authorization. Synchronous parsing is not preempted; no outer-send or global capacity guarantee."
+      remaining_scope: "Bounded directory/pack reads and runtime evidence; resources/read and Mock detail source integration are tracked in their respective increments. ETag and source observations are not authenticity or write authorization. Synchronous parsing is not preempted; no outer-send or global capacity guarantee."
       execution: "Source/docs, manual review and formatting/text checks only; no build, typecheck, tests, MCP/product/API/database execution or release. No contracts/SDK/CLI/Web/schema/dependency changes."
     cli_context_item_detail_read_development_increment:
       date: "2026-11-04"
@@ -1003,7 +1021,7 @@ requirements:
         - "Real CLI argument/file/stdin/identity combinations and exit-code compatibility"
         - "Complete current/archived response, bounds, deadline and body ETag consistency"
         - "Embedded permission/expiry/restricted and shared capacity behavior; history/version/comparison regression"
-      remaining_scope: "MCP/Mock dedicated detail reads, bounded directory/pack reads and runtime evidence. Generic SDK transport does not expose HTTP ETag; source observations are not authenticity or write authorization."
+      remaining_scope: "Bounded directory/pack reads and runtime evidence; MCP/Mock detail source integration is tracked in the respective increments. Generic SDK transport does not expose HTTP ETag; source observations are not authenticity or write authorization."
       execution: "Source/docs, manual review and formatting/text checks only; no build, typecheck, tests, CLI/SDK/product/API/database execution or release. No SDK/contracts/Gateway/MCP/Mock/Web/schema/dependency changes."
     sdk_context_item_detail_read_development_increment:
       date: "2026-11-04"
@@ -1022,7 +1040,7 @@ requirements:
         - "Actual Fetch/custom transport completeness, bounds, cancellation/deadline and legacy compatibility"
         - "Identity capture, inherited write-header omission and complete current/archived records"
         - "Historical read/comparison/page iteration compatibility after input helper extraction"
-      remaining_scope: "CLI/MCP/Mock dedicated current/archived reads, bounded directory/pack reads and runtime evidence. The generic JSON transport does not expose HTTP ETag; body ETag validation is not content authenticity or write authorization."
+      remaining_scope: "Bounded directory/pack reads and runtime evidence; CLI/MCP/Mock current/archived source integration is tracked in the respective increments. The generic JSON transport does not expose HTTP ETag; body ETag validation is not content authenticity or write authorization."
       execution: "Source/docs, manual review and formatting/text checks only; no build, typecheck, tests, SDK/Mock/product/API/database execution or release. No contracts/Gateway/Web/schema/dependency changes."
     context_item_detail_read_development_increment:
       date: "2026-11-04"
@@ -1039,7 +1057,7 @@ requirements:
         - "Real stored current/archived and legacy confirmed records, diagnostics/readiness combinations"
         - "Full response size, HTTP/ETag/trace/scope mismatches, deadline/cancellation and session expiry"
         - "Browser selection/archived-view retry and existing write preparation compatibility"
-      remaining_scope: "Runtime evidence and bounded directory/pack and SDK/CLI/MCP reads. Source observations are not external authenticity or write authorization; ETag is not a content hash."
+      remaining_scope: "Runtime evidence and bounded directory/pack reads; SDK/CLI/MCP/Mock detail source integration is tracked in the respective increments. Source observations are not external authenticity or write authorization; ETag is not a content hash."
       execution: "Source/docs, manual review and formatting/text checks only; no build, typecheck, tests, product/browser/API/SQL execution or release. No Gateway/schema/dependency changes."
     context_comparison_display_development_increment:
       date: "2026-11-04"

@@ -2,16 +2,22 @@ import {
   ContractError,
   CONTEXT_HISTORY_RESPONSE_BYTES,
   CONTEXT_REVISION_RESPONSE_BYTES,
+  CONTEXT_ITEM_READ_RESPONSE_BYTES,
   contextRevisionSnapshotJson,
   isSyncIdentifier,
   isUlid,
   parseContextHistoryReadEnvelope,
   parseContextHistoryReadQuery,
+  parseContextItemReadEnvelope,
+  parseContextItemReadQuery,
   parseContextRevision,
   parseSyncCommandIdentity,
   syncJsonSnapshot,
   type Classification,
   type ContextHistoryReadQuery,
+  type ContextItemReadEnvelope,
+  type ContextItemReadQuery,
+  type ContextItemDocument,
   type ContextItemRevision,
   type ContextItemRevisionSummary,
   type SourceRef,
@@ -28,8 +34,15 @@ export interface MockContextHistorySeed {
     current_version: number;
     current_archived: boolean;
     current_classification: Classification;
+    /** Complete supplied current observation, or archived detail; never derived from history. */
+    current_detail?: ContextItemReadEnvelope;
     revisions: ContextItemRevision[];
   }>;
+}
+/** Explicit simulated human/review decisions; they never authorize a write. */
+export interface MockContextReviewAccess {
+  human: boolean;
+  review_context: boolean;
 }
 /** Explicit simulated decisions, never inferred from headers or historical authors. */
 export interface MockContextHistorySession {
@@ -39,8 +52,10 @@ export interface MockContextHistorySession {
   read_context: boolean;
   read_restricted: boolean;
   visible_item_ids: string[];
+  review_access?: MockContextReviewAccess;
 }
-type Session = MockContextHistorySession & { visible: Set<string> };
+type Session = MockContextHistorySession & { visible: Set<string>; can_review: boolean };
+type ReadQuery = ContextHistoryReadQuery | ContextItemReadQuery;
 type Stored = Omit<MockContextHistorySeed['items'][number], 'revisions'> & {
   revisions: Map<number, ContextItemRevision>;
   ordered: ContextItemRevision[];
@@ -50,21 +65,22 @@ const configurationTrace = 'trace_mock_context_history_configuration';
 const classifications = ['public', 'internal', 'confidential', 'restricted'];
 const messages = {
   MOCK_CONTEXT_HISTORY_CONFIGURATION_INVALID:
-    'Supply a bounded context history dataset and explicit simulated session',
-  MOCK_ROUTE_NOT_FOUND: 'Mock context history route not found',
-  INVALID_INPUT: 'Supply a valid context history query without body, write or cache conditions',
-  DENIED: 'The simulated session does not permit this context history read',
-  CONTEXT_ITEM_NOT_FOUND: 'The item or recorded version is unavailable in this simulated project',
-  CONTEXT_ITEM_INVALID: 'The complete simulated context history response is invalid',
+    'Supply a bounded context detail/history dataset and explicit simulated session',
+  MOCK_ROUTE_NOT_FOUND: 'Mock context read route not found',
+  INVALID_INPUT: 'Supply a valid context read query without body, write or cache conditions',
+  DENIED: 'The simulated session does not permit this context read',
+  CONTEXT_ITEM_NOT_FOUND:
+    'The selected item view or recorded version is unavailable in this simulated project',
+  CONTEXT_ITEM_INVALID: 'The complete simulated context response is invalid',
   CONTEXT_HISTORY_INTEGRITY_UNAVAILABLE:
     'Snapshot integrity checking is unavailable; no unchecked version was returned',
   CONTEXT_HISTORY_HASH_MISMATCH:
     'The complete simulated context snapshot differs from its saved hash',
   GATEWAY_RESPONSE_INVALID:
     'The complete simulated response exceeds its size or representation limit',
-  GATEWAY_REQUEST_CANCELED: 'Stopped waiting for the simulated context history read',
-  GATEWAY_REQUEST_TIMEOUT: 'The simulated context history read exceeded its local deadline',
-  RATE_LIMITED: 'Simulated context history read capacity is occupied',
+  GATEWAY_REQUEST_CANCELED: 'Stopped waiting for the simulated context read',
+  GATEWAY_REQUEST_TIMEOUT: 'The simulated context read exceeded its local deadline',
+  RATE_LIMITED: 'Simulated context read capacity is occupied',
 } as const;
 type ErrorCode = keyof typeof messages;
 function fail(code: ErrorCode, trace: string): never {
@@ -80,12 +96,12 @@ function checked<T>(code: ErrorCode, trace: string, read: () => T): T {
 function snapshot(value: unknown, maximum: number): unknown {
   return JSON.parse(syncJsonSnapshot(value, maximum));
 }
-function record(value: unknown, required: string[]) {
+function record(value: unknown, required: string[], optional: string[] = []) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError();
   const row = value as Record<string, unknown>;
   if (
     required.some((key) => !Object.hasOwn(row, key)) ||
-    Object.keys(row).some((key) => !required.includes(key))
+    Object.keys(row).some((key) => !required.includes(key) && !optional.includes(key))
   )
     throw new TypeError();
   return row;
@@ -108,14 +124,70 @@ function summarize(revision: ContextItemRevision): ContextItemRevisionSummary {
   const { item: _item, archived_at: _archived, confirmation: _confirmation, ...summary } = revision;
   return summary;
 }
+function isDetailQuery(query: ReadQuery): query is ContextItemReadQuery {
+  return query.kind === 'current' || query.kind === 'archived';
+}
+/** Compare saved fields only; live source diagnostics are not historical snapshot fields. */
+function requireMatchingDetail(detail: ContextItemReadEnvelope, revision: ContextItemRevision) {
+  let item: ContextItemDocument;
+  let archived_at: string | null;
+  if ('archived_at' in detail.data) {
+    const { archived_at: archived, ...saved } = detail.data;
+    archived_at = archived;
+    item = saved;
+  } else {
+    const {
+      confirm_allowed: _allowed,
+      confirmation,
+      sources_current: _current,
+      source_check: _check,
+      source_checks: _checks,
+      confirmation_readiness: _readiness,
+      ...saved
+    } = detail.data;
+    item = saved;
+    archived_at = null;
+    if (revision.confirmation) {
+      if (!confirmation) throw new TypeError();
+      for (const field of [
+        'reviewed_version',
+        'confirmed_version',
+        'actor_id',
+        'client_id',
+        'event_id',
+        'reason',
+        'confirmed_at',
+      ] as const)
+        if (confirmation[field] !== revision.confirmation[field]) throw new TypeError();
+    }
+  }
+  if (
+    contextRevisionSnapshotJson({ ...revision, item, archived_at }) !==
+    contextRevisionSnapshotJson(revision)
+  )
+    throw new TypeError();
+}
 export function isMockContextHistoryPath(path: unknown): path is string {
   return (
     typeof path === 'string' &&
     /^\/v1\/context-items\/[^/]+\/(?:history|versions\/[^/]+)(?:\?.*)?$/.test(path)
   );
 }
-function queryFromPath(path: string): ContextHistoryReadQuery {
+export function isMockContextReadPath(path: unknown): path is string {
+  return (
+    isMockContextHistoryPath(path) ||
+    (typeof path === 'string' &&
+      /^\/v1\/context-items\/[^/?#]+(?:\/archived)?(?:[?#].*)?$/.test(path))
+  );
+}
+function queryFromPath(path: string): ReadQuery {
   if (new TextEncoder().encode(path).byteLength > 4096 || path.includes('#')) throw new TypeError();
+  const detail = /^\/v1\/context-items\/([^/?]+)(\/archived)?$/.exec(path);
+  if (detail) {
+    const item_id = decodeURIComponent(detail[1]!);
+    if (encodeURIComponent(item_id) !== detail[1]) throw new TypeError();
+    return parseContextItemReadQuery({ kind: detail[2] ? 'archived' : 'current', item_id });
+  }
   const version = /^\/v1\/context-items\/([^/?]+)\/versions\/([1-9][0-9]*)$/.exec(path);
   const history = /^\/v1\/context-items\/([^/?]+)\/history(?:\?(.*))?$/.exec(path);
   const match = version ?? history;
@@ -138,7 +210,7 @@ function queryFromPath(path: string): ContextHistoryReadQuery {
   return parseContextHistoryReadQuery(input);
 }
 
-/** Immutable supplied history; no invented revisions, hashes, confirmations or database effects. */
+/** Immutable supplied details/history; no invented observations, revisions or database effects. */
 export class MockContextHistoryStore {
   readonly #scope: Scope;
   readonly #items = new Map<string, Stored>();
@@ -162,13 +234,11 @@ export class MockContextHistoryStore {
       if (!Array.isArray(input.items) || input.items.length > 1000) throw new TypeError();
       let count = 0;
       for (const raw of input.items) {
-        const row = record(raw, [
-          'item_id',
-          'current_version',
-          'current_archived',
-          'current_classification',
-          'revisions',
-        ]);
+        const row = record(
+          raw,
+          ['item_id', 'current_version', 'current_archived', 'current_classification', 'revisions'],
+          ['current_detail'],
+        );
         const target = parseContextHistoryReadQuery({ kind: 'history', item_id: row.item_id });
         const current_version = positive(row.current_version);
         if (
@@ -199,11 +269,37 @@ export class MockContextHistoryStore {
             throw new TypeError();
           revisions.set(version, revision);
         }
+        let current_detail: ContextItemReadEnvelope | undefined;
+        if (Object.hasOwn(row, 'current_detail')) {
+          const supplied = record(row.current_detail, [
+            'schema_version',
+            'trace_id',
+            'source_refs',
+            'revision',
+            'etag',
+            'data',
+          ]);
+          if (!isSyncIdentifier(supplied.trace_id)) throw new TypeError();
+          current_detail = parseContextItemReadEnvelope(
+            supplied,
+            { kind: row.current_archived ? 'archived' : 'current', item_id: target.item_id },
+            scope,
+            supplied.trace_id,
+          );
+          if (
+            current_detail.revision !== current_version ||
+            current_detail.data.classification !== row.current_classification
+          )
+            throw new TypeError();
+          const revision = revisions.get(current_version);
+          if (revision) requireMatchingDetail(current_detail, revision);
+        }
         this.#items.set(target.item_id, {
           item_id: target.item_id,
           current_version,
           current_archived: row.current_archived,
           current_classification: row.current_classification as Classification,
+          ...(current_detail === undefined ? {} : { current_detail }),
           revisions,
           ordered: [...revisions.values()].sort((a, b) => b.version - a.version),
         });
@@ -217,14 +313,18 @@ export class MockContextHistoryStore {
       'MOCK_CONTEXT_HISTORY_CONFIGURATION_INVALID',
       configurationTrace,
       (): Session => {
-        const input = record(snapshot(session, 1024 * 1024), [
-          'identity',
-          'expires_at',
-          'project_readable',
-          'read_context',
-          'read_restricted',
-          'visible_item_ids',
-        ]);
+        const input = record(
+          snapshot(session, 1024 * 1024),
+          [
+            'identity',
+            'expires_at',
+            'project_readable',
+            'read_context',
+            'read_restricted',
+            'visible_item_ids',
+          ],
+          ['review_access'],
+        );
         const identity = parseSyncCommandIdentity(input.identity);
         for (const field of ['tenant_id', 'workspace_id', 'project_id'] as const)
           if (identity[field] !== this.#scope[field]) throw new TypeError();
@@ -241,6 +341,13 @@ export class MockContextHistoryStore {
             throw new TypeError();
           visible.add(id);
         }
+        let can_review = false;
+        if (Object.hasOwn(input, 'review_access')) {
+          const access = record(input.review_access, ['human', 'review_context']);
+          if (typeof access.human !== 'boolean' || typeof access.review_context !== 'boolean')
+            throw new TypeError();
+          can_review = access.human && access.review_context;
+        }
         return {
           identity,
           expires_at,
@@ -249,6 +356,7 @@ export class MockContextHistoryStore {
           read_restricted: input.read_restricted as boolean,
           visible_item_ids: [...visible],
           visible,
+          can_review,
         };
       },
     );
@@ -288,7 +396,7 @@ export class MockContextHistoryStore {
     };
     try {
       live();
-      if (method !== 'GET' || !isMockContextHistoryPath(path)) fail('MOCK_ROUTE_NOT_FOUND', trace);
+      if (method !== 'GET' || !isMockContextReadPath(path)) fail('MOCK_ROUTE_NOT_FOUND', trace);
       if (body !== undefined) fail('INVALID_INPUT', trace);
       for (const field of ['tenant_id', 'workspace_id', 'project_id'] as const)
         if (headers.get('x-' + field.replaceAll('_', '-')) !== session.identity[field])
@@ -315,8 +423,11 @@ export class MockContextHistoryStore {
       )
         fail('INVALID_INPUT', trace);
       const query = checked('INVALID_INPUT', trace, () => queryFromPath(path));
-      const responseBytes =
-        query.kind === 'history' ? CONTEXT_HISTORY_RESPONSE_BYTES : CONTEXT_REVISION_RESPONSE_BYTES;
+      const responseBytes = isDetailQuery(query)
+        ? CONTEXT_ITEM_READ_RESPONSE_BYTES
+        : query.kind === 'history'
+          ? CONTEXT_HISTORY_RESPONSE_BYTES
+          : CONTEXT_REVISION_RESPONSE_BYTES;
       const maximum = max_response_bytes === undefined ? responseBytes : max_response_bytes;
       if (
         !Number.isSafeInteger(maximum) ||
@@ -332,11 +443,43 @@ export class MockContextHistoryStore {
         (item.current_classification === 'restricted' && !session.read_restricted)
       )
         fail('CONTEXT_ITEM_NOT_FOUND', trace);
+      if (
+        isDetailQuery(query) &&
+        (!item.current_detail || item.current_archived !== (query.kind === 'archived'))
+      )
+        fail('CONTEXT_ITEM_NOT_FOUND', trace);
       if (this.#active >= 2) fail('RATE_LIMITED', trace);
       return await budget.wait(async () => {
         this.#active++;
         try {
           live();
+          if (isDetailQuery(query)) {
+            const supplied = item.current_detail!;
+            let data = supplied.data;
+            if ('confirm_allowed' in data) {
+              // Saved observations are never refreshed or promoted to reviewer authority.
+              const { confirmation_readiness, ...saved } = data;
+              const expiry = confirmation_readiness?.effective_expires_at;
+              data = {
+                ...saved,
+                confirm_allowed:
+                  data.confirm_allowed &&
+                  session.can_review &&
+                  (expiry === null || (expiry !== undefined && Date.parse(expiry) > Date.now())),
+                ...(session.can_review && confirmation_readiness !== undefined
+                  ? { confirmation_readiness }
+                  : {}),
+              };
+            }
+            const response = checked('GATEWAY_RESPONSE_INVALID', trace, () =>
+              snapshot({ ...supplied, trace_id: trace, data }, Math.min(maximum, responseBytes)),
+            );
+            const parsed = checked('CONTEXT_ITEM_INVALID', trace, () =>
+              parseContextItemReadEnvelope(response, query, this.#scope, trace),
+            );
+            live();
+            return parsed;
+          }
           let data: unknown;
           let source_refs: SourceRef[];
           if (query.kind === 'history') {
