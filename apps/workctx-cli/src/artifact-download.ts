@@ -9,7 +9,7 @@ import {
   parseArtifactReadEnvelope,
   parseArtifactDownloadQuery,
   parseArtifactDownloadHeaders,
-  parseArtifactDownloadEnvelope,
+  syncJsonSnapshot,
   type ArtifactDownloadEnvelope,
   type ArtifactDownloadQuery,
   type ArtifactMetadataView,
@@ -18,6 +18,8 @@ import { FetchWcpTransport, type WcpBinaryResponse } from '@planemem/sdk';
 import type { CommandRouter, RequestContext } from '@planemem/api-gateway';
 import { readBoundedArtifactFile } from './artifact-files.js';
 import { prepareArtifactOutput, saveArtifactOutput } from './artifact-output.js';
+import { artifactDownloadBudget } from './artifact-download-budget.js';
+import { artifactDownloadResponse, artifactDownloadFailure } from './artifact-download-response.js';
 
 interface DownloadArguments {
   json?: string;
@@ -31,7 +33,7 @@ type Scope = { tenant_id: string; workspace_id: string; project_id: string };
 function usage(trace: string): ContractError {
   return new ContractError(
     'USAGE_ERROR',
-    'Use artifacts download --json OBJECT or --json-file QUERY.json, with --output NEW_FILE; JSON requires artifact_id and version. Optional --max-bytes (0–1073741824), HTTP-only --timeout-ms (1–2147483647); no stdin, repeated flags or --key.',
+    'Use artifacts download --json OBJECT or --json-file QUERY.json, with --output NEW_FILE; JSON requires artifact_id and version. Optional --max-bytes (0–1073741824), --timeout-ms (1–2147483647) for metadata/content reads and verification, not file I/O; no stdin, repeated flags or --key.',
     { trace_id: trace, dispatch_state: 'not-sent' },
   );
 }
@@ -39,7 +41,7 @@ function usage(trace: string): ContractError {
 export function parseArtifactDownloadArguments(
   argv: string[],
   trace: string,
-  embedded = false,
+  _embedded = false,
 ): DownloadArguments {
   try {
     const parsed = parseArgs({
@@ -69,8 +71,7 @@ export function parseArtifactDownloadArguments(
       values.output === '-' ||
       values.json === '-' ||
       values['json-file'] === '-' ||
-      (values['json-file'] !== undefined && !values['json-file'].trim()) ||
-      (embedded && values['timeout-ms'] !== undefined)
+      (values['json-file'] !== undefined && !values['json-file'].trim())
     )
       throw new TypeError();
     return {
@@ -121,8 +122,17 @@ async function downloadAndSave(
   rawArgs: DownloadArguments,
   rawScope: Scope,
   trace: string,
-  metadata: (query: { artifact_id: string; version: number }) => Promise<unknown>,
-  download: (query: ArtifactDownloadQuery, artifact: ArtifactMetadataView) => Promise<unknown>,
+  metadata: (
+    query: { artifact_id: string; version: number },
+    signal: AbortSignal,
+  ) => Promise<unknown>,
+  download: (
+    query: ArtifactDownloadQuery,
+    artifact: ArtifactMetadataView,
+    signal: AbortSignal,
+    recordRelease: (id: string) => void,
+  ) => Promise<unknown>,
+  authority: () => void = () => {},
 ) {
   const args = { ...rawArgs };
   const scope = {
@@ -136,7 +146,10 @@ async function downloadAndSave(
     ) ||
     !Number.isSafeInteger(args.max_bytes) ||
     args.max_bytes < 0 ||
-    args.max_bytes > ARTIFACT_DOWNLOAD_MAX_BYTES
+    args.max_bytes > ARTIFACT_DOWNLOAD_MAX_BYTES ||
+    !Number.isSafeInteger(args.timeout_ms) ||
+    args.timeout_ms < 1 ||
+    args.timeout_ms > 2_147_483_647
   )
     throw usage(trace);
   // Inline JSON is parsed before the first asynchronous dependency; file input is bounded.
@@ -151,16 +164,27 @@ async function downloadAndSave(
     }
   }
   const output = await prepareArtifactOutput(args.output, trace);
+  const budget = artifactDownloadBudget(args.timeout_ms, trace);
   let delivery: ArtifactDownloadEnvelope | undefined;
+  let release: string | undefined;
   let dispatched = false;
+  let saving = false;
   try {
-    const response = await metadata({ ...query });
+    authority();
+    const response = await budget.wait(() => metadata({ ...query }, budget.signal));
+    authority();
     let artifact: ArtifactMetadataView;
     try {
-      artifact = parseArtifactReadEnvelope(response, query, scope, trace).data.artifact;
+      artifact = parseArtifactReadEnvelope(
+        JSON.parse(syncJsonSnapshot(response, 2 * 1024 * 1024)),
+        query,
+        scope,
+        trace,
+      ).data.artifact;
     } catch {
       throw invalid(trace);
     }
+    budget.check();
     if (artifact.size > args.max_bytes)
       throw new ContractError('ARTIFACT_TOO_LARGE', 'Artifact exceeds this download byte limit', {
         trace_id: trace,
@@ -170,15 +194,35 @@ async function downloadAndSave(
       sha256: artifact.sha256,
       size: artifact.size,
     });
-    dispatched = true;
-    const result = await download({ ...pinned }, artifact);
+    const result = await budget.wait(() => {
+      dispatched = true;
+      return download(
+        { ...pinned },
+        { ...artifact, source_refs: structuredClone(artifact.source_refs) },
+        budget.signal,
+        (id) => {
+          release = id;
+        },
+      );
+    });
+    authority();
     try {
-      delivery = parseArtifactDownloadEnvelope(result, pinned, scope, trace);
-      if (createHash('sha256').update(delivery.data.content).digest('hex') !== pinned.sha256)
-        throw new TypeError();
+      delivery = artifactDownloadResponse(result, pinned, scope, trace);
+      release = delivery.data.audit_id;
     } catch {
       throw invalid(trace);
     }
+    budget.check();
+    if (createHash('sha256').update(delivery.data.content).digest('hex') !== pinned.sha256)
+      throw new ContractError('ARTIFACT_HASH_MISMATCH', 'Content SHA-256 did not match', {
+        trace_id: trace,
+      });
+    budget.check();
+    authority();
+    budget.check();
+    // Stop the read budget before publication. File writes/cleanup must settle before reporting.
+    budget.close();
+    saving = true;
     const local = await saveArtifactOutput(output, delivery.data.content, pinned.sha256, trace);
     const { content: _content, ...data } = delivery.data;
     return {
@@ -188,24 +232,45 @@ async function downloadAndSave(
       data: { ...data, local },
     };
   } catch (error) {
-    const envelope = error instanceof ContractError ? error.envelope : undefined;
-    throw new ContractError(
-      envelope?.code ?? 'ARTIFACT_DOWNLOAD_FAILED',
-      envelope?.message ?? 'Artifact download could not be completed',
-      {
-        trace_id: trace,
-        retryable: false,
-        details: {
-          ...envelope?.details,
-          local_state: 'not-saved',
-          output_path: output.path,
-          audit_state: delivery ? 'release-recorded' : dispatched ? 'unconfirmed' : 'not-requested',
-          ...(delivery ? { audit_id: delivery.data.audit_id } : {}),
-          recovery:
-            'A server release audit does not prove local delivery. Review local output and temporary-file details before making a new explicit request.',
+    let cause = error;
+    if (!saving) {
+      try {
+        budget.check();
+      } catch (expired) {
+        cause = expired;
+      }
+    }
+    const details = {
+      local_state: 'not-saved',
+      output_path: output.path,
+      content_dispatch_state: dispatched ? 'started' : 'not-sent',
+      audit_state:
+        release !== undefined ? 'release-recorded' : dispatched ? 'unconfirmed' : 'not-requested',
+      ...(release === undefined ? {} : { audit_id: release }),
+      recovery:
+        'A server release audit does not prove local delivery. Review local output and temporary-file details before making a new explicit request.',
+    };
+    // Only the locally invoked save helper can supply filesystem recovery details.
+    if (saving) {
+      const local =
+        cause instanceof ContractError &&
+        cause.envelope.trace_id === trace &&
+        cause.envelope.code === 'ARTIFACT_SAVE_FAILED'
+          ? cause.envelope
+          : undefined;
+      throw new ContractError(
+        'ARTIFACT_SAVE_FAILED',
+        'Could not finish saving verified content; inspect the local recovery details before another explicit download',
+        {
+          trace_id: trace,
+          retryable: false,
+          details: { ...local?.details, ...details },
         },
-      },
-    );
+      );
+    }
+    throw artifactDownloadFailure(cause, trace, details);
+  } finally {
+    budget.close();
   }
 }
 
@@ -247,15 +312,16 @@ export async function callArtifactDownload(
     args,
     scope,
     trace,
-    (query) =>
+    (query, signal) =>
       transport.request({
         method: 'GET',
         path: path(query),
         headers,
         response_type: 'bounded-json',
         max_response_bytes: 2 * 1024 * 1024,
+        signal,
       }),
-    async (query, artifact) => {
+    async (query, artifact, signal, recordRelease) => {
       const response = await transport.request<WcpBinaryResponse>({
         method: 'GET',
         path: path(query) + '/content',
@@ -266,10 +332,18 @@ export async function callArtifactDownload(
         },
         response_type: 'bytes',
         max_response_bytes: query.size,
+        signal,
       });
       try {
         if (response.status !== 200) throw new TypeError();
-        const { audit_id } = parseArtifactDownloadHeaders(response.headers, artifact, trace);
+        const responseHeaders = JSON.parse(syncJsonSnapshot(response.headers, 16 * 1024)) as Record<
+          string,
+          string
+        >;
+        if (Object.values(responseHeaders).some((value) => typeof value !== 'string'))
+          throw new TypeError();
+        const { audit_id } = parseArtifactDownloadHeaders(responseHeaders, artifact, trace);
+        recordRelease(audit_id);
         return {
           schema_version: 1,
           trace_id: trace,
@@ -294,33 +368,40 @@ export async function runArtifactDownload(
   router: CommandRouter,
   original: RequestContext,
 ) {
-  const context = {
-    ...original,
-    capability: [...original.capability],
-    roles: [...(original.roles ?? [])],
-  };
+  const context = structuredClone(original);
   const trace = context.trace_id;
   const args = parseArtifactDownloadArguments(argv, trace, true);
-  const expires = Date.parse(context.token_expires_at ?? '');
-  if (
-    context.authenticated_client !== true ||
-    !context.capability.includes('artifact.read') ||
-    !Number.isFinite(expires) ||
-    expires <= Date.now()
-  )
-    throw new ContractError(
-      'DENIED',
-      'Artifact downloads require a verified reader with a valid session',
-      { trace_id: trace, dispatch_state: 'not-sent' },
-    );
+  const authority = () => {
+    const expires = Date.parse(context.token_expires_at ?? '');
+    if (
+      context.authenticated_client !== true ||
+      !context.capability.includes('artifact.read') ||
+      !Number.isFinite(expires) ||
+      expires <= Date.now()
+    )
+      throw new ContractError(
+        'DENIED',
+        'Artifact downloads require a verified reader with a valid session',
+        {
+          trace_id: trace,
+          retryable: false,
+        },
+      );
+  };
+  authority();
   delete context.idempotency_key;
   delete context.expected_version;
-  const execute = (operation: string, input: Record<string, unknown>) =>
-    router.execute({
+  Reflect.deleteProperty(context, 'if_match');
+  const execute = async (operation: string, input: Record<string, unknown>) => {
+    authority();
+    const result = await router.execute({
       operation,
       input,
-      context: { ...context, capability: [...context.capability], roles: [...context.roles] },
+      context: structuredClone(context),
     });
+    authority();
+    return result;
+  };
   return downloadAndSave(
     args,
     context,
@@ -332,5 +413,6 @@ export async function runArtifactDownload(
         version: String(query.version),
         size: String(query.size),
       }),
+    authority,
   );
 }

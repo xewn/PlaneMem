@@ -387,7 +387,9 @@ workctx artifacts download --json-file artifact-version.json --output saved-repo
 
 JSON 只含 `artifact_id`（ULID）和明确的正整数 `version`，例如 `{"artifact_id":"01J000000000000000000000001","version":2}`。网络和嵌入 `runWorkctx` 均支持 `--json` 或 `--json-file` 二选一，查询最多 16 KiB；必须提供 `--output`，父目录须存在，已有文件、目录或链接均拒绝。禁止 stdin、`--key`、重复选项、额外参数和覆盖选项。输出路径由用户指定，不从远端名称推导。
 
-先读取指定历史元数据（响应最多 2 MiB），再绑定版本/hash/size 下载；整个调用固定项目和令牌，不刷新令牌、不重试、不退回当前版本。默认内容上限 64 MiB，`--max-bytes` 可设 0–1073741824；HTTP `--timeout-ms` 默认 180000，范围 1–2147483647，分别限制两次请求，非整个保存流程时限。嵌入调用拒绝该超时选项，要求可信客户端、实际 artifact.read 和未过期会话，并清除继承写条件。Gateway 独立检查当前与历史分类导出权限及持久 release 审计。
+先读取指定历史元数据（响应最多 2 MiB），再绑定版本/hash/size 下载；整个调用固定项目和令牌，不刷新令牌、不重试、不退回当前版本。默认内容上限 64 MiB，`--max-bytes` 可设 0–1073741824；网络与嵌入均支持 `--timeout-ms`，默认 180000、范围 1–2147483647，历史元数据/正文读取及内容校验共用一次期限。输入文件/输出路径预检先完成，保存开始前最后检查，写盘和清理开始后等待结果，不计入读取期限。嵌入要求可信客户端、实际 artifact.read 和未过期会话，调用前后及保存前复核，清除继承键/版本/if_match；超时后底层provider可能继续，但迟到结果不会触发保存。Gateway 独立检查当前与历史分类导出权限及持久 release 审计。
+
+元数据及正文封套中的非字节部分最多2 MiB纯JSON，HTTP下载头最多16 KiB；拒绝访问器、非普通封套、共享或自定义子类字节视图，普通Uint8Array/Buffer在完整封套校验时复制并核对SHA。查询/下载错误仅采用同trace有限代码与固定消息，丢弃上游详情；只有本地保存函数的错误可带文件恢复信息。已核对的完整HTTP放行头或完整嵌入封套中的audit_id在后续校验/保存错误中保留，不把unconfirmed当作未放行。详见 [CLI下载读取期限](../../docs/design/01-contracts/artifact-persistence-runtime.md#cli-下载读取期限与保存边界源码阶段)。本增量仅源码文档，未编译、测试、实际调用或发布。
 
 只有完整响应、审计头、长度和 SHA-256 校验通过才开始保存：同目录独占临时文件，写完同步并读回校验，关闭后以硬链接创建最终路径，不覆盖竞争期间出现的文件。不支持硬链接的文件系统会失败，不回退覆盖式保存。清理只处理本次拥有的临时文件；输出文件保存成功但清理失败仍退出 0，结果带 `cleanup_pending=true` 与临时路径。其他保存失败退出 1，可能附临时路径及校验状态；用法错误退出 2。输出 JSON 包含 metadata/source_refs、`audit_state=release-recorded` 和独立 `local.state=saved`，不打印字节。错误里的 `local_state=not-saved` 仅指本次未创建最终文件，不声称目标路径不存在；已确认放行也不证明本地保存成功。
 

@@ -228,7 +228,7 @@ stdout 只在完整成功时输出原历史结果；参数/大小/hash 错误退
 
 ## CLI 下载（源码阶段）
 
-`workctx artifacts download --json-file QUERY.json --output NEW_FILE` 或 `--json OBJECT` 只接收 artifact_id 和明确的正整数 version；查询最多 16 KiB。重复/额外参数、stdin、--key 和覆盖选项拒绝。--max-bytes 默认 64 MiB，可设 0–1 GiB；HTTP --timeout-ms 默认 180000，范围 1–2147483647，分别作用于元数据和内容请求，不是写盘超时。网络和嵌入 runWorkctx 共用流程；嵌入拒绝 HTTP 超时参数、要求可信 artifact.read 和未过期会话，清除继承键/版本。输出路径预检在网络请求前完成，父目录必须存在，目标不得已有文件、目录或链接。
+`workctx artifacts download --json-file QUERY.json --output NEW_FILE` 或 `--json OBJECT` 只接收 artifact_id 和明确的正整数 version；查询最多 16 KiB。重复/额外参数、stdin、--key 和覆盖选项拒绝。--max-bytes 默认 64 MiB，可设 0–1 GiB；网络与嵌入 runWorkctx 的 --timeout-ms 默认 180000，范围 1–2147483647，元数据/内容读取和校验共用期限，不是写盘超时。嵌入要求可信 artifact.read 和未过期会话，清除继承键/版本/if_match。输入和输出路径预检在读取预算前完成，父目录必须存在，目标不得已有文件、目录或链接；保存前再次检查期限，开始写盘后等待其结束，详见后文CLI下载读取期限与保存边界。
 
 HTTP 复用 SDK FetchWcpTransport 的 bytes 模式：历史元数据响应最多 2 MiB、严格 UTF-8/JSON 与完整封套校验；内容限选中 size，固定令牌/范围/版本/hash/size，验证完整 200 和响应头。嵌入依次执行 artifact.version.read/artifact.download。共享 parseArtifactDownloadEnvelope 绑定 scope/trace/目标/描述/source_refs/审计状态并复制内容，CLI 独立计算 SHA-256；解析器本身不计算 hash。失败不会回退当前版本、刷新令牌或自动重试，不打印正文或保存 outbox。
 
@@ -588,3 +588,17 @@ PostgreSQL/S3 适配、显式服务器配置、HTTP/SDK/CLI/MCP/工作台按原�
 保持当前/历史content_state和receipt的recorded/not-observed原义，not-observed也不证明写入未发生。SDK错误只保留有限同trace代码和固定消息，retryable=false；失败不变成not-observed，不泄露上游任意详情或建议自动重试。保留完整原身份、键、版本与内容，不上传、重准备、刷新版本或生成新键。直接callGateway的这三个命令也转入同一有界接口，可选timeout_ms，其他通用命令不在本增量范围。
 
 本增量仅源码文档人工审阅，未编译、类型检查、测试、执行CLI/SDK/Mock/API/数据库或发布，无服务端/schema/依赖变化。CLI入口接线、文件/stdin、超时和权限行为均无运行证据，R-001保持未完成。
+
+## CLI 下载读取期限与保存边界（源码阶段）
+
+`artifacts download` 网络/嵌入调用均接受 `--timeout-ms`，默认180秒。历史元数据、正文等待和完整响应/Node SHA-256校验共用一次单调时钟预算，不再为第二次读取重新计时。Fetch的bounded-json/bytes均带同一AbortSignal，保留各自传输上限；嵌入router即使不支持取消，本地等待仍能超时，迟到返回/拒绝被消费但不会继续正文请求或启动保存。同步解析/散列不承诺可中途打断，返回后检查期限，超时不采用其结果。
+
+输入常规文件读取和目标路径预检在预算前完成，沿既有16 KiB输入及独占新文件规则，不把文件I/O留作后台。预算覆盖读取和内容核验；保存前最后核对期限及嵌入可信权限，再关闭读取预算。写入/同步/读回/发布/清理保持原保存协议并一直等待结束，不与超时竞速，不能把已经保存的文件因旧计时器到期改报未保存。无新增文件覆盖、部分文件保存或自动重试。
+
+元数据和正文封套非字节部分各限2 MiB，普通JSON副本拒绝访问器/非JSON/超深等形状，完整共享解析核对scope/trace/目标/版本/hash/size/source/audit。正文只接受普通Uint8Array或Buffer原型、无覆盖长度/缓冲属性且底层是非共享ArrayBuffer的准确长度内容，复制后独立核对SHA；不接受共享缓冲或自定义字节子类。HTTP完整下载头限16 KiB，均须字符串并匹配描述、trace和放行字段。网络已完整核对的放行头audit_id或嵌入完整封套audit_id保留在后续hash/期限/保存失败中；未知不会伪造编号，也不证明服务端没有放行。
+
+嵌入调用先固定可信context，要求已认证且未过期的实际artifact.read能力。每次router前后和保存前复核本地会话期限与能力，清除继承idempotency_key/expected_version/if_match；每次router拿独立context和输入副本。分类/导出/策略仍由Gateway独立核对，本地快照不证明全程没有权限撤销。
+
+查询/正文/校验阶段错误只接收同trace白名单代码和固定消息，retryable=false，不透传任意上游message/details或重试建议。输出local_state=not-saved、配置的output_path、content_dispatch_state和本地已核对的audit_state/audit_id；未发起内容时为not-requested，开始后未核对结果为unconfirmed。只有实际调用本地saveArtifactOutput后的ARTIFACT_SAVE_FAILED可保留可信临时路径、保存阶段和清理状态，避免远端异常冒充本地文件恢复信息。release-recorded仍不等于已保存，not-saved仍只描述本次，不授权清理已经存在的目标。
+
+限制：底层router/存储可以在本地超时后继续，未新增全局后台容量限制；自定义provider分配内存不能由本地返回值检查阻止。仍整份内容驻内存，未提供流式下载、文件取消、目录同步、持久客户端交付回执或自动恢复。只有源码文档人工审阅，无编译、类型检查、测试、CLI/SDK/Mock/API/数据库执行或发布，无服务端/schema/依赖变化，R-001未完成。

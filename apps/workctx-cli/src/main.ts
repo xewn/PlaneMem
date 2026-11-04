@@ -249,7 +249,7 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   artifacts put-version          Append with the same saved request/file inputs and original version
                                  Optional --max-bytes (default 67108864), --timeout-ms (default 180000)
   artifacts download             Download artifact_id/version JSON to --output NEW_FILE; no overwrite or --key
-                                 Optional --max-bytes (default 67108864), --timeout-ms (default 180000)
+                                 Optional --max-bytes (default 67108864), --timeout-ms (default 180000, reads/verification only)
   overview                       Read project totals and limited previews of saved records
   observed project               Read the current project's saved Plane observation
   observed list                  Search saved Plane metadata; query/state/limit/cursor in JSON
