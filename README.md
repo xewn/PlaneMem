@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [创建历史整批备份与恢复](docs/design/01-contracts/proposal-creation-history-runtime.md#当前范围整批备份与恢复)：完整备份当前身份范围，载入后核验内外摘要、只读比较并确认补入缺失记录；异文或损坏拒绝整批，未知保留备份，不发送建议。仅源码文档，未编译、测试、运行或发布。
+
 新增 [创建历史浏览器保存与找回](docs/design/01-contracts/proposal-creation-history-runtime.md#浏览器保存目录与单份移除)：完整观察可显式保存，每页核验5份、按摘要找回；从浏览器完整审阅后可独立确认移除，未知保留导出副本，不影响原请求或提交状态。仅源码文档，未编译、测试、运行或发布。
 
 新增 [原创建结果历史文件](docs/design/01-contracts/proposal-creation-history-runtime.md)：保留完整原请求及发送/查询响应，支持带摘要的文件导出、重新载入审阅和单独提取原请求；后续未见或失败不清除已确认结果，导入历史不自动提交。仅源码文档，未编译、测试、运行或发布。

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { backupOperation } from '../sync/receipt/backup-operation';
 import type { BrowserRemovalResult } from '../sync/receipt/browser-store';
 import { encodeProposalOriginal, type ProposalSubmissionBinding } from './original-model';
@@ -25,6 +25,7 @@ import {
   type CreationHistoryPage,
   type CreationHistorySummary,
 } from './creation-history-store';
+import { CreationHistoryBackupPanel } from './creation-history-backup-panel';
 
 export function CreationHistoryPanel({
   binding,
@@ -57,14 +58,30 @@ export function CreationHistoryPanel({
     'Find a saved browser observation, inspect a received result or import a complete file. History copies do not update this page’s submission result.',
   );
   const mounted = useRef(false);
+  const active = useRef(false);
   const operation = useRef<AbortController | undefined>(undefined);
   const release = useRef<(() => void) | undefined>(undefined);
+  const beginStorage = useCallback(() => {
+    if (!mounted.current || active.current || (begin && !begin())) return false;
+    active.current = true;
+    release.current = end;
+    setBusy(true);
+    setRemoveConfirmed(false);
+    return true;
+  }, [begin, end]);
+  const endStorage = useCallback(() => {
+    active.current = false;
+    if (mounted.current) setBusy(false);
+    release.current?.();
+    release.current = undefined;
+  }, []);
   useEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
       operation.current?.abort();
       operation.current = undefined;
+      active.current = false;
       release.current?.();
       release.current = undefined;
     };
@@ -72,23 +89,21 @@ export function CreationHistoryPanel({
   useEffect(() => {
     if (disabled) setRemoveConfirmed(false);
   }, [disabled]);
-  function storageChanged() {
+  const storageChanged = useCallback(() => {
+    if (!mounted.current) return;
     setStorageEpoch((value) => value + 1);
     setPage(undefined);
     setRemovalFresh(false);
     setRemoveConfirmed(false);
-  }
+  }, []);
   async function run<T>(
     work: (signal: AbortSignal, check: () => void) => Promise<T>,
     receive: (value: T) => void,
     options: { start?: () => void; failureMessage?: string } = {},
   ) {
-    if (!mounted.current || disabled || operation.current || (begin && !begin())) return;
+    if (!mounted.current || disabled || operation.current || !beginStorage()) return;
     const controller = new AbortController();
     operation.current = controller;
-    release.current = end;
-    setBusy(true);
-    setRemoveConfirmed(false);
     try {
       options.start?.();
       const candidate = await backupOperation(controller.signal, work);
@@ -103,9 +118,7 @@ export function CreationHistoryPanel({
     } finally {
       if (operation.current === controller) {
         operation.current = undefined;
-        if (mounted.current) setBusy(false);
-        release.current?.();
-        release.current = undefined;
+        endStorage();
       }
     }
   }
@@ -323,7 +336,7 @@ export function CreationHistoryPanel({
           maxLength={64}
           disabled={locked}
           onChange={(event) => {
-            if (!operation.current && !disabled) {
+            if (!active.current && !disabled) {
               setDigest(event.target.value);
               setRemovalFresh(false);
               setRemoveConfirmed(false);
@@ -451,7 +464,7 @@ export function CreationHistoryPanel({
               checked={removeConfirmed}
               disabled={locked || !canRemove}
               onChange={(event) => {
-                if (!operation.current && !disabled && canRemove)
+                if (!active.current && !disabled && canRemove)
                   setRemoveConfirmed(event.target.checked);
               }}
             />{' '}
@@ -474,6 +487,14 @@ export function CreationHistoryPanel({
         </div>
       )}
       <p role="status">{message}</p>
+      <CreationHistoryBackupPanel
+        binding={binding}
+        disabled={locked}
+        storageEpoch={storageEpoch}
+        begin={beginStorage}
+        end={endStorage}
+        onStorageChange={storageChanged}
+      />
       <Link href="/proposals/recover" prefetch={false} target="_blank" rel="noopener noreferrer">
         Open original request recovery ↗
       </Link>

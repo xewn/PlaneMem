@@ -3452,6 +3452,25 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_creation_history_backup_development_increment:
+      date: "2026-11-04"
+      status: "Source-only complete scoped creation-history backup, comparison and atomic missing-only restore; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/creation-history-backup-model.ts"
+        - "apps/web-console/src/app/proposals/creation-history-backup.ts"
+        - "apps/web-console/src/app/proposals/creation-history-backup-panel.tsx"
+        - "apps/web-console/src/app/proposals/creation-history-store.ts"
+        - "apps/web-console/src/app/proposals/creation-history-panel.tsx"
+        - "docs/design/01-contracts/proposal-creation-history-runtime.md"
+      behavior: "Complete original-binding backup with 100-observation/16 MiB limits, same-read-transaction dual-store counts and full contents, followed by all inner and outer checksum verification. Explicit file load and readonly target comparison precede digest/epoch-bound confirmation. Restore revalidates everything, preflights every target in one write transaction, adds only missing exact pairs and verifies all content before commit; identical targets and extras are retained, conflicting/damaged targets reject the batch. Shared stable operation locking, write-epoch invalidation and retained backups after unknown outcomes; no proposal/query/original-request changes."
+      evidence: []
+      pending_evidence:
+        - "Complete snapshot counts, empty/missing database, 100-entry and 16 MiB boundaries, damaged pairs and no truncation"
+        - "Strict UTF-8/file envelope/binding/sorted entries and inner/outer checksum validation"
+        - "Readonly comparison, all-target preflight, exact identical replay, missing-only add, conflicts and full transactional readback"
+        - "Post-commit unknown, retained file and recompare requirement, epoch/digest invalidation, stable parent locks, rerender/unmount and deadlines"
+      remaining_scope: "Batch cleanup, automatic retention, filtering, cross-scope backup and runtime/compatibility evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, product/browser/database execution or release. Existing browser v1 stores reused; no schema or dependency changes."
     proposal_creation_history_browser_development_increment:
       date: "2026-11-04"
       status: "Source-only immutable browser creation history, bounded discovery and confirmed single-copy removal; R-009 remains incomplete."
