@@ -1,6 +1,8 @@
 # WCP SDK
 
-2026-11-04：新增`MockWorkItemStore/MockWorkItemSeed/MockWorkItemSession`与`MockWcpServer({work_items:{store,session}})`，接入`listWorkItemProjections/getWorkItemProjection`。固定有界投影和显式身份/到期/权限/可见ID集合；列表支持原全部筛选及assignment，微秒排序、独立Mock游标绑定、完整响应复制，不自动翻页或写数据。每store两并发、30秒等待、2 MiB完整输出，直接transport可取消；SDK这两个旧方法没有新增options。JS小写/Unicode排序不宣称真实数据库locale兼容。接线及限制见[工作项Mock](../../docs/design/01-contracts/work-item-mock-runtime.md)。仅源码文档人工审阅，未编译、测试、运行SDK/Mock或发布。
+2026-11-04：`listWorkItemProjections(query?, options?)`和`getWorkItemProjection(itemId, options?)`支持`WcpWorkItemReadOptions`的timeout_ms/signal，默认30秒/2 MiB完整成功响应，Fetch错误16 KiB；精确trace、已有身份条件、共享记录/筛选校验和独立返回副本。新增`workItemPages(query?, {timeout_ms?,signal?,max_pages?})`，创建时固定参数，next才读取，无预取，yield前保存续页并检测重复游标；max_pages默认100、允许1–1000，到限仍有续页时下一次next明确报WORK_ITEM_PAGE_LIMIT，保留上次完整页供显式继续。详情仍用本地ID，遍历不保证快照或去重，不自动重试/保存。自定义传输须支持bounded-json/signal并返回完整匹配JSON封套；兼容变化和未执行示例见[工作项SDK读取](../../docs/design/01-contracts/work-item-projection-runtime.md)。仅源码文档人工审阅，未编译、测试或执行。
+
+2026-11-04：新增`MockWorkItemStore/MockWorkItemSeed/MockWorkItemSession`与`MockWcpServer({work_items:{store,session}})`，接入`listWorkItemProjections/getWorkItemProjection`。固定有界投影和显式身份/到期/权限/可见ID集合；列表支持原全部筛选及assignment，微秒排序、独立Mock游标绑定、完整响应复制，不自动翻页或写数据。每store两并发、30秒等待、2 MiB完整输出，直接transport可取消；后续SDK有界读取与workItemPages沿此接线使用，见上方增量。JS小写/Unicode排序不宣称真实数据库locale兼容。接线及限制见[工作项Mock](../../docs/design/01-contracts/work-item-mock-runtime.md)。仅源码文档人工审阅，未编译、测试、运行SDK/Mock或发布。
 
 2026-11-04：CLI `artifacts compare`的网络/嵌入入口已复用`compareArtifactVersions`。命令输入另带expected_actor_id/expected_client_id，核对后转成SDK上下文相等约束，SDK查询仍只有artifact_id/from_version/to_version；输出保持SDK本地组合形状，不包装为新的Gateway响应。详见[命令行版本对比](../../docs/design/01-contracts/artifact-versions-runtime.md#命令行版本对比源码阶段)。仅源码文档，未执行SDK/CLI或测试。
 

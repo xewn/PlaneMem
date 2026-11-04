@@ -1,5 +1,7 @@
 export * from './client.js';
 export * from './mock-server.js';
+export type { WcpWorkItemReadOptions, WcpWorkItemPagesOptions } from './work-item-reads.js';
+export type { WorkItemListQuery, WorkItemProjection } from '@planemem/contracts';
 export {
   MockWorkItemStore,
   type MockWorkItemSeed,

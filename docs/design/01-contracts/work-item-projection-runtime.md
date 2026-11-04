@@ -66,9 +66,51 @@ return_to 允许字面 `/work-items` 或 `/work-items?` 后的已知参数，也
 
 本次仅源码与文档，未编译、类型检查、测试、浏览器检查、接口调用或发布；API/数据库/依赖不变。待运行证据包含从后续页/不同视图返回、精确负责人空格与 Unicode、页外选择、直接旧链接、刷新/失败重试、非法返回地址与重复参数、跨项目/权限变化后的游标拒绝。
 
-## 单条入口与边界
+## SDK 与其他读取入口
 
-- SDK：`getWorkItemProjection(itemId)`，共享输入/响应解析器，返回 WCP 封套。
+### SDK 有界读取和按需分页（2026-11-04，仅源码）
+
+`listWorkItemProjections(query?, options?)`和`getWorkItemProjection(itemId, options?)`新增`WcpWorkItemReadOptions={timeout_ms?,signal?}`，旧调用参数仍可省略。每请求默认30秒，timeout_ms必须是1–2147483647的安全整数；预先取消时不派发，等待中取消或到期停止本地等待并拒绝迟到结果。Fetch自身期限与方法期限取先到者，覆盖凭据、网络、完整读取和解析；同步解析不能被中途抢占，返回前再次检查期限。终止等待不证明服务器读取或审计被取消。
+
+请求固定POST workbench.query、原operation/本地ID或规范筛选，JSON最多8 KiB。只携带当前范围、trace及构造上下文已有actor_id/client_id的相等条件；不继承idempotency_key/expected_version/if_match。身份条件要求真实服务端核对，不授予权限；若需要在凭据刷新时固定账号和客户端，须在WcpClient上下文显式配置两者。未提供的身份条件不能被SDK补造。原投影封套没有范围回显，SDK不以记录内容证明服务器授权。
+
+成功完整JSON最多2 MiB，Fetch错误正文最多16 KiB；自定义transport也必须支持bounded-json/signal，SDK在返回后仍独立检查普通JSON大小/复杂度并复制。外层只接受schema_version/trace_id/source_refs/data及列表可选next_cursor；trace必须等于本次请求，详情不接受续页字段。列表继续复用共享页/条目/状态/优先级/精确owner/assignment/重复ID/游标校验；详情核对本地ID。记录若额外携带范围字段，必须匹配当前上下文。记录原version、时间、来源和trace保留，不把外层trace覆盖到记录内。超限、坏条目或错trace整份失败，不返回部分页面。错误只保留固定允许代码和本次trace，retryable=false，不回显传输底层消息。
+
+普通查询/选项对象会在等待前复制，拒绝未知字段、非普通对象、访问器、符号或隐藏字段；已有可选查询属性值为undefined仍表示省略。传输请求正文与保留的查询条件也是不同副本，传输修改正文不能放宽返回校验。返回结果与transport原对象分离。旧自定义传输/fixture若返回Date、undefined属性、错trace、扩充封套或超限内容，需改为完整匹配的JSON封套；本增量没有宣称这些旧消费者已迁移或验证。
+
+新增显式`workItemPages(query?, options?)`异步迭代器，options为`WcpWorkItemPagesOptions`，在读取选项上增加max_pages。创建时固定上下文、全部规范筛选、初始cursor、limit、期限值及signal引用；创建无网络请求或计时器，参数错误在创建时同步抛出。第一次next才请求第一页，每次next最多一笔请求，没有预取。每页独立预算，消费者处理页面的时间不计入下一页预算；修改原参数/选项或已返回页的next_cursor不会改变后续请求。需要中断正在等待的next时使用AbortSignal；return或break本身不是中断正在进行请求的接口。
+
+max_pages默认100，允许1–1000；limit仍默认25、最多100。完整页在yield前保存原续页游标；无游标时自然结束。已返回max_pages页且仍有续页时，下一次next报WORK_ITEM_PAGE_LIMIT，且不会再发送请求；上次完整页的next_cursor仍可由调用方保存，并配合原筛选显式启动新的单页读取或迭代器。上限不是“所有结果已读完”，不得捕获后把部分集合标记为全量。每次迭代保留有界游标集合，重复使用起始位置或先前续页游标时整页拒绝，避免循环请求。
+
+目录仍是动态读取，不保证跨页快照、源数据新鲜度或唯一遍历。并发更新可能让同一ID在不同页出现，SDK不静默去重或重排，也不使用客户端语言规则复核数据库全文匹配和ID排序。迭代器不合并全部记录、不自动重试/保存/确认；调用方需要自行保留已处理页及原筛选。单页和详情方法仍只发送一笔读取，不因出现next_cursor自动继续。
+
+开发示例（未执行，client由调用方配置）：
+
+```ts
+const controller = new AbortController();
+const filters = { assignment: 'unassigned' as const, limit: 25 };
+const page = await client.listWorkItemProjections(filters, {
+  timeout_ms: 15_000,
+  signal: controller.signal,
+});
+const detail = await client.getWorkItemProjection('local-work-1', {
+  signal: controller.signal,
+});
+const pages = client.workItemPages(filters, {
+  timeout_ms: 15_000,
+  signal: controller.signal,
+  max_pages: 20,
+});
+// 每次next才读取；result.value为完整封套，value.next_cursor可连同filters保存。
+const result = await pages.next();
+await pages.return(undefined); // 没有预取下一页。
+```
+
+MockWorkItemStore沿现有bounded-json和取消信号接入，无新增Mock路由。CLI/MCP/Web未增加这些SDK选项或遍历命令，生产Gateway/共享投影/数据库/依赖不变。仅源码文档人工审阅，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布；真实取消/迟到/超限/错误、旧传输兼容、重复游标/页数上限及分页消费仍待运行证据，R-001/R-002保持未完成且evidence为空。
+
+### 其他读取入口
+
+- SDK：`getWorkItemProjection(itemId, options?)`，共享输入/响应解析器，返回 WCP 封套；有界读取及取消见上节。
 - CLI：`workctx work-items get --json-file work-item.json`，文件内容 `{"item_id":"本地 ID"}`，无需 --key。
 - MCP：`get_work_item_projection`，输入 item_id，要求 context.read，声明只读。
 - 工作台：`/work-items/detail?item=...` 独立读取指定任务，展示描述、版本、时间和来源；刷新表单重新请求详情。来源 URI 作为文本展示，不自动访问。

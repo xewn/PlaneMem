@@ -6,6 +6,8 @@
 
 ### 2026-11-04 开发补充（未编译、未发布、未测试）
 
+- P0/P4：工作项SDK列表/详情已接WcpWorkItemReadOptions，默认30秒、取消、2 MiB完整响应、Fetch错误16 KiB、原trace/可选身份头/完整共享结果及独立副本；不继承写条件。新增workItemPages和WcpWorkItemPagesOptions，创建固定参数、next才读取、无预取，yield前保存续页及有界重复游标检测；max_pages默认100、最多1000，到限仍有续页时明确WORK_ITEM_PAGE_LIMIT，原页可供显式继续。不保证跨页快照、不去重/重排/重试/保存。旧自定义传输的严格JSON/封套兼容、真实期限/取消/超限和遍历证据仍缺，R-001/R-002未完成且evidence为空。仅源码文档人工审阅，无Gateway/共享投影/数据库/schema/依赖变化，未编译、类型检查、测试、执行SDK/Mock/CLI/MCP/API/产品/数据库或发布；独立提交push main带[skip ci]。
+
 - P0/P4：已补MockWorkItemStore及可选MockWcpServer work_items配置，固定项目1000条/16 MiB、单条256 KiB种子与完整模拟身份/期限/权限/可见集合，连接及返回复制。目录/详情沿现有SDK方法，状态/优先级/精确owner/assignment和JS小写搜索先过滤，微秒更新时间降序/Unicode标量ID升序；Mock独立游标绑定store/会话/权限/可见集合/筛选，页大小可变。正文8 KiB、头16 KiB、响应2 MiB、30秒及两并发，取消超时后底层摘要未结束仍占槽；返回模拟来源、保留原记录，不自动翻页或写入。动态工作项/权限/删除、数据库locale/排序兼容、真实授权/审计/持久化及运行证据仍缺，R-001/R-002未完成且evidence为空。仅源码文档人工审阅，无生产路由/schema/依赖变化，未编译、类型检查、测试、执行SDK/Mock/CLI/MCP/API/产品/数据库或发布；独立提交push main带[skip ci]。
 
 - P0/P4/P5：已补工作项assignment=assigned/unassigned筛选，严格保存owner空串/非空语义，不修剪数据或推断实时Plane负责人；unassigned拒绝与非空精确owner组合。共享输入/整页返回核对、Gateway分页前C比较、SDK/CLI/MCP入口与Web分配下拉均接入；CLI网络白名单允许新字段，Web未分配清空并禁用精确owner，筛选/视图/翻页/详情返回保留条件。含assignment使用v3查询绑定，省略时原v1/v2游标兼容；换条件必须回首页。无写接口/数据库schema/迁移/依赖变化，R-002仍未完成且evidence为空，真实组合筛选/旧游标/客户端及浏览器证据待补。仅源码文档人工审阅，未编译、类型检查、测试、执行产品/SDK/CLI/MCP/Mock/API/浏览器/数据库或发布；独立提交push main带[skip ci]。

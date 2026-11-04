@@ -53,12 +53,7 @@ import {
   parseProjectSearchPage,
   type ProjectSearchQuery,
   type ProjectSearchPage,
-  parseWorkItemProjection,
-  parseWorkItemProjectionQuery,
-  parseWorkItemListQuery,
-  parseWorkItemProjectionList,
   type WorkItemListQuery,
-  type WorkItemProjection,
   buildEtag,
   isSyncIdentifier,
   isUlid,
@@ -194,6 +189,13 @@ import {
   type WcpSyncCommandContextOptions,
 } from './sync-command-context.js';
 import { readSessionRegistry, type WcpSessionRegistryOptions } from './session-registry.js';
+import {
+  readWorkItems,
+  readWorkItem,
+  iterateWorkItems,
+  type WcpWorkItemReadOptions,
+  type WcpWorkItemPagesOptions,
+} from './work-item-reads.js';
 import {
   readSessionCommandContext,
   type WcpSessionCommandContextOptions,
@@ -1623,40 +1625,17 @@ export class WcpClient {
     }
   }
 
-  async listWorkItemProjections(input: WorkItemListQuery = {}) {
-    let query;
-    try {
-      query = parseWorkItemListQuery(input);
-    } catch (error) {
-      throw this.invalid(error instanceof Error ? error.message : 'Invalid work item query');
-    }
-    const result = await this.envelope<WorkItemProjection[]>('POST', '/v1/workbench/query', {
-      operation: 'work_items',
-      ...query,
-    });
-    try {
-      return { ...result, ...parseWorkItemProjectionList(result, query) };
-    } catch {
-      throw this.invalidResponse();
-    }
+  listWorkItemProjections(input: WorkItemListQuery = {}, options: WcpWorkItemReadOptions = {}) {
+    return readWorkItems(this.transport, this.context, input, options);
   }
 
-  async getWorkItemProjection(itemId: string) {
-    let query;
-    try {
-      query = parseWorkItemProjectionQuery({ item_id: itemId });
-    } catch (error) {
-      throw this.invalid(error instanceof Error ? error.message : 'Invalid work item query');
-    }
-    const result = await this.envelope<WorkItemProjection>('POST', '/v1/workbench/query', {
-      operation: 'work_item',
-      ...query,
-    });
-    try {
-      return { ...result, data: parseWorkItemProjection(result.data, itemId) };
-    } catch {
-      throw this.invalidResponse();
-    }
+  getWorkItemProjection(itemId: string, options: WcpWorkItemReadOptions = {}) {
+    return readWorkItem(this.transport, this.context, itemId, options);
+  }
+
+  /** Opt-in demand-driven pages; captures filters now, without prefetching or saving records. */
+  workItemPages(input: WorkItemListQuery = {}, options: WcpWorkItemPagesOptions = {}) {
+    return iterateWorkItems(this.transport, this.context, input, options);
   }
 
   listSessions(query: SessionRegistryQuery = {}, options: WcpSessionRegistryOptions = {}) {

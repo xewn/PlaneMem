@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [SDK 工作项读取控制与按需分页](docs/design/01-contracts/work-item-projection-runtime.md)：列表和详情支持超时、取消及完整响应大小限制；`workItemPages`按需读取，固定原筛选、检测重复游标，达到页数上限时明确报错。仅源码文档，未编译、测试、运行或发布。
+
 新增 [工作项目录与详情 Mock](docs/design/01-contracts/work-item-mock-runtime.md)：可选固定数据集和模拟权限，支持现有 SDK 列表、详情、组合筛选和显式续页，保留原记录并返回独立副本。仅源码文档，未编译、测试、运行 Mock 或发布。
 
 新增 [工作项负责人分配筛选](docs/design/01-contracts/work-item-projection-runtime.md#负责人分配状态筛选2026-11-04仅源码)：工作台、SDK、CLI 和 MCP 可筛选有无保存的负责人，支持与状态、优先级组合，翻页及详情返回保留条件。仅源码文档，未编译、测试、运行或发布。
