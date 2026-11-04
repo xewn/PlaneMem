@@ -954,6 +954,24 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_pack_receipt_volumes_development_increment:
+      date: "2026-11-05"
+      status: "Source-only browser history volume sets with complete import and explicit per-volume recovery; R-003 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/context/save-receipt-volumes-model.ts"
+        - "apps/web-console/src/app/context/save-receipt-volumes-panel.tsx"
+        - "apps/web-console/src/app/context/save-receipt-store.ts"
+        - "apps/web-console/src/app/context/save-receipt-backup-panel.tsx"
+        - "docs/design/01-contracts/context-pack-runtime.md"
+      behavior: "Extract the existing complete dual-store snapshot and backup construction; retain the 100-entry single-file limit and add a 1000-entry snapshot partitioned into at most ten unchanged backup files. A bounded canonical manifest binds full identity, total, contiguous indexes, exact counts and unique volume hashes. Import exactly one manifest and all matching volumes in any file order, verify manifest/volume/observation hashes and global digest order, reject omissions/extras/duplicates/mismatches without partial results. Share page exclusion, operation cancellation and storage-generation checks; explicitly download each file or select a verified volume into the existing comparison/restore/removal panel with old confirmations revoked. Each volume restores independently; no all-set atomicity or completion claim. No server requests, storage layout changes or automatic writes."
+      evidence: []
+      pending_evidence:
+        - "Empty/100/101/1000/overflow snapshots, dual-store orphan/corruption rejection and unchanged legacy single-file behavior"
+        - "Manifest counts/indexes/binding/hash, all file orderings, omitted/extra/mixed/duplicate volumes and cross-volume ordering/duplicate observations"
+        - "File-size/UTF-8/aggregate limits, shared deadline/cancellation/late work, cross-tab invalidation, downloads and explicit per-volume recovery; no runtime verification performed"
+      remaining_gaps:
+        - "Larger or streaming sets, CLI/SDK batch support, filtered cleanup, retention policy, full-store auditing/quotas and runtime evidence"
+        - "Imported completeness is only relative to the supplied manifest; hashes do not authenticate origin, and recovery is atomic per volume rather than across the full set"
     context_pack_save_openapi_development_increment:
       date: "2026-11-05"
       status: "Source-only OpenAPI for existing save identity and historical receipt reads; R-003 remains incomplete."

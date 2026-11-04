@@ -34,6 +34,17 @@ import {
   parsePackReceiptBackupFile,
   type PackReceiptBackupCandidate,
 } from './save-receipt-backup-model';
+import {
+  PACK_RECEIPT_MAX_VOLUMES,
+  PACK_RECEIPT_VOLUMES_MAX_ENTRIES,
+  PACK_RECEIPT_VOLUMES_FILE_BYTES,
+  PACK_RECEIPT_VOLUMES_SET_BYTES,
+  packReceiptVolumesDocumentJson,
+  packReceiptVolumesFileJson,
+  parsePackReceiptVolumesFile,
+  type PackReceiptVolumesCandidate,
+  type PackReceiptVolumesFile,
+} from './save-receipt-volumes-model';
 
 const layout = { databaseName: 'planemem-context-pack-save-history', contentStore: 'observations' };
 export interface PackReceiptCandidate {
@@ -301,11 +312,12 @@ export async function inspectPackReceiptBackup(
 }
 
 /** One complete unfiltered snapshot of both stores; never truncate or join separate list pages. */
-export async function preparePackReceiptBackup(
+async function readPackReceiptBackupSnapshot(
   input: PackSaveBinding,
+  maximum: number,
   signal: AbortSignal,
   check: () => void,
-): Promise<PackReceiptBackupCandidate> {
+) {
   check();
   const binding = parsePackSaveBinding(input);
   slot(binding, '0'.repeat(64));
@@ -346,7 +358,7 @@ export async function preparePackReceiptBackup(
           });
           return;
         }
-        if (entries.length === PACK_RECEIPT_BACKUP_MAX_ENTRIES) return invalid();
+        if (entries.length === maximum) return invalid();
         const key = checkedKey(cursor.primaryKey, binding);
         readBrowserPair(context, key, (raw, digest, exists) => {
           check();
@@ -362,6 +374,15 @@ export async function preparePackReceiptBackup(
     await inspectPackReceiptHistory(entry.raw, binding, check);
     check();
   }
+  return { binding, entries };
+}
+
+async function makePackReceiptBackup(
+  binding: PackSaveBinding,
+  entries: PackReceiptCandidate[],
+  check: () => void,
+): Promise<PackReceiptBackupCandidate> {
+  check();
   const document = {
     schema_version: 1,
     kind: 'context-pack-save-history-backup',
@@ -372,6 +393,131 @@ export async function preparePackReceiptBackup(
   check();
   const file = parsePackReceiptBackupFile({ document, document_sha256 });
   return { file, raw: packReceiptBackupFileJson(file) };
+}
+
+export async function preparePackReceiptBackup(
+  input: PackSaveBinding,
+  signal: AbortSignal,
+  check: () => void,
+): Promise<PackReceiptBackupCandidate> {
+  const snapshot = await readPackReceiptBackupSnapshot(
+    input,
+    PACK_RECEIPT_BACKUP_MAX_ENTRIES,
+    signal,
+    check,
+  );
+  return makePackReceiptBackup(snapshot.binding, snapshot.entries, check);
+}
+
+export async function preparePackReceiptVolumes(
+  input: PackSaveBinding,
+  signal: AbortSignal,
+  check: () => void,
+): Promise<PackReceiptVolumesCandidate> {
+  const { binding, entries } = await readPackReceiptBackupSnapshot(
+    input,
+    PACK_RECEIPT_VOLUMES_MAX_ENTRIES,
+    signal,
+    check,
+  );
+  const volumes: PackReceiptBackupCandidate[] = [];
+  for (
+    let offset = 0;
+    offset < Math.max(1, entries.length);
+    offset += PACK_RECEIPT_BACKUP_MAX_ENTRIES
+  ) {
+    volumes.push(
+      await makePackReceiptBackup(
+        binding,
+        entries.slice(offset, offset + PACK_RECEIPT_BACKUP_MAX_ENTRIES),
+        check,
+      ),
+    );
+    check();
+  }
+  const document = {
+    schema_version: 1,
+    kind: 'context-pack-save-history-volumes',
+    binding,
+    total_entries: entries.length,
+    volumes: volumes.map((volume, index) => ({
+      index: index + 1,
+      entries: volume.file.document.entries.length,
+      document_sha256: volume.file.document_sha256,
+    })),
+  };
+  const document_sha256 = await backupHash(packReceiptVolumesDocumentJson(document));
+  check();
+  const file = parsePackReceiptVolumesFile({ document, document_sha256 });
+  return { file, raw: packReceiptVolumesFileJson(file), volumes };
+}
+
+/** Accept exactly one manifest and every declared volume, independent of filenames or file order. */
+export async function inspectPackReceiptVolumes(
+  inputs: readonly string[],
+  input: PackSaveBinding,
+  check: () => void,
+): Promise<PackReceiptVolumesCandidate> {
+  check();
+  if (!Array.isArray(inputs) || inputs.length < 2 || inputs.length > PACK_RECEIPT_MAX_VOLUMES + 1)
+    return invalid();
+  const raws = [...inputs];
+  const binding = parsePackSaveBinding(input);
+  let manifest: PackReceiptVolumesFile | undefined;
+  const volumes = new Map<string, PackReceiptBackupCandidate>();
+  let totalBytes = 0;
+  for (const raw of raws) {
+    check();
+    if (typeof raw !== 'string' || !raw || raw.length > PACK_RECEIPT_BACKUP_FILE_BYTES)
+      return invalid();
+    const bytes = new TextEncoder().encode(raw).byteLength;
+    totalBytes += bytes;
+    if (bytes > PACK_RECEIPT_BACKUP_FILE_BYTES || totalBytes > PACK_RECEIPT_VOLUMES_SET_BYTES)
+      return invalid();
+    const parsed: unknown = JSON.parse(raw.replace(/^\uFEFF/, ''));
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || !('document' in parsed))
+      return invalid();
+    const document = parsed.document;
+    if (
+      document &&
+      typeof document === 'object' &&
+      'kind' in document &&
+      document.kind === 'context-pack-save-history-volumes'
+    ) {
+      if (manifest || bytes > PACK_RECEIPT_VOLUMES_FILE_BYTES) return invalid();
+      manifest = parsePackReceiptVolumesFile(parsed);
+      assertPackSaveBinding(manifest.document.binding, binding);
+      if (
+        (await backupHash(packReceiptVolumesDocumentJson(manifest.document))) !==
+        manifest.document_sha256
+      )
+        return invalid();
+      check();
+    } else {
+      if (volumes.size === PACK_RECEIPT_MAX_VOLUMES) return invalid();
+      const candidate = await inspectPackReceiptBackup(raw, binding, check);
+      if (volumes.has(candidate.file.document_sha256)) return invalid();
+      volumes.set(candidate.file.document_sha256, candidate);
+    }
+  }
+  if (!manifest || volumes.size !== manifest.document.volumes.length) return invalid();
+  const ordered: PackReceiptBackupCandidate[] = [];
+  let previous: string | undefined;
+  let total = 0;
+  for (const descriptor of manifest.document.volumes) {
+    check();
+    const volume = volumes.get(descriptor.document_sha256);
+    if (!volume || volume.file.document.entries.length !== descriptor.entries) return invalid();
+    for (const entry of volume.file.document.entries) {
+      if (previous !== undefined && entry.document_sha256 <= previous) return invalid();
+      previous = entry.document_sha256;
+      total++;
+    }
+    ordered.push(volume);
+  }
+  if (total !== manifest.document.total_entries) return invalid();
+  check();
+  return { file: manifest, raw: packReceiptVolumesFileJson(manifest), volumes: ordered };
 }
 
 export interface PackReceiptRestoreComparison {

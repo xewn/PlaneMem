@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PackSaveBinding } from '@planemem/contracts';
 import { backupOperation } from '../sync/receipt/backup-operation';
+import { PackReceiptVolumesPanel } from './save-receipt-volumes-panel';
 import {
   PACK_RECEIPT_BACKUP_FILE_BYTES,
   PACK_RECEIPT_BACKUP_MAX_ENTRIES,
@@ -64,6 +65,7 @@ export function PackReceiptBackupPanel({
   onHistoryWrite: () => void;
 }) {
   const [backup, setBackup] = useState<PackReceiptBackupCandidate>();
+  const [volumeLabel, setVolumeLabel] = useState<string>();
   const [preview, setPreview] = useState<BackupPreview>();
   const currentPreview =
     preview?.reviewGeneration === reviewGeneration && preview.backupRaw === backup?.raw
@@ -216,6 +218,7 @@ export function PackReceiptBackupPanel({
           return;
         }
         setBackup(result.backup);
+        setVolumeLabel(undefined);
         setMessage(
           'The complete backup and every observation checksum match this identity. Review or export it; no history was restored.',
         );
@@ -287,8 +290,8 @@ export function PackReceiptBackupPanel({
       <p>
         A complete backup covers this gateway, project, account, client and permission scope,
         regardless of the list filters. At most {PACK_RECEIPT_BACKUP_MAX_ENTRIES} observations fit
-        in one backup (4 MiB plus 1 KiB). Larger or damaged histories are rejected without
-        truncation.
+        in one backup (4 MiB plus 1 KiB). Use volumes below for larger histories. Damaged or
+        oversized backups are rejected without truncation.
       </p>
       <button
         type="button"
@@ -311,8 +314,29 @@ export function PackReceiptBackupPanel({
           }}
         />
       </label>
+      <PackReceiptVolumesPanel
+        key={JSON.stringify(binding)}
+        binding={binding}
+        disabled={busy || disabled}
+        getStorageGeneration={getStorageGeneration}
+        begin={begin}
+        end={end}
+        onSelect={(candidate, label) => {
+          setBackup(candidate);
+          setVolumeLabel(label);
+          setPreview(undefined);
+          reviewedRef.current = null;
+          setReviewed(null);
+          removalReviewedRef.current = null;
+          setRemovalReviewed(null);
+          setMessage(
+            'Selected volume is ready for review. Compare it again before confirming restoration or removal. No history was changed.',
+          );
+        }}
+      />
       {backup && (
         <>
+          {volumeLabel && <p>Selected {volumeLabel}. Actions below apply only to this volume.</p>}
           <p>
             Backup ready for review · {backup.file.document.entries.length} observations · SHA-256 ·{' '}
             {backup.file.document_sha256}
