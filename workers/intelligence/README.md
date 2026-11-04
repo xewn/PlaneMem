@@ -2,6 +2,8 @@
 
 更新：2026-11-04。本轮仅开发代码与说明，未编译、类型检查、测试、安装依赖、启动服务、迁移、部署或发布。
 
+新增 [生成日志备份离线取用](../../docs/design/01-contracts/proposal-generation-journal-backup-access-runtime.md)：`generation-journal-backup-list/get/result/outcome` 完整核验备份后分页查询、审阅原请求或导出原结果。列表默认10最多20条、原键摘要升序；续页与选择固定原备份摘要，get/result/outcome 还需原 key。result 保存既有 `proposal-generation` 文件；outcome 保存原 `request/attempt/outcome` 三字段，供之后向已有同文请求和原领取显式补存。不访问日志、队列、凭据或模型。输出为新文件，失败保留完整 content 与保存阶段；自定义错误封套不能整体作为 generation-recover 输入。具体参数及边界见契约。
+
 `SqliteProposalQueue` 把已经生成或人工撰写的建议保存到本地 SQLite，`flushProposalQueue` 再使用真实 HTTP 网关提交。新增独立 `generateProposalDraft`/`proposal-worker generate`，使用明确配置的模型接口把指定来源摘录生成可审阅草稿，详见 [模型草稿生成](../../docs/design/01-contracts/proposal-generation-runtime.md)。生成不会自动入队；提交不会重新生成正文、改写来源、确认或拒绝建议。原 `ProposalService` 保留为离线兼容辅助类，已标记 deprecated，不是网关的存储。
 
 ## 配置与命令

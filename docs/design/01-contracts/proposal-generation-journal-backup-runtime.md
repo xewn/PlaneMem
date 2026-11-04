@@ -66,4 +66,8 @@ recover 输入可以是原备份文件，也可以是上述两类完整失败封
 
 `captureGenerationJournalBackup(directory, binding)`、`inspectGenerationJournalBackup(value)`、`generationJournalBackupSummary(value)`、`readGenerationJournalBackup(path)`、`prepareGenerationJournalBackupOutput(path)` / `saveGenerationJournalBackup(preparedOutput, value)`，以及 `inspectGenerationJournalBackupRecovery(value)` / `readGenerationJournalBackupRecovery(path)` 从 worker 导出。
 
-已补 [恢复到新隔离目录](proposal-generation-journal-restore-runtime.md)：先预览并确认源摘要，再完整保存原请求/领取/结果和原备份，保留生成隔离；恢复后的查询、结果导出及原领取结果补存可用，不把 prepared 观察转为再次派发资格。普通运行目录原位合并仍未提供，也不直接从备份文件选择生成记录导出。跨队列/日志联合一致备份、供应商未知调用对账、原进程协调、保留/清理策略、签名/加密及全局审计仍缺。目录并发、文件系统失败、格式兼容和真实运行证据待后续获准后补充，现阶段没有执行结果。
+已补 [恢复到新隔离目录](proposal-generation-journal-restore-runtime.md)：先预览并确认源摘要，再完整保存原请求/领取/结果和原备份，保留生成隔离；恢复后的查询、结果导出及原领取结果补存可用，不把 prepared 观察转为再次派发资格。
+
+已补 [备份离线目录与结果取用](proposal-generation-journal-backup-access-runtime.md)：无需恢复目录，直接全量核验后分页查找、完整审阅，并按原备份摘要/原键导出成功记录或原request/attempt/outcome恢复文件；保持原时间/摘要和未知状态。
+
+普通运行目录原位合并、跨队列/日志联合一致备份、供应商未知调用对账、原进程协调、保留/清理策略、签名/加密及全局审计仍缺。目录并发、文件系统失败、格式兼容和真实运行证据待后续获准后补充，现阶段没有执行结果。

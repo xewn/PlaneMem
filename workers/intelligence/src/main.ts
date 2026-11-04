@@ -101,6 +101,14 @@ import {
   compareGenerationJournalDirectory,
 } from './generation-journal-comparison.js';
 import { mergeGenerationJournalBackup } from './generation-journal-merge.js';
+import {
+  getGenerationJournalBackupRequest,
+  listGenerationJournalBackupRequests,
+  parseGenerationJournalBackupQuery,
+  parseGenerationJournalBackupSelection,
+  prepareGenerationJournalBackupResult,
+  prepareGenerationJournalBackupOutcome,
+} from './generation-journal-backup-access.js';
 
 const help = `Proposal submission queue (Node.js 24)
   proposal-worker prepare-generation --binding binding.json --file selection.json --output NEW_SOURCES.json [--record]
@@ -115,6 +123,10 @@ const help = `Proposal submission queue (Node.js 24)
   proposal-worker generation-requests --journal EXISTING_DIR --binding binding.json [--state all|prepared|attempted|generated|failed] [--after CURSOR] [--limit 10]
   proposal-worker generation-journal-backup --journal EXISTING_DIR --binding binding.json --output NEW_BACKUP.json
   proposal-worker inspect-generation-journal-backup --file BACKUP.json
+  proposal-worker generation-journal-backup-list --file BACKUP.json [--state all|prepared|attempted|generated|failed] [--limit 10] [--after REQUEST_KEY_SHA256 --sha256 BACKUP_SHA256]
+  proposal-worker generation-journal-backup-get --file BACKUP.json --sha256 BACKUP_SHA256 --key ORIGINAL_KEY
+  proposal-worker generation-journal-backup-result --file BACKUP.json --sha256 BACKUP_SHA256 --key ORIGINAL_KEY --output NEW_RECORD.json
+  proposal-worker generation-journal-backup-outcome --file BACKUP.json --sha256 BACKUP_SHA256 --key ORIGINAL_KEY --output NEW_RECOVERY.json
   proposal-worker generation-journal-backup-recover --file BACKUP_OR_ERROR.json --output NEW_BACKUP.json [--preview]
   proposal-worker generation-journal-restore --file BACKUP.json --binding binding.json --output NEW_JOURNAL_DIR --preview
   proposal-worker generation-journal-restore --file BACKUP.json --binding binding.json --output NEW_JOURNAL_DIR --confirm-sha256 BACKUP_SHA256
@@ -168,6 +180,7 @@ generation-recover imports retained outcomes for the original existing attempt; 
 generation-requests discovers requests for the original binding; follow next_cursor even when a filtered page is empty.
 generation-journal-backup retains complete requests, attempts and outcomes for the original binding after two matching read passes. Pause writers first; this is not a transactional snapshot or permission to resend.
 inspect-generation-journal-backup verifies the retained file offline; generation-journal-backup-recover saves a new copy of a complete retained backup. Preview writes nothing; neither restores a live journal or calls the model.
+generation-journal-backup-list/get inspect original work offline; selection and continuation require the backup digest. result exports an original successful record; outcome exports the original request/attempt/outcome for later explicit recovery against an identical existing request and attempt. No journal, queue or provider is accessed.
 generation-journal-restore creates a new guarded directory after digest confirmation, preserving original requests, attempts and outcomes. It blocks new generation requests and model calls, including prepared observations; status/result and existing-outcome recovery remain available. Keep the marker, source backup and original directory; older workers do not implement this guard.
 generation-journal-compare compares two complete backups, or observes an existing directory read-only. It reports missing/extra files and immutable-content/identity conflicts; differences still exit 0. Comparison never merges, releases quarantine or authorizes provider calls.
 generation-journal-merge adds missing files only to an existing quarantined restored directory after plan confirmation. It preserves source/before snapshots and never overwrites originals. File groups are not atomic: retain partial work after failure and preview again. Pause all writers; generation stays blocked.
@@ -228,6 +241,10 @@ export async function main(args: string[]): Promise<number> {
       'generation-requests': ['journal', 'binding', 'state', 'after', 'limit'],
       'generation-journal-backup': ['journal', 'binding', 'output'],
       'inspect-generation-journal-backup': ['file'],
+      'generation-journal-backup-list': ['file', 'state', 'limit', 'after', 'sha256'],
+      'generation-journal-backup-get': ['file', 'sha256', 'key'],
+      'generation-journal-backup-result': ['file', 'sha256', 'key', 'output'],
+      'generation-journal-backup-outcome': ['file', 'sha256', 'key', 'output'],
       'generation-journal-backup-recover': ['file', 'output', 'preview'],
       'generation-journal-restore': ['file', 'binding', 'output', 'preview', 'confirm-sha256'],
       'generation-journal-compare': ['file', 'against', 'journal', 'binding'],
@@ -284,6 +301,10 @@ export async function main(args: string[]): Promise<number> {
             'generation-requests',
             'generation-journal-backup',
             'inspect-generation-journal-backup',
+            'generation-journal-backup-list',
+            'generation-journal-backup-get',
+            'generation-journal-backup-result',
+            'generation-journal-backup-outcome',
             'generation-journal-backup-recover',
             'generation-journal-restore',
             'generation-journal-compare',
@@ -317,6 +338,81 @@ export async function main(args: string[]): Promise<number> {
     if (command === 'inspect-generation-journal-backup') {
       const backup = await readGenerationJournalBackup(required('file'));
       process.stdout.write(JSON.stringify(generationJournalBackupSummary(backup), null, 2) + '\n');
+      return 0;
+    }
+    if (command === 'generation-journal-backup-list') {
+      if (
+        values.limit !== undefined &&
+        (!/^[1-9]\d?$/.test(values.limit) || values.limit !== String(Number(values.limit)))
+      )
+        throw new TypeError('--limit must be between 1 and 20');
+      const query = parseGenerationJournalBackupQuery({
+        limit: values.limit === undefined ? 10 : Number(values.limit),
+        state: values.state ?? 'all',
+        after: values.after ?? null,
+        backup_sha256: values.sha256 ?? null,
+      });
+      const backup = await readGenerationJournalBackup(required('file'));
+      process.stdout.write(
+        JSON.stringify(listGenerationJournalBackupRequests(backup, query), null, 2) + '\n',
+      );
+      return 0;
+    }
+    if (
+      command === 'generation-journal-backup-get' ||
+      command === 'generation-journal-backup-result' ||
+      command === 'generation-journal-backup-outcome'
+    ) {
+      const selection = parseGenerationJournalBackupSelection({
+        backup_sha256: required('sha256'),
+        request_key: required('key'),
+      });
+      const target = command === 'generation-journal-backup-get' ? undefined : required('output');
+      const backup = await readGenerationJournalBackup(required('file'));
+      if (command === 'generation-journal-backup-get') {
+        process.stdout.write(
+          JSON.stringify(getGenerationJournalBackupRequest(backup, selection), null, 2) + '\n',
+        );
+        return 0;
+      }
+      const recovery =
+        command === 'generation-journal-backup-result'
+          ? prepareGenerationJournalBackupResult(backup, selection)
+          : prepareGenerationJournalBackupOutcome(backup, selection);
+      let outputPath = target!;
+      let exportPhase = 'prepare';
+      let report: unknown;
+      try {
+        const destination = await prepareGenerationOutput(target!);
+        outputPath = destination.path;
+        exportPhase = 'save';
+        const saved =
+          recovery.format === 'proposal-generation'
+            ? await saveProposalGenerationRecord(destination, recovery.content)
+            : await saveGenerationFile(
+                destination,
+                Buffer.from(JSON.stringify(recovery.content, null, 2) + '\n', 'utf8'),
+                GENERATION_RECOVERY_BYTES,
+                'trace_worker_backup_outcome_' + createUlid(),
+                'PROPOSAL_GENERATION_JOURNAL_BACKUP_OUTCOME_SAVE_FAILED',
+              );
+        const { content: _content, ...summary } = recovery;
+        report = { ...summary, output: { ...saved, format: recovery.format } };
+      } catch (error) {
+        process.stderr.write(
+          JSON.stringify({
+            code: 'PROPOSAL_GENERATION_JOURNAL_BACKUP_ENTRY_EXPORT_FAILED',
+            recovery,
+            output: {
+              output_path: outputPath,
+              export_phase: exportPhase,
+              ...(error instanceof ContractError ? error.envelope.details : {}),
+            },
+          }) + '\n',
+        );
+        return 1;
+      }
+      process.stdout.write(JSON.stringify(report, null, 2) + '\n');
       return 0;
     }
     if (command === 'generation-journal-restore') {
