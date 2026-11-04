@@ -178,7 +178,7 @@ release 记录表示内容已校验且获准释放，`delivery_confirmed=false`�
 
 artifact_download_max_bytes 默认取 artifact_storage.max_bytes，否则为 64 MiB，可设 0–1 GiB；实际读对象还受持久服务自身上限及记录 size 限制。HTTP 每实例最多两路下载，名额从处理开始保持到响应 finish/close 或失败；超额返回 503 ARTIFACT_DOWNLOAD_BUSY。发送阶段最多 60 秒，超时关闭响应。此期限不替代数据库、对象适配器及策略 provider 的自身时限。完整字节在内存校验后发送，尚无流式 hash、范围下载或断点续传。
 
-SDK `downloadArtifactVersion(id, version, { max_bytes? })` 先读取指定历史元数据，超过调用方上限则不发内容请求；默认 64 MiB，最大 1 GiB。客户端上下文必须固定项目/账号/客户端，内容请求附原身份前置头、版本/hash/size，且不继承写条件。FetchWcpTransport 新增 response_type=bytes 与必需 max_response_bytes，限制实际读取字节，失败时不返回部分内容；错误正文最多 1 MiB。自定义 transport 须返回 `{ status, headers, content: Uint8Array }`，headers 使用小写名称并保留校验头，不能把字节转换成 JSON 数组。
+SDK `downloadArtifactVersion(id, version, { max_bytes?, timeout_ms?, signal? })` 先读取指定历史元数据，超过调用方上限则不发内容请求；默认 64 MiB，最大 1 GiB。客户端上下文必须固定项目/账号/客户端，内容请求附原身份前置头、版本/hash/size，且不继承写条件。FetchWcpTransport 新增 response_type=bytes 与必需 max_response_bytes，限制实际读取字节，失败时不返回部分内容；错误正文最多16 KiB。整次下载默认180秒本地预算，支持signal；凭据/正文有独立传输期限，详见后文SDK下载期限与取消。自定义 transport 须返回 `{ status, headers, content: Uint8Array }`，headers 使用小写名称并保留校验头，不能把字节转换成 JSON 数组。
 
 SDK 只接受完整 200，校验范围/目标/版本/trace/hash/长度/审计头，复制字节后通过 Web Crypto SHA-256 再核验；任何异常不返回内容，不自动重试。返回 schema_version、trace_id、固定版本 source_refs，data 包含公开 artifact、audit_id、audit_state=release-recorded 与 content_state=verified，顶层 content 为独立 Uint8Array。SDK 不打开或保存文件，不把该结果视为原上传回执。Fetch 默认 30 秒超时仍可显式配置；工作台下载见下节。
 
@@ -363,6 +363,20 @@ SDK准备返回的原文件可由CLI inspect-request检查，并由已有上传/
 
 工具客户端须把request_json作为原UTF-8 JSON保存并核对摘要，不能保存整段MCP/业务封套或双重编码字符串。审阅后才明确将完整original与相同content_base64交create_artifact/put_artifact_version；状态未确认时继续用原文件get_artifact_receipt，不再prepare替换原键/版本。当前准备不预留版本、检查存储健康、确认上传权限未来有效，也不证明客户端已保存。无新SDK依赖、schema或迁移；仅源码文档人工审阅，未编译、类型检查、测试、执行MCP/API/SDK/数据库或发布，客户端/大正文/超时/并发及存储衔接均无运行证据，R-001保持未完成。
 
+## SDK 下载期限与取消（源码阶段）
+
+`downloadArtifactVersion(id, version, {max_bytes?,timeout_ms?,signal?})` 使用新的WcpArtifactDownloadOptions，返回形状保持并公开WcpArtifactDownloadResult。max_bytes默认64 MiB，可设0–1 GiB；timeout_ms默认180,000，可设1–2,147,483,647安全整数。调用开始固定范围/trace、必需账号/客户端、明确历史版本和普通数据选项；拒绝未知字段、访问器和符号，随后创建本地预算。元数据完整读取最多2 MiB，内容请求固定同一身份、历史版本、原SHA-256和精确长度，不继承写条件、不刷新当前版本。超出调用方大小限制时不派发内容请求。
+
+本地期限覆盖历史元数据、内容传输和Web Crypto摘要等待；前一阶段超时/取消不继续派发下一阶段，最终同步复制/解析/摘要比较后也核对期限。同步代码不能中途抢占，Web Crypto摘要不能主动停止，自定义transport也可能继续后台工作；SDK拒绝迟到结果，不自动重试。预先取消不调用transport。Fetch自身timeout_ms仍默认30秒，每次请求分别计时，与SDK整次预算取先到者；需要较长等待时应同时显式配置transport。
+
+Fetch的bytes模式只接受无正文GET及必需max_response_bytes，现支持signal。凭据提供器、fetch和每次正文读取共用传输预算；迟到凭据不发网络请求，迟到fetch响应取消正文，清理reader/body只尝试而不等待取消完成，挂起清理不能延长本地等待。请求no-store、拒绝重定向。成功只接受200、匹配trace、精确application/octet-stream、无压缩/分段、规范Content-Length；字节上限逐块执行，提前结束或多余字节均失败。缓冲从最多64 KiB开始按需增长，零长度响应可无body。错误正文最多16 KiB，要求JSON媒体类型、严格UTF-8和完整同trace错误封套；压缩错误按Fetch解码后的字节限制，401直接返回固定未认证错误。网络CLI历史元数据原借用bytes读取JSON，现改用2 MiB bounded-json；其既有完整历史元数据解析、内容GET、选项与保存流程保持。
+
+SDK从transport返回的普通三字段对象复制最多16 KiB响应头，核对完整范围/目标/版本/trace/hash/长度/审计头，只接受精确长度的非共享Uint8Array并在摘要前复制。SHA-256一致且预算未到期才返回独立content；不会返回部分内容。失败统一固定消息与retryable=false，details只记录download_stage、content_dispatch_state、content_state=not-returned、audit_state及client_save_state=not-confirmed。content_dispatch_state=started只表示已调用内容transport，不证明请求到达服务器；已在本地核对完整响应头时保留release_audit_id和release-recorded，其他情况为unconfirmed，不采信上游错误详情补认放行。正文传输失败可能发生在SDK取得响应对象之前，此时即使服务器已有release也仍只能报告unconfirmed；本地取消不能撤销放行审计或已发送字节。
+
+Mock既有下载signal检查可以承接此方法；模拟放行记录可能在SDK摘要完成前保存，取消不回滚。自定义transport须遵守bytes/bounded-json、大小和signal约定，其先行分配内存、网络缓冲及后台执行不由SDK保证。此增量没有流式hash、断点续传、磁盘保存或客户端保存回执，也不把下载当原上传回执。
+
+只修改源码文档并人工审阅，无新服务端接口/schema/依赖；未编译、类型检查、测试、执行SDK/CLI/Mock/API/数据库、实际下载或发布。期限/取消、空文件、坏长度/摘要、迟到响应和客户端兼容性仍缺运行证据。
+
 ## SDK 元数据与原回执有界读取（源码阶段）
 
 三个既有入口保留返回封套，新增可选 `WcpArtifactReadOptions`：
@@ -381,7 +395,7 @@ const receipt = await client.getArtifactReceipt(savedOriginal, { signal });
 
 成功元数据保留current/historical与content_state=not-checked；原回执保留recorded/not-observed及原历史版本语义。失败只返回同trace的有限错误码、固定消息、retryable=false和本次只读状态，不透出上游异常详情；原回执错误明确not-confirmed-by-this-read。not-observed、取消、超时、权限拒绝或响应损坏均不证明此前上传失败，也不授权新键重发。upload_dispatch_state=not-sent仅描述这次读取，不描述此前上传。
 
-SDK导出WcpArtifactReadOptions、ArtifactReadDetail、ArtifactMetadataView和ArtifactReceiptEnvelope。既有downloadArtifactVersion内部历史元数据查询随之获得默认30秒及2 MiB限制；其内容阶段和max_bytes接口不变，没有增加整个下载的超时/取消能力。Mock既有读取路由源码支持这些transport选项，尚无执行证据。
+SDK导出WcpArtifactReadOptions、ArtifactReadDetail、ArtifactMetadataView和ArtifactReceiptEnvelope。既有downloadArtifactVersion内部历史元数据查询随之获得默认30秒及2 MiB限制；本读取增量没有改变内容阶段；后续“SDK下载期限与取消”增量已另补整个下载的timeout_ms/signal及统一预算。Mock既有读取路由源码支持这些transport选项，尚无执行证据。
 
 本增量只有源码文档和人工审阅；没有服务端协议、schema或依赖变化，未编译、类型检查、测试、执行SDK/Mock/API/数据库或发布。实际传输、取消/迟到、数据隔离和兼容性证据仍待补。
 

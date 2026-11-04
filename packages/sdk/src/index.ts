@@ -20,6 +20,7 @@ export * from './continuity.js';
 export * from './fetch-transport.js';
 export type { WcpArtifactUploadContextOptions } from './artifact-upload-context.js';
 export type { WcpArtifactReadOptions } from './artifact-reads.js';
+export type { WcpArtifactDownloadOptions, WcpArtifactDownloadResult } from './artifact-download.js';
 export type {
   ArtifactReadDetail,
   ArtifactMetadataView,

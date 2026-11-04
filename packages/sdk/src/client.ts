@@ -8,9 +8,6 @@ import {
   parseArtifactUploadEnvelope,
   ARTIFACT_UPLOAD_MAX_BYTES,
   ARTIFACT_UPLOAD_REQUEST_BYTES,
-  ARTIFACT_DOWNLOAD_DEFAULT_BYTES,
-  ARTIFACT_DOWNLOAD_MAX_BYTES,
-  parseArtifactDownloadHeaders,
   assertArtifactReceiptIdentity,
   type ArtifactReceiptQuery,
   type ArtifactUploadDraft,
@@ -178,6 +175,7 @@ import {
   readArtifactReceipt,
   type WcpArtifactReadOptions,
 } from './artifact-reads.js';
+import { downloadArtifactVersion, type WcpArtifactDownloadOptions } from './artifact-download.js';
 import { uploadSyncEvents, type WcpSyncUploadOptions } from './sync-upload.js';
 import { readSyncChanges, iterateSyncChanges, type WcpSyncChangesOptions } from './sync-changes.js';
 import {
@@ -243,7 +241,7 @@ export interface WcpRequest {
   response_type?: 'json' | 'bytes' | 'bounded-json';
   /** Required for bytes/bounded-json; applied while reading, before returning any content. */
   max_response_bytes?: number;
-  /** Supported by bounded-json; cancellation stops local waiting, not remote side effects. */
+  /** Supported by bounded-json/bytes; stops local waiting, not remote side effects. */
   signal?: AbortSignal;
 }
 
@@ -1794,101 +1792,12 @@ export class WcpClient {
   }
 
   /** Download one immutable version after metadata lookup; release audit does not prove client delivery. */
-  async downloadArtifactVersion(
+  downloadArtifactVersion(
     artifactId: string,
     version: number,
-    options: { max_bytes?: number } = {},
+    options: WcpArtifactDownloadOptions = {},
   ) {
-    const context = { ...this.context };
-    if (!context.project_id || !context.actor_id || !context.client_id)
-      throw this.invalid('Artifact downloads require a fixed project, account and client identity');
-    if (
-      !options ||
-      typeof options !== 'object' ||
-      Array.isArray(options) ||
-      Object.keys(options).some((key) => key !== 'max_bytes')
-    )
-      throw this.invalid('Supply only max_bytes for an artifact download');
-    const limit = options.max_bytes ?? ARTIFACT_DOWNLOAD_DEFAULT_BYTES;
-    if (!Number.isSafeInteger(limit) || limit < 0 || limit > ARTIFACT_DOWNLOAD_MAX_BYTES)
-      throw this.invalid('Invalid artifact download byte limit');
-    if (typeof globalThis.crypto?.subtle?.digest !== 'function')
-      throw new ContractError(
-        'ARTIFACT_INTEGRITY_UNAVAILABLE',
-        'SHA-256 verification is unavailable',
-        { trace_id: context.trace_id },
-      );
-    const metadata = await this.getArtifactVersion(artifactId, version);
-    const artifact = metadata.data.artifact;
-    if (artifact.size > limit)
-      throw new ContractError('ARTIFACT_TOO_LARGE', 'Artifact exceeds this download byte limit', {
-        trace_id: context.trace_id,
-      });
-    const response = await this.transport.request<WcpBinaryResponse>({
-      method: 'GET',
-      path:
-        '/v1/artifacts/' +
-        this.segment(artifact.artifact_id) +
-        '/versions/' +
-        artifact.version +
-        '/content',
-      headers: {
-        'x-trace-id': context.trace_id,
-        'x-tenant-id': context.tenant_id,
-        'x-workspace-id': context.workspace_id,
-        'x-project-id': context.project_id,
-        'x-expected-actor-id': context.actor_id,
-        'x-expected-client-id': context.client_id,
-        'x-expected-artifact-sha256': artifact.sha256,
-        'x-expected-artifact-size': String(artifact.size),
-      },
-      response_type: 'bytes',
-      max_response_bytes: artifact.size,
-    });
-    let bytes: Uint8Array;
-    let auditId: string;
-    try {
-      if (
-        !response ||
-        typeof response !== 'object' ||
-        Array.isArray(response) ||
-        response.status !== 200 ||
-        Object.keys(response).some((key) => !['status', 'headers', 'content'].includes(key)) ||
-        !response.headers ||
-        typeof response.headers !== 'object' ||
-        Array.isArray(response.headers) ||
-        !(response.content instanceof Uint8Array) ||
-        response.content.byteLength !== artifact.size
-      )
-        throw new TypeError();
-      auditId = parseArtifactDownloadHeaders(
-        { ...response.headers },
-        artifact,
-        context.trace_id,
-      ).audit_id;
-      bytes = new Uint8Array(response.content);
-      const hash = new Uint8Array(
-        await globalThis.crypto.subtle.digest('SHA-256', bytes.buffer as ArrayBuffer),
-      );
-      if (
-        Array.from(hash, (byte) => byte.toString(16).padStart(2, '0')).join('') !== artifact.sha256
-      )
-        throw new TypeError();
-    } catch {
-      throw this.invalidResponse();
-    }
-    return {
-      schema_version: 1 as const,
-      trace_id: context.trace_id,
-      source_refs: [{ type: 'artifact', id: artifact.artifact_id, revision: artifact.version }],
-      data: {
-        artifact,
-        audit_id: auditId,
-        audit_state: 'release-recorded' as const,
-        content_state: 'verified' as const,
-      },
-      content: bytes,
-    };
+    return downloadArtifactVersion(this.transport, this.context, artifactId, version, options);
   }
 
   async getSessionRun(sessionId: string, runId: string) {

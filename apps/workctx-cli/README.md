@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+网络 `artifacts download` 的历史元数据GET已改用2 MiB bounded-json，衔接SDK Fetch bytes新增的严格二进制媒体类型、完整长度、16 KiB错误上限及凭据/正文期限。原CLI参数、固定版本校验和文件保存流程保持；下载传输改动仅源码兼容审阅，未编译、测试或执行命令，详见 [下载期限与取消](../../docs/design/01-contracts/artifact-persistence-runtime.md#sdk-下载期限与取消源码阶段)。
+
 CLI `artifacts prepare` 与 SDK `prepareArtifactUpload` 现共用 `ArtifactUploadDraft/parseArtifactUploadDraft`，同样拒绝旧身份/键/内容描述符及未明确填写的追加版本。CLI仍独占保存并读回文件；SDK仅返回待保存原请求。共享调整仅源码文档，未编译、测试或执行命令。
 
 新增 `artifacts inspect-request --json-file ORIGINAL.json [--file CONTENT [--max-bytes N]]`，无需项目配置或令牌，离线完整核验原请求；可选核对内容长度和SHA-256。返回原身份/完整命令、实际文件摘要、规范请求摘要及content_state，保留原键/预期版本；不写文件、不调用Gateway或认证文件身份。未提供内容时明确not-checked，成功退出0只表示本次本地检查通过，不确认此前上传结果。请求文件最多1 MiB；内容默认64 MiB，可显式0至1 GiB，max-bytes仅随file允许。详见 [离线核验边界](../../docs/design/01-contracts/artifact-persistence-runtime.md#cli-原请求离线核验源码阶段)。仅源码文档，未执行命令、编译或测试。

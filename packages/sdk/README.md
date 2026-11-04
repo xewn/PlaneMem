@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-04：`downloadArtifactVersion(id, version, {max_bytes?,timeout_ms?,signal?})` 新增整次本地预算，默认180秒，公开 `WcpArtifactDownloadOptions/WcpArtifactDownloadResult`。固定历史元数据、二进制与SHA-256阶段共享取消信号，失败不返回部分内容；已完整核对响应头的放行ID在后续错误保留，未知不证明服务端未放行。Fetch bytes现支持signal，凭据/网络/逐块正文共用其独立期限（仍默认30秒），成功限定完整200/octet-stream/trace/规范长度且无压缩，错误16 KiB；清理不等待，迟到凭据不派发。网络CLI历史元数据迁移为bounded-json以兼容严格bytes模式，CLI选项/保存流程不变。详见 [下载期限与取消](../../docs/design/01-contracts/artifact-persistence-runtime.md#sdk-下载期限与取消源码阶段)。仅源码文档人工审阅，未编译、类型检查、测试、调用SDK/CLI/Mock/API或发布。
+
 2026-11-04：`getArtifact(id, options?)`、`getArtifactVersion(id, version, options?)`、`getArtifactReceipt(original, options?)` 新增 `WcpArtifactReadOptions`，支持 `timeout_ms/signal`，默认本地等待30秒。当前/历史元数据完整响应最多2 MiB，原回执4 MiB，原请求输入1 MiB，Fetch错误16 KiB；固定范围、原身份约束与请求副本，完整共享解析后返回，不继承写条件或自动重试。失败不会转换为not-observed，不证明此前上传失败；元数据仍不核对内容。下载内部的元数据阶段也受默认预算约束，内容阶段选项不变。导出 `ArtifactReadDetail/ArtifactMetadataView/ArtifactReceiptEnvelope`；自定义transport须支持bounded-json与signal，SDK不限制其预先分配的内存。详见 [SDK元数据与原回执读取](../../docs/design/01-contracts/artifact-persistence-runtime.md#sdk-元数据与原回执有界读取源码阶段)。仅源码文档人工审阅，未编译、类型检查、测试、调用SDK/Mock/API或发布。
 
 2026-11-04：新增 `prepareArtifactUpload(draft, content, {max_bytes?,timeout_ms?,signal?})`、`WcpArtifactPreparationOptions/WcpPreparedArtifactUpload/ArtifactUploadDraft`，同步捕获新草稿与非共享Uint8Array内容副本，核对当前上传身份/限制，追加须匹配草稿明确审阅的expected_version。默认64 MiB、180秒，使用Web Crypto内容摘要与有界只读响应，最后生成一次新键并返回完整original、可保存的request_json及其SHA-256；状态prepared-not-saved，调用方须保存审阅后明确调用createArtifact/putArtifactVersion。上传和getArtifactReceipt核对scope及已配置的actor/client，省略时仍用原身份前置头交Gateway验证，支持普通字符串账号。原结果不明时保持原请求，不重新prepare。CLI草稿共用新共享解析器，见 [准备与保存边界](../../docs/design/01-contracts/artifact-persistence-runtime.md#sdk-原请求准备源码阶段)。无新依赖/迁移，仅源码文档，未编译、类型检查、测试或调用SDK/Mock/API。
@@ -74,7 +76,7 @@ const envelope = await client.exportAuditView(reviewedDocument, {
 
 公开 `WcpAuditOptions` 只含 `timeout_ms` 和 `signal`。本地整次等待默认读取 30 秒、导出 90 秒，包括摘要、传输和解析后的截止时间检查；正整数自定义期限最多 2147483647 毫秒。同步解析不能中途抢占，但迟到结果不返回成功。取消/超时不能撤销已派发导出，已知放行 ID 保留在错误 details，未知只能说明 unconfirmed。审计方法只提供有限错误说明、固定请求 trace、合法已确认放行引用，并将 retryable 设为 false；不直接回显上游原始 message/details。
 
-`FetchWcpTransport` 新增显式 `response_type:'bounded-json'`：必需 `max_response_bytes`（1–16 MiB），支持 JSON GET/POST 和 `signal`，不支持 multipart。成功只接受完整 200、正确 trace 头与 JSON 媒体类型，错误正文上限 16 KiB；严格 UTF-8，规范无压缩 Content-Length 必须与完整实际字节一致，压缩响应按 Fetch 解码后大小限制。审计列表请求上限 16 MiB，导出 128 KiB。凭据提供器、fetch、正文和解析共用传输期限；迟到凭据不会再发起请求，迟到 fetch 响应取消正文。无重定向、缓存或重试。普通 json/bytes 模式没有自动获得这些新增保证。
+`FetchWcpTransport` 新增显式 `response_type:'bounded-json'`：必需 `max_response_bytes`（1–16 MiB），支持 JSON GET/POST 和 `signal`，不支持 multipart。成功只接受完整 200、正确 trace 头与 JSON 媒体类型，错误正文上限 16 KiB；严格 UTF-8，规范无压缩 Content-Length 必须与完整实际字节一致，压缩响应按 Fetch 解码后大小限制。审计列表请求上限 16 MiB，导出 128 KiB。凭据提供器、fetch、正文和解析共用传输期限；迟到凭据不会再发起请求，迟到 fetch 响应取消正文。无重定向、缓存或重试。普通json模式没有自动获得这些保证；bytes模式的独立期限与取消现由后续下载增量补齐，见下载章节。
 
 传输层 `timeout_ms` 仍默认 30 秒，和审计方法期限各自生效，较早到期者停止等待；需要等待较久的导出时应同时配置传输层，例如构造 `FetchWcpTransport` 时设 `timeout_ms:90_000`。自定义 WcpTransport 需实现新的 bounded-json 大小、状态、trace 和取消约定；方法外层仍限制本地等待并验证完整对象，但不能保证自定义实现的网络缓冲、取消或后台副作用。SHA-256 不是离线签名，document_bytes 不是整个封套文件大小。
 
@@ -309,9 +311,9 @@ FetchWcpTransport 支持原生 FormData：request 为 application/json 文件部
 
 成功响应完整核对原身份、命令、内容描述、保存版本、来源和 trace；首次保存 replayed=false/content_state=verified-at-save，回执重放 replayed=true/content_state=not-checked。结果是历史快照，不含存储地址或外层 ETag，也不保证当前可下载。超时或响应损坏不能证明写入失败，保留原请求，显式调用 getArtifactReceipt(original)；不以当前版本或新键替换它。当前为源码接入，未编译、类型检查、测试或运行，详见 Artifact 持久化契约的公开上传章节。
 
-`downloadArtifactVersion(id, version, { max_bytes? })` 下载指定历史版本。调用上下文必须固定 project_id/actor_id/client_id；先读取该版本元数据，再按原 SHA-256/size 发送内容 GET，不自动选择当前版本。需要真实 artifact.read 和当前/历史分类导出权限：public 可导出，internal/confidential 需要 data.export 或 data.restricted.export，restricted 还需 data.restricted.read 与 data.restricted.export。服务器必须配置持久内容读取和审计保存。
+`downloadArtifactVersion(id, version, { max_bytes?, timeout_ms?, signal? })` 下载指定历史版本，整次本地预算默认180秒。调用上下文必须固定 project_id/actor_id/client_id；先读取该版本元数据，再按原 SHA-256/size 发送内容 GET，不自动选择当前版本。需要真实 artifact.read 和当前/历史分类导出权限：public 可导出，internal/confidential 需要 data.export 或 data.restricted.export，restricted 还需 data.restricted.read 与 data.restricted.export。服务器必须配置持久内容读取和审计保存。
 
-默认最多 64 MiB，可显式指定 0–1 GiB，仍受服务器上限约束。FetchWcpTransport 的 response_type=bytes 要求 max_response_bytes，只用于无正文 GET；按实际字节有界读取，错误正文上限 1 MiB，不跟随重定向。自定义 transport 返回 { status, headers, content: Uint8Array }，headers 使用小写名称。SDK 拒绝部分响应、范围/目标/trace/审计头不符以及长度/hash 错误，复制并验证 SHA-256 后才返回内容，不自动重试或提供未校验的部分数据。
+默认最多 64 MiB，可显式指定 0–1 GiB，仍受服务器上限约束。FetchWcpTransport 的 response_type=bytes 要求 max_response_bytes，只用于无正文 GET；按实际字节有界读取，错误正文上限16 KiB，不跟随重定向；凭据、网络和逐块正文共用传输期限并支持signal。成功要求200/octet-stream、匹配trace和规范精确长度，拒绝压缩/分段响应。自定义 transport 返回 { status, headers, content: Uint8Array }，headers 使用小写名称。SDK 拒绝部分响应、范围/目标/trace/审计头不符以及长度/hash 错误，复制并验证 SHA-256 后才返回内容，不自动重试或提供未校验的部分数据。
 
 返回对象的 data 包含公开 artifact、audit_id、audit_state=release-recorded 和 content_state=verified；顶层 content 为独立 Uint8Array，source_refs 固定到该 Artifact/版本。release-recorded 指服务端已持久记录获准释放，不能证明客户端已写入磁盘，也不确认原上传请求。SDK 不打开文件、不生成下载 URL、不写磁盘；Fetch 超时仍默认为 30 秒，可显式配置 timeout_ms。此入口仅源码，未编译、类型检查、测试、下载样本或运行，完整边界见 Artifact 持久化说明。
 

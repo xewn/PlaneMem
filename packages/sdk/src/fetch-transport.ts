@@ -6,6 +6,7 @@ import {
 } from '@planemem/contracts';
 import type { WcpRequest, WcpTransport } from './client.js';
 import { requestBoundedJson } from './bounded-json.js';
+import { requestBoundedBytes } from './bounded-bytes.js';
 
 export interface FetchWcpTransportOptions {
   base_url: string;
@@ -53,9 +54,10 @@ export class FetchWcpTransport implements WcpTransport {
     const headers = new Headers(request.headers);
     const responseType = request.response_type ?? 'json';
     const maxBytes = request.max_response_bytes;
+    const signal = request.signal;
     if (
       !['json', 'bytes', 'bounded-json'].includes(responseType) ||
-      (request.signal !== undefined && responseType !== 'bounded-json') ||
+      (signal !== undefined && responseType === 'json') ||
       (responseType === 'bytes'
         ? method !== 'GET' ||
           request.body !== undefined ||
@@ -72,7 +74,7 @@ export class FetchWcpTransport implements WcpTransport {
     )
       throw new ContractError(
         'INVALID_INPUT',
-        'Supply an explicit valid limit for bytes or bounded-json; cancellation requires bounded-json',
+        'Supply an explicit valid limit for bytes or bounded-json; cancellation requires either mode',
         { trace_id: trace },
       );
     let requestBody: string | FormData | undefined;
@@ -111,7 +113,19 @@ export class FetchWcpTransport implements WcpTransport {
         maximum: maxBytes!,
         trace,
         timeout: this.timeout,
-        signal: request.signal,
+        signal,
+        accessToken: () => this.options.access_token(),
+        send: this.send,
+      })) as T;
+    }
+    if (responseType === 'bytes') {
+      return (await requestBoundedBytes({
+        url,
+        headers,
+        maximum: maxBytes!,
+        trace,
+        timeout: this.timeout,
+        signal,
         accessToken: () => this.options.access_token(),
         send: this.send,
       })) as T;
@@ -120,10 +134,7 @@ export class FetchWcpTransport implements WcpTransport {
     if (!token)
       throw new ContractError('UNAUTHENTICATED', 'A bearer token is required', { trace_id: trace });
     headers.set('authorization', 'Bearer ' + token);
-    headers.set(
-      'accept',
-      responseType === 'bytes' ? 'application/octet-stream' : 'application/json',
-    );
+    headers.set('accept', 'application/json');
     const init: RequestInit = {
       method,
       headers,
@@ -141,24 +152,9 @@ export class FetchWcpTransport implements WcpTransport {
       });
     }
     const responseTrace = response.headers.get('x-trace-id') || trace;
-    if (responseType === 'bytes' && response.ok) {
-      const content = await readBoundedResponse(response, maxBytes!, trace);
-      return {
-        status: response.status,
-        headers: Object.fromEntries(response.headers.entries()),
-        content,
-      } as T;
-    }
     let body: unknown;
     try {
-      body =
-        responseType === 'bytes'
-          ? JSON.parse(
-              new TextDecoder('utf-8', { fatal: true }).decode(
-                await readBoundedResponse(response, 1024 * 1024, trace),
-              ),
-            )
-          : await response.json();
+      body = await response.json();
     } catch {
       throw new ContractError('GATEWAY_RESPONSE_INVALID', 'Gateway returned invalid JSON', {
         trace_id: responseTrace,
@@ -180,63 +176,5 @@ export class FetchWcpTransport implements WcpTransport {
       throw new ContractError(envelope.code, envelope.message, envelope);
     }
     return body as T;
-  }
-}
-
-async function readBoundedResponse(
-  response: Response,
-  maximum: number,
-  trace: string,
-): Promise<Uint8Array> {
-  const fail = () =>
-    new ContractError(
-      'GATEWAY_RESPONSE_INVALID',
-      'Gateway binary response is invalid, incomplete or exceeds the byte limit',
-      { trace_id: trace },
-    );
-  const declared = response.headers.get('content-length');
-  if (
-    declared !== null &&
-    (!/^(0|[1-9][0-9]*)$/.test(declared) ||
-      !Number.isSafeInteger(Number(declared)) ||
-      Number(declared) > maximum)
-  ) {
-    await response.body?.cancel().catch(() => undefined);
-    throw fail();
-  }
-  if (!response.body) {
-    if (declared !== null && declared !== '0') throw fail();
-    return new Uint8Array();
-  }
-  const reader = response.body.getReader();
-  let buffer = new Uint8Array(Math.min(maximum, 64 * 1024));
-  let used = 0;
-  let complete = false;
-  try {
-    while (true) {
-      const chunk = await reader.read();
-      if (chunk.done) {
-        complete = true;
-        break;
-      }
-      if (!(chunk.value instanceof Uint8Array) || used + chunk.value.byteLength > maximum)
-        throw fail();
-      if (used + chunk.value.byteLength > buffer.byteLength) {
-        const next = new Uint8Array(
-          Math.min(maximum, Math.max(buffer.byteLength * 2, used + chunk.value.byteLength)),
-        );
-        next.set(buffer.subarray(0, used));
-        buffer = next;
-      }
-      buffer.set(chunk.value, used);
-      used += chunk.value.byteLength;
-    }
-    if (declared !== null && Number(declared) !== used) throw fail();
-    return buffer.slice(0, used);
-  } catch {
-    throw fail();
-  } finally {
-    if (!complete) await reader.cancel().catch(() => undefined);
-    reader.releaseLock();
   }
 }

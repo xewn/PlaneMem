@@ -6,6 +6,8 @@
 
 ### 2026-11-04 开发补充（未编译、未发布、未测试）
 
+- P0/P2/P4：已补SDK固定版本下载整次180秒本地预算与AbortSignal，max_bytes默认64 MiB仍保持，元数据/二进制/摘要共用期限，固定身份/版本/描述、复制非共享字节并核验完整头和SHA-256；失败无部分返回，已核对放行ID保留、未确认不推断无记录。Fetch bytes新增凭据/网络/逐块正文取消与独立期限、严格成功200/trace/octet-stream/规范长度、错误16 KiB，清理不等待、迟到响应取消；网络CLI原bytes读取JSON改为bounded-json以保持兼容。Mock沿既有signal衔接，普通json不受影响；自定义transport/摘要后台、流式大文件、客户端保存回执及运行证据仍缺。无schema/依赖变化，仅源码文档人工审阅，未编译/类型检查/测试/执行SDK/CLI/Mock/API/数据库或发布，独立提交push main带[skip ci]。
+
 - P0/P2：已补SDK getArtifact/getArtifactVersion/getArtifactReceipt的WcpArtifactReadOptions，默认30秒本地预算、signal、当前/历史2 MiB和原回执4 MiB完整响应上限、原请求1 MiB及Fetch错误16 KiB。异步前固定上下文/选项/原查询，transport正文与本地期望分离，scope及可选账号客户端约束保持，回执始终附原身份前置头；完整共享解析、固定错误及迟到检查，不继承写条件、不重试/上传/刷新版本，失败不改成not-observed。下载元数据阶段受默认预算，内容接口保持；自定义transport须执行bounded-json/signal，其预先分配内存不受SDK全局控制。文档和Mock源码兼容说明已补，运行证据仍缺；无服务端/schema/依赖变化，仅源码文档人工审阅，未编译/类型检查/测试/执行SDK/Mock/API/数据库或发布，独立提交push main带[skip ci]。
 
 - P0/P2/P4：已补实际Gateway MCP prepare_artifact_upload，规范新草稿+最多4 MiB Base64内容，可信身份/限制及追加实际read能力/显式审阅版本核对后生成原请求JSON和摘要，明确未保存未上传；目录实际artifact.write、有效认证、readOnlyHint=true/idempotentHint=false，不走通用单路由准备或自动重试。与上传共用HTTP/嵌入两路容量，大正文扩展先预留容量，实际上传解析后仍核对持久writer；30秒本地期限，超时底层读取继续占槽，迟到不继续准备。输入8 MiB、原请求1 MiB、身份/错误16 KiB、元数据2 MiB、输出及二次转义均有界。调用方保存/恢复、客户端兼容和运行证据仍缺；仅源码文档人工审阅，无schema/依赖变化，未编译/类型检查/测试/执行MCP/API/SDK/数据库或发布，独立提交push main带[skip ci]。

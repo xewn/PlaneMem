@@ -83,7 +83,7 @@ session 可选 `download_access: {export_data,export_restricted,policy_allowed}`
 
 transport 请求必须指定 `response_type:'bytes'` 与安全整数 `max_response_bytes`，范围0至共享下载契约上限；实际文件大小还受 store 的 max_download_bytes 限制。后者独立于上传限制，默认16 MiB，可设0至16 MiB。零上限允许空文件。下载不能突破上传存储中的版本大小，也不会因调用方给出较高限制分配相应大小的缓冲区。
 
-最多两个在途下载，独立于上传并发；超过返回 ARTIFACT_DOWNLOAD_BUSY。复制所选版本字节后重新计算SHA-256，摘要等待结束再次核对会话、当前及历史权限和固定版本对象。下载期间可追加新版本，仍返回已选历史内容；不会改写版本或原上传回执。Web Crypto摘要不能主动取消；Mock在其完成后检查AbortSignal和到期状态。现有SDK下载选项仍只有max_bytes，其Fetch transport对取消的限制也未改变。
+最多两个在途下载，独立于上传并发；超过返回 ARTIFACT_DOWNLOAD_BUSY。复制所选版本字节后重新计算SHA-256，摘要等待结束再次核对会话、当前及历史权限和固定版本对象。下载期间可追加新版本，仍返回已选历史内容；不会改写版本或原上传回执。Web Crypto摘要不能主动取消；Mock在其完成后检查AbortSignal和到期状态。SDK下载现支持max_bytes/timeout_ms/signal，元数据、内容及摘要共用默认180秒预算；Mock沿既有signal核对，不回滚已经保存的模拟放行记录。Fetch bytes亦已补独立凭据/正文期限与取消，均仅源码衔接，未执行。
 
 返回200、独立Uint8Array及现有共享契约要求的完整二进制响应头：固定范围/版本/摘要/长度/trace、application/octet-stream、下载附件、no-store、nosniff、无ETag/Content-Range，audit-stage为release。先验证所有头部、字节完整性和释放记录容量，再同步记录并返回。SDK沿既有流程先读历史元数据、再取内容，最后独立核验响应头和SHA-256。
 
@@ -93,7 +93,7 @@ transport 请求必须指定 `response_type:'bytes'` 与安全整数 `max_respon
 
 ## 后续证据与范围
 
-SDK `getArtifact/getArtifactVersion/getArtifactReceipt` 现向既有Mock路由传入bounded-json、max_response_bytes及本地预算signal。Mock既有完整响应复制/大小检查、原身份前置头及取消检查可承接；SDK另核对全部共享封套，当前/历史上限2 MiB、原回执4 MiB，默认等待30秒。此处仅人工审阅源码兼容，未执行Mock；模拟响应不构成真实认证、持久回执或网络故障证据。SDK下载的元数据阶段随之获得默认预算，内容阶段仍沿用既有接口。
+SDK `getArtifact/getArtifactVersion/getArtifactReceipt` 现向既有Mock路由传入bounded-json、max_response_bytes及本地预算signal。Mock既有完整响应复制/大小检查、原身份前置头及取消检查可承接；SDK另核对全部共享封套，当前/历史上限2 MiB、原回执4 MiB，默认等待30秒。此处仅人工审阅源码兼容，未执行Mock；模拟响应不构成真实认证、持久回执或网络故障证据。SDK下载的元数据阶段随之获得有界读取；后续下载增量又将元数据、内容和摘要纳入同一可取消预算，见上文固定版本下载。
 
 SDK `prepareArtifactUpload` 已有源码，可经此Mock的上传身份与当前元数据GET准备新原请求，不调用multipart写路由；当前模拟权限、版本和大小限制照常生效。调用方明确保存/审阅后才可交既有创建/追加方法，SDK允许省略构造上下文中的actor/client但始终发送原请求身份前置头。此衔接只有人工源码核对，尚未执行准备、上传或Mock场景。
 

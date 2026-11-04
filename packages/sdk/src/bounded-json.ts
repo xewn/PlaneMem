@@ -26,7 +26,7 @@ const cancel = (response: Response) => {
   }
 };
 
-/** Only the explicit bounded-json path uses this complete credential/network/body deadline. */
+/** The bounded-json path uses a complete credential/network/body deadline. */
 export async function requestBoundedJson(input: BoundedJsonRequest): Promise<unknown> {
   const budget = createRequestBudget(input.trace, input.timeout, input.signal);
   let response: Response | undefined;

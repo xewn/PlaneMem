@@ -247,25 +247,14 @@ export async function callArtifactDownload(
     args,
     scope,
     trace,
-    async (query) => {
-      const response = await transport.request<WcpBinaryResponse>({
+    (query) =>
+      transport.request({
         method: 'GET',
         path: path(query),
         headers,
-        response_type: 'bytes',
+        response_type: 'bounded-json',
         max_response_bytes: 2 * 1024 * 1024,
-      });
-      try {
-        if (
-          response.status !== 200 ||
-          !/^application\/json(?:\s*;|$)/i.test(response.headers['content-type'] ?? '')
-        )
-          throw new TypeError();
-        return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(response.content));
-      } catch {
-        throw invalid(trace);
-      }
-    },
+      }),
     async (query, artifact) => {
       const response = await transport.request<WcpBinaryResponse>({
         method: 'GET',

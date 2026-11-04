@@ -1,5 +1,7 @@
 # PlaneMem
 
+补齐 [SDK附件下载超时与取消](docs/design/01-contracts/artifact-persistence-runtime.md#sdk-下载期限与取消源码阶段)：固定版本的元数据、文件读取和摘要校验共用本地期限，支持主动取消，默认180秒；二进制传输也限制凭据和正文等待，失败不返回部分文件。仅源码文档，未编译、测试、调用或发布。
+
 补齐 [SDK附件查询限制](docs/design/01-contracts/artifact-persistence-runtime.md#sdk-元数据与原回执有界读取源码阶段)：当前元数据、指定版本和原上传回执查询支持超时与取消，默认等待30秒，并限制完整响应大小；查询失败保持原请求，不判断此前上传失败。仅源码文档，未编译、测试、调用或发布。
 
 新增 [MCP附件原请求准备](docs/design/01-contracts/artifact-persistence-runtime.md#mcp-原请求准备源码阶段)：`prepare_artifact_upload` 接收新草稿与最多4 MiB内容，核对身份和追加版本，返回待保存的原请求JSON/摘要；不写入附件、不自动重试，与实际上传共用并发容量。仅源码文档，未编译、测试、调用或发布。

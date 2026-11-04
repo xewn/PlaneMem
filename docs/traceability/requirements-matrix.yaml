@@ -11,6 +11,26 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    sdk_artifact_download_budget_development_increment:
+      date: "2026-11-04"
+      status: "Source-only SDK complete download budget and cancelable binary transport; R-001 remains incomplete."
+      artifacts:
+        - "packages/sdk/src/artifact-download.ts"
+        - "packages/sdk/src/bounded-bytes.ts"
+        - "packages/sdk/src/fetch-transport.ts"
+        - "packages/sdk/src/client.ts"
+        - "packages/sdk/src/index.ts"
+        - "apps/workctx-cli/src/artifact-download.ts"
+        - "docs/design/01-contracts/artifact-persistence-runtime.md"
+        - "docs/design/01-contracts/artifact-mock-runtime.md"
+      behavior: "Add max_bytes/timeout_ms/signal download options with a default 180-second budget across fixed historical metadata, binary content and SHA-256. Preserve fixed identity/version/descriptor and existing result shape; copy unshared content before hashing. Binary Fetch supports cancellation and an independent credential/network/body deadline, strict 200/trace/octet-stream/canonical length, 16 KiB JSON errors and nonblocking cleanup. Do not dispatch after late credentials or publish partial/late results. Retain locally validated release IDs on subsequent failure without inferring absent server releases. Migrate CLI metadata from bytes to bounded-json for compatibility."
+      evidence: []
+      pending_evidence:
+        - "SDK/Mock/CLI compatibility; fixed identity/version, zero bytes and size/header/hash rejection"
+        - "Pre-cancel, credential/network/body/hash timeout, late replies and hanging cleanup"
+        - "Copied buffers, invalid options/response objects and retained or unknown release evidence"
+      remaining_scope: "Custom transport compliance, memory/streaming, client save receipts and runtime evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, SDK/CLI/Mock/API/database execution or release. No server/schema/dependency change."
     sdk_artifact_bounded_reads_development_increment:
       date: "2026-11-04"
       status: "Source-only SDK bounded metadata and original receipt reads; R-001 remains incomplete."
