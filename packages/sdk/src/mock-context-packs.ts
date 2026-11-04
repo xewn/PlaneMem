@@ -1,6 +1,14 @@
 import {
   ContractError,
   CONTEXT_PACK_READ_RESPONSE_BYTES,
+  CONTEXT_PACK_DIRECTORY_RESPONSE_BYTES,
+  compareContextPackDirectoryPositions,
+  createUlid,
+  encodeContextPackDirectoryCursor,
+  parseContextPackDirectoryCursor,
+  parseContextPackDirectoryEnvelope,
+  parseContextPackDirectoryQuery,
+  parseContextPackDirectoryRecord,
   contextPackReadHashJson,
   isSyncIdentifier,
   isUlid,
@@ -10,6 +18,8 @@ import {
   syncJsonSnapshot,
   type ContextPackReadEnvelope,
   type ContextPackReadQuery,
+  type ContextPackDirectoryQuery,
+  type ContextPackDirectoryRecord,
   type SyncCommandIdentity,
 } from '@planemem/contracts';
 import type { WcpRequest, WcpTransport } from './client.js';
@@ -36,13 +46,15 @@ export interface MockContextPackSession {
   visible_pack_ids: string[];
 }
 type Stored = MockContextPackSeed['packs'][number];
+type DirectoryStored = { record: ContextPackDirectoryRecord; read_restricted: boolean };
 type Session = MockContextPackSession & { visible: Set<string> };
 const configurationTrace = 'trace_mock_context_pack_configuration';
 const messages = {
   MOCK_CONTEXT_PACK_CONFIGURATION_INVALID:
     'Supply a bounded complete saved-pack dataset and explicit simulated session',
-  MOCK_ROUTE_NOT_FOUND: 'Mock saved context pack read route not found',
-  INVALID_INPUT: 'Supply a valid saved pack read without write or cache conditions',
+  MOCK_ROUTE_NOT_FOUND: 'Mock saved context pack read or directory route not found',
+  INVALID_INPUT:
+    'Supply a valid saved pack read or metadata query with its original cursor binding, without write or cache conditions',
   DENIED: 'The simulated session does not permit saved context pack reads',
   CONTEXT_PACK_NOT_FOUND: 'The selected saved pack is unavailable in this simulated project',
   CONTEXT_PACK_EXPIRED: 'The selected saved context pack expired',
@@ -90,7 +102,7 @@ function expiry(value: unknown): string {
   return value;
 }
 export function isMockContextPackPath(path: unknown): path is string {
-  return typeof path === 'string' && /^\/v1\/context-pack(?:[?#].*)?$/.test(path);
+  return typeof path === 'string' && /^\/v1\/context-packs?(?:[?#].*)?$/.test(path);
 }
 function queryFromPath(path: string): ContextPackReadQuery {
   if (new TextEncoder().encode(path).byteLength > 4096 || path.includes('#')) throw new TypeError();
@@ -102,12 +114,28 @@ function queryFromPath(path: string): ContextPackReadQuery {
   }
   return parseContextPackReadQuery(fields);
 }
+function directoryQueryFromPath(path: string): ContextPackDirectoryQuery {
+  if (new TextEncoder().encode(path).byteLength > 4096 || path.includes('#')) throw new TypeError();
+  const fields: Record<string, string | number> = {};
+  for (const [key, value] of new URLSearchParams(path.slice('/v1/context-packs'.length))) {
+    if (
+      !['pack_id', 'limit', 'cursor'].includes(key) ||
+      Object.hasOwn(fields, key) ||
+      (key === 'limit' && !/^[1-9][0-9]{0,2}$/.test(value))
+    )
+      throw new TypeError();
+    fields[key] = key === 'limit' ? Number(value) : value;
+  }
+  return parseContextPackDirectoryQuery(fields);
+}
 
 /** Fixed supplied snapshots and explicit source-state scenarios; no compiler or source database. */
 export class MockContextPackStore {
+  readonly #id = createUlid();
   readonly #scope: Scope;
   readonly #packs = new Map<string, Stored>();
   readonly #ordered: Stored[];
+  readonly #directory: DirectoryStored[];
   #active = 0;
 
   constructor(seed: MockContextPackSeed) {
@@ -119,6 +147,7 @@ export class MockContextPackStore {
       const scope = scopeRow as Scope;
       if (!Array.isArray(input.packs) || input.packs.length > 100) throw new TypeError();
       const packs: Stored[] = [];
+      const directory: DirectoryStored[] = [];
       const ids = new Set<string>();
       for (const entry of input.packs) {
         const row = record(entry, ['response', 'read_restricted', 'sources_current']);
@@ -138,10 +167,30 @@ export class MockContextPackStore {
           read_restricted: row.read_restricted,
           sources_current: row.sources_current,
         });
+        // Capture the scalar directory once; listing never traverses saved content or sources.
+        const receipt = response.data;
+        directory.push({
+          record: parseContextPackDirectoryRecord({
+            pack_id: receipt.pack_id,
+            version: receipt.version,
+            created_at: receipt.created_at,
+            expires_at: receipt.pack.expires_at,
+            budget_tokens: receipt.pack.budget_tokens,
+            used_tokens: receipt.used_tokens,
+          }),
+          read_restricted: row.read_restricted,
+        });
       }
-      return { scope, packs };
+      return {
+        scope,
+        packs,
+        directory: directory.sort((a, b) =>
+          compareContextPackDirectoryPositions(a.record, b.record),
+        ),
+      };
     });
     this.#scope = prepared.scope;
+    this.#directory = prepared.directory;
     for (const pack of prepared.packs) this.#packs.set(pack.response.data.pack_id, pack);
     // Match the production latest selection, without filtering stale or expired candidates first.
     this.#ordered = prepared.packs.sort((a, b) => {
@@ -200,6 +249,88 @@ export class MockContextPackStore {
     };
   }
 
+  private async listMetadata(
+    query: ContextPackDirectoryQuery,
+    session: Session,
+    trace: string,
+    maximum: number,
+    live: () => void,
+  ) {
+    live();
+    const binding = syncJsonSnapshot(
+      [
+        'mock-context-pack-directory-v1',
+        this.#id,
+        session.identity.tenant_id,
+        session.identity.workspace_id,
+        session.identity.project_id,
+        session.identity.actor_id,
+        session.identity.client_id,
+        session.project_readable,
+        session.read_context,
+        session.read_restricted,
+        [...session.visible_pack_ids].sort(),
+        query.limit,
+        query.pack_id ?? null,
+      ],
+      64 * 1024,
+    );
+    let key: string;
+    try {
+      // Hash only the cursor binding. Await the actual work so timeout retains the shared lease.
+      const digest = await globalThis.crypto.subtle.digest(
+        'SHA-256',
+        new TextEncoder().encode(binding),
+      );
+      if (!(digest instanceof ArrayBuffer) || digest.byteLength !== 32) throw new TypeError();
+      key = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join(
+        '',
+      );
+    } catch {
+      live();
+      return fail('CONTEXT_PACK_INVALID', trace);
+    }
+    live();
+    const before =
+      query.cursor === undefined ? undefined : parseContextPackDirectoryCursor(query.cursor);
+    if (before && before.key !== key) fail('INVALID_INPUT', trace);
+    const selected: ContextPackDirectoryRecord[] = [];
+    for (const { record: item, read_restricted } of this.#directory) {
+      live();
+      if (
+        !session.visible.has(item.pack_id) ||
+        (read_restricted && !session.read_restricted) ||
+        (query.pack_id !== undefined && item.pack_id !== query.pack_id) ||
+        (before && compareContextPackDirectoryPositions(before, item) >= 0)
+      )
+        continue;
+      selected.push(item);
+      if (selected.length > query.limit) break;
+    }
+    const data = selected.slice(0, query.limit);
+    const envelope = {
+      schema_version: 1,
+      trace_id: trace,
+      source_refs: [{ type: 'context-pack-directory', id: this.#scope.project_id }],
+      scope: this.#scope,
+      query,
+      content_state: 'metadata-only',
+      source_state: 'not-checked',
+      data,
+      ...(selected.length > query.limit
+        ? { next_cursor: encodeContextPackDirectoryCursor(key, data.at(-1)!) }
+        : {}),
+    };
+    const bounded = checked('GATEWAY_RESPONSE_INVALID', trace, () =>
+      snapshot(envelope, Math.min(maximum, CONTEXT_PACK_DIRECTORY_RESPONSE_BYTES)),
+    );
+    const result = checked('CONTEXT_PACK_INVALID', trace, () =>
+      parseContextPackDirectoryEnvelope(bounded, query, this.#scope, trace),
+    );
+    live();
+    return result;
+  }
+
   private async respond(raw: WcpRequest, session: Session): Promise<unknown> {
     const { method, path, body, response_type, max_response_bytes, signal } = raw;
     let trace = 'trace_unknown';
@@ -229,6 +360,13 @@ export class MockContextPackStore {
       live();
       if (method !== 'GET' || !isMockContextPackPath(path)) fail('MOCK_ROUTE_NOT_FOUND', trace);
       if (body !== undefined) fail('INVALID_INPUT', trace);
+      const directory = path.startsWith('/v1/context-packs');
+      if (
+        directory &&
+        (headers.has('transfer-encoding') ||
+          (headers.has('content-length') && headers.get('content-length') !== '0'))
+      )
+        fail('INVALID_INPUT', trace);
       for (const field of ['tenant_id', 'workspace_id', 'project_id'] as const)
         if (headers.get('x-' + field.replaceAll('_', '-')) !== session.identity[field])
           fail('DENIED', trace);
@@ -254,9 +392,17 @@ export class MockContextPackStore {
         (headers.has('traceparent') && headers.get('traceparent') !== trace)
       )
         fail('INVALID_INPUT', trace);
-      const query = checked('INVALID_INPUT', trace, () => queryFromPath(path));
+      const selection = checked('INVALID_INPUT', trace, () =>
+        directory
+          ? { kind: 'directory' as const, query: directoryQueryFromPath(path) }
+          : { kind: 'pack' as const, query: queryFromPath(path) },
+      );
       const maximum =
-        max_response_bytes === undefined ? CONTEXT_PACK_READ_RESPONSE_BYTES : max_response_bytes;
+        max_response_bytes === undefined
+          ? directory
+            ? CONTEXT_PACK_DIRECTORY_RESPONSE_BYTES
+            : CONTEXT_PACK_READ_RESPONSE_BYTES
+          : max_response_bytes;
       if (
         !Number.isSafeInteger(maximum) ||
         maximum < 1 ||
@@ -264,6 +410,18 @@ export class MockContextPackStore {
         (response_type === 'bounded-json' && max_response_bytes === undefined)
       )
         fail('INVALID_INPUT', trace);
+      if (selection.kind === 'directory') {
+        if (this.#active >= 2) fail('RATE_LIMITED', trace);
+        return await budget.wait(async () => {
+          this.#active++;
+          try {
+            return await this.listMetadata(selection.query, session, trace, maximum, live);
+          } finally {
+            this.#active--;
+          }
+        });
+      }
+      const query = selection.query;
       const available = (pack: Stored) =>
         session.visible.has(pack.response.data.pack_id) &&
         (!pack.read_restricted || session.read_restricted);

@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [保存包列表模拟支持](docs/design/01-contracts/context-pack-mock-runtime.md#保存包元数据目录2026-11-05源码增量)：已有保存包模拟数据可供SDK列表和分页读取，保持权限过滤、原筛选和续页绑定，列表与完整内容检查分开。仅源码文档，未运行模拟服务、编译、测试或发布。
+
 新增 [MCP 保存包列表](docs/design/01-contracts/context-pack-runtime.md#mcp-保存包目录读取2026-11-05源码增量)：`list_context_packs`按当前身份读取一页保存包元数据，支持编号筛选和显式续页，选中后可另行读取或对比完整包。仅源码文档，未编译、测试、执行或发布。
 
 新增 [CLI 保存包列表](docs/design/01-contracts/context-pack-runtime.md#cli-保存包目录读取2026-11-05源码增量)：`context list-packs`按编号筛选或分页查找保存包，保留完整元数据和续页信息，再显式读取或对比选中的包。支持超时及可选账号、客户端约束。仅源码文档，未编译、测试、执行或发布。

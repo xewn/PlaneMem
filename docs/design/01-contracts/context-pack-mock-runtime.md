@@ -1,5 +1,7 @@
 # 保存 ContextPack Mock（源码阶段）
 
+2026-11-05新增[保存包元数据目录](#保存包元数据目录2026-11-05源码增量)：同一store和会话提供GET /v1/context-packs，接入SDK listContextPacks/contextPackPages，不新增配置字段。列表只使用预先提取的六字段元数据，来源变化/过期记录仍可出现；仅源码文档，未执行Mock/SDK、编译、类型检查、测试或发布。
+
 2026-11-04新增 `MockContextPackStore`、`MockContextPackSeed`、`MockContextPackSession`，经 `MockWcpServer({context_packs:{store,session}})` 接入 `GET /v1/context-pack` 与 SDK `getContextPack`。这是独立固定数据集，可与上下文详情/历史/目录及其他 Mock 同时配置，但不自动同步数据或核对跨数据集来源。仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布；R-003未完成、`evidence: []`。
 
 ## 完整保存数据与显式场景
@@ -26,7 +28,7 @@
 
 ## 请求与完整响应
 
-仅支持GET /v1/context-pack及其查询字符串，无正文；4 KiB路径内只接受各出现一次的pack_id/format，拒绝片段、未知键、空或非法ID/格式。缺省format为json；markdown与mcp都保留完整包并附加原协议的Markdown rendered，URI明确指向选中的具体包，即使原请求选的是latest。rendered的文本及来源来自该包完整入选内容，最终再经共享完整解析器核对。
+完整包读取使用GET /v1/context-pack及其查询字符串，无正文；4 KiB路径内只接受各出现一次的pack_id/format，拒绝片段、未知键、空或非法ID/格式。缺省format为json；markdown与mcp都保留完整包并附加原协议的Markdown rendered，URI明确指向选中的具体包，即使原请求选的是latest。rendered的文本及来源来自该包完整入选内容，最终再经共享完整解析器核对。新增复数路径GET /v1/context-packs返回元数据目录，见下文。
 
 请求头完整复制、最多16 KiB，大小写重复拒绝；项目头必须匹配原会话，可选x-expected-actor-id/x-expected-client-id逐项相等。x-trace-id或traceparent提供合法trace，同时存在须相等。拒绝请求键、写版本、缓存、Range和content-encoding等条件。没有模拟认证token解析、HTTP状态/ETag响应头或真实审计；封套中的JSON ETag仍完整校验。
 
@@ -35,6 +37,35 @@
 每store两笔容量及30秒本地预算，支持signal与SDK更短期限；超时/取消只结束等待，底层WebCrypto摘要真正结束才释放名额，迟到响应不交付。同步解析不能中途抢占。容量错误RATE_LIMITED，等待错误GATEWAY_REQUEST_TIMEOUT/CANCELED；内部错误转固定说明，不暴露任意原始异常。配置错误MOCK_CONTEXT_PACK_CONFIGURATION_INVALID，未配置或不支持的路径MOCK_ROUTE_NOT_FOUND；SDK可将其白名单外的Mock专用错误转为GATEWAY_UNAVAILABLE。
 
 编译/写操作没有接入，其他Mock路由保持。该模拟返回不证明数据库事务、实时来源有效性、网络故障处理、生产权限或SQL成本。
+
+## 保存包元数据目录（2026-11-05，源码增量）
+
+同一`MockContextPackStore`通过既有`MockWcpServer`的context_packs配置处理GET /v1/context-packs；SDK `listContextPacks`和`contextPackPages`使用该完整目录，不回退到来源条目目录或读取latest。种子与会话字段保持，最多100包、整体16 MiB及会话64 KiB边界保持，不新建/编辑包。
+
+构造时在完整种子结构校验之后，把pack_id/version/created_at/expires_at/budget_tokens/used_tokens及内部read_restricted复制到独立目录数组。六字段按共享2 KiB记录规则验证；不新增或猜测字段，也不重算保存摘要。列表阶段仅处理这个数组，不再遍历包正文、排除项、hash、来源或sources_current。合法形状但保存摘要错误、包过期或模拟sources_current=false，均仍可在权限允许的目录中出现；另行getContextPack才执行原完整内容检查并可能失败。
+
+- 路径最多4 KiB，仅单值pack_id/limit/cursor；limit为无前导零的正整数文本、默认25、最大100，精确pack_id须ULID。未知/重复参数、片段、format/latest或写字段为INVALID_INPUT。无正文；沿原头部16 KiB/大小写重复/trace/项目/可选身份相等检查，禁止写/缓存/Range/content-encoding；目录还拒绝transfer-encoding及非零content-length。
+- 每次先检查原模拟会话到期和read_context，失败DENIED；project_readable=false为CONTEXT_PACK_NOT_FOUND。先按visible_pack_ids及read_restricted过滤，再按版本降序、相同版本ULID的ASCII顺序降序取limit+1；精确ID不在当前可见集合时返回空页，权限过滤无隐藏总数。next_cursor仅在多取一条时存在，不自动翻页。
+- 游标沿共享规范base64url位置格式，绑定摘要输入最多64 KiB，包含Mock专用域、每store随机ID、五项固定identity、项目/读取/restricted布尔权限、排序后的完整可见集合、limit与精确pack_id。身份/权限/集合/条件或store改变即INVALID_INPUT；可见ID配置重排不改变绑定。会话expires_at不进入绑定，同store按相同场景重新connect续期可继续，但每次仍检查新会话期限。游标不是签名或授权，不能在生产目录、其他store或其他Mock目录之间复用；本Mock无角色模型，仅使用这些显式权限布尔值。
+- WebCrypto SHA-256只计算上述游标绑定，不使用包hash或内容。不可用、异常或非32字节摘要返回CONTEXT_PACK_INVALID，不伪造游标；即使空数据页也需要绑定计算。完整JSON响应限256 KiB，遵守调用方更小正安全整数max_response_bytes；json/bounded-json沿原协议，后者必须显式限额。共享封套解析器核对原scope/query/trace、固定目录来源标记、metadata-only/not-checked、记录/顺序/唯一性/续页，结果完全复制，不暴露内部数组。source_refs的context-pack-directory标记仅符合协议，不代表真实SQL读取。
+- 目录与完整包读取共享每store两容量/30秒本地预算及signal，不另增容量池。目录绑定摘要直接等待实际Promise完成，SDK或外层超时后仍占槽，底层结束才释放；取消/超时不交付迟到页面，返回前再检查会话和预算。容量/取消/超时沿RATE_LIMITED、GATEWAY_REQUEST_CANCELED/TIMEOUT；超限为GATEWAY_RESPONSE_INVALID，结构或内部错误为CONTEXT_PACK_INVALID。同步筛选/解析只能阶段性检查期限，不能中途抢占。
+
+数据集固定，无法覆盖生产并发变更、实时来源图、SQL成本、HTTP状态/响应头或真实授权审计。目录游标边界与生产共享，绑定内容有意隔离；没有把Mock游标当作跨系统凭据或生产快照。下方示例沿既有client，仅展示接线，未执行：
+
+```ts
+const firstPage = await client.listContextPacks({ limit: 1 });
+if (firstPage.next_cursor) {
+  const nextPage = await client.listContextPacks({
+    ...firstPage.query,
+    cursor: firstPage.next_cursor,
+  });
+}
+for await (const page of client.contextPackPages({ limit: 10 }, { max_pages: 10 })) {
+  // Consume each complete metadata page; open selected IDs separately.
+}
+```
+
+R-003未完成、`evidence: []`。SDK单页/迭代/其他Mock共存、排序与精确空页、权限桶/可见集合、会话续期与store隔离、错误hash/过期/来源变化只在完整读失败、较小限额及摘要取消后容量保留仍缺运行证据。本轮仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行Mock/SDK/产品/API/数据库或发布；无新种子/会话字段、生产接口、依赖或迁移。
 
 ## 未执行的接线示例
 
