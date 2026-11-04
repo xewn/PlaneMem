@@ -1,5 +1,7 @@
 # PlaneMem
 
+完善 [上下文详情完整读取](docs/design/01-contracts/context-item-runtime.md)：网页读取当前或归档条目时，核对完整正文、版本、来源诊断和人工确认信息，限制响应大小与等待时间；异常保留原条目供重试。仅源码文档，未编译、测试、运行或发布。
+
 新增 [上下文对比差异筛选](docs/design/01-contracts/context-item-runtime.md)：网页可切换“只看变化”，快速跳转正文、来源、确认与记录信息，反向对比和重试保留显示方式与原版本。仅源码文档，未编译、测试、渲染或发布。
 
 新增 [SDK 上下文历史逐页浏览](docs/design/01-contracts/context-item-runtime.md)：按需读取下一页，固定原条目与身份，支持逐页超时、取消和页数上限，不预取或自动保存。仅源码文档，未编译、测试、运行或发布。

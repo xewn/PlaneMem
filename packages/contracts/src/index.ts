@@ -14,6 +14,7 @@ export * from './versioning.js';
 export * from './context.js';
 export * from './context-items.js';
 export * from './context-history.js';
+export * from './context-item-read.js';
 export * from './context-comparison.js';
 export * from './context-item-sync.js';
 export * from './proposals.js';

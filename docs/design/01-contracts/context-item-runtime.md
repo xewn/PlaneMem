@@ -1,5 +1,15 @@
 # ContextItem 录入与编辑开发说明
 
+## 2026-11-04 当前与归档详情完整读取增量
+
+新增contracts `parseContextItemReadQuery` / `parseContextItemReadEnvelope` 及公开类型、大小常量。查询最多4 KiB，只接受明确的current/archived与合法原item_id，拒绝未知字段、点路径及非普通JSON；完整成功封套最多2 MiB，核对schema、请求trace、原条目与完整租户/工作区/项目、正安全版本、revision和规范ETag。完整内容保留普通JSON语义及来源顺序/重复/可选字段，拒绝缺失正文、无效保存字段或日期，封套来源必须是当前条目版本加完整原来源。这里没有历史快照摘要，也不把ETag当成内容真实性证明。
+
+归档入口只接受带归档时间的excluded记录；当前入口拒绝归档字段，检查来源状态与sources_current一致、检查时间/范围、可选诊断数组的唯一合法本地来源索引/状态/原因/版本。诊断允许缺省，不生成遗漏项，也不将未检查项提升为current；提供诊断且整体current时必须覆盖所有本地来源并全部current，单项current须无问题原因且当前版本匹配原固定版本。整体current不得与已过期或excluded根条目矛盾。人工确认必须匹配当前confirmed版本及前一reviewed_version，含合法原身份、事件、规范理由与时间；旧confirmed条目可合法返回null，不补造确认。可选确认就绪仅属于proposed，严格检查与普通来源检查时间一致；有效期限在观察时仍有效且不晚于根条目期限，严格current须有来源且普通观察也current，confirm_allowed为true必须有sources_current为true的就绪记录。此校验不认证权限或外部来源，提示仍只代表原读取时的观察，写入继续由服务端重新检查。
+
+Web当前/归档两个读取函数在等待会话前捕获查询，专用响应模块沿原fetch起始30秒期限完成网络、完整UTF-8读取与结构检查。HTTP成功只接受200，错误须4xx/5xx且完整正文最多16 KiB；媒体类型、长度、trace及成功HTTP ETag与正文ETag一并核对，错误不得带ETag。401取消正文并要求登录；读取前后及失败时复核会话到期。超限、缺失、错误范围或结构整份失败，固定错误文案，现有页面保留原条目/归档视图供显式重试，不自动切到当前状态、重新发送或交付局部内容。
+
+本增量没有改动目录、ContextPack、SDK/CLI/MCP读取、写表单、Gateway路由、数据库/schema或依赖。仅源码文档人工审阅和格式文本检查；未编译、类型检查、测试、运行浏览器/产品/API/SQL或发布。旧数据兼容、大小/期限/中断/ETag、实时诊断组合和页面恢复仍待运行证据，R-003保持未完成、evidence为空。
+
 ## 2026-11-04 Web对比差异筛选增量
 
 /context/history/compare增加Display选择和Show all/Changes only切换链接，默认全部内容。URL仅增加单值show=all|changes；省略或显式all都规范为默认，空值、其他值及重复参数在读取前报错。此字段与history参数分开解析，不传给Gateway或共享比较查询，也不进入返回浏览页的过滤条件。历史页的比较选择表单也可直接选择显示模式。

@@ -954,6 +954,23 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_item_detail_read_development_increment:
+      date: "2026-11-04"
+      status: "Source-only bounded Web current/archived context detail reads; R-003 remains incomplete."
+      artifacts:
+        - "packages/contracts/src/context-item-read.ts"
+        - "packages/contracts/src/index.ts"
+        - "apps/web-console/src/lib/context-item-read-response.ts"
+        - "apps/web-console/src/lib/server-api.ts"
+        - "docs/design/01-contracts/context-item-runtime.md"
+      behavior: "Capture a strict 4 KiB explicit current/archived item query before session waits. Validate the complete 2 MiB document, exact scope/item/version/revision/ETag/sources, saved metadata, archive state, nullable legacy confirmation and live source/readiness diagnostics. Web checks HTTP/UTF-8/trace/ETag within the original 30-second deadline, bounds errors to 16 KiB, rechecks session expiry and preserves the original view for explicit retry. No partial body or synthetic confirmation."
+      evidence: []
+      pending_evidence:
+        - "Real stored current/archived and legacy confirmed records, diagnostics/readiness combinations"
+        - "Full response size, HTTP/ETag/trace/scope mismatches, deadline/cancellation and session expiry"
+        - "Browser selection/archived-view retry and existing write preparation compatibility"
+      remaining_scope: "Runtime evidence and bounded directory/pack and SDK/CLI/MCP reads. Source observations are not external authenticity or write authorization; ETag is not a content hash."
+      execution: "Source/docs, manual review and formatting/text checks only; no build, typecheck, tests, product/browser/API/SQL execution or release. No Gateway/schema/dependency changes."
     context_comparison_display_development_increment:
       date: "2026-11-04"
       status: "Source-only Web context comparison changes-only display and section navigation; R-003 remains incomplete."
