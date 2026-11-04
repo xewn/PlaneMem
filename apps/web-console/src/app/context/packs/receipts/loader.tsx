@@ -5,6 +5,7 @@ import { CONTEXT_PACK_SAVE_RECEIPT_FILE_BYTES, type PackSaveBinding } from '@pla
 import { backupOperation } from '../../../sync/receipt/backup-operation';
 import { PackReceiptHistoryEntry } from '../../save-receipt-entry';
 import { PackReceiptBackupPanel } from '../../save-receipt-backup-panel';
+import { PackReceiptAuditPanel } from '../../save-receipt-audit-panel';
 import { subscribePackReceiptHistoryChanges } from '../../save-receipt-changes';
 import { historyDateRangeError } from '../../../proposals/history-date-range';
 import {
@@ -358,6 +359,14 @@ export function PackReceiptHistoryBrowser({ binding }: { binding: PackSaveBindin
           </button>
         </div>
       ))}
+      <PackReceiptAuditPanel
+        binding={binding}
+        disabled={busy}
+        storageGeneration={storageGeneration.current}
+        getStorageGeneration={getStorageGeneration}
+        begin={begin}
+        end={end}
+      />
       <PackReceiptBackupPanel
         binding={binding}
         disabled={busy}

@@ -7,6 +7,8 @@ import {
   parseContextPackSaveReceiptFile,
   parsePackSaveBinding,
   assertPackSaveBinding,
+  encodePackSaveOriginal,
+  syncJsonSnapshot,
   type ContextPackSaveReceiptDocument,
   type ContextPackSaveReceiptFile,
   type PackSaveBinding,
@@ -56,6 +58,23 @@ export interface PackReceiptHistoryPage {
   entries: PackReceiptCandidate[];
   scanned: number;
   next: PackReceiptHistoryQuery | null;
+}
+export interface PackReceiptHistoryAudit {
+  binding: PackSaveBinding;
+  checked_at: string;
+  snapshot_sha256: string;
+  observations: number;
+  recorded_observations: number;
+  not_observed_observations: number;
+  request_keys: number;
+  conflicting_request_keys: {
+    request_key: string;
+    original_variants: number;
+    observations: number;
+  }[];
+  earliest_observed_at: string | null;
+  latest_observed_at: string | null;
+  canonical_receipt_bytes: number;
 }
 function invalid(): never {
   throw new Error(
@@ -312,7 +331,7 @@ export async function inspectPackReceiptBackup(
 }
 
 /** One complete unfiltered snapshot of both stores; never truncate or join separate list pages. */
-async function readPackReceiptBackupSnapshot(
+async function readPackReceiptSnapshot(
   input: PackSaveBinding,
   maximum: number,
   signal: AbortSignal,
@@ -330,41 +349,54 @@ async function readPackReceiptBackupSnapshot(
     (context) => {
       const entries: PackReceiptCandidate[] = [];
       const range = IDBKeyRange.bound(start, start + '\uffff', false, true);
-      const request = context.content.openKeyCursor(range);
-      request.onsuccess = context.guard(() => {
+      const contentCount = context.content.count(range);
+      const directoryCount = context.directory.count(range);
+      directoryCount.onsuccess = context.guard(() => {
         check();
-        const cursor = request.result;
-        if (!cursor) {
-          // A second scan in this transaction rejects directory-only orphan slots too.
-          let position = 0;
-          const directory = context.directory.openKeyCursor(range);
-          directory.onsuccess = context.guard(() => {
+        const total = contentCount.result;
+        if (
+          !Number.isSafeInteger(total) ||
+          total < 0 ||
+          total > maximum ||
+          total !== directoryCount.result
+        )
+          return invalid();
+        const request = context.content.openKeyCursor(range);
+        request.onsuccess = context.guard(() => {
+          check();
+          const cursor = request.result;
+          if (!cursor) {
+            // A second scan in this transaction rejects directory-only orphan slots too.
+            let position = 0;
+            const directory = context.directory.openKeyCursor(range);
+            directory.onsuccess = context.guard(() => {
+              check();
+              const cursor = directory.result;
+              if (!cursor) {
+                if (position !== entries.length || position !== total) return invalid();
+                context.accept(entries);
+                return;
+              }
+              const expected = entries[position];
+              if (
+                !expected ||
+                checkedKey(cursor.primaryKey, binding) !==
+                  slot(binding, expected.file.document_sha256)
+              )
+                return invalid();
+              position += 1;
+              cursor.continue();
+            });
+            return;
+          }
+          if (entries.length === maximum) return invalid();
+          const key = checkedKey(cursor.primaryKey, binding);
+          readBrowserPair(context, key, (raw, digest, exists) => {
             check();
-            const cursor = directory.result;
-            if (!cursor) {
-              if (position !== entries.length) return invalid();
-              context.accept(entries);
-              return;
-            }
-            const expected = entries[position];
-            if (
-              !expected ||
-              checkedKey(cursor.primaryKey, binding) !==
-                slot(binding, expected.file.document_sha256)
-            )
-              return invalid();
-            position += 1;
+            if (!exists) return invalid();
+            entries.push(pair(raw, digest, key, binding));
             cursor.continue();
           });
-          return;
-        }
-        if (entries.length === maximum) return invalid();
-        const key = checkedKey(cursor.primaryKey, binding);
-        readBrowserPair(context, key, (raw, digest, exists) => {
-          check();
-          if (!exists) return invalid();
-          entries.push(pair(raw, digest, key, binding));
-          cursor.continue();
         });
       });
     },
@@ -375,6 +407,76 @@ async function readPackReceiptBackupSnapshot(
     check();
   }
   return { binding, entries };
+}
+
+/** Inspect the complete current binding once; counts and hashes describe only that local snapshot. */
+export async function auditPackReceiptHistory(
+  input: PackSaveBinding,
+  signal: AbortSignal,
+  check: () => void,
+): Promise<PackReceiptHistoryAudit> {
+  const { binding, entries } = await readPackReceiptSnapshot(
+    input,
+    PACK_RECEIPT_VOLUMES_MAX_ENTRIES,
+    signal,
+    check,
+  );
+  let recorded = 0;
+  let bytes = 0;
+  let earliest: string | null = null;
+  let latest: string | null = null;
+  const requests = new Map<string, { originals: Set<string>; observations: number }>();
+  const digests: string[] = [];
+  for (const entry of entries) {
+    check();
+    const { document, document_sha256 } = entry.file;
+    if (document.receipt.data.status === 'recorded') recorded += 1;
+    bytes += new TextEncoder().encode(entry.raw).byteLength;
+    const time = document.observed_at;
+    if (earliest === null || time < earliest) earliest = time;
+    if (latest === null || time > latest) latest = time;
+    const key = document.original.request_key;
+    const request = requests.get(key) ?? { originals: new Set<string>(), observations: 0 };
+    request.originals.add(encodePackSaveOriginal(document.original));
+    request.observations += 1;
+    requests.set(key, request);
+    digests.push(document_sha256);
+  }
+  // Domain-separated reference to the complete verified set, independent of the check time.
+  const snapshot = syncJsonSnapshot(
+    {
+      schema_version: 1,
+      kind: 'context-pack-save-history-audit-snapshot',
+      binding,
+      observation_digests: digests.sort(),
+    },
+    128 * 1024,
+  );
+  check();
+  const snapshot_sha256 = await backupHash(snapshot);
+  check();
+  const conflicting = [...requests.entries()]
+    .filter(([, value]) => value.originals.size > 1)
+    .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+    .map(([request_key, value]) => ({
+      request_key,
+      original_variants: value.originals.size,
+      observations: value.observations,
+    }));
+  check();
+  return {
+    binding,
+    checked_at: new Date().toISOString(),
+    snapshot_sha256,
+    observations: entries.length,
+    recorded_observations: recorded,
+    not_observed_observations: entries.length - recorded,
+    request_keys: requests.size,
+    conflicting_request_keys: conflicting,
+    earliest_observed_at: earliest,
+    latest_observed_at: latest,
+    canonical_receipt_bytes: bytes,
+  };
 }
 
 async function makePackReceiptBackup(
@@ -400,7 +502,7 @@ export async function preparePackReceiptBackup(
   signal: AbortSignal,
   check: () => void,
 ): Promise<PackReceiptBackupCandidate> {
-  const snapshot = await readPackReceiptBackupSnapshot(
+  const snapshot = await readPackReceiptSnapshot(
     input,
     PACK_RECEIPT_BACKUP_MAX_ENTRIES,
     signal,
@@ -414,7 +516,7 @@ export async function preparePackReceiptVolumes(
   signal: AbortSignal,
   check: () => void,
 ): Promise<PackReceiptVolumesCandidate> {
-  const { binding, entries } = await readPackReceiptBackupSnapshot(
+  const { binding, entries } = await readPackReceiptSnapshot(
     input,
     PACK_RECEIPT_VOLUMES_MAX_ENTRIES,
     signal,
