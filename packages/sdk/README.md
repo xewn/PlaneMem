@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-05：既有备份比较函数新增独立导出路径`@planemem/sdk/context-pack-receipt-backup-comparison`，直接导向comparison模块及其本地核验、字节捕获和预算依赖，不经过SDK根客户端或Mock入口；函数、类型、4 MiB结果边界及错误行为保持。浏览器调用使用WebCrypto，不提供文件选择或存储访问，Web历史页在独立有界文件读取后调用此路径。Web新增对已有workspace SDK的依赖/锁链接及Next源码依赖声明，未引入新版本或执行安装；仅源码文档，未编译、类型检查、测试、运行SDK/浏览器或发布。
+
 2026-11-05：新增独立`compareContextPackReceiptBackups(fromFiles, toFiles, options)`。两侧分别接受一份既有单备份，或清单与全部分卷的JSON文本/UTF-8字节数组，可混合格式；首次await前捕获两侧完整输入。options必填trace_id，可选expected_binding、expected_from_document_sha256、expected_to_document_sha256、timeout_ms及signal。共用默认30秒预算，完整核验所有观察/卷/清单并要求两侧完整原绑定相同。返回backups-compared、两侧摘要及完整排序观察并集，presence为both/from-only/to-only，shared还核对完整规范文件；same_observations独立于分卷格式/根摘要。conflicting_request_keys列出任一侧或跨侧同键不同完整原请求，含原请求摘要与全部观察摘要引用；相同原文的多次观察不构成冲突。结果限4 MiB，不重复备份正文；调用方保留原文件以便审阅，不自动选择新旧、合并、恢复、删除或重发。无客户端/凭据/网络/存储访问；摘要与匹配绑定不认证身份或证明服务器现状。详见[SDK历史备份双侧比较](../../docs/design/01-contracts/context-pack-runtime.md#sdk历史备份双侧比较2026-11-05源码增量)。仅源码文档，未编译、类型检查、测试、执行SDK或发布。
 
 2026-11-05：新增独立`prepareContextPackReceiptBackup(observationFiles, { trace_id, binding, format, timeout_ms?, signal? })`，格式必填single或volumes，binding为原完整身份且空集合也必填。接受0–100/1000份已保存观察的JSON文本或UTF-8字节，逐份32 KiB及共享结构/摘要/绑定核验，重复摘要整批拒绝；按摘要排序，每100条一卷，保留同键不同观察，空分卷仍生成一空卷加清单。返回prepared-not-saved及完整规范文件/raw、根摘要、输入输出规模，文件与网页/CLI核验入口互通；只保证所提供观察范围，不推断全库历史。默认30秒可取消，无凭据/网络/文件读写/浏览器库访问，也不修改观察时间或触发原保存。详见[SDK历史备份构造](../../docs/design/01-contracts/context-pack-runtime.md#sdk历史备份构造2026-11-05源码增量)。仅源码文档，未编译、类型检查、测试、执行SDK或发布。

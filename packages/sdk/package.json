@@ -8,7 +8,8 @@
   },
   "exports": {
     ".": "./src/index.ts",
-    "./sync-event-receipt-file": "./src/sync-event-receipt-file.ts"
+    "./sync-event-receipt-file": "./src/sync-event-receipt-file.ts",
+    "./context-pack-receipt-backup-comparison": "./src/context-pack-receipt-backup-comparison.ts"
   },
   "type": "module",
   "name": "@planemem/sdk",

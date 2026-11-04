@@ -954,6 +954,30 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    web_context_pack_receipt_backup_comparison_development_increment:
+      date: "2026-11-05"
+      status: "Source-only Web comparison of two complete file backup sets with full report download; R-003 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/context/save-receipt-backup-comparison.ts"
+        - "apps/web-console/src/app/context/save-receipt-backup-comparison-panel.tsx"
+        - "apps/web-console/src/app/context/packs/receipts/loader.tsx"
+        - "apps/web-console/package.json"
+        - "apps/web-console/next.config.mjs"
+        - "packages/sdk/package.json"
+        - "packages/sdk/README.md"
+        - "pnpm-lock.yaml"
+        - "docs/design/01-contracts/context-pack-runtime.md"
+      behavior: "Select two independent 1-11-file backups and optional expected root digests, capture both File lists/metadata and the current full binding before asynchronous reads, then share the page's 30-second cancellable operation budget with complete SDK comparison. Use a direct browser-compatible SDK subpath instead of root client/Mock imports; add only the existing workspace dependency, lock link and Next source transpilation declaration. Verify actual file lengths/raw hashes and preserve the full comparison with at most 512 KiB input metadata and 4 MiB plus 512 KiB total finite JSON. Show side summaries, shared/unique counts, exact-key/presence filters with 50-row view pagination and every conflicting original reference. Retain earlier reports across selection changes, failures and cancellation; synchronous selection generations and operation identity reject stale completions. Explicit report download uses the complete captured JSON regardless of filters, not a recoverable backup. Parent locking revokes old write confirmations; comparison never reads browser history or mutates it."
+      evidence: []
+      pending_evidence:
+        - "Browser subpath dependency resolution and bundle boundary, current binding enforcement, both input captures, per-side byte/count bounds and expected root constraints"
+        - "Raw File length/hash handling, separate-read provenance, complete SDK output and finite metadata/result limits"
+        - "Selection/constraint generations, stale completion suppression, cancellation/unmount cleanup, parent exclusion and retained earlier report labels"
+        - "Complete counts/conflicts, exact-key/presence filters, 50-row navigation, accessible inputs/tables/status and full unfiltered report download"
+      remaining_gaps:
+        - "Larger or streaming sets, comparison report re-import and runtime evidence"
+        - "Comparison and downloads do not prove file persistence, all-history completeness, server authenticity or mutation eligibility"
+      execution: "Source/docs, manual review and formatting/Git text checks only; no build, typecheck, tests, rendering, browser/SDK/CLI/product/file-workflow/API/database execution, installation or release. No new package version, shared backup format or browser storage layout."
     cli_context_pack_receipt_backup_comparison_development_increment:
       date: "2026-11-05"
       status: "Source-only offline CLI comparison of complete historical backup sets; R-003 remains incomplete."

@@ -5,6 +5,7 @@ import { CONTEXT_PACK_SAVE_RECEIPT_FILE_BYTES, type PackSaveBinding } from '@pla
 import { backupOperation } from '../../../sync/receipt/backup-operation';
 import { PackReceiptHistoryEntry } from '../../save-receipt-entry';
 import { PackReceiptBackupPanel } from '../../save-receipt-backup-panel';
+import { PackReceiptBackupComparisonPanel } from '../../save-receipt-backup-comparison-panel';
 import { PackReceiptAuditPanel } from '../../save-receipt-audit-panel';
 import { PackReceiptSelectionPanel } from '../../save-receipt-selection-panel';
 import { subscribePackReceiptHistoryChanges } from '../../save-receipt-changes';
@@ -376,6 +377,7 @@ export function PackReceiptHistoryBrowser({ binding }: { binding: PackSaveBindin
         end={end}
         onHistoryWrite={historyWriteStarted}
       />
+      <PackReceiptBackupComparisonPanel binding={binding} disabled={busy} begin={begin} end={end} />
       {selected && (
         <div>
           <p>Selected observation for review. It may be outside the current filters.</p>

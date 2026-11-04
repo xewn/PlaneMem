@@ -1344,3 +1344,23 @@ CLI将SDK的storage_access覆盖为file-read-only，增加input_consistency=sepa
 main及内嵌runWorkctx统一调用专用comparison模块，在凭据读取、路由或网络前返回；内嵌只使用context.trace_id作本地追踪。成功退出0，即使双方不同或报告同键不同原请求；此类冲突属于完整比较结果。参数错误USAGE_ERROR退出2；文件不可读/变动/超限、绑定文件非法、SDK结构/摘要/绑定错误、超时或结果超限退出1，stderr固定错误封套且stdout为空。观察摘要相同却正文不同或原请求摘要歧义沿SDK的COMPARISON_CONFLICT错误，不能作为成功差异继续。专用模块错误准确保留是否已尝试文件读取，不回显底层任意诊断。
 
 本命令无--output，不写文件、恢复浏览器、合并、选择新旧、删除或重发原请求；不访问数据库。Web双备份比较、更大/流式集合及运行证据仍待补。R-003未完成、evidence为空；仅源码文档人工审阅及格式/Git文本检查，未编译、类型检查、测试、执行CLI/SDK/浏览器/文件工作流/API/数据库或发布。
+
+## Web历史备份双侧比较（2026-11-05源码增量）
+
+当前完整原binding的历史页增加Compare two backup copies面板。左右分别选择一份单备份，或同时选择清单及全部卷，每侧1–11份；允许不同包装或在两侧选择同一文件，不按文件名、时间或左右位置推断更新关系。每侧仍为单份最多100条、分卷最多1000条/10卷，缺卷、额外卷、同侧重复卷/观察、摘要不符、绑定差异全部由既有SDK完整核验拒绝。页面本身沿原身份读取流程，显式文件比较操作不额外请求服务器，也不读取当前浏览器历史。
+
+Web声明对已有workspace SDK的依赖并手动同步pnpm importer链接，Next transpilePackages沿已有contracts配置纳入SDK源码。SDK package exports新增@planemem/sdk/context-pack-receipt-backup-comparison，直接导向既有比较模块；其依赖仅本地核验、字节捕获、请求预算与contracts，无SDK根客户端/Mock/Node入口。没有新包版本或依赖安装，也未执行编译或浏览器工作流来证明打包兼容。
+
+新comparePackReceiptBackupFiles首次await前捕获双方File引用和name/size、完整parsePackSaveBinding副本、双方可选预期根摘要。每份File须非空，名字最多1024字符且无控制字符/DEL/孤立代理项，大小为安全整数并沿PACK_RECEIPT_BACKUP_FILE_BYTES；每侧累计沿PACK_RECEIPT_VOLUMES_SET_BYTES，同一File对象重复拒绝，名字相同不当作相同文件。预期摘要去除两端空白后为空则不约束，否则须64位小写十六进制。选择文件只登记输入，不自动读取比较；再次选取整套替换该侧，Clear仅移除该侧选择。非法选择保留先前选择及报告，不启动文件读取。
+
+显式比较在父级begin/end互斥中运行，沿backupOperation的30秒总期限/停止等待/卸载取消。依次读取左右各文件arrayBuffer，核对实际字节长度等于捕获大小并计算实际文件字节SHA-256；每次异步前后检查预算和信号，取消后当前底层读取/摘要可能结束，但不启动下一份读取或交付迟到结果。双方全部字节捕获后调用SDK比较，expected_binding始终为当前页完整原绑定，另传双方可选根摘要及共同取消信号；SDK内部默认期限由外层共同总期限限制。结果仍完整核验每观察/卷/清单，不接受部分成功。
+
+报告保留完整backups-compared结构及完整最多2000观察并集和所有同键不同原请求冲突。增加local_inputs.from/to，每份含name/file_bytes/file_sha256，另含expected_document_sha256.from/to（未提供时null）；实际文件字节摘要不同于规范document摘要。storage_access覆盖为file-read-only，增加input_consistency=separate-file-reads、browser_history_access=not-performed和restore_state=not-started。元数据最多512 KiB，完整结果最多4 MiB+512 KiB，沿共享有限JSON的100000节点/64层限制；同时保留独立结果对象与规范raw字符串，超限整份拒绝而不截断。
+
+面板展示本次左右格式、观察/文件/字节数、实际文件名称与字节摘要、备份/清单摘要及预期约束，显示相同观察集合、shared/from-only/to-only计数。可按存在侧和精确原请求键筛选，50条分页仅限制视图，明确显示匹配数/完整总数/当前区间；新报告成功后重置视图，筛选不重新读取文件或修改已完成比较。全部同键异文冲突可展开查看，每个variant列出原请求摘要及全部观察摘要引用，可跳转到该请求键的观察视图；同集合相等不消除双方共有的内部请求冲突。未发现冲突亦不授予原请求重发资格。
+
+文件选择/清空/预期摘要变化同步更新输入引用与代次，旧报告立即转为Earlier file comparison；再次比较开始、非法文件尝试、失败或取消也撤销最新标签，旧完整报告保持。比较完成须同时满足mounted、当前operation身份、相同输入引用/代次才采纳；cleanup先撤销operation再释放父级锁，阻止卸载后迟到回调释放新锁或更新状态。父级begin撤销历史页已有恢复/移除确认，但文件比较不建立任何写资格。浏览器存储变化或重新聚焦不改变已捕获文件报告的含义，报告本来就不证明当前浏览器历史。
+
+Download complete comparison report只导出显示中的已捕获完整raw，始终包含全部观察和冲突，不受筛选/分页或当前新文件选择影响。reportRef与显示报告身份核对，避免旧事件导出另一份报告；沿父级互斥创建临时下载链接并回收URL，明确下载请求不证明落盘。导出报告不是可恢复备份、不包含完整回执正文，不能代替原文件送入备份恢复；保留原备份以便单独审阅/恢复。本面板无合并、删除、恢复、请求重发或自动下载，比较结果也不作为这些操作的确认。
+
+更大或流式集合、报告再导入和运行证据仍待补。R-003未完成、evidence为空；仅源码文档人工审阅及格式/Git文本检查，未编译、类型检查、测试、渲染、执行浏览器/SDK/CLI/产品/文件流程/API/数据库、安装或发布。
