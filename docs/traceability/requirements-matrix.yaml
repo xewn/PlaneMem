@@ -11,6 +11,26 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    web_artifact_preparation_selection_development_increment:
+      date: "2026-11-04"
+      status: "Source-only workbench append preparation bound to the selected version; R-001 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/artifacts/upload/preparation-model.ts"
+        - "apps/web-console/src/lib/artifact-preparation-server.ts"
+        - "apps/web-console/src/app/artifacts/upload/new/page.tsx"
+        - "apps/web-console/src/app/artifacts/upload/preparation.tsx"
+        - "apps/web-console/src/app/artifacts/page.tsx"
+        - "apps/web-console/src/app/artifacts/browse/page.tsx"
+        - "docs/design/01-contracts/artifact-persistence-runtime.md"
+        - "docs/design/01-contracts/artifact-registry-runtime.md"
+      behavior: "Directory and detail append links carry artifact and displayed expected_version. Strictly parse single IDs and canonical positive safe versions, rejecting orphan versions and unknown fields. Read writer context and current metadata with one session and existing bounds; mismatch raises local ARTIFACT_PREPARATION_VERSION_CHANGED and hides preparation/upload forms. Preserve the constraint through internal preparation parsing, request construction and refresh links. An explicit artifact-only form chooses the current record in another tab. Retain original request identity/key/version, recovery and actual upload checks; navigation creates no key or upload."
+      evidence: []
+      pending_evidence:
+        - "URL duplicate/unknown fields, orphan and noncanonical versions, matching current and stale historical selection"
+        - "Version drift between directory, preparation and upload; expiry, permissions and fixed error presentation"
+        - "Original request preservation, constrained refresh versus explicit current selection, new-tab and no-prefetch browser behavior"
+      remaining_scope: "Runtime and browser compatibility evidence; selection does not reserve a version, confer write access or replace upload concurrency checks."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, browser rendering, SDK/Mock/product/API/database execution or release. No public protocol, schema or dependency change."
     artifact_project_registry_schema_development_increment:
       date: "2026-11-04"
       status: "Source-only standalone project file directory schema; R-001 remains incomplete."

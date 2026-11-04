@@ -127,12 +127,12 @@ async function ArtifactRecord({ query }: { query: ArtifactReadQuery }) {
           </Link>
           <Link
             className="panel-link"
-            href={newArtifactUploadHref(artifact.artifact_id)}
+            href={newArtifactUploadHref(artifact.artifact_id, artifact.version)}
             prefetch={false}
             target="_blank"
             rel="noreferrer"
           >
-            Prepare a new version from the current record ↗
+            Prepare a new version after {artifact.version} ↗
           </Link>
           {historical ? (
             <Link

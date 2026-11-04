@@ -5,6 +5,7 @@ import { Badge, EmptyState, Panel } from '../../../components/ui';
 import { getWorkbenchArtifacts, WorkbenchApiError } from '../../../lib/server-api';
 import { artifactPageHref, type ArtifactPageParams } from '../query';
 import { artifactVersionsPageHref } from '../versions/query';
+import { newArtifactUploadHref } from '../upload/preparation-model';
 import { artifactRegistryPageHref, parseArtifactRegistryPageQuery } from './query';
 
 export const dynamic = 'force-dynamic';
@@ -184,6 +185,15 @@ async function Directory({ query }: { query: ArtifactRegistryQuery }) {
                   </p>
                   <p className="muted">File ID: {item.artifact_id}</p>
                   <nav className="heading-actions" aria-label={`Related views for ${item.name}`}>
+                    <Link
+                      className="panel-link"
+                      href={newArtifactUploadHref(item.artifact_id, item.version)}
+                      prefetch={false}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Prepare a new version after {item.version} ↗
+                    </Link>
                     <Link
                       className="panel-link"
                       href={artifactPageHref(item.artifact_id)}

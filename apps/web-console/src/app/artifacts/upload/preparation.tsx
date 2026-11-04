@@ -235,6 +235,9 @@ export function ArtifactRequestPreparation({
             may change the record after this read. Name, file type, classification and sources
             remain those of the file.
           </p>
+          {fixed.expected_version !== undefined && (
+            <p>Your selected version {fixed.expected_version} matched this current record.</p>
+          )}
           <p>
             File ID: <code>{target.artifact_id}</code> · Type: {target.mime}
           </p>
@@ -414,12 +417,14 @@ export function ArtifactRequestPreparation({
         )}
         <Link
           className="panel-link"
-          href={newArtifactUploadHref(target?.artifact_id)}
+          href={newArtifactUploadHref(target?.artifact_id, fixed.expected_version)}
           prefetch={false}
           target="_blank"
           rel="noreferrer"
         >
-          Read a fresh preparation in a new tab ↗
+          {fixed.expected_version === undefined
+            ? 'Read a fresh preparation in a new tab ↗'
+            : `Recheck selected version ${fixed.expected_version} in a new tab ↗`}
         </Link>
       </div>
       {busy && <p role="status">Reading and hashing the selected content…</p>}

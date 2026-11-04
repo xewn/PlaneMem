@@ -4,7 +4,8 @@ import { PageError } from '../../../../components/page-state';
 import { Panel } from '../../../../components/ui';
 import { getWorkbenchArtifactPreparation } from '../../../../lib/artifact-preparation-server';
 import { ArtifactUploadForm } from '../form';
-import { newArtifactUploadHref } from '../preparation-model';
+import { newArtifactUploadHref, parseArtifactPreparationPageQuery } from '../preparation-model';
+import { artifactPageHref } from '../../query';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,13 +17,13 @@ export default async function NewArtifactUploadPage({
   const params = await searchParams;
   let preparation;
   let failure: unknown;
+  let selection: ReturnType<typeof parseArtifactPreparationPageQuery> = {};
   try {
-    if (
-      Object.keys(params).some((key) => key !== 'artifact') ||
-      (params.artifact !== undefined && !isUlid(params.artifact))
-    )
-      throw new Error('Use one complete file ID to prepare its next version.');
-    preparation = await getWorkbenchArtifactPreparation(params.artifact as string | undefined);
+    selection = parseArtifactPreparationPageQuery(params);
+    preparation = await getWorkbenchArtifactPreparation(
+      selection.artifact_id,
+      selection.expected_version,
+    );
   } catch (error) {
     failure = error;
   }
@@ -49,6 +50,27 @@ export default async function NewArtifactUploadPage({
             Use this page for a new upload. To recover a previous attempt, import its saved request
             instead.
           </p>
+          {selection.artifact_id !== undefined && selection.expected_version !== undefined && (
+            <div className="artifact-details">
+              <p>
+                Selected version: {selection.expected_version}. Preparation is available only while
+                this is still the current version. Reopening this URL keeps that selection.
+              </p>
+              <Link
+                className="panel-link"
+                href={artifactPageHref(selection.artifact_id)}
+                prefetch={false}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Review the current record in a new tab ↗
+              </Link>
+              <p className="muted">
+                To choose a new base, use the form below to read the current record in a separate
+                preparation tab. This keeps any earlier saved request unchanged.
+              </p>
+            </div>
+          )}
           <Link
             className="panel-link"
             href={newArtifactUploadHref()}

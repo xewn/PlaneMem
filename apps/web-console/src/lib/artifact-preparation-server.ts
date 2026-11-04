@@ -15,8 +15,17 @@ import { readArtifactTransferBytes } from './artifact-transfer';
 import { parseArtifactUploadPreparation } from '../app/artifacts/upload/preparation-model';
 
 /** One signed session snapshot binds the writer context and optional current-version read. */
-export async function getWorkbenchArtifactPreparation(artifactId?: string) {
-  if (artifactId !== undefined) parseArtifactReadQuery({ artifact_id: artifactId });
+export async function getWorkbenchArtifactPreparation(
+  artifactId?: string,
+  expectedVersion?: number,
+) {
+  if (artifactId === undefined && expectedVersion !== undefined)
+    throw new TypeError('A selected version requires a file ID');
+  if (artifactId !== undefined)
+    parseArtifactReadQuery({
+      artifact_id: artifactId,
+      ...(expectedVersion === undefined ? {} : { version: expectedVersion }),
+    });
   const session = await getWorkbenchArtifactTransferSession();
   const signal = AbortSignal.timeout(30_000);
   let base: URL;
@@ -150,9 +159,23 @@ export async function getWorkbenchArtifactPreparation(artifactId?: string) {
       session.expires_at * 1000 <= Date.now()
     )
       throw new AuthRequiredError();
-    return parseArtifactUploadPreparation({ context, target }, artifactId);
+    if (expectedVersion !== undefined && target.data.artifact.version !== expectedVersion)
+      throw new WorkbenchApiError(
+        'The selected version does not match the current file. Review the current record before choosing a new preparation.',
+        targetTrace,
+        409,
+        'ARTIFACT_PREPARATION_VERSION_CHANGED',
+      );
+    return parseArtifactUploadPreparation(
+      {
+        context,
+        target,
+        ...(expectedVersion === undefined ? {} : { expected_version: expectedVersion }),
+      },
+      artifactId,
+    );
   } catch (error) {
-    if (error instanceof AuthRequiredError) throw error;
+    if (error instanceof AuthRequiredError || error instanceof WorkbenchApiError) throw error;
     throw new WorkbenchApiError(
       'The selected current file could not be verified.',
       targetTrace,
