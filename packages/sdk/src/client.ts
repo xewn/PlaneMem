@@ -6,6 +6,7 @@ import {
   type AuditExportDocument,
   type ArtifactReceiptQuery,
   type ArtifactVersionsQuery,
+  type ArtifactComparisonQuery,
   type ArtifactRegistryQuery,
   type ArtifactUploadDraft,
   parseObservedReadInput,
@@ -175,6 +176,7 @@ import {
   type WcpArtifactReadOptions,
 } from './artifact-reads.js';
 import { downloadArtifactVersion, type WcpArtifactDownloadOptions } from './artifact-download.js';
+import { compareArtifactVersions } from './artifact-comparison.js';
 import { uploadArtifact, type WcpArtifactUploadOptions } from './artifact-upload.js';
 import { uploadSyncEvents, type WcpSyncUploadOptions } from './sync-upload.js';
 import { readSyncChanges, iterateSyncChanges, type WcpSyncChangesOptions } from './sync-changes.js';
@@ -1705,6 +1707,11 @@ export class WcpClient {
   /** One historical metadata page. Follow next_query explicitly; listing never reads content. */
   listArtifactVersions(input: ArtifactVersionsQuery, options: WcpArtifactReadOptions = {}) {
     return readArtifactVersions(this.transport, this.context, input, options);
+  }
+
+  /** Compare two explicit saved records under one budget and fixed account/client constraints. */
+  compareArtifactVersions(input: ArtifactComparisonQuery, options: WcpArtifactReadOptions = {}) {
+    return compareArtifactVersions(this.transport, this.context, input, options);
   }
 
   /** Current project metadata, ordered by file ID. Follow next_query explicitly. */

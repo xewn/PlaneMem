@@ -96,7 +96,7 @@ function validText(value: unknown): value is string {
     !/[\u0000-\u001f\u007f\p{Cs}]/u.test(value)
   );
 }
-function settingsFor(options: WcpArtifactReadOptions) {
+export function captureArtifactReadOptions(options: WcpArtifactReadOptions) {
   if (!options || typeof options !== 'object' || Array.isArray(options)) throw new TypeError();
   const prototype: unknown = Object.getPrototypeOf(options);
   const fields = Object.keys(options);
@@ -144,7 +144,7 @@ async function read<T>(
       (context.client_id !== undefined && !validText(context.client_id))
     )
       throw new TypeError();
-    const settings = settingsFor(options);
+    const settings = captureArtifactReadOptions(options);
     // Capture the complete original before transport/credential callbacks can change caller inputs.
     request = prepare(context);
     budget = createRequestBudget(trace, settings.timeout, settings.signal);

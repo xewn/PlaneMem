@@ -10,11 +10,32 @@
 
 新`getWorkbenchArtifactComparison`捕获一次有效签名会话、范围与已校验Gateway地址，按用户选择顺序读取两份指定历史元数据。两次GET合计30秒（不含会话读取），每份成功2 MiB、错误16 KiB；复用artifact-read-response的200/JSON/UTF-8/长度/trace/无ETag核验及完整共享封套解析，核对同一项目/文件及各自版本。发送前、响应到达、解析后和最终比较后检查期限/到期；任一读取失败不返回部分对比、不回退当前记录或其他版本，错误固定。每次读取仍独立接受Gateway当前/历史权限检查；两个读取不是一个数据库快照，不声称跨请求权限或数据不变。
 
-纯比较模型重新解析两份完整公开元数据并核对范围和文件一致，逐字段比较name/mime/classification/size/sha256/created_at/updated_at/trace_id；显示原值、Same/Changed及差异字段数，版本本身作为列标题。hash和size均一致仅标记保存的内容描述一致，不证明正文当前可取或实际字节已核验。ETag不作为跨版本内容差异指标。
+纯比较模型重新解析两份完整公开元数据并核对范围和文件一致，逐字段比较name/mime/classification/size/sha256/created_at/updated_at/trace_id；显示原值、Same/Changed及差异字段数，版本本身作为列标题。该模型与完整查询解析现提取至contracts，输入元数据各先按2 MiB普通JSON复制，Web保留自己的部分预填/URL层并复用共享完整模型。hash和size均一致仅标记保存的内容描述一致，不证明正文当前可取或实际字节已核验。ETag不作为跨版本内容差异指标。
 
 来源数组按原位置比较完整type/id/revision/uri，保留顺序和重复项；缺失引用区分于可选字段缺失，revision=0保持零值。显示全部保存引用、位置上的相同/变化/增加/移除及双方条数，不按ID去重或把重排推断为语义增删；URI仅文本展示，不自动访问，引用对象的当前权限、版本和可用性未检查。两份元数据均完整可读才展示结果，没有截断或部分成功。
 
 无下载正文、恢复旧版、上传、查回执、浏览器持久保存或原请求改写；沿现有读取授权审计，没有新增公共协议/Schema/依赖/数据库。仅源码文档人工审阅，未编译、类型检查、测试、浏览器渲染、运行产品/SDK/CLI/Mock/API/数据库或发布。URL/选择方向、来源顺序与重复、权限和会话到期、响应限额/总期限/错误路径及浏览器兼容仍待运行证据，R-001保持未完成。
+
+## SDK版本对比（源码阶段）
+
+2026-11-04新增`client.compareArtifactVersions({artifact_id, from_version, to_version}, options?)`。完整查询先按4 KiB普通JSON复制并校验，拒绝额外字段、缺字段、同版本、非正/非安全整数，保留用户方向。构造WcpClient的context须显式含project_id、actor_id和client_id；两次读取始终携带同一范围和账号/客户端相等约束，不从文件元数据或令牌文本推断调用身份。条件不是凭据，Gateway独立验证真实认证会话及每份当前/历史可见性；transport若刷新凭据，只能由相同账号/客户端继续满足这些约束，不承诺复用完全相同的令牌。
+
+沿WcpArtifactReadOptions的timeout_ms/signal，默认30秒单调总等待预算覆盖两个顺序历史读取及本地完整比较。首次异步前捕获查询、上下文与选项，并丢弃继承的idempotency_key/expected_version/if_match；既有单份读者复用同一总预算信号，每份2 MiB成功、Fetch16 KiB错误，纯JSON复制自定义transport结果并核对scope/trace/目标/历史版本。两次请求沿调用者原trace作关联。第一份失败不派发第二份，第二份失败不返回第一份；超时或取消不发布迟到结果，不自动重试或改选当前。transport自有期限可能更短，取消不保证远端工作停止。
+
+返回类型`WcpArtifactComparisonResult`是本地组合对象：schema_version=1、kind=artifact-version-comparison、comparison_origin=local、read_consistency=separate-reads、content_state=not-checked，另含完整query、identity_constraints、from/to两份既有读取封套和comparison。保留各份服务器数据/trace，不伪造新的Gateway聚合响应、审计记录、原上传结果或一致事务快照。比较结果不返回文件字节，也不下载、保存、恢复或上传。
+
+contracts新增ArtifactComparisonQuery/ArtifactMetadataComparison、parseArtifactComparisonQuery及compareArtifactMetadata，SDK根入口一并导出。共享函数各自有界复制完整输入，拒绝非普通JSON、访问器、循环及超深/超复杂对象；比较同范围同文件的不同版本，八字段和按位置来源规则与工作台一致，不忽略重复或可选字段，也不访问URI。直接调用compareArtifactMetadata只验证所给结构并计算差异，不认证记录来自服务器，不授予权限或证明内容一致。工作台保留原页面/会话组合读取，只替换完整查询和比较模型。
+
+```ts
+// 开发用法示例，未执行。client 已配置固定 project_id、actor_id 和 client_id。
+const result = await client.compareArtifactVersions(
+  { artifact_id: artifactId, from_version: 2, to_version: 5 },
+  { timeout_ms: 30_000, signal: cancelController.signal },
+);
+// result.comparison 是本地差异；from/to 是两次独立历史读取，正文仍未检查。
+```
+
+固定允许列表错误使用原trace及retryable=false、read_kind=comparison、comparison_state=not-completed、content_state=not-checked和upload_dispatch_state=not-sent；不回显transport原始异常或上游details。没有新增HTTP/MCP/CLI命令、数据库/schema/依赖或Mock专用路由；可通过已有历史读取适配器接入，但未执行SDK、Mock或服务。共享契约自动一致性、独立比较Schema、真实客户端/取消/期限/身份变化和浏览器兼容仍待证据；本次仅源码文档人工审阅，未编译、类型检查、测试、运行产品/API/数据库或发布，R-001保持未完成。
 
 ## 查询与续页
 

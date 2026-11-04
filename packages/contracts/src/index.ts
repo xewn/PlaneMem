@@ -54,6 +54,7 @@ export * from './observed-directory.js';
 export * from './plane-inbox.js';
 export * from './plane-inbox-diagnosis.js';
 export * from './artifact-read.js';
+export * from './artifact-comparison.js';
 export * from './artifact-versions.js';
 export * from './artifact-registry.js';
 export * from './artifact-command.js';

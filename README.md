@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [SDK 文件版本对比](docs/design/01-contracts/artifact-versions-runtime.md#sdk版本对比源码阶段)：`compareArtifactVersions` 在统一期限内读取两个指定历史版本，固定账号、客户端及项目条件，完整读取后返回本地差异和两份原记录；工作台复用相同的共享比较模型。仅源码文档，未编译、测试、运行或发布。
+
 新增 [工作台文件版本对比](docs/design/01-contracts/artifact-versions-runtime.md#工作台版本对比源码阶段)：选择同一文件的两个保存版本，并排查看字段和来源引用差异；历史页可直接选取当页版本，详情可带入比较基准。只读取元数据，失败不替换版本。仅源码文档，未编译、测试、运行或发布。
 
 补齐 [工作台文件详情与原回执读取限制](docs/design/01-contracts/artifact-persistence-runtime.md#工作台详情与原回执读取限制源码阶段)：完整详情最多2 MiB、原回执最多4 MiB、错误16 KiB，沿用30秒期限并核对追踪号、ETag和会话到期；失败保留原请求并使用固定提示。仅源码文档，未编译、测试、运行或发布。

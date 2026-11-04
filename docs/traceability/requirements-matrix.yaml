@@ -11,6 +11,26 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    sdk_artifact_version_comparison_development_increment:
+      date: "2026-11-04"
+      status: "Source-only SDK artifact version comparison and shared local comparison model; R-001 remains incomplete."
+      artifacts:
+        - "packages/contracts/src/artifact-comparison.ts"
+        - "packages/contracts/src/index.ts"
+        - "packages/sdk/src/artifact-comparison.ts"
+        - "packages/sdk/src/artifact-reads.ts"
+        - "packages/sdk/src/client.ts"
+        - "packages/sdk/src/index.ts"
+        - "apps/web-console/src/app/artifacts/compare/model.ts"
+        - "docs/design/01-contracts/artifact-versions-runtime.md"
+      behavior: "Extract strict 4 KiB full comparison queries and bounded local metadata comparison into contracts, retaining Web partial selection handling. Add SDK compareArtifactVersions with explicit project/account/client context constraints captured before async work. Compose two selected historical reads under one default 30-second cancelable budget, each 2 MiB with Fetch 16 KiB errors; omit inherited write conditions and retain exact versions/direction/caller trace. Require complete paired results and compare eight fields plus position-based complete sources with order/duplicates/optional fields preserved. Return a local tagged result with both original envelopes and identity constraints, not a new Gateway aggregate or atomic snapshot. Export shared pure functions/types from SDK."
+      evidence: []
+      pending_evidence:
+        - "Strict finite JSON/query limits, detached metadata comparison, source duplicates/order/missing values and Web reuse"
+        - "Captured scope/account/client equality constraints, credential refresh, fixed version binding and no inherited writes"
+        - "Combined timeout/cancellation, first/second-read failures, custom transport mutation/limits and no partial or late results"
+      remaining_scope: "Runtime/client compatibility and independent schema/contract automation. Pure comparison does not authenticate metadata or verify content; separate reads do not establish an atomic snapshot."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, SDK/Mock/CLI/product/API/database execution, browser rendering or release. No server route, database schema or dependency change."
     web_artifact_version_comparison_development_increment:
       date: "2026-11-04"
       status: "Source-only workbench saved artifact version comparison; R-001 remains incomplete."
