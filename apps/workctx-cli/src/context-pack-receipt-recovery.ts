@@ -3,6 +3,10 @@ import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import {
   ContractError,
+  PACK_ORIGINAL_BYTES,
+  PACK_RECEIPT_BACKUP_FILE_BYTES,
+  PACK_RECEIPT_MAX_VOLUMES,
+  PACK_RECEIPT_VOLUMES_SET_BYTES,
   contextPackSaveReceiptFileJson,
   contextPackSaveReceiptQuery,
   encodePackSaveOriginal,
@@ -23,6 +27,13 @@ import {
 } from './context-pack-receipt-file.js';
 
 const RESULT_BYTES = 96 * 1024;
+const EXTRACTION_RESULT_BYTES = 256 * 1024;
+const inputStatuses = [
+  'receipt-observed',
+  'receipt-recovered',
+  'backup-receipt-extracted',
+] as const;
+type InputStatus = (typeof inputStatuses)[number];
 const hash = (value: Uint8Array | string) => createHash('sha256').update(value).digest('hex');
 const historical = {
   observation_state: 'historical',
@@ -31,6 +42,16 @@ const historical = {
   content_state: 'not-checked',
   source_state: 'not-checked',
   compile_dispatch_state: 'not-sent',
+} as const;
+const extractedHistorical = {
+  observation_state: 'historical',
+  identity_state: 'not-authenticated',
+  server_outcome: 'not-checked',
+  content_state: 'not-checked',
+  source_state: 'not-checked',
+  save_dispatch_state: 'not-sent',
+  browser_history_access: 'not-performed',
+  storage_access: 'file-read-write',
 } as const;
 
 function failure(code: string, message: string, trace: string) {
@@ -109,11 +130,15 @@ function recoveryRecord(input: unknown) {
   const row = object(
     input,
     ['input_file', 'input_file_sha256', 'input_file_bytes', ...Object.keys(historical)],
-    ['matched_original'],
+    ['matched_original', 'input_status', 'backup_membership'],
   );
   text(row.input_file);
   digest(row.input_file_sha256);
   size(row.input_file_bytes);
+  if (row.input_status !== undefined && !inputStatuses.includes(row.input_status as InputStatus))
+    throw new TypeError();
+  if (row.backup_membership !== undefined && row.backup_membership !== 'not-checked')
+    throw new TypeError();
   for (const [key, value] of Object.entries(historical))
     if (row[key] !== value) throw new TypeError();
   if (row.matched_original !== undefined) {
@@ -123,12 +148,86 @@ function recoveryRecord(input: unknown) {
   }
 }
 
+/** Extraction provenance is a bounded historical hint, never authority to reopen old paths. */
+function extractionRecord(input: unknown) {
+  const row = object(
+    input,
+    [
+      'backup_kind',
+      'backup_document_sha256',
+      'backup_completeness',
+      'volume_index',
+      'volume_document_sha256',
+      'source_inputs',
+    ],
+    ['matched_binding_file'],
+  );
+  digest(row.backup_document_sha256);
+  digest(row.volume_document_sha256);
+  if (!Array.isArray(row.source_inputs)) throw new TypeError();
+  const count = row.source_inputs.length;
+  if (row.backup_kind === 'single') {
+    if (
+      count !== 1 ||
+      row.volume_index !== 1 ||
+      row.backup_completeness !== 'single-file-only' ||
+      row.backup_document_sha256 !== row.volume_document_sha256
+    )
+      throw new TypeError();
+  } else if (row.backup_kind === 'volumes') {
+    if (
+      count < 2 ||
+      count > PACK_RECEIPT_MAX_VOLUMES + 1 ||
+      row.backup_completeness !== 'relative-to-manifest' ||
+      typeof row.volume_index !== 'number' ||
+      !Number.isSafeInteger(row.volume_index) ||
+      row.volume_index < 1 ||
+      row.volume_index >= count ||
+      row.backup_document_sha256 === row.volume_document_sha256
+    )
+      throw new TypeError();
+  } else throw new TypeError();
+  const fileHint = (value: unknown, maximum: number) => {
+    const file = object(value, ['path', 'file_bytes', 'file_sha256']);
+    const path = text(file.path);
+    if (path.length > 4096 || !path.trim() || /[\u0000-\u001f\u007f\p{Cs}]/u.test(path))
+      throw new TypeError();
+    digest(file.file_sha256);
+    size(file.file_bytes);
+    if ((file.file_bytes as number) > maximum) throw new TypeError();
+    return { path, bytes: file.file_bytes as number, digest: file.file_sha256 as string };
+  };
+  const paths = new Set<string>();
+  const hashes = new Set<string>();
+  let total = 0;
+  for (const inputFile of row.source_inputs) {
+    const file = fileHint(inputFile, PACK_RECEIPT_BACKUP_FILE_BYTES);
+    if (paths.has(file.path) || hashes.has(file.digest)) throw new TypeError();
+    paths.add(file.path);
+    hashes.add(file.digest);
+    total += file.bytes;
+  }
+  if (total > PACK_RECEIPT_VOLUMES_SET_BYTES) throw new TypeError();
+  if (row.matched_binding_file !== undefined)
+    fileHint(row.matched_binding_file, PACK_ORIGINAL_BYTES);
+}
+
 async function readResult(path: string, trace: string) {
   try {
-    const bytes = await readBoundedArtifactFile(path, RESULT_BYTES, trace);
+    const bytes = await readBoundedArtifactFile(path, EXTRACTION_RESULT_BYTES, trace);
     const input: unknown = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
+    const extracted =
+      input &&
+      typeof input === 'object' &&
+      'data' in input &&
+      input.data &&
+      typeof input.data === 'object' &&
+      'status' in input.data &&
+      input.data.status === 'backup-receipt-extracted';
+    const maximum = extracted ? EXTRACTION_RESULT_BYTES : RESULT_BYTES;
+    if (bytes.byteLength > maximum) throw new TypeError();
     // Bound all JSON, including local diagnostics; reject nonfinite numbers and excessive nesting.
-    const row = object(JSON.parse(syncJsonSnapshot(input, RESULT_BYTES)), [
+    const row = object(JSON.parse(syncJsonSnapshot(input, maximum)), [
       'schema_version',
       'trace_id',
       'source_refs',
@@ -143,7 +242,15 @@ async function readResult(path: string, trace: string) {
     const data =
       status === 'receipt-observed'
         ? object(row.data, ['status', 'original', 'receipt', 'receipt_file', 'local'])
-        : object(row.data, ['status', 'receipt_file', 'recovery', 'local']);
+        : status === 'backup-receipt-extracted'
+          ? object(row.data, [
+              'status',
+              'receipt_file',
+              'extraction',
+              'local',
+              ...Object.keys(extractedHistorical),
+            ])
+          : object(row.data, ['status', 'receipt_file', 'recovery', 'local']);
     const file = verifyContextPackReceiptFile(data.receipt_file);
     localRecord(data.local, contextPackSaveReceiptFileJson(file));
     if (status === 'receipt-observed') {
@@ -163,18 +270,31 @@ async function readResult(path: string, trace: string) {
         throw new TypeError();
     } else {
       if (
-        status !== 'receipt-recovered' ||
+        (status !== 'receipt-recovered' && status !== 'backup-receipt-extracted') ||
         !Array.isArray(row.source_refs) ||
         row.source_refs.length !== 0
       )
         throw new TypeError();
-      recoveryRecord(data.recovery);
+      if (status === 'receipt-recovered') recoveryRecord(data.recovery);
+      else {
+        for (const [key, value] of Object.entries(extractedHistorical))
+          if (data[key] !== value) throw new TypeError();
+        extractionRecord(data.extraction);
+        const local = data.local as Record<string, unknown>;
+        if (
+          local.state === 'save-failed' &&
+          (local.candidate_file_sha256 === undefined ||
+            local.candidate_file_bytes === undefined ||
+            !['preflight', 'source-readback', 'publish', 'readback'].includes(text(local.phase)))
+        )
+          throw new TypeError();
+      }
     }
-    return { file, bytes, file_sha256: hash(bytes) };
+    return { file, bytes, file_sha256: hash(bytes), input_status: status as InputStatus };
   } catch {
     throw failure(
       'CONTEXT_PACK_RECEIPT_RESULT_INVALID',
-      'Use a complete UTF-8 save-receipt or recover-receipt output within 96 KiB, including a matching receipt_file and digest. Missing observations cannot be reconstructed; keep the original output.',
+      'Use a complete UTF-8 save-receipt/recover-receipt output within 96 KiB, or extract-backup-receipt output within 256 KiB, with a matching receipt_file and local digest. Missing observations cannot be reconstructed; keep the original output.',
       trace,
     );
   }
@@ -247,6 +367,8 @@ export async function recoverContextPackReceipt(argv: string[], trace: string) {
       input_file: args.input,
       input_file_sha256: saved.file_sha256,
       input_file_bytes: saved.bytes.byteLength,
+      input_status: saved.input_status,
+      backup_membership: 'not-checked' as const,
       ...historical,
       ...(matched === undefined ? {} : { matched_original: matched }),
     },

@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [备份提取输出回执补存](docs/design/01-contracts/context-pack-runtime.md#备份提取输出回执补存2026-11-05源码增量)：`context recover-receipt` 可接收备份提取成功或保存失败时的完整输出，校验其中的历史回执后保存到新文件，保留原观察时间。仅源码文档，未编译、测试、执行CLI或发布。
+
 新增 [从备份提取历史回执](docs/design/01-contracts/context-pack-runtime.md#cli从备份提取历史回执2026-11-05源码增量)：完整核验单份或分卷备份后，按准确观察摘要提取一份回执到新文件，保留原时间和请求，可接续既有原请求恢复流程。仅源码文档，未编译、测试、执行CLI或发布。
 
 新增 [CLI历史备份构造留存](docs/design/01-contracts/context-pack-runtime.md#cli历史备份构造留存2026-11-05源码增量)：已有观察文件可整理为单份或分卷备份，独占写入新目录并逐份读回；保存失败保留完整候选和已写文件。仅源码文档，未编译、测试、执行CLI或发布。

@@ -366,6 +366,7 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   context extract-original       Recover its original offline with --receipt-file RECEIPT.json --output NEW_ORIGINAL.json
                                  Optional --json-file ORIGINAL.json checks full binding; no query or pack save
   context recover-receipt         Save a captured observation offline from --result-file RESULT.json to --output NEW_RECEIPT.json
+                                 Accepts complete save-receipt, recover-receipt and extract-backup-receipt outputs
                                  Optional --json-file ORIGINAL.json; preserves historical time and never queries again
   context create                 Add proposed context; title/content/source_refs and --key
   context read                   Read complete current item_id; bounded response and timeout

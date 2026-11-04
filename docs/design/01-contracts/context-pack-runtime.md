@@ -1233,3 +1233,22 @@ timeout-ms默认30000，仅约束整套备份核验（含其第一次输入读�
 stdout data.status=backup-receipt-extracted，保留完整receipt_file；extraction标注备份类型/根摘要/原完整性范围、清单卷号/卷摘要、本次所有source_inputs实际文件信息及可选matched_binding_file。单份备份的volume_index为1，不证明它是其他集合中的第一卷。保存成功local.state=saved-and-read-back，包含新路径/实际大小摘要/临时清理状态，退出0；预检/源变化/发布或读回失败local.state=save-failed，保留候选及candidate摘要/阶段/已知保存详情、退出1，不推断未确认目标不存在。用法错误退出2；整套核验失败不返回部分候选。
 
 身份未认证、服务器/正文/来源未检查，观察保持historical，save_dispatch_state=not-sent、browser_history_access=not-performed，storage_access=file-read-write只指本地文件。失败输出尚不能直接交recover-receipt，应保留完整候选和备份文件；该补存入口及运行证据仍待补。无共享格式、SDK、依赖或数据库变更；R-003未完成、evidence为空。仅源码文档人工审阅和格式文本检查，未编译、类型检查、测试、执行CLI/SDK/文件工作流/浏览器/API/数据库或发布。
+
+## 备份提取输出回执补存（2026-11-05源码增量）
+
+本增量覆盖上一节提取输出不能直接补存的缺口。`context recover-receipt` 在普通及内嵌入口接受 `extract-backup-receipt` 成功或本地保存失败时的完整 UTF-8 stdout。保存输出后显式提供 result-file，目标仍必须是已有目录中的新文件；只有完整 receipt_file 才能补存，不从提取摘要或报错信息重建缺失观察。
+
+```sh
+# Usage example only; not executed. EXTRACT_RESULT.json is the complete captured stdout.
+workctx context recover-receipt --result-file EXTRACT_RESULT.json --output new-receipt.json --json-file independent-original.json
+```
+
+查询及旧补存输出仍限96 KiB，只有 `data.status=backup-receipt-extracted` 的封套可达256 KiB，以容纳最多11份来源路径和可选绑定路径。实际输入字节与规范JSON均受对应上限约束，所有数据仍受有限数值、深度和节点预算约束。封套及data字段闭合，schema/trace/source_refs和提取固定历史状态必须一致；外层source_refs为空，内嵌观察的原trace和来源保持原样。
+
+先沿既有回执文件解析核对原文/回执关系与规范document实算SHA-256，再核对local中的规范文件实际或候选摘要/字节数。提取失败必须有两项candidate字段，phase仅为preflight、source-readback、publish或readback；成功继续要求saved-and-read-back和清理状态。单份来源限一份、volume_index=1、根卷摘要相同、single-file-only；分卷来源为2–11份、卷号在1至源数减一之间、根卷摘要不同、relative-to-manifest。来源逐项只含路径/正整数字节数/小写SHA-256，路径最多4096字符并拒绝控制字符/孤立代理，拒绝重复原样路径及文件摘要，单份和总量沿现有备份文件限制；可选独立绑定元数据限8 KiB。
+
+以上extraction字段只作有界历史提示。补存不打开其中记录的备份、绑定、旧输出或临时路径，不重新核验该观察是否属于原备份，也不认证身份或证明服务器当前状态。显式 `--json-file` 仍可用完整独立原请求核对选中回执，它与历史matched_binding_file不同；仅保留历史绑定元数据不等于本次已完成独立原请求核对。
+
+本次只读取显式result-file、可选独立原请求文件以及新输出，写入仅针对显式新目标及其自有临时文件。原观察时间/原请求/回执不变；保存前复读result-file并比较完整实际字节，沿独占新文件保存和完整回执读回。成功或失败输出仍为receipt-recovered，可再次补存；本次recovery增加input_status标明直接输入类型、backup_membership=not-checked。这两项在解析旧补存输出时可缺省，若存在则校验枚举；多次补存不把上游来源提示升级成成员证明。退出码及失败候选保留语义沿既有补存流程。
+
+整套 `prepare-backup` 失败输出的补存仍待补，不在本次单观察范围。R-003未完成、evidence为空。仅源码文档人工审阅和格式文本检查，未编译、类型检查、测试、运行CLI/SDK/文件流程/浏览器/API/数据库或发布。
