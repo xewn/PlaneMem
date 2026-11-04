@@ -1,5 +1,7 @@
 # 持久化 ContextPack 开发说明
 
+2026-11-05新增[CLI保存包目录读取](#cli-保存包目录读取2026-11-05源码增量)：`context list-packs`网络及嵌入入口读取完整元数据页，支持精确编号和显式续页；不改变已保存包。仅源码文档，未编译、测试、运行或发布。
+
 2026-11-05新增[SDK保存包目录读取](#sdk-保存包目录读取2026-11-05源码增量)：完整单页读取及固定身份的按需分页，支持取消/超时和页数上限；不读取正文或核验来源。仅源码文档，未编译、测试、运行或发布。
 
 2026-11-05新增[保存包元数据目录](#保存包元数据目录2026-11-05源码增量)：GET /v1/context-packs及网页分页浏览，跨页选择基础包和对比包；目录不证明完整内容或来源当前可用。仅源码文档，未编译、测试、渲染或发布。
@@ -335,7 +337,7 @@ R-003未完成、`evidence: []`。独立读取与目录故障隔离、有效/非
 - 资源边界：每router独立两笔目录读取容量，30秒单调处理器期限覆盖事务等待、元数据校验与封套生成；容量占用返回RATE_LIMITED/429，超时返回CONTEXT_PACK_DIRECTORY_TIMEOUT/503，底层工作实际结束才释放。不能保证取消已发出的数据库调用、限制全局SQL扫描成本或同步工作耗时；外层认证/授权/审计和HTTP发送不计该期限。异常元数据CONTEXT_PACK_INVALID/500，存储不可用CONTEXT_PACK_STORAGE_UNAVAILABLE/503，非法参数/绑定INVALID_INPUT/400。
 - Web：在当前会话范围内读取一页，完整校验HTTP状态/JSON/trace/无ETag及共享封套，成功256 KiB、错误16 KiB；另有30秒读取期限和阶段性会话到期检查。会话获取、渲染和发送不计读取期限。失败保留原筛选/游标显式重试，另可回首屏；无自动翻页、重试或缩页。网页参数pack/limit/cursor/base均单值，空pack表单表示不筛选；base为已选基础包ULID，仅用于导航，不发送Gateway。基础包随筛选/翻页保留，从任意页选择不同包后进入原对比页；read/compare返回保留目录位置及base，目录没有return_to，返回解析保持有限层级。
 
-本轮无新依赖或迁移，SQL源码复用016索引，未执行SQL。SDK目录适配见下文；CLI/MCP/Mock的专用目录适配、独立Schema/OpenAPI与权限/分页/超时/真实浏览器兼容证据待补；现有MCP资源候选目录仍按其原协议执行，不能与本元数据目录混同。R-003未完成、`evidence: []`；仅源码文档人工审阅和格式文本检查，未编译、类型检查、测试、渲染、执行产品/CLI/SDK/MCP/Mock/API/数据库或发布。
+本轮无新依赖或迁移，SQL源码复用016索引，未执行SQL。SDK和CLI目录适配见下文；MCP/Mock的专用目录适配、独立Schema/OpenAPI与权限/分页/超时/真实浏览器兼容证据待补；现有MCP资源候选目录仍按其原协议执行，不能与本元数据目录混同。R-003未完成、`evidence: []`；仅源码文档人工审阅和格式文本检查，未编译、类型检查、测试、渲染、执行产品/CLI/SDK/MCP/Mock/API/数据库或发布。
 
 ## SDK 保存包目录读取（2026-11-05，源码增量）
 
@@ -376,3 +378,32 @@ for await (const page of pages) {
 ```
 
 R-003未完成、`evidence: []`。原条件/身份捕获、空页/精确筛选/分页顺序、变更输入与返回值、错误/取消/迟到结果、页数上限/生成器关闭及真实transport/Gateway兼容仍缺运行证据；独立Schema/OpenAPI待补。本轮仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行SDK/Mock/CLI/MCP/产品/API/数据库或发布；无共享契约/Gateway/Web/依赖/迁移改动。
+
+## CLI 保存包目录读取（2026-11-05，源码增量）
+
+`context list-packs`读取当前项目的一页保存包元数据，网络main/callGateway和嵌入runWorkctx统一通过SDK `listContextPacks`。它与列出来源条目的`context list`分开，也不会隐式调用getContextPack、比较包或编译新包。
+
+- 最多一个`--json`或`--json-file`，省略输入为`{}`。完整输入（含身份约束）上限4 KiB，文件要求既有稳定普通文件、严格UTF-8；仅网络入口允许`--json -`有界读取stdin，嵌入不接stdin。可选`--timeout-ms`为正整数文本、最大2147483647，默认30000。拒绝重复/未知选项、多个输入源、--key/--output及写字段。
+- JSON只允许pack_id/limit/cursor，以及可选但必须成对的expected_actor_id/expected_client_id。身份约束验证后作为请求头/本地可信身份相等条件，剥离出业务查询；项目范围仍取原CLI配置或嵌入上下文。limit默认25、最大100；pack_id是精确ULID筛选，不接受format/latest，非法或空ID不变成其他选择。续页沿原limit/pack_id/账号客户端传回next_cursor；改变身份/权限/页大小/筛选需移除cursor重新开始。
+- 返回完整schema_version/trace_id/source_refs/scope/query/content_state/source_state/data/next_cursor，256 KiB成功限额，Fetch错误16 KiB。保留metadata-only/not-checked和六字段记录，校验原范围/查询/trace、顺序/唯一性/续页位置。列表可能包含过期或来源变化的包；随后明确使用context get或context compare-packs时才检查完整包可用性。每次仅一页，无自动迭代、缩页、重试或保存文件，空页不能推断原包已经删除。
+- 嵌入要求已验证、未过期的实际context.read和完整合法项目/账号/客户端，固定原身份并核对SDK的确切GET路径、原头、无正文与256 KiB响应限额。调用原context.pack.list处理器前沿router策略/审计，并在授权后再检查取消/到期；父项目及read_restricted过滤由原处理器负责。六字段目录没有分类标记，不能据此独立证明restricted过滤，嵌入调用方必须配置可信原处理器。返回后再次完整核验与权限/取消检查，不返回半页。
+- 九类上下文读取共用每router两笔嵌入容量；SDK超时只停止等待，底层router实际结束才释放。生产目录处理器另外保留自身容量/期限。30秒本地SDK预算覆盖等待与响应核对，文件/stdin采集和stdout发送在外；stdin等EOF不可由该期限取消。通用transport不提供HTTP状态/ETag头，SDK只承诺已暴露正文的完整绑定校验，Fetch沿既有bounded-json检查。
+
+成功为退出码0和完整JSON；参数不合法沿USAGE_ERROR/退出码2，读取失败沿退出码1且无部分stdout。已知错误code及固定文本沿SDK，令牌到期/权限改变/非法绑定不自动换账号或回首屏。仅源码示例，未执行：
+
+```sh
+workctx context list-packs
+workctx context list-packs --json-file saved-pack-list.json --timeout-ms 30000
+```
+
+`saved-pack-list.json`示例（身份须换成当前账号与客户端；下一页在同一对象增加cursor，值来自上页next_cursor）：
+
+```json
+{
+  "limit": 25,
+  "expected_actor_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+  "expected_client_id": "workctx-cli"
+}
+```
+
+R-003未完成、`evidence: []`。三入口一致性、参数/文件/stdin边界、身份与权限/取消、元数据排序/分页/错误、底层容量保留及真实CLI/Gateway兼容尚无运行证据；MCP/Mock目录适配、独立Schema/OpenAPI待补。本轮仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/SDK/产品/API/数据库或发布；无SDK/共享契约/Gateway/Web/MCP/Mock/schema/依赖/迁移变化。

@@ -7,6 +7,9 @@ import {
   CONTEXT_ITEM_READ_RESPONSE_BYTES,
   CONTEXT_ITEM_DIRECTORY_RESPONSE_BYTES,
   CONTEXT_PACK_READ_RESPONSE_BYTES,
+  CONTEXT_PACK_DIRECTORY_RESPONSE_BYTES,
+  parseContextPackDirectoryEnvelope,
+  parseContextPackDirectoryQuery,
   parseContextPackReadEnvelope,
   parseContextPackReadQuery,
   parseContextPackComparisonQuery,
@@ -26,6 +29,8 @@ import {
   type ContextItemDirectoryQuery,
   type ContextPackReadQuery,
   type ContextPackComparisonQuery,
+  type ContextPackDirectoryQuery,
+  type ContextPackDirectoryEnvelope,
 } from '@planemem/contracts';
 import { FetchWcpTransport, WcpClient, type WcpRequest, type WcpTransport } from '@planemem/sdk';
 import type { CommandRouter, RequestContext } from '@planemem/api-gateway';
@@ -35,7 +40,13 @@ type Scope = { tenant_id: string; workspace_id: string; project_id: string };
 type Expected = { actor_id: string; client_id: string };
 type DirectoryQuery = { kind: 'list'; query: ContextItemDirectoryQuery };
 type PackQuery = { kind: 'pack'; query: ContextPackReadQuery };
-type ReadQuery = ContextHistoryReadQuery | ContextItemReadQuery | DirectoryQuery | PackQuery;
+type PackDirectoryQuery = { kind: 'pack-list'; query: ContextPackDirectoryQuery };
+type ReadQuery =
+  | ContextHistoryReadQuery
+  | ContextItemReadQuery
+  | DirectoryQuery
+  | PackQuery
+  | PackDirectoryQuery;
 type Target = (
   | ReadQuery
   | { kind: 'compare'; query: ContextComparisonQuery }
@@ -62,6 +73,7 @@ const activeReads = new WeakMap<CommandRouter, { active: number }>();
 export function isContextReadCommand(command: string) {
   return [
     'context get',
+    'context list-packs',
     'context list',
     'context read',
     'context read-archived',
@@ -74,7 +86,7 @@ export function isContextReadCommand(command: string) {
 function invalid(trace: string) {
   return new ContractError(
     'USAGE_ERROR',
-    'Use context get/list/read/read-archived/history/version/compare/compare-packs with --json or --json-file and optional --timeout-ms (1..2147483647). Get accepts at most one input (4 KiB), defaults to {}, and accepts optional pack_id/format (json/markdown/mcp). List accepts at most one input (8 KiB), defaults to {}, and preserves filters/view/limit/cursor for explicit continuation. Other reads require exactly one input (4 KiB): details accept item_id; history adds optional before_version/limit, version requires version, compare requires item_id and distinct from_version/to_version; compare-packs requires distinct from_pack_id/to_pack_id. Optional expected_actor_id/expected_client_id must be paired; both comparison commands require them. No --key, --output, write fields, repeated or unknown options.',
+    'Use context get/list-packs/list/read/read-archived/history/version/compare/compare-packs with --json or --json-file and optional --timeout-ms (1..2147483647). Get accepts at most one input (4 KiB), defaults to {}, and accepts optional pack_id/format (json/markdown/mcp). List-packs accepts at most one input (4 KiB), defaults to {}, and accepts optional pack_id/limit/cursor for saved metadata only. List accepts at most one input (8 KiB), defaults to {}, and preserves filters/view/limit/cursor for explicit continuation. Other reads require exactly one input (4 KiB): details accept item_id; history adds optional before_version/limit, version requires version, compare requires item_id and distinct from_version/to_version; compare-packs requires distinct from_pack_id/to_pack_id. Optional expected_actor_id/expected_client_id must be paired; both comparison commands require them. No --key, --output, write fields, repeated or unknown options.',
     { trace_id: trace, retryable: false },
   );
 }
@@ -121,6 +133,12 @@ function prepare(command: string, input: unknown, scope: Scope, trace: string): 
       return {
         kind: 'pack',
         query: parseContextPackReadQuery(query),
+        ...(expected ? { expected } : {}),
+      };
+    if (command === 'context list-packs')
+      return {
+        kind: 'pack-list',
+        query: parseContextPackDirectoryQuery(query),
         ...(expected ? { expected } : {}),
       };
     if (command === 'context list')
@@ -187,7 +205,7 @@ async function argumentsFor(argv: string[], scope: Scope, trace: string, allowSt
       args.positionals.length !== 2 ||
       !isContextReadCommand(command) ||
       (raw !== undefined && file !== undefined) ||
-      (!['context list', 'context get'].includes(command) &&
+      (!['context list', 'context get', 'context list-packs'].includes(command) &&
         raw === undefined &&
         file === undefined) ||
       (file !== undefined && (!file.trim() || file === '-' || /[\u0000-\u001f]/.test(file))) ||
@@ -216,6 +234,7 @@ function execute(client: WcpClient, target: Target, timeout_ms: number) {
   if (target.kind === 'compare-packs')
     return client.compareContextPacks(target.query, { timeout_ms });
   if (target.kind === 'pack') return client.getContextPack(target.query, { timeout_ms });
+  if (target.kind === 'pack-list') return client.listContextPacks(target.query, { timeout_ms });
   if (target.kind === 'list') return client.listContextItems(target.query, { timeout_ms });
   if (isDetailQuery(target))
     return target.kind === 'current'
@@ -270,6 +289,12 @@ export async function callContextReadArguments(argv: string[], options: Options)
 }
 
 function readPath(query: ReadQuery) {
+  if (query.kind === 'pack-list') {
+    const params = new URLSearchParams({ limit: String(query.query.limit) });
+    if (query.query.pack_id !== undefined) params.set('pack_id', query.query.pack_id);
+    if (query.query.cursor !== undefined) params.set('cursor', query.query.cursor);
+    return '/v1/context-packs?' + params.toString();
+  }
   if (query.kind === 'pack') {
     const params = new URLSearchParams();
     if (query.query.pack_id !== undefined) params.set('pack_id', query.query.pack_id);
@@ -287,6 +312,7 @@ function readPath(query: ReadQuery) {
 }
 
 function responseLimit(query: ReadQuery) {
+  if (query.kind === 'pack-list') return CONTEXT_PACK_DIRECTORY_RESPONSE_BYTES;
   if (query.kind === 'pack') return CONTEXT_PACK_READ_RESPONSE_BYTES;
   if (query.kind === 'list') return CONTEXT_ITEM_DIRECTORY_RESPONSE_BYTES;
   if (query.kind === 'history') return CONTEXT_HISTORY_RESPONSE_BYTES;
@@ -360,22 +386,24 @@ export async function runContextRead(
         : [
             target.kind === 'pack'
               ? { kind: 'pack', query: parseContextPackReadQuery(target.query) }
-              : target.kind === 'list'
-                ? { kind: 'list', query: parseContextItemDirectoryQuery(target.query) }
-                : isDetailQuery(target)
-                  ? parseContextItemReadQuery({ kind: target.kind, item_id: target.item_id })
-                  : parseContextHistoryReadQuery(
-                      target.kind === 'history'
-                        ? {
-                            kind: 'history',
-                            item_id: target.item_id,
-                            limit: target.limit,
-                            ...(target.before_version === undefined
-                              ? {}
-                              : { before_version: target.before_version }),
-                          }
-                        : { kind: 'version', item_id: target.item_id, version: target.version },
-                    ),
+              : target.kind === 'pack-list'
+                ? { kind: 'pack-list', query: parseContextPackDirectoryQuery(target.query) }
+                : target.kind === 'list'
+                  ? { kind: 'list', query: parseContextItemDirectoryQuery(target.query) }
+                  : isDetailQuery(target)
+                    ? parseContextItemReadQuery({ kind: target.kind, item_id: target.item_id })
+                    : parseContextHistoryReadQuery(
+                        target.kind === 'history'
+                          ? {
+                              kind: 'history',
+                              item_id: target.item_id,
+                              limit: target.limit,
+                              ...(target.before_version === undefined
+                                ? {}
+                                : { before_version: target.before_version }),
+                            }
+                          : { kind: 'version', item_id: target.item_id, version: target.version },
+                      ),
           ];
   let step = 0;
   const transport: WcpTransport = {
@@ -426,10 +454,10 @@ export async function runContextRead(
             input: { ...query.query, operation: 'context' },
             context: structuredClone(context),
           });
-        } else if (query.kind === 'pack') {
+        } else if (query.kind === 'pack' || query.kind === 'pack-list') {
           raw = await router.execute(
             {
-              operation: 'context.pack.read',
+              operation: query.kind === 'pack' ? 'context.pack.read' : 'context.pack.list',
               input: { ...query.query },
               context: structuredClone(context),
             },
@@ -452,6 +480,23 @@ export async function runContextRead(
           });
         }
         active();
+        if (query.kind === 'pack-list') {
+          let page: ContextPackDirectoryEnvelope;
+          try {
+            page = parseContextPackDirectoryEnvelope(raw, query.query, scope, trace);
+          } catch {
+            active();
+            throw new ContractError(
+              'GATEWAY_RESPONSE_INVALID',
+              'The complete saved pack metadata page could not be validated',
+              { trace_id: trace, retryable: false },
+            );
+          }
+          // Metadata has no per-record classification. The trusted list handler must apply
+          // current parent-project and saved read_restricted filtering before returning it.
+          active();
+          return page as unknown as T;
+        }
         let result;
         try {
           result =

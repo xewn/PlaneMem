@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+2026-11-05：新增`context list-packs`，网络main/callGateway和嵌入runWorkctx复用SDK listContextPacks完整元数据读取。最多一个4 KiB `--json`/`--json-file`，默认{}，仅网络支持有界`--json -`；可选pack_id/limit/cursor及成对expected_actor_id/expected_client_id，默认30秒timeout-ms。每次一页、完整256 KiB封套，保留筛选和续页，不读取正文/hash/来源，过期或来源变化记录仍可能列出；打开具体包另行检查。嵌入原handler负责父项目/read_restricted过滤，九类上下文读共用每router两容量、底层结束才释放。无自动翻页/重试/换包/写入，详见[CLI保存包目录](../../docs/design/01-contracts/context-pack-runtime.md#cli-保存包目录读取2026-11-05源码增量)。仅源码文档，未编译、类型检查、测试、执行CLI/SDK或发布。
+
 2026-11-04：新增 `context compare-packs`，要求不同的 from_pack_id/to_pack_id 及 expected_actor_id/expected_client_id；网络 main/callGateway 和嵌入 runWorkctx 共用 SDK 双包读取、摘要核对与比较。恰一 4 KiB JSON/稳定文件，网络支持有界 stdin，默认30秒总等待期限；完整结果包含两侧内容和原方向差异，失败不输出半份结果。详见[CLI保存包对比](../../docs/design/01-contracts/context-pack-runtime.md#cli-指定保存包对比2026-11-04源码增量)。仅源码文档，未编译、类型检查、测试、执行 CLI/SDK 或发布。
 
 2026-11-04：`context get` 接入保存包专用完整读取，网络 main/callGateway 与嵌入 runWorkctx 均复用 SDK getContextPack 的结构/范围/版本/来源/预算/格式与 SHA-256 校验。最多一个 `--json`/`--json-file`（4 KiB），默认 `{}` 读取 latest，网络支持有界 `--json -`；可选 `--timeout-ms` 默认 30000，以及 JSON 内成对 expected_actor_id/expected_client_id。完整成功 2 MiB、Fetch 错误 16 KiB，不输出部分或未核对内容；嵌入要求可信未过期实际 context.read，核对原 GET/头/空正文/限额和入选 restricted 分类，与其他六类上下文读取共用每 router 两笔容量，底层 router 未结束则超时后仍占槽。共享 SDK 仅核对 JSON 内 ETag，不宣称通用传输可见 HTTP ETag/状态；无自动换包、重试、编译或保存。见[CLI保存包读取](../../docs/design/01-contracts/context-pack-runtime.md#cli-保存包完整读取2026-11-04源码增量)。仅源码文档，未编译、类型检查、测试、执行 CLI/SDK 或发布。
@@ -626,6 +628,7 @@ observed-item.json 示例：`{"work_item_id":"plane-item-42"}`。CLI 核对返�
 | `sync ack` | 保存的五字段 `expected_identity` 和非负安全整数 `cursor` | 不接受键/版本 |
 | `context compile` | 可选 `budget_tokens`、`ttl_seconds` | `--key` |
 | `context get` | 可选 `pack_id`、`format`，及成对 expected_actor_id/expected_client_id；可选 --timeout-ms | 无 |
+| `context list-packs` | 可选 pack_id/limit/cursor，及成对 expected_actor_id/expected_client_id | 最多一个4 KiB --json/--json-file，默认{}；可选 --timeout-ms，无写键 |
 | `context create` | `title`、`content`、`source_refs`，可选层级、分类等 | `--key` |
 | `context read` | `item_id`，可选成对 expected_actor_id/expected_client_id | 恰一 --json/--json-file，可选 --timeout-ms；无写条件 |
 | `context list` | 可选 query/layer/classification/status/item_type/cursor/limit/archived，及成对 expected_actor_id/expected_client_id；可选 --timeout-ms | 无 |

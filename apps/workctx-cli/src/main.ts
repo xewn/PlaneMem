@@ -332,6 +332,8 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   context compile                Save a context pack; optional budget_tokens/ttl_seconds and --key
   context get                    Read and hash-check a complete pack; optional pack_id/format (json/markdown/mcp)
                                  Optional --json/--json-file (4 KiB), default {}; optional --timeout-ms
+  context list-packs             List saved pack metadata by optional pack_id/limit/cursor; content/sources unchecked
+                                 Optional --json/--json-file (4 KiB), default {}; limit 25 (1-100), one page per call
   context create                 Add proposed context; title/content/source_refs and --key
   context read                   Read complete current item_id; bounded response and timeout
   context list                   Read one complete page by query/layer/classification/status/item_type/archived/limit/cursor
@@ -640,6 +642,7 @@ export async function main(args: string[]): Promise<number> {
       'checkpoints history',
       'context compile',
       'context get',
+      'context list-packs',
       'context create',
       'context read',
       'context list',

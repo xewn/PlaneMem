@@ -954,6 +954,25 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_pack_cli_directory_development_increment:
+      date: "2026-11-05"
+      status: "Source-only CLI saved ContextPack metadata listing; R-003 remains incomplete."
+      artifacts:
+        - "apps/workctx-cli/src/context-history.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "apps/workctx-cli/README.md"
+        - "docs/design/01-contracts/context-pack-runtime.md"
+        - "docs/design/01-contracts/wcp-api.md"
+      behavior: "context list-packs routes network main/callGateway and embedded runWorkctx through SDK listContextPacks. Optional one 4 KiB JSON/stable file, bounded network-only stdin, default empty query, pack_id/limit/cursor and optional paired actor/client constraints; default 30-second timeout. Embedded exact GET/path/headers/no-body/256 KiB checks, verified unexpired actual context.read and complete identity, cancellation/authority rechecked after authorization/audit. Original handler filters parent project and saved read_restricted; metadata lacks classification and is not used to infer permission. Shared complete metadata parser and nine context commands sharing two reads per router until underlying work settles. Single page with explicit continuation, no partial output/retry/prefetch/hash/content read/compile/save."
+      evidence: []
+      pending_evidence:
+        - "Network main/callGateway and embedded dispatch, strict original query/identity and exact request parity"
+        - "Default/explicit filters, UTF-8 stable file/bounded stdin, duplicate/unknown options and input limits"
+        - "Complete metadata/ordering/continuation, expiry/binding changes and error/empty stdout behavior"
+        - "Deadline/authorization waits, shared retained capacity and real CLI/SDK/Gateway compatibility"
+      remaining_scope: "MCP/Mock directory adapters, standalone Schema/OpenAPI and runtime evidence. Metadata is not full-pack readability; trusted handler supplies visibility. Input capture/stdout sending are outside SDK deadline; generic transport has no HTTP status/ETag headers and pages are not one snapshot."
+      execution: "Source/docs, manual review and formatting/text checks only; no build, typecheck, tests, CLI/SDK/product/API/database execution or release. No SDK/shared contract/Gateway/Web/MCP/Mock/schema/dependency/migration changes."
     context_pack_sdk_directory_development_increment:
       date: "2026-11-05"
       status: "Source-only SDK complete saved ContextPack metadata reads and demand-driven pages; R-003 remains incomplete."
@@ -971,7 +990,7 @@ requirements:
         - "Empty/exact/cursor pages, binding changes, malformed or oversized custom transport output"
         - "Local cancellation/deadline, credential waits, late responses, fixed errors and resource cleanup"
         - "Lazy iteration, original/returned object mutations, max-pages boundary, return/break and real Gateway compatibility"
-      remaining_scope: "CLI/MCP/Mock directory adapters, standalone Schema/OpenAPI and runtime evidence. Generic transport does not expose HTTP headers/status; Fetch keeps existing bounded-json and 16 KiB error limits. Metadata is not full-pack availability/source freshness, pages are not one snapshot, and local cancellation does not prove remote SQL termination. No added SDK concurrency limit."
+      remaining_scope: "CLI source is tracked above; MCP/Mock directory adapters, standalone Schema/OpenAPI and runtime evidence remain. Generic transport does not expose HTTP headers/status; Fetch keeps existing bounded-json and 16 KiB error limits. Metadata is not full-pack availability/source freshness, pages are not one snapshot, and local cancellation does not prove remote SQL termination. No added SDK concurrency limit."
       execution: "Source/docs, manual review and formatting/text checks only; no build, typecheck, tests, SDK/CLI/MCP/Mock/product/API/database execution or release. No shared contract/Gateway/Web/schema/dependency/migration changes."
     context_pack_metadata_directory_development_increment:
       date: "2026-11-05"

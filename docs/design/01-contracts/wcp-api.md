@@ -1,5 +1,7 @@
 # WCP API 契约 v1
 
+2026-11-05 CLI保存包目录增补：`context list-packs`网络main/callGateway和嵌入runWorkctx接入既有GET /v1/context-packs与context.pack.list。4 KiB可选查询/稳定文件/仅网络stdin，原筛选游标及可选成对身份约束；通过SDK有界单页读取和默认30秒期限核对完整256 KiB元数据封套，不自动翻页或读取正文。嵌入沿原handler权限过滤并共用上下文读容量，详见[CLI保存包目录](context-pack-runtime.md#cli-保存包目录读取2026-11-05源码增量)。仅源码文档，无新服务端路由；未编译、测试、执行CLI/API或发布。
+
 2026-11-05 SDK保存包目录增补：`listContextPacks`与`contextPackPages`接入既有GET /v1/context-packs，保持原范围/身份约束、规范查询及完整元数据封套；默认30秒有界读取和取消，迭代固定完整账号客户端、显式按需续页与页数上限。没有新服务端操作或写入；transport响应信息限制、类型和未执行示例见[SDK保存包目录](context-pack-runtime.md#sdk-保存包目录读取2026-11-05源码增量)。仅源码文档，未编译、测试、执行SDK/API或发布。
 
 2026-11-05 保存包目录增补：新增只读`GET /v1/context-packs` → `context.pack.list`，单值可选pack_id/limit/cursor，默认25最大100；拒绝正文、写条件、条件缓存和Range。要求已验证未过期客户端及完整项目身份、实际context.read，按父项目和保存read_restricted过滤。响应包含scope/query/trace、固定来源标记、metadata-only/not-checked、六字段data数组及可选next_cursor；不返回正文/hash/来源，不排除过期或来源已变化包。4 KiB查询、2 KiB单条、256 KiB完整响应，版本/ID降序、身份及条件绑定游标；无外层ETag或跨页快照。项目不可见404、非法查询400、容量429、目录等待超时/存储不可用503、异常完整元数据500。Web已接入，SDK/CLI/MCP/Mock及独立Schema/OpenAPI待补；详细边界见[保存包元数据目录](context-pack-runtime.md#保存包元数据目录2026-11-05源码增量)。仅源码文档，未编译、测试、执行SQL/API或发布。

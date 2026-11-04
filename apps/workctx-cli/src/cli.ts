@@ -282,6 +282,7 @@ export async function runWorkctx(
     'observed context': 'workitem.context',
     'context compile': 'context.pack.compile',
     'context get': 'context.pack.read',
+    'context list-packs': 'context.pack.list',
     'context create': 'context.item.create',
     'context read': 'context.item.read',
     'context read-archived': 'context.item.archived.read',
