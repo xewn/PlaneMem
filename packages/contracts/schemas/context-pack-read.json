@@ -1,0 +1,327 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/context-pack-read.json",
+  "title": "Complete saved ContextPack read v1",
+  "description": "Complete success envelope for an explicit saved-pack or latest read. The root accepts json and rendered responses; select a format-specific anchor when the original query format is known.",
+  "$comment": "Source artifact only; no validator, generator or runtime verification was executed. Register this whole local resource before resolving anchors. The ID is an identifier, not a hosted endpoint. Retain parseContextPackReadQuery/Envelope, canonical contextPackReadHashJson and SHA-256 verification, request matching and Gateway authority/source checks. This schema does not describe compilation commands, old sections-based entities, MCP outer wrappers, HTTP headers or Mock configuration.",
+  "$ref": "#ContextPackReadEnvelope",
+  "$defs": {
+    "ulid": {
+      "type": "string",
+      "minLength": 26,
+      "maxLength": 26,
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+      "$comment": "Matches the existing isUlid character/length contract; does not introduce a new first-character restriction."
+    },
+    "positiveInteger": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "nonnegativeInteger": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "savedName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "pattern": "\\S",
+      "$comment": "Used for saved pack/item traces and selected/excluded item IDs. The current shared parser requires nonblank UTF-16 length <=4096; it does not apply the outer request-trace control-character restriction to these fields."
+    },
+    "requestTrace": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "\\S",
+      "not": { "pattern": "[\\u0000-\\u001f]" },
+      "$comment": "Runtime isSyncIdentifier additionally rejects unpaired surrogates and counts UTF-16 units; this trace must equal the original read trace."
+    },
+    "clientConstraint": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "\\S",
+      "not": { "pattern": "[\\u0000-\\u001f\\u007f]" },
+      "$comment": "CLI parseSyncCommandIdentity text constraint; runtime also rejects unpaired surrogates and checks equality with the authenticated client. This is not a credential."
+    },
+    "timestamp": {
+      "type": "string",
+      "minLength": 24,
+      "maxLength": 24,
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$",
+      "$comment": "Runtime requires valid exact UTC millisecond round-trip, receipt.created_at < pack.expires_at and every supplied item expiry >= pack expiry. Format may be annotation-only."
+    },
+    "readFormat": {
+      "enum": ["json", "markdown", "mcp"],
+      "default": "json"
+    },
+    "ContextPackReadQuery": {
+      "$anchor": "ContextPackReadQuery",
+      "title": "Saved-pack read query",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pack_id": { "$ref": "#/$defs/ulid" },
+        "format": { "$ref": "#/$defs/readFormat" }
+      },
+      "$comment": "Input is limited to 4096 bytes at runtime. Omitted pack_id selects latest; empty/null IDs are invalid. Omitted format normalizes to json; default is an annotation and does not mutate input. SDK/MCP use this object; public HTTP uses URL query parameters and no GET body.",
+      "examples": [
+        {},
+        { "format": "mcp" },
+        { "pack_id": "01J000000000000000000000001", "format": "markdown" }
+      ]
+    },
+    "ContextPackReadNormalizedQuery": {
+      "$anchor": "ContextPackReadNormalizedQuery",
+      "$ref": "#ContextPackReadQuery",
+      "required": ["format"],
+      "$comment": "The shared query parser returns format explicitly; the success envelope does not echo this query."
+    },
+    "ContextPackReadCliQuery": {
+      "$anchor": "ContextPackReadCliQuery",
+      "title": "CLI context get JSON input",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pack_id": { "$ref": "#/$defs/ulid" },
+        "format": { "$ref": "#/$defs/readFormat" },
+        "expected_actor_id": { "$ref": "#/$defs/ulid" },
+        "expected_client_id": { "$ref": "#/$defs/clientConstraint" }
+      },
+      "dependentRequired": {
+        "expected_actor_id": ["expected_client_id"],
+        "expected_client_id": ["expected_actor_id"]
+      },
+      "$comment": "Both identity constraints may be omitted; if supplied, both are required. Total CLI JSON input is limited to 4096 bytes. --timeout-ms is a CLI option, not a JSON field. Scope/credentials remain external; this four-field object must not be sent as the public GET body or MCP arguments.",
+      "examples": [
+        {},
+        {
+          "pack_id": "01J000000000000000000000001",
+          "format": "json",
+          "expected_actor_id": "01J000000000000000000000002",
+          "expected_client_id": "client_saved_pack_example"
+        }
+      ]
+    },
+    "ContextPackReadScope": {
+      "$anchor": "ContextPackReadScope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant_id", "workspace_id", "project_id"],
+      "properties": {
+        "tenant_id": { "$ref": "#/$defs/ulid" },
+        "workspace_id": { "$ref": "#/$defs/ulid" },
+        "project_id": { "$ref": "#/$defs/ulid" }
+      }
+    },
+    "ContextPackReadSourceRef": {
+      "$anchor": "ContextPackReadSourceRef",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "minLength": 1 },
+        "revision": { "$ref": "#/$defs/nonnegativeInteger" },
+        "uri": { "type": "string", "minLength": 1 }
+      },
+      "$comment": "Matches validateSourceRef through the complete read parser: nonempty strings, optional nonnegative safe revision. No invented text maximum, whitespace restriction or URI format/access guarantee. Source lists remain bounded by total response bytes/JSON complexity."
+    },
+    "ContextPackReadItem": {
+      "$anchor": "ContextPackReadItem",
+      "title": "Complete selected saved item",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "tenant_id",
+        "workspace_id",
+        "project_id",
+        "id",
+        "layer",
+        "content",
+        "source_refs",
+        "confirmed",
+        "confidence",
+        "priority",
+        "sensitivity",
+        "trace_id",
+        "selection_reason"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "tenant_id": { "$ref": "#/$defs/ulid" },
+        "workspace_id": { "$ref": "#/$defs/ulid" },
+        "project_id": { "$ref": "#/$defs/ulid" },
+        "id": { "$ref": "#/$defs/savedName" },
+        "layer": { "enum": ["L0", "L1", "L2", "L3", "L4"] },
+        "content": { "type": "string" },
+        "source_refs": {
+          "type": "array",
+          "items": { "$ref": "#ContextPackReadSourceRef" }
+        },
+        "confirmed": { "type": "boolean" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "priority": { "type": "number" },
+        "sensitivity": { "enum": ["public", "internal", "confidential", "restricted"] },
+        "trace_id": { "$ref": "#/$defs/savedName" },
+        "revision": { "$ref": "#/$defs/positiveInteger" },
+        "expires_at": { "$ref": "#/$defs/timestamp" },
+        "selection_reason": { "const": "ranked-fit" }
+      },
+      "$comment": "Full content, including empty strings, is retained. Item scope must equal pack scope and the original read scope. Item IDs must be unique across selected and excluded arrays. Optional revision/expiry are omitted, never null. Runtime rejects nonfinite numbers and verifies expiry ordering. Saved confirmed/sensitivity fields are not present authorization."
+    },
+    "ContextPackReadExclusion": {
+      "$anchor": "ContextPackReadExclusion",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "reason"],
+      "properties": {
+        "id": { "$ref": "#/$defs/savedName" },
+        "reason": { "enum": ["policy", "expired", "budget", "source"] }
+      }
+    },
+    "SavedContextPack": {
+      "$anchor": "SavedContextPack",
+      "title": "Complete persisted ContextPack document",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "pack_version",
+        "pack_hash",
+        "scope",
+        "trace_id",
+        "budget_tokens",
+        "items",
+        "source_refs",
+        "exclusions",
+        "expires_at"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "pack_version": { "const": 1 },
+        "pack_hash": {
+          "type": "string",
+          "minLength": 71,
+          "maxLength": 71,
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "scope": { "$ref": "#ContextPackReadScope" },
+        "trace_id": { "$ref": "#/$defs/savedName" },
+        "budget_tokens": { "type": "integer", "minimum": 128, "maximum": 32768 },
+        "items": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": { "$ref": "#ContextPackReadItem" }
+        },
+        "source_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#ContextPackReadSourceRef" }
+        },
+        "exclusions": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": { "$ref": "#ContextPackReadExclusion" }
+        },
+        "expires_at": { "$ref": "#/$defs/timestamp" }
+      },
+      "$comment": "pack_version is the document format version, not receipt.version. Runtime requires items.length + exclusions.length <=1000 and distinct IDs across both arrays. source_refs is exactly the ordered first-occurrence union of complete selected source objects; repeated per-item sources are allowed. Hash must be recomputed from canonical complete content, excluding only this pack's top-level trace_id and pack_hash. This object is not the legacy sections-based ContextPack entity."
+    },
+    "ContextPackReadRendered": {
+      "$anchor": "ContextPackReadRendered",
+      "title": "Complete markdown representation",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uri", "mimeType", "text"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "pattern": "^work://project/[0-9A-HJKMNP-TV-Z]{26}/context-pack/[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        "mimeType": { "const": "text/markdown" },
+        "text": { "type": "string" }
+      },
+      "$comment": "Both markdown and mcp formats use this shape. Runtime requires the exact encoded project/saved pack URI and rendered text reconstructed from every selected item and source, not just a plausible URI/text. Empty packs render as empty text. This is not the outer MCP resource contents wrapper."
+    },
+    "ContextPackReadReceipt": {
+      "$anchor": "ContextPackReadReceipt",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pack_id", "version", "created_at", "used_tokens", "pack"],
+      "properties": {
+        "pack_id": { "$ref": "#/$defs/ulid" },
+        "version": { "$ref": "#/$defs/positiveInteger" },
+        "created_at": { "$ref": "#/$defs/timestamp" },
+        "used_tokens": { "type": "integer", "minimum": 0, "maximum": 32768 },
+        "pack": { "$ref": "#SavedContextPack" },
+        "rendered": { "$ref": "#ContextPackReadRendered" }
+      },
+      "$comment": "used_tokens must equal sum(max(1,ceil(item.content.length/4))) using JavaScript UTF-16 lengths, and must not exceed pack.budget_tokens. created_at must precede pack expiry. Explicit query pack_id must match; latest selection is enforced by the producer, not by this shape. The enclosing request format determines whether rendered must be absent or present."
+    },
+    "ContextPackReadEnvelope": {
+      "$anchor": "ContextPackReadEnvelope",
+      "title": "Complete saved pack success envelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "trace_id",
+        "revision",
+        "etag",
+        "server_cursor",
+        "source_refs",
+        "data"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "#/$defs/requestTrace" },
+        "revision": { "$ref": "#/$defs/positiveInteger" },
+        "etag": {
+          "type": "string",
+          "pattern": "^W/\"version-[1-9][0-9]{0,15}\"$",
+          "$comment": "Runtime requires buildEtag(data.version) exactly, including safe integer range; a matching pattern alone does not bind the version."
+        },
+        "server_cursor": { "$ref": "#/$defs/positiveInteger" },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "prefixItems": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "id"],
+              "properties": {
+                "type": { "const": "context-pack" },
+                "id": { "$ref": "#/$defs/ulid" }
+              }
+            }
+          ],
+          "items": { "$ref": "#ContextPackReadSourceRef" }
+        },
+        "data": { "$ref": "#ContextPackReadReceipt" }
+      },
+      "$comment": "Complete success is limited to 2 MiB, including rendered. Runtime requires original trace/scope/selected ID/format, revision=data.version, canonical JSON ETag and source_refs exactly [{type:'context-pack',id:data.pack_id},...data.pack.source_refs]. The root accepts either format shape; use a specialized anchor or pass the original query to the shared parser. Metadata and a valid hash shape do not prove saved content integrity, current source validity or read permission."
+    },
+    "ContextPackReadJsonEnvelope": {
+      "$anchor": "ContextPackReadJsonEnvelope",
+      "$ref": "#ContextPackReadEnvelope",
+      "properties": {
+        "data": { "not": { "required": ["rendered"] } }
+      },
+      "$comment": "Use for format=json, including omitted format. Even rendered=null is forbidden."
+    },
+    "ContextPackReadRenderedEnvelope": {
+      "$anchor": "ContextPackReadRenderedEnvelope",
+      "$ref": "#ContextPackReadEnvelope",
+      "properties": {
+        "data": { "required": ["rendered"] }
+      },
+      "$comment": "Use for format=markdown or mcp. Content remains a complete pack, with a complete rendered representation."
+    }
+  }
+}

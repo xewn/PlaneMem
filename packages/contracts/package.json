@@ -10,7 +10,8 @@
     ".": "./src/index.ts",
     "./schemas/artifact-versions.json": "./schemas/artifact-versions.json",
     "./schemas/artifact-registry.json": "./schemas/artifact-registry.json",
-    "./schemas/artifact-comparison.json": "./schemas/artifact-comparison.json"
+    "./schemas/artifact-comparison.json": "./schemas/artifact-comparison.json",
+    "./schemas/context-pack-read.json": "./schemas/context-pack-read.json"
   },
   "type": "module",
   "name": "@planemem/contracts",

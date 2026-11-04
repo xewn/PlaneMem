@@ -954,6 +954,22 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_pack_read_schema_development_increment:
+      date: "2026-11-04"
+      status: "Source-only standalone complete saved ContextPack read schema; R-003 remains incomplete."
+      artifacts:
+        - "packages/contracts/schemas/context-pack-read.json"
+        - "packages/contracts/package.json"
+        - "packages/contracts/schemas/README.md"
+        - "docs/design/01-contracts/context-pack-runtime.md"
+      behavior: "Self-contained JSON Schema 2020-12 with package subpath for complete read envelopes. Anchors cover SDK/MCP query, CLI paired optional identity constraints, normalized query, scope/source/selected item/exclusion/saved pack/receipt/rendered and json-versus-rendered envelopes. Closed fields, current ULID syntax, safe integers, budget/count limits, distinct saved versus request trace constraints, SHA-256/ETag/timestamp shapes. Preserve legacy sections entity and existing runtime parser; no production JSON imports or validator dependency."
+      evidence: []
+      pending_evidence:
+        - "Schema validator compatibility, local resource/anchor resolution and package export consumption"
+        - "Automatic parity with shared parsers, original format-specific envelopes and SDK/CLI/MCP/Mock responses"
+        - "Byte/UTF-16/date/number boundary cases and dynamic scope/version/source/budget/render/hash checks"
+      remaining_scope: "Automatic schema/parser consistency, OpenAPI alignment and runtime/client evidence. Structure cannot replace original query/scope/trace/ID/version matching, combined candidate count/ID uniqueness, token sums, ordered source union, rendered content equality, digest verification, authorization or source freshness."
+      execution: "Source/docs, manual review and formatting/text checks only; no schema validator/generator, build, typecheck, tests, SDK/CLI/MCP/Mock/product/API/database execution or release. No legacy entity/shared TypeScript parser/production route/dependency changes."
     context_pack_mock_read_development_increment:
       date: "2026-11-04"
       status: "Source-only optional complete saved ContextPack Mock reads; R-003 remains incomplete."

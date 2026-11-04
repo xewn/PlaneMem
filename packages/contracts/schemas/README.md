@@ -2,6 +2,45 @@
 
 这些文件是开发源码，尚未经过本轮编译、生成器、Schema校验器、测试或运行验证。`$id`是契约标识，不代表已发布网站；消费者应从工作区或包子路径加载文件，不依赖远端下载。
 
+## 保存 ContextPack 完整读取
+
+`context-pack-read.json`采用JSON Schema 2020-12，包子路径为`@planemem/contracts/schemas/context-pack-read.json`。它自包含全部定义，根是`ContextPackReadEnvelope`，用于GET /v1/context-pack、SDK getContextPack、CLI context get和MCP保存包工具/资源内部文本中的完整成功封套，也可描述Mock中提供的完整json响应。MCP外层content/contents/JSON-RPC包装、HTTP头/状态、编译命令及Mock配置不属于此根结构。
+
+先注册完整本地资源，再按相对于`https://planemem.local/schemas/context-pack-read.json`的片段选择结构。该标识不表示远端托管，不需要联网下载；不要拆出单个`$defs`后丢失引用上下文。
+
+| 片段 | 对应内容 |
+| --- | --- |
+| `#ContextPackReadQuery` | SDK/MCP查询，pack_id与format都可省略 |
+| `#ContextPackReadNormalizedQuery` | 共享解析器规范查询，format明确出现；成功封套不回显query |
+| `#ContextPackReadCliQuery` | CLI四字段JSON，另含可选但必须成对的expected_actor_id/expected_client_id |
+| `#ContextPackReadScope` | 保存包的租户/工作区/项目ULID |
+| `#ContextPackReadSourceRef` | 完整来源对象，保留可选revision/uri，revision可为0 |
+| `#ContextPackReadItem` | 完整入选条目，含原内容、来源、trace及ranked-fit理由 |
+| `#ContextPackReadExclusion` | 排除项ID及policy/expired/budget/source理由 |
+| `#SavedContextPack` | 完整持久包，含摘要、预算、入选/排除项、来源与到期 |
+| `#ContextPackReadRendered` | markdown/mcp共用的具体包URI及完整Markdown文本 |
+| `#ContextPackReadReceipt` | data内保存ID/version/created_at/used_tokens/pack及可选rendered |
+| `#ContextPackReadEnvelope` | 根完整成功封套，接受json或渲染形式 |
+| `#ContextPackReadJsonEnvelope` | 原format为json或省略时，禁止出现rendered |
+| `#ContextPackReadRenderedEnvelope` | 原format为markdown/mcp时，必须有完整rendered |
+
+查询pack_id省略表示latest，空串/null无效；format默认值仅为注释，实际归一化仍由共享解析器完成。CLI的--timeout-ms是命令选项，不是JSON字段；身份约束不能混入SDK/MCP查询，也不是凭据。公开GET使用URL查询，不能把这些对象放进GET正文。
+
+每个对象字段封闭，使用当前isUlid的26字符规则、安全整数、预算128–32768、最多1000项的各候选数组和保存摘要形状。pack_version固定1代表内容格式，receipt.version才是保存版本。外层trace沿isSyncIdentifier最多255字符，包和条目保存trace及候选ID沿共享name规则最多4096字符；不得把外层trace限制套到全部保存字段。来源type/id/uri沿既有非空字符串规则，不新增trim、URL格式或长度限制；每条来源允许重复，包聚合来源不得重复。示例仅包含人工编写的查询，不伪造成功包摘要，也不是测试证据。
+
+旧`entities/ContextPack.json`描述带sections的核心实体，不能替代此完整读取结构；本增量保留旧定义。以下规则仍必须由现有`parseContextPackReadQuery`、`parseContextPackReadEnvelope`、`contextPackReadHashJson`及调用方/服务端检查：
+
+- 查询4 KiB、完整成功2 MiB、错误16 KiB；普通有限JSON、深度/节点限制、UTF-16长度、有效字符及数字有限性。Schema字符串长度按码点计数，不能替代JavaScript长度预算。
+- 原请求scope/trace/指定pack_id/format匹配；所有入选条目范围一致，revision等于data.version，JSON内ETag精确对应版本，外层来源首项指向该包。latest的实际选择及权限过滤由生产者负责。
+- items与exclusions合计最多1000，ID跨两个数组唯一；每条估算max(1,ceil(content.length/4))的总和恰等于used_tokens且不超budget_tokens。空内容仍计一个token。
+- 包来源恰为按入选顺序取完整来源对象的首次去重并集，外层来源恰为包引用加该列表。不能只检查数量、类型或uniqueItems。
+- UTC毫秒时间必须有效且可精确往返，created_at早于包到期，入选条目若含到期时间则不能更早；`format`可能只作注释。实际过期和来源变化仍由读取入口处理。
+- rendered必须符合原格式，URI使用原项目和选中具体保存包，文本完整对应每条入选内容与来源；root本身不知道原查询格式，消费者可先选择格式专用锚点再做动态核对。
+- 对完整包递归排序对象键、保留数组顺序，仅排除包顶层trace_id/pack_hash，然后计算真实SHA-256；条目trace仍参与摘要。Schema中的64位十六进制模式不证明摘要正确。
+- 实际认证、未过期身份、当前父项目/受限内容权限、来源数据库快照及期限/容量均不由Schema授予。摘要一致也不证明来源真实性或未来可用性。
+
+完整接入和运行边界见[保存包读取](../../../docs/design/01-contracts/context-pack-runtime.md)。本次不增加生产JSON导入、校验器依赖或生成器，不执行Schema校验、编译、类型检查、测试或发布；Schema与共享解析器的自动一致性、OpenAPI及真实客户端运行证据仍待补齐。
+
 ## 文件版本比较
 
 `artifact-comparison.json`采用JSON Schema 2020-12，包子路径为`@planemem/contracts/schemas/artifact-comparison.json`。文件自包含全部定义，根为`ArtifactComparisonResult`：SDK `compareArtifactVersions`的返回值、CLI `artifacts compare`的stdout对象，以及MCP `compare_artifact_versions`返回文本中的JSON。MCP外层JSON-RPC/content包装不属于根结构，需先取出文本并解析；旧Artifact实体Schema及目录Schema不能替代此文件。
