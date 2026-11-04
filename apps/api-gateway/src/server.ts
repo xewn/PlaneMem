@@ -88,6 +88,11 @@ import { dispatchMcp, rpcError, MCP_PROTOCOL_VERSIONS } from './mcp/protocol.js'
 import { registerMcpReads, resourceKey, type RuntimeResource } from './mcp/reads.js';
 import { registerContextPacks, withSavedContextPack } from './context-packs.js';
 import { registerContextPackDirectory } from './context-pack-directory.js';
+import {
+  canReadContextPackSaveContext,
+  registerContextPackSaveContext,
+  validateContextPackSaveContextHeaders,
+} from './context-pack-save-context.js';
 import { registerCheckpointReceipts } from './checkpoint-receipts.js';
 import { registerCheckpointRead } from './checkpoint-read.js';
 import { registerCheckpointHistory } from './checkpoint-history.js';
@@ -506,6 +511,11 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
         !canReadSessionCommandContext(request.context)
       )
         return { allowed: false, reason: 'verified_session_command_context_required' };
+      if (
+        request.operation === 'context.pack.save-context' &&
+        !canReadContextPackSaveContext(request.context)
+      )
+        return { allowed: false, reason: 'verified_context_pack_reader_required' };
       if (
         request.operation === 'workbench.query' &&
         request.input.operation === 'admin' &&
@@ -1417,6 +1427,7 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
   router.register('workbench.query', (request) => queryWorkbench(workbench, request, version));
   registerAuditExport(router, workbench, policy, auditExport);
   registerContextPacks(router, auditDb);
+  registerContextPackSaveContext(router);
   registerContextPackDirectory(router, auditDb);
   registerCheckpointReceipts(router, auditDb);
   registerCheckpointRead(router, auditDb);
@@ -1458,6 +1469,7 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
   api.route('POST', WORKBENCH_QUERY_PATH, 'workbench.query');
   api.route('POST', '/v1/audit/export', 'audit.export');
   api.route('POST', '/v1/context-pack/compile', 'context.pack.compile');
+  api.route('GET', '/v1/context-pack/save-context', 'context.pack.save-context');
   api.route('GET', '/v1/context-pack', 'context.pack.read');
   api.route('GET', '/v1/context-packs', 'context.pack.list');
   api.routeTemplate('GET', '/v1/artifacts/{artifact_id}', 'artifact.read');
@@ -1965,6 +1977,7 @@ async function handleRequest(
     const sessionCommandContextRoute = url.pathname === '/v1/sessions/command-context';
     const conflictCommandContextRoute = url.pathname === '/v1/conflicts/commands/context';
     const syncCommandContextRoute = url.pathname === '/v1/sync/commands/context';
+    const contextPackSaveContextRoute = url.pathname === '/v1/context-pack/save-context';
     const syncCursorRoute = url.pathname === '/v1/sync/cursor';
     const artifactRoute = /^\/v1\/artifacts(?:\/|$)/.test(url.pathname);
     const artifactRegistryRoute = request.method === 'GET' && url.pathname === '/v1/artifacts';
@@ -1987,6 +2000,7 @@ async function handleRequest(
     const contextPackRoute = [
       '/v1/context-pack',
       '/v1/context-pack/compile',
+      '/v1/context-pack/save-context',
       '/v1/context-packs',
     ].includes(url.pathname);
     const syncRoute = [
@@ -2036,6 +2050,7 @@ async function handleRequest(
         auditExportRoute ||
           conflictCommandContextRoute ||
           sessionCommandContextRoute ||
+          contextPackSaveContextRoute ||
           artifactDownload ||
           artifactRegistryRoute ||
           url.pathname === '/v1/artifacts/upload-context' ||
@@ -2049,6 +2064,17 @@ async function handleRequest(
             request.method === 'POST'),
       );
       // These headers are preconditions on verified claims, never identity inputs.
+      if (contextPackSaveContextRoute) {
+        if (request.method !== 'GET' || url.searchParams.size || url.hash)
+          throw new ContractError('INVALID_INPUT', 'Save identity is a parameter-free GET', {
+            trace_id: traceId,
+            retryable: false,
+          });
+        const entries: Array<[string, string | undefined]> = [];
+        for (let i = 0; i < request.rawHeaders.length; i += 2)
+          entries.push([request.rawHeaders[i]!, request.rawHeaders[i + 1]]);
+        validateContextPackSaveContextHeaders(entries, context);
+      }
       if (
         (sessionCommandContextRoute ||
           conflictCommandContextRoute ||

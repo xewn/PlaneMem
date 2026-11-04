@@ -1,5 +1,7 @@
 # 持久化 ContextPack 开发说明
 
+2026-11-05新增[保存前可信身份读取](#保存前可信身份读取2026-11-05源码增量)：Gateway/SDK/Mock统一返回当前完整身份与会话期限，为跨登录原请求绑定提供基础；不读取保存包、不预留键或覆盖旧请求。仅源码文档，未执行API/SDK/Mock、编译、类型检查、测试或发布。
+
 2026-11-05补充[Mock显式保存与重放](context-pack-mock-runtime.md#显式保存与重放2026-11-05源码增量)：预置完整保存场景接入SDK提交，首次激活后读取/目录可见，同键重放且参数/权限桶变化拒绝；失败不回滚已激活包。无真实编译器或数据库，预置时间/版本保持，R-003未完成、evidence为空。仅源码文档，未执行Mock/SDK/API/保存请求、编译、类型检查、测试或发布。
 
 2026-11-05完善[网页保存包提交核验](#网页保存包提交核验2026-11-05源码增量)：保存改为完整有界回执/摘要核验，提交后401/到期/4xx不清除unknown；成功后的缓存刷新失败不再要求重发。仅源码文档，未编译、类型检查、测试、渲染/浏览器/API/保存请求或发布。
@@ -583,3 +585,39 @@ ContextPackSaveError携带固定code/message、可用时已核验HTTP状态，�
 限制：本次会话和范围快照只覆盖一次调用，**跨重新登录的账号/客户端和原Gateway/项目尚未固定**。当前网页session没有完整可信actor/client绑定，本增量未增加身份端点或持久原请求；重试仍需用户保持原账号、客户端、项目和设置，不能声称跨身份恢复已闭环。关闭/刷新页面不保证保留原键，页面提示这一限制；未来仍需补原请求绑定及恢复存储。
 
 R-003未完成、evidence为空。完整网络回执/摘要、未知错误/过期重试、超时与迟到结果、session变化、缓存失败跳转及真实浏览器兼容证据待补。仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、渲染、运行浏览器/API/SDK/CLI/MCP/Mock/保存请求、数据库或发布；无后端、共享协议、样式、依赖或迁移变化。
+
+## 保存前可信身份读取（2026-11-05源码增量）
+
+新增GET /v1/context-pack/save-context → context.pack.save-context，供调用方在准备保存请求前取得可信原身份。HTTP沿真实Bearer认证、三范围相等检查及已认证client要求，既有workbench能力映射保持；策略前要求当前可信上下文确有context.read且token未过期，admin角色不能单独替代。随后沿context.read的OPA/本地策略和原审计链，handler在授权/审计等待之后重新核对认证客户端、实际能力和期限，构造完整结果后再检查一次到期。只返回调用方自身的认证元数据，不访问项目记录、保存包、来源图或编译器；项目是否仍可见和保存是否获准仍由实际保存请求决定。原审计仍可能持久写入读取决定。
+
+共享`ContextPackSaveContextEnvelope`包含且只包含schema_version=1、当前trace_id、空source_refs及data；data严格包含以下字段：
+
+| 字段 | 含义与约束 |
+| --- | --- |
+| identity | tenant_id/workspace_id/project_id/actor_id/client_id五项原身份；前三项与actor沿现有保存客户端ULID限制，client为1–255 UTF-16合法标识，拒绝C0/DEL/孤立代理项 |
+| expires_at | 可信token到期时间，四位非零年份UTC毫秒格式；SDK与网关分别核对当前尚未到期 |
+| permissions.compile | 必须为true，表示本次身份读取通过实际context.read和客户端门禁；不是未来保存承诺 |
+| permissions.read_restricted | 当前可信能力是否包含data.restricted.read；保存时仍须重查，变化可能影响原键指纹 |
+
+`parseContextPackSaveContextEnvelope`先复制有界普通JSON，最多16 KiB并沿既有深度/节点限制，拒绝访问器、非普通对象、隐藏字段、非有限值及未声明字段，再核对五项身份、时间形状、空来源、原trace和原项目范围。可分别指定原actor_id/client_id作为相等约束，缺省不猜测身份；返回独立对象。trace限255 UTF-16，拒绝空白值/C0/DEL/孤立代理项。解析器验证结构和绑定，不自行证明远端可信或当前时钟有效；不能把结构合法的历史身份直接当作仍有效的会话。
+
+HTTP路径无查询、片段或正文，content-length只可缺省或0，禁止transfer-encoding。按rawHeaders读取原始头，16 KiB普通JSON预算内拒绝大小写重复，不能依赖Node合并后的头绕过身份条件。禁止idempotency-key、if-match、if-match-version、x-expected-version、if-none-match、if-modified-since、if-unmodified-since、range、if-range及content-encoding；traceparent与x-trace-id若出现都须等于本次trace。三范围及可选x-expected-actor-id/x-expected-client-id只能约束已验证值，不能覆盖身份。内部ApiGateway也检查这些头，handler只接受空命令输入并拒绝context上的幂等键/版本条件；内部空对象代表无参数，HTTP有正文的GET仍拒绝。内部路径匹配本身是精确GET，错误方法/路径为404；公开HTTP对此身份路径的错误方法/查询为400。
+
+成功沿200 application/json、private, no-store、原x-trace-id，无ETag。非法输入400、权限/原身份不符403、认证失败401、速率限制429、可信身份无法表示500 CONTEXT_PACK_SAVE_CONTEXT_INVALID，认证设施或审计不可用503；原速率/审计机制保持，提前认证拒绝不保证业务trace响应头。身份handler不设额外并发池或服务器等待期限，外层认证/策略/审计可能等待，客户端本地期限不证明服务端中止。没有新增数据库表、键预留、保存事务或迁移。
+
+SDK新增`getContextPackSaveContext(options = {})`，options仅timeout_ms/signal，默认30秒。调用开始捕获原范围、trace和可选原actor/client，移除继承写条件；最多一次bounded-json GET、完整16 KiB成功，Fetch错误沿原16 KiB限制，期限包括传输层的凭据等待/接收与结构核验。解析完整封套后核对原身份及当前到期，再检查本地期限；超时、取消和异常不交付半份或迟到结果。错误转固定白名单说明，不透传上游details；未知错误GATEWAY_UNAVAILABLE。通用WcpTransport只暴露JSON，SDK不声称独立检查HTTP状态或响应头。非法输入通过Promise拒绝，不发送保存、不自动重试，也不把返回身份写回原WcpClient或已有恢复请求。
+
+`MockContextPackStore`通过既有MockWcpServer配置支持同一GET；无需compilations，可在packs为空、visible_pack_ids为空或project_readable=false时读取自身身份，但仍要求原显式会话read_context=true且未过期。请求遵守原范围/可选账号客户端条件、无正文/查询/写头/缓存/Range及重复头限制。输出16 KiB或调用方更小限额，返回原完整身份、固定expires_at及read_restricted，独立于包/目录内容和pending激活状态，不计算摘要、不占原读取或保存容量。30秒/signal沿原预算，只执行本地阶段检查；这不构成真实认证或授权审计证据。
+
+以下为未执行的SDK接线示例。仅读取当前身份，不应使用它自动替换一份已有原请求的身份；恢复旧请求时应先在原client上下文设置旧账号/客户端相等条件，发现变化即停止原请求的发送。
+
+```ts
+const authority = await client.getContextPackSaveContext({ timeout_ms: 10_000 });
+const originalIdentity = authority.data.identity;
+const currentExpiry = authority.data.expires_at;
+const visibilityBucket = authority.data.permissions.read_restricted;
+// Retain the complete original binding when preparing a new save request.
+// Reading authority alone does not submit or reserve an idempotency key.
+```
+
+本增量提供可信身份发现基础，**尚未接入网页原请求准备、跨重登录发送绑定及持久恢复**，也未新增CLI/MCP工具或独立Schema/OpenAPI。读取当前身份不能找回旧键、证明历史保存、证明项目可读或延长旧权限；既有compile入口保持其原兼容行为。R-003未完成、evidence为空，真实认证/策略审计/会话到期、HTTP与内嵌限制、SDK/Mock兼容和取消/限额运行证据待补。仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行校验器/API/SDK/Mock/保存请求、数据库或发布。

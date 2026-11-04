@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-05：新增`getContextPackSaveContext({timeout_ms?, signal?})`与返回/身份类型导出，单次GET /v1/context-pack/save-context，完整16 KiB封套、原范围及可选actor/client相等、当前到期检查；默认30秒，清除继承写条件，不自动重试或覆盖原请求。`MockContextPackStore`沿显式会话支持相同读取，无需compilations或可见包；身份读取不等于项目可读或保存获准。详见[保存前可信身份读取](../../docs/design/01-contracts/context-pack-runtime.md#保存前可信身份读取2026-11-05源码增量)。仅源码文档，未执行SDK/Mock/API、编译、类型检查、测试或发布。
+
 2026-11-05：`MockContextPackStore`新增可选`compilations`及根导出`MockContextPackCompilation`，预置完整包按原actor/client/请求键/预算期限绑定pending或saved场景，经`MockWcpServer`接入`compileContextPack`。pending包在完整核验后激活，随后可读/可列；同键返回原包，参数或权限桶变化拒绝，返回失败不回滚已激活状态。保存独立两容量/30秒/取消；旧只读配置兼容，不生成内容或访问真实编译器。配置及未执行示例见[显式保存与重放](../../docs/design/01-contracts/context-pack-mock-runtime.md#显式保存与重放2026-11-05源码增量)。仅源码文档，未执行Mock/SDK、编译、类型检查、测试或发布。
 
 2026-11-05：`compileContextPack(input, options)` 接入专用保存请求，根导出 `WcpContextPackCompileOptions` 和 `ContextPackCompileParameters`。options保留必填idempotency_key，增加timeout_ms/signal；捕获原范围、可选actor/client及规范默认预算4096/期限3600，最多一次bounded-json POST，默认30秒含凭据、完整响应和摘要。共享2 MiB完整封套、原预算及最大TTL核对后执行WebCrypto SHA-256；返回 `Promise<ContextPackReadEnvelope>`，失败只给固定诊断及not-checked/unknown，不自动重试或恢复写入。非法输入从同步抛错改为Promise拒绝；自定义传输须支持bounded-json/signal并返回完整封套，旧不完整模拟回执不再通过；Mock保存接线见上方增量。账号/客户端原本省略时继续省略相等约束，无法固定凭据续期前后身份；服务端仍负责权限、来源及幂等键归属。完整边界和调用方迁移见[SDK保存包提交核验](../../docs/design/01-contracts/context-pack-runtime.md#sdk-保存包提交核验2026-11-05源码增量)。仅源码文档，未编译、类型检查、测试、执行SDK/API/保存请求或发布。

@@ -2,6 +2,7 @@ import {
   ContractError,
   CONTEXT_PACK_READ_RESPONSE_BYTES,
   CONTEXT_PACK_DIRECTORY_RESPONSE_BYTES,
+  CONTEXT_PACK_SAVE_CONTEXT_BYTES,
   compareContextPackDirectoryPositions,
   createUlid,
   encodeContextPackDirectoryCursor,
@@ -16,6 +17,7 @@ import {
   parseContextPackReadQuery,
   parseContextPackCompileEnvelope,
   parseContextPackCompileParameters,
+  parseContextPackSaveContextEnvelope,
   parseSyncCommandIdentity,
   syncJsonSnapshot,
   validateIdempotencyKey,
@@ -124,7 +126,10 @@ function expiry(value: unknown): string {
   return value;
 }
 export function isMockContextPackPath(path: unknown): path is string {
-  return typeof path === 'string' && /^\/v1\/context-pack(?:s|\/compile)?(?:[?#].*)?$/.test(path);
+  return (
+    typeof path === 'string' &&
+    /^\/v1\/context-pack(?:s|\/(?:compile|save-context))?(?:[?#].*)?$/.test(path)
+  );
 }
 function saveKey(value: unknown): string {
   const key = validateIdempotencyKey(value);
@@ -421,6 +426,8 @@ export class MockContextPackStore {
 
   private async respond(raw: WcpRequest, session: Session): Promise<unknown> {
     const { method, path, body, response_type, max_response_bytes, signal } = raw;
+    const saveContext =
+      typeof path === 'string' && path.startsWith('/v1/context-pack/save-context');
     let trace = 'trace_unknown';
     const headers = checked('INVALID_INPUT', trace, () => {
       const input = snapshot(raw.headers, 16 * 1024);
@@ -433,7 +440,8 @@ export class MockContextPackStore {
       return result;
     });
     const suppliedTrace = headers.get('x-trace-id') ?? headers.get('traceparent');
-    if (!isSyncIdentifier(suppliedTrace)) fail('INVALID_INPUT', trace);
+    if (!isSyncIdentifier(suppliedTrace) || (saveContext && /\u007f/.test(suppliedTrace)))
+      fail('INVALID_INPUT', trace);
     trace = suppliedTrace;
     const budget = checked('INVALID_INPUT', trace, () =>
       createRequestBudget(trace, 30_000, signal),
@@ -442,7 +450,7 @@ export class MockContextPackStore {
       budget.check();
       if (Date.parse(session.expires_at) <= Date.now() || !session.read_context)
         fail('DENIED', trace);
-      if (!session.project_readable) fail('CONTEXT_PACK_NOT_FOUND', trace);
+      if (!saveContext && !session.project_readable) fail('CONTEXT_PACK_NOT_FOUND', trace);
     };
     try {
       live();
@@ -452,9 +460,10 @@ export class MockContextPackStore {
       if (compile && !this.#compilations) fail('MOCK_ROUTE_NOT_FOUND', trace);
       if (compile ? path !== '/v1/context-pack/compile' : body !== undefined)
         fail('INVALID_INPUT', trace);
+      if (saveContext && path !== '/v1/context-pack/save-context') fail('INVALID_INPUT', trace);
       const directory = path.startsWith('/v1/context-packs');
       if (
-        (directory || compile) &&
+        (directory || compile || saveContext) &&
         (headers.has('transfer-encoding') ||
           (headers.has('content-length') && (compile || headers.get('content-length') !== '0')))
       )
@@ -492,21 +501,25 @@ export class MockContextPackStore {
       )
         fail('INVALID_INPUT', trace);
       const selection = checked('INVALID_INPUT', trace, () =>
-        compile
-          ? {
-              kind: 'compile' as const,
-              parameters: parseContextPackCompileParameters(body),
-              key: saveKey(headers.get('idempotency-key')),
-            }
-          : directory
-            ? { kind: 'directory' as const, query: directoryQueryFromPath(path) }
-            : { kind: 'pack' as const, query: queryFromPath(path) },
+        saveContext
+          ? { kind: 'save-context' as const }
+          : compile
+            ? {
+                kind: 'compile' as const,
+                parameters: parseContextPackCompileParameters(body),
+                key: saveKey(headers.get('idempotency-key')),
+              }
+            : directory
+              ? { kind: 'directory' as const, query: directoryQueryFromPath(path) }
+              : { kind: 'pack' as const, query: queryFromPath(path) },
       );
       const maximum =
         max_response_bytes === undefined
-          ? directory
-            ? CONTEXT_PACK_DIRECTORY_RESPONSE_BYTES
-            : CONTEXT_PACK_READ_RESPONSE_BYTES
+          ? saveContext
+            ? CONTEXT_PACK_SAVE_CONTEXT_BYTES
+            : directory
+              ? CONTEXT_PACK_DIRECTORY_RESPONSE_BYTES
+              : CONTEXT_PACK_READ_RESPONSE_BYTES
           : max_response_bytes;
       if (
         !Number.isSafeInteger(maximum) ||
@@ -515,6 +528,28 @@ export class MockContextPackStore {
         (response_type === 'bounded-json' && max_response_bytes === undefined)
       )
         fail('INVALID_INPUT', trace);
+      if (selection.kind === 'save-context') {
+        const bounded = checked('GATEWAY_RESPONSE_INVALID', trace, () =>
+          snapshot(
+            {
+              schema_version: 1,
+              trace_id: trace,
+              source_refs: [],
+              data: {
+                identity: session.identity,
+                expires_at: session.expires_at,
+                permissions: { compile: true, read_restricted: session.read_restricted },
+              },
+            },
+            Math.min(maximum, CONTEXT_PACK_SAVE_CONTEXT_BYTES),
+          ),
+        );
+        const result = checked('GATEWAY_RESPONSE_INVALID', trace, () =>
+          parseContextPackSaveContextEnvelope(bounded, session.identity, trace),
+        );
+        live();
+        return result;
+      }
       if (selection.kind === 'directory') {
         if (this.#active >= 2) fail('RATE_LIMITED', trace);
         return await budget.wait(async () => {

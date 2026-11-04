@@ -1,4 +1,5 @@
 import { fingerprint, stableValue } from './idempotency.js';
+import { validateContextPackSaveContextHeaders } from './context-pack-save-context.js';
 import { ContractError, serializeError, type ErrorEnvelope } from '@planemem/contracts';
 import {
   CommandRouter,
@@ -137,6 +138,13 @@ export class ApiGateway {
       input: { ...(request.body ?? {}), ...route.parameters },
       context: request.context,
     };
+    if (route.operation === 'context.pack.save-context') {
+      try {
+        validateContextPackSaveContextHeaders(Object.entries(request.headers), request.context);
+      } catch (error) {
+        return this.errorResponse(error, trace_id);
+      }
+    }
     if (
       ['proposal.create.receipt', 'proposal.review.receipt'].includes(route.operation) &&
       Object.entries(request.headers).some(
@@ -349,6 +357,7 @@ export class ApiGateway {
                     serialized.code === 'SYNC_CURSOR_INVALID' ||
                     serialized.code === 'INVALID_CONFLICT_EVENT' ||
                     serialized.code === 'CONTEXT_PACK_INVALID' ||
+                    serialized.code === 'CONTEXT_PACK_SAVE_CONTEXT_INVALID' ||
                     serialized.code === 'SESSION_RECEIPT_INVALID' ||
                     serialized.code === 'SESSION_ACTIVITY_INVALID' ||
                     serialized.code === 'CONFLICT_READ_INVALID' ||

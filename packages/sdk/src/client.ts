@@ -179,6 +179,10 @@ import {
   compileSavedContextPack,
   type WcpContextPackCompileOptions,
 } from './context-pack-compile.js';
+import {
+  readContextPackSaveContext,
+  type WcpContextPackSaveContextOptions,
+} from './context-pack-save-context.js';
 import { compareContextPacks } from './context-pack-comparison.js';
 import {
   readContextPackDirectory,
@@ -584,6 +588,10 @@ export class WcpClient {
 
   compileContextPack(input: CompileContextPackRequest, options: WcpContextPackCompileOptions) {
     return compileSavedContextPack(this.transport, this.context, input, options);
+  }
+
+  getContextPackSaveContext(options: WcpContextPackSaveContextOptions = {}) {
+    return readContextPackSaveContext(this.transport, this.context, options);
   }
 
   getContextPack(input: ContextPackReadQuery = {}, options: WcpContextPackReadOptions = {}) {

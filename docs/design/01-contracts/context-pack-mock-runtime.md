@@ -1,5 +1,7 @@
 # 保存 ContextPack Mock（源码阶段）
 
+2026-11-05新增GET /v1/context-pack/save-context及SDK getContextPackSaveContext接线，沿原显式会话返回完整身份/期限/compile和read_restricted提示；无需compilations、项目可读或可见包，不读取/摘要核验/激活任何包。完整16 KiB或调用方更小限额、原身份条件及过期检查，沿30秒/signal但不占读包或保存槽。仅源码文档，未执行Mock/SDK/API、编译、类型检查、测试或发布。协议及限制见[保存前可信身份读取](context-pack-runtime.md#保存前可信身份读取2026-11-05源码增量)。
+
 2026-11-05新增[显式保存与重放](#显式保存与重放2026-11-05源码增量)：可选compilations把预置完整包绑定到原请求，pending包在提交核验后激活，读取与目录共享状态。仅源码文档，未执行Mock/SDK、保存请求、编译、类型检查、测试或发布。
 
 2026-11-05新增[保存包元数据目录](#保存包元数据目录2026-11-05源码增量)：同一store和会话提供GET /v1/context-packs，接入SDK listContextPacks/contextPackPages，不新增配置字段。列表只使用预先提取的六字段元数据，来源变化/过期记录仍可出现；仅源码文档，未执行Mock/SDK、编译、类型检查、测试或发布。
