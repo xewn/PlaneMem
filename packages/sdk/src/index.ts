@@ -19,6 +19,11 @@ export {
 export * from './continuity.js';
 export * from './fetch-transport.js';
 export type { WcpArtifactUploadContextOptions } from './artifact-upload-context.js';
+export type {
+  WcpArtifactPreparationOptions,
+  WcpPreparedArtifactUpload,
+} from './artifact-preparation.js';
+export type { ArtifactUploadDraft, ArtifactReceiptQuery } from '@planemem/contracts';
 export type { ArtifactUploadContextEnvelope } from '@planemem/contracts';
 export type { WcpSyncUploadOptions } from './sync-upload.js';
 export type { WcpSyncChangesOptions } from './sync-changes.js';

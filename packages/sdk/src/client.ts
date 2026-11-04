@@ -16,6 +16,7 @@ import {
   parseArtifactDownloadHeaders,
   assertArtifactReceiptIdentity,
   type ArtifactReceiptQuery,
+  type ArtifactUploadDraft,
   parseObservedReadInput,
   parseObservedSnapshot,
   parseObservedWorkItemListQuery,
@@ -171,6 +172,10 @@ import {
   readArtifactUploadContext,
   type WcpArtifactUploadContextOptions,
 } from './artifact-upload-context.js';
+import {
+  prepareArtifactUpload,
+  type WcpArtifactPreparationOptions,
+} from './artifact-preparation.js';
 import { uploadSyncEvents, type WcpSyncUploadOptions } from './sync-upload.js';
 import { readSyncChanges, iterateSyncChanges, type WcpSyncChangesOptions } from './sync-changes.js';
 import {
@@ -1684,6 +1689,24 @@ export class WcpClient {
     return readArtifactUploadContext(this.transport, this.context, options);
   }
 
+  /** Prepare in memory only; save and review the original before explicitly uploading it. */
+  prepareArtifactUpload(
+    input: ArtifactUploadDraft,
+    content: Uint8Array,
+    options: WcpArtifactPreparationOptions = {},
+  ) {
+    return prepareArtifactUpload(this.transport, this.context, input, content, options);
+  }
+
+  private assertArtifactOriginalContext(query: ArtifactReceiptQuery, context: RequestContext) {
+    // Unspecified client-side identity is still pinned to the original in Gateway request headers.
+    assertArtifactReceiptIdentity(query.identity, {
+      ...context,
+      actor_id: context.actor_id ?? query.identity.actor_id,
+      client_id: context.client_id ?? query.identity.client_id,
+    });
+  }
+
   async getArtifact(artifactId: string) {
     return this.readArtifactMetadata({ artifact_id: artifactId });
   }
@@ -1707,7 +1730,7 @@ export class WcpClient {
     let query;
     try {
       query = parseArtifactReceiptQuery(input);
-      assertArtifactReceiptIdentity(query.identity, context);
+      this.assertArtifactOriginalContext(query, context);
       if (
         query.command.operation !== operation ||
         !(content instanceof Uint8Array) ||
@@ -1754,7 +1777,7 @@ export class WcpClient {
     let query;
     try {
       query = parseArtifactReceiptQuery(input);
-      assertArtifactReceiptIdentity(query.identity, context);
+      this.assertArtifactOriginalContext(query, context);
     } catch {
       throw this.invalid(
         'Supply the original artifact command and matching account, client and project',

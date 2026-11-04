@@ -9,11 +9,10 @@ import {
   createUlid,
   parseArtifactReadEnvelope,
   parseArtifactReceiptQuery,
-  parseArtifactWrite,
+  parseArtifactUploadDraft,
   syncJsonSnapshot,
   type ArtifactCommandIdentity,
-  type ArtifactCreateCommand,
-  type ArtifactPutCommand,
+  type ArtifactUploadDraft,
   type ArtifactUploadContextEnvelope,
 } from '@planemem/contracts';
 import { FetchWcpTransport } from '@planemem/sdk';
@@ -26,9 +25,6 @@ import { readBoundedArtifactFile } from './artifact-files.js';
 import { prepareArtifactOutput, saveArtifactOutput } from './artifact-output.js';
 import { callArtifactUploadContext, runArtifactUploadContext } from './artifact-upload-context.js';
 
-type Draft =
-  | Omit<ArtifactCreateCommand, 'request_key' | 'sha256' | 'size'>
-  | Omit<ArtifactPutCommand, 'request_key' | 'sha256' | 'size'>;
 type NetworkOptions = {
   base: string;
   token: string;
@@ -104,32 +100,13 @@ function argumentsFor(argv: string[], trace: string) {
     throw failure('USAGE_ERROR', usageMessage, trace);
   }
 }
-async function readDraft(path: string, trace: string): Promise<Draft> {
+async function readDraft(path: string, trace: string): Promise<ArtifactUploadDraft> {
   const bytes = await readBoundedArtifactFile(path, ARTIFACT_UPLOAD_REQUEST_BYTES, trace);
   try {
     const value: unknown = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
-    const row = JSON.parse(syncJsonSnapshot(value, ARTIFACT_UPLOAD_REQUEST_BYTES)) as Record<
-      string,
-      unknown
-    >;
-    if (
-      !row ||
-      typeof row !== 'object' ||
-      Array.isArray(row) ||
-      ['identity', 'command', 'request_key', 'idempotency_key', 'sha256', 'size'].some((key) =>
-        Object.hasOwn(row, key),
-      )
-    )
-      throw new TypeError();
-    // Validate only new draft fields with the existing write parser, without allocating a request key.
-    const normalized = parseArtifactWrite({
-      ...row,
-      request_key: 'preparation-validation',
-      sha256: '0'.repeat(64),
-      size: 0,
-    });
-    const { request_key: _key, sha256: _hash, size: _size, ...draft } = normalized;
-    return draft;
+    return parseArtifactUploadDraft(
+      JSON.parse(syncJsonSnapshot(value, ARTIFACT_UPLOAD_REQUEST_BYTES)),
+    );
   } catch {
     throw failure('USAGE_ERROR', usageMessage, trace);
   }

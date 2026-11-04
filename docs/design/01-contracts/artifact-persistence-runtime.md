@@ -131,7 +131,7 @@ MCP 新增 `get_artifact`、`get_artifact_version`，分别接收相同字段。
 
 公开封套为 `{ schema_version: 1, trace_id, source_refs, data }`。data 回显已校验的 identity/command，status 为 not-observed 或 recorded；recorded 另含无存储地址的 artifact 历史快照、replayed=true 和 content_state=not-checked。recorded 的外层来源精确引用保存的 Artifact/版本，not-observed 来源为空。不返回外层 revision/ETag，也不把历史保存结果转换为当前写条件。当前版本推进后仍读取原结果；缺少回执时，追加请求的目标也必须当前可见，缺失/无权读取不能伪装成 not-observed。
 
-`packages/contracts/src/artifact-command.ts` 从服务提取原命令类型/解析，保留字段顺序、来源规范化和指纹语义；旧服务包入口继续导出。`artifact-receipt.ts` 严格核对身份、原键/参数、原内容描述、创建版本 1 或追加 expected_version+1、原来源和响应 trace。Gateway 和 SDK `getArtifactReceipt({ identity, command })` 共用解析；SDK 要求客户端上下文与原身份匹配，附加原账号/客户端前置头，不继承写条件、不自动重试，响应损坏不转成无回执。请求绑定与交给 provider/transport 的对象分离。
+`packages/contracts/src/artifact-command.ts` 从服务提取原命令类型/解析，保留字段顺序、来源规范化和指纹语义；旧服务包入口继续导出。`artifact-receipt.ts` 严格核对身份、原键/参数、原内容描述、创建版本 1 或追加 expected_version+1、原来源和响应 trace。Gateway 和 SDK `getArtifactReceipt({ identity, command })` 共用解析；SDK 要求scope及已配置的账号/客户端与原身份匹配；未配置的身份也始终附加原账号/客户端前置头供Gateway验证，不继承写条件、不自动重试，响应损坏不转成无回执。请求绑定与交给 provider/transport 的对象分离。
 
 查询沿用 Gateway 授权决定审计；追加查询可附目标 Artifact 引用，但该审计不确认原写入成功、正文可读或下载。当前 HTTP/SDK/CLI/MCP/工作台查询、按原请求上传与可审计下载只有源码，上传/下载见后文。无新依赖或迁移；未编译、类型检查、测试、连接存储、启动服务或发布。
 
@@ -276,7 +276,7 @@ workctx artifacts put-version --json-file NEW_ORIGINAL.json --file CONTENT
 workctx artifacts receipt --json-file NEW_ORIGINAL.json
 ```
 
-上传结果不明时保留原文件、原键与版本，用原回执入口查询；不重新prepare以替换未知请求。当前增量没有SDK/MCP完整准备工具、专用本地恢复工具、新依赖或迁移；仅源码文档人工审阅，未编译、类型检查、测试、执行CLI/SDK/Mock/API/数据库或发布。文件系统兼容、失败恢复、身份变化与上传衔接均无运行证据，R-001仍未完成。
+上传结果不明时保留原文件、原键与版本，用原回执入口查询；不重新prepare以替换未知请求。CLI增量没有新增依赖或迁移；SDK准备与本地检查由后续源码增量补齐，MCP完整准备和专用失败副本恢复仍缺；仅源码文档人工审阅，未编译、类型检查、测试、执行CLI/SDK/Mock/API/数据库或发布。文件系统兼容、失败恢复、身份变化与上传衔接均无运行证据，R-001仍未完成。
 
 ## CLI 原请求离线核验（源码阶段）
 
@@ -298,6 +298,39 @@ workctx artifacts inspect-request --json-file NEW_ORIGINAL.json --file report.pd
 ```
 
 也可选择prepare报告的已发布文件或保留临时文件进行检查；检查通过不证明它就是预期来源，须核对原身份/命令及此前保存的摘要。检查结果中的original供审阅，整个stdout封套不能交上传入口；后续继续使用原JSON文件和完全相同内容。曾经上传而结果不明时，仍需用原文件查询artifacts receipt，不自动prepare、改版本或重新上传。本增量不恢复/移动/补存/清理文件，无新依赖或迁移；只有源码文档人工审阅，未编译、类型检查、测试、执行CLI/SDK/API/数据库或发布，运行证据仍待补。
+
+## SDK 原请求准备（源码阶段）
+
+2026-11-04：新增 `WcpClient.prepareArtifactUpload(draft, content, options?)`，导出 `WcpArtifactPreparationOptions`、`WcpPreparedArtifactUpload` 与 `ArtifactUploadDraft/ArtifactReceiptQuery` 类型。contracts新增 `ArtifactUploadDraft/parseArtifactUploadDraft`，CLI prepare同步使用；草稿格式与上面的创建/追加示例相同。拒绝旧identity/command/request_key/idempotency_key/hash/size，追加版本必须显式提供，既有完整写命令和HTTP协议不变。
+
+准备只接受非共享ArrayBuffer上的Uint8Array，在第一次异步等待前完整复制内容并捕获有界规范草稿；后续修改调用方对象或字节不影响本次准备。SharedArrayBuffer内容拒绝；最大内容预算默认64 MiB，max_bytes接受0至1 GiB安全整数，零字节允许，读取上传身份后还须满足其max_bytes。不是流式大文件接口；调用方分配及并发调用没有全局内存上限。
+
+options只接受普通对象自身数据属性max_bytes/timeout_ms/signal，拒绝未知字段、访问器或继承配置；timeout_ms默认180000，范围1至2147483647。SDK上下文不能继承idempotency_key/expected_version/if_match，避免把旧写条件带入新准备。缺Web Crypto SHA-256或安全随机能力时在网络读取前拒绝，不降级到非加密摘要。原上下文scope及可选账号/客户端约束固定，上传身份复用16 KiB完整校验及到期检查；追加元数据使用原完整身份前置头、2 MiB有界JSON、目标/范围/trace/版本完整校验。restricted创建要求对应读取能力，追加要求实际artifact.read，并匹配明确审阅版本与当前restricted权限提示。
+
+共享单调预算覆盖身份读取、内容摘要、追加元数据和最终原请求摘要；各次等待带signal，完成后检查期限及身份到期。只读transport/Web Crypto底层可能在取消/超时后继续结算，迟到读取不会推进后续步骤；已经开始的摘要不能强行停止。不是上传、版本预留、权限锁、存储健康检查或结果回执。Fetch自身期限仍独立生效，自定义transport仍需实现有界JSON和signal，其预先分配对象不受此接口全局限制。
+
+在全部输入/读取校验后以同长度占位键确认完整请求不超过1 MiB，再分配一个workctx-artifact-ULID新键，生成request_json及其UTF-8 SHA-256。最终摘要或到期检查失败会丢弃本次内存结果，可能已生成的键没有保存或上传，不自动另生成键。成功返回data.original、request_json/request_bytes/request_sha256、identity_observed_expires_at，local_state=prepared-not-saved、upload_dispatch_state=not-sent、next_action=save-and-review-original；source_refs为空。没有文件访问、自动上传、回执查询或重试。固定错误不回显底层异常/响应细节，retryable=false。
+
+调用方须把request_json按UTF-8保存为完整原请求文件（不要保存整个结果封套，也不要双重JSON编码），并核对字节摘要和内容后，再显式提交原请求。下例只展示准备，未执行：
+
+```ts
+const prepared = await client.prepareArtifactUpload(
+  {
+    operation: 'artifact.create',
+    name: 'notes.txt',
+    mime: 'text/plain',
+    classification: 'internal',
+    source_refs: [],
+  },
+  new TextEncoder().encode('Meeting notes'),
+  { max_bytes: 1024 * 1024, timeout_ms: 180000 },
+);
+// Persist prepared.data.request_json and confirm its SHA-256 before any upload.
+```
+
+SDK本身不证明调用方已保存或审阅，不保留正文副本供以后重试；后续createArtifact/putArtifactVersion须使用完全相同内容，服务器仍独立核验hash/size。上传及getArtifactReceipt现在始终核对tenant/workspace/project和已配置actor/client；省略的actor/client采用完整original中的值作为请求头前置约束，由Gateway与已认证会话逐项核对。普通字符串账号可不放入SDK构造上下文（其actor仍保留既有ULID校验），原文件不能授予身份或替换已配置身份。下载方法的完整上下文要求不在本增量修改。
+
+SDK准备返回的原文件可由CLI inspect-request检查，并由已有上传/原回执命令读取；已上传而结果不明时应查同一原请求回执，不再prepare替换原键/版本。资料Mock已有只读路由可承接准备，但兼容性未实际运行。MCP完整准备、调用方文件保存/恢复及运行证据仍缺，无schema/依赖变化，仅源码文档人工审阅，未编译、类型检查、测试、执行SDK/CLI/Mock/API/数据库或发布，R-001不标记完成。
 
 ## SDK 上传身份读取（源码阶段）
 

@@ -11,6 +11,25 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    sdk_artifact_original_preparation_development_increment:
+      date: "2026-11-04"
+      status: "Source-only SDK original upload preparation and shared CLI draft parsing; R-001 remains incomplete."
+      artifacts:
+        - "packages/contracts/src/artifact-command.ts"
+        - "packages/sdk/src/artifact-preparation.ts"
+        - "packages/sdk/src/client.ts"
+        - "packages/sdk/src/index.ts"
+        - "apps/workctx-cli/src/artifact-preparation.ts"
+        - "docs/design/01-contracts/artifact-persistence-runtime.md"
+      behavior: "Capture a bounded new draft and unshared content copy before awaiting. Verify current upload authority, byte limits, content SHA-256 and explicit reviewed append version under the original identity; reject inherited write conditions. Generate one new key after validation and return the original plus exact saveable UTF-8 JSON/hash, explicitly not saved or uploaded. Use 180-second default budget/cancellation and bounded identity/metadata responses. CLI shares the draft parser. Existing SDK upload/receipt methods enforce scope and configured identity constraints, while always sending the original actor/client preconditions for authenticated Gateway verification."
+      evidence: []
+      pending_evidence:
+        - "Create/append preparation, shared CLI draft parity, exact versions, ordinary account strings and configured identity mismatches"
+        - "Caller input mutation, Uint8Array slices, shared-buffer rejection, zero bytes, configured/server limits and missing crypto"
+        - "Cancellation/expiry/deadline during reads and digests, malformed bounded responses and detached complete originals"
+        - "Exact JSON/hash persistence by caller, SDK/CLI/Mock upload and receipt compatibility without automatic dispatch"
+      remaining_scope: "MCP full preparation, caller persistence/recovery, large-file streaming, actual transport/runtime evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, SDK/CLI/Mock/API/database execution or release. No schema or dependency change."
     cli_artifact_original_inspection_development_increment:
       date: "2026-11-04"
       status: "Source-only offline original request inspection; R-001 remains incomplete."
@@ -26,7 +45,7 @@ requirements:
         - "Complete create/append originals, malformed UTF-8/JSON, bounds, summary/receipt rejection and stable file reads"
         - "Raw versus normalized hashes, unchanged original identity/key/version, missing content, zero bytes and content mismatch"
         - "No file mutation/network/database access and honest local-only status/exit codes on success and failure"
-      remaining_scope: "Failure-copy recovery/publication, SDK/MCP complete preparation and actual filesystem/runtime evidence."
+      remaining_scope: "Failure-copy recovery/publication, MCP complete preparation (SDK preparation added in a later source increment) and actual filesystem/runtime evidence."
       execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/SDK/API/database execution or release. No schema or dependency change."
     cli_artifact_original_preparation_development_increment:
       date: "2026-11-04"
@@ -43,7 +62,7 @@ requirements:
         - "Stable file hashing, zero bytes, file mutation, deadline/expiry and late read results without upload"
         - "Exclusive publication, occupied paths, hard-link support, write/readback/cleanup failures and final canonical request"
         - "Prepared originals consumed unchanged by existing create/put-version and receipt commands"
-      remaining_scope: "Offline request/content inspection added in a later source increment; SDK/MCP complete preparation, failure-copy recovery/publication, actual transport/filesystem compatibility and runtime evidence remain."
+      remaining_scope: "Offline request/content inspection added in a later source increment; MCP complete preparation (SDK preparation added in a later source increment), failure-copy recovery/publication, actual transport/filesystem compatibility and runtime evidence remain."
       execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/SDK/Mock/API/database execution or release. No schema or dependency change."
     cli_mcp_artifact_upload_context_development_increment:
       date: "2026-11-04"
@@ -65,7 +84,7 @@ requirements:
         - "CLI strict arguments, HTTP/embedded parity, ordinary actor identity and complete authority validation"
         - "MCP schema/discovery/direct permission denial, actual-writer versus admin-only, status/headers/envelopes and sanitized errors"
         - "Expiry, size limits, two-operation capacity, timeout/late completion and unchanged original context/write conditions"
-      remaining_scope: "CLI original preparation/file persistence added in a later source increment; SDK/MCP complete preparation, other public routes, actual transport and policy/audit/runtime evidence remain."
+      remaining_scope: "CLI original preparation/file persistence added in a later source increment; MCP complete preparation (SDK preparation added in a later source increment), other public routes, actual transport and policy/audit/runtime evidence remain."
       execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/MCP/SDK/API/database execution or release. No schema or dependency change."
     sdk_artifact_upload_context_development_increment:
       date: "2026-11-04"

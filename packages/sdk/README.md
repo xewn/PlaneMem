@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-04：新增 `prepareArtifactUpload(draft, content, {max_bytes?,timeout_ms?,signal?})`、`WcpArtifactPreparationOptions/WcpPreparedArtifactUpload/ArtifactUploadDraft`，同步捕获新草稿与非共享Uint8Array内容副本，核对当前上传身份/限制，追加须匹配草稿明确审阅的expected_version。默认64 MiB、180秒，使用Web Crypto内容摘要与有界只读响应，最后生成一次新键并返回完整original、可保存的request_json及其SHA-256；状态prepared-not-saved，调用方须保存审阅后明确调用createArtifact/putArtifactVersion。上传和getArtifactReceipt核对scope及已配置的actor/client，省略时仍用原身份前置头交Gateway验证，支持普通字符串账号。原结果不明时保持原请求，不重新prepare。CLI草稿共用新共享解析器，见 [准备与保存边界](../../docs/design/01-contracts/artifact-persistence-runtime.md#sdk-原请求准备源码阶段)。无新依赖/迁移，仅源码文档，未编译、类型检查、测试或调用SDK/Mock/API。
+
 2026-11-04：上传身份读取已接 `workctx artifacts identity` 与实际Gateway MCP `get_artifact_upload_context`，共用可信身份/权限提示核验；SDK新增固定错误码消息ARTIFACT_UPLOAD_CONTEXT_INVALID。两入口只读、不生成键/上传/替换旧原请求，CLI HTTP复用SDK期限与大小控制，见 [CLI/MCP上传身份](../../docs/design/01-contracts/artifact-persistence-runtime.md#cli-与-mcp-上传身份读取源码阶段)。仅源码文档，未编译、测试、调用或发布。
 
 2026-11-04：新增 `getArtifactUploadContext({timeout_ms?,signal?})` 与 `WcpArtifactUploadContextOptions/ArtifactUploadContextEnvelope`，读取当前上传账号、期限、大小上限及读取权限提示。请求固定项目/trace和可选actor/client约束，默认30秒、成功和Fetch错误各16 KiB，复制并完整核对封套及到期，不继承写条件、不重试或保存原请求。现有资料Mock支持该方法；读取不预留版本或授予未来上传资格。详见 [SDK上传身份读取](../../docs/design/01-contracts/artifact-persistence-runtime.md#sdk-上传身份读取源码阶段)。仅源码文档人工审阅，未编译、类型检查、测试、执行SDK/Mock/API或发布。
@@ -261,7 +263,7 @@ const handoff = await client.createHandoff(started.data.session_id, originalHand
 
 Artifact 元数据新增 `getArtifact(id)` 和 `getArtifactVersion(id, version)`，要求签名 artifact.read。返回 data.artifact、snapshot=current/historical 与 content_state=not-checked；不含对象存储键、下载 URL 或正文，不作为原写入回执。当前读取保留外层 ETag，历史读取只在快照内保留原 ETag；指定版本缺失不会改读当前版本。共享解析核对目标、范围、内容描述、来源及时间，不自动重试。服务器须显式配置持久 reader 或存储，未配置返回 503；目前仅源码接入，见 [Artifact 持久化](../../docs/design/01-contracts/artifact-persistence-runtime.md)。
 
-`getArtifactReceipt({ identity, command })` 查询原创建/追加请求是否已记录，需要签名 artifact.write 和已验证客户端。identity 是提交时保存的 tenant/workspace/project/actor/client 五字段，必须与 SDK 上下文一致；command 是原 `ArtifactWriteCommand`，包含 request_key、hash/size 和完整原参数，不包含文件正文。不要用当前版本或新键改写它。查询发送 POST /v1/artifacts/receipt，不继承 SDK 上下文写条件，也不自动重试。data.status=recorded 时 artifact 为原历史快照，replayed=true、content_state=not-checked；not-observed 不证明失败。无外层 ETag、存储键或正文可用性保证；响应不匹配会报错并保留原请求未知状态。服务器需 artifact_receipts 或 artifact_storage；单独元数据 reader 不启用回执。目前仅源码，未运行验证。
+`getArtifactReceipt({ identity, command })` 查询原创建/追加请求是否已记录，需要签名 artifact.write 和已验证客户端。identity 是提交时保存的 tenant/workspace/project/actor/client 五字段；scope及已配置的actor/client必须与SDK上下文一致，省略的账号/客户端仍按原身份前置头由Gateway验证；command 是原 `ArtifactWriteCommand`，包含 request_key、hash/size 和完整原参数，不包含文件正文。不要用当前版本或新键改写它。查询发送 POST /v1/artifacts/receipt，不继承 SDK 上下文写条件，也不自动重试。data.status=recorded 时 artifact 为原历史快照，replayed=true、content_state=not-checked；not-observed 不证明失败。无外层 ETag、存储键或正文可用性保证；响应不匹配会报错并保留原请求未知状态。服务器需 artifact_receipts 或 artifact_storage；单独元数据 reader 不启用回执。目前仅源码，未运行验证。
 
 每次写入显式传入 `idempotency_key`；有版本条件的操作还传 `expected_version`，SDK 将其编码为 `If-Match`。不会自动重试写入。遇到可重试错误时由调用方使用原请求内容和原键重试；参数变更需使用新键。身份和能力由网关从访问令牌确定。
 

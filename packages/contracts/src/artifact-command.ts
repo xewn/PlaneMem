@@ -24,6 +24,28 @@ export interface ArtifactPutCommand extends ArtifactWriteBase {
   expected_version: number;
 }
 export type ArtifactWriteCommand = ArtifactCreateCommand | ArtifactPutCommand;
+export type ArtifactUploadDraft =
+  | Omit<ArtifactCreateCommand, 'request_key' | 'sha256' | 'size'>
+  | Omit<ArtifactPutCommand, 'request_key' | 'sha256' | 'size'>;
+
+/** New intent only: existing identities, keys and content descriptors cannot be refreshed here. */
+export function parseArtifactUploadDraft(value: unknown): ArtifactUploadDraft {
+  const row = object(value);
+  if (
+    ['identity', 'command', 'request_key', 'idempotency_key', 'sha256', 'size'].some((key) =>
+      Object.hasOwn(row, key),
+    )
+  )
+    throw new TypeError('Supply new artifact metadata or an explicitly reviewed append version');
+  const normalized = parseArtifactWrite({
+    ...row,
+    request_key: 'preparation-validation',
+    sha256: '0'.repeat(64),
+    size: 0,
+  });
+  const { request_key: _key, sha256: _hash, size: _size, ...draft } = normalized;
+  return draft;
+}
 
 const classifications: Classification[] = ['public', 'internal', 'confidential', 'restricted'];
 export function parseArtifactWrite(value: unknown): ArtifactWriteCommand {

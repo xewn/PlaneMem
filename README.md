@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [SDK附件原请求准备](docs/design/01-contracts/artifact-persistence-runtime.md#sdk-原请求准备源码阶段)：`prepareArtifactUpload` 根据新草稿和内容副本读取可信身份、核对追加版本并生成原请求JSON/摘要，交调用方保存与审阅；不自动上传。SDK上传/回执入口支持使用原请求中的账号作为服务器核对条件。仅源码文档，未编译、测试、调用或发布。
+
 新增 [附件原请求离线核验](docs/design/01-contracts/artifact-persistence-runtime.md#cli-原请求离线核验源码阶段)：`artifacts inspect-request` 检查已保存的完整原请求，可选核对内容文件，返回原身份、命令和文件摘要；无需登录、不改文件、不上传，本地核验不代表服务器上传成功。仅源码文档，未编译、测试、调用或发布。
 
 新增 [CLI上传原请求准备](docs/design/01-contracts/artifact-persistence-runtime.md#cli-上传原请求准备源码阶段)：`artifacts prepare` 根据草稿和本地文件生成完整原请求，读取可信上传身份、计算内容摘要，追加版本须匹配明确填写的版本号；保存到全新文件并完整读回，不发送上传。仅源码文档，未编译、测试、调用或发布。
