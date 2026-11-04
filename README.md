@@ -1,5 +1,7 @@
 # PlaneMem
 
+按 TODO **P0-01** 补充 [Canonical Event v1 AsyncAPI 消息目录](packages/events/asyncapi/README.md)：覆盖当前 38 类默认事件，提供逐类完整封套 Schema 锚点与包子路径；实际总线通道、CloudEvents 标准封装及契约自动核对仍待补。仅源码，未运行校验器、生成器、编译、测试或发布。
+
 按 TODO **P0-02** 补充 [SDK 管理快照 Mock](docs/design/01-contracts/admin-mock-runtime.md)：显式管理员/能力配置、受限读取场景与计数权限屏蔽，接入原 getAdminSnapshot；模拟数据不证明数据库或外部服务健康。仅源码文档，未编译、测试、运行 Mock 或发布。
 
 新增 [SDK 审计视图导出 Mock](docs/design/01-contracts/audit-mock-runtime.md#已审阅视图导出2026-11-05源码增量)：显式开启模拟导出权限后，可导出与已审阅摘要一致的有界视图，并读取独立模拟放行记录；结果不代表持久审计或文件已保存。仅源码文档，未编译、测试、运行 Mock 或发布。

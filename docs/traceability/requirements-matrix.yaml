@@ -11,6 +11,26 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    canonical_event_asyncapi_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only AsyncAPI message components and registered Canonical Event v1 schema catalog; P0-01 and R-001 remain incomplete."
+      artifacts:
+        - "packages/events/asyncapi/canonical-events.json"
+        - "packages/events/asyncapi/README.md"
+        - "packages/events/schemas/canonical-v1-catalog.json"
+        - "packages/events/package.json"
+        - "docs/design/01-contracts/canonical-events.md"
+      behavior: "38 explicit AsyncAPI 3.0.0 message components reference same-name const anchors in a 2020-12 full-envelope catalog. Reuse the existing canonical envelope, default event enum and deletion/restoration conditional schemas; add the safe aggregate-version ceiling and UTC Z suffix. All six resources have package subpaths and documented local reference layout."
+      boundaries: "Reusable components only: no invented servers, channels, operations, NATS bindings or delivery guarantees. JSON Schema 2020-12 requires explicit Multi Format Schema tool support. Custom registry types/versions and most business payload models remain outside coverage. The custom envelope is not a CloudEvents 1.0 structured message. Existing runtime validators and schemas remain unchanged and are not claimed equivalent."
+      evidence: []
+      remaining_scope: "Full WCP OpenAPI, business payload schemas, real channel/transport definitions, standard CloudEvents mapping, standalone full MCP schema, SDK/Mock machine-contract consumption, breaking-change CI and compatibility/runtime evidence."
+      pending_evidence:
+        - "All default runtime types, enum entries, typed anchors and message references stay aligned"
+        - "Local resource IDs, relative references, 2020-12 anchors and AsyncAPI Multi Format Schema compatibility"
+        - "Unsupported type/version rejection, deletion/restoration conditions and unsafe-version/UTC limits"
+        - "Consumer runtime differences, complete business payload semantics, source permissions and durable delivery behavior"
+        - "No validators, generators, build, typecheck, tests, event/HTTP/database execution or release performed"
     web_work_item_reads_development_increment:
       date: "2026-11-04"
       status: "Source-only bounded Web work item reads and explicit browse recovery; R-001 and R-002 remain incomplete."

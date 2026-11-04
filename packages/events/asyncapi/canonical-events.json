@@ -1,0 +1,291 @@
+{
+  "asyncapi": "3.0.0",
+  "id": "urn:planemem:canonical-event-catalog:v1",
+  "info": {
+    "title": "PlaneMem Canonical Event v1 message catalog",
+    "version": "0.1.0",
+    "description": "Source-only reusable message components for all 38 types in the default EventTypeRegistry. Each payload is the complete custom CanonicalEvent, not only its nested payload. This catalog deliberately declares no server, channel, operation, broker binding or delivery guarantee. It is not a CloudEvents 1.0 structured message. Validation, generation and runtime compatibility have not been executed."
+  },
+  "defaultContentType": "application/json",
+  "x-todo": "P0-01",
+  "x-scope": "reusable-message-catalog-only",
+  "x-canonical-schema-version": 1,
+  "x-schema-loading": "Load ../schemas/canonical-v1-catalog.json and all four sibling event schemas locally with their $id mappings. Do not fetch planemem.local. A consumer must explicitly support JSON Schema 2020-12 in Multi Format Schema payloads; this format is not assumed to be every AsyncAPI tool's default.",
+  "x-runtime-boundaries": [
+    "event_id is the deduplication identity; optional correlation_id and causation_id are separate from required trace_id.",
+    "Preserve tenant/workspace/project scope, source_refs and sensitivity; none of them grants authorization.",
+    "All default types use schema_version 1; custom registry types or versions require a separate coordinated contract update.",
+    "Most business payloads remain open objects in the existing base schema; deletion and restoration have additional structural constraints.",
+    "Payload semantics, restore equality/version arithmetic, processing side effects, durable ordering/retries and broker acknowledgement are outside structural validation."
+  ],
+  "components": {
+    "messages": {
+      "ProjectCreated": {
+        "name": "ProjectCreated",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#ProjectCreated" }
+        }
+      },
+      "ProjectUpdated": {
+        "name": "ProjectUpdated",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#ProjectUpdated" }
+        }
+      },
+      "WorkItemCreated": {
+        "name": "WorkItemCreated",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#WorkItemCreated" }
+        }
+      },
+      "WorkItemUpdated": {
+        "name": "WorkItemUpdated",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#WorkItemUpdated" }
+        }
+      },
+      "WorkItemDeleted": {
+        "name": "WorkItemDeleted",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#WorkItemDeleted" }
+        }
+      },
+      "WorkItemRestored": {
+        "name": "WorkItemRestored",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#WorkItemRestored" }
+        }
+      },
+      "WorkItemStatusProposed": {
+        "name": "WorkItemStatusProposed",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#WorkItemStatusProposed" }
+        }
+      },
+      "WorkItemStatusConfirmed": {
+        "name": "WorkItemStatusConfirmed",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#WorkItemStatusConfirmed" }
+        }
+      },
+      "PlanCreated": {
+        "name": "PlanCreated",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#PlanCreated" }
+        }
+      },
+      "PlanRevisionCreated": {
+        "name": "PlanRevisionCreated",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#PlanRevisionCreated" }
+        }
+      },
+      "DecisionRecorded": {
+        "name": "DecisionRecorded",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#DecisionRecorded" }
+        }
+      },
+      "RiskRaised": {
+        "name": "RiskRaised",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#RiskRaised" }
+        }
+      },
+      "RiskResolved": {
+        "name": "RiskResolved",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#RiskResolved" }
+        }
+      },
+      "ArtifactCreated": {
+        "name": "ArtifactCreated",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#ArtifactCreated" }
+        }
+      },
+      "ArtifactUpdated": {
+        "name": "ArtifactUpdated",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#ArtifactUpdated" }
+        }
+      },
+      "SessionStarted": {
+        "name": "SessionStarted",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#SessionStarted" }
+        }
+      },
+      "SessionEnded": {
+        "name": "SessionEnded",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#SessionEnded" }
+        }
+      },
+      "AgentRunStarted": {
+        "name": "AgentRunStarted",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#AgentRunStarted" }
+        }
+      },
+      "AgentRunCompleted": {
+        "name": "AgentRunCompleted",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#AgentRunCompleted" }
+        }
+      },
+      "ToolCallStarted": {
+        "name": "ToolCallStarted",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#ToolCallStarted" }
+        }
+      },
+      "ToolCallCompleted": {
+        "name": "ToolCallCompleted",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#ToolCallCompleted" }
+        }
+      },
+      "CheckpointCreated": {
+        "name": "CheckpointCreated",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#CheckpointCreated" }
+        }
+      },
+      "HandoffCreated": {
+        "name": "HandoffCreated",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#HandoffCreated" }
+        }
+      },
+      "HandoffAccepted": {
+        "name": "HandoffAccepted",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#HandoffAccepted" }
+        }
+      },
+      "ContextPackIssued": {
+        "name": "ContextPackIssued",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#ContextPackIssued" }
+        }
+      },
+      "ContextItemCreated": {
+        "name": "ContextItemCreated",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#ContextItemCreated" }
+        }
+      },
+      "ContextItemUpdated": {
+        "name": "ContextItemUpdated",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#ContextItemUpdated" }
+        }
+      },
+      "ContextItemArchived": {
+        "name": "ContextItemArchived",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#ContextItemArchived" }
+        }
+      },
+      "ContextItemRestored": {
+        "name": "ContextItemRestored",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#ContextItemRestored" }
+        }
+      },
+      "ContextItemConfirmed": {
+        "name": "ContextItemConfirmed",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#ContextItemConfirmed" }
+        }
+      },
+      "ConflictDetected": {
+        "name": "ConflictDetected",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#ConflictDetected" }
+        }
+      },
+      "ConflictResolved": {
+        "name": "ConflictResolved",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#ConflictResolved" }
+        }
+      },
+      "ClientConnected": {
+        "name": "ClientConnected",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#ClientConnected" }
+        }
+      },
+      "ClientEventRecorded": {
+        "name": "ClientEventRecorded",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#ClientEventRecorded" }
+        }
+      },
+      "ClientDisconnected": {
+        "name": "ClientDisconnected",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#ClientDisconnected" }
+        }
+      },
+      "PolicyDenied": {
+        "name": "PolicyDenied",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#PolicyDenied" }
+        }
+      },
+      "ApprovalRequested": {
+        "name": "ApprovalRequested",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#ApprovalRequested" }
+        }
+      },
+      "ApprovalCompleted": {
+        "name": "ApprovalCompleted",
+        "payload": {
+          "schemaFormat": "application/schema+json;version=draft-2020-12",
+          "schema": { "$ref": "../schemas/canonical-v1-catalog.json#ApprovalCompleted" }
+        }
+      }
+    }
+  }
+}

@@ -7,7 +7,13 @@
     "contract-test": "node --test"
   },
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./schemas/canonical-event.json": "./schemas/canonical-event.json",
+    "./schemas/event-types.json": "./schemas/event-types.json",
+    "./schemas/work-item-deleted.json": "./schemas/work-item-deleted.json",
+    "./schemas/work-item-restored.json": "./schemas/work-item-restored.json",
+    "./schemas/canonical-v1-catalog.json": "./schemas/canonical-v1-catalog.json",
+    "./asyncapi/canonical-events.json": "./asyncapi/canonical-events.json"
   },
   "type": "module",
   "name": "@planemem/events",

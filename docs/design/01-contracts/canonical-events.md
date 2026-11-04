@@ -1,23 +1,25 @@
 # Canonical Event 契约 v1
 
+2026-11-05，TODO P0-01：新增[默认 38 类事件的 AsyncAPI 消息目录](../../../packages/events/asyncapi/README.md)及逐类 Schema 锚点、包子路径，复用原基础/枚举/删除/恢复资源。目录未声明实际总线通道或投递操作；现有封套仍为自定义 CanonicalEvent，标准 CloudEvents 封装、完整业务 payload、机器契约接线和运行兼容证据待补。仅源码，未执行校验器、生成器、编译、类型检查、测试或发布。
+
 ## 封套
 
 ```json
 {
-  "event_id": "01J...",
+  "event_id": "01J000000000000000000000001",
   "event_type": "CheckpointCreated",
   "schema_version": 1,
-  "tenant_id": "tenant_01",
-  "workspace_id": "workspace_01",
-  "project_id": "project_01",
+  "tenant_id": "01J000000000000000000000002",
+  "workspace_id": "01J000000000000000000000003",
+  "project_id": "01J000000000000000000000004",
   "aggregate_type": "session",
-  "aggregate_id": "session_01",
+  "aggregate_id": "01J000000000000000000000005",
   "aggregate_version": 12,
-  "actor_id": "user_01",
+  "actor_id": "01J000000000000000000000006",
   "client_id": "codex",
-  "session_id": "session_01",
-  "correlation_id": "01J...",
-  "causation_id": "01J...",
+  "session_id": "01J000000000000000000000005",
+  "correlation_id": "01J000000000000000000000007",
+  "causation_id": "01J000000000000000000000008",
   "occurred_at": "2026-10-20T08:00:00Z",
   "trace_id": "trace_01",
   "source_refs": [
@@ -30,7 +32,7 @@
 
 ## 事件集合
 
-ProjectCreated/Updated、WorkItemCreated/Updated/Deleted/Restored、WorkItemStatusProposed/Confirmed、PlanCreated、PlanRevisionCreated、DecisionRecorded、RiskRaised/Resolved、ArtifactCreated/Updated、SessionStarted/Ended、AgentRunStarted/Completed、ToolCallStarted/Completed、CheckpointCreated、HandoffCreated/Accepted、ContextPackIssued、ConflictDetected/Resolved、ClientConnected/Disconnected、PolicyDenied、ApprovalRequested/Completed。
+ProjectCreated/Updated、WorkItemCreated/Updated/Deleted/Restored、WorkItemStatusProposed/Confirmed、PlanCreated、PlanRevisionCreated、DecisionRecorded、RiskRaised/Resolved、ArtifactCreated/Updated、SessionStarted/Ended、AgentRunStarted/Completed、ToolCallStarted/Completed、CheckpointCreated、HandoffCreated/Accepted、ContextPackIssued、ContextItemCreated/Updated/Archived/Restored/Confirmed、ConflictDetected/Resolved、ClientConnected/EventRecorded/Disconnected、PolicyDenied、ApprovalRequested/Completed。共 38 类默认 v1 事件，与运行时 CANONICAL_EVENT_TYPES 及事件枚举资源对应；自定义注册类型需另行更新契约。上方示例只展示封套形状，空 payload 不代表满足具体检查点业务入口的完整要求。
 
 ## WorkItemDeleted（2026-11-02，仅源码）
 
