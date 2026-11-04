@@ -1183,3 +1183,29 @@ const prepared = await prepareContextPackReceiptBackup([observationJson, observa
 输入与输出只覆盖调用方提供的观察，completeness固定supplied-observations-only，不能声明完整浏览器/服务器历史、共同存储快照或记录最新状态。空输入也只表示此次没有提供观察。身份及服务器/内容未认证或检查、保存未发送、storage_access=not-performed；不访问网络、凭据、文件、IndexedDB，不生成新观察时间。
 
 抽取SDK备份核验的有界字节复制和WebCrypto SHA-256为context-pack-backup-local内部helper，保留原inspect的输入及错误语义。新准备默认30秒整笔本地时限，可选timeout_ms/signal，覆盖复制解析、每观察摘要、分卷生成和最终输出规模计算；同步工作只能在检查点响应，异步摘要可停止等待，迟到结果不交付。固定错误区分输入/重复/绑定/摘要/能力不可用/取消/超时/构造预算失败，无部分输出。CLI批量构造/导出、更大或流式集合及运行证据仍待补；R-003未完成、evidence为空，仅源码人工审阅/格式文本检查，未编译、类型检查、测试、执行SDK/文件工作流/API/数据库或发布。
+
+## CLI历史备份构造留存（2026-11-05源码增量）
+
+普通main及内嵌runWorkctx新增context prepare-backup，复用SDK从已有观察文件构造单份或分卷集合，并显式保存到新的本地目录。命令在凭据/环境项目/路由处理之前执行，宿主身份不替换原binding，不查询或发送原保存请求。下列仅是未执行的使用示例：
+
+```sh
+workctx context prepare-backup --binding-file binding.json --format single --output new-history-backup --observation-file receipt-a.json --observation-file receipt-b.json
+workctx context prepare-backup --binding-file binding.json --format volumes --output new-history-volumes --observation-file receipt-a.json --observation-file receipt-b.json --timeout-ms 30000
+workctx context prepare-backup --binding-file binding.json --format volumes --output new-empty-history --empty
+```
+
+binding-file要求完整原PackSaveBinding，最多8 KiB；format必须显式single或volumes，output为不存在的叶目录且父目录必须已存在。observation-file允许重复选项、最多100/1000个路径，每份32 KiB；输入数受宿主命令行长度进一步限制，内嵌数组入口仍沿相同数量上限。零观察必须显式empty，empty与任何观察文件互斥。仅observation-file可重复，不接受stdin、网络设置、inline JSON、backup-file、预期摘要覆盖或无关选项；同一解析后输入路径拒绝，Windows按不区分大小写比较，别名重复由SDK观察摘要规则拒绝。
+
+参数开始时固定绝对路径，拒绝控制字符/孤立代理字符，原路径/解析后最长4096字符。预检output沿既有新路径检查，固定父目录realpath并捕获dev/ino；不会在准备阶段创建目录。binding与观察沿稳定普通文件有界读取，保留实际字节数/SHA-256，不读文档内嵌路径、不扫描目录。调用SDK准备时保持全部原观察时间、请求键、参数和身份，核对每观察SHA-256，拒绝重复，按摘要排序，再生成规范文件及清单。
+
+timeout-ms默认30000、范围1–2147483647，单调总时限覆盖输出预检、输入读取、摘要与SDK准备，剩余预算及共同信号传SDK。超时停止等待；当前底层读操作可能完成并清理，但检查点阻止后续读取和结果交付。发布逻辑只在准备成功返回后执行，迟到的准备不会创建输出目录。同步解析/摘要只在检查点响应。
+
+构造成功后独占mkdir创建叶目录（不递归、不复用已有目录），捕获目录身份；父目录/目标目录按lstat类型、dev/ino与realpath复核。输出名称由本地格式和已核验摘要生成：单份backup-<document_sha256>.json，分卷volume-001-<document_sha256>.json等，清单manifest-<document_sha256>.json。它们不取输入文件名或回执内字段作为路径。每份保存前预检不存在，再使用既有saveArtifactOutput的独占临时文件、完整写入、sync、临时读回和独占hard-link发布，无覆盖回退；文件系统不支持硬链接时报告失败。
+
+分卷逐份写入并读回，所有分卷之后才写清单；单份只写一个备份文件。末尾再次逐份读取所有目标，核对完整字节及实际SHA-256，并复查目录身份。目录检查、文件发布和读回均是顺序观察，不是整套原子事务；存在清单本身不能证明整套保存成功，也不保证外部进程以后不修改文件。文件sync不宣称目录项已获得断电持久保证。输入准备计时器在发布前关闭，写入/同步/读回独立等待，不以超时提前返回而继续后台写文件。
+
+stdout保留schema_version/本地trace/source_refs:[]，data.status=backup-prepared及完整binding、根摘要、输入/输出数量字节数、observations、completeness=supplied-observations-only；contents含完整backup_file或manifest_file/volume_files，不重复raw字符串。local_inputs记录每个观察路径/实际字节摘要，binding_file记录独立绑定文件；output_plan记录计划name/path/文件字节摘要/文档摘要，完整候选在保存失败时仍保留。
+
+local.state=saved-and-read-back表示本次所有目标均完成读回，退出0；local.files记录逐文件路径、摘要、字节数及临时文件清理信息。保存中任一失败返回save-failed、退出1，附directory_created、phase/current_path、此前文件的发布/读回观察及已知底层保存详情；此前文件状态是先前观察，不宣称失败时仍完整。保留目录、已发布文件及完整候选，不回滚删除、不覆盖或继续写入已有目录。可保留完整输出，使用原观察重跑到另一新目录，或独立inspect-backup核对现有文件；直接从失败stdout补存尚未实现。准备阶段错误退出1且不创建输出目录；用法错误2。
+
+data.storage_access=file-read-write，浏览器历史访问及恢复均未开始；身份未认证、服务器/正文未检查、save_dispatch_state=not-sent指未派发服务器保存。输入完整性只针对所供观察，不推断全量历史或跨文件原子快照。本增量未改文件格式、SDK语义、依赖或数据库；失败输出离线补存、更大流式集合、自动保留及运行证据仍待补。R-003未完成、evidence为空；仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/SDK/文件流程/浏览器/API/数据库或发布。
