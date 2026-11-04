@@ -954,6 +954,25 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    sdk_context_pack_receipt_backup_comparison_development_increment:
+      date: "2026-11-05"
+      status: "Source-only complete two-sided historical receipt backup comparison; R-003 remains incomplete."
+      artifacts:
+        - "packages/sdk/src/context-pack-receipt-backup-comparison.ts"
+        - "packages/sdk/src/index.ts"
+        - "packages/sdk/README.md"
+        - "docs/design/01-contracts/context-pack-runtime.md"
+      behavior: "Capture both bounded 1-11-file inputs and optional binding/root constraints before awaiting. Sequentially inspect both complete single/volume backups under one default 30-second budget and cancellation signal, enforcing the same full original binding. Return the sorted complete observation digest union, shared/from-only/to-only counts and set equality independent of packaging. Shared digests additionally require identical canonical full receipt files. Group canonical complete originals by exact request key across the union, including conflicts within either side; report every distinct original digest and its sorted observation references without choosing a winner. Bound the detached finite JSON result to 4 MiB, retaining side summaries and complete difference metadata without duplicating backup bodies. No client, credentials, network, storage access or mutation authorization."
+      evidence: []
+      pending_evidence:
+        - "Both inputs and expected constraints captured before await; sparse/accessor/extra fields, shared buffers, exact and excessive file/collection bounds"
+        - "Independent root constraints, full binding differences, complete manifest/volume/observation integrity and no partial result on either-side failure"
+        - "Mixed packaging, empty sets, complete deterministic union/counts, shared-digest content mismatch and same-key conflicts within or across sides"
+        - "Canonical original hashing/collision rejection, result size/node limit, shared deadline/cancellation, unavailable crypto and late-result cleanup"
+      remaining_gaps:
+        - "CLI/Web comparison integration, larger or streaming backup sets and runtime evidence"
+        - "Comparison covers supplied historical backups only and does not authenticate identity, establish current server state or authorize mutations"
+      execution: "Source/docs, manual review and formatting/Git text checks only; no build, typecheck, tests, SDK/CLI/browser/product/API/database execution or release. No shared format, dependency or storage layout change."
     context_pack_history_page_selection_cleanup_development_increment:
       date: "2026-11-05"
       status: "Source-only complete review, subset export and explicit removal of current-page historical observations; R-003 remains incomplete."

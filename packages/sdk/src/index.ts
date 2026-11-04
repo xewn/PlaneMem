@@ -169,6 +169,15 @@ export {
   type WcpInspectedContextPackReceiptBackup,
 } from './context-pack-receipt-backup-inspection.js';
 export {
+  compareContextPackReceiptBackups,
+  CONTEXT_PACK_BACKUP_COMPARISON_BYTES,
+  type WcpContextPackReceiptBackupComparisonOptions,
+  type WcpContextPackReceiptBackupComparisonSide,
+  type WcpContextPackReceiptBackupComparisonEntry,
+  type WcpContextPackReceiptBackupRequestConflict,
+  type WcpComparedContextPackReceiptBackups,
+} from './context-pack-receipt-backup-comparison.js';
+export {
   prepareContextPackReceiptBackup,
   type WcpContextPackReceiptBackupPreparationOptions,
   type WcpPreparedContextPackReceiptBackup,

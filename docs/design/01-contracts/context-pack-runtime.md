@@ -1310,3 +1310,21 @@ snapshot_sha256来自128 KiB以内的规范内部对象：schema_version=1、kin
 审阅、导出和移除沿30秒总操作预算、浏览器打开/事务各10秒等待、显式停止等待及卸载取消/迟到抑制。检查完成期间存储或审阅代次改变时可保留完整子集作导出，但不授予移除资格。任何失败保留上一份完整子集；移除未知时明确事务可能已提交，不能自动重试，需要重读目录、重新选择/审阅及独立确认。全部成功或失败均不查询服务器、不提交/重发原请求。
 
 跨页联合选择、自动保留/容量清理、跨绑定审计及运行证据仍待补。R-003未完成、evidence为空；仅源码文档人工审阅和格式/Git文本检查，未编译、类型检查、测试、渲染、运行浏览器/产品/SDK/CLI/API/数据库或发布。
+
+## SDK历史备份双侧比较（2026-11-05源码增量）
+
+SDK独立导出compareContextPackReceiptBackups(fromFiles,toFiles,options)，无需WcpClient。两边分别接受1–11个既有JSON文本或UTF-8 Uint8Array：单份备份，或恰好一份清单与其全部卷；可以在两侧使用不同格式/卷划分。每文件沿PACK_RECEIPT_BACKUP_FILE_BYTES，每侧集合沿PACK_RECEIPT_VOLUMES_SET_BYTES，单份最多100条、分卷最多1000条/10卷。只接受稠密自有数据项数组，不调用输入迭代器/访问器；字节独立复制，拒绝共享缓冲。首次await前固定两边全部输入和完整约束，第二侧不会在第一侧异步完成后才读取调用方可变数据。
+
+options为闭合普通对象，trace_id必填；expected_binding是可选独立完整原绑定，expected_from_document_sha256和expected_to_document_sha256分别约束两侧单备份document或分卷清单document摘要。可选timeout_ms默认30000及signal；一份公共预算覆盖输入捕获、顺序完整核验两侧、差异分组、原请求摘要和最终结果复制，晚到结果不交付。第二侧完整核验绑定到第一侧已核验的binding，因此未提供独立绑定也强制gateway_url、五项身份及read_restricted全部相同；独立约束存在时两边均须满足。绑定相等是数据约束，不是身份认证。
+
+完整复用inspectContextPackReceiptBackup校验结构、每观察/卷/清单SHA-256、绑定、数量、卷归属及跨卷严格顺序；任一侧失败整次拒绝，无部分比较。结果data.status=backups-compared，from/to仅含kind、document_sha256、input_files、input_bytes、observations和原completeness，不重复完整备份正文。调用方应保留原备份以按观察摘要审阅或交既有恢复入口，比较结果本身不是可恢复备份。
+
+comparison.entries为观察document摘要升序的完整并集，最多2000条；每条含document_sha256、request_key、observed_at、历史status与presence=both/from-only/to-only。shared摘要还要求两份完整规范回执文件完全一致，拒绝同摘要异文。shared_observations、from_only_observations、to_only_observations计数对应并集；same_observations只按观察集合相等决定，不按根摘要、文件数、分卷方式或观察时间决定。单份空备份与合法空分卷可以具有相同空集合。此相等不保证两边共同历史没有同键异文冲突。
+
+按并集中的完整encodePackSaveOriginal规范文本分组同一request_key，相同原文多次观察保持一个variant，同键存在多个原文时进入conflicting_request_keys。包含仅在任一侧内部发生和跨侧发生的所有冲突，键升序、variants按original_sha256升序，各variant列出完整升序observation_digests。original_sha256是完整规范原请求UTF-8字节的SHA-256；同组不同原文却得到相同摘要时整次拒绝，避免歧义引用。保留所有历史状态，不选最新观察、不指定哪个原请求正确；没有冲突也不证明原请求可以再次提交。
+
+返回WcpComparedContextPackReceiptBackups及选项/侧摘要/并集条目/冲突类型，CONTEXT_PACK_BACKUP_COMPARISON_BYTES固定4 MiB；最终有限JSON复制还沿100000节点/64层限制，超限不截断。comparison_origin=local、comparison_scope=supplied-backups-only、mutation_eligibility=not-established、observation_state=historical；identity_state=not-authenticated，server_outcome/content_state/source_state=not-checked，save_dispatch_state=not-sent、storage_access=not-performed。不创建客户端、读取凭据/文件/IndexedDB或访问网络，不自动合并、恢复、移除、重发。
+
+输入错误沿INVALID_INPUT/CONTEXT_BACKUP_INVALID，绑定/摘要/摘要不可用沿固定CONTEXT_BACKUP_BINDING_MISMATCH、CONTEXT_BACKUP_DIGEST_MISMATCH、CONTEXT_BACKUP_INTEGRITY_UNAVAILABLE；新增CONTEXT_BACKUP_COMPARISON_CONFLICT/CANCELED/TIMEOUT/FAILED，使用固定说明、原本地trace和无写入状态，不回显任意底层诊断。finally清理公共预算；停止等待不交付迟到比较，正在执行的底层摘要可能仍会结束。
+
+CLI/Web比较接线、更大或流式集合和运行证据仍待补。R-003未完成、evidence为空；仅源码文档人工审阅及格式/Git文本检查，未编译、类型检查、测试、执行SDK/CLI/浏览器/产品/API/数据库或发布。
