@@ -11,6 +11,22 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    sdk_artifact_mock_development_increment:
+      date: "2026-11-04"
+      status: "Source-only artifact upload/history/receipt Mock; full WCP coverage and R-001 remain incomplete."
+      artifacts:
+        - "packages/sdk/src/mock-artifacts.ts"
+        - "packages/sdk/src/mock-server.ts"
+        - "packages/sdk/src/index.ts"
+        - "docs/design/01-contracts/artifact-mock-runtime.md"
+      behavior: "Explicit scoped sessions govern six routes for upload identity, multipart create/append, current/historical metadata and original receipts. Validate identity, normalized command/key, If-Match, length and SHA-256. Capture request and immutable Blob references before awaits; inspect live ledger/version after hashing and synchronously commit only after complete response/capacity/cancellation/expiry validation. Preserve immutable historical metadata and original receipts; return detached data."
+      evidence: []
+      pending_evidence:
+        - "SDK multipart compatibility, original command replay/history, identity/classification isolation and byte/hash validation"
+        - "Concurrent identical keys or expected versions, returned data isolation and unchanged state on response/capacity/cancellation/expiry failure"
+        - "Optional routing compatibility and simulated upload identity envelope"
+      remaining_scope: "Binary downloads and simulated release records, seed/restore, dynamic visibility, true authentication/Policy/audit/database/object storage, network uncertainty and other WCP Mock routes."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, Mock/SDK/API/product/database execution or release. No schema or dependency change."
     sdk_sync_conflict_mock_development_increment:
       date: "2026-11-04"
       status: "Source-only conflict lifecycle Mock connected to uploaded conflicts; R-001 and full WCP coverage remain incomplete."

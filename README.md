@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [资料上传与版本历史 Mock](docs/design/01-contracts/artifact-mock-runtime.md)：支持模拟上传、追加版本、查看当前与历史资料元数据、查询原上传回执；核对身份、请求键、原版本和内容摘要，历史保持原样。二进制下载另待补齐；仅源码文档，未编译、测试、执行 Mock 或发布。
+
 新增 [冲突生命周期 Mock](docs/design/01-contracts/conflict-mock-runtime.md)：上传产生的冲突可分页查询、查看双方原值、按原版本显式解决并查询原决定回执；解决事件进入同一同步流，来源字段和原上传回执保持。仅源码文档，未编译、测试、执行 Mock 或发布。
 
 新增 [同步上传与原回执 Mock](docs/design/01-contracts/sync-upload-mock-runtime.md)：显式配置后可模拟上传、原批次重放、客户端序号和版本冲突，新增事件进入同一下载流；原事件回执保留历史身份、时间与结果，来源字段不被修改。仅源码文档，未编译、测试、执行 Mock 或发布。

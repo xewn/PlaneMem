@@ -1,5 +1,10 @@
 export * from './client.js';
 export * from './mock-server.js';
+export {
+  MockArtifactStore,
+  type MockArtifactSeed,
+  type MockArtifactSession,
+} from './mock-artifacts.js';
 export { MockSyncStore, type MockSyncSeed, type MockSyncSession } from './mock-sync.js';
 export type { MockSyncFieldSource, MockSyncUploadAccess } from './mock-sync-upload.js';
 export type { MockSyncConflictAccess } from './mock-sync-conflicts.js';

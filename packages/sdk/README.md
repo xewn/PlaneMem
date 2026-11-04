@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-04：新增 `MockArtifactStore/MockArtifactSeed/MockArtifactSession`，以 `MockWcpServer({artifacts:{store,session}})` 接入资料创建、追加版本、当前/历史元数据和原上传回执。上传身份 GET 路由可直接通过 transport 使用。显式固定模拟权限，验证原请求键/五项身份/If-Match/长度/SHA-256；原命令重放与历史回执保留原版，异步读取后同步提交有界内存状态。二进制下载、真实存储和运行证据仍缺，详见 [资料上传与版本历史 Mock](../../docs/design/01-contracts/artifact-mock-runtime.md)。仅源码文档人工审阅，未编译、类型检查、测试、执行 SDK/Mock/API 或发布。
+
 2026-11-04：同步上传场景新增 `conflict_access:{read,resolve}` 与 `MockSyncConflictAccess`，接入 `listConflicts/getConflict/getConflictCommandContext/submitConflictDecision/resolveConflict/getConflictReceipt`。上传冲突保留双方完整原值，目录分页绑定范围/身份/权限/筛选；解决核对原版本/键/命令，原请求重放不追加事件，原回执保留历史结果。ConflictResolved进入同一流，来源字段及原上传回执不改写；详见 [冲突生命周期 Mock](../../docs/design/01-contracts/conflict-mock-runtime.md)。仅源码文档人工审阅，未编译、类型检查、测试、调用Mock或发布。
 
 2026-11-04：`MockSyncStore` 新增可选上传与原事件回执模拟。seed 提供 `upload_sources`（允许空数组），session 提供 `upload_access` 后，可直接接现有 `uploadEvents/getSyncEventReceipt`；批次与事件按原账号/客户端隔离、同文重放，来源与版本决定完整接受/拒绝回执，新增 canonical 事件进入既有下载/确认流。导出 `MockSyncFieldSource/MockSyncUploadAccess` 类型，来源不被修改，未启用时保持原四路由。配置、来源字段、原历史查询、下载可见性和容量见 [同步上传 Mock](../../docs/design/01-contracts/sync-upload-mock-runtime.md)。仅源码文档人工审阅，未编译、类型检查、测试、执行 Mock 或发布。
