@@ -6,6 +6,7 @@ import { backupOperation } from '../../../sync/receipt/backup-operation';
 import { PackReceiptHistoryEntry } from '../../save-receipt-entry';
 import { PackReceiptBackupPanel } from '../../save-receipt-backup-panel';
 import { PackReceiptAuditPanel } from '../../save-receipt-audit-panel';
+import { PackReceiptSelectionPanel } from '../../save-receipt-selection-panel';
 import { subscribePackReceiptHistoryChanges } from '../../save-receipt-changes';
 import { historyDateRangeError } from '../../../proposals/history-date-range';
 import {
@@ -341,24 +342,22 @@ export function PackReceiptHistoryBrowser({ binding }: { binding: PackSaveBindin
           Checked {page.scanned} observations in this batch · {page.entries.length} matches.
         </p>
       )}
-      {page?.entries.map((entry) => (
-        <div key={entry.file.document_sha256}>
-          <p>
-            {entry.file.document.observed_at} · {entry.file.document.original.request_key} ·{' '}
-            {entry.file.document.receipt.data.status}
-          </p>
-          <button
-            type="button"
-            className="secondary-button"
-            disabled={busy}
-            onClick={() => {
-              if (!active.current && pageRef.current?.entries.includes(entry)) setSelected(entry);
-            }}
-          >
-            Review complete observation
-          </button>
-        </div>
-      ))}
+      <PackReceiptSelectionPanel
+        binding={binding}
+        page={page}
+        disabled={busy}
+        reviewGeneration={reviewGeneration}
+        storageGeneration={storageGeneration.current}
+        getReviewGeneration={getReviewGeneration}
+        getStorageGeneration={getStorageGeneration}
+        begin={begin}
+        end={end}
+        onSelectionChange={revokeReview}
+        onHistoryWrite={historyWriteStarted}
+        onReview={(entry) => {
+          if (!active.current && pageRef.current?.entries.includes(entry)) setSelected(entry);
+        }}
+      />
       <PackReceiptAuditPanel
         binding={binding}
         disabled={busy}

@@ -49,6 +49,7 @@ import {
 } from './save-receipt-volumes-model';
 
 const layout = { databaseName: 'planemem-context-pack-save-history', contentStore: 'observations' };
+export const PACK_RECEIPT_SELECTION_MAX_ENTRIES = PACK_RECEIPT_HISTORY_PAGE_SIZE;
 export interface PackReceiptCandidate {
   file: ContextPackSaveReceiptFile;
   raw: string;
@@ -495,6 +496,65 @@ async function makePackReceiptBackup(
   check();
   const file = parsePackReceiptBackupFile({ document, document_sha256 });
   return { file, raw: packReceiptBackupFileJson(file) };
+}
+
+/** Read exactly the complete copies selected from one page, without scanning unrelated history. */
+export async function preparePackReceiptSelection(
+  inputs: readonly string[],
+  input: PackSaveBinding,
+  signal: AbortSignal,
+  check: () => void,
+): Promise<PackReceiptBackupCandidate> {
+  check();
+  const binding = parsePackSaveBinding(input);
+  if (
+    !Array.isArray(inputs) ||
+    !inputs.length ||
+    inputs.length > PACK_RECEIPT_SELECTION_MAX_ENTRIES
+  )
+    return invalid();
+  // Detach complete immutable strings and derive every key before any asynchronous work.
+  const selected = [...inputs]
+    .map((raw) => {
+      const file = decode(raw);
+      const key = slot(binding, file.document_sha256);
+      const candidate = pair(raw, file.document_sha256, key, binding);
+      return { ...candidate, key };
+    })
+    .sort((left, right) =>
+      left.file.document_sha256 < right.file.document_sha256
+        ? -1
+        : left.file.document_sha256 > right.file.document_sha256
+          ? 1
+          : 0,
+    );
+  if (new Set(selected.map((entry) => entry.key)).size !== selected.length) return invalid();
+  check();
+  await inBrowserStores<void>(layout, 'readonly', signal, invalid, (context) => {
+    let position = 0;
+    const next = () => {
+      check();
+      const expected = selected[position];
+      if (!expected) {
+        context.accept(undefined);
+        return;
+      }
+      readBrowserPair(context, expected.key, (raw, digest, exists) => {
+        check();
+        if (!exists || pair(raw, digest, expected.key, binding).raw !== expected.raw)
+          return invalid();
+        position += 1;
+        next();
+      });
+    };
+    next();
+  });
+  check();
+  for (const entry of selected) {
+    await inspectPackReceiptHistory(entry.raw, binding, check);
+    check();
+  }
+  return makePackReceiptBackup(binding, selected, check);
 }
 
 export async function preparePackReceiptBackup(
