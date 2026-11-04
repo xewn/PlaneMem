@@ -1,5 +1,21 @@
 # 工作项投影详情（开发状态）
 
+## 2026-11-04 保存截止日期筛选增量
+
+列表共享查询新增 `due=scheduled|unscheduled`、`due_from` 和 `due_before`。scheduled只要求保存的due_at非null，unscheduled只匹配null；不等同于已安排工作流、已完成或逾期。两日期必须是真实 `YYYY-MM-DD`（0001–9999年），拒绝无效闰日、零年、时间/偏移后缀、空白、数组和其他类型。省略或空串表示不使用该字段；MCP schema不接受空串，未使用时省略。unscheduled不能与任一日期边界共用；同时给出两日期时必须due_from早于due_before。
+
+due_from是指定日期UTC零时的包含下界，due_before是指定日期UTC零时的不包含上界，区间自动排除无日期记录。只设置一侧表示开放区间，不读取客户端/服务器当前日期、不自动隐藏done/cancelled，也不改变原due_at。例如 `{"due_from":"2026-11-01","due_before":"2026-12-01","status":"todo"}` 只选UTC 2026年11月范围内的待办；`{"due":"unscheduled","assignment":"unassigned"}` 查无保存截止日期且无保存负责人的记录。若要包含结束日整天，应传入下一日作为due_before；接口不自动改写边界。
+
+Gateway在原权限和未删除条件下，LIMIT/前瞻之前用参数化 `due_at IS [NOT] NULL`、`>= UTC零时`、`< UTC零时` 筛选，其他筛选仍AND组合。更新时间倒序/ID升序、25默认/100上限及现有响应预算不变。共享完整页校验逐项核对null/区间；错误条目整页失败，不在客户端删项或缩页。日期边界只到零时，已有毫秒/微秒记录在日边界两侧保持相同筛选含义；输出保留原时间值，不新增时间格式迁移。
+
+生产分页键含任一日期新条件时使用v4并固定原范围/可见性/搜索/状态/优先级/负责人/分配条件及全部日期条件；无日期新条件时保持原v1–v3键。续页必须带回相同条件，改变有无日期或任一日期须去掉cursor回首页。Mock使用独立v2日期绑定并复用共享匹配在分页前过滤，无新条件保留独立v1绑定；生产与Mock游标不能混用，limit仍不参与绑定，跨页没有快照承诺。
+
+SDK listWorkItemProjections/workItemPages、CLI work-items list JSON及MCP list_work_item_projections都支持新字段。Web新增有无截止日期和两个明确标注UTC的日期输入；选择无日期清空并禁用区间，切回不会恢复旧区间。只改控件不查询，提交从第一页开始；看板/列表切换、下一页、选择任务、详情return_to及错误原页重试保留新条件，错误页“原条件第一页”仅清除游标/选择。非法日期/互斥组合仍在读取前拒绝，详情外部返回地址限制保持。
+
+区间核对要求返回的保存due_at为带明确Z或数值时区偏移的ISO时间，不用当前机器时区解释无时区旧字符串。真实Gateway输出和Mock种子已有明确UTC时间；带日期区间时，旧无时区fixture/自定义传输响应会整页拒绝，需提供明确时区。仅有无日期筛选不改变原实体时间接受范围。
+
+本任务无写命令、新路由、数据库schema/迁移/索引或依赖变化，仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行产品/SQL/API/SDK/CLI/MCP/Mock/浏览器或发布。真实UTC边界、完整页核对、查询性能、客户端/游标兼容和浏览器导航证据待补，R-002仍未完成、evidence为空。
+
 ## 2026-11-04 工作台读取与失败恢复增量
 
 Web `listWorkbenchWorkItems`、`getWorkbenchWorkItem`以及现有 `queryWorkbench` 的 work_items/work_item 分支共用专用有界响应读取。等待会话前复制并规范化原查询，规范请求正文最多8 KiB；身份来自当前会话，仍仅一次POST /v1/workbench/query，no-store、redirect=error，不自动重试或翻页。读取沿既有30秒AbortSignal及绝对期限，覆盖网络等待、正文与完整解析；会话获取在该期限之前，同步解析不能中途抢占，结束后再次核对期限和会话到期。
@@ -8,7 +24,7 @@ Web `listWorkbenchWorkItems`、`getWorkbenchWorkItem`以及现有 `queryWorkbenc
 
 错误只展示固定文案和本次trace，不回显远端message/details。HTTP 401直接要求登录并取消正文；发送前和读取结束后检查当前会话快照到期，错误读取或网络失败时已到期也要求重新登录。正文读取使用现有有界流读取与取消，不能把本地超时解释为服务器查询或审计已撤销。Web不从未验证的JWT字段推断context.read或restricted权限，仍由Gateway鉴权、Policy/Audit及数据库可见性负责；原投影没有强制范围回显，不把内容检查当作权限证明。
 
-列表错误页仅在原浏览参数验证成功时提供显式GET“Retry this page”，保留q/status/priority/owner/assignment/cursor/view/item；“First page with these filters”保留筛选和视图、清除旧游标及选择，适用于原游标因账号/项目/筛选绑定变化被拒绝的情况。非法参数仅提供固定重新浏览入口。详情继续按已验证item/return_to重试并返回原列表或搜索位置，缺失与不可见仍同样处理。没有新增自动恢复或后台分页。
+列表错误页仅在原浏览参数验证成功时提供显式GET“Retry this page”，保留q/status/priority/owner/assignment/due/due_from/due_before/cursor/view/item；“First page with these filters”保留筛选和视图、清除旧游标及选择，适用于原游标因账号/项目/筛选绑定变化被拒绝的情况。非法参数仅提供固定重新浏览入口。详情继续按已验证item/return_to重试并返回原列表或搜索位置，缺失与不可见仍同样处理。没有新增自动恢复或后台分页。
 
 本增量无新路由/数据库/schema/依赖；仅源码文档人工审阅及格式/文本检查，未编译、类型检查、测试、执行Web/API/浏览器/数据库或发布。真实鉴权、期限/超限、错误映射、原导航恢复及旧响应兼容证据仍待补，R-001/R-002保持未完成、evidence为空。
 
@@ -28,7 +44,7 @@ item_id 是 `wcp_work_items.id`，不是 Plane external_id；允许非 ULID 标�
 
 ## 列表分页补充
 
-`POST /v1/workbench/query` 的 `operation=work_items` 现支持 query/status/priority/owner/assignment/cursor/limit。默认 25 条，每页 1–100 条；query 最多 500 字符，搜索 external_id/title/owner，空 query/status/priority/owner/assignment 表示不过滤。共享 `parseWorkItemListQuery` 拒绝未知字段、非法状态、优先级、负责人、分配状态和游标；SDK/CLI/Web 使用同一规范化逻辑。
+`POST /v1/workbench/query` 的 `operation=work_items` 现支持 query/status/priority/owner/assignment/due/due_from/due_before/cursor/limit。默认25条，每页1–100条；query最多500字符，搜索external_id/title/owner，空可选筛选字段表示不过滤。共享parseWorkItemListQuery拒绝未知字段、非法状态/优先级/负责人/分配/日期及游标，日期规则见上方增量；SDK/CLI/Web使用同一规范化逻辑，MCP未使用时省略字段。
 
 响应 data 仍是数组，条目增加 created_at 并与详情使用相同字段验证。存在后续数据时在外层返回 next_cursor；调用方把它作为下一次 cursor，并保留查询、状态、优先级和负责人条件。没有 next_cursor 即当前读取结束，不能把单页条数当项目总数。SDK `listWorkItemProjections`、CLI `work-items list`、MCP `list_work_item_projections` 均接入；共享响应解析验证页大小、重复 ID、所选状态/优先级/负责人和游标形状。
 
@@ -68,7 +84,7 @@ unassigned与非空精确owner互斥，整份查询在读取前拒绝；owner空
 
 ## 工作台详情返回路径（2026-11-04，仅源码）
 
-工作项看板/列表的详情入口新增 `return_to`，保存原 q/status/priority/owner/assignment/cursor/view 和当前详情 item。共用 `work-items/navigation.ts` 解析浏览参数、构造内部列表/详情链接；显式 item 始终按本地 ID 契约验证，无效 ID 不再渲染一个不可用的选择链接。默认首项进入详情时也显式保存该选择，页外选中项仍可独立读取并返回原页。
+工作项看板/列表的详情入口新增`return_to`，保存原q/status/priority/owner/assignment/due/due_from/due_before/cursor/view和当前详情item。共用work-items/navigation.ts解析浏览参数、构造内部列表/详情链接；显式item始终按本地ID契约验证，无效ID不再渲染不可用选择链接。默认首项进入详情时也显式保存该选择，页外选中项仍可独立读取并返回原页。
 
 详情的“Back to results”回到原视图、筛选和分页位置。从工作项目录进入时，“Open in board/list”只改变视图，保留其余条件。刷新详情及读取失败后的显式重试均使用原 item 与已规范化 return_to；404、权限或网络读取错误仍提供原结果返回链接，不用其他项目或工作项替换失败目标。缺少 return_to 的旧详情链接继续可用，返回默认看板并保留所选 item。全局搜索已接独立返回分支，保留搜索查询/筛选/分页和所选工作项；切换工作项看板/列表时使用默认目录条件，不推断搜索条件与目录筛选等价。
 
@@ -148,7 +164,7 @@ filters.json示例为`{"assignment":"unassigned","limit":25}`；selection.json�
 
 `list_work_item_projections`和`get_work_item_projection`改由专用executeWorkItemReadTool执行。tools/list、prepareMcpTool、直接执行器及HTTP tools/call的客户端要求保持一致：必须是schema_version=1、authenticated_client=true、有实际context.read、明确未到期token_expires_at及有效完整范围/账号/客户端/trace的上下文。admin角色不替代context.read能力，发现时可见不保证之后调用仍获授权；真实Router仍执行原Policy/Audit，父项目与记录可见性沿原数据库读取。没有注册新的工具名、REST路由或读取资源。
 
-两工具内层arguments普通JSON最多8 KiB。列表字段仍是query/status/priority/owner/assignment/cursor/limit，默认25最多100条，详情只接受本地item_id。复用共享解析及原MCP schema语义：不筛选status/priority/owner/assignment时省略，不能发送空串；unassigned不能与非空owner组合。拒绝未知字段、写条件、范围、账号及CLI专用expected_actor_id/expected_client_id；身份只来自已验证的MCP上下文，不接受参数覆盖。不提供工具内timeout参数或自动翻页选项，保留原筛选显式传回next_cursor读取下一页。
+两工具内层arguments普通JSON最多8 KiB。列表字段为query/status/priority/owner/assignment/due/due_from/due_before/cursor/limit，默认25最多100条，详情只接受本地item_id。复用共享解析及MCP schema语义：不筛选枚举/负责人/日期时省略，不能发送空串；unassigned不能与非空owner组合，unscheduled不能与日期区间组合。拒绝未知字段、写条件、范围、账号及CLI专用expected_actor_id/expected_client_id；身份只来自已验证MCP上下文，不接受参数覆盖。不提供工具内timeout参数或自动翻页选项，保留全部原筛选显式传回next_cursor读取下一页。
 
 参数和上下文先复制，清除继承idempotency_key/expected_version/if_match，只派发一次固定POST /v1/workbench/query，使用work_items或work_item操作。交给ApiGateway的请求是额外副本，不能通过Handler修改它来改变原查询或权限校验依据。prepareMcpTool只准备请求和检查权限/输入；完整预算与响应校验由dispatchMcp或专用执行器提供，直接自行调用api.handle不是本节的有界工具执行流程。
 

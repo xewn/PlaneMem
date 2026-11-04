@@ -11,6 +11,7 @@ export const WORK_ITEM_STATUSES = [
 
 export const WORK_ITEM_PRIORITIES = ['P0', 'P1', 'P2', 'P3'] as const;
 export const WORK_ITEM_ASSIGNMENTS = ['assigned', 'unassigned'] as const;
+export const WORK_ITEM_DUE_FILTERS = ['scheduled', 'unscheduled'] as const;
 
 export interface WorkItemListQuery {
   query?: string;
@@ -20,6 +21,12 @@ export interface WorkItemListQuery {
   owner?: string;
   /** Based only on whether the saved owner is exactly empty; no whitespace normalization. */
   assignment?: (typeof WORK_ITEM_ASSIGNMENTS)[number];
+  /** Whether the saved due_at is non-null or null; does not imply workflow status. */
+  due?: (typeof WORK_ITEM_DUE_FILTERS)[number];
+  /** Inclusive UTC midnight of a real YYYY-MM-DD date (years 0001..9999). */
+  due_from?: string;
+  /** Exclusive UTC midnight of a real YYYY-MM-DD date (years 0001..9999). */
+  due_before?: string;
   cursor?: string;
   limit?: number;
 }
@@ -31,7 +38,18 @@ export function parseWorkItemListQuery(value: unknown): WorkItemListQuery {
   if (
     Object.keys(input).some(
       (key) =>
-        !['query', 'status', 'priority', 'owner', 'assignment', 'cursor', 'limit'].includes(key),
+        ![
+          'query',
+          'status',
+          'priority',
+          'owner',
+          'assignment',
+          'due',
+          'due_from',
+          'due_before',
+          'cursor',
+          'limit',
+        ].includes(key),
     )
   )
     throw new TypeError('Unknown work item list query field');
@@ -76,6 +94,33 @@ export function parseWorkItemListQuery(value: unknown): WorkItemListQuery {
   }
   if (query.assignment === 'unassigned' && query.owner !== undefined)
     throw new TypeError('Unassigned work items cannot be filtered by an exact owner');
+  if (input.due !== undefined && input.due !== '') {
+    if (!WORK_ITEM_DUE_FILTERS.includes(input.due as NonNullable<WorkItemListQuery['due']>))
+      throw new TypeError('due must be scheduled or unscheduled');
+    query.due = input.due as NonNullable<WorkItemListQuery['due']>;
+  }
+  for (const field of ['due_from', 'due_before'] as const) {
+    const date = input[field];
+    if (date === undefined || date === '') continue;
+    if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date) || date.startsWith('0000'))
+      throw new TypeError(`${field} must be a real YYYY-MM-DD date`);
+    const midnight = date + 'T00:00:00.000Z';
+    const time = Date.parse(midnight);
+    if (!Number.isFinite(time) || new Date(time).toISOString() !== midnight)
+      throw new TypeError(`${field} must be a real YYYY-MM-DD date`);
+    query[field] = date;
+  }
+  if (
+    query.due === 'unscheduled' &&
+    (query.due_from !== undefined || query.due_before !== undefined)
+  )
+    throw new TypeError('Work items without a due date cannot use a due date range');
+  if (
+    query.due_from !== undefined &&
+    query.due_before !== undefined &&
+    query.due_from >= query.due_before
+  )
+    throw new TypeError('due_from must be before the exclusive due_before date');
   if (input.cursor !== undefined) {
     if (typeof input.cursor !== 'string' || !/^[A-Za-z0-9_-]{1,2048}$/.test(input.cursor))
       throw new TypeError('cursor must be an opaque work item list cursor');
@@ -92,6 +137,30 @@ export function parseWorkItemListQuery(value: unknown): WorkItemListQuery {
     query.limit = input.limit;
   }
   return query;
+}
+
+/** Compare a validated saved timestamp to an already parsed query, without using the current clock. */
+export function matchesWorkItemDueFilter(
+  dueAt: WorkItemProjection['due_at'],
+  query: Pick<WorkItemListQuery, 'due' | 'due_from' | 'due_before'>,
+): boolean {
+  if (dueAt === null)
+    return (
+      query.due !== 'scheduled' && query.due_from === undefined && query.due_before === undefined
+    );
+  if (query.due === 'unscheduled') return false;
+  // Ranges must not interpret a timezone-free saved timestamp using the reader's local timezone.
+  if (
+    (query.due_from !== undefined || query.due_before !== undefined) &&
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(dueAt)
+  )
+    return false;
+  const time = Date.parse(dueAt);
+  return (
+    Number.isFinite(time) &&
+    (query.due_from === undefined || time >= Date.parse(query.due_from + 'T00:00:00.000Z')) &&
+    (query.due_before === undefined || time < Date.parse(query.due_before + 'T00:00:00.000Z'))
+  );
 }
 
 /** Parses the list payload and its envelope-level continuation. */
@@ -126,6 +195,8 @@ export function parseWorkItemProjectionList(
       (query.assignment === 'assigned' && item.owner === '')
     )
       throw new TypeError('Work item does not match assignment');
+    if (!matchesWorkItemDueFilter(item.due_at, query))
+      throw new TypeError('Work item does not match the saved due date filters');
     return item;
   });
   if (page.next_cursor === undefined) return { data };

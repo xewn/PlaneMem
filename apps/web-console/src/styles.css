@@ -992,6 +992,7 @@ button {
   width: 16px;
 }
 .work-item-filters input[type='search'],
+.work-item-filters input[type='date'],
 .work-item-filters input[name='owner'],
 .global-search input[type='search'] {
   min-width: 0;
@@ -1001,8 +1002,14 @@ button {
   border: 0;
   font: inherit;
 }
-.work-item-filters select {
+.work-item-filters select,
+.work-item-filters input[type='date'] {
   color-scheme: dark;
+}
+.work-item-date-filter {
+  min-width: 180px;
+  flex-direction: column;
+  align-items: stretch;
 }
 .handoff-form {
   display: grid;

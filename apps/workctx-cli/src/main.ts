@@ -281,7 +281,8 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
                                  no --key, no scheduling; not-observed does not prove failure
   search                         Search saved project records; JSON query required, optional type/mode/limit/cursor
   work-items get                 Read a saved local work item by item_id, with version and sources
-  work-items list                List saved work items; optional query, status, priority, exact owner, assignment (assigned/unassigned), cursor and limit
+  work-items list                List saved work items; optional query, status, priority, exact owner, assignment (assigned/unassigned), due, due_from, due_before, cursor and limit
+                                 due=scheduled/unscheduled; due_from inclusive, due_before exclusive YYYY-MM-DD at UTC midnight; unscheduled cannot use date bounds
                                  list/get: --json or --json-file <=8 KiB; list may omit JSON; network --json - supported
                                  Optional --timeout-ms (default 30000), paired expected_actor_id/expected_client_id in JSON
                                  One complete page/detail <=2 MiB; preserve filters for continuation; no --key/--output

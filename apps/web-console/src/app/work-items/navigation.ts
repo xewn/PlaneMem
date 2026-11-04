@@ -17,7 +17,19 @@ export interface WorkItemDetailNavigation {
   return_href: string;
 }
 
-const fields = ['q', 'status', 'priority', 'owner', 'assignment', 'cursor', 'view', 'item'];
+const fields = [
+  'q',
+  'status',
+  'priority',
+  'owner',
+  'assignment',
+  'due',
+  'due_from',
+  'due_before',
+  'cursor',
+  'view',
+  'item',
+];
 const MAX_RETURN_LENGTH = 16 * 1024;
 
 /** List entry and detail return paths use exactly the same query interpretation. */
@@ -34,6 +46,9 @@ export function parseWorkItemBrowseParams(params: WorkItemSearchParams): WorkIte
     priority: params.priority ?? '',
     owner: params.owner ?? '',
     assignment: params.assignment ?? '',
+    due: params.due ?? '',
+    due_from: params.due_from ?? '',
+    due_before: params.due_before ?? '',
     limit: 25,
     ...(params.cursor === undefined ? {} : { cursor: params.cursor }),
   });
@@ -62,6 +77,9 @@ export function workItemBrowseHref(state: WorkItemBrowseState): string {
   if (filters.priority) search.set('priority', filters.priority);
   if (filters.owner) search.set('owner', filters.owner);
   if (filters.assignment) search.set('assignment', filters.assignment);
+  if (filters.due) search.set('due', filters.due);
+  if (filters.due_from) search.set('due_from', filters.due_from);
+  if (filters.due_before) search.set('due_before', filters.due_before);
   if (filters.cursor) search.set('cursor', filters.cursor);
   if (state.view === 'list') search.set('view', 'list');
   if (state.item !== undefined)

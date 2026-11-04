@@ -14,21 +14,31 @@ interface WorkItemPosition {
 
 export function workItemQueryKey(scope: WorkbenchScope, query: WorkItemListQuery): string {
   const filters = parseWorkItemListQuery(query);
+  const withDue =
+    filters.due !== undefined || filters.due_from !== undefined || filters.due_before !== undefined;
   const withAssignment = filters.assignment !== undefined;
-  const extended = filters.priority !== undefined || filters.owner !== undefined || withAssignment;
+  const extended =
+    filters.priority !== undefined || filters.owner !== undefined || withAssignment || withDue;
   return createHash('sha256')
     .update(
       JSON.stringify([
-        withAssignment ? 'work-item-list-v3' : extended ? 'work-item-list-v2' : 'work-item-list-v1',
+        withDue
+          ? 'work-item-list-v4'
+          : withAssignment
+            ? 'work-item-list-v3'
+            : extended
+              ? 'work-item-list-v2'
+              : 'work-item-list-v1',
         scope.tenant_id,
         scope.workspace_id,
         scope.project_id,
         scope.read_restricted === true,
         filters.query ?? '',
         filters.status ?? '',
-        // Preserve existing v1/v2 keys when assignment is absent.
+        // Preserve existing v1/v2/v3 keys when the new filters are absent.
         ...(extended ? [filters.priority ?? '', filters.owner ?? ''] : []),
-        ...(withAssignment ? [filters.assignment] : []),
+        ...(withAssignment || withDue ? [filters.assignment ?? ''] : []),
+        ...(withDue ? [filters.due ?? '', filters.due_from ?? '', filters.due_before ?? ''] : []),
       ]),
     )
     .digest('hex');

@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+2026-11-04：`work-items list`的JSON增加`due=scheduled|unscheduled`、`due_from`、`due_before`。日期为有效YYYY-MM-DD，UTC含起始、不含结束；示例文件内容`{"due_from":"2026-11-01","due_before":"2026-12-01","status":"todo"}`。unscheduled只匹配due_at=null且与区间互斥；区间排除null，不自动判断逾期或工作状态。下一页保留这些条件和原cursor，换条件回首页，原8 KiB输入/单页读取/期限保持。见[工作项筛选](../../docs/design/01-contracts/work-item-projection-runtime.md)。仅源码文档，未编译、测试、运行命令或发布。
+
 2026-11-04：`work-items list/get`新增`--timeout-ms`，默认30000；网络和嵌入统一复用SDK有界单页/详情读取，成功2 MiB、Fetch错误16 KiB和完整trace/结果校验。输入支持最多8 KiB内联JSON/稳定普通文件，列表省略为{}，网络支持有界`--json -`、嵌入不读stdin；本地输入等待不计入网络期限。可选成对expected_actor_id/expected_client_id只转成身份相等头；嵌入要求可信未过期context.read，按原身份派发、两笔容量到真实读取结束才释放。拒绝key/output/重复/未知/写选项，不自动翻页、保存或重试。下一页保留原筛选/身份和外层next_cursor。详见[命令行工作项读取](../../docs/design/01-contracts/work-item-projection-runtime.md)。仅源码文档人工审阅，未编译、测试、运行命令或发布。
 
 2026-11-04：新增`artifacts compare --json-file QUERY.json [--timeout-ms 30000]`，也支持`--json`及网络入口有界`--json -`；嵌入不读stdin。输入最多4 KiB，仅含artifact_id/from_version/to_version/expected_actor_id/expected_client_id；两版本必须不同，账号ULID和客户端需匹配实际读者，范围沿现有WORKCTX项目配置。网络固定原token，嵌入逐次核对可信未过期artifact.read、完整身份和SDK实际请求，两个指定历史读取共用SDK总期限；任一失败不返回部分对比。成功stdout是明确本地组合的WcpArtifactComparisonResult，包含query/identity_constraints/from/to/comparison，正文未检查；这是独立返回形状，没有外层data或新的Gateway操作。拒绝--key/--output/重复未知参数，不自动下载/上传/保存。详见[命令行版本对比](../../docs/design/01-contracts/artifact-versions-runtime.md#命令行版本对比源码阶段)。仅源码文档，未编译、测试、执行命令或发布。
@@ -533,7 +535,7 @@ observed-item.json 示例：`{"work_item_id":"plane-item-42"}`。CLI 核对返�
 | `index delete` | id、expected_revision、reason；软删除手工索引 | `--key` 必需 |
 | `index restore` | id、expected_revision、reason；恢复手工索引，保留原到期和分类 | `--key` 必需 |
 | `work-items get` | 本地 `item_id`；返回工作项投影、字符串版本及来源 | 无 |
-| `work-items list` | 可选 query/status/priority/owner/assignment/cursor/limit；priority 为 P0–P3，owner 精确文本，assignment=assigned/unassigned对应保存owner非空/空串，unassigned不能与非空owner组合；默认 25、最多 100 条，保留全部筛选并用外层 next_cursor 继续，换条件回首页 | 无 |
+| `work-items list` | 可选 query/status/priority/owner/assignment/due/due_from/due_before/cursor/limit；priority为P0–P3，owner精确文本，assignment为assigned/unassigned；due为scheduled/unscheduled，日期严格YYYY-MM-DD、UTC含起始/不含结束，无日期与区间互斥。默认25、最多100条，保留全部筛选并用外层next_cursor继续，换条件回首页 | 无 |
 | `sessions start` | `expected_identity`，可选原 `parent_session_id/actor_id/client_id` | `--key` 或正文 idempotency_key，出现多个时须一致 |
 | `sessions start-receipt` | `expected_identity`、`request_key`、`session` 原业务正文 | 禁止新键 |
 | `sessions end` | `session_id`、`expected_identity`、`status`、`expected_version` | `--key` |

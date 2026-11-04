@@ -1,5 +1,7 @@
 # 工作项目录与详情 Mock（源码阶段）
 
+2026-11-04 日期筛选增量：支持due=scheduled/unscheduled、due_from（含起始）/due_before（不含结束）的严格UTC YYYY-MM-DD区间，复用共享匹配在可见性过滤后分页前筛选，并在完整响应再次核对。unscheduled只匹配null且不能组合区间，区间排除null，不读取当前时钟或推断任务完成状态。日期条件存在时用独立mock-work-item-list-v2绑定全部原条件及日期；无日期条件仍保留原v1绑定。无种子/时间值/排序/预算改变；示例与边界见[工作项日期筛选](work-item-projection-runtime.md)。仅源码文档人工审阅，未编译、测试、执行或发布。
+
 2026-11-04新增SDK `MockWorkItemStore`、`MockWorkItemSeed`、`MockWorkItemSession`及可选`MockWcpServer({work_items:{store,session}})`。支持现有`POST /v1/workbench/query`的`work_items`目录和`work_item`详情两个操作，直接接入`listWorkItemProjections`及`getWorkItemProjection`。只开发源码文档并人工审阅，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布。
 
 ## 数据集与模拟身份
@@ -14,7 +16,7 @@
 
 ## 查询、顺序与续页
 
-列表复用parseWorkItemListQuery和parseWorkItemProjectionList：query/status/priority/精确owner/assignment/cursor/limit，默认25、最多100条。assignment严格区分保存owner空串与非空，unassigned与非空精确owner互斥；精确owner不作trim或大小写归一。query在external_id、title、owner以单空格拼接后的文本中做字面子串查询，使用JavaScript toLowerCase；它不保证与真实PostgreSQL数据库locale的小写规则完全一致，百分号/下划线没有通配含义。
+列表复用parseWorkItemListQuery和parseWorkItemProjectionList：query/status/priority/精确owner/assignment/due/due_from/due_before/cursor/limit，默认25、最多100条。assignment严格区分保存owner空串与非空，unassigned与非空精确owner互斥；精确owner不作trim或大小写归一。日期规则见上方增量，使用同一共享匹配函数。query在external_id、title、owner以单空格拼接后的文本中做字面子串查询，使用JavaScript toLowerCase；它不保证与真实PostgreSQL数据库locale的小写规则完全一致，百分号/下划线没有通配含义。
 
 记录按微秒updated_at倒序、Unicode标量ID升序；这是明确的Mock排序规则，真实数据库默认ID collation仍需兼容证据。可见性和全部筛选先执行，再取limit+1判断是否继续；返回完整data数组和可选外层next_cursor，不返回截断记录，不自动翻页。
 

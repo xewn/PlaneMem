@@ -86,8 +86,12 @@ function captureQuery(name: string, raw: unknown, trace: string): Query {
     if (name === 'get_work_item_projection')
       return { kind: 'detail', value: parseWorkItemProjectionQuery(value) };
     const row = value as Record<string, unknown>;
-    // These optional schema fields must be omitted rather than supplied as empty enum/owner values.
-    if (['status', 'priority', 'owner', 'assignment'].some((key) => row[key] === ''))
+    // Optional enum/owner/date schema fields must be omitted rather than supplied as empty values.
+    if (
+      ['status', 'priority', 'owner', 'assignment', 'due', 'due_from', 'due_before'].some(
+        (key) => row[key] === '',
+      )
+    )
       throw new TypeError();
     return { kind: 'list', value: parseWorkItemListQuery(row) };
   } catch {

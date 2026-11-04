@@ -1,5 +1,6 @@
 import {
   ContractError,
+  matchesWorkItemDueFilter,
   createUlid,
   parseSyncCommandIdentity,
   parseWorkItemListQuery,
@@ -235,9 +236,11 @@ export class MockWorkItemStore {
   }
 
   private async list(query: WorkItemListQuery, session: Session, trace: string, live: () => void) {
+    const withDue =
+      query.due !== undefined || query.due_from !== undefined || query.due_before !== undefined;
     const binding = syncJsonSnapshot(
       [
-        'mock-work-item-list-v1',
+        withDue ? 'mock-work-item-list-v2' : 'mock-work-item-list-v1',
         this.#id,
         session.identity,
         session.expires_at,
@@ -250,6 +253,7 @@ export class MockWorkItemStore {
         query.priority ?? '',
         query.owner ?? '',
         query.assignment ?? '',
+        ...(withDue ? [query.due ?? '', query.due_from ?? '', query.due_before ?? ''] : []),
       ],
       1024 * 1024,
     );
@@ -281,6 +285,7 @@ export class MockWorkItemStore {
         (query.owner !== undefined && item.owner !== query.owner) ||
         (query.assignment === 'unassigned' && item.owner !== '') ||
         (query.assignment === 'assigned' && item.owner === '') ||
+        !matchesWorkItemDueFilter(item.due_at, query) ||
         (search !== undefined &&
           ![item.external_id, item.title, item.owner].join(' ').toLowerCase().includes(search)) ||
         (after !== undefined &&

@@ -27,7 +27,18 @@ export interface WcpWorkItemPagesOptions extends WcpWorkItemReadOptions {
 }
 
 const responseBytes = 2 * 1024 * 1024;
-const queryFields = ['query', 'status', 'priority', 'owner', 'assignment', 'cursor', 'limit'];
+const queryFields = [
+  'query',
+  'status',
+  'priority',
+  'owner',
+  'assignment',
+  'due',
+  'due_from',
+  'due_before',
+  'cursor',
+  'limit',
+];
 const messages = {
   INVALID_INPUT: 'Supply valid work item filters or a local ID, project scope and read options',
   DENIED: 'The current account or client cannot read these work items',

@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-04：`listWorkItemProjections`和`workItemPages`新增`due=scheduled|unscheduled`、`due_from`及`due_before`。日期为严格有效YYYY-MM-DD，UTC含起始、不含结束；例如`{due_from:'2026-11-01',due_before:'2026-12-01',status:'todo'}`读取指定UTC月份的待办。unscheduled仅匹配due_at=null，不能与日期区间组合；不自动按当前日期判断逾期或排除已完成任务。续页保留全部条件；新日期条件采用生产v4/独立Mock v2绑定，无新条件保持旧绑定。Mock已同步，原有界输入/响应及期限保持，见[工作项筛选](../../docs/design/01-contracts/work-item-projection-runtime.md)。仅源码文档，未编译、测试、运行或发布。
+
 2026-11-04：`listWorkItemProjections(query?, options?)`和`getWorkItemProjection(itemId, options?)`支持`WcpWorkItemReadOptions`的timeout_ms/signal，默认30秒/2 MiB完整成功响应，Fetch错误16 KiB；精确trace、已有身份条件、共享记录/筛选校验和独立返回副本。新增`workItemPages(query?, {timeout_ms?,signal?,max_pages?})`，创建时固定参数，next才读取，无预取，yield前保存续页并检测重复游标；max_pages默认100、允许1–1000，到限仍有续页时下一次next明确报WORK_ITEM_PAGE_LIMIT，保留上次完整页供显式继续。详情仍用本地ID，遍历不保证快照或去重，不自动重试/保存。自定义传输须支持bounded-json/signal并返回完整匹配JSON封套；兼容变化和未执行示例见[工作项SDK读取](../../docs/design/01-contracts/work-item-projection-runtime.md)。仅源码文档人工审阅，未编译、测试或执行。
 
 2026-11-04：新增`MockWorkItemStore/MockWorkItemSeed/MockWorkItemSession`与`MockWcpServer({work_items:{store,session}})`，接入`listWorkItemProjections/getWorkItemProjection`。固定有界投影和显式身份/到期/权限/可见ID集合；列表支持原全部筛选及assignment，微秒排序、独立Mock游标绑定、完整响应复制，不自动翻页或写数据。每store两并发、30秒等待、2 MiB完整输出，直接transport可取消；后续SDK有界读取与workItemPages沿此接线使用，见上方增量。JS小写/Unicode排序不宣称真实数据库locale兼容。接线及限制见[工作项Mock](../../docs/design/01-contracts/work-item-mock-runtime.md)。仅源码文档人工审阅，未编译、测试、运行SDK/Mock或发布。
@@ -194,7 +196,7 @@ Plane 观察状态新增 `getObservedProjectState()`、`getObservedWorkItemState
 
 `getProjectOverview()` 返回同条数据库查询得到的项目汇总、上下文各层统计及有限条预览。SDK 校验总数、状态、预览大小和标识；`average_confidence` 为保存值均值，不能用作来源新鲜度，proposed 也不等于可立即确认。不可见项目返回 404。字段及口径见 [项目概览读取](../../docs/design/01-contracts/workbench-overview-runtime.md)。
 
-`listWorkItemProjections({ query, status, priority, owner, assignment, cursor, limit })` 读取工作项投影页，默认 25、最多 100 条，返回 data 数组和可选外层 next_cursor。priority 为 P0–P3，owner 是最多 255 字符单位的完整保存文本，大小写/空格精确匹配，空字符串表示不过滤；不是账号 ID 推断。assignment为assigned/unassigned，对应保存owner非空/严格空串，unassigned不能与非空精确owner组合；省略表示全部。继续时保留 query/status/priority/owner/assignment；改变筛选、范围或受限数据权限需移除 cursor。省略assignment的原v1/v2游标继续兼容，含assignment使用v3绑定。分页按更新时间倒序、ID 升序，不提供快照隔离。SDK 校验输入、条目、重复 ID、状态/优先级/负责人/分配状态、页大小与游标；每页数量不是项目总数。筛选增量仅源码，未编译、测试或调用，详见 [工作项投影](../../docs/design/01-contracts/work-item-projection-runtime.md)。
+`listWorkItemProjections({ query, status, priority, owner, assignment, due, due_from, due_before, cursor, limit })`读取工作项投影页，默认25、最多100条，返回data和可选外层next_cursor。priority为P0–P3；owner为完整保存文本、大小写/空格精确匹配；assignment=assigned/unassigned对应非空/严格空owner，unassigned不能组合精确owner。due=scheduled/unscheduled对应非null/null的保存due_at，日期区间为UTC含起始/不含结束，unscheduled与区间互斥。续页保留全部筛选，改变筛选/范围/受限数据权限应移除cursor。日期条件使用v4绑定，无日期条件保持v1–v3。排序仍更新时间倒序/ID升序，无快照隔离；SDK校验完整记录及全部非文本搜索筛选、页大小/重复ID/游标，不用单页数量推断总数。仅源码，未编译、测试或调用，详见[工作项投影](../../docs/design/01-contracts/work-item-projection-runtime.md)。
 
 `getWorkItemProjection(itemId)` 按本地 ID 读取当前项目可见工作项投影，保留来源和追踪，使用共享输入/响应解析器。`data.version` 是正十进制字符串，避免 BIGINT 精度丢失；它不是 Plane 写入版本，也不证明外部来源当前有效。缺失或不可见统一 404。见 [工作项投影详情](../../docs/design/01-contracts/work-item-projection-runtime.md)。
 

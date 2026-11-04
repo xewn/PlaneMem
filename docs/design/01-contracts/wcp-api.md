@@ -1,5 +1,7 @@
 # WCP API 契约 v1
 
+2026-11-04 工作项截止日期筛选：workbench.query的work_items增加due=scheduled/unscheduled与due_from/due_before，按已保存due_at是否null及严格UTC YYYY-MM-DD区间（含起始、不含结束）筛选。无日期与区间互斥，起始须早于结束；新日期条件使用v4游标绑定全部筛选，无新条件保持v1–v3。SDK/CLI/MCP/Web/Mock同步，权限和筛选先于LIMIT、响应整页核对，不自动判断逾期或改状态。详见[工作项筛选](work-item-projection-runtime.md)，仅源码文档，未编译、测试、执行或发布。
+
 2026-11-04 工作项CLI读取增补：work-items list/get网络及嵌入入口复用SDK有界读取，支持--timeout-ms、8 KiB JSON/文件/仅网络stdin和2 MiB完整成功响应；CLI可选成对expected_actor_id/expected_client_id只转为身份前置头，不加入POST workbench.query正文。列表仍每次一页，原共享字段、路由和数据库保持。说明及兼容限制见[工作项运行契约](work-item-projection-runtime.md)，仅源码文档，未编译、测试、执行或发布。
 
 2026-11-04 项目文件目录结构增补：`GET /v1/artifacts`的独立JSON Schema源码现为`packages/contracts/schemas/artifact-registry.json`，可通过contracts显式子路径引用。输入/规范查询/续页/当前摘要/页面/封套均有资源锚点；游标规范解码、身份权限绑定、原查询与来源/排序关系等仍由运行时执行，不把结构有效当作授权。见[Schema说明](../../../packages/contracts/schemas/README.md#项目文件目录)和[项目目录契约](artifact-registry-runtime.md)。未编译、执行校验器、测试或发布，完整OpenAPI和自动一致性证据仍缺。
@@ -54,7 +56,7 @@ Plane Webhook 开发补充：`POST /v1/plane/webhook` 已改为持久接收并�
 
 `operation=overview` 已提供同语句项目汇总、上下文分层统计与有限预览，拒绝多余字段；不可见项目返回 404，不能用全零响应表示缺失。SDK/CLI/MCP/Web 入口与口径见 [项目概览读取](workbench-overview-runtime.md)。本批无新增迁移、未运行验证。
 
-工作项列表 `operation=work_items` 已改为默认 25、最多 100 条的游标分页，允许 query/status/priority/owner/assignment/cursor/limit；priority=P0..P3，owner 为精确保存文本，区分大小写及空格。assignment=assigned/unassigned按保存owner非空/空串筛选，unassigned与非空精确owner互斥；省略或空串表示不过滤。其他字段拒绝，响应外层 next_cursor 用于继续且必须保持筛选；无assignment时兼容原v1/v2游标，含assignment使用v3绑定，添加或改变筛选须回首页。列表不再表示全量工作项，详见 [工作项投影读取](work-item-projection-runtime.md)。030 分页索引仅写入迁移文件，本次未新增/执行迁移、编译或测试。
+工作项列表`operation=work_items`默认25、最多100条，允许query/status/priority/owner/assignment/due/due_from/due_before/cursor/limit。priority=P0..P3，owner精确保存文本；assignment=assigned/unassigned按保存owner非空/空串筛选，unassigned与精确owner互斥。日期按上方增量规则，空可选筛选表示不使用，未知字段拒绝；响应外层next_cursor用于显式续页，须保留全部筛选。带日期条件使用v4，无日期条件保持v1–v3，换条件回首页。单页不是全项目，详见[工作项投影读取](work-item-projection-runtime.md)。030索引仍仅迁移文件，本次未新增/执行迁移、编译或测试。
 
 ```http
 Authorization: Bearer <token>

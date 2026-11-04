@@ -216,6 +216,12 @@ export class WorkbenchRepository {
         `strpos(lower(concat_ws(' ', w.external_id, w.title, w.owner)), lower($${position}::text)) > 0`,
       );
     }
+    if (query.due === 'scheduled') filters.push('w.due_at IS NOT NULL');
+    if (query.due === 'unscheduled') filters.push('w.due_at IS NULL');
+    if (query.due_from !== undefined)
+      filters.push(`w.due_at >= $${params.push(query.due_from + 'T00:00:00.000Z')}::timestamptz`);
+    if (query.due_before !== undefined)
+      filters.push(`w.due_at < $${params.push(query.due_before + 'T00:00:00.000Z')}::timestamptz`);
     if (after) {
       const time = params.push(after.updated);
       const id = params.push(after.id);

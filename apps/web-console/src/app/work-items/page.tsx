@@ -5,6 +5,7 @@ import { PageError, numberValue, textValue, toneFor } from '../../components/pag
 import { Badge, Panel, Progress } from '../../components/ui';
 import { listWorkbenchWorkItems } from '../../lib/server-api';
 import { WorkItemOwnerFilter } from './owner-filter';
+import { WorkItemDueFilter } from './due-filter';
 import {
   parseWorkItemBrowseParams,
   workItemBrowseHref,
@@ -38,7 +39,12 @@ export default async function WorkItemsPage({
     const priority = filters.priority ?? '';
     const owner = filters.owner ?? '';
     const assignment = filters.assignment ?? '';
-    const hasFilters = Boolean(query || status || priority || owner || assignment);
+    const due = filters.due ?? '';
+    const dueFrom = filters.due_from ?? '';
+    const dueBefore = filters.due_before ?? '';
+    const hasFilters = Boolean(
+      query || status || priority || owner || assignment || due || dueFrom || dueBefore,
+    );
     const cursor = filters.cursor;
     const list = browse.view === 'list';
     const response = await listWorkbenchWorkItems(filters);
@@ -85,7 +91,16 @@ export default async function WorkItemsPage({
           className="filters work-item-filters"
           action="/work-items"
           method="get"
-          key={JSON.stringify([query, status, priority, owner, assignment])}
+          key={JSON.stringify([
+            query,
+            status,
+            priority,
+            owner,
+            assignment,
+            due,
+            dueFrom,
+            dueBefore,
+          ])}
         >
           {list && <input type="hidden" name="view" value="list" />}
           <label className="filter-input">
@@ -126,6 +141,7 @@ export default async function WorkItemsPage({
             ))}
           </select>
           <WorkItemOwnerFilter initialAssignment={assignment} initialOwner={owner} />
+          <WorkItemDueFilter initialDue={due} initialFrom={dueFrom} initialBefore={dueBefore} />
           <button className="secondary-button" type="submit">
             Apply filters
           </button>

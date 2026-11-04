@@ -805,6 +805,32 @@ requirements:
     design: ["plane-connector", "authority-boundary"]
     subprojects: ["P1"]
     tests: ["integration.plane_api", "integration.plane_webhook", "integration.permission_propagation"]
+    work_item_due_filter_development_increment:
+      date: "2026-11-04"
+      status: "Source-only saved deadline availability and UTC date ranges; R-002 remains incomplete."
+      artifacts:
+        - "packages/contracts/src/work-item-projection.ts"
+        - "apps/api-gateway/src/workbench/repository.ts"
+        - "apps/api-gateway/src/workbench/work-item-pagination.ts"
+        - "apps/api-gateway/src/mcp/catalog.ts"
+        - "apps/api-gateway/src/mcp/work-item-reads.ts"
+        - "packages/sdk/src/work-item-reads.ts"
+        - "packages/sdk/src/mock-work-items.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/web-console/src/app/work-items/due-filter.tsx"
+        - "apps/web-console/src/styles.css"
+        - "apps/web-console/src/app/work-items/navigation.ts"
+        - "apps/web-console/src/app/work-items/page.tsx"
+        - "docs/design/01-contracts/work-item-projection-runtime.md"
+      behavior: "Add due=scheduled/unscheduled and real YYYY-MM-DD due_from inclusive/due_before exclusive at UTC midnight. Null means unscheduled and cannot combine with a range; ranges exclude null and require start before end. Apply parameterized SQL before limit and shared complete-page checks; SDK/CLI/MCP/Web and immutable Mock use matching semantics. New filters bind production v4/independent Mock v2 cursors; absent new filters preserve old bindings. Web clears/disables dates for unscheduled and preserves date filters across paging, view/detail navigation and explicit error recovery. No current-clock overdue inference, workflow changes or writes."
+      evidence: []
+      pending_evidence:
+        - "Real date/leap year/year limits, UTC inclusion/exclusion, null, timezone-free old response rejection and incompatible inputs"
+        - "Permission/filter SQL before limit, complete-page mismatch rejection and actual query performance"
+        - "Old cursor compatibility, changed-date rejection, independent Mock behavior and adjustable page sizes"
+        - "SDK/CLI/MCP handling and Web controls, duplicate parameters, paging/detail return/error recovery"
+      remaining_scope: "Runtime/client/browser/SQL evidence and live Plane source freshness; only saved projections are filtered and cross-page snapshots are not provided."
+      execution: "Source/docs and manual review plus formatting/text checks only; no build, typecheck, tests, SDK/CLI/MCP/Mock/Web/API/browser/database execution or release. No new route, database schema, migration, index or dependency."
     work_item_detail_navigation_development_increment:
       date: "2026-11-04"
       status: "Source-only preservation of work item browsing context; no browser or runtime evidence."
