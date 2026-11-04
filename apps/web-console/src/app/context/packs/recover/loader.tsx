@@ -146,7 +146,7 @@ export function PackSaveRecovery({ binding }: { binding: PackSaveBinding }) {
             disabled={busy}
             onClick={() => setSelected(original)}
           >
-            Review complete original
+            Review original before querying
           </button>
         </div>
       ))}

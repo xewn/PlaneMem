@@ -42,7 +42,8 @@ export default async function PackSaveRecoveryPage() {
         <div>
           <h1>Recover an original context pack save</h1>
           <p>
-            Load the complete original request from this browser or a file. Loading never sends it.
+            Load the complete original request from this browser or a file, then query its
+            historical save record. Loading never sends a save.
           </p>
         </div>
       </div>

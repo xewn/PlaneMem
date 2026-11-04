@@ -12,6 +12,10 @@ import {
   getWorkbenchContextPackSaveBinding,
 } from '../../lib/context-pack-compile-server';
 import { decodePackSaveOriginal, encodePackSaveOriginal } from './save-model';
+import {
+  ContextPackSaveReceiptError,
+  readWorkbenchContextPackSaveReceipt,
+} from '../../lib/context-pack-save-receipt-server';
 
 function field(data: FormData, name: string): string {
   const values = data.getAll(name);
@@ -46,6 +50,28 @@ export async function preparePackSave(data: FormData) {
       status: 'error' as const,
       message:
         'The request could not be prepared. Check the settings and sign in to the intended project. No pack save was sent.',
+    };
+  }
+}
+
+export async function queryPackSaveReceipt(data: FormData) {
+  let original: string | undefined;
+  try {
+    if (Array.from(data.keys()).some((key) => key !== 'original')) throw new TypeError();
+    const request = decodePackSaveOriginal(field(data, 'original'));
+    original = encodePackSaveOriginal(request);
+    const receipt = await readWorkbenchContextPackSaveReceipt(request);
+    return { status: 'read' as const, original, receipt };
+  } catch (error) {
+    return {
+      status: 'error' as const,
+      original,
+      message:
+        (error instanceof ContextPackSaveReceiptError
+          ? error.message
+          : 'The complete original save lookup could not be confirmed.') +
+        ' No pack save was sent by this query. Keep the original request.',
+      trace: error instanceof ContextPackSaveReceiptError ? error.envelope.trace_id : undefined,
     };
   }
 }

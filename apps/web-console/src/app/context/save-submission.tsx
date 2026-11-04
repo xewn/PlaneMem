@@ -2,9 +2,15 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { isUlid } from '@planemem/contracts';
+import {
+  isUlid,
+  contextPackSaveReceiptQuery,
+  parseContextPackSaveReceiptEnvelope,
+  type ContextPackRecordedSave,
+  type ContextPackSaveReceiptEnvelope,
+} from '@planemem/contracts';
 import { backupOperation } from '../sync/receipt/backup-operation';
-import { submitPackSave } from './actions';
+import { queryPackSaveReceipt, submitPackSave } from './actions';
 import {
   decodePackSaveOriginal,
   encodePackSaveOriginal,
@@ -29,6 +35,11 @@ export function PackSaveSubmission({
   const [attempted, setAttempted] = useState(recovered);
   const [unusable, setUnusable] = useState(false);
   const [saved, setSaved] = useState<{ pack_id: string; version: number; trace: string }>();
+  const [observation, setObservation] = useState<ContextPackSaveReceiptEnvelope>();
+  const [history, setHistory] = useState<{
+    receipt: ContextPackRecordedSave;
+    envelope: ContextPackSaveReceiptEnvelope;
+  }>();
   const [message, setMessage] = useState(
     recovered
       ? 'The complete original is loaded. It may already have been submitted; loading does not send it.'
@@ -44,11 +55,11 @@ export function PackSaveSubmission({
       operation.current?.abort();
     };
   }, []);
-  async function run(kind: 'preserve' | 'send' | 'new') {
+  async function run(kind: 'preserve' | 'send' | 'new' | 'query') {
     if (
       active.current ||
       !mounted.current ||
-      (kind === 'send' && (!confirmed || saved || unusable))
+      (kind === 'send' && (!confirmed || saved || history || unusable))
     )
       return;
     const controller = new AbortController();
@@ -58,6 +69,45 @@ export function PackSaveSubmission({
     setConfirmed(false);
     let sent = false;
     try {
+      if (kind === 'query') {
+        const result = await backupOperation(controller.signal, async (_signal, check) => {
+          check();
+          const data = new FormData();
+          data.set('original', raw);
+          const result = await queryPackSaveReceipt(data);
+          check();
+          if (result.original !== raw) throw new TypeError();
+          return result;
+        });
+        if (!mounted.current || operation.current !== controller) return;
+        if (result.status === 'error') {
+          setMessage(result.message + (result.trace ? ' Trace: ' + result.trace : ''));
+          return;
+        }
+        const observed = parseContextPackSaveReceiptEnvelope(
+          result.receipt,
+          contextPackSaveReceiptQuery(request),
+          result.receipt.trace_id,
+        );
+        if (observed.data.status === 'recorded') {
+          const receipt = observed.data.receipt;
+          if (
+            (saved && (saved.pack_id !== receipt.pack_id || saved.version !== receipt.version)) ||
+            (history && JSON.stringify(history.receipt) !== JSON.stringify(receipt))
+          )
+            throw new TypeError();
+          setHistory({ receipt, envelope: observed });
+          setMessage(
+            'A matching historical save was found. Content and sources have not been checked. The original is retained; this query sent no save.',
+          );
+        } else {
+          setMessage(
+            'No matching record was observed in this lookup. A save may still be in progress; this does not prove failure or permit an automatic retry. Any previously confirmed result below is retained.',
+          );
+        }
+        setObservation(observed);
+        return;
+      }
       const result = await backupOperation(controller.signal, async (signal, check) => {
         await preservePackOriginal(request, signal, check);
         check();
@@ -92,9 +142,11 @@ export function PackSaveSubmission({
     } catch {
       if (mounted.current && operation.current === controller)
         setMessage(
-          sent
-            ? 'The save result is unknown. Keep this original unchanged; stopping the wait does not cancel a server save.'
-            : 'Browser storage could not be confirmed, so this attempt did not send a pack save. Keep or export the original; an earlier save may still exist.',
+          kind === 'query'
+            ? 'The historical lookup could not be confirmed. No pack save was sent by this query. Keep the original and any earlier result; stopping the wait does not cancel server work.'
+            : sent
+              ? 'The save result is unknown. Keep this original unchanged; stopping the wait does not cancel a server save.'
+              : 'Browser storage could not be confirmed, so this attempt did not send a pack save. Keep or export the original; an earlier save may still exist.',
         );
     } finally {
       if (operation.current === controller) {
@@ -152,7 +204,19 @@ export function PackSaveSubmission({
       <button type="button" className="secondary-button" disabled={busy} onClick={download}>
         Export original request
       </button>
-      {!saved && !unusable && (
+      <button
+        type="button"
+        className="secondary-button"
+        disabled={busy}
+        onClick={() => void run('query')}
+      >
+        Query original save record
+      </button>
+      <p>
+        Querying only looks for a historical record. It sends no pack save and does not need a
+        browser copy. A missing record does not prove an earlier save failed.
+      </p>
+      {!saved && !history && !unusable && (
         <>
           <label>
             <input
@@ -191,7 +255,40 @@ export function PackSaveSubmission({
           </Link>
         </p>
       )}
-      {onNew && (!attempted || saved || unusable) && (
+      {history && (
+        <section aria-label="Recorded original save">
+          <h2>Historical save recorded</h2>
+          <p>
+            Pack · {history.receipt.pack_id} · Version · {history.receipt.version}
+          </p>
+          <p>
+            Saved · {history.receipt.created_at} · Expires · {history.receipt.expires_at}
+          </p>
+          <p>
+            Budget · {history.receipt.budget_tokens} · Used · {history.receipt.used_tokens}
+          </p>
+          <p>
+            This record matches the original request. Content and sources were not checked; the pack
+            may now be expired or unavailable. A later failed or empty lookup does not remove this
+            earlier observation.
+          </p>
+          <Link prefetch={false} href={packReadHref({ pack_id: history.receipt.pack_id })}>
+            Open this saved pack to check availability
+          </Link>
+          <details>
+            <summary>Complete recorded response</summary>
+            <pre>{JSON.stringify(history.envelope, null, 2)}</pre>
+          </details>
+        </section>
+      )}
+      {observation?.data.status === 'not-observed' && (
+        <details>
+          <summary>Last completed lookup: no record observed</summary>
+          <p>This snapshot does not prove the original save failed.</p>
+          <pre>{JSON.stringify(observation, null, 2)}</pre>
+        </details>
+      )}
+      {onNew && (!attempted || saved || history || unusable) && (
         <button
           type="button"
           className="secondary-button"
@@ -207,8 +304,9 @@ export function PackSaveSubmission({
         </Link>
       </p>
       <p>
-        Browser copies contain the request, not a persistent save receipt. Clearing browser data can
-        remove them. Keep an exported copy.
+        Browser copies contain the request, not a persistent save receipt. Lookup results are only
+        retained on this page. Clearing browser data can remove original copies. Keep an exported
+        original.
       </p>
     </div>
   );

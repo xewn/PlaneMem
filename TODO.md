@@ -4,6 +4,8 @@
 
 ## 当前基线
 
+- P5：原ContextPack准备/恢复共用面板新增显式历史回执查询，独立server reader/action固定配置Gateway含路径、原范围/账号/客户端/restricted/参数/键；当前会话检查后单次只读POST，30秒含session读取、独立两路在途容量到真实工作结束、16 KiB完整响应/HTTP状态/type/trace/无ETag及原查询校验。查询不依赖本地副本写入、不调用保存或自动重发；recorded显示历史元数据/固定包链接/完整封套，内容与来源not-checked，关闭同页发送入口。后续错误或not-observed不清除已确认保存/历史，异文回执拒绝，原请求保留。历史仅留当前页面，持久保存/备份清理、MCP/Mock/嵌入CLI及运行证据仍缺；R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、渲染、执行网页/API/数据库或发布。
+
 - P0/P2/P4：新增原ContextPack保存回执共享契约、POST /v1/context-pack/save-receipt、SDK getContextPackSaveReceipt及CLI context save-receipt。按原完整身份/restricted/请求键/显式参数查询既有保存指纹与标量元数据，父项目当前可见且真实权限有效；4 KiB请求/16 KiB响应，独立两路读取/30秒handler期限，超时后底层实际结束才释放。recorded不检查正文和来源，not-observed只表示快照中未观察到，不授予重发资格。CLI使用完整8 KiB原文件并核对配置Gateway含路径/项目，只查询一次、不保存或改文件。Web/MCP/Mock适配、嵌入CLI、独立Schema/OpenAPI、历史回执持久化和运行证据仍待补；R-003未完成、evidence为空。仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行客户端/接口/数据库或发布。
 
 - P0/P4/P5：Web原8 KiB ContextPack保存请求模型迁入contracts共用，保持规范字段顺序、文件格式和浏览器槽键。CLI新增context prepare-save/inspect-save/submit-save：用户指定原键，可信身份和含路径Gateway绑定、独占新文件写入/同步/完整读回；离线只读审阅原文及规范/原字节摘要；显式--reviewed后按配置核对Gateway/三范围，同token GET身份/restricted再单POST，发出前再次稳定读取原文件。单网络流程默认30秒，2 MiB完整回执/SHA-256/HTTP ETag与restricted检查，错误自身实际派发标记保留unknown；不覆盖/删除原文件、换键或自动重试。准备/提交网络main，嵌入runWorkctx仅离线审阅；旧compile兼容，MCP/嵌入完整原请求提交、持久历史回执和恢复目录仍待补。R-003未完成、evidence为空；仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行CLI/网页/API/数据库或发布。

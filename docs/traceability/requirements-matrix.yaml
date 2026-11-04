@@ -954,6 +954,24 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_pack_web_save_receipt_development_increment:
+      date: "2026-11-05"
+      status: "Source-only explicit Web original-save receipt query on preparation and recovery panels; R-003 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/lib/context-pack-save-receipt-server.ts"
+        - "apps/web-console/src/app/context/actions.ts"
+        - "apps/web-console/src/app/context/save-submission.tsx"
+        - "apps/web-console/src/app/context/packs/recover/page.tsx"
+        - "apps/web-console/src/app/context/packs/recover/loader.tsx"
+        - "docs/design/01-contracts/context-pack-runtime.md"
+      behavior: "A complete 8 KiB original is queried explicitly without requiring browser persistence or calling save. The server reader binds configured Gateway path/current scope to the original and sends one 4 KiB receipt POST with full identity/restricted constraints. A 30-second deadline includes session retrieval; two slots remain held until underlying work settles. HTTP status/type/trace/no-ETag, 16 KiB bodies and the shared original-matching response are checked. The panel retains confirmed save/history across not-observed, errors and cancellation; conflicting recorded metadata is rejected. Recorded history hides resending and offers a fixed pack link with content/source not-checked."
+      evidence: []
+      pending_evidence:
+        - "Session expiry, configured Gateway paths and original identity/restricted permission constraints"
+        - "Response boundaries, exact original echo, conflicting history and preservation of prior confirmed results"
+        - "Cancellation, late session/HTTP work, retained capacity and browser lifecycle; no runtime verification performed"
+      remaining_gaps:
+        - "Durable historical receipts, export/backup/cleanup and MCP/Mock/embedded CLI receipt adapters"
     context_pack_save_receipt_development_increment:
       date: "2026-11-05"
       status: "Source-only original save receipt contract, read-only Gateway endpoint, SDK reader and network CLI file entry; R-003 remains incomplete."
@@ -974,7 +992,7 @@ requirements:
         - "Concurrent save visibility, invalid/expired historical metadata, exact response matching, deadline/cancellation and retained capacity"
         - "SDK/native CLI response boundaries and Web/CLI original-file compatibility; no runtime verification performed"
       remaining_gaps:
-        - "Web, MCP, Mock and embedded CLI receipt adapters, dedicated Schema/OpenAPI and durable historical receipt recovery"
+        - "MCP, Mock and embedded CLI receipt adapters, dedicated Schema/OpenAPI and durable historical receipt recovery; Web source integration is recorded separately above"
     context_pack_cli_original_development_increment:
       date: "2026-11-05"
       status: "Source-only shared Web/CLI original format and CLI prepare/inspect/submit file workflow; R-003 remains incomplete."
