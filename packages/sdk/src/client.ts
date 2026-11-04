@@ -61,7 +61,6 @@ import {
   type ProjectEntity,
   type RequestContext,
   type SyncUploadEvent,
-  type ContextPackReceipt,
   type ContextPackReadQuery,
   type ContextPackComparisonQuery,
   type CheckpointReceiptQuery,
@@ -176,6 +175,10 @@ import {
   type WcpContextItemReadOptions,
 } from './context-item-read.js';
 import { readSavedContextPack, type WcpContextPackReadOptions } from './context-pack-read.js';
+import {
+  compileSavedContextPack,
+  type WcpContextPackCompileOptions,
+} from './context-pack-compile.js';
 import { compareContextPacks } from './context-pack-comparison.js';
 import {
   readContextPackDirectory,
@@ -579,22 +582,8 @@ export class WcpClient {
     );
   }
 
-  compileContextPack(input: CompileContextPackRequest, options: WcpWriteOptions) {
-    if (
-      input.budget_tokens !== undefined &&
-      (!Number.isSafeInteger(input.budget_tokens) ||
-        input.budget_tokens < 128 ||
-        input.budget_tokens > 32768)
-    )
-      throw this.invalid('budget_tokens must be between 128 and 32768');
-    if (
-      input.ttl_seconds !== undefined &&
-      (!Number.isSafeInteger(input.ttl_seconds) ||
-        input.ttl_seconds < 60 ||
-        input.ttl_seconds > 86400)
-    )
-      throw this.invalid('ttl_seconds must be between 60 and 86400');
-    return this.command<ContextPackReceipt>('/v1/context-pack/compile', input, options);
+  compileContextPack(input: CompileContextPackRequest, options: WcpContextPackCompileOptions) {
+    return compileSavedContextPack(this.transport, this.context, input, options);
   }
 
   getContextPack(input: ContextPackReadQuery = {}, options: WcpContextPackReadOptions = {}) {

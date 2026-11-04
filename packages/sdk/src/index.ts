@@ -7,6 +7,8 @@ export {
 } from './mock-context-packs.js';
 export type { WcpContextItemReadOptions } from './context-item-read.js';
 export type { WcpContextPackReadOptions } from './context-pack-read.js';
+export type { WcpContextPackCompileOptions } from './context-pack-compile.js';
+export type { ContextPackCompileParameters } from '@planemem/contracts';
 export type {
   WcpContextPackDirectoryQuery,
   WcpContextPackDirectoryReadOptions,

@@ -1,5 +1,7 @@
 # 持久化 ContextPack 开发说明
 
+2026-11-05完善[SDK保存包提交核验](#sdk-保存包提交核验2026-11-05源码增量)：专用单次POST捕获原请求、限定等待期限，核对完整返回包与摘要、原预算及最大有效期；派发后失败保留结果未知，不自动重试。此处仅开发保存方法源码，未实际执行包编排/保存请求、编译构建、类型检查、测试或发布。
+
 2026-11-05新增[网页双包对比候选查找](#网页双包对比候选查找2026-11-05源码增量)：按编号或任一侧保存内容查找候选，叠加只看变化，保留原两包/显示模式/返回链；匹配为空不会改变完整报告总计或来源比较。仅源码文档，未编译、测试、渲染或发布。
 
 2026-11-05新增[网页保存包包内筛选](#网页保存包包内筛选2026-11-05源码增量)：完整读取后可搜索保存候选编号、正文或排除原因，并显示全部/仅入选/仅排除；筛选始终固定本次实际包编号，完整统计/来源/响应不被裁剪。仅源码文档，未编译、测试、渲染或发布。
@@ -27,6 +29,24 @@
 2026-11-04新增[独立完整读取Schema](../../../packages/contracts/schemas/README.md#保存-contextpack-完整读取)：`@planemem/contracts/schemas/context-pack-read.json`提供查询、完整保存包、回执和格式专用封套定义。旧sections实体保持；原请求绑定、来源顺序、合计预算、渲染内容和真实SHA-256仍沿下文运行时检查，Schema结构不能替代。仅源码文档与格式文本检查，未执行校验器、生成器、编译、类型检查、测试或发布。
 
 2026-11-04新增[保存包Mock](context-pack-mock-runtime.md)：独立固定完整包、权限桶及来源变化场景接入SDK getContextPack；支持最新/指定包与json/markdown/mcp，完整内容和SHA-256核验，2 MiB响应、两容量/30秒及取消。模拟来源状态不替代真实来源检查，未执行任何Mock或SDK。
+
+## SDK 保存包提交核验（2026-11-05源码增量）
+
+`client.compileContextPack({ budget_tokens?, ttl_seconds? }, { idempotency_key, timeout_ms?, signal? })` 返回 `Promise<ContextPackReadEnvelope>`，复用既有 `/v1/context-pack/compile` 单次POST。`@planemem/sdk` 根导出 `WcpContextPackCompileOptions` 和规范参数类型 `ContextPackCompileParameters`；contracts根导出 `parseContextPackCompileParameters`、`parseContextPackCompileEnvelope` 和4 KiB输入上限。这里的compile指产品保存包方法，本文增量只编辑其源码，没有执行这个方法，也没有进行项目编译构建。
+
+调用开始时捕获原项目范围、trace、可选actor/client、参数和键。输入及选项仅接收白名单自有普通字段，拒绝未知字段、访问器、符号及自定义原型；SDK将平面可选undefined省略，共享解析器要求有限普通JSON。预算默认4096，整数128–32768；有效期默认3600秒，整数60–86400；请求明确发送两项规范值。Gateway原本也先规范默认值再计算请求指纹。必填幂等键为1–255 UTF-16单元，拒绝空白、C0/DEL及孤立代理项；trace/client沿现有读取入口的isSyncIdentifier约束，最多255单元。原context上的版本/写条件不继承。发送独立参数副本，完整响应始终与预先捕获的原参数比较。
+
+原context含actor/client时分别发送相等约束头，继续允许旧调用方省略其中一项或两项；省略的身份条件无法固定凭据续期前后的账号/客户端。SDK不会以客户端字段代替可信认证，真实授权、来源新鲜度、请求键归属和幂等重放仍由Gateway负责。
+
+默认30秒期限包括凭据等待、响应接收、完整解析和WebCrypto SHA-256，允许timeout_ms为1–2147483647整数、signal取消；同步解析结束后也检查期限。WebCrypto能力在派发前预查。SDK只调用一次transport，`bounded-json`成功封套上限2 MiB，Fetch传输错误体上限16 KiB，其自身更短的期限仍可先结束。自定义传输必须尊重这些请求选项；SDK仍会对返回对象做有界普通JSON快照、完整结构和摘要核验并丢弃迟到结果。取消仅停止本地等待，不能证明远端保存撤销。
+
+共享提交解析复用完整json读取校验：外层trace、项目范围、版本/JSON ETag、游标、候选及来源、时间和用量关系均需一致，并额外要求返回预算等于原预算、保存时间至到期的间隔不大于原TTL。来源可缩短有效期，因此不要求间隔恰好等于请求TTL；幂等重放可保留原保存时间和包内trace。SDK按既有规范JSON计算完整包SHA-256，只排除包顶层trace/hash，与返回pack_hash相等才交付独立完整封套，不返回部分内容。通用transport不暴露HTTP响应头/状态，SDK核对的是JSON中的ETag，不声称核对HTTP ETag；回执没有原键或请求TTL回显，预算/期限及摘要匹配不能证明键归属。
+
+失败使用固定消息，不回传原键或不完整包。details包含 `compile_stage=input|integrity|transport|response`、`compile_dispatch_state=not-sent|started` 和 `server_outcome=not-checked|unknown`，retryable固定false。调用transport之前的失败为not-sent/not-checked，不能否定更早的同键保存；一旦调用transport，任何失败（含4xx、取消、超时、非法回执或摘要异常）均保守记为started/unknown，不声称已获知服务端最终结果。无自动重试、新键生成、读回或本地恢复存储。调用方应自行保留原项目、账号/客户端约束、预算、期限和幂等键；需要恢复时显式使用完全相同的原请求，不能据本次错误断定没有保存。
+
+兼容性变化：非法参数以前可同步抛错，现在通过Promise拒绝传递；调用方需await/catch。只返回浅层data、缺少完整包/来源/游标或提供错误摘要的旧自定义传输和模拟替身会被拒绝，需按完整响应迁移。现有MockContextPackStore仍只支持读取/目录，不因此获得保存实现。Gateway、Web、CLI、MCP入口源码没有改动；它们现有的请求、错误映射和恢复逻辑不自动等同于本SDK方法。
+
+R-003仍未完成，evidence为空。仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、运行SDK/Mock/CLI/MCP/API、实际编排/保存ContextPack、执行数据库或发布。完整响应兼容、真实重放/身份续期、取消和期限、来源缩短TTL及摘要故障等运行证据仍待补。
 
 ## 入口与身份
 

@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-05：`compileContextPack(input, options)` 接入专用保存请求，根导出 `WcpContextPackCompileOptions` 和 `ContextPackCompileParameters`。options保留必填idempotency_key，增加timeout_ms/signal；捕获原范围、可选actor/client及规范默认预算4096/期限3600，最多一次bounded-json POST，默认30秒含凭据、完整响应和摘要。共享2 MiB完整封套、原预算及最大TTL核对后执行WebCrypto SHA-256；返回 `Promise<ContextPackReadEnvelope>`，失败只给固定诊断及not-checked/unknown，不自动重试或恢复写入。非法输入从同步抛错改为Promise拒绝；自定义传输须支持bounded-json/signal并返回完整封套，旧不完整模拟回执不再通过，现有MockContextPackStore仍不支持保存。账号/客户端原本省略时继续省略相等约束，无法固定凭据续期前后身份；服务端仍负责权限、来源及幂等键归属。完整边界和调用方迁移见[SDK保存包提交核验](../../docs/design/01-contracts/context-pack-runtime.md#sdk-保存包提交核验2026-11-05源码增量)。仅源码文档，未编译、类型检查、测试、执行SDK/API/保存请求或发布。
+
 2026-11-05：既有`MockContextPackStore`新增保存包元数据目录，经`MockWcpServer({context_packs:{store,session}})`支持`listContextPacks/contextPackPages`，不增加种子或会话字段。构造时提取六字段元数据，列表按原项目/身份/可见ID/restricted过滤和版本/ID降序分页；包括过期/来源变化记录，不读正文/hash。游标绑定store/身份/权限/可见集合/条件，WebCrypto仅计算绑定摘要；同场景续期可继续，跨store不可复用。256 KiB完整响应及调用方较小限额、两容量/30秒/signal与完整包共享，底层摘要结束才释放。见[保存包Mock目录](../../docs/design/01-contracts/context-pack-mock-runtime.md#保存包元数据目录2026-11-05源码增量)，仅源码文档，未执行SDK/Mock、编译、类型检查、测试或发布。
 
 2026-11-05：新增`client.listContextPacks(query?, options?)`，返回`Promise<ContextPackDirectoryEnvelope>`；`WcpContextPackDirectoryQuery`允许可选pack_id/limit/cursor，默认25最大100。完整元数据页256 KiB，复用共享scope/query/trace/排序/续页校验，默认30秒含凭据等待/读取/校验、支持signal，固定原范围及可选身份相等头，不带正文/写条件。新增`client.contextPackPages(query?, options?)`，返回按需异步生成器，创建时要求完整actor/client，next才读取，每页独立期限，max_pages默认100最大1000；有剩余页时下一次next抛CONTEXT_PACK_DIRECTORY_PAGE_LIMIT，修改已返回页不改变后续请求。根导出SDK查询/读取及分页options、共享规范查询/记录/范围/封套类型。元数据包含过期或来源已变化记录，无完整内容/hash检查或跨页快照；Mock源码接入见上文。方法/未执行示例与传输限制见[SDK保存包目录](../../docs/design/01-contracts/context-pack-runtime.md#sdk-保存包目录读取2026-11-05源码增量)。仅源码文档，未编译、类型检查、测试、执行SDK/Mock或发布。
@@ -308,7 +310,7 @@ const handoff = await client.createHandoff(started.data.session_id, originalHand
 - 同步：`uploadEvents`、`getSyncChanges`、`syncPages`、`getSyncCursor`、`acknowledgeSync`。
 - 同步原请求：`getSyncCommandContext` 读取准备新事件所需身份；`getSyncEventReceipt` 查询保存的原 identity/event。
 - 冲突：`listConflicts(query?, options?)` 返回元数据分页；`getConflict(id)` 独立读取完整值；`resolveConflict` 合并决定要求提供 `merged_value`。
-- 上下文包：`compileContextPack({ budget_tokens?, ttl_seconds? }, { idempotency_key })`、`getContextPack({ pack_id?, format? }, { timeout_ms?, signal? })`。
+- 上下文包：`compileContextPack({ budget_tokens?, ttl_seconds? }, { idempotency_key, timeout_ms?, signal? })`、`getContextPack({ pack_id?, format? }, { timeout_ms?, signal? })`。保存返回完整 `ContextPackReadEnvelope`；非法输入及请求失败均通过Promise拒绝传递。
 - 来源条目：`createContextItem`、`getContextItem`、`listContextItems`、`updateContextItem`、`archiveContextItem`。
 - 归档管理：`getArchivedContextItem`、`restoreContextItem`；列表传入 `{ archived: true }`。
 - 版本历史：`listContextItemHistory(id, { before_version?, limit? }, options?)`、`getContextItemVersion(id, version, options?)`，options支持timeout_ms/signal。
