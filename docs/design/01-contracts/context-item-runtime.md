@@ -1,5 +1,23 @@
 # ContextItem 录入与编辑开发说明
 
+## 2026-11-04 CLI上下文历史与对比增量
+
+CLI网络main、直接callGateway及嵌入runWorkctx三入口使用专用context-history适配器。context history/version从通用读取迁到SDK完整有界读取，新增context compare复用compareContextItemVersions；没有新增服务端比较操作。每次恰一--json或--json-file（最多4 KiB，严格UTF-8、稳定普通文件），网络可用有界--json -，嵌入不读取进程stdin。文件/stdin读取在SDK预算前完成；--timeout-ms为1–2147483647毫秒，默认30000。拒绝重复/未知参数、--key、--output、写字段和输入kind。
+
+history输入为{item_id,before_version?,limit?}，默认25最多100；version为{item_id,version}；compare为{item_id,from_version,to_version,expected_actor_id,expected_client_id}。两版本必须不同的正安全整数，保留原方向，不排序。history/version可提供成对expected_actor_id/expected_client_id，compare必须提供；账号为ULID、客户端为本地ID。项目范围沿原配置，身份只作相等约束，网络固定本次token并发送SDK读取头，服务端核对实际已验证身份。下一页保留原条目、页大小与身份，并使用data.next_before_version，不自动续页。
+
+沿SDK目录256 KiB、单版2 MiB、Fetch错误16 KiB限制及完整trace/版本/来源/范围/分页校验。版本读取必须核对快照SHA-256；两版本在同一预算内依次读取、校验及比较，首读失败不发第二读，任一失败不返回部分结果。history/version输出完整WCP封套；compare输出原WcpContextComparisonResult本地对象，无额外data包装：query/identity_constraints/from/to/comparison及local/separate-reads/snapshot-hashes-checked/not-checked标记保留。摘要相符不是来源真实性、当前有效性或两次读取一致性证明。
+
+嵌入入口先复制可信上下文并清除idempotency_key/expected_version/if_match，要求明确认证、有限且未过期的token_expires_at和实际context.read。显式身份须与可信actor/client相同；每次SDK派发核对实际GET路径、顺序、全部头、无正文及响应模式/大小，调用前后及输出前再检查期限与权限。完整解析后的restricted摘要/版本要求data.restricted.read，包括比较第一份结果，拒绝后不继续第二份。每router最多两笔在途历史读取，SDK本地超时后仍占用槽位直到底层router实际结束，迟到结果不返回。
+
+未执行的输入文件示例（条目与身份需替换成实际值）：
+
+```json
+{"item_id":"context-example","from_version":2,"to_version":3,"expected_actor_id":"01ARZ3NDEKTSV4RRFFQ69G5FAV","expected_client_id":"workctx-cli"}
+```
+
+仅源码文档人工审阅及格式/文本检查，未编译、类型检查、测试、执行CLI/SDK/Mock/API/数据库或发布。没有自动重试、下载、保存或修改记录；MCP/Mock历史接入与运行证据仍待补，R-003未完成。
+
 ## 2026-11-04 SDK历史读取与双版本对比增量
 
 现有listContextItemHistory(itemId, query?, options?)与getContextItemVersion(itemId, version, options?)改用专用历史读取器，成功仍返回完整WcpEnvelope。新增可选WcpContextHistoryReadOptions.timeout_ms/signal；默认30秒本地等待预算，允许1–2147483647毫秒。查询和选项必须普通已知平面字段，拒绝访问器/符号/额外字段，合法可选undefined省略；item与版本规则复用共享历史查询，默认limit=25、最多100。异步前固定查询、project范围及已有actor/client约束；不发送构造上下文中的写入键、expected_version或If-Match。
@@ -25,7 +43,7 @@ const comparison = await client.compareContextItemVersions(
 );
 ```
 
-兼容变化：原参数调用继续可用，但现在需要完整项目范围、合法本地trace/client、能提供完整匹配响应及支持bounded-json/signal的传输；非法未知字段不再忽略，失败统一为Promise拒绝。单版/比较需要WebCrypto。没有扩展Mock历史存储，CLI/MCP原通用历史入口也尚未改接此SDK读取器。无新Gateway路由/schema、数据库/迁移、依赖或写入行为。本次仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、运行SDK/Mock/CLI/MCP/API/数据库或发布；自定义传输、凭据切换、取消/期限、摘要和真实数据兼容仍待运行证据，R-003未完成、evidence为空。
+兼容变化：原参数调用继续可用，但现在需要完整项目范围、合法本地trace/client、能提供完整匹配响应及支持bounded-json/signal的传输；非法未知字段不再忽略，失败统一为Promise拒绝。单版/比较需要WebCrypto。没有扩展Mock历史存储；CLI专用接入见上述独立增量，MCP原通用历史入口尚未改接此SDK读取器。无新Gateway路由/schema、数据库/迁移、依赖或写入行为。本次仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、运行SDK/Mock/CLI/MCP/API/数据库或发布；自定义传输、凭据切换、取消/期限、摘要和真实数据兼容仍待运行证据，R-003未完成、evidence为空。
 
 ## 2026-11-04 网页历史版本对比增量
 

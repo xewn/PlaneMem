@@ -35,6 +35,7 @@ import { prepareSessionActivity, sessionActivityResult } from './session-activit
 import { prepareSessionState, sessionStateResult } from './session-state.js';
 import { callSessionRegistry } from './session-registry.js';
 import { isWorkItemReadCommand, callWorkItemRead } from './work-item-reads.js';
+import { isContextHistoryCommand, callContextHistory } from './context-history.js';
 import { callHandoffRegistry } from './handoff-registry.js';
 import { callCheckpointRegistry } from './checkpoint-registry.js';
 import { callCheckpointRead } from './checkpoint-reads.js';
@@ -204,33 +205,6 @@ function route(command: string, input: Record<string, unknown>) {
     }
     case 'context update':
       return { method: 'POST', path: '/v1/context-items/' + segment(input, 'item_id') + '/update' };
-    case 'context history':
-    case 'context version': {
-      const detail = command === 'context version';
-      const allowed = detail ? ['item_id', 'version'] : ['item_id', 'before_version', 'limit'];
-      if (Object.keys(input).some((field) => !allowed.includes(field)))
-        usage('Unknown context history field');
-      const query = new URLSearchParams();
-      for (const field of detail ? ['version'] : ['before_version', 'limit']) {
-        const value = input[field];
-        if (value === undefined && !detail) continue;
-        if (
-          typeof value !== 'number' ||
-          !Number.isSafeInteger(value) ||
-          value < 1 ||
-          (field === 'limit' && value > 100)
-        )
-          usage('Use a positive version/before_version and limit between 1 and 100');
-        query.set(field, String(value));
-      }
-      return {
-        method: 'GET',
-        path:
-          '/v1/context-items/' +
-          segment(input, 'item_id') +
-          (detail ? '/versions/' + input.version : '/history' + (query.size ? '?' + query : '')),
-      };
-    }
     case 'context archive':
     case 'context restore':
     case 'context confirm':
@@ -567,6 +541,7 @@ export async function callGateway(
   input: Record<string, unknown>,
   options: GatewayOptions,
 ) {
+  if (isContextHistoryCommand(command)) return callContextHistory(command, input, options);
   if (isWorkItemReadCommand(command)) return callWorkItemRead(command, input, options);
   if (isArtifactQueryCommand(command)) return callArtifactQuery(command, input, options);
   if (isSyncConsumerCommand(command)) return callSyncConsumer(command, input, options);

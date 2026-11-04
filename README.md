@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [CLI 上下文历史与对比](docs/design/01-contracts/context-item-runtime.md)：命令行可读取有大小限制的历史和完整版本，并对指定两版本进行摘要核对与比较；支持显式身份约束和总超时。仅源码文档，未编译、测试、运行或发布。
+
 新增 [SDK 上下文历史与对比](docs/design/01-contracts/context-item-runtime.md)：历史读取支持超时、取消和完整快照摘要核对，新增双版本比较方法，与网页共用比较规则。仅源码文档，未编译、测试、运行或发布。
 
 新增 [上下文版本对比](docs/design/01-contracts/context-item-runtime.md)：可在历史页选择两个版本，并排查看完整正文、来源、历史确认和属性差异，支持反向对比及返回原浏览位置。仅源码文档，未编译、测试、运行或发布。

@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+2026-11-04：`context history/version/compare --json-file QUERY.json [--timeout-ms 30000]`统一复用SDK有界历史读取；也可使用`--json`，网络支持有界`--json -`，嵌入不读stdin。恰一输入、最多4 KiB；history接收`{item_id,before_version?,limit?}`（默认25最多100），version接收`{item_id,version}`，compare接收`{item_id,from_version,to_version,expected_actor_id,expected_client_id}`。两版本为不同正安全整数，方向保留；history/version也可附加成对expected身份。账号为ULID，客户端为本地ID，只作与可信读者相等约束，不授予权限。成功目录256 KiB、单版2 MiB，版本核对完整快照SHA-256；比较两次读取共用总期限，stdout原样返回SDK本地组合对象（无外层data），包含完整from/to封套和comparison，来源真实性未检查。嵌入要求可信未过期context.read，额外核对restricted权限、真实请求和每router两笔容量；超时不代表底层router已停止。输入文件/stdin等待在预算前完成，不承诺可取消。拒绝key/output/写字段/重复未知参数，不自动翻页/重试/保存；下一页保留item_id、limit和身份，将data.next_before_version传作before_version。详见[CLI上下文历史与对比](../../docs/design/01-contracts/context-item-runtime.md#2026-11-04-cli上下文历史与对比增量)。仅源码文档，未编译、测试、执行或发布。
+
 2026-11-04：`work-items list`的JSON增加sort，例如`{"sort":"due_asc","status":"todo"}`按保存截止日期从早到晚读取，null最后、同日期ID升序。省略/显式updated_desc仍为最近更新；续页保留排序和全部筛选，换排序去掉cursor。原单页/预算/期限保持，详见[工作项排序](../../docs/design/01-contracts/work-item-projection-runtime.md)。仅源码文档，未编译、测试、执行或发布。
 
 2026-11-04：`work-items list`的JSON增加`due=scheduled|unscheduled`、`due_from`、`due_before`。日期为有效YYYY-MM-DD，UTC含起始、不含结束；示例文件内容`{"due_from":"2026-11-01","due_before":"2026-12-01","status":"todo"}`。unscheduled只匹配due_at=null且与区间互斥；区间排除null，不自动判断逾期或工作状态。下一页保留这些条件和原cursor，换条件回首页，原8 KiB输入/单页读取/期限保持。见[工作项筛选](../../docs/design/01-contracts/work-item-projection-runtime.md)。仅源码文档，未编译、测试、运行命令或发布。
@@ -623,8 +625,9 @@ observed-item.json 示例：`{"work_item_id":"plane-item-42"}`。CLI 核对返�
 | `context archive` | `item_id`、`expected_version` | `--key` |
 | `context read-archived` | `item_id` | 无 |
 | `context restore` | `item_id`、归档后的 `expected_version` | `--key` |
-| `context history` | `item_id`，可选 before_version/limit | 无 |
-| `context version` | `item_id`、正整数 version | 无 |
+| `context history` | `item_id`，可选 before_version/limit、成对 expected_actor_id/expected_client_id | 无 |
+| `context version` | `item_id`、正安全整数 version，可选成对身份约束 | 无 |
+| `context compare` | `item_id`、不同正安全整数 from_version/to_version、expected_actor_id/expected_client_id | 无 |
 | `proposals create` | kind/title/content/source_refs/model_version/prompt_version | `--key` |
 | `proposals receipt` | 原 identity/request_key/完整规范 draft | `--json-file` 或 `--json`，可选 `--timeout-ms`；不接受 `--key` |
 | `proposals review-receipt` | 原 identity/request_key/proposal_id/decision/expected_revision/reason | `--json-file` 或 `--json`，可选 `--timeout-ms`；不接受 `--key` |

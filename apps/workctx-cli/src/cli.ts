@@ -7,6 +7,7 @@ import { parseArgs } from 'node:util';
 import type { CommandRouter, CommandResult, RequestContext } from '@planemem/api-gateway';
 import { prepareObservedRead, observedReadResult } from './observed.js';
 import { isWorkItemReadCommand, runWorkItemRead } from './work-item-reads.js';
+import { isContextHistoryCommand, runContextHistory } from './context-history.js';
 import { prepareHandoffClaim, handoffClaimResult } from './handoff-claim.js';
 import { prepareHandoffCreate, handoffCreateResult } from './handoff-create.js';
 import { prepareSessionStart, sessionStartResult } from './session-start.js';
@@ -291,6 +292,7 @@ export async function runWorkctx(
     'context confirm': 'context.item.confirm',
     'context history': 'context.item.history',
     'context version': 'context.item.version.read',
+    'context compare': 'context.local.compare',
     'proposals create': 'proposal.create',
     'proposals receipt': 'proposal.create.receipt',
     'proposals review-receipt': 'proposal.review.receipt',
@@ -358,6 +360,10 @@ export async function runWorkctx(
       }),
     };
   try {
+    if (command && isContextHistoryCommand(command)) {
+      const result = await runContextHistory(argv, router, context);
+      return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
+    }
     if (command && isWorkItemReadCommand(command)) {
       const result = await runWorkItemRead(argv, router, context);
       return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };

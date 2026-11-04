@@ -101,6 +101,7 @@ import { callConflictReceiptArguments } from './conflict-receipt.js';
 import { callProposalCreateReceiptArguments } from './proposal-create-receipt.js';
 import { callProposalReviewReceiptArguments } from './proposal-review-receipt.js';
 import { isWorkItemReadCommand, callWorkItemReadArguments } from './work-item-reads.js';
+import { isContextHistoryCommand, callContextHistoryArguments } from './context-history.js';
 
 const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
 
@@ -338,8 +339,12 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   context read-archived          Read an archived item_id
   context restore                Restore item_id as excluded with expected_version and --key
   context confirm                Human confirmation: item_id/expected_version/reason and --key
-  context history                List recorded item_id versions; optional before_version/limit
-  context version                Read a recorded snapshot by item_id and version
+  context history                Bounded version history; item_id, optional before_version/limit
+  context version                Read and hash-check a recorded item_id/version snapshot
+  context compare                Compare explicit from_version/to_version with required identity constraints
+                                 These reads require one --json/--json-file (4 KiB); optional --timeout-ms
+                                 History/version accept paired expected_actor_id/expected_client_id
+                                 Compare requires expected_actor_id/expected_client_id; no --key/--output
   index status                   Read legacy index metadata by id, including deletion/expiry
   index list                     List legacy index metadata; query/state/managed_by/limit/cursor
   index delete                   Soft-delete manual index: id/expected_revision/reason and --key
@@ -642,6 +647,7 @@ export async function main(args: string[]): Promise<number> {
       'context confirm',
       'context history',
       'context version',
+      'context compare',
       'proposals create',
       'proposals receipt',
       'proposals review-receipt',
@@ -1033,6 +1039,21 @@ export async function main(args: string[]): Promise<number> {
       return 0;
     }
     if (values.reviewed !== undefined) usage('--reviewed is only for audit export');
+    if (isContextHistoryCommand(name)) {
+      print(
+        await callContextHistoryArguments(args, {
+          base: process.env.WORKCTX_URL ?? 'http://127.0.0.1:3000',
+          token: token(),
+          trace,
+          scope: {
+            tenant_id: envId('WORKCTX_TENANT_ID'),
+            workspace_id: envId('WORKCTX_WORKSPACE_ID'),
+            project_id: envId('WORKCTX_PROJECT_ID'),
+          },
+        }),
+      );
+      return 0;
+    }
     if (isWorkItemReadCommand(name)) {
       print(
         await callWorkItemReadArguments(args, {
