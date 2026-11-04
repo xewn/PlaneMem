@@ -5,6 +5,7 @@ import {
   ContractError,
   PACK_ORIGINAL_BYTES,
   assertPackSaveBinding,
+  contextPackSaveReceiptQuery,
   decodePackSaveOriginal,
   encodePackSaveOriginal,
   isSyncIdentifier,
@@ -26,7 +27,7 @@ interface NetworkOptions {
   trace: string;
   scope: { tenant_id: string; workspace_id: string; project_id: string };
 }
-type Mode = 'prepare-save' | 'inspect-save' | 'submit-save';
+type Mode = 'prepare-save' | 'inspect-save' | 'submit-save' | 'save-receipt';
 const recovery =
   'Keep the complete original file and restore its gateway, project, account, client and permissions. Retry explicitly with the same original; this result does not disprove an earlier save.';
 function fail(
@@ -50,12 +51,17 @@ function fail(
 function invalid(trace: string) {
   return fail(
     'USAGE_ERROR',
-    'Use context prepare-save --key ORIGINAL_KEY --output NEW_ORIGINAL.json [--json-file DRAFT.json] [--timeout-ms 30000]; context inspect-save --json-file ORIGINAL.json; or context submit-save --json-file ORIGINAL.json --reviewed [--timeout-ms 30000]. No stdin, inline JSON, repeated or unrelated options. Drafts accept only budget_tokens/ttl_seconds; submit never accepts replacement settings or keys.',
+    'Use context prepare-save --key ORIGINAL_KEY --output NEW_ORIGINAL.json [--json-file DRAFT.json] [--timeout-ms 30000]; context inspect-save --json-file ORIGINAL.json; context save-receipt --json-file ORIGINAL.json [--timeout-ms 30000] to observe only; or context submit-save --json-file ORIGINAL.json --reviewed [--timeout-ms 30000]. No stdin, inline JSON, repeated or unrelated options. Drafts accept only budget_tokens/ttl_seconds; submit and receipt never accept replacement settings or keys.',
     trace,
   );
 }
 export function isContextPackOriginalCommand(command: string) {
-  return ['context prepare-save', 'context inspect-save', 'context submit-save'].includes(command);
+  return [
+    'context prepare-save',
+    'context inspect-save',
+    'context submit-save',
+    'context save-receipt',
+  ].includes(command);
 }
 function argumentsFor(argv: string[], trace: string) {
   try {
@@ -79,7 +85,9 @@ function argumentsFor(argv: string[], trace: string) {
         ? ['json-file', 'output', 'key', 'timeout-ms']
         : mode === 'submit-save'
           ? ['json-file', 'reviewed', 'timeout-ms']
-          : ['json-file'];
+          : mode === 'save-receipt'
+            ? ['json-file', 'timeout-ms']
+            : ['json-file'];
     const seen = new Set<string>();
     for (const option of args.tokens) {
       if (option.kind !== 'option') continue;
@@ -159,6 +167,8 @@ const knownErrors = new Set([
   'UNAUTHENTICATED',
   'RATE_LIMITED',
   'CONTEXT_PACK_SAVE_CONTEXT_INVALID',
+  'CONTEXT_PACK_RECEIPT_INVALID',
+  'CONTEXT_PACK_RECEIPT_TIMEOUT',
   'CONTEXT_PACK_NOT_FOUND',
   'CONTEXT_PACK_STALE',
   'CONTEXT_PACK_EXPIRED',
@@ -194,12 +204,14 @@ async function network<T>(
       savedEtag: () => string | null;
     },
   ) => Promise<T>,
+  receiptOnly = false,
 ) {
   const controller = new AbortController();
   const deadline = performance.now() + timeout;
   let dispatched = false;
   let expiry = Infinity;
   let reads = 0;
+  let observations = 0;
   let ready = false;
   let etag: string | null = null;
   const check = () => {
@@ -255,10 +267,14 @@ async function network<T>(
         const reading =
           input.pathname === '/v1/context-pack/save-context' && init?.method === 'GET';
         const saving = input.pathname === '/v1/context-pack/compile' && init?.method === 'POST';
+        const observing =
+          input.pathname === '/v1/context-pack/save-receipt' && init?.method === 'POST';
         if (
-          (!reading && !saving) ||
-          (reading && reads !== 0) ||
-          (saving && (!binding || !ready || reads !== 1 || dispatched))
+          receiptOnly
+            ? !binding || !observing || observations !== 0
+            : (!reading && !saving) ||
+              (reading && reads !== 0) ||
+              (saving && (!binding || !ready || reads !== 1 || dispatched))
         )
           throw fail(
             'INVALID_INPUT',
@@ -267,6 +283,7 @@ async function network<T>(
             dispatched,
           );
         if (reading) reads++;
+        if (observing) observations++;
         if (saving) dispatched = true;
         const response = await fetch(base + input.pathname, init);
         try {
@@ -275,7 +292,7 @@ async function network<T>(
             response.status !== 401 &&
             ((response.status !== 200 && (response.status < 400 || response.status > 599)) ||
               response.headers.get('x-trace-id') !== options.trace ||
-              ((reading || !response.ok) && response.headers.has('etag')))
+              ((reading || observing || !response.ok) && response.headers.has('etag')))
           )
             throw fail(
               'GATEWAY_RESPONSE_INVALID',
@@ -347,9 +364,11 @@ async function network<T>(
       code,
       dispatched
         ? 'The original pack save is not confirmed. Keep the file unchanged.'
-        : binding
-          ? 'This attempt stopped before sending a pack save. Keep the original file; an earlier save may still exist.'
-          : 'Save identity could not be confirmed. No new original file was published and no pack save was sent.',
+        : receiptOnly
+          ? 'The historical save query could not be confirmed. No pack save was sent; keep the original file.'
+          : binding
+            ? 'This attempt stopped before sending a pack save. Keep the original file; an earlier save may still exist.'
+            : 'Save identity could not be confirmed. No new original file was published and no pack save was sent.',
       options.trace,
       dispatched,
     );
@@ -371,6 +390,21 @@ export async function callContextPackOriginal(argv: string[], input: NetworkOpti
     validateRequestContext({ ...options.scope, trace_id: options.trace });
   } catch {
     throw invalid(options.trace);
+  }
+
+  if (args.mode === 'save-receipt') {
+    const saved = await originalFile(args.file!, options.trace);
+    return network(
+      options,
+      args.timeout,
+      saved.original.binding,
+      (client, state) =>
+        client.getContextPackSaveReceipt(contextPackSaveReceiptQuery(saved.original), {
+          timeout_ms: state.remaining(),
+          signal: state.signal,
+        }),
+      true,
+    );
   }
 
   if (args.mode === 'submit-save') {

@@ -347,6 +347,7 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   context prepare-save           Save a complete original to a new --output file; requires --key, optional --json-file draft
   context inspect-save           Review a complete --json-file original locally, without connecting
   context submit-save            Send the unchanged --json-file original after --reviewed; optional --timeout-ms
+  context save-receipt            Observe historical save metadata from --json-file ORIGINAL; no save or automatic retry
   context create                 Add proposed context; title/content/source_refs and --key
   context read                   Read complete current item_id; bounded response and timeout
   context list                   Read one complete page by query/layer/classification/status/item_type/archived/limit/cursor
@@ -660,6 +661,7 @@ export async function main(args: string[]): Promise<number> {
       'context prepare-save',
       'context inspect-save',
       'context submit-save',
+      'context save-receipt',
       'context create',
       'context read',
       'context list',

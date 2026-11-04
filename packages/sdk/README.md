@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-05：新增`getContextPackSaveReceipt(query, {timeout_ms?, signal?})`，使用contracts导出的`contextPackSaveReceiptQuery(original)`可从完整原请求提取查询。单次只读POST /v1/context-pack/save-receipt，绑定原五项身份、restricted权限桶、原键和显式预算/TTL，默认30秒、16 KiB完整封套校验，不携带继承写条件。`recorded`含历史保存元数据，正文/来源均为not-checked；`not-observed`不是保存失败或允许重发的证明。Gateway地址由调用方核对；通用transport不暴露HTTP响应头和状态，不声称SDK独立核验HTTP ETag。当前Mock尚未适配此入口。详见[原保存请求回执查询](../../docs/design/01-contracts/context-pack-runtime.md#原保存请求回执查询2026-11-05源码增量)。仅源码文档，未编译、类型检查、测试、执行SDK/API或发布。
+
 2026-11-05：新增`getContextPackSaveContext({timeout_ms?, signal?})`与返回/身份类型导出，单次GET /v1/context-pack/save-context，完整16 KiB封套、原范围及可选actor/client相等、当前到期检查；默认30秒，清除继承写条件，不自动重试或覆盖原请求。`MockContextPackStore`沿显式会话支持相同读取，无需compilations或可见包；身份读取不等于项目可读或保存获准。详见[保存前可信身份读取](../../docs/design/01-contracts/context-pack-runtime.md#保存前可信身份读取2026-11-05源码增量)。仅源码文档，未执行SDK/Mock/API、编译、类型检查、测试或发布。
 
 2026-11-05：`MockContextPackStore`新增可选`compilations`及根导出`MockContextPackCompilation`，预置完整包按原actor/client/请求键/预算期限绑定pending或saved场景，经`MockWcpServer`接入`compileContextPack`。pending包在完整核验后激活，随后可读/可列；同键返回原包，参数或权限桶变化拒绝，返回失败不回滚已激活状态。保存独立两容量/30秒/取消；旧只读配置兼容，不生成内容或访问真实编译器。配置及未执行示例见[显式保存与重放](../../docs/design/01-contracts/context-pack-mock-runtime.md#显式保存与重放2026-11-05源码增量)。仅源码文档，未执行Mock/SDK、编译、类型检查、测试或发布。

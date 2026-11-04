@@ -1,5 +1,7 @@
 # 持久化 ContextPack 开发说明
 
+2026-11-05新增[原保存请求回执查询](#原保存请求回执查询2026-11-05源码增量)：Gateway/SDK/网络CLI只读匹配原保存请求的历史记录，不触发保存；明确区分历史已记录与快照中未观察到，内容及来源均另行检查。仅源码文档，未编译、类型检查、测试、执行客户端/接口/数据库或发布。
+
 2026-11-05新增[CLI完整保存原请求](#cli完整保存原请求2026-11-05源码增量)：与Web共用8 KiB原格式，新文件准备/离线审阅/明确确认提交；Gateway路径、身份权限及原参数键固定，同token复核后完整保存回执检查。仅源码文档，未编译、类型检查、测试、执行客户端/接口或发布。
 
 2026-11-05新增[CLI/MCP保存身份入口](#climcp保存身份入口2026-11-05源码增量)：CLI context save-identity及MCP get_context_pack_save_context读取完整可信身份/期限/权限提示，沿原上下文读期限与容量，不保存包或替换原请求。仅源码文档，未编译、类型检查、测试、执行客户端/接口或发布。
@@ -612,7 +614,7 @@ Gateway基址仅http(s)、无凭据/查询/片段，URL规范化后保留路径�
 
 前端准备、浏览器保存/摘要、恢复文件/目录及保存action等待分别复用30秒本地操作预算，IndexedDB打开/事务沿原工具各10秒；用户可停止等待，组件离开时取消本地等待。保存前的截止检查阻止迟到本地工作继续派发；已调用server action后停止等待不撤销服务器保存，迟到结果不改写当前页面。反馈保持unknown，不因权限/登录/输入错误清除历史不确定性。只有真实POST收到已核验409 STALE或410 EXPIRED才允许本面板标记不可用，身份读取错误不能冒充保存结果。
 
-服务器完整核验原2 MiB封套/预算最大TTL、HTTP ETag及SHA-256后，action返回原文与已核验pack_id/version/trace。前端核对回显原文并显示固定包读取链接；不自动导航丢失原请求，也不因revalidatePath失败提示重发。原浏览器副本保留，成功回执只在当前页面显示，**尚无历史成功回执持久化或仅查询原请求结果的接口**；重新载入原请求一律提示它可能已提交，再次发送需明确审阅。浏览器副本及普通文件不证明远端状态、真实来源或历史因果。
+服务器完整核验原2 MiB封套/预算最大TTL、HTTP ETag及SHA-256后，action返回原文与已核验pack_id/version/trace。前端核对回显原文并显示固定包读取链接；不自动导航丢失原请求，也不因revalidatePath失败提示重发。原浏览器副本保留，成功回执只在当前页面显示，尚无历史成功回执持久化；原请求结果只读接口已在后续[原保存请求回执查询](#原保存请求回执查询2026-11-05源码增量)接入SDK/CLI，Web尚未接入。重新载入原请求一律提示它可能已提交，再次发送需明确审阅。浏览器副本及普通文件不证明远端状态、真实来源或历史因果。
 
 R-003未完成、evidence为空。真实浏览器关闭页面/续期恢复、双槽事务/跨标签页、完整目录/文件、输入/权限桶变化、超时和迟到写入、固定原身份重放及旧调用兼容证据待补。浏览器清理会删除恢复数据，当前没有备份/清理/容量策略或跨浏览器同步。仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、渲染、执行浏览器/API/SDK/CLI/MCP/Mock/保存请求、数据库或发布；未改共享协议、后端保存事务、其他客户端、依赖、样式或迁移。
 
@@ -709,4 +711,40 @@ submit-save必须提供完整--json-file及--reviewed，只可另给timeout-ms�
 
 这三条命令不读stdin，拒绝重复/未知/无关选项；CLI用法错误退出2，原文件不可用/网络/身份/保存失败退出1。准备/提交由具有明确Gateway配置和token的网络main执行；嵌入runWorkctx不从裸router推断远端Gateway，只开放离线审阅，callGateway通用对象接口尚未增加文件工作流。Web导出原文件可由CLI审阅/提交；CLI新文件可在Web原恢复页导入，但仍必须匹配当前原Gateway、完整身份和权限桶。旧无绑定表单不迁造，原context compile及MCP保存工具保持兼容行为。
 
-R-003未完成、evidence为空。跨Web/CLI规范字节与导入恢复、真实权限续期/路径前缀、文件并发/硬链接/故障/读回、取消与迟到工作、完整回执/ETag/restricted及旧调用兼容仍缺运行证据。MCP和嵌入完整原请求流程、历史回执持久化/只读查询、恢复目录/备份清理和独立Schema/OpenAPI仍待补。仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/SDK/网页/API/产品/数据库或发布；无SDK、后端保存器、MCP、Mock、独立schema、依赖、数据库、样式或迁移变化。
+R-003未完成、evidence为空。跨Web/CLI规范字节与导入恢复、真实权限续期/路径前缀、文件并发/硬链接/故障/读回、取消与迟到工作、完整回执/ETag/restricted及旧调用兼容仍缺运行证据。MCP和嵌入完整原请求流程、历史回执持久化、恢复目录/备份清理和独立Schema/OpenAPI仍待补；只读查询见下方后续增量。此原文件任务仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/SDK/网页/API/产品/数据库或发布；无SDK、后端保存器、MCP、Mock、独立schema、依赖、数据库、样式或迁移变化。
+
+## 原保存请求回执查询（2026-11-05源码增量）
+
+新增只读`POST /v1/context-pack/save-receipt`，对应`context.pack.save-receipt`。查询完整原请求对应的既有保存记录，不调用compile、不预留请求键、不更新保存数据。使用POST承载有界原请求，不能因此把它作为保存重试；权限策略和查询审计仍沿Gateway流程。
+
+contracts根导出`ContextPackSaveReceiptQuery`、`ContextPackRecordedSave`、`ContextPackSaveReceiptEnvelope`、查询/响应解析器与`contextPackSaveReceiptQuery(original)`。请求最多4096 UTF-8字节，只允许以下四字段；五项身份完整，预算/TTL都必须显式给出，沿既有范围，不接受默认补全或写条件：
+
+```ts
+{
+  identity: { tenant_id, workspace_id, project_id, actor_id, client_id },
+  read_restricted: boolean,
+  request_key: string,
+  parameters: { budget_tokens: number, ttl_seconds: number }
+}
+```
+
+提取helper接受共享完整8 KiB Web/CLI原请求，省略Gateway位置后得到上述查询；调用方必须自行固定并核对原网关。服务端只核对当前可信身份，不信任正文提供身份。认证客户端、未过期实际context.read、全部五项身份及restricted桶精确相等后，才在只读repeatable-read事务内检查原父项目存在、未删除且分类可见。管理员角色不能代替实际能力声明。
+
+公开HTTP先认证及能力检查，再读4 KiB正文。限定JSON POST，无URL查询/hash；原始头总计16 KiB，拒绝大小写重复头、幂等/版本写条件、条件缓存/Range、Content-Encoding及Transfer-Encoding；Content-Length如有必须为1..4096，Content-Type允许JSON及可选UTF-8。trace和身份头只作为可信context的相等约束。内部ApiGateway也检查头部，handler拒绝context中的写条件。认证、策略/审计和公开正文读取不计入handler的30秒期限。
+
+按既有`commandReceipt`由原actor/client/键计算存储request_key，并由显式预算/TTL和restricted计算原保存指纹；不添加表或迁移，不改变保存事务。只查询原tenant/workspace/project下至多两条标量元数据及`pack_document IS NOT NULL`，不读取完整pack_document或source_manifest，也不取得保存流锁。无行返回not-observed；多行、缺失正文标记、无效指纹或元数据拒绝，合法指纹不符返回IDEMPOTENCY_KEY_REUSED。旧调用若曾带额外expected_version参与指纹，本入口不能据新原文件重建它，不猜测替换历史参数。
+
+成功为200，JSON、private/no-store、原x-trace-id、无HTTP ETag；闭合响应最多16384 UTF-8字节。外层固定schema_version=1/trace_id/source_refs/data，data.original完整回显规范查询并逐项匹配：
+
+- `data.status = "not-observed"`：无receipt，source_refs为空。仅表示本次只读快照未观察到匹配键；并发保存可能随后提交，不能证明失败、允许换键或自动重发。
+- `data.status = "recorded"`：receipt仅有pack_id/version/created_at/expires_at/budget_tokens/used_tokens/pack_hash/server_cursor/content_state/source_state，source_refs只引用该包及版本。版本与游标为正安全整数，预算等于原预算、用量不超预算、有效期为正且不超原TTL，时间及sha256摘要格式均严格检查；content_state与source_state固定为not-checked。
+
+recorded可描述已经过期、来源后来变化或不再是最新版本的包，不因当前时间超过expires_at拒绝历史记录；真正读取内容时仍需原完整读取流程重新授权、检查来源及计算摘要。本接口只返回存储摘要，不计算正文哈希，不证明内容现时可读或历史来源真实。原文件及此普通JSON都不是服务端签名证明。
+
+handler每router独立最多两路读取，30秒本地等待；超时或取消等待不等于数据库工作终止，直到实际事务完成/失败才释放名额。容量不足RATE_LIMITED为429；原项目不可见CONTEXT_PACK_NOT_FOUND为404；身份/权限不符DENIED为403；输入INVALID_INPUT为400；不同原指纹IDEMPOTENCY_KEY_REUSED为409；损坏元数据CONTEXT_PACK_RECEIPT_INVALID为500；存储不可用CONTEXT_PACK_STORAGE_UNAVAILABLE或读取超时CONTEXT_PACK_RECEIPT_TIMEOUT为503。handler错误使用固定消息且retryable=false，不透出原键、数据库错误或部分记录。
+
+SDK新增`getContextPackSaveReceipt(query, {timeout_ms?, signal?})`，默认30000毫秒，捕获原范围及可选actor/client约束，单次有界POST并完整核验返回查询与封套；主动传原actor/client相等头，不继承写条件，不自动重试。通用transport不暴露HTTP头/状态，SDK不声称独立核对这些字段；Fetch的既有有界JSON、UTF-8、状态及trace控制继续适用。网关基址由调用方核对，不接受响应中的新地址。
+
+网络CLI新增`context save-receipt --json-file ORIGINAL.json [--timeout-ms 30000]`。完整稳定读取原文件一次（8 KiB），先比较配置Gateway规范基址含路径和三项项目范围，再调用SDK；使用配置token，文件不能指定另一目标。受限fetch只放行一次save-receipt POST，不允许身份GET或compile POST，响应要求原trace/合法状态/无ETag（早期401沿已有处理）。不接受内联JSON/stdin、key/output/reviewed或重复未知选项，不写文件。文件读取在网络预算前，stdout交付在网络预算外；成功输出完整封套。错误沿固定消息与not-sent/not-checked保存派发标记，它只说明本次没有发保存，不否认更早同键保存。失败后仍保留原文件，不根据结果自动发送。
+
+R-003仍未完成、evidence为空。当前只接Gateway/SDK/网络CLI，Web、MCP、Mock、嵌入runWorkctx、独立Schema/OpenAPI及历史回执文件/浏览器持久化尚未适配。真实认证/策略审计、原指纹兼容、并发保存快照、过期/损坏记录、响应限额/取消/容量保留及跨Web/CLI文件兼容待运行证据。本轮只源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行CLI/SDK/API/Mock/产品/数据库或发布，无依赖或迁移变化。

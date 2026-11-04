@@ -26,6 +26,7 @@ import {
   SYNC_EVENT_RECEIPT_REQUEST_BYTES,
   PROPOSAL_CREATE_RECEIPT_REQUEST_BYTES,
   PROPOSAL_REVIEW_RECEIPT_REQUEST_BYTES,
+  CONTEXT_PACK_SAVE_RECEIPT_REQUEST_BYTES,
 } from '@planemem/contracts';
 import { validateEvent } from '@planemem/events';
 import { PolicyService } from '@planemem/policy-service';
@@ -88,6 +89,11 @@ import { dispatchMcp, rpcError, MCP_PROTOCOL_VERSIONS } from './mcp/protocol.js'
 import { registerMcpReads, resourceKey, type RuntimeResource } from './mcp/reads.js';
 import { registerContextPacks, withSavedContextPack } from './context-packs.js';
 import { registerContextPackDirectory } from './context-pack-directory.js';
+import {
+  registerContextPackSaveReceipt,
+  canReadContextPackSaveReceipt,
+  validateContextPackSaveReceiptHeaders,
+} from './context-pack-save-receipt.js';
 import {
   canReadContextPackSaveContext,
   registerContextPackSaveContext,
@@ -516,6 +522,11 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
         !canReadContextPackSaveContext(request.context)
       )
         return { allowed: false, reason: 'verified_context_pack_reader_required' };
+      if (
+        request.operation === 'context.pack.save-receipt' &&
+        !canReadContextPackSaveReceipt(request.context)
+      )
+        return { allowed: false, reason: 'verified_original_context_pack_reader_required' };
       if (
         request.operation === 'workbench.query' &&
         request.input.operation === 'admin' &&
@@ -1429,6 +1440,7 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
   registerContextPacks(router, auditDb);
   registerContextPackSaveContext(router);
   registerContextPackDirectory(router, auditDb);
+  registerContextPackSaveReceipt(router, auditDb);
   registerCheckpointReceipts(router, auditDb);
   registerCheckpointRead(router, auditDb);
   registerCheckpointHistory(router, workbench);
@@ -1470,6 +1482,7 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
   api.route('POST', '/v1/audit/export', 'audit.export');
   api.route('POST', '/v1/context-pack/compile', 'context.pack.compile');
   api.route('GET', '/v1/context-pack/save-context', 'context.pack.save-context');
+  api.route('POST', '/v1/context-pack/save-receipt', 'context.pack.save-receipt');
   api.route('GET', '/v1/context-pack', 'context.pack.read');
   api.route('GET', '/v1/context-packs', 'context.pack.list');
   api.routeTemplate('GET', '/v1/artifacts/{artifact_id}', 'artifact.read');
@@ -1936,6 +1949,7 @@ async function handleRequest(
   const syncEventReceiptRoute = url.pathname === '/v1/sync/events/receipt';
   const proposalCreateReceiptRoute = url.pathname === '/v1/proposals/creation-receipt';
   const proposalReviewReceiptRoute = url.pathname === '/v1/proposals/review-receipt';
+  const contextPackSaveReceiptRoute = url.pathname === '/v1/context-pack/save-receipt';
   const artifactDownload =
     request.method === 'GET' &&
     /^\/v1\/artifacts\/[^/]+\/versions\/[^/]+\/content$/.test(url.pathname);
@@ -1949,7 +1963,8 @@ async function handleRequest(
     auditExportRoute ||
     syncEventReceiptRoute ||
     proposalCreateReceiptRoute ||
-    proposalReviewReceiptRoute
+    proposalReviewReceiptRoute ||
+    contextPackSaveReceiptRoute
   ) {
     response.setHeader('connection', 'close');
     response.setHeader('x-trace-id', traceId);
@@ -1960,7 +1975,8 @@ async function handleRequest(
     !auditExportRoute &&
     !syncEventReceiptRoute &&
     !proposalCreateReceiptRoute &&
-    !proposalReviewReceiptRoute
+    !proposalReviewReceiptRoute &&
+    !contextPackSaveReceiptRoute
   ) {
     try {
       body = await readJson(request);
@@ -2001,6 +2017,7 @@ async function handleRequest(
       '/v1/context-pack',
       '/v1/context-pack/compile',
       '/v1/context-pack/save-context',
+      '/v1/context-pack/save-receipt',
       '/v1/context-packs',
     ].includes(url.pathname);
     const syncRoute = [
@@ -2064,6 +2081,38 @@ async function handleRequest(
             request.method === 'POST'),
       );
       // These headers are preconditions on verified claims, never identity inputs.
+      if (contextPackSaveReceiptRoute) {
+        if (
+          request.method !== 'POST' ||
+          url.searchParams.size ||
+          url.hash ||
+          !/^application\/json(?:\s*;\s*charset\s*=\s*(?:utf-8|"utf-8"))?\s*$/i.test(
+            header(request, 'content-type') ?? '',
+          )
+        )
+          throw new ContractError(
+            'INVALID_INPUT',
+            'Original save receipt requires JSON POST without query or write conditions',
+            { trace_id: traceId },
+          );
+        const entries: Array<[string, string | undefined]> = [];
+        for (let i = 0; i < request.rawHeaders.length; i += 2)
+          entries.push([request.rawHeaders[i]!, request.rawHeaders[i + 1]]);
+        validateContextPackSaveReceiptHeaders(entries, context);
+        if (!canReadContextPackSaveReceipt(context))
+          throw new ContractError('DENIED', 'An original verified context reader is required', {
+            trace_id: traceId,
+          });
+        try {
+          body = await readJson(request, CONTEXT_PACK_SAVE_RECEIPT_REQUEST_BYTES);
+        } catch {
+          throw new ContractError(
+            'INVALID_INPUT',
+            'Supply complete original save receipt JSON within 4 KiB',
+            { trace_id: traceId },
+          );
+        }
+      }
       if (contextPackSaveContextRoute) {
         if (request.method !== 'GET' || url.searchParams.size || url.hash)
           throw new ContractError('INVALID_INPUT', 'Save identity is a parameter-free GET', {

@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [原保存请求回执查询](docs/design/01-contracts/context-pack-runtime.md#原保存请求回执查询2026-11-05源码增量)：SDK 与 CLI 可按完整原请求只读查询历史保存记录，区分已记录和当前未观察到；不触发保存或自动重试。已记录仅说明历史元数据匹配，内容和来源另行读取检查。仅源码文档，未编译、测试、执行接口或发布。
+
 新增 [CLI完整原请求保存与恢复](docs/design/01-contracts/context-pack-runtime.md#cli完整保存原请求2026-11-05源码增量)：准备并保存新原请求文件、离线审阅、明确确认后按原文件提交；同一凭据复核原网关、账号、项目和权限，网页导出的文件也可使用。仅源码文档，未执行命令、编译、测试或发布。
 
 新增 [CLI/MCP保存身份读取](docs/design/01-contracts/context-pack-runtime.md#climcp保存身份入口2026-11-05源码增量)：`context save-identity`与`get_context_pack_save_context`返回当前完整账号、客户端、项目、期限和权限提示，支持保存前确认身份；不保存包或改写已有请求。仅源码文档，未运行客户端、接口、编译、测试或发布。

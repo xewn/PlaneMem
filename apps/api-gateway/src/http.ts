@@ -1,5 +1,6 @@
 import { fingerprint, stableValue } from './idempotency.js';
 import { validateContextPackSaveContextHeaders } from './context-pack-save-context.js';
+import { validateContextPackSaveReceiptHeaders } from './context-pack-save-receipt.js';
 import { ContractError, serializeError, type ErrorEnvelope } from '@planemem/contracts';
 import {
   CommandRouter,
@@ -141,6 +142,13 @@ export class ApiGateway {
     if (route.operation === 'context.pack.save-context') {
       try {
         validateContextPackSaveContextHeaders(Object.entries(request.headers), request.context);
+      } catch (error) {
+        return this.errorResponse(error, trace_id);
+      }
+    }
+    if (route.operation === 'context.pack.save-receipt') {
+      try {
+        validateContextPackSaveReceiptHeaders(Object.entries(request.headers), request.context);
       } catch (error) {
         return this.errorResponse(error, trace_id);
       }
@@ -358,6 +366,7 @@ export class ApiGateway {
                     serialized.code === 'INVALID_CONFLICT_EVENT' ||
                     serialized.code === 'CONTEXT_PACK_INVALID' ||
                     serialized.code === 'CONTEXT_PACK_SAVE_CONTEXT_INVALID' ||
+                    serialized.code === 'CONTEXT_PACK_RECEIPT_INVALID' ||
                     serialized.code === 'SESSION_RECEIPT_INVALID' ||
                     serialized.code === 'SESSION_ACTIVITY_INVALID' ||
                     serialized.code === 'CONFLICT_READ_INVALID' ||
@@ -405,6 +414,7 @@ export class ApiGateway {
                       serialized.code === 'RUNTIME_PERSISTENCE_UNAVAILABLE' ||
                       serialized.code === 'CONTEXT_PACK_STORAGE_UNAVAILABLE' ||
                       serialized.code === 'CONTEXT_PACK_DIRECTORY_TIMEOUT' ||
+                      serialized.code === 'CONTEXT_PACK_RECEIPT_TIMEOUT' ||
                       serialized.code === 'SESSION_RECEIPT_STORAGE_UNAVAILABLE' ||
                       serialized.code === 'SESSION_STORAGE_UNAVAILABLE' ||
                       serialized.code === 'CONTEXT_ITEM_STORAGE_UNAVAILABLE' ||

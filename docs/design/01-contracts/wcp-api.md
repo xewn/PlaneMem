@@ -1,5 +1,7 @@
 # WCP API 契约 v1
 
+2026-11-05原保存回执增补：新增只读`POST /v1/context-pack/save-receipt` → `context.pack.save-receipt`，4 KiB完整原身份/restricted/键/显式参数查询；真实未过期context.read、认证客户端、原身份及权限桶相等、父项目可见后，在只读快照中匹配既有保存指纹。16 KiB闭合封套返回recorded历史元数据或not-observed；不访问包正文/来源，不保存、预留键或自动重发。成功200、private/no-store、原trace且无ETag；无查询参数，拒绝重复/写/缓存/Range/编码头。SDK与网络CLI已接源码，详细形状、错误及限制见[原保存请求回执查询](context-pack-runtime.md#原保存请求回执查询2026-11-05源码增量)。仅源码文档，未编译、类型检查、测试、执行接口/客户端/数据库或发布。
+
 2026-11-05保存身份客户端增补：CLI `context save-identity`和MCP `get_context_pack_save_context`接入已有GET /v1/context-pack/save-context，无新增REST路由。CLI可选成对原账号/客户端相等条件；MCP身份只来自可信会话。完整16 KiB身份/有效期/权限提示检查、30秒读取预算及原容量保持，不保存、预留键或自动替换原绑定。见[CLI/MCP保存身份入口](context-pack-runtime.md#climcp保存身份入口2026-11-05源码增量)，仅源码文档，未编译、类型检查、测试、执行CLI/MCP/SDK/API或发布。
 
 2026-11-05保存原身份增补：新增只读`GET /v1/context-pack/save-context` → `context.pack.save-context`，无查询/正文/写/缓存条件，要求可信未过期实际context.read与认证客户端；16 KiB完整封套返回当前五项identity、expires_at及compile/read_restricted提示。SDK getContextPackSaveContext和Mock已接源码，不读包或来源，不证明项目可见、保存结果或后续授权。身份原文及期限规则、头部/状态和限制见[保存前可信身份读取](context-pack-runtime.md#保存前可信身份读取2026-11-05源码增量)。仅源码文档，未编译、类型检查、测试、执行API/SDK/Mock或发布。

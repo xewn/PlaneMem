@@ -10,6 +10,7 @@ export type { WcpContextItemReadOptions } from './context-item-read.js';
 export type { WcpContextPackReadOptions } from './context-pack-read.js';
 export type { WcpContextPackCompileOptions } from './context-pack-compile.js';
 export type { WcpContextPackSaveContextOptions } from './context-pack-save-context.js';
+export type { WcpContextPackSaveReceiptOptions } from './context-pack-save-receipt.js';
 export type { ContextPackSaveContextEnvelope, ContextPackSaveIdentity } from '@planemem/contracts';
 export type { ContextPackCompileParameters } from '@planemem/contracts';
 export type {

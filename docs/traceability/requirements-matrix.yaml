@@ -954,6 +954,27 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_pack_save_receipt_development_increment:
+      date: "2026-11-05"
+      status: "Source-only original save receipt contract, read-only Gateway endpoint, SDK reader and network CLI file entry; R-003 remains incomplete."
+      artifacts:
+        - "packages/contracts/src/context-pack-save-receipt.ts"
+        - "apps/api-gateway/src/context-pack-save-receipt.ts"
+        - "apps/api-gateway/src/http.ts"
+        - "apps/api-gateway/src/server.ts"
+        - "packages/sdk/src/context-pack-save-receipt.ts"
+        - "packages/sdk/src/client.ts"
+        - "apps/workctx-cli/src/context-pack-original.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "docs/design/01-contracts/context-pack-runtime.md"
+      behavior: "A closed 4 KiB query binds all original identity fields, exact restricted bucket, key and explicit compile parameters. An authenticated current reader and visible parent project are required. Read-only repeatable-read lookup reuses persisted scoped request key/fingerprint and scalar metadata without pack/source reads or save dispatch. A complete 16 KiB response distinguishes recorded metadata with content/source not-checked from not-observed snapshot absence, which never permits automatic resend. Two handler slots remain occupied until underlying work settles after a 30-second local wait. SDK performs one bounded POST; CLI checks configured Gateway path/scope against the full original file before querying and never rewrites it."
+      evidence: []
+      pending_evidence:
+        - "Public authentication, raw header/body limits, policy/audit, original identity/restricted binding and stored fingerprint compatibility"
+        - "Concurrent save visibility, invalid/expired historical metadata, exact response matching, deadline/cancellation and retained capacity"
+        - "SDK/native CLI response boundaries and Web/CLI original-file compatibility; no runtime verification performed"
+      remaining_gaps:
+        - "Web, MCP, Mock and embedded CLI receipt adapters, dedicated Schema/OpenAPI and durable historical receipt recovery"
     context_pack_cli_original_development_increment:
       date: "2026-11-05"
       status: "Source-only shared Web/CLI original format and CLI prepare/inspect/submit file workflow; R-003 remains incomplete."

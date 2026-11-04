@@ -4,6 +4,8 @@
 
 ## 当前基线
 
+- P0/P2/P4：新增原ContextPack保存回执共享契约、POST /v1/context-pack/save-receipt、SDK getContextPackSaveReceipt及CLI context save-receipt。按原完整身份/restricted/请求键/显式参数查询既有保存指纹与标量元数据，父项目当前可见且真实权限有效；4 KiB请求/16 KiB响应，独立两路读取/30秒handler期限，超时后底层实际结束才释放。recorded不检查正文和来源，not-observed只表示快照中未观察到，不授予重发资格。CLI使用完整8 KiB原文件并核对配置Gateway含路径/项目，只查询一次、不保存或改文件。Web/MCP/Mock适配、嵌入CLI、独立Schema/OpenAPI、历史回执持久化和运行证据仍待补；R-003未完成、evidence为空。仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行客户端/接口/数据库或发布。
+
 - P0/P4/P5：Web原8 KiB ContextPack保存请求模型迁入contracts共用，保持规范字段顺序、文件格式和浏览器槽键。CLI新增context prepare-save/inspect-save/submit-save：用户指定原键，可信身份和含路径Gateway绑定、独占新文件写入/同步/完整读回；离线只读审阅原文及规范/原字节摘要；显式--reviewed后按配置核对Gateway/三范围，同token GET身份/restricted再单POST，发出前再次稳定读取原文件。单网络流程默认30秒，2 MiB完整回执/SHA-256/HTTP ETag与restricted检查，错误自身实际派发标记保留unknown；不覆盖/删除原文件、换键或自动重试。准备/提交网络main，嵌入runWorkctx仅离线审阅；旧compile兼容，MCP/嵌入完整原请求提交、持久历史回执和恢复目录仍待补。R-003未完成、evidence为空；仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行CLI/网页/API/数据库或发布。
 
 - P4：新增CLI context save-identity与MCP get_context_pack_save_context，复用既有身份GET和上下文读执行器；CLI 4 KiB可选JSON/稳定文件/网络stdin及成对原身份约束，MCP严格空参数/可信会话。完整16 KiB封套、原范围/五身份/期限/restricted提示核验，嵌入授权后复查，MCP HTTP状态/type/trace/无ETag与错误白名单。十类上下文读沿各自两路容量/30秒，超时保留名额至底层结束；只读元数据，不访问包或项目记录、不预留键/保存/覆盖原绑定。CLI/MCP持久原请求与完整恢复、独立Schema/OpenAPI及运行兼容仍待补，R-003未完成、evidence为空。仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/MCP/SDK/API/产品/数据库或发布。

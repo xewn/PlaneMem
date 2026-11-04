@@ -183,6 +183,11 @@ import {
   readContextPackSaveContext,
   type WcpContextPackSaveContextOptions,
 } from './context-pack-save-context.js';
+import {
+  readContextPackSaveReceipt,
+  type WcpContextPackSaveReceiptOptions,
+} from './context-pack-save-receipt.js';
+import type { ContextPackSaveReceiptQuery } from '@planemem/contracts';
 import { compareContextPacks } from './context-pack-comparison.js';
 import {
   readContextPackDirectory,
@@ -592,6 +597,12 @@ export class WcpClient {
 
   getContextPackSaveContext(options: WcpContextPackSaveContextOptions = {}) {
     return readContextPackSaveContext(this.transport, this.context, options);
+  }
+  getContextPackSaveReceipt(
+    input: ContextPackSaveReceiptQuery,
+    options: WcpContextPackSaveReceiptOptions = {},
+  ) {
+    return readContextPackSaveReceipt(this.transport, this.context, input, options);
   }
 
   getContextPack(input: ContextPackReadQuery = {}, options: WcpContextPackReadOptions = {}) {
