@@ -2,6 +2,8 @@ export * from './client.js';
 export * from './mock-server.js';
 export {
   MockArtifactStore,
+  type MockArtifactDownloadAccess,
+  type MockArtifactDownloadRelease,
   type MockArtifactSeed,
   type MockArtifactSession,
 } from './mock-artifacts.js';

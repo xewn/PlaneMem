@@ -1,6 +1,8 @@
 # WCP SDK
 
-2026-11-04：新增 `MockArtifactStore/MockArtifactSeed/MockArtifactSession`，以 `MockWcpServer({artifacts:{store,session}})` 接入资料创建、追加版本、当前/历史元数据和原上传回执。上传身份 GET 路由可直接通过 transport 使用。显式固定模拟权限，验证原请求键/五项身份/If-Match/长度/SHA-256；原命令重放与历史回执保留原版，异步读取后同步提交有界内存状态。二进制下载、真实存储和运行证据仍缺，详见 [资料上传与版本历史 Mock](../../docs/design/01-contracts/artifact-mock-runtime.md)。仅源码文档人工审阅，未编译、类型检查、测试、执行 SDK/Mock/API 或发布。
+2026-11-04：资料Mock新增 `downloadArtifactVersion` 对应的固定版本内容路由；session显式提供 `download_access:{export_data,export_restricted,policy_allowed}` 才能模拟下载。当前/历史分类、固定摘要/长度、独立单次限制和两并发检查后，复制字节并重新计算SHA-256，返回完整二进制响应头。store保存有界的模拟释放记录，可用 `getDownloadRelease(auditId)` 本地查看副本；不代表持久审计或客户端收妥。seed可选 `max_download_bytes`，导出 `MockArtifactDownloadAccess/MockArtifactDownloadRelease`，详见 [固定版本下载](../../docs/design/01-contracts/artifact-mock-runtime.md#固定版本下载)。仅源码文档人工审阅，未编译、类型检查、测试、执行SDK/Mock/API或发布。
+
+2026-11-04：新增 `MockArtifactStore/MockArtifactSeed/MockArtifactSession`，以 `MockWcpServer({artifacts:{store,session}})` 接入资料创建、追加版本、当前/历史元数据和原上传回执。上传身份 GET 路由可直接通过 transport 使用。显式固定模拟权限，验证原请求键/五项身份/If-Match/长度/SHA-256；原命令重放与历史回执保留原版，异步读取后同步提交有界内存状态。二进制下载已由后续独立增量补齐；真实存储和运行证据仍缺，详见 [资料上传与版本历史 Mock](../../docs/design/01-contracts/artifact-mock-runtime.md)。仅源码文档人工审阅，未编译、类型检查、测试、执行 SDK/Mock/API 或发布。
 
 2026-11-04：同步上传场景新增 `conflict_access:{read,resolve}` 与 `MockSyncConflictAccess`，接入 `listConflicts/getConflict/getConflictCommandContext/submitConflictDecision/resolveConflict/getConflictReceipt`。上传冲突保留双方完整原值，目录分页绑定范围/身份/权限/筛选；解决核对原版本/键/命令，原请求重放不追加事件，原回执保留历史结果。ConflictResolved进入同一流，来源字段及原上传回执不改写；详见 [冲突生命周期 Mock](../../docs/design/01-contracts/conflict-mock-runtime.md)。仅源码文档人工审阅，未编译、类型检查、测试、调用Mock或发布。
 

@@ -11,6 +11,21 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    sdk_artifact_download_mock_development_increment:
+      date: "2026-11-04"
+      status: "Source-only pinned artifact binary downloads and in-memory release observations; R-001 remains incomplete."
+      artifacts:
+        - "packages/sdk/src/mock-artifacts.ts"
+        - "packages/sdk/src/index.ts"
+        - "docs/design/01-contracts/artifact-mock-runtime.md"
+      behavior: "Explicit export/policy configuration governs the fixed-version binary route. Validate current/historical classification and pinned descriptor, enforce independent download limits/two active operations, hash copied stored bytes, recheck visibility/expiry/cancellation after awaiting, validate full headers, then synchronously record a bounded simulated release before returning. Store-owner inspection returns detached records, repeated downloads have distinct IDs, and upload history/receipts remain unchanged."
+      evidence: []
+      pending_evidence:
+        - "Existing SDK metadata/download/hash flow, fixed historical bytes, descriptor conflicts, ordinary/restricted export and opt-in behavior"
+        - "Zero bytes, configured/response limits, download concurrency, release count/byte capacity, cancellation and expiry without release"
+        - "Concurrent append preservation, detached content/observations, complete headers and original identity/trace/version release binding"
+      remaining_scope: "Denied/transport audit simulation, dynamic visibility, persistence/recovery, actual Policy/OPA/audit/storage, network outcomes and other public Mock routes."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, Mock/SDK/API/database execution or release. No schema or dependency change."
     sdk_artifact_mock_development_increment:
       date: "2026-11-04"
       status: "Source-only artifact upload/history/receipt Mock; full WCP coverage and R-001 remain incomplete."
@@ -25,7 +40,7 @@ requirements:
         - "SDK multipart compatibility, original command replay/history, identity/classification isolation and byte/hash validation"
         - "Concurrent identical keys or expected versions, returned data isolation and unchanged state on response/capacity/cancellation/expiry failure"
         - "Optional routing compatibility and simulated upload identity envelope"
-      remaining_scope: "Binary downloads and simulated release records, seed/restore, dynamic visibility, true authentication/Policy/audit/database/object storage, network uncertainty and other WCP Mock routes."
+      remaining_scope: "Binary downloads and simulated release records are covered by the separate download increment. Seed/restore, dynamic visibility, true authentication/Policy/audit/database/object storage, network uncertainty and other WCP Mock routes remain incomplete."
       execution: "Source/docs and manual review only; no build, typecheck, tests, Mock/SDK/API/product/database execution or release. No schema or dependency change."
     sdk_sync_conflict_mock_development_increment:
       date: "2026-11-04"
