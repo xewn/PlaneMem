@@ -38,6 +38,12 @@ import {
   parseProposalQueueBackupListQuery,
   prepareProposalQueueBackupReceiptQuery,
 } from './proposal-queue-backup-access.js';
+import {
+  getProposalQueueBackupGeneration,
+  listProposalQueueBackupGenerations,
+  parseProposalQueueBackupGenerationQuery,
+  parseProposalQueueBackupGenerationSelection,
+} from './proposal-queue-backup-generation.js';
 import { restoreProposalQueueBackup } from './proposal-queue-restore.js';
 import {
   proposalQueueBackupSummary,
@@ -104,6 +110,8 @@ const help = `Proposal submission queue (Node.js 24)
   proposal-worker queue-backup-list --file BACKUP.json [--state all|queued|sending|retry|blocked|submitted] [--limit 25] [--before JOB_ID --sha256 BACKUP_SHA256]
   proposal-worker queue-backup-get --file BACKUP.json --sha256 BACKUP_SHA256 --id JOB_ID
   proposal-worker queue-backup-receipt-query --file BACKUP.json --sha256 BACKUP_SHA256 --id JOB_ID --output NEW_QUERY.json
+  proposal-worker queue-backup-generation-list --file BACKUP.json --sha256 BACKUP_SHA256 --id JOB_ID [--after RECORD_SHA256] [--limit 10]
+  proposal-worker queue-backup-generation-get --file BACKUP.json --sha256 BACKUP_SHA256 --id JOB_ID --record-sha256 RECORD_SHA256 [--output NEW_RECORD.json]
   proposal-worker queue-backup-recover --file RETAINED_BACKUP_OR_ERROR.json --output NEW_BACKUP.json [--preview]
   proposal-worker queue-backup-compare --queue EXISTING.sqlite --binding binding.json --file BACKUP.json
   proposal-worker queue-backup-restore --file BACKUP.json --binding binding.json --output NEW_QUEUE.sqlite --preview
@@ -122,6 +130,7 @@ list/get open an existing initialized queue read-only; missing files are never c
 queue-backup saves a complete known-v1 logical snapshot after read-only queue close; inspect-queue-backup validates it offline. Neither restores, retries or sends tasks.
 queue-backup-list/get inspect the complete backup offline before selecting historical jobs; continuations and selections bind its digest. get includes original content and copied leases, not current task authority.
 queue-backup-receipt-query saves the selected original identity/key/draft query as a new file for an explicit later receipt lookup at the original gateway. It never opens a queue, queries a receipt or sends a task.
+queue-backup-generation-list/get recover original generation records from a fully verified backup and job. Optional get output saves a standalone record for inspect-generation, without model calls or queue access.
 queue-backup-recover saves a retained complete snapshot to a new file; --preview only inspects input and destination. Neither mode opens or restores a queue.
 queue-backup-compare compares a complete backup with a read-only existing queue snapshot, then closes before reporting metadata differences. It never restores or sends; exit 0 also permits differences.
 queue-backup-restore creates a new queue after digest confirmation. Every non-submitted task becomes blocked/uncertain; old leases are cleared only in the new copy. Preview creates nothing. Keep the original backup.
@@ -173,6 +182,7 @@ export async function main(args: string[]): Promise<number> {
         state: { type: 'string' },
         'timeout-ms': { type: 'string' },
         'confirm-sha256': { type: 'string' },
+        'record-sha256': { type: 'string' },
       },
     });
     const command = positionals[0];
@@ -198,6 +208,8 @@ export async function main(args: string[]): Promise<number> {
       'queue-backup-list': ['file', 'state', 'limit', 'before', 'sha256'],
       'queue-backup-get': ['file', 'sha256', 'id'],
       'queue-backup-receipt-query': ['file', 'sha256', 'id', 'output'],
+      'queue-backup-generation-list': ['file', 'sha256', 'id', 'after', 'limit'],
+      'queue-backup-generation-get': ['file', 'sha256', 'id', 'record-sha256', 'output'],
       'queue-backup-recover': ['file', 'output', 'preview'],
       'queue-backup-compare': ['file'],
       'queue-backup-restore': ['file', 'binding', 'output', 'preview', 'confirm-sha256'],
@@ -224,6 +236,8 @@ export async function main(args: string[]): Promise<number> {
             'queue-backup-list',
             'queue-backup-get',
             'queue-backup-receipt-query',
+            'queue-backup-generation-list',
+            'queue-backup-generation-get',
             'queue-backup-recover',
             'queue-backup-restore',
             'receipt-record-recover',
@@ -314,6 +328,68 @@ export async function main(args: string[]): Promise<number> {
           JSON.stringify(
             {
               code: 'PROPOSAL_QUEUE_BACKUP_QUERY_EXPORT_FAILED',
+              recovery,
+              output: {
+                output_path: outputPath,
+                export_phase: exportPhase,
+                ...(error instanceof ContractError ? error.envelope.details : {}),
+              },
+            },
+            null,
+            2,
+          ) + '\n',
+        );
+        return 1;
+      }
+      process.stdout.write(JSON.stringify(report, null, 2) + '\n');
+      return 0;
+    }
+    if (command === 'queue-backup-generation-list') {
+      if (
+        values.limit !== undefined &&
+        (!/^[1-9]\d?$/.test(values.limit) || values.limit !== String(Number(values.limit)))
+      )
+        throw new TypeError('--limit must be between 1 and 20');
+      const query = parseProposalQueueBackupGenerationQuery({
+        backup_sha256: required('sha256'),
+        job_id: required('id'),
+        limit: values.limit === undefined ? 10 : Number(values.limit),
+        after: values.after ?? null,
+      });
+      const backup = await readProposalQueueBackup(required('file'));
+      process.stdout.write(
+        JSON.stringify(listProposalQueueBackupGenerations(backup, query), null, 2) + '\n',
+      );
+      return 0;
+    }
+    if (command === 'queue-backup-generation-get') {
+      const selection = parseProposalQueueBackupGenerationSelection({
+        backup_sha256: required('sha256'),
+        job_id: required('id'),
+        record_sha256: required('record-sha256'),
+      });
+      const target = values.output === undefined ? undefined : required('output');
+      const backup = await readProposalQueueBackup(required('file'));
+      const recovery = getProposalQueueBackupGeneration(backup, selection);
+      if (target === undefined) {
+        process.stdout.write(JSON.stringify(recovery, null, 2) + '\n');
+        return 0;
+      }
+      let outputPath = target;
+      let exportPhase = 'prepare';
+      let report: unknown;
+      try {
+        const destination = await prepareGenerationOutput(target);
+        outputPath = destination.path;
+        exportPhase = 'save';
+        const saved = await saveProposalGenerationRecord(destination, recovery.record);
+        const { record: _record, ...summary } = recovery;
+        report = { ...summary, output: { ...saved, format: 'proposal-generation' } };
+      } catch (error) {
+        process.stderr.write(
+          JSON.stringify(
+            {
+              code: 'PROPOSAL_QUEUE_BACKUP_GENERATION_EXPORT_FAILED',
               recovery,
               output: {
                 output_path: outputPath,

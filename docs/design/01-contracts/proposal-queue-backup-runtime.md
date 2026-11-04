@@ -62,6 +62,22 @@ receipt-query从备份原binding取五字段identity，从所选任务取原requ
 
 纯函数listProposalQueueBackupJobs/getProposalQueueBackupJob/prepareProposalQueueBackupReceiptQuery及两种查询解析器同步重新核验输入，不访问文件、数据库或远端；CLI在其外层执行明确文件读取/保存。没有新备份格式、数据库schema、依赖或服务器API，仅源码文档及人工审阅，未编译、类型检查、测试、运行CLI/产品/SQL/数据库或发布。
 
+## 备份生成记录目录与独立导出
+
+2026-11-04 增量：`queue-backup-generation-list --file BACKUP.json --sha256 BACKUP_SHA256 --id JOB_ID [--after RECORD_SHA256] [--limit 10]`在固定备份和任务下分页查找生成关联；`queue-backup-generation-get --file BACKUP.json --sha256 BACKUP_SHA256 --id JOB_ID --record-sha256 RECORD_SHA256 [--output NEW_RECORD.json]`读取或独立保存一份完整生成记录。这里sha256始终指整份备份摘要，record-sha256或after指原生成记录摘要；与已有活动队列generation-get的sha256参数含义分开，命令说明明确区分。拒绝未知、重复、不适用选项及queue/binding/provider/凭据参数。
+
+列表查询严格包含必需backup_sha256/job_id，可选limit/after；默认10，最多20，after为可空的完整小写摘要。每次先完整核验32 MiB、100任务/100关联范围内全部源数据、原绑定、每个生成内外摘要与父任务草稿一致性，再定位父任务。缺父任务失败；父任务存在但可选关联表缺失或其关联为空时返回空页，generation_history_present仍区分原表不存在和存在但空。after必须实际属于所选任务的关联，其他任务记录、换备份或不存在的位置均拒绝；次序按摘要升序，排他续读，与生成时间排序无关。
+
+目录只显示record_sha256、preparation_sha256、attached_at、generated_at、原trace、请求/返回模型、prompt_version、classification与source_count，不打印草稿、来源正文、原请求键或租约。total_records为该任务在这份备份内的完整关联数；get_query固定备份摘要/任务/记录摘要，next_query保留原备份/任务/limit，仅更新after，最后一页为null。所选之外的源损坏也阻止返回，不因分页隐藏损坏记录。
+
+get使用严格三字段选择，只接受与原父任务相连的记录。再次解析为完整proposal-generation v1并核对摘要，返回原preparation/provider/generation和sha256，保留原来源摘录、模型结果、提示版本、草稿、时间及trace；不能凭历史模型结果证明来源当前有效。报告包含原备份摘要/捕获时间/完整绑定、任务ID、关联时间和记录摘要，继续标记file-consistency-only、queue_access=none、current_queue/current_remote=not-checked、restoration=not-performed。缺项失败，不创建输出或自动寻找另一任务的同摘要记录。
+
+未给output时标准输出为完整审阅报告；给output时先完整核验源和选择，再准备已有目录中的独占新目标，沿用saveProposalGenerationRecord的2 MiB上限与完整内外摘要检查、写入/同步/读回、目标不覆盖发布及最终读回。保存的是既有独立proposal-generation文件，格式化空白与存储中的规范JSON字符串可不同，但完整文档与原摘要保持；不改观察/生成时间。可接`proposal-worker inspect-generation --file NEW_RECORD.json`离线检查。关联时间、备份/任务来源不属于该独立格式，保留在成功报告和原备份中，不注入额外字段改变原记录摘要。该文件不是完整队列备份或发送授权，不会自动入队、重放生成请求或恢复数据库。
+
+成功导出标准输出仅来源/记录摘要及保存结果；准备或保存失败返回PROPOSAL_QUEUE_BACKUP_GENERATION_EXPORT_FAILED，保留完整recovery.record、原绑定/备份/任务/关联和prepare/save阶段，底层错误保留可能已发布状态与临时路径。源/选择失败不输出部分记录；原备份仍可用于同一选择另存新目标，不自动覆盖或清理旧文件，失败封套不能直接当生成记录文件使用。退出0仅说明离线读取或保存完成，退出1表示失败。
+
+纯函数及解析器在proposal-queue-backup-generation中复用完整父任务取用，不打开文件、数据库或网络；CLI只执行明确的文件读取/保存，不读取令牌、不调用模型/网关、不回收租约/清除未知。无新文件格式、schema或依赖；仅源码文档人工审阅，未编译、类型检查、测试、运行CLI/产品/SQL/数据库或发布。独立生成请求日志联合备份、自动保留管理及运行证据仍缺。
+
 ## 与现有队列只读比较
 
 `proposal-worker queue-backup-compare --queue EXISTING.sqlite --binding binding.json --file BACKUP.json` 先完整核验备份文件，再核对指定绑定与备份原网关/项目/actor/client 完全一致，随后原生只读打开已有目标。目标复用完整快照读取路径：同读事务核对原绑定、已知结构、全部任务和生成关联，计数/大小预检后完整读取；双方分别受 100 任务、100 关联、32 MiB 限制，目标超限或损坏不降级为部分比较。缺库不初始化，可选生成关联表不创建。目标关闭确认后才计算并输出比较结果。

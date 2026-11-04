@@ -3821,6 +3821,25 @@ requirements:
         - "Manual-operation pause, exact removal without writer resurrection, export compatibility and explicit backup scope"
       remaining_scope: "Automatic-copy batch backup/cleanup and retention, review-draft autosave, cross-scope or remote drafts, and runtime/compatibility evidence."
       execution: "Source/docs and manual review only; no build, typecheck, tests, product/browser/database execution or release. Separate browser v1 schema source only; no server schema or dependency changes."
+    proposal_queue_backup_generation_development_increment:
+      date: "2026-11-04"
+      status: "Source-only offline generation-record discovery and standalone export from queue backups; R-009 remains incomplete."
+      artifacts:
+        - "workers/intelligence/src/proposal-queue-backup-generation.ts"
+        - "workers/intelligence/src/main.ts"
+        - "workers/intelligence/src/index.ts"
+        - "workers/intelligence/README.md"
+        - "docs/design/01-contracts/proposal-queue-backup-runtime.md"
+        - "docs/design/01-contracts/proposal-generation-runtime.md"
+      behavior: "Generation list/get bind the complete backup digest and original job before selecting associated records. Every operation validates all backup jobs/associations first, including unselected content. Metadata pages use original record-digest ascending order, default 10/max 20, exact same-parent positions and retained next queries. Get returns the original complete generation record; optional export reuses its 2 MiB standalone format, original source/model/draft/time/trace/digests and exclusive file publication with full readback. Association provenance stays in the report and source backup. Save failures retain the complete record and phases. No queue/network/model/credential access, enqueueing, receipt lookup or resending occurs."
+      evidence: []
+      pending_evidence:
+        - "Whole-backup and parent-association validation, wrong backup/job/record digests, absent parents/records and unrelated corruption"
+        - "Ascending metadata pages, limits, same-parent continuation positions, empty optional history and exact next selections"
+        - "Standalone record compatibility, unchanged timestamps/digests, 2 MiB bounds, no overwrite, output readback and complete failure retention"
+        - "Strict CLI option and duplicate rejection, offline early return and unchanged existing generation commands"
+      remaining_scope: "Independent journal combined backup, automatic retention and runtime/compatibility evidence. Historical model output does not establish current source validity or permission to resend."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/product/SQL/database execution or release. No schema, file format or dependency changes."
     proposal_queue_backup_access_development_increment:
       date: "2026-11-04"
       status: "Source-only offline queue-backup browsing, full job inspection and original receipt-query export; R-009 remains incomplete."

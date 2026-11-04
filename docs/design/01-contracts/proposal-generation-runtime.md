@@ -6,6 +6,8 @@
 
 ## 配置与操作
 
+已有队列备份也可通过[生成记录离线取回](proposal-queue-backup-runtime.md#备份生成记录目录与独立导出)查找同任务的原记录并单独导出，保持本节的proposal-generation v1及原摘要/时间/来源，不重新调用模型。来源备份/任务/关联时间保留在取回报告中，导出文件可交给既有inspect-generation；本能力仅源码，未运行验证。
+
 来源也可先通过 [prepare-generation](proposal-generation-sources-runtime.md) 从网关按指定条目/版本读取。该独立命令核对原账号/客户端及当前读取权限，保存兼容本节 sources.json 的完整输入；生成步骤本身仍只使用已经准备的文件，不重新读取网关。
 
 提供独立 provider.json，包含完整端点、明确的模型标识及允许发送的数据分类上限。下例只有配置形状，模型值必须替换成部署支持的标识；本轮没有创建或执行示例文件：
