@@ -9,7 +9,11 @@ import { prepareObservedRead, observedReadResult } from './observed.js';
 import { isWorkItemReadCommand, runWorkItemRead } from './work-item-reads.js';
 import { isContextReadCommand, runContextRead } from './context-history.js';
 import { runContextCompile } from './context-pack-compile.js';
-import { inspectContextPackOriginal, runContextPackSaveReceipt } from './context-pack-original.js';
+import {
+  inspectContextPackOriginal,
+  runContextPackSaveReceipt,
+  runContextPackPrepareSave,
+} from './context-pack-original.js';
 import {
   inspectContextPackReceipt,
   extractContextPackReceiptOriginal,
@@ -298,6 +302,7 @@ export async function runWorkctx(
     'context list-packs': 'context.pack.list',
     'context save-identity': 'context.pack.save-context',
     'context save-receipt': 'context.pack.save-receipt',
+    'context prepare-save': 'context.pack.original.prepare',
     'context inspect-save': 'context.pack.original.inspect',
     'context inspect-receipt': 'context.pack.receipt.inspect',
     'context extract-original': 'context.pack.receipt.extract-original',
@@ -381,6 +386,10 @@ export async function runWorkctx(
       }),
     };
   try {
+    if (command === 'context prepare-save') {
+      const result = await runContextPackPrepareSave(argv, router, context, options.gateway_url);
+      return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
+    }
     if (command === 'context save-receipt') {
       const result = await runContextPackSaveReceipt(argv, router, context, options.gateway_url);
       return {

@@ -1,5 +1,7 @@
 # 持久化 ContextPack 开发说明
 
+2026-11-05新增[内嵌CLI原请求准备](#内嵌cli原请求准备2026-11-05源码增量)：runWorkctx读取宿主可信身份后，将完整原请求独占保存并读回；网络和内嵌共用文件流程，准备不提交保存。仅源码文档，未编译、类型检查、测试、执行CLI/文件流程/API或发布。
+
 2026-11-05新增[内嵌CLI原保存回执查询](#内嵌cli原保存回执查询2026-11-05源码增量)：宿主提供实际Gateway后，runWorkctx复用完整原文件、原身份/权限约束、只读历史查询及可选回执留存，不调用保存。仅源码文档，未编译、类型检查、测试、执行CLI/文件流程/API或发布。
 
 2026-11-05新增[Mock原保存回执查询](context-pack-mock-runtime.md#原保存请求历史回执2026-11-05源码增量)：显式保存场景按原身份/权限桶/键/参数观察历史，不激活pending，不核对当前正文/来源或期限；已保存但返回失败的结果仍可查询。仅源码文档，未编译、类型检查、测试、执行Mock/SDK/API或发布。
@@ -991,3 +993,26 @@ const result = await runWorkctx(
 无output直接返回原完整历史封套；recorded和not-observed均为成功观察，退出0，后者不证明原保存失败。指定output与网络入口共用finishReceiptObservation和既有完整捕获：查询结束后记录观察时间/原文/历史回执/规范document摘要，在新路径独占发布、同步并完整读回。查询期限不竞速本地文件发布；本地失败保留完整观察和已构造候选、local.state=save-failed并退出1，可继续离线recover-receipt。用法错误退出2，配置/身份/查询错误退出1且明确未派发保存；stdout交付和文件I/O不在查询期限内。
 
 本增量补齐内嵌CLI在线原保存回执源码接线；网络命令的输出形状与文件格式不变。内嵌prepare-save/submit-save、独立Schema/OpenAPI及真实客户端兼容仍待补。R-003未完成、evidence为空，旧调用兼容、Gateway含路径匹配、完整身份/权限拒绝、精确传输适配、授权延迟/取消/到期/占槽、完整返回与文件留存失败恢复均缺运行证据。仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/文件流程/API/数据库或发布；无生产Gateway、SDK、共享格式、Web/MCP/Mock、依赖或迁移变化。
+
+## 内嵌CLI原请求准备（2026-11-05源码增量）
+
+runWorkctx新增`context prepare-save --key ORIGINAL_KEY --output NEW_ORIGINAL.json [--json-file DRAFT.json] [--timeout-ms 30000]`。此增量补齐上节待开发的内嵌准备入口；内嵌submit-save仍待开发。旧三参数调用保持兼容，新准备入口要求第四参数中的gateway_url来自宿主实际router部署配置，包含部署路径；缺失或无效配置拒绝。宿主负责保证该地址与router对应，原文件和CLI参数不能替换它。
+
+下面仅为未执行的宿主接线示例，router、verifiedContext、actualGatewayBase及originalKey均须来自宿主的实际配置或明确输入：
+
+```ts
+const result = await runWorkctx(
+  ['context', 'prepare-save', '--key', originalKey, '--output', newOriginalPath],
+  router,
+  verifiedContext,
+  { gateway_url: actualGatewayBase },
+);
+```
+
+进入时复制可信上下文，清除继承的idempotency_key/expected_version/if_match，要求schema_version=1、authenticated_client=true、实际context.read、未过期会话及完整合法身份/trace。原键必须明确提供；拒绝重复或不相关参数、stdin与内联JSON。先预检已有目录中的新输出路径，再读取可选最多4 KiB稳定UTF-8草稿；草稿仅接受budget_tokens/ttl_seconds，省略沿共享默认值4096/3600，输入失败不查询身份或创建目标文件。
+
+身份查询复用runContextRead的save-identity入口及SDK完整16 KiB封套解析，精确适配到context.pack.save-context，复核五字段身份、restricted权限桶和可信会话到期时间。沿现有每router两读容量，直到实际底层工作结束才释放。context-history新增单调截止检查，在传输开始、保存身份授权等待后及返回解析阶段检查期限；默认30秒，可显式timeout-ms。文件预检、读取、发布与读回不计入身份查询期限，也不以查询计时器中断本地发布；发布前再次检查身份到期。已开始的底层读取仍无强制撤销保证。
+
+网络和内嵌入口共用prepareOriginalFile：按相同8 KiB格式固定Gateway、完整身份、权限、原键与参数，计算规范原文SHA-256，独占发布并同步，随后完整读回核对字节及原文。成功stdout保持schema_version/trace_id/source_refs及data.status=prepared、original_file、完整original、request_sha256、identity_observed_expires_at、local_state=saved-and-read-back、next_action=review-original-file和清理信息。准备不会预留键或发送保存包请求，compile_dispatch_state=not-sent、server_outcome=not-checked；可继续inspect-save审阅，并由后续明确操作决定提交。
+
+发布失败保留可用恢复路径；已发布但读回失败返回published-unconfirmed并保留目标与临时路径信息，不宣称服务端保存成功。成功退出0，用法错误2，配置/身份/读取或文件失败1。原网络准备输出和既有回执入口保持，文件格式不变。R-003仍未完成、evidence为空；身份/期限/容量、网络兼容、文件失败恢复与真实宿主接线均缺运行证据。仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/文件流程/API/数据库或发布；无生产Gateway、SDK、共享格式、其他客户端、依赖或迁移变化。

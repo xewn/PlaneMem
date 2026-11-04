@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [内嵌CLI原请求准备](docs/design/01-contracts/context-pack-runtime.md#内嵌cli原请求准备2026-11-05源码增量)：宿主配置实际网关后，runWorkctx可读取可信身份，将完整保存原请求写入新文件并读回，供后续审阅；与网络入口共用格式，不发送保存包请求。仅源码文档，未编译、测试、执行CLI或发布。
+
 新增 [内嵌CLI原保存回执查询](docs/design/01-contracts/context-pack-runtime.md#内嵌cli原保存回执查询2026-11-05源码增量)：宿主明确配置实际网关后，runWorkctx可从完整原请求文件只读查询历史，并可显式留存回执；保留原身份和权限，未观察到记录不会触发保存。仅源码文档，未编译、测试、执行CLI或发布。
 
 新增 [Mock原保存回执查询](docs/design/01-contracts/context-pack-mock-runtime.md#原保存请求历史回执2026-11-05源码增量)：模拟服务可按原身份、请求键和参数查询保存历史，区分未保存场景与已记录结果；查询不保存包，也不把历史回执当作当前内容有效的证明。仅源码文档，未编译、测试、执行Mock或发布。

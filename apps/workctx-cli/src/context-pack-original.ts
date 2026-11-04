@@ -14,18 +14,21 @@ import {
   packGateway,
   parseContextPackCompileParameters,
   parseContextPackSaveReceiptEnvelope,
+  parseContextPackSaveContextEnvelope,
   parsePackSaveBinding,
   parsePackSaveOriginal,
   validateIdempotencyKey,
   validateRequestContext,
   syncJsonSnapshot,
   type ContextPackSaveReceiptEnvelope,
+  type ContextPackSaveContextEnvelope,
   type PackSaveBinding,
   type PackSaveOriginal,
 } from '@planemem/contracts';
 import { FetchWcpTransport, WcpClient, type WcpRequest, type WcpTransport } from '@planemem/sdk';
 import type { CommandRouter, RequestContext } from '@planemem/api-gateway';
 import { readBoundedArtifactFile } from './artifact-files.js';
+import { runContextRead } from './context-history.js';
 import {
   prepareArtifactOutput,
   saveArtifactOutput,
@@ -418,19 +421,12 @@ async function finishReceiptObservation(
 const activeReceiptReads = new WeakMap<CommandRouter, { active: number }>();
 
 /** The host supplies the actual router's gateway; an original file cannot select its destination. */
-export async function runContextPackSaveReceipt(
-  argv: string[],
-  router: CommandRouter,
-  input: RequestContext,
-  gatewayUrl: string | undefined,
-) {
+function embeddedOriginalAuthority(input: RequestContext, gatewayUrl: string | undefined) {
   const context = structuredClone(input);
   delete context.idempotency_key;
   delete context.expected_version;
   Reflect.deleteProperty(context, 'if_match');
   const trace = context.trace_id;
-  const args = argumentsFor(argv, trace);
-  if (args.mode !== 'save-receipt') throw invalid(trace);
   const authority = () => {
     const expiry = Date.parse(context.token_expires_at ?? '');
     if (
@@ -453,7 +449,7 @@ export async function runContextPackSaveReceipt(
   } catch {
     throw fail(
       'CONTEXT_PACK_GATEWAY_UNAVAILABLE',
-      'Configure the embedded host with its actual gateway URL before querying original save receipts.',
+      'Configure the embedded host with its actual gateway URL before using original save requests.',
       trace,
     );
   }
@@ -473,6 +469,18 @@ export async function runContextPackSaveReceipt(
   } catch {
     throw fail('DENIED', 'The complete verified reader identity could not be confirmed.', trace);
   }
+  return { context, trace, binding, authority };
+}
+
+export async function runContextPackSaveReceipt(
+  argv: string[],
+  router: CommandRouter,
+  input: RequestContext,
+  gatewayUrl: string | undefined,
+) {
+  const args = argumentsFor(argv, input.trace_id);
+  if (args.mode !== 'save-receipt') throw invalid(input.trace_id);
+  const { context, trace, binding, authority } = embeddedOriginalAuthority(input, gatewayUrl);
   const saved = await originalFile(args.file!, trace);
   authority();
   try {
@@ -595,6 +603,58 @@ export async function runContextPackSaveReceipt(
   return finishReceiptObservation(saved.original, receipt, output, trace);
 }
 
+export async function runContextPackPrepareSave(
+  argv: string[],
+  router: CommandRouter,
+  input: RequestContext,
+  gatewayUrl: string | undefined,
+) {
+  const args = argumentsFor(argv, input.trace_id);
+  if (args.mode !== 'prepare-save') throw invalid(input.trace_id);
+  const { context, trace, binding, authority } = embeddedOriginalAuthority(input, gatewayUrl);
+  return prepareOriginalFile(args, binding.gateway_url, trace, async () => {
+    authority();
+    let response;
+    try {
+      response = await runContextRead(
+        ['context', 'save-identity', '--timeout-ms', String(args.timeout)],
+        router,
+        context,
+      );
+      authority();
+    } catch (error) {
+      const envelope = error instanceof ContractError ? error.envelope : undefined;
+      throw fail(
+        envelope?.trace_id === trace && knownErrors.has(envelope.code)
+          ? envelope.code
+          : 'GATEWAY_UNAVAILABLE',
+        'Save identity could not be confirmed. No original file was published and no pack save was sent.',
+        trace,
+      );
+    }
+    try {
+      const result = parseContextPackSaveContextEnvelope(response, binding.identity, trace);
+      assertPackSaveBinding(
+        {
+          gateway_url: binding.gateway_url,
+          identity: result.data.identity,
+          read_restricted: result.data.permissions.read_restricted,
+        },
+        binding,
+      );
+      if (Date.parse(result.data.expires_at) !== Date.parse(context.token_expires_at!))
+        throw new TypeError();
+      return result;
+    } catch {
+      throw fail(
+        'GATEWAY_RESPONSE_INVALID',
+        'The complete save identity differs from the verified embedded reader.',
+        trace,
+      );
+    }
+  });
+}
+
 export async function callContextPackOriginal(argv: string[], input: NetworkOptions) {
   const options = structuredClone(input);
   const args = argumentsFor(argv, options.trace);
@@ -689,33 +749,45 @@ export async function callContextPackOriginal(argv: string[], input: NetworkOpti
     });
   }
 
+  return prepareOriginalFile(args, options.base, options.trace, () =>
+    network(options, args.timeout, undefined, async (client, state) => {
+      const result = await client.getContextPackSaveContext({
+        timeout_ms: state.remaining(),
+        signal: state.signal,
+      });
+      state.acceptAuthority(result.data.expires_at);
+      return result;
+    }),
+  );
+}
+
+async function prepareOriginalFile(
+  args: ReturnType<typeof argumentsFor>,
+  base: string,
+  trace: string,
+  readAuthority: () => Promise<ContextPackSaveContextEnvelope>,
+) {
+  if (args.mode !== 'prepare-save') throw invalid(trace);
   // Preflight local paths and draft before reading authority; no file is created yet.
-  const output = await prepareArtifactOutput(args.output!, options.trace);
+  const output = await prepareArtifactOutput(args.output!, trace);
   let parameters;
   try {
     const draft =
       args.file === undefined
         ? '{}'
         : new TextDecoder('utf-8', { fatal: true }).decode(
-            await readBoundedArtifactFile(args.file, 4096, options.trace),
+            await readBoundedArtifactFile(args.file, 4096, trace),
           );
     parameters = parseContextPackCompileParameters(JSON.parse(draft.replace(/^\uFEFF/, '')));
   } catch {
-    throw invalid(options.trace);
+    throw invalid(trace);
   }
-  const authority = await network(options, args.timeout, undefined, async (client, state) => {
-    const result = await client.getContextPackSaveContext({
-      timeout_ms: state.remaining(),
-      signal: state.signal,
-    });
-    state.acceptAuthority(result.data.expires_at);
-    return result;
-  });
+  const authority = await readAuthority();
   const original: PackSaveOriginal = parsePackSaveOriginal({
     schema_version: 1,
     kind: 'context-pack-save',
     binding: {
-      gateway_url: options.base,
+      gateway_url: base,
       identity: authority.data.identity,
       read_restricted: authority.data.permissions.read_restricted,
     },
@@ -726,32 +798,28 @@ export async function callContextPackOriginal(argv: string[], input: NetworkOpti
   const bytes = new TextEncoder().encode(raw);
   const requestHash = hash(bytes);
   if (Date.parse(authority.data.expires_at) <= Date.now())
-    throw fail(
-      'UNAUTHENTICATED',
-      'Identity expired before local request preparation.',
-      options.trace,
-    );
+    throw fail('UNAUTHENTICATED', 'Identity expired before local request preparation.', trace);
   let published;
   try {
     // Once local publication begins, await settlement. A timer must not report failure before a late write.
-    published = await saveArtifactOutput(output, bytes, requestHash, options.trace);
+    published = await saveArtifactOutput(output, bytes, requestHash, trace);
   } catch (error) {
     throw fail(
       'CONTEXT_PACK_ORIGINAL_SAVE_FAILED',
       'The original file could not be published. Keep reported recovery paths; no pack save was sent.',
-      options.trace,
+      trace,
       false,
       error instanceof ContractError ? error.envelope.details : { output_path: output.path },
     );
   }
   try {
-    const stored = await originalFile(published.path, options.trace);
+    const stored = await originalFile(published.path, trace);
     if (stored.raw !== raw || !Buffer.from(bytes).equals(stored.bytes)) throw new TypeError();
   } catch {
     throw fail(
       'CONTEXT_PACK_ORIGINAL_READBACK_FAILED',
       'The file was created but its final contents could not be confirmed. Keep it for inspection; no pack save was sent.',
-      options.trace,
+      trace,
       false,
       {
         local_state: 'published-unconfirmed',
@@ -765,7 +833,7 @@ export async function callContextPackOriginal(argv: string[], input: NetworkOpti
   }
   return {
     schema_version: 1,
-    trace_id: options.trace,
+    trace_id: trace,
     source_refs: [],
     data: {
       status: 'prepared',

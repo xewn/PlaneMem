@@ -370,6 +370,7 @@ export async function runContextRead(
   };
   authority();
   const { target, timeout_ms } = await argumentsFor(argv, scope, trace, false);
+  const deadline = performance.now() + timeout_ms;
   if (
     target.expected &&
     (target.expected.actor_id !== context.actor_id ||
@@ -430,6 +431,12 @@ export async function runContextRead(
   const transport: WcpTransport = {
     async request<T = unknown>(request: WcpRequest): Promise<T> {
       const active = () => {
+        if (performance.now() >= deadline)
+          throw new ContractError(
+            'GATEWAY_REQUEST_TIMEOUT',
+            'Stopped waiting for the context read',
+            { trace_id: trace, retryable: false },
+          );
         if (request.signal?.aborted)
           throw new ContractError(
             'GATEWAY_REQUEST_CANCELED',
