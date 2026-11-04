@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [上下文版本对比](docs/design/01-contracts/context-item-runtime.md)：可在历史页选择两个版本，并排查看完整正文、来源、历史确认和属性差异，支持反向对比及返回原浏览位置。仅源码文档，未编译、测试、运行或发布。
+
 新增 [上下文历史完整读取](docs/design/01-contracts/context-item-runtime.md)：网页读取历史时核对条目、版本、分页、来源与快照摘要，超大、不完整或不匹配的响应明确报错。仅源码文档，未编译、测试、运行或发布。
 
 新增 [上下文浏览与历史返回](docs/design/01-contracts/context-item-runtime.md)：版本历史保留原筛选、分页和所选条目，读取失败可重试原页或原版本；无效筛选明确报错。仅源码文档，未编译、测试、运行或发布。

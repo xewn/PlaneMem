@@ -20,6 +20,11 @@ export interface ContextHistoryNavigation {
   version?: number;
   return_href?: string;
 }
+export interface ContextComparisonNavigation {
+  history: ContextHistoryNavigation;
+  from_version?: number;
+  to_version?: number;
+}
 
 const browseFields = [
   'q',
@@ -181,4 +186,34 @@ export function contextHistoryHref(navigation: ContextHistoryNavigation): string
   if (navigation.return_href !== undefined)
     search.set('return_to', browseReturn(navigation.return_href, id));
   return '/context/history?' + search.toString();
+}
+
+/** A partial selection only prefills the form; neither version defaults to the latest. */
+export function parseContextComparisonParams(
+  params: ContextSearchParams,
+): ContextComparisonNavigation {
+  singleValues(params, ['item', 'before', 'version', 'return_to', 'from', 'to']);
+  const { from, to, ...historyParams } = params;
+  const history = parseContextHistoryParams(historyParams);
+  const from_version = positive(from);
+  const to_version = positive(to);
+  return {
+    history,
+    ...(from_version === undefined ? {} : { from_version }),
+    ...(to_version === undefined ? {} : { to_version }),
+  };
+}
+
+export function contextComparisonHref(navigation: ContextComparisonNavigation): string {
+  const search = new URLSearchParams(contextHistoryHref(navigation.history).split('?')[1]);
+  for (const [field, value] of [
+    ['from', navigation.from_version],
+    ['to', navigation.to_version],
+  ] as const) {
+    if (value === undefined) continue;
+    if (!Number.isSafeInteger(value) || value < 1)
+      throw new Error('Choose a positive history version.');
+    search.set(field, String(value));
+  }
+  return '/context/history/compare?' + search.toString();
 }

@@ -1972,6 +1972,20 @@ button:disabled {
 .context-hash {
   overflow-wrap: anywhere;
 }
+.context-comparison-values {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: 16px;
+}
+.context-comparison-values > div {
+  min-width: 0;
+}
+.context-comparison-table td {
+  min-width: 150px;
+  max-width: 360px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .context-pack-form input {
   width: 100%;
 }

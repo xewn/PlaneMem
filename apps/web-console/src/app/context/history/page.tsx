@@ -7,9 +7,11 @@ import {
   parseContextHistoryParams,
   contextHistoryHref,
   contextBrowseHref,
+  contextComparisonHref,
   type ContextHistoryNavigation,
   type ContextSearchParams,
 } from '../navigation';
+import { ContextComparisonForm } from './compare/form';
 
 export default async function ContextHistoryPage({
   searchParams,
@@ -67,6 +69,24 @@ export default async function ContextHistoryPage({
           History starts when snapshots were first captured. A baseline preserves an existing
           version without attributing its original author. Missing versions are not reconstructed.
         </p>
+        {page.versions.length >= 2 && (
+          <Panel title="Compare recorded versions" icon="search">
+            <div className="side-detail">
+              <ContextComparisonForm
+                navigation={{
+                  history: { ...current, version: selectedVersion },
+                  from_version: page.versions[1]!.version,
+                  to_version: page.versions[0]!.version,
+                }}
+                versions={page.versions.map((entry) => entry.version)}
+              />
+              <p className="muted">
+                Choose from this history page. Open a single version below to compare it with a
+                version from another page.
+              </p>
+            </div>
+          </Panel>
+        )}
         <div className="context-layout">
           <Panel title="Recorded versions" icon="context">
             <div className="table-wrap">
@@ -195,6 +215,16 @@ export default async function ContextHistoryPage({
                     prefetch={false}
                   >
                     Link to this version
+                  </Link>{' '}
+                  <Link
+                    className="panel-link"
+                    href={contextComparisonHref({
+                      history: { ...current, version: selected.version },
+                      from_version: selected.version,
+                    })}
+                    prefetch={false}
+                  >
+                    Compare this version
                   </Link>
                 </>
               )}
