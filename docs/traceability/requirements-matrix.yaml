@@ -11,6 +11,24 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    sdk_work_item_mock_development_increment:
+      date: "2026-11-04"
+      status: "Source-only work item directory/detail Mock; R-001 and R-002 remain incomplete."
+      artifacts:
+        - "packages/sdk/src/mock-work-items.ts"
+        - "packages/sdk/src/mock-server.ts"
+        - "packages/sdk/src/index.ts"
+        - "packages/sdk/README.md"
+        - "docs/design/01-contracts/work-item-mock-runtime.md"
+      behavior: "Opt-in immutable scoped work item fixtures connect existing SDK list/detail methods to workbench.query operations. Bound seeds to 1000 items/16 MiB and each item to 256 KiB; preserve original records and exact 3/6-digit UTC times. Explicit copied sessions constrain scope/account/client/expiry/read permission/restricted visibility and a known visible ID set. Filter before paging, order by microsecond update descending and Unicode scalar ID ascending, bind independent Mock cursors to store/session/visibility/all filters while allowing limit changes, and reject unavailable detail records. Return detached complete envelopes with explicit Mock source attribution. Bound headers/body/output, use a 30-second cancelable local budget and two active reads, retaining slots until underlying hash work settles. No automatic pagination or writes."
+      evidence: []
+      pending_evidence:
+        - "Seed/session bounds, exact time precision, original source/version preservation and detached inputs/results"
+        - "Permission/identity/expiry, visibility before pagination, filters and empty/whitespace assignment semantics"
+        - "Mock cursor canonical encoding, store/session/filter isolation, changed limit and database locale differences"
+        - "SDK opt-in routing, request/response limits, cancellation/deadline/capacity and late-result rejection"
+      remaining_scope: "Dynamic records/deletion/permissions, persistence/recovery, real authentication/Policy/audit/SQL ordering and runtime/client evidence; other WCP Mock routes remain incomplete."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, SDK/Mock/CLI/MCP/product/API/database execution or release. No production route, database schema or dependency change."
     artifact_version_comparison_schema_development_increment:
       date: "2026-11-04"
       status: "Source-only standalone artifact comparison schema; R-001 remains incomplete."
@@ -754,7 +772,7 @@ requirements:
         - "Combined permission/filter SQL before limit, complete-page mismatch rejection and real query performance"
         - "v1/v2 compatibility, v3 binding, changed-filter rejection and adjustable page sizes"
         - "SDK/CLI/MCP inputs, Web form interaction, duplicate URL fields, paging/view/detail return paths"
-      remaining_scope: "Runtime/browser/client evidence, source freshness and Mock work-item directory coverage. This only filters saved projections."
+      remaining_scope: "Runtime/browser/client evidence and source freshness. Mock directory/detail source coverage is recorded under R-001; this only filters saved projections."
       execution: "Source/docs and manual review only; no build, typecheck, tests, product/SDK/CLI/MCP/Mock/API/browser/database execution or release. No writes, database schema, migration or dependency change."
     work_item_filter_development_increment:
       date: "2026-11-04"

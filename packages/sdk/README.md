@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-04：新增`MockWorkItemStore/MockWorkItemSeed/MockWorkItemSession`与`MockWcpServer({work_items:{store,session}})`，接入`listWorkItemProjections/getWorkItemProjection`。固定有界投影和显式身份/到期/权限/可见ID集合；列表支持原全部筛选及assignment，微秒排序、独立Mock游标绑定、完整响应复制，不自动翻页或写数据。每store两并发、30秒等待、2 MiB完整输出，直接transport可取消；SDK这两个旧方法没有新增options。JS小写/Unicode排序不宣称真实数据库locale兼容。接线及限制见[工作项Mock](../../docs/design/01-contracts/work-item-mock-runtime.md)。仅源码文档人工审阅，未编译、测试、运行SDK/Mock或发布。
+
 2026-11-04：CLI `artifacts compare`的网络/嵌入入口已复用`compareArtifactVersions`。命令输入另带expected_actor_id/expected_client_id，核对后转成SDK上下文相等约束，SDK查询仍只有artifact_id/from_version/to_version；输出保持SDK本地组合形状，不包装为新的Gateway响应。详见[命令行版本对比](../../docs/design/01-contracts/artifact-versions-runtime.md#命令行版本对比源码阶段)。仅源码文档，未执行SDK/CLI或测试。
 
 2026-11-04：新增`client.compareArtifactVersions({artifact_id, from_version, to_version}, options?)`，两版本必须不同且为正安全整数，保留比较方向；构造上下文必须显式包含project_id、actor_id及client_id，作为两次读取的相等约束。使用WcpArtifactReadOptions，默认30秒总期限/取消，复用两次每份2 MiB的指定历史读取；任何失败不返回部分比较。结果是`WcpArtifactComparisonResult`本地组合对象，含query、identity_constraints、from/to完整原封套和comparison，明确comparison_origin=local/read_consistency=separate-reads/content_state=not-checked，不是新增Gateway响应。根入口另导出`parseArtifactComparisonQuery`、`compareArtifactMetadata`和比较类型，工作台与SDK共用字段/来源位置规则；本地函数不执行网络或认证内容。见[SDK版本对比](../../docs/design/01-contracts/artifact-versions-runtime.md#sdk版本对比源码阶段)。仅源码文档，未编译、测试、执行SDK/Mock或发布。

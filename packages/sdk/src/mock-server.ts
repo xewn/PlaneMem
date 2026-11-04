@@ -1,5 +1,6 @@
 import { ContractError, type ProjectEntity, validateEntity } from '@planemem/contracts';
 import type { WcpRequest, WcpTransport } from './client.js';
+import type { MockWorkItemSession, MockWorkItemStore } from './mock-work-items.js';
 import {
   isMockArtifactPath,
   type MockArtifactSession,
@@ -17,6 +18,7 @@ export interface MockWcpServerOptions {
   artifacts?: { store: MockArtifactStore; session: MockArtifactSession };
   sync?: { store: MockSyncStore; session: MockSyncSession };
   proposals?: { store: MockProposalStore; session: MockProposalSession };
+  work_items?: { store: MockWorkItemStore; session: MockWorkItemSession };
 }
 
 export class MockWcpServer implements WcpTransport {
@@ -24,15 +26,23 @@ export class MockWcpServer implements WcpTransport {
   private readonly sync: WcpTransport | undefined;
   private readonly proposals: WcpTransport | undefined;
   private readonly artifacts: WcpTransport | undefined;
+  private readonly workItems: WcpTransport | undefined;
 
   constructor(private readonly options: MockWcpServerOptions = {}) {
     this.sync = options.sync?.store.connect(options.sync.session);
     this.proposals = options.proposals?.store.connect(options.proposals.session);
     this.artifacts = options.artifacts?.store.connect(options.artifacts.session);
+    this.workItems = options.work_items?.store.connect(options.work_items.session);
   }
 
   async request<T = unknown>(request: WcpRequest): Promise<T> {
     this.options.onRequest?.(request);
+    if (
+      this.workItems &&
+      typeof request.path === 'string' &&
+      request.path.split('?')[0] === '/v1/workbench/query'
+    )
+      return this.workItems.request<T>(request);
     if (this.artifacts && isMockArtifactPath(request.path))
       return this.artifacts.request<T>(request);
     if (this.sync && isMockSyncPath(request.path)) return this.sync.request<T>(request);

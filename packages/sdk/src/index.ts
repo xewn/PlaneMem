@@ -1,6 +1,11 @@
 export * from './client.js';
 export * from './mock-server.js';
 export {
+  MockWorkItemStore,
+  type MockWorkItemSeed,
+  type MockWorkItemSession,
+} from './mock-work-items.js';
+export {
   MockArtifactStore,
   type MockArtifactDownloadAccess,
   type MockArtifactDownloadRelease,

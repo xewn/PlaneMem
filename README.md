@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [工作项目录与详情 Mock](docs/design/01-contracts/work-item-mock-runtime.md)：可选固定数据集和模拟权限，支持现有 SDK 列表、详情、组合筛选和显式续页，保留原记录并返回独立副本。仅源码文档，未编译、测试、运行 Mock 或发布。
+
 新增 [工作项负责人分配筛选](docs/design/01-contracts/work-item-projection-runtime.md#负责人分配状态筛选2026-11-04仅源码)：工作台、SDK、CLI 和 MCP 可筛选有无保存的负责人，支持与状态、优先级组合，翻页及详情返回保留条件。仅源码文档，未编译、测试、运行或发布。
 
 新增 [文件版本比较独立 Schema](packages/contracts/schemas/README.md#文件版本比较)：覆盖共享查询、CLI身份条件、两份历史记录和完整差异结果，可通过contracts包子路径引用。结构校验与真实身份、原请求及差异重算的边界已注明；仅源码文档，未编译、执行校验器、测试或发布。

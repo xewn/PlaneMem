@@ -1,5 +1,7 @@
 # 工作项投影详情（开发状态）
 
+2026-11-04：SDK已另补可选[工作项目录与详情Mock](work-item-mock-runtime.md)，用固定数据集、模拟权限和独立游标接入现有列表/详情方法。没有真实数据库、Plane来源刷新或权限审计，生产游标与Mock游标不能互换；仅源码文档，未运行验证。
+
 2026-11-02：本批仅修改源码和文档，未编译、类型检查、测试、运行服务、执行迁移或发布。不代表已有运行验证。
 
 ## 读取入口
@@ -42,7 +44,7 @@ priority 只接受 `P0/P1/P2/P3`，大小写精确。owner 是本地投影中保
 
 新增可选`assignment: 'assigned' | 'unassigned'`和共享枚举WORK_ITEM_ASSIGNMENTS。共享解析接受省略或空串为不过滤，拒绝其他大小写、空白、null、布尔和数组；MCP schema只接受两枚举，不筛选时省略字段。`unassigned`严格对应本地保存的owner为空串，`assigned`对应非空字符串，SQL使用`COLLATE "C"`空串比较；原表owner为NOT NULL，不把损坏null、纯空白或占位名字自动改写成未分配。此字段只描述投影保存情况，不认证账号有效性或当前Plane分配。
 
-unassigned与非空精确owner互斥，整份查询在读取前拒绝；owner空串仍表示省略，可以与unassigned使用。assigned可与精确owner组合，并与原query/status/priority全部按AND筛选。数据库先按权限及筛选取LIMIT+1，完整结果解析再逐项核对空串/非空条件，不静默丢弃错项。SDK、网络CLI和Web沿共享输入及响应解析；嵌入CLI/MCP沿Gateway查询。无新Mock工作项目录路由，不声称Mock覆盖该入口。
+unassigned与非空精确owner互斥，整份查询在读取前拒绝；owner空串仍表示省略，可以与unassigned使用。assigned可与精确owner组合，并与原query/status/priority全部按AND筛选。数据库先按权限及筛选取LIMIT+1，完整结果解析再逐项核对空串/非空条件，不静默丢弃错项。SDK、网络CLI和Web沿共享输入及响应解析；嵌入CLI/MCP沿Gateway查询。后续独立Mock增量已加入同一筛选的模拟读取，见上方说明，不替代真实运行证据。
 
 含assignment时查询摘要采用`work-item-list-v3`，固定原范围、受限数据权限、query/status/priority/完整owner及assignment。省略或规范化为空时保留原v1/v2摘要和游标编码，旧筛选可继续；添加、移除或改变assignment必须回第一页，即使精确owner令结果集合相同也不复用旧条件游标。页大小仍可调整，分页仍非一致快照。
 
