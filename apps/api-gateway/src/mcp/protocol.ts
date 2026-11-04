@@ -30,6 +30,7 @@ import { conflictCommandContextToolResult } from './conflict-command-context.js'
 import { originalConflictToolResult } from './conflict-submission.js';
 import { artifactReceiptToolResult } from './artifact-receipt.js';
 import { executeArtifactUploadContextTool } from './artifact-upload-context.js';
+import { executeArtifactPreparationTool } from './artifact-preparation.js';
 import {
   isArtifactUploadTool,
   executeArtifactUploadTool,
@@ -175,6 +176,15 @@ export async function dispatchMcp(
           }
           if (params.name === 'get_artifact_upload_context') {
             result = await executeArtifactUploadContextTool(api, params.arguments ?? {}, context);
+            break;
+          }
+          if (params.name === 'prepare_artifact_upload') {
+            result = await executeArtifactPreparationTool(
+              api,
+              params.arguments ?? {},
+              context,
+              artifactUploadOptions,
+            );
             break;
           }
           if (params.name === 'get_proposal_review_receipt') {

@@ -23,6 +23,16 @@ export interface McpArtifactUploadOptions {
   takeReservation?: () => (() => void) | undefined;
 }
 
+/** Embedded and HTTP preparation/upload calls share the same two-operation budget. */
+export function artifactUploadToolGate(api: ApiGateway, options: McpArtifactUploadOptions) {
+  let gate = options.gate ?? embeddedGates.get(api);
+  if (!gate) {
+    gate = new ArtifactUploadGate(MCP_ARTIFACT_UPLOAD_MAX_BYTES);
+    embeddedGates.set(api, gate);
+  }
+  return gate;
+}
+
 export function isArtifactUploadTool(name: unknown): boolean {
   return name === 'create_artifact' || name === 'put_artifact_version';
 }
@@ -139,11 +149,7 @@ export async function executeArtifactUploadTool(
     capability: [...context.capability],
     roles: [...(context.roles ?? [])],
   };
-  let gate = options.gate ?? embeddedGates.get(api);
-  if (!gate) {
-    gate = new ArtifactUploadGate(MCP_ARTIFACT_UPLOAD_MAX_BYTES);
-    embeddedGates.set(api, gate);
-  }
+  const gate = artifactUploadToolGate(api, options);
   let release: (() => void) | undefined;
   let dispatched = false;
   try {

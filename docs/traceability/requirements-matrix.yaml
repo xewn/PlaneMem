@@ -11,6 +11,25 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    mcp_artifact_original_preparation_development_increment:
+      date: "2026-11-04"
+      status: "Source-only actual Gateway MCP new original preparation; R-001 remains incomplete."
+      artifacts:
+        - "apps/api-gateway/src/mcp/artifact-preparation.ts"
+        - "apps/api-gateway/src/mcp/artifact-upload.ts"
+        - "apps/api-gateway/src/mcp/catalog.ts"
+        - "apps/api-gateway/src/mcp/protocol.ts"
+        - "apps/api-gateway/src/server.ts"
+        - "docs/design/01-contracts/artifact-persistence-runtime.md"
+      behavior: "Prepare a bounded new draft with up to 4 MiB canonical Base64 content under actual artifact.write and verified unexpired identity. Validate identity/metadata through existing API reads and require exact reviewed append version. Return complete saveable original JSON/hash as not saved/not uploaded; discovery marks read-only but non-idempotent. Share two-operation upload/preparation capacity and transfer HTTP body reservations once. Extended bodies reserve capacity before tool selection; actual large uploads still require configured writers, while preparation need not. A 30-second local timeout retains capacity until underlying reads settle; all input/error/success/escaped result representations are bounded."
+      evidence: []
+      pending_evidence:
+        - "Catalog schema/permissions/non-idempotent annotations, direct executor and synchronous single-route refusal"
+        - "Canonical Base64/padding/zero bytes, input and output limits, fixed identity and exact append version/restricted access"
+        - "HTTP large/chunked bodies, absent writer, shared multipart/MCP/embedded capacity and one-time reservation handoff"
+        - "Timeout/expiry/hanging and late reads, sanitized errors, no upload/filesystem effect and client save/upload/receipt handoff"
+      remaining_scope: "Caller persistence/recovery, large-file streaming, client/transport compatibility and runtime evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, MCP/API/SDK/database execution or release. No schema or dependency change."
     sdk_artifact_original_preparation_development_increment:
       date: "2026-11-04"
       status: "Source-only SDK original upload preparation and shared CLI draft parsing; R-001 remains incomplete."
@@ -28,7 +47,7 @@ requirements:
         - "Caller input mutation, Uint8Array slices, shared-buffer rejection, zero bytes, configured/server limits and missing crypto"
         - "Cancellation/expiry/deadline during reads and digests, malformed bounded responses and detached complete originals"
         - "Exact JSON/hash persistence by caller, SDK/CLI/Mock upload and receipt compatibility without automatic dispatch"
-      remaining_scope: "MCP full preparation, caller persistence/recovery, large-file streaming, actual transport/runtime evidence."
+      remaining_scope: "MCP preparation added in a later source increment; caller persistence/recovery, large-file streaming, actual transport/runtime evidence."
       execution: "Source/docs and manual review only; no build, typecheck, tests, SDK/CLI/Mock/API/database execution or release. No schema or dependency change."
     cli_artifact_original_inspection_development_increment:
       date: "2026-11-04"
@@ -45,7 +64,7 @@ requirements:
         - "Complete create/append originals, malformed UTF-8/JSON, bounds, summary/receipt rejection and stable file reads"
         - "Raw versus normalized hashes, unchanged original identity/key/version, missing content, zero bytes and content mismatch"
         - "No file mutation/network/database access and honest local-only status/exit codes on success and failure"
-      remaining_scope: "Failure-copy recovery/publication, MCP complete preparation (SDK preparation added in a later source increment) and actual filesystem/runtime evidence."
+      remaining_scope: "Failure-copy recovery/publication, client persistence (SDK/MCP preparation added in later source increments) and actual filesystem/runtime evidence."
       execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/SDK/API/database execution or release. No schema or dependency change."
     cli_artifact_original_preparation_development_increment:
       date: "2026-11-04"
@@ -62,7 +81,7 @@ requirements:
         - "Stable file hashing, zero bytes, file mutation, deadline/expiry and late read results without upload"
         - "Exclusive publication, occupied paths, hard-link support, write/readback/cleanup failures and final canonical request"
         - "Prepared originals consumed unchanged by existing create/put-version and receipt commands"
-      remaining_scope: "Offline request/content inspection added in a later source increment; MCP complete preparation (SDK preparation added in a later source increment), failure-copy recovery/publication, actual transport/filesystem compatibility and runtime evidence remain."
+      remaining_scope: "Offline request/content inspection added in a later source increment; client persistence (SDK/MCP preparation added in later source increments), failure-copy recovery/publication, actual transport/filesystem compatibility and runtime evidence remain."
       execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/SDK/Mock/API/database execution or release. No schema or dependency change."
     cli_mcp_artifact_upload_context_development_increment:
       date: "2026-11-04"
@@ -84,7 +103,7 @@ requirements:
         - "CLI strict arguments, HTTP/embedded parity, ordinary actor identity and complete authority validation"
         - "MCP schema/discovery/direct permission denial, actual-writer versus admin-only, status/headers/envelopes and sanitized errors"
         - "Expiry, size limits, two-operation capacity, timeout/late completion and unchanged original context/write conditions"
-      remaining_scope: "CLI original preparation/file persistence added in a later source increment; MCP complete preparation (SDK preparation added in a later source increment), other public routes, actual transport and policy/audit/runtime evidence remain."
+      remaining_scope: "CLI original preparation/file persistence added in a later source increment; client persistence (SDK/MCP preparation added in later source increments), other public routes, actual transport and policy/audit/runtime evidence remain."
       execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/MCP/SDK/API/database execution or release. No schema or dependency change."
     sdk_artifact_upload_context_development_increment:
       date: "2026-11-04"

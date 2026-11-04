@@ -2975,13 +2975,7 @@ async function handleMcpRequest(
       if (!canUploadArtifactTool(context))
         throw new ContractError(
           'DENIED',
-          'A verified artifact writer is required for upload expansion',
-          { trace_id: traceId },
-        );
-      if (!runtime.artifact_writes_enabled)
-        throw new ContractError(
-          'ARTIFACT_STORAGE_UNAVAILABLE',
-          'Persistent artifact writes are not configured',
+          'A verified artifact writer is required for artifact content expansion',
           { trace_id: traceId },
         );
       uploadLease.release ??= runtime.artifact_uploads.acquire(traceId);
@@ -3004,6 +2998,8 @@ async function handleMcpRequest(
     body = parsed.body;
     const params = isRecord(body.params) ? body.params : {};
     const uploading = body.method === 'tools/call' && isArtifactUploadTool(params.name);
+    const preparingArtifact =
+      body.method === 'tools/call' && params.name === 'prepare_artifact_upload';
     const originalSync =
       body.method === 'tools/call' &&
       (params.name === 'get_sync_event_receipt' || params.name === 'upload_events') &&
@@ -3014,15 +3010,27 @@ async function handleMcpRequest(
       params.name === 'get_proposal_create_receipt' &&
       canReadProposalCreateReceipt(context) &&
       parsed.bytes <= MCP_PROPOSAL_RECEIPT_HTTP_BYTES;
-    if (parsed.bytes > MCP_JSON_BODY_BYTES && !uploading && !originalSync && !originalProposal)
+    if (
+      parsed.bytes > MCP_JSON_BODY_BYTES &&
+      !uploading &&
+      !preparingArtifact &&
+      !originalSync &&
+      !originalProposal
+    )
       throw new ContractError(
         'ARTIFACT_TOO_LARGE',
-        'Only authorized artifact uploads, bounded original sync uploads or original sync/proposal receipt queries may exceed the ordinary MCP body limit',
+        'Only authorized artifact uploads/preparations, bounded original sync uploads or original sync/proposal receipt queries may exceed the ordinary MCP body limit',
         { trace_id: traceId },
       );
     // Original-request writers may buffer their small envelope allowance before the tool name is known.
-    // Artifact bodies above the ordinary limit still need their own reservation before preparation.
-    if (uploading && parsed.bytes > MCP_JSON_BODY_BYTES) reserveUpload();
+    // Artifact bodies above the ordinary limit reserve capacity before preparation or upload.
+    if ((uploading || preparingArtifact) && parsed.bytes > MCP_JSON_BODY_BYTES) reserveUpload();
+    if (uploading && parsed.bytes > MCP_JSON_BODY_BYTES && !runtime.artifact_writes_enabled)
+      throw new ContractError(
+        'ARTIFACT_STORAGE_UNAVAILABLE',
+        'Persistent artifact writes are not configured',
+        { trace_id: traceId },
+      );
     if (
       body.method === 'tools/call' &&
       mcpToolRequiresClient(params.name) &&
@@ -3031,7 +3039,7 @@ async function handleMcpRequest(
       throw new ContractError('DENIED', 'This operation requires an authenticated client', {
         trace_id: traceId,
       });
-    if (!uploading) {
+    if (!uploading && !preparingArtifact) {
       uploadLease.release?.();
       delete uploadLease.release;
     }

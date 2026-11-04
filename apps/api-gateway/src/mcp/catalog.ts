@@ -219,6 +219,18 @@ const artifactReceiptCommand: Schema = {
   ],
 };
 
+const artifactUploadDraft: Schema = {
+  anyOf: artifactReceiptCommand.anyOf!.map((schema) => {
+    const supplied = ['request_key', 'sha256', 'size'];
+    return object(
+      Object.fromEntries(
+        Object.entries(schema.properties!).filter(([key]) => !supplied.includes(key)),
+      ),
+      schema.required!.filter((key) => !supplied.includes(key)),
+    );
+  }),
+};
+
 const contextItemFields: Record<string, Schema> = {
   title: { ...text, maxLength: 300 },
   content: { ...text, maxLength: 131072 },
@@ -456,6 +468,18 @@ const definitions: ToolDefinition[] = [
       reviewed: { type: 'boolean', enum: [true] },
     },
     ['scope', 'audit_id', 'sha256', 'reviewed'],
+  ),
+  tool(
+    'prepare_artifact_upload',
+    'Prepare a NEW artifact original from draft metadata and canonical content_base64 (at most 4 MiB decoded). Append drafts require an explicitly reviewed expected_version matching current metadata. Requires actual artifact.write and an authenticated unexpired client; append also requires artifact.read. Returns original JSON and SHA-256 only: save and review it before a separate upload. Does not write an artifact, save files or reserve a version. Each call creates a new key; never retry automatically or use it to replace an upload with an unknown outcome.',
+    ['artifact.write'],
+    'GET',
+    '/v1/artifacts/upload-context',
+    {
+      draft: artifactUploadDraft,
+      content_base64: { type: 'string', maxLength: MCP_ARTIFACT_UPLOAD_BASE64_CHARS },
+    },
+    ['draft', 'content_base64'],
   ),
   tool(
     'get_artifact_upload_context',
@@ -1617,7 +1641,8 @@ export function listMcpTools(context: RequestContext) {
           canReadConflictReceipt(context)) &&
         (!isAuditTool(entry.name) || canUseAuditTool(entry.name, context)) &&
         (!isArtifactUploadTool(entry.name) || canUploadArtifactTool(context)) &&
-        (entry.name !== 'get_artifact_upload_context' || canReadArtifactUploadContext(context)) &&
+        (!['get_artifact_upload_context', 'prepare_artifact_upload'].includes(entry.name) ||
+          canReadArtifactUploadContext(context)) &&
         (entry.name !== 'download_artifact_version' || canDownloadArtifactTool(context)) &&
         (!isArtifactReadTool(entry.name) || context.capability.includes('artifact.read')) &&
         (entry.name !== 'get_artifact_receipt' ||
@@ -1641,7 +1666,11 @@ export function listMcpTools(context: RequestContext) {
       inputSchema: structuredClone(inputSchema),
       annotations: {
         readOnlyHint: !write && name !== 'acknowledge_sync',
-        idempotentHint: name !== 'download_artifact_version' && name !== 'export_audit_record',
+        idempotentHint: ![
+          'download_artifact_version',
+          'export_audit_record',
+          'prepare_artifact_upload',
+        ].includes(name),
         destructiveHint: [
           'end_session',
           'finish_agent_run',
@@ -1679,6 +1708,7 @@ export function mcpToolRequiresClient(name: unknown): boolean {
     name === 'get_session_command_context' ||
     name === 'get_artifact_receipt' ||
     name === 'get_artifact_upload_context' ||
+    name === 'prepare_artifact_upload' ||
     name === 'get_conflict_receipt' ||
     name === 'get_proposal_create_receipt' ||
     name === 'get_proposal_review_receipt' ||
@@ -1699,6 +1729,17 @@ export function prepareMcpTool(
     });
   if (isSyncReadTool(name)) return prepareSyncReadTool(name, raw, context);
   if (name === 'get_artifact_upload_context') return prepareArtifactUploadContextTool(raw, context);
+  if (name === 'prepare_artifact_upload') {
+    if (!canReadArtifactUploadContext(context))
+      throw new ContractError('DENIED', 'A verified unexpired artifact writer is required', {
+        trace_id: context.trace_id,
+      });
+    throw new ContractError(
+      'MCP_TOOL_EXECUTOR_REQUIRED',
+      'Artifact preparation requires dispatchMcp or its dedicated executor',
+      { trace_id: context.trace_id },
+    );
+  }
   if (name === 'get_proposal_create_receipt') return prepareProposalCreateReceiptTool(raw, context);
   if (name === 'get_proposal_review_receipt') return prepareProposalReviewReceiptTool(raw, context);
   if (name === 'upload_events') return prepareSyncUploadTool(raw, context);

@@ -210,7 +210,7 @@ stdout JSON 保留公开 artifact、固定版本来源、audit_id/audit_state=re
 
 `create_artifact` 和 `put_artifact_version` 接收 `{ request: { identity, command }, content_base64 }`。调用方先保存原请求及准确内容，identity 只约束可信会话，原键和追加版本只取自 command，不接受外层写条件。发现/执行均要求已验证客户端、实际 artifact.write 和未过期会话；原身份、命令操作、规范请求大小、Base64 编码、长度和 SHA-256 全部核对后，复用 Gateway artifact.create/put-version 及原持久事务。内容最多 4 MiB 且遵守较小服务器配置上限，规范 request 最多 1 MiB；不提供分片、流式或自动重试。
 
-HTTP MCP 在读取前鉴权，严格 UTF-8 JSON 对象与无压缩 Content-Type。普通正文 1 MiB，有效 writer 可扩展至 8 MiB；已声明大正文读取前、未知长度实际超过普通上限的内容被保留前，申请与 multipart 共用的两路上传名额。小型未知长度普通请求不申请容量、不要求持久 writer。扩展正文必须调用这两个上传工具，读取总期限 120 秒，失败关闭连接；名额转交至持久写调用及响应校验结束，小上传在解码/hash 前申请。嵌入调用默认每 ApiGateway 两路，可信宿主可转交同一 gate 的已有名额。
+HTTP MCP 在读取前鉴权，严格 UTF-8 JSON 对象与无压缩 Content-Type。普通正文1 MiB，具备实际artifact.write的有效认证调用者可扩展至8 MiB；已声明大正文或读取扩展触发前，申请与multipart共用的两路附件名额。已有同步/建议原请求额度可能先保留有限正文，但解析确认附件工具后仍须取得同一容量。扩展支持这两个上传工具及下述prepare_artifact_upload（同步/建议已有专用例外保留），读取总期限120秒，失败关闭连接。因读取工具名之前不能区分准备与上传，扩展只先检查身份和预留容量；确认实际大正文上传后再核对持久writer配置，未配置仍拒绝，不回退内存。小上传在解码/hash前申请，实际写入由原路由检查writer。准备不要求持久writer可用，名额转交其只读执行器；嵌入上传/准备默认共用每ApiGateway两路，可信宿主可转交同一gate的已有名额。
 
 成功只返回完整校验的原历史上传封套文本，不回显内容；首次 verified-at-save、重放 not-checked 均不证明当前可下载。派发前失败标记本次 not-sent，派发后错误统一标记结果 unconfirmed；保存原 JSON/内容，显式 get_artifact_receipt 查询同一身份与命令，不换键/版本。未观察到原回执仍不证明失败。无新依赖/迁移，016–045 未执行；只有源码和文档，未编译、类型检查、测试、实际上传、运行或发布，MCP 客户端兼容性仍未核验。详见 [MCP 运行时](mcp-runtime.md)。
 
@@ -276,7 +276,7 @@ workctx artifacts put-version --json-file NEW_ORIGINAL.json --file CONTENT
 workctx artifacts receipt --json-file NEW_ORIGINAL.json
 ```
 
-上传结果不明时保留原文件、原键与版本，用原回执入口查询；不重新prepare以替换未知请求。CLI增量没有新增依赖或迁移；SDK准备与本地检查由后续源码增量补齐，MCP完整准备和专用失败副本恢复仍缺；仅源码文档人工审阅，未编译、类型检查、测试、执行CLI/SDK/Mock/API/数据库或发布。文件系统兼容、失败恢复、身份变化与上传衔接均无运行证据，R-001仍未完成。
+上传结果不明时保留原文件、原键与版本，用原回执入口查询；不重新prepare以替换未知请求。CLI增量没有新增依赖或迁移；SDK准备与本地检查由后续源码增量补齐，MCP准备另有后续源码，专用失败副本恢复仍缺；仅源码文档人工审阅，未编译、类型检查、测试、执行CLI/SDK/Mock/API/数据库或发布。文件系统兼容、失败恢复、身份变化与上传衔接均无运行证据，R-001仍未完成。
 
 ## CLI 原请求离线核验（源码阶段）
 
@@ -330,7 +330,38 @@ const prepared = await client.prepareArtifactUpload(
 
 SDK本身不证明调用方已保存或审阅，不保留正文副本供以后重试；后续createArtifact/putArtifactVersion须使用完全相同内容，服务器仍独立核验hash/size。上传及getArtifactReceipt现在始终核对tenant/workspace/project和已配置actor/client；省略的actor/client采用完整original中的值作为请求头前置约束，由Gateway与已认证会话逐项核对。普通字符串账号可不放入SDK构造上下文（其actor仍保留既有ULID校验），原文件不能授予身份或替换已配置身份。下载方法的完整上下文要求不在本增量修改。
 
-SDK准备返回的原文件可由CLI inspect-request检查，并由已有上传/原回执命令读取；已上传而结果不明时应查同一原请求回执，不再prepare替换原键/版本。资料Mock已有只读路由可承接准备，但兼容性未实际运行。MCP完整准备、调用方文件保存/恢复及运行证据仍缺，无schema/依赖变化，仅源码文档人工审阅，未编译、类型检查、测试、执行SDK/CLI/Mock/API/数据库或发布，R-001不标记完成。
+SDK准备返回的原文件可由CLI inspect-request检查，并由已有上传/原回执命令读取；已上传而结果不明时应查同一原请求回执，不再prepare替换原键/版本。资料Mock已有只读路由可承接准备，但兼容性未实际运行。MCP准备另有后续源码，调用方文件保存/恢复及运行证据仍缺，无schema/依赖变化，仅源码文档人工审阅，未编译、类型检查、测试、执行SDK/CLI/Mock/API/数据库或发布，R-001不标记完成。
+
+## MCP 原请求准备（源码阶段）
+
+2026-11-04：实际Gateway MCP新增 `prepare_artifact_upload({draft,content_base64})`，草稿使用与CLI/SDK相同的ArtifactUploadDraft（新建完整元数据，或artifact_id及明确审阅的expected_version）。只接受这两个字段，拒绝旧原请求包装、身份、键、hash/size、外层写条件、继承的idempotency_key/expected_version以及额外字段；不自动改成当前版本。
+
+工具目录及直接调用均要求有效已认证客户端和实际artifact.write，admin不能代替。annotations为readOnlyHint=true、idempotentHint=false、destructiveHint=false：准备只读服务端，但每次成功生成不同新键，不能自动重试或用于替换已经上传却结果不明的原请求。该操作需要多次只读核验，dispatchMcp使用专用executeArtifactPreparationTool；同步prepareMcpTool拒绝为它生成不完整单一HTTP请求，返回MCP_TOOL_EXECUTOR_REQUIRED，权限不符先DENIED。
+
+输入完整快照最多8 MiB，草稿及最终原请求各最多1 MiB；Base64字符串上限为4*ceil(4 MiB/3)，原生解码后重新编码必须完全一致，拒绝空白、URL字母表、缺失padding及非零padding bits。解码内容最多4 MiB，同时不超过server gate.maxBytes和上传身份max_bytes，空内容允许。取得名额后同步捕获规范草稿、字节数和Node SHA-256，再开始异步读取，调用方后续改输入不影响结果。不保存或返回正文；没有文件系统访问和上传写路由调用。
+
+通过同一ApiGateway.handle读取上传身份与可选当前元数据，保留认证/Policy/授权审计边界，固定原可信上下文副本并逐步检查到期。身份响应最多16 KiB并与完整可信身份/期限/能力精确比对；元数据响应最多2 MiB并核对目标/范围/trace/版本。创建restricted要求restricted读取能力；追加要求实际artifact.read，restricted资料额外核对权限，当前版本必须等于草稿中的expected_version。HTTP状态/JSON媒体类型/响应trace均检查，错误响应最多16 KiB，未知/损坏/异trace封套返回固定GATEWAY_RESPONSE_INVALID，不输出底层细节。
+
+所有准备与实际上传共用两路容量（HTTP同时与multipart共用）；大正文的已持有名额只转交一次，小正文及嵌入在解析/解码之前取得名额。准备从执行器入口开始单调30秒本地期限，每步检查身份和期限，超时返回MCP_ARTIFACT_PREPARATION_TIMEOUT，底层api.handle未结束继续占槽，直到其结算finally释放；迟到结果不进入后续准备。没有底层强制取消承诺，期限不涵盖前置HTTP正文读取与最终网络发送，不证明客户端收到结果。同步有界解析/摘要不能被计时器抢占，但后续期限检查会拒绝超时结果。
+
+用同长度占位键先构造完整结果检查容量，再分配一次workctx-artifact-ULID，重新完整解析并计算规范JSON摘要；安全随机能力缺失明确拒绝。最终业务封套最多3 MiB+16 KiB，包含text的MCP转义结果最多6 MiB+36 KiB，超限整份拒绝，不截断。JSON-RPC外层由原协议包装，以上结果限额不包含外层id等字段。成功data与SDK准备一致：original、request_json/request_bytes/request_sha256、identity_observed_expires_at、local_state=prepared-not-saved、upload_dispatch_state=not-sent、next_action=save-and-review-original；source_refs为空，不伪造已保存Artifact引用。原请求生成后若最终到期或封套失败，丢弃结果，没有持久保存或上传。
+
+示例仅说明输入，未调用工具（空内容示例）：
+
+```json
+{
+  "draft": {
+    "operation": "artifact.create",
+    "name": "empty.txt",
+    "mime": "text/plain",
+    "classification": "internal",
+    "source_refs": []
+  },
+  "content_base64": ""
+}
+```
+
+工具客户端须把request_json作为原UTF-8 JSON保存并核对摘要，不能保存整段MCP/业务封套或双重编码字符串。审阅后才明确将完整original与相同content_base64交create_artifact/put_artifact_version；状态未确认时继续用原文件get_artifact_receipt，不再prepare替换原键/版本。当前准备不预留版本、检查存储健康、确认上传权限未来有效，也不证明客户端已保存。无新SDK依赖、schema或迁移；仅源码文档人工审阅，未编译、类型检查、测试、执行MCP/API/SDK/数据库或发布，客户端/大正文/超时/并发及存储衔接均无运行证据，R-001保持未完成。
 
 ## SDK 上传身份读取（源码阶段）
 
@@ -417,7 +448,7 @@ HTTP MCP 与二进制 GET 共用 ArtifactDownloadGate 的两路名额，处理�
 
 ## 尚未完成
 
-PostgreSQL/S3 适配、显式服务器配置、HTTP/SDK/CLI/MCP/工作台按原请求上传、可审计下载、元数据与原回执查询及CLI/工作台新请求准备已有源码，尚未运行验证；S3 签名、条件写入和 MinIO 版本兼容性仍缺证据。下载处理阶段失败与 HTTP/MCP 发送观察已有源码，观察 outbox/丢失补偿和客户端收取/保存回执仍缺；事件 outbox、健康状态、保留与清理、流式大文件、旧数据升级、备份恢复与运行证据均待后续开发。没有签名下载链接，也不生成虚假的 audit_id。P2-01/R-008 保持未完成。
+PostgreSQL/S3 适配、显式服务器配置、HTTP/SDK/CLI/MCP/工作台按原请求上传、可审计下载、元数据与原回执查询及CLI/SDK/MCP/工作台新请求准备已有源码，尚未运行验证；S3 签名、条件写入和 MinIO 版本兼容性仍缺证据。下载处理阶段失败与 HTTP/MCP 发送观察已有源码，观察 outbox/丢失补偿和客户端收取/保存回执仍缺；事件 outbox、健康状态、保留与清理、流式大文件、旧数据升级、备份恢复与运行证据均待后续开发。没有签名下载链接，也不生成虚假的 audit_id。P2-01/R-008 保持未完成。
 
 ## 工作台查询（源码阶段）
 
