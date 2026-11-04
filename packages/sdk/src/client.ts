@@ -4,11 +4,6 @@ import {
   type SessionRegistryQuery,
   type HandoffRegistryQuery,
   type AuditExportDocument,
-  parseArtifactReceiptQuery,
-  parseArtifactUploadEnvelope,
-  ARTIFACT_UPLOAD_MAX_BYTES,
-  ARTIFACT_UPLOAD_REQUEST_BYTES,
-  assertArtifactReceiptIdentity,
   type ArtifactReceiptQuery,
   type ArtifactUploadDraft,
   parseObservedReadInput,
@@ -176,6 +171,7 @@ import {
   type WcpArtifactReadOptions,
 } from './artifact-reads.js';
 import { downloadArtifactVersion, type WcpArtifactDownloadOptions } from './artifact-download.js';
+import { uploadArtifact, type WcpArtifactUploadOptions } from './artifact-upload.js';
 import { uploadSyncEvents, type WcpSyncUploadOptions } from './sync-upload.js';
 import { readSyncChanges, iterateSyncChanges, type WcpSyncChangesOptions } from './sync-changes.js';
 import {
@@ -1698,77 +1694,33 @@ export class WcpClient {
     return prepareArtifactUpload(this.transport, this.context, input, content, options);
   }
 
-  private assertArtifactOriginalContext(query: ArtifactReceiptQuery, context: RequestContext) {
-    // Unspecified client-side identity is still pinned to the original in Gateway request headers.
-    assertArtifactReceiptIdentity(query.identity, {
-      ...context,
-      actor_id: context.actor_id ?? query.identity.actor_id,
-      client_id: context.client_id ?? query.identity.client_id,
-    });
-  }
-
   getArtifact(artifactId: string, options: WcpArtifactReadOptions = {}) {
     return readArtifactMetadata(this.transport, this.context, { artifact_id: artifactId }, options);
   }
 
   /** Save the original identity/command before calling; uncertain outcomes use getArtifactReceipt. */
-  async createArtifact(input: ArtifactReceiptQuery, content: Uint8Array) {
-    return this.uploadArtifact('artifact.create', input, content);
+  createArtifact(
+    input: ArtifactReceiptQuery,
+    content: Uint8Array,
+    options: WcpArtifactUploadOptions = {},
+  ) {
+    return uploadArtifact(this.transport, this.context, 'artifact.create', input, content, options);
   }
 
   /** Append using the original expected_version and key; never substitutes a newer version. */
-  async putArtifactVersion(input: ArtifactReceiptQuery, content: Uint8Array) {
-    return this.uploadArtifact('artifact.put-version', input, content);
-  }
-
-  private async uploadArtifact(
-    operation: ArtifactReceiptQuery['command']['operation'],
+  putArtifactVersion(
     input: ArtifactReceiptQuery,
     content: Uint8Array,
+    options: WcpArtifactUploadOptions = {},
   ) {
-    const context = { ...this.context };
-    let query;
-    try {
-      query = parseArtifactReceiptQuery(input);
-      this.assertArtifactOriginalContext(query, context);
-      if (
-        query.command.operation !== operation ||
-        !(content instanceof Uint8Array) ||
-        content.byteLength !== query.command.size ||
-        content.byteLength > ARTIFACT_UPLOAD_MAX_BYTES
-      )
-        throw new TypeError();
-    } catch {
-      throw this.invalid('Supply the original matching artifact request and exact file bytes');
-    }
-    const metadata = new Blob([JSON.stringify(query)], { type: 'application/json' });
-    if (metadata.size > ARTIFACT_UPLOAD_REQUEST_BYTES)
-      throw this.invalid('Original artifact request exceeds the upload metadata limit');
-    // Capture bytes and normalized metadata before transport credentials can yield control.
-    const snapshot = new Uint8Array(content);
-    const form = new FormData();
-    form.append('request', metadata, 'request.json');
-    form.append(
-      'content',
-      new Blob([snapshot.buffer], { type: 'application/octet-stream' }),
-      'content.bin',
+    return uploadArtifact(
+      this.transport,
+      this.context,
+      'artifact.put-version',
+      input,
+      content,
+      options,
     );
-    const headers: Record<string, string> = {
-      'idempotency-key': query.command.request_key,
-      'x-expected-actor-id': query.identity.actor_id,
-      'x-expected-client-id': query.identity.client_id,
-    };
-    let path = '/v1/artifacts';
-    if (query.command.operation === 'artifact.put-version') {
-      headers['if-match'] = buildEtag(query.command.expected_version);
-      path += '/' + this.segment(query.command.artifact_id) + '/versions';
-    }
-    const result = await this.envelope<unknown>('POST', path, form, headers);
-    try {
-      return parseArtifactUploadEnvelope(result, query, context.trace_id);
-    } catch {
-      throw this.invalidResponse();
-    }
   }
 
   /** Read the original write receipt. Absence never proves failure or authorizes a new request. */

@@ -11,6 +11,25 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    sdk_artifact_upload_budget_development_increment:
+      date: "2026-11-04"
+      status: "Source-only SDK original upload verification, deadlines and bounded multipart responses; R-001 remains incomplete."
+      artifacts:
+        - "packages/sdk/src/artifact-upload.ts"
+        - "packages/sdk/src/client.ts"
+        - "packages/sdk/src/index.ts"
+        - "packages/sdk/src/bounded-json.ts"
+        - "packages/sdk/src/fetch-transport.ts"
+        - "docs/design/01-contracts/artifact-persistence-runtime.md"
+        - "docs/design/01-contracts/artifact-mock-runtime.md"
+      behavior: "Add optional timeout_ms/signal and a default 180-second local budget to create/append while retaining ArtifactUploadEnvelope. Capture original/context/content before awaiting, require unshared bytes and preflight SHA-256, preserve original identity/key/version and explicit write headers. Bound original to 1 MiB, content to the existing 1 GiB protocol ceiling and complete success/error responses to 4 MiB/16 KiB. Allow captured FormData POST through bounded-json with native boundaries and independent credential/network/body deadlines. Dispatch at most once per call; local pre-dispatch failures do not disprove previous writes, and all post-dispatch failures retain unknown outcome."
+      evidence: []
+      pending_evidence:
+        - "Multipart boundary/header isolation, original/byte mutation, empty content and length/hash rejection before dispatch"
+        - "Pre-cancel, hashing/credential/network/body deadlines, late results and unknown outcome preservation"
+        - "Original replay/append identity/version binding, complete response limits, Mock and custom transport compatibility"
+      remaining_scope: "Caller persistence/recovery, streaming and memory bounds, direct legacy JSON clients and runtime evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, SDK/CLI/Mock/API/database execution or release. No server/schema/dependency change."
     sdk_artifact_original_inspection_development_increment:
       date: "2026-11-04"
       status: "Source-only SDK offline inspection of saved artifact originals; R-001 remains incomplete."

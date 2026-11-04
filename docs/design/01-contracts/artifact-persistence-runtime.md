@@ -158,9 +158,27 @@ request 部件最多 1 MiB，整个请求最多文件上限 + 1 MiB + 64 KiB 包
 
 HTTP 200 封套由 artifact-upload 共享解析器核对：schema_version/trace/source_refs，以及 data 内的原 identity/command、status=recorded、公开 artifact 历史快照和内容状态。首次保存为 replayed=false、content_state=verified-at-save（保存时对象读回已通过，原记录 trace 等于本次 trace）；原键重放为 replayed=true、content_state=not-checked（本次没有读取存储正文）。两者都不保证正文现在仍可下载，不含 storage_key、外层 revision 或外层/HTTP ETag；快照内部 ETag 仅描述保存时的版本。响应字段、身份或目标不符返回错误，不能将其当作成功或失败证明。
 
-SDK `createArtifact(original, bytes)` / `putArtifactVersion(original, bytes)` 接收已保存的 ArtifactReceiptQuery 和 Uint8Array。调用前保留原 identity/command；SDK 在异步传输前复制规范化请求和字节，按原命令设置键/版本头，不继承上下文旧写条件。FetchWcpTransport 原生发送 FormData，由 fetch 生成 boundary，并在等待 token 前固定头和正文；自定义 transport 也须支持 FormData。SDK 检查长度和协议上限，SHA-256 由持久服务核验；不自动保存 outbox、不生成请求键、不自动重试。原传输默认 30 秒超时，可通过 timeout_ms 显式调整；任何超时、损坏响应或中断都应保留原请求，再显式 getArtifactReceipt 查询。
+SDK `createArtifact(original, bytes, options?)` / `putArtifactVersion(original, bytes, options?)` 接收已保存的ArtifactReceiptQuery和非共享Uint8Array；options现支持timeout_ms/signal，整次预算默认180秒，详见下节。调用前保留原 identity/command；SDK 在异步传输前复制规范化请求和字节，按原命令设置键/版本头，不继承上下文旧写条件。FetchWcpTransport 原生发送 FormData，由 fetch 生成 boundary，并在等待 token 前固定头和正文；自定义 transport 也须支持 FormData。SDK检查长度和协议上限，并在发送前核对SHA-256，持久服务仍独立核验；不自动保存 outbox、不生成请求键、不自动重试。原传输默认 30 秒超时，可通过 timeout_ms 显式调整；任何超时、损坏响应或中断都应保留原请求，再显式 getArtifactReceipt 查询。
 
 本增量无新依赖、迁移或运行证据。MCP/工作台按原请求上传及下载授权审计的后续源码增补见下文，大文件流式上传仍待开发；本次仅修改与格式化源码、同步文档，不编译、类型检查、测试、连接存储或运行服务。
+
+## SDK 原请求上传期限与取消（源码阶段）
+
+`createArtifact(original, bytes, options?)` 与 `putArtifactVersion(original, bytes, options?)` 新增WcpArtifactUploadOptions，只接受timeout_ms/signal普通数据属性；默认180,000毫秒，允许1–2,147,483,647安全整数。两参数调用保留，成功返回仍为既有ArtifactUploadEnvelope，现也从SDK导出该类型。调用方仍须先保存并审阅完整原identity/command，本方法不生成键、不准备新请求、不持久保存恢复信息。
+
+调用开始同步捕获配置/trace/上下文、1 MiB内完整原请求及规范JSON、非共享Uint8Array内容副本。核对三层scope及已配置actor/client；未配置的账号/客户端仍从original生成前置头，由Gateway核对认证会话，不能因原文件而授予权限。原操作必须匹配创建/追加方法，内容长度须等于原size；沿用SDK既有1 GiB协议上限，服务默认64 MiB或更低的配置仍独立生效。拒绝共享内存、错误字段和超限，不截断内容。
+
+发送前通过Web Crypto SHA-256核对所复制内容，摘要不符或无法验证时不调用transport；零字节也核验摘要。这新增明确的运行要求：Web Crypto、FormData和Blob必须可用。客户端预检不能替代服务端的内容核验、权限、持久存储和原请求幂等检查，也不证明以前没有使用同一原请求上传。
+
+multipart仍恰好包含request.json和content.bin两个原生Blob。请求正文独立于本地回执验证期望，显式使用原scope/actor/client/键，只有追加附原expected_version对应的If-Match；不继承上下文的其他写条件。FetchWcpTransport的bounded-json现在允许FormData POST，沿现有路径在等待凭据前复制表单字段与头，由fetch生成本次boundary；不新增响应模式。GET仍禁止正文，bounded-json只接受GET/POST。直接transport只规定响应上限，调用方仍负责限制上传正文；SDK本次按上述原请求/内容上限限制。
+
+SDK本地预算覆盖输入捕获后的期限检查、内容摘要、multipart准备、transport和完整响应验证；同步处理不能中途抢占，Web Crypto摘要无法主动取消，迟到结果不继续派发或返回成功。预取消不复制内容或开始摘要。Fetch自身timeout_ms仍默认30秒，独立覆盖等待凭据、网络和逐块读取响应；需要更长等待时需同时配置SDK方法和transport。取消只停止本地等待并向fetch发出信号，不能撤销服务器事务或原回执，也不保证自定义transport停止后台工作。
+
+成功响应完整JSON最多4 MiB，Fetch错误最多16 KiB；SDK对自定义transport结果也做有界纯JSON快照和共享完整解析，核对原身份/命令/版本/内容描述/trace/来源与首次保存或历史重放状态。不返回部分封套，JSON错误、超限、取消或到期均不触发自动重试/原回执查询。一次调用至多发起一次transport，调用方重复显式调用仍是新的尝试，不是SDK持久的派发去重保证。
+
+失败使用同trace有限错误码、固定消息和retryable=false，不透出上游异常详情。details记录upload_stage、upload_dispatch_state和server_outcome；调用transport前为not-sent/not-checked，开始调用后任何失败均为started/unknown，即使transport在等待凭据时就失败也不擅自推断服务端状态。not-sent只描述本次调用；unknown不否定已存在回执。保留完整原身份/键/命令/版本/内容，再明确调用getArtifactReceipt(original)，不可用新键或当前版本覆盖原请求。成功首写仍为verified-at-save，原键重放仍为not-checked，不保证此刻内容可下载。
+
+Mock既有bounded-json/FormData/signal路径仅经源码核对。旧CLI或自定义调用仍走普通json时不会自动获得SDK方法的预检、整次预算与响应上限；只有显式bounded-json采用新传输路径。完整字节与multipart仍在内存，不能声称流式处理或全局内存上限；调用方持久恢复、客户端兼容和运行证据仍待补。无服务端/schema/依赖变化，仅源码文档人工审阅，未编译、类型检查、测试、执行SDK/CLI/Mock/API/数据库或发布。
 
 ## 指定版本下载 HTTP/SDK（源码阶段）
 

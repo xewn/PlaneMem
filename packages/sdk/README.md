@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-04：`createArtifact(original, bytes, options?)` / `putArtifactVersion(original, bytes, options?)` 新增 `WcpArtifactUploadOptions(timeout_ms/signal)`，默认180秒本地预算。异步前固定完整原请求/身份约束及非共享内容副本，发送前Web Crypto核对原长度/SHA-256；原键/版本/返回ArtifactUploadEnvelope保持。成功完整响应最多4 MiB，Fetch错误16 KiB，FormData现可使用bounded-json及signal，仍由fetch生成boundary。错误不回显上游细节，派发前标记本次not-sent，调用transport后任何失败保持unknown，不自动重试或替换原请求；Web Crypto与原生multipart成为明确运行要求。详见 [SDK上传期限与取消](../../docs/design/01-contracts/artifact-persistence-runtime.md#sdk-原请求上传期限与取消源码阶段)。仅源码文档人工审阅，未编译、类型检查、测试、执行SDK/CLI/Mock/API或发布。
+
 2026-11-04：新增独立 `inspectArtifactUploadRequest(input, options)`、`WcpArtifactInspectionOptions/WcpInspectedArtifactUploadRequest`，离线核对已保存的完整原请求，无需WcpClient或登录。输入为1 MiB内UTF-8字节/JSON文本，必需本地trace，可选内容副本、实际输入/规范请求预期摘要及timeout_ms/signal；默认180秒，内容默认64 MiB。返回完整original、实际与规范请求摘要、规范JSON及content_state，保留原身份/键/版本；明确身份未认证、服务器未查询、未上传、未访问文件。仅原请求检查不施加内容大小预算，摘要一致不证明来源可信或先前上传成功。详见 [SDK离线核验](../../docs/design/01-contracts/artifact-persistence-runtime.md#sdk-原请求离线核验源码阶段)。仅源码文档人工审阅，未编译、类型检查、测试、调用SDK/CLI/API或发布。
 
 2026-11-04：`downloadArtifactVersion(id, version, {max_bytes?,timeout_ms?,signal?})` 新增整次本地预算，默认180秒，公开 `WcpArtifactDownloadOptions/WcpArtifactDownloadResult`。固定历史元数据、二进制与SHA-256阶段共享取消信号，失败不返回部分内容；已完整核对响应头的放行ID在后续错误保留，未知不证明服务端未放行。Fetch bytes现支持signal，凭据/网络/逐块正文共用其独立期限（仍默认30秒），成功限定完整200/octet-stream/trace/规范长度且无压缩，错误16 KiB；清理不等待，迟到凭据不派发。网络CLI历史元数据迁移为bounded-json以兼容严格bytes模式，CLI选项/保存流程不变。详见 [下载期限与取消](../../docs/design/01-contracts/artifact-persistence-runtime.md#sdk-下载期限与取消源码阶段)。仅源码文档人工审阅，未编译、类型检查、测试、调用SDK/CLI/Mock/API或发布。
@@ -78,7 +80,7 @@ const envelope = await client.exportAuditView(reviewedDocument, {
 
 公开 `WcpAuditOptions` 只含 `timeout_ms` 和 `signal`。本地整次等待默认读取 30 秒、导出 90 秒，包括摘要、传输和解析后的截止时间检查；正整数自定义期限最多 2147483647 毫秒。同步解析不能中途抢占，但迟到结果不返回成功。取消/超时不能撤销已派发导出，已知放行 ID 保留在错误 details，未知只能说明 unconfirmed。审计方法只提供有限错误说明、固定请求 trace、合法已确认放行引用，并将 retryable 设为 false；不直接回显上游原始 message/details。
 
-`FetchWcpTransport` 新增显式 `response_type:'bounded-json'`：必需 `max_response_bytes`（1–16 MiB），支持 JSON GET/POST 和 `signal`，不支持 multipart。成功只接受完整 200、正确 trace 头与 JSON 媒体类型，错误正文上限 16 KiB；严格 UTF-8，规范无压缩 Content-Length 必须与完整实际字节一致，压缩响应按 Fetch 解码后大小限制。审计列表请求上限 16 MiB，导出 128 KiB。凭据提供器、fetch、正文和解析共用传输期限；迟到凭据不会再发起请求，迟到 fetch 响应取消正文。无重定向、缓存或重试。普通json模式没有自动获得这些保证；bytes模式的独立期限与取消现由后续下载增量补齐，见下载章节。
+`FetchWcpTransport` 新增显式 `response_type:'bounded-json'`：必需 `max_response_bytes`（1–16 MiB），支持JSON GET/POST、原生FormData POST和`signal`；multipart在凭据等待前复制，由fetch设置boundary。成功只接受完整 200、正确 trace 头与 JSON 媒体类型，错误正文上限 16 KiB；严格 UTF-8，规范无压缩 Content-Length 必须与完整实际字节一致，压缩响应按 Fetch 解码后大小限制。审计列表请求上限 16 MiB，导出 128 KiB。凭据提供器、fetch、正文和解析共用传输期限；迟到凭据不会再发起请求，迟到 fetch 响应取消正文。无重定向、缓存或重试。普通json模式没有自动获得这些保证；bytes模式的独立期限与取消现由后续下载增量补齐，见下载章节。
 
 传输层 `timeout_ms` 仍默认 30 秒，和审计方法期限各自生效，较早到期者停止等待；需要等待较久的导出时应同时配置传输层，例如构造 `FetchWcpTransport` 时设 `timeout_ms:90_000`。自定义 WcpTransport 需实现新的 bounded-json 大小、状态、trace 和取消约定；方法外层仍限制本地等待并验证完整对象，但不能保证自定义实现的网络缓冲、取消或后台副作用。SHA-256 不是离线签名，document_bytes 不是整个封套文件大小。
 
@@ -307,7 +309,7 @@ ContextPack 默认预算 4096、寿命 3600 秒；范围分别为 128–32768 �
 
 `confirmContextItem` 只确认未过期 proposed 内容，理由必填且最多 2000 字符；本地来源链需固定当前已确认版本并满足分类和可见性。成功返回 operation=confirm 的历史回执，版本加一。`getContextItem` 返回 `ContextItemReadDocument`，包含 confirm_allowed、confirmation，以及 sources_current/source_check；可选 source_checks 按 source_index 对应直接本地来源，提供 state/issue 和允许披露的 current_revision，缺失或 not-checked 不代表有效。具备审核权限的 human 读取 proposed 条目时，可选 confirmation_readiness 提供更严格的来源确认预览及有效链到期时间；confirm_allowed 据此给出，普通 sources_current=true 不等于可确认。历史单版本也返回该版本的确认元数据，但不补造当前来源诊断。当前来源链检查不改写历史批准，也不验证外部证据。提示不替代授权，旧 confirmed 内容可能没有审核记录。编辑撤去当前确认，后台级联通知尚未实现。确认依赖未执行的 022 迁移；来源链逻辑复用现有 JSONB，不新增迁移，未做运行验证。
 
-`createArtifact(original, bytes)` 和 `putArtifactVersion(original, bytes)` 新增文件创建/追加上传，其中 original 是保存的 `{ identity, command }`，bytes 为 Uint8Array。SDK 核对上下文身份、操作及长度，在异步传输前复制原命令和字节；原 request_key 用作 Idempotency-Key，追加的原 expected_version 用作 If-Match，不继承上下文的其他写条件。SHA-256 由持久服务核验；调用前自行保留原请求与文件，不自动生成键、保存 outbox 或重试。
+`createArtifact(original, bytes, options?)` 和 `putArtifactVersion(original, bytes, options?)` 提供文件创建/追加上传，其中 original 是保存的 `{ identity, command }`，bytes 为 Uint8Array。SDK 核对上下文身份、操作及长度，在异步传输前复制原命令和字节；原 request_key 用作 Idempotency-Key，追加的原 expected_version 用作 If-Match，不继承上下文的其他写条件。SDK现先核对内容副本的SHA-256，持久服务仍独立核验；options支持timeout_ms/signal，默认180秒本地预算，完整成功/Fetch错误响应上限4 MiB/16 KiB。调用前自行保留原请求与文件，不自动生成键、保存 outbox 或重试。
 
 FetchWcpTransport 支持原生 FormData：request 为 application/json 文件部件，content 为二进制文件部件；等待 token 前固定请求头及正文，由 fetch 设置 boundary。自定义 transport 必须支持 FormData。默认 Gateway 文件上限为 64 MiB，request JSON 上限为 1 MiB；部署可设置更低上限，超限会拒绝。Fetch 默认超时仍为 30 秒，较慢上传可显式配置 timeout_ms。
 

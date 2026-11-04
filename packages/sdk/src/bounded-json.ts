@@ -9,7 +9,8 @@ interface BoundedJsonRequest {
   url: URL;
   method: 'GET' | 'POST';
   headers: Headers;
-  body: string | undefined;
+  /** Captured by FetchWcpTransport before awaiting credentials, including multipart fields. */
+  body: string | FormData | undefined;
   maximum: number;
   trace: string;
   timeout: number;

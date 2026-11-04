@@ -6,6 +6,8 @@
 
 ### 2026-11-04 开发补充（未编译、未发布、未测试）
 
+- P0/P2：已补SDK createArtifact/putArtifactVersion的timeout_ms/signal及默认180秒整次预算，完整原请求1 MiB、非共享内容沿既有1 GiB协议上限，异步前复制，发送前SHA-256核对原描述；显式原身份/键/版本头，不继承旧写条件。Fetch bounded-json支持同步复制的原生FormData POST，凭据/网络/正文共用独立传输期限，成功4 MiB/错误16 KiB，完整原封套解析及迟到拒绝。错误固定retryable=false，派发前本次not-sent/服务器未查，开始transport后任何失败unknown，保留原请求并显式查回执，不重试/换键/刷新版本。Mock仅源码兼容，CLI通用json路径不自动增强；流式上传、调用方持久恢复及运行证据仍缺。无服务端/schema/依赖变化，仅源码文档人工审阅，未编译/类型检查/测试/执行SDK/CLI/Mock/API/数据库或发布，独立提交push main带[skip ci]。
+
 - P0/P2：已补SDK独立inspectArtifactUploadRequest，接收1 MiB内原identity/command UTF-8字节或JSON文本，可选非共享内容（默认64 MiB/最多1 GiB）与实际/规范请求预期SHA-256；异步前复制所有输入、保留原键/版本/身份/内容描述，默认180秒预算及signal、完整Web Crypto摘要，失败无部分报告。返回完整original、实际字节和规范JSON各自大小/摘要、content_state，明确本地有效/身份未认证/服务器未查询/未上传/无文件I/O；无需WcpClient/当前会话，不重新prepare或生成键。与CLI共用原请求格式但不修改CLI文件流程，文件读取/保存、上传恢复编排及运行证据仍由后续补齐。无服务端/schema/依赖变化，仅源码文档人工审阅，未编译/类型检查/测试/执行SDK/CLI/Mock/API/数据库或发布，独立提交push main带[skip ci]。
 
 - P0/P2/P4：已补SDK固定版本下载整次180秒本地预算与AbortSignal，max_bytes默认64 MiB仍保持，元数据/二进制/摘要共用期限，固定身份/版本/描述、复制非共享字节并核验完整头和SHA-256；失败无部分返回，已核对放行ID保留、未确认不推断无记录。Fetch bytes新增凭据/网络/逐块正文取消与独立期限、严格成功200/trace/octet-stream/规范长度、错误16 KiB，清理不等待、迟到响应取消；网络CLI原bytes读取JSON改为bounded-json以保持兼容。Mock沿既有signal衔接，普通json不受影响；自定义transport/摘要后台、流式大文件、客户端保存回执及运行证据仍缺。无schema/依赖变化，仅源码文档人工审阅，未编译/类型检查/测试/执行SDK/CLI/Mock/API/数据库或发布，独立提交push main带[skip ci]。

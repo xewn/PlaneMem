@@ -66,7 +66,8 @@ export class FetchWcpTransport implements WcpTransport {
           maxBytes < 0 ||
           maxBytes > ARTIFACT_DOWNLOAD_MAX_BYTES
         : responseType === 'bounded-json'
-          ? typeof maxBytes !== 'number' ||
+          ? (method !== 'GET' && method !== 'POST') ||
+            typeof maxBytes !== 'number' ||
             !Number.isSafeInteger(maxBytes) ||
             maxBytes < 1 ||
             maxBytes > WORKBENCH_AUDIT_RESPONSE_BYTES
@@ -99,12 +100,6 @@ export class FetchWcpTransport implements WcpTransport {
       }
     }
     if (responseType === 'bounded-json') {
-      if (requestBody !== undefined && typeof requestBody !== 'string')
-        throw new ContractError(
-          'INVALID_INPUT',
-          'Bounded JSON requests do not accept multipart bodies',
-          { trace_id: trace },
-        );
       return (await requestBoundedJson({
         url,
         method,

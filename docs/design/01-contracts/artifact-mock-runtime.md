@@ -59,6 +59,8 @@ const client = new WcpClient(transport, {
 
 ## 上传、并发与历史
 
+SDK创建/追加入口现先固定原请求和非共享内容、独立核对原SHA-256，再以bounded-json/FormData及signal调用Mock。默认180秒本地预算、成功4 MiB完整响应上限由SDK执行；Mock原有multipart/预算/取消及同步提交检查继续独立生效。SDK发送前摘要不匹配或预取消不触达Mock；调用transport后的失败在SDK中一律保持原请求结果未知，不能据本地取消推断Mock或真实服务器没有写入。此处仅审阅源码接线，未运行场景；Mock不能证明真实网络未知或持久回执。
+
 上传必须使用原生 FormData，恰好包含 `request` 和 `content` 两个 Blob。request 类型为 application/json，完整正文是现有 ArtifactReceiptQuery；文件名不参与身份。检查请求键、原 operation、路径、原 If-Match、文件长度和 SHA-256；空文件允许，摘要仍必须匹配。依赖环境提供 FormData、Blob 和 Web Crypto；不新增依赖。
 
 首次异步读取前捕获头部、路径、响应限制、信号及两个不可变 Blob 引用，后续更换 FormData 条目不改变在途请求。先读取有界 JSON，再读取内容并计算摘要。包括重放在内，每次上传都核对本次字节；响应 replayed=true/content_state=not-checked 表示没有重新保存和重新检查已存对象。

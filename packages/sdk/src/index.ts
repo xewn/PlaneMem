@@ -20,6 +20,8 @@ export * from './continuity.js';
 export * from './fetch-transport.js';
 export type { WcpArtifactUploadContextOptions } from './artifact-upload-context.js';
 export type { WcpArtifactReadOptions } from './artifact-reads.js';
+export type { WcpArtifactUploadOptions } from './artifact-upload.js';
+export type { ArtifactUploadEnvelope } from '@planemem/contracts';
 export type { WcpArtifactDownloadOptions, WcpArtifactDownloadResult } from './artifact-download.js';
 export {
   inspectArtifactUploadRequest,
