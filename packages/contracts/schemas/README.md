@@ -2,6 +2,40 @@
 
 这些文件是开发源码，尚未经过本轮编译、生成器、Schema校验器、测试或运行验证。`$id`是契约标识，不代表已发布网站；消费者应从工作区或包子路径加载文件，不依赖远端下载。
 
+## 保存 ContextPack 对比
+
+`context-pack-comparison.json`采用JSON Schema 2020-12，包子路径为`@planemem/contracts/schemas/context-pack-comparison.json`。根`ContextPackComparisonResult`描述SDK `compareContextPacks`、CLI `context compare-packs`输出及MCP `compare_context_packs`文本内的JSON；MCP外层content/JSON-RPC包装不在根内。网页内部组合使用单独的`#ContextPackComparisonWebResult`，只有query/from/to/comparison，不带SDK/MCP的标记和身份字段，也不是新增REST接口。
+
+此文件引用相邻的`context-pack-read.json`，复用完整json封套、入选条目、排除记录、范围、来源及基础值约束。消费者应从两个包子路径加载**两份完整本地资源**，分别按各自`$id`注册，再解析锚点。相对引用以`https://planemem.local/schemas/context-pack-comparison.json`为基址；两个`$id`都只是标识，不需要联网解析。不要只拷贝比较文件后假定依赖已经存在，也不要拆出`$defs`丢失基址。已有完整读取文件和旧sections实体未改动。
+
+| 片段 | 对应内容 |
+| --- | --- |
+| `#ContextPackComparisonQuery` | SDK/MCP两字段查询及结果内原query |
+| `#ContextPackComparisonCliQuery` | CLI四字段输入，必需expected_actor_id/expected_client_id |
+| `#ContextPackComparisonIdentity` | 结果内完整租户/工作区/项目/账号/客户端约束 |
+| `#SavedPackSelectedCandidate` / `#SavedPackExcludedCandidate` / `#SavedPackAbsentCandidate` | 完整入选条目、排除理由及未出现状态 |
+| `#SavedPackCandidate` | 上述单侧候选联合结构，位置从1开始 |
+| `#SavedPackCandidateComparison` | 候选ID、状态、差异标签及完整两侧 |
+| `#ContextPackComparisonField` | 元数据行基础形状，精确key/label/类型由报告限定 |
+| `#SavedContextPackComparison` | 纯比较模型，固定十一元数据行、最多2000候选、来源与计数 |
+| `#ContextPackComparisonResult` | SDK/CLI/MCP完整本地结果，也是根 |
+| `#ContextPackComparisonWebResult` | 网页内部完整组合，独立形状 |
+
+字段封闭；两侧只能使用json包，禁止rendered。候选selected/excluded携带其原列表中的位置（1–1000），absent只含state。added/removed必须恰有一侧absent、标签仅Selection；changed必须两侧存在，跨入选/排除状态也仅标Selection，同状态使用对应字段标签；same两侧同状态且无差异标签。两侧同时absent无效。固定十一元数据行保留原key/label/顺序和类型，版本/游标为正安全整数、预算128–32768、用量0–32768。聚合来源保留完整对象和顺序，禁止重复；不替来源文本增加URL可访问性要求。
+
+身份中的scope/actor均为ULID，client按MCP现有isSyncIdentifier规则最多255字符且无C0控制字符。SDK/CLI另通过parseSyncCommandIdentity拒绝DEL；CLI查询锚点包含这一额外约束。Schema长度按码点计算，运行时按UTF-16单元且拒绝孤立代理项，不能互相替代。示例只有人工编写的查询，不伪造带正确摘要的成功输出，也不是测试证据。
+
+以下核对仍由原解析器、读取器和`compareSavedContextPacks`负责，不能仅凭结构通过声称有效：
+
+- 两个包编号不同、两侧与原query/范围/身份/trace匹配，比较内query/scope与外层及原包完全一致。网页两次读取trace可不同。
+- 查询4 KiB、每侧完整封套2 MiB、纯报告8 MiB、完整组合12 MiB，以及普通有限JSON、深度/节点和UTF-16预算；MCP另限制转义文本包装24 MiB+4096。
+- 已有读取结构列出的版本/ETag、来源并集、候选唯一性/合计数、token估算、完整原时间和内容SHA-256。标记pack-hashes-checked只是生产者声明，Schema不能验证其真实性。
+- 每个候选ID和完整两侧值/位置必须来自原包；联合列表唯一且按基础包入选/排除再追加目标新候选排序，统计数精确对应各状态，不能只看maxItems或计数上界。
+- 重新计算十一元数据行原值/changed、候选状态/差异标签顺序、完整来源顺序及changed。对象键顺序忽略，数组顺序和正文空白保留；same/changed分支本身不能证明内容相等或不同。
+- 真实认证、当前可读权限、有效期、来源状态和总期限/容量；两次读取不是同一数据库快照，移除候选不表示删除知识，摘要一致不证明外部来源真实。
+
+仅新增可加载源码和包导出，不新增生产JSON导入、校验器依赖或生成器，不执行Schema校验、编译、类型检查、测试或发布。自动一致性、两资源解析及真实客户端兼容仍待运行证据；详见[保存包对比运行约定](../../../docs/design/01-contracts/context-pack-runtime.md)。
+
 ## 保存 ContextPack 完整读取
 
 `context-pack-read.json`采用JSON Schema 2020-12，包子路径为`@planemem/contracts/schemas/context-pack-read.json`。它自包含全部定义，根是`ContextPackReadEnvelope`，用于GET /v1/context-pack、SDK getContextPack、CLI context get和MCP保存包工具/资源内部文本中的完整成功封套，也可描述Mock中提供的完整json响应。MCP外层content/contents/JSON-RPC包装、HTTP头/状态、编译命令及Mock配置不属于此根结构。

@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [保存包对比格式定义](packages/contracts/schemas/README.md#保存-contextpack-对比)：提供查询、完整两侧候选、差异报告和客户端结果结构，单独描述网页包装；复用本地完整读取定义，可从包子路径加载。仅源码文档，未运行校验器、编译、测试或发布。
+
 新增 [MCP 保存包对比](docs/design/01-contracts/context-pack-runtime.md#mcp-指定保存包对比2026-11-04源码增量)：`compare_context_packs` 使用当前可信身份读取两个指定包，核对完整内容与摘要后返回两侧内容和差异；共用30秒期限和上下文读容量。仅源码文档，未编译、测试、运行或发布。
 
 新增 [CLI 保存包对比](docs/design/01-contracts/context-pack-runtime.md#cli-指定保存包对比2026-11-04源码增量)：`context compare-packs` 接受两个包编号和账号、客户端约束，输出完整两侧内容与差异；网络和嵌入入口共用 SDK 校验及总等待期限。仅源码文档，未编译、测试、运行或发布。

@@ -1,5 +1,7 @@
 # 持久化 ContextPack 开发说明
 
+2026-11-04新增[独立保存包对比Schema](../../../packages/contracts/schemas/README.md#保存-contextpack-对比)：`@planemem/contracts/schemas/context-pack-comparison.json`提供查询、候选/报告、SDK/CLI/MCP完整结果及网页内部组合锚点。需与本地context-pack-read资源一起注册，复用完整json封套；不联网加载。跨字段绑定、真实摘要及精确差异仍由原实现核对；仅源码文档，未执行Schema校验器、生成器、编译、类型检查、测试或发布。
+
 更新：2026-11-02。本文记录代码实现；未执行编译、类型检查、测试、数据库迁移、部署或发布。
 
 2026-11-04新增[独立完整读取Schema](../../../packages/contracts/schemas/README.md#保存-contextpack-完整读取)：`@planemem/contracts/schemas/context-pack-read.json`提供查询、完整保存包、回执和格式专用封套定义。旧sections实体保持；原请求绑定、来源顺序、合计预算、渲染内容和真实SHA-256仍沿下文运行时检查，Schema结构不能替代。仅源码文档与格式文本检查，未执行校验器、生成器、编译、类型检查、测试或发布。
@@ -199,7 +201,7 @@ Web先捕获同一会话/项目范围及Gateway基址，随后两次顺序GET都
 - 单列保存ID、版本、创建时间、保存游标、包摘要、保存trace、预算、估算用量、到期时间及入选/排除数量。原HTTP读取trace不当作保存内容变化，单独显示供定位。包内容摘要相同并不要求保存ID/版本相同。
 - 聚合来源保留两侧完整引用及顺序，独立显示变化。每候选可展开两侧正文及完整保存字段；只看变化隐藏same候选及相同元数据，来源相同时保留提示。候选无变化时仍显示可能变化的包信息，不把空差异当成同一保存记录。
 
-Web、下节SDK、CLI及MCP已接入双包对比，专用Schema后续开发；旧完整读取Schema描述各侧封套，不描述本地组合比较结果。R-003未完成、`evidence: []`；双侧完整性/摘要、状态迁移/位置/字段、原范围/期限、导航与真实页面兼容都缺运行证据。本轮只源码文档人工审阅和格式文本检查，未编译、类型检查、测试、渲染、启动浏览器/产品/API/数据库或发布。
+Web、下节SDK、CLI及MCP已接入双包对比，专用Schema见本文顶部链接；旧完整读取Schema描述各侧封套，新的对比Schema引用它描述本地组合。R-003未完成、`evidence: []`；双侧完整性/摘要、状态迁移/位置/字段、原范围/期限、导航与真实页面兼容都缺运行证据。本轮只源码文档人工审阅和格式文本检查，未编译、类型检查、测试、渲染、启动浏览器/产品/API/数据库或发布。
 
 ## SDK 指定保存包对比（2026-11-04，源码增量）
 
@@ -243,7 +245,7 @@ const result = await client.compareContextPacks(selection, {
 // 需取消时由调用方调用cancellation.abort()；不会重发或编译包。
 ```
 
-CLI及MCP对比适配见后续章节；组合Schema、自动一致性和SDK/Mock/真实Gateway兼容、身份刷新/总预算/取消/完整结果边界运行证据仍待补。R-003保持未完成、`evidence: []`；本轮仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布。
+CLI及MCP对比适配见后续章节，组合Schema见本文顶部链接；自动一致性和SDK/Mock/真实Gateway兼容、身份刷新/总预算/取消/完整结果边界运行证据仍待补。R-003保持未完成、`evidence: []`；本轮仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布。
 
 ## CLI 指定保存包对比（2026-11-04，源码增量）
 
@@ -270,7 +272,7 @@ stdout返回上节完整SDK结果：原query/identity_constraints、from/to及co
 workctx context compare-packs --json-file pack-comparison.json --timeout-ms 30000
 ```
 
-反向比较须显式交换两个包编号；命令不会覆盖输入文件。R-003未完成、`evidence: []`，网络/嵌入/SDK兼容、总期限/授权等待/容量、文件/stdin输入和完整输出仍缺运行证据；MCP对比见下节，独立组合Schema待补。本轮仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/SDK/产品/API/数据库或发布。
+反向比较须显式交换两个包编号；命令不会覆盖输入文件。R-003未完成、`evidence: []`，网络/嵌入/SDK兼容、总期限/授权等待/容量、文件/stdin输入和完整输出仍缺运行证据；MCP对比见下节，独立组合Schema见本文顶部链接。本轮仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/SDK/产品/API/数据库或发布。
 
 ## MCP 指定保存包对比（2026-11-04，源码增量）
 
@@ -299,4 +301,4 @@ workctx context compare-packs --json-file pack-comparison.json --timeout-ms 3000
 }
 ```
 
-反向比较须显式交换两编号。R-003保持未完成、`evidence: []`；发现/调用/prepare兼容、完整双侧及转义输出边界、超时/共享容量和真实Gateway/MCP客户端兼容仍缺运行证据，独立组合Schema待补。本轮仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行MCP/SDK/Mock/产品/API/数据库或发布。
+反向比较须显式交换两编号。R-003保持未完成、`evidence: []`；发现/调用/prepare兼容、完整双侧及转义输出边界、超时/共享容量和真实Gateway/MCP客户端兼容仍缺运行证据，独立组合Schema见本文顶部链接。本轮仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行MCP/SDK/Mock/产品/API/数据库或发布。

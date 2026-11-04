@@ -1,0 +1,425 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/context-pack-comparison.json",
+  "title": "Local saved ContextPack comparison v1",
+  "description": "Complete SDK/CLI result and JSON inside the MCP comparison text. A separate anchor describes the Web internal combination; neither is a Gateway or JSON-RPC envelope.",
+  "$comment": "Source artifact only; no validator, generator or runtime verification was executed. Register this complete resource and the adjacent context-pack-read.json resource from local package files before resolving references. IDs identify schemas, not hosted endpoints. Retain original read/query parsers, canonical SHA-256, comparison recomputation and trusted authority checks. Structure does not establish authenticity, atomic reads or permission.",
+  "$ref": "#ContextPackComparisonResult",
+  "$defs": {
+    "ulid": { "$ref": "context-pack-read.json#/$defs/ulid" },
+    "savedName": { "$ref": "context-pack-read.json#/$defs/savedName" },
+    "timestamp": { "$ref": "context-pack-read.json#/$defs/timestamp" },
+    "positiveInteger": { "$ref": "context-pack-read.json#/$defs/positiveInteger" },
+    "packHash": {
+      "type": "string",
+      "minLength": 71,
+      "maxLength": 71,
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "selectedCount": { "type": "integer", "minimum": 0, "maximum": 1000 },
+    "candidateCount": { "type": "integer", "minimum": 0, "maximum": 2000 },
+    "position": { "type": "integer", "minimum": 1, "maximum": 1000 },
+    "sourceList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "context-pack-read.json#ContextPackReadSourceRef" },
+      "$comment": "Ordered full pack source union, not per-item sources. No invented count or URI-access limit; complete byte/complexity budgets still apply."
+    },
+    "ContextPackComparisonQuery": {
+      "$anchor": "ContextPackComparisonQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from_pack_id", "to_pack_id"],
+      "properties": {
+        "from_pack_id": { "$ref": "#/$defs/ulid" },
+        "to_pack_id": { "$ref": "#/$defs/ulid" }
+      },
+      "$comment": "SDK/MCP input and result query, 4096 bytes at runtime. Runtime also requires different IDs and preserves direction. No format/latest, identity or write fields. Schema cannot compare the two property values.",
+      "examples": [
+        {
+          "from_pack_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "to_pack_id": "01ARZ3NDEKTSV4RRFFQ69G5FAW"
+        }
+      ]
+    },
+    "ContextPackComparisonCliQuery": {
+      "$anchor": "ContextPackComparisonCliQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from_pack_id", "to_pack_id", "expected_actor_id", "expected_client_id"],
+      "properties": {
+        "from_pack_id": { "$ref": "#/$defs/ulid" },
+        "to_pack_id": { "$ref": "#/$defs/ulid" },
+        "expected_actor_id": { "$ref": "#/$defs/ulid" },
+        "expected_client_id": {
+          "$ref": "context-pack-read.json#/$defs/clientConstraint",
+          "maxLength": 255
+        }
+      },
+      "$comment": "context compare-packs JSON/file input, 4096 bytes. Both expected identity fields are mandatory and are not credentials. Runtime requires distinct IDs and identity equality; SDK capture additionally limits client to 255 UTF-16 units. --timeout-ms is a CLI option, not a JSON field. Do not send this four-field object as MCP/SDK query."
+    },
+    "ContextPackComparisonIdentity": {
+      "$anchor": "ContextPackComparisonIdentity",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant_id", "workspace_id", "project_id", "actor_id", "client_id"],
+      "properties": {
+        "tenant_id": { "$ref": "#/$defs/ulid" },
+        "workspace_id": { "$ref": "#/$defs/ulid" },
+        "project_id": { "$ref": "#/$defs/ulid" },
+        "actor_id": { "$ref": "#/$defs/ulid" },
+        "client_id": { "$ref": "context-pack-read.json#/$defs/requestTrace" }
+      },
+      "$comment": "Shared output shape includes MCP's isSyncIdentifier client rule (255 UTF-16 units, no C0 controls or unpaired surrogates). SDK/CLI additionally reject DEL through parseSyncCommandIdentity. All scopes and actor IDs are ULIDs in these entry points. This object describes captured constraints, not verified credentials or transferable permissions."
+    },
+    "SavedPackSelectedCandidate": {
+      "$anchor": "SavedPackSelectedCandidate",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "position", "item"],
+      "properties": {
+        "state": { "const": "selected" },
+        "position": { "$ref": "#/$defs/position" },
+        "item": { "$ref": "context-pack-read.json#ContextPackReadItem" }
+      }
+    },
+    "SavedPackExcludedCandidate": {
+      "$anchor": "SavedPackExcludedCandidate",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "position", "exclusion"],
+      "properties": {
+        "state": { "const": "excluded" },
+        "position": { "$ref": "#/$defs/position" },
+        "exclusion": { "$ref": "context-pack-read.json#ContextPackReadExclusion" }
+      }
+    },
+    "SavedPackAbsentCandidate": {
+      "$anchor": "SavedPackAbsentCandidate",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state"],
+      "properties": { "state": { "const": "absent" } }
+    },
+    "SavedPackPresentCandidate": {
+      "oneOf": [
+        { "$ref": "#SavedPackSelectedCandidate" },
+        { "$ref": "#SavedPackExcludedCandidate" }
+      ]
+    },
+    "SavedPackCandidate": {
+      "$anchor": "SavedPackCandidate",
+      "oneOf": [
+        { "$ref": "#SavedPackSelectedCandidate" },
+        { "$ref": "#SavedPackExcludedCandidate" },
+        { "$ref": "#SavedPackAbsentCandidate" }
+      ],
+      "$comment": "Position is one-based within that side's selected or excluded list, not the union. Absent has neither position nor content. Runtime binds the complete item/exclusion to its original pack."
+    },
+    "selectedDifferences": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 12,
+      "items": {
+        "enum": [
+          "Order",
+          "Layer",
+          "Content",
+          "Sources",
+          "Confirmation",
+          "Confidence",
+          "Priority",
+          "Classification",
+          "Saved trace",
+          "Revision",
+          "Expiry",
+          "Selection reason"
+        ]
+      }
+    },
+    "excludedDifferences": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 2,
+      "items": { "enum": ["Order", "Exclusion reason"] }
+    },
+    "SavedPackCandidateComparison": {
+      "$anchor": "SavedPackCandidateComparison",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status", "differences", "before", "after"],
+      "properties": {
+        "id": { "$ref": "#/$defs/savedName" },
+        "status": { "enum": ["added", "removed", "changed", "same"] },
+        "differences": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "before": { "$ref": "#SavedPackCandidate" },
+        "after": { "$ref": "#SavedPackCandidate" }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "status": { "const": "added" },
+            "before": { "$ref": "#SavedPackAbsentCandidate" },
+            "after": { "$ref": "#/$defs/SavedPackPresentCandidate" },
+            "differences": { "const": ["Selection"] }
+          }
+        },
+        {
+          "properties": {
+            "status": { "const": "removed" },
+            "before": { "$ref": "#/$defs/SavedPackPresentCandidate" },
+            "after": { "$ref": "#SavedPackAbsentCandidate" },
+            "differences": { "const": ["Selection"] }
+          }
+        },
+        {
+          "properties": {
+            "status": { "const": "same" },
+            "differences": { "maxItems": 0 }
+          },
+          "oneOf": [
+            {
+              "properties": {
+                "before": { "$ref": "#SavedPackSelectedCandidate" },
+                "after": { "$ref": "#SavedPackSelectedCandidate" }
+              }
+            },
+            {
+              "properties": {
+                "before": { "$ref": "#SavedPackExcludedCandidate" },
+                "after": { "$ref": "#SavedPackExcludedCandidate" }
+              }
+            }
+          ]
+        },
+        {
+          "properties": { "status": { "const": "changed" }, "differences": { "minItems": 1 } },
+          "oneOf": [
+            {
+              "properties": {
+                "before": { "$ref": "#SavedPackSelectedCandidate" },
+                "after": { "$ref": "#SavedPackSelectedCandidate" },
+                "differences": { "$ref": "#/$defs/selectedDifferences" }
+              }
+            },
+            {
+              "properties": {
+                "before": { "$ref": "#SavedPackExcludedCandidate" },
+                "after": { "$ref": "#SavedPackExcludedCandidate" },
+                "differences": { "$ref": "#/$defs/excludedDifferences" }
+              }
+            },
+            {
+              "properties": {
+                "before": { "$ref": "#SavedPackSelectedCandidate" },
+                "after": { "$ref": "#SavedPackExcludedCandidate" },
+                "differences": { "const": ["Selection"] }
+              }
+            },
+            {
+              "properties": {
+                "before": { "$ref": "#SavedPackExcludedCandidate" },
+                "after": { "$ref": "#SavedPackSelectedCandidate" },
+                "differences": { "const": ["Selection"] }
+              }
+            }
+          ]
+        }
+      ],
+      "$comment": "Runtime must recompute row ID, complete side values, positions, ordered labels and status from the original packs. Both-absent rows are impossible. Added/removed describe candidate membership, not project knowledge creation/deletion. Structural same/changed branches cannot prove actual value equality or inequality."
+    },
+    "ContextPackComparisonField": {
+      "$anchor": "ContextPackComparisonField",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "label", "before", "after", "changed"],
+      "properties": {
+        "key": { "type": "string" },
+        "label": { "type": "string" },
+        "before": { "type": ["string", "number"] },
+        "after": { "type": ["string", "number"] },
+        "changed": { "type": "boolean" }
+      },
+      "$comment": "Base row only. The complete report constrains all eleven key/label/value types in order. Recompute changed using the original saved field values."
+    },
+    "SavedContextPackComparison": {
+      "$anchor": "SavedContextPackComparison",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["query", "scope", "fields", "candidates", "counts", "sources"],
+      "properties": {
+        "query": { "$ref": "#ContextPackComparisonQuery" },
+        "scope": { "$ref": "context-pack-read.json#ContextPackReadScope" },
+        "fields": {
+          "type": "array",
+          "minItems": 11,
+          "maxItems": 11,
+          "items": false,
+          "allOf": [{ "items": { "$ref": "#ContextPackComparisonField" } }],
+          "prefixItems": [
+            {
+              "properties": {
+                "key": { "const": "pack_id" },
+                "label": { "const": "Saved pack" },
+                "before": { "$ref": "#/$defs/ulid" },
+                "after": { "$ref": "#/$defs/ulid" }
+              }
+            },
+            {
+              "properties": {
+                "key": { "const": "version" },
+                "label": { "const": "Saved version" },
+                "before": { "$ref": "#/$defs/positiveInteger" },
+                "after": { "$ref": "#/$defs/positiveInteger" }
+              }
+            },
+            {
+              "properties": {
+                "key": { "const": "created_at" },
+                "label": { "const": "Created" },
+                "before": { "$ref": "#/$defs/timestamp" },
+                "after": { "$ref": "#/$defs/timestamp" }
+              }
+            },
+            {
+              "properties": {
+                "key": { "const": "server_cursor" },
+                "label": { "const": "Saved cursor" },
+                "before": { "$ref": "#/$defs/positiveInteger" },
+                "after": { "$ref": "#/$defs/positiveInteger" }
+              }
+            },
+            {
+              "properties": {
+                "key": { "const": "pack_hash" },
+                "label": { "const": "Content hash" },
+                "before": { "$ref": "#/$defs/packHash" },
+                "after": { "$ref": "#/$defs/packHash" }
+              }
+            },
+            {
+              "properties": {
+                "key": { "const": "trace_id" },
+                "label": { "const": "Saved trace" },
+                "before": { "$ref": "#/$defs/savedName" },
+                "after": { "$ref": "#/$defs/savedName" }
+              }
+            },
+            {
+              "properties": {
+                "key": { "const": "budget_tokens" },
+                "label": { "const": "Token budget" },
+                "before": { "type": "integer", "minimum": 128, "maximum": 32768 },
+                "after": { "type": "integer", "minimum": 128, "maximum": 32768 }
+              }
+            },
+            {
+              "properties": {
+                "key": { "const": "used_tokens" },
+                "label": { "const": "Estimated tokens used" },
+                "before": { "type": "integer", "minimum": 0, "maximum": 32768 },
+                "after": { "type": "integer", "minimum": 0, "maximum": 32768 }
+              }
+            },
+            {
+              "properties": {
+                "key": { "const": "expires_at" },
+                "label": { "const": "Expires" },
+                "before": { "$ref": "#/$defs/timestamp" },
+                "after": { "$ref": "#/$defs/timestamp" }
+              }
+            },
+            {
+              "properties": {
+                "key": { "const": "selected" },
+                "label": { "const": "Selected items" },
+                "before": { "$ref": "#/$defs/selectedCount" },
+                "after": { "$ref": "#/$defs/selectedCount" }
+              }
+            },
+            {
+              "properties": {
+                "key": { "const": "excluded" },
+                "label": { "const": "Excluded items" },
+                "before": { "$ref": "#/$defs/selectedCount" },
+                "after": { "$ref": "#/$defs/selectedCount" }
+              }
+            }
+          ]
+        },
+        "candidates": {
+          "type": "array",
+          "maxItems": 2000,
+          "items": { "$ref": "#SavedPackCandidateComparison" }
+        },
+        "counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["added", "removed", "changed", "same"],
+          "properties": {
+            "added": { "$ref": "#/$defs/candidateCount" },
+            "removed": { "$ref": "#/$defs/candidateCount" },
+            "changed": { "$ref": "#/$defs/candidateCount" },
+            "same": { "$ref": "#/$defs/candidateCount" }
+          }
+        },
+        "sources": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["before", "after", "changed"],
+          "properties": {
+            "before": { "$ref": "#/$defs/sourceList" },
+            "after": { "$ref": "#/$defs/sourceList" },
+            "changed": { "type": "boolean" }
+          }
+        }
+      },
+      "$comment": "Pure shared report, limited to 8 MiB at runtime. Recompute from two complete same-scope json envelopes. Candidate order is base selected, base excluded, then new target selected/excluded IDs; no duplicate union IDs. Counts must exactly partition rows. All fields, sources and changed flags must match originals; object-key order is ignored while array order and text whitespace are preserved. This report itself has no integrity or authority attestation."
+    },
+    "ContextPackComparisonResult": {
+      "$anchor": "ContextPackComparisonResult",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "kind",
+        "comparison_origin",
+        "read_consistency",
+        "content_state",
+        "source_state",
+        "query",
+        "identity_constraints",
+        "from",
+        "to",
+        "comparison"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "kind": { "const": "saved-context-pack-comparison" },
+        "comparison_origin": { "const": "local" },
+        "read_consistency": { "const": "separate-reads" },
+        "content_state": { "const": "pack-hashes-checked" },
+        "source_state": { "const": "not-checked" },
+        "query": { "$ref": "#ContextPackComparisonQuery" },
+        "identity_constraints": { "$ref": "#ContextPackComparisonIdentity" },
+        "from": { "$ref": "context-pack-read.json#ContextPackReadJsonEnvelope" },
+        "to": { "$ref": "context-pack-read.json#ContextPackReadJsonEnvelope" },
+        "comparison": { "$ref": "#SavedContextPackComparison" }
+      },
+      "$comment": "SDK/CLI/MCP complete local result, 12 MiB plus JSON complexity limits. MCP text wrapping is separately bounded to 24 MiB+4096. Tags describe producer behavior, not proof supplied by this schema. Check identity/scope/queries against both original requests, validate each 2 MiB envelope and SHA-256, and recompute the complete comparison. No aggregate data/trace/ETag wrapper; source authenticity and atomic reads are not claimed."
+    },
+    "ContextPackComparisonWebResult": {
+      "$anchor": "ContextPackComparisonWebResult",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["query", "from", "to", "comparison"],
+      "properties": {
+        "query": { "$ref": "#ContextPackComparisonQuery" },
+        "from": { "$ref": "context-pack-read.json#ContextPackReadJsonEnvelope" },
+        "to": { "$ref": "context-pack-read.json#ContextPackReadJsonEnvelope" },
+        "comparison": { "$ref": "#SavedContextPackComparison" }
+      },
+      "$comment": "Existing Web server's internal 12 MiB combination, not a published REST result or SDK/MCP root. Session identity is captured outside this object. Web checks each side's separate read trace/HTTP headers/digest; the two traces need not be equal."
+    }
+  }
+}
