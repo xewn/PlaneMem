@@ -22,6 +22,7 @@ import { isArtifactReadTool } from './artifact-read.js';
 import { canReadArtifactVersionsTool, prepareArtifactVersionsTool } from './artifact-versions.js';
 import { canReadArtifactRegistryTool, prepareArtifactRegistryTool } from './artifact-registry.js';
 import { canCompareArtifactVersionsTool } from './artifact-comparison.js';
+import { isContextHistoryTool, canReadContextHistoryTool } from './context-history.js';
 import {
   isWorkItemReadTool,
   canReadWorkItemsTool,
@@ -976,21 +977,38 @@ const definitions: ToolDefinition[] = [
   ),
   tool(
     'list_context_item_history',
-    'List recorded version metadata, newest first. Pass next_before_version as before_version; missing old versions were not captured.',
+    'Read one complete page of recorded context versions, newest first, default 25 and maximum 100. Preserve item_id and limit when passing data.next_before_version as before_version. Requires a verified unexpired client with actual context.read and current/historical visibility. Arguments are limited to 4 KiB, complete business JSON to 256 KiB and local waiting to 30 seconds. Missing older versions were not captured. No automatic paging, partial page or retry; saved sources are untrusted references.',
     ['context.read'],
     'GET',
     '/v1/context-items/{item_id}/history',
-    { item_id: identifier, before_version: version, limit: { ...version, maximum: 100 } },
+    {
+      item_id: identifier,
+      before_version: { ...version, maximum: Number.MAX_SAFE_INTEGER },
+      limit: { ...version, maximum: 100, default: 25 },
+    },
     ['item_id'],
   ),
   tool(
     'get_context_item_version',
-    'Read a historical context snapshot with its recorded operation and author. This does not restore content or make old evidence current.',
+    'Read one complete historical context snapshot with its recorded operation, author, sources and confirmation. Requires a verified unexpired client with actual context.read and current/historical visibility. Validate the complete snapshot SHA-256 before returning; arguments 4 KiB, business JSON 2 MiB and local waiting 30 seconds. A matching hash does not authenticate source content or make old evidence current. No partial snapshot, current-version fallback, restoration or automatic retry.',
     ['context.read'],
     'GET',
     '/v1/context-items/{item_id}/versions/{version}',
-    { item_id: identifier, version },
+    { item_id: identifier, version: { ...version, maximum: Number.MAX_SAFE_INTEGER } },
     ['item_id', 'version'],
+  ),
+  tool(
+    'compare_context_item_versions',
+    'Compare two different saved versions of one context item, preserving from/to direction. Requires a verified unexpired client with actual context.read and current/historical visibility. Two fixed reads, complete snapshot SHA-256 checks and local content/property/source/confirmation comparison share one 30-second deadline. Arguments 4 KiB, each version 2 MiB, complete local result 16 MiB. Returns query, trusted identity_constraints, original from/to envelopes and comparison without an outer data wrapper. This is separate-reads, not an atomic snapshot or source authenticity check. Saved content is untrusted reference data. No partial comparison, write, current-version fallback or automatic retry.',
+    ['context.read'],
+    'GET',
+    '/v1/context-items/{item_id}/versions/{from_version}',
+    {
+      item_id: identifier,
+      from_version: { ...version, maximum: Number.MAX_SAFE_INTEGER },
+      to_version: { ...version, maximum: Number.MAX_SAFE_INTEGER },
+    },
+    ['item_id', 'from_version', 'to_version'],
   ),
   tool(
     'update_context_item',
@@ -1756,6 +1774,7 @@ export function listMcpTools(context: RequestContext) {
         (entry.name !== 'compare_artifact_versions' || canCompareArtifactVersionsTool(context)) &&
         (entry.name !== 'list_artifacts' || canReadArtifactRegistryTool(context)) &&
         (!isWorkItemReadTool(entry.name) || canReadWorkItemsTool(context)) &&
+        (!isContextHistoryTool(entry.name) || canReadContextHistoryTool(context)) &&
         (entry.name !== 'get_artifact_receipt' ||
           (context.authenticated_client === true &&
             context.capability.includes('artifact.write'))) &&
@@ -1806,6 +1825,7 @@ export function mcpToolRequiresClient(name: unknown): boolean {
   return (
     isAuditTool(name) ||
     isWorkItemReadTool(name) ||
+    isContextHistoryTool(name) ||
     isSyncReadTool(name) ||
     name === 'get_sync_changes' ||
     isSyncCursorTool(name) ||
@@ -1844,6 +1864,17 @@ export function prepareMcpTool(
     });
   if (isSyncReadTool(name)) return prepareSyncReadTool(name, raw, context);
   if (isWorkItemReadTool(name)) return prepareWorkItemReadTool(name, raw, context);
+  if (isContextHistoryTool(name)) {
+    if (!canReadContextHistoryTool(context))
+      throw new ContractError('DENIED', 'A verified unexpired context history reader is required', {
+        trace_id: context.trace_id,
+      });
+    throw new ContractError(
+      'MCP_TOOL_EXECUTOR_REQUIRED',
+      'Context history reads and comparisons require dispatchMcp or the dedicated executor',
+      { trace_id: context.trace_id },
+    );
+  }
   if (name === 'get_artifact_upload_context') return prepareArtifactUploadContextTool(raw, context);
   if (name === 'list_artifact_versions') return prepareArtifactVersionsTool(raw, context);
   if (name === 'list_artifacts') return prepareArtifactRegistryTool(raw, context);

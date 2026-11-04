@@ -1,5 +1,7 @@
 # MCP HTTP 运行时开发说明
 
+2026-11-04 上下文历史增补：list_context_item_history/get_context_item_version迁到专用执行器，新增compare_context_item_versions；发现和调用统一要求可信未过期实际context.read及完整身份。4 KiB参数、完整目录256 KiB/版本2 MiB/错误16 KiB、快照SHA-256，三工具每Gateway共用两笔容量和每调用30秒期限，超时保留底层名额。比较两次指定读取共享期限，16 MiB本地结果/32 MiB+4096转义输出；首读失败不继续、无部分结果/自动翻页/重试。prepareMcpTool明确要求专用执行器，普通HTTP输入及外层发送行为保持；详见[上下文MCP历史读取与对比](context-item-runtime.md#2026-11-04-mcp上下文历史与对比增量)。仅源码文档，未编译、测试、执行或发布。
+
 2026-11-04 工作项排序：list_work_item_projections沿专用有界执行器与共享解析支持sort=updated_desc/due_asc；MCP schema及直接调用拒绝空排序，默认省略与updated_desc等价。新排序和全部条件进入生产v5游标绑定，权限/固定预算不变，见[工作项排序](work-item-projection-runtime.md)。仅源码文档，未编译、测试、调用或发布。
 
 2026-11-04 工作项日期筛选：list_work_item_projections既有有界执行器沿共享解析支持due/due_from/due_before，并拒绝MCP schema不接受的空字段。按保存due_at有无及严格UTC日区间筛选，完整页再次核对；未使用字段省略，日期区间不能组合unscheduled。旧发现/实际context.read/输入响应/容量/30秒控制保持，新日期条件纳入生产v4游标绑定。详见[工作项筛选](work-item-projection-runtime.md)。仅源码文档，未编译、测试、执行或发布。

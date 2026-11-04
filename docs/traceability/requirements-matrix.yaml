@@ -954,6 +954,24 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_history_mcp_development_increment:
+      date: "2026-11-04"
+      status: "Source-only bounded MCP history/version reads and explicit two-version comparison; R-003 remains incomplete."
+      artifacts:
+        - "apps/api-gateway/src/mcp/context-history.ts"
+        - "apps/api-gateway/src/mcp/catalog.ts"
+        - "apps/api-gateway/src/mcp/protocol.ts"
+        - "docs/design/01-contracts/context-item-runtime.md"
+        - "docs/design/01-contracts/mcp-runtime.md"
+        - "docs/design/01-contracts/mcp-interface.md"
+      behavior: "Dedicated execution for both existing history tools and new compare_context_item_versions. Discovery and execution require verified unexpired actual context.read and full trusted identity; no argument identity override. Strict 4KiB query, 256KiB history/2MiB version/16KiB error limits, complete HTTP/business response and restricted checks, and canonical snapshot SHA-256 verification. Preserve comparison direction, trusted identity and complete original envelopes in the shared local comparison shape. Three tools share two per-Gateway in-flight slots retained after timeout until actual settlement; each invocation has one 30-second deadline covering reads, hashes, comparison and bounded serialization. Comparison JSON 16MiB and escaped content 32MiB+4096; no partial results, automatic paging, retries or writes. prepareMcpTool requires the dedicated executor."
+      evidence: []
+      pending_evidence:
+        - "Catalog/client gates, expired or mismatched authority, strict arguments and dedicated executor compatibility"
+        - "Complete response sizes/status/trace/type/ETag/scope/sources/version/pagination, restricted data and snapshot hash failures"
+        - "First/second-read failures, shared capacity and deadlines, late settlement, serialized output limits and MCP client compatibility"
+      remaining_scope: "Mock context history integration and runtime/client/authorization evidence. Hashes do not authenticate sources or create a consistent two-read snapshot; synchronous CPU work is not preempted and no new outer-send/global capacity guarantee is claimed."
+      execution: "Source/docs and manual review plus formatting/text checks only; no build, typecheck, tests, MCP/SDK/CLI/Mock/API/product/database execution or release. No new SDK dependency, REST route, schema or migration."
     context_history_cli_development_increment:
       date: "2026-11-04"
       status: "Source-only bounded CLI context history, version and explicit comparison; R-003 remains incomplete."
@@ -970,7 +988,7 @@ requirements:
         - "Network, direct callGateway and embedded command compatibility, strict inputs, duplicate/unknown flags and bounded file/stdin behavior"
         - "Identity/expiry/restricted checks, malformed or oversized responses, snapshot hashes and first/second-read failures"
         - "Total deadline, late router results and retained capacity, original comparison shape and explicit page continuation"
-      remaining_scope: "MCP/Mock context history integration and runtime/client/authorization evidence. Local hashes do not authenticate sources or create a consistent two-read snapshot."
+      remaining_scope: "Mock context history integration and runtime/client/authorization evidence; MCP source integration is tracked in context_history_mcp_development_increment. Local hashes do not authenticate sources or create a consistent two-read snapshot."
       execution: "Source/docs and manual review plus formatting/text checks only; no build, typecheck, tests, CLI/SDK/Mock/API/product/database execution or release. No server/schema/dependency changes."
     context_history_sdk_development_increment:
       date: "2026-11-04"
@@ -990,7 +1008,7 @@ requirements:
         - "Strict captures, optional undefined compatibility, canceled/invalid options and no inherited write headers"
         - "Custom transport mutation/oversize/invalid envelopes, shared metadata/scope/source/version parsing and SHA-256 failures"
         - "Credential refresh with identity equality, first/second-read failure, total deadline, asynchronous digest cancellation and Web model compatibility"
-      remaining_scope: "Runtime/client/authorization evidence and MCP/Mock history integration; CLI source integration is tracked in context_history_cli_development_increment. Local structural comparison does not authenticate hashes, identities or sources; decoded JSON transports do not expose HTTP headers to the SDK business layer."
+      remaining_scope: "Runtime/client/authorization evidence and Mock history integration; CLI/MCP source integration is tracked in the respective increments. Local structural comparison does not authenticate hashes, identities or sources; decoded JSON transports do not expose HTTP headers to the SDK business layer."
       execution: "Source/docs and manual review plus formatting/text checks only; no build, typecheck, tests, SDK/Mock/product/API/database execution or release. No Gateway/database/dependency/write-form changes."
     context_history_comparison_development_increment:
       date: "2026-11-04"

@@ -1,5 +1,7 @@
 # MCP 接口契约 v1
 
+2026-11-04 上下文历史增补：list_context_item_history({item_id,before_version?,limit?})、get_context_item_version({item_id,version})保留原输入与完整封套文本，新增compare_context_item_versions({item_id,from_version,to_version})返回SDK同形的本地比较对象（query/identity_constraints/from/to/comparison，无额外data）。两版本不同且为正安全整数；参数4 KiB，身份仅取可信未过期context.read客户端，拒绝身份和写条件覆盖。完整响应、快照摘要、期限/容量与兼容变化见[上下文MCP历史](context-item-runtime.md#2026-11-04-mcp上下文历史与对比增量)；不自动翻页/重试/恢复，摘要不是来源真实性证明。仅源码文档，未编译、测试、执行或发布。
+
 2026-11-04 工作项排序：list_work_item_projections接受sort=updated_desc/due_asc，默认最近更新，due_asc按保存截止日期升序/null最后/同日期ID升序。省略或显式默认等价，空串拒绝，续页保留全部筛选与sort，换排序回首页；权限与预算保持。详见[工作项排序](work-item-projection-runtime.md)，仅源码文档，未编译、测试、调用或发布。
 
 2026-11-04 工作项日期筛选：list_work_item_projections新增due=scheduled/unscheduled和严格YYYY-MM-DD的due_from（UTC含起始）/due_before（UTC不含结束）。无日期仅due_at=null且不能组合区间，双边须起始早于结束；不使用的字段必须省略。日期筛选不推断逾期或工作流状态，原权限/输入输出预算/期限不变。新条件生产v4游标绑定全部筛选，旧条件保留v1–v3，见[工作项筛选](work-item-projection-runtime.md)。仅源码文档，未编译、测试、调用或发布。

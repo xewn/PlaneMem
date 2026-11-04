@@ -6,9 +6,11 @@
 
 ### 2026-11-04 开发补充（未编译、未发布、未测试）
 
-- P4/P0：CLI context history/version统一复用SDK有界完整读取，新增context compare；三个入口采用4 KiB严格查询、成对账号客户端约束（对比必填）、默认30秒总期限及指定版本SHA-256核对。嵌入可信context.read及restricted权限、SDK实际请求核对、每router两笔容量保持到底层读取结束；不自动翻页/重试/保存，比较保留原方向和完整本地结果。仅源码文档及格式/文本检查，未编译、类型检查、测试、运行或发布；R-003未完成，MCP/Mock历史接入与运行证据待补。
+- P4/P0：MCP list_context_item_history/get_context_item_version接入专用有界执行器，新增compare_context_item_versions；可信未过期实际context.read身份用于发现与调用，4 KiB严格输入、256 KiB目录/2 MiB版本/16 KiB错误、完整响应和SHA-256核对。两版本共享30秒预算，三工具每Gateway共用两笔容量，超时到底层结束才释放；比较输出原本地形状、16 MiB业务/32 MiB+4096转义上限，无自动分页/重试/写入。仅源码文档和格式/文本检查，未编译、类型检查、测试、运行或发布；R-003未完成，Mock历史接入及运行证据待补。
 
-- P0/P5：SDK listContextItemHistory/getContextItemVersion增加可选timeout_ms/signal，已知平面查询/选项和上下文先捕获，固定范围及已有账号客户端条件，GET不继承写键/版本。目录256KiB、版本2MiB完整共享解析，Fetch沿用16KiB错误；版本WebCrypto SHA-256异步核对在原预算内，无能力或不匹配明确失败。新增compareContextItemVersions，要求完整project/actor/client约束、两个不同明确版本，顺序读取与解析/摘要/本地比较共用默认30秒总预算，无自动重试或部分结果。返回本地组合类型含原封套、方向、身份约束及snapshot-hashes-checked/not-checked来源状态。比较模型提取contracts并补独立结构解析，Web复用；本地函数不认证摘要/权限/来源。CLI/MCP/Mock当前未接入此增量；R-003未完成、evidence为空，仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行SDK/产品/API/数据库或发布，独立提交push main带[skip ci]。
+- P4/P0：CLI context history/version统一复用SDK有界完整读取，新增context compare；三个入口采用4 KiB严格查询、成对账号客户端约束（对比必填）、默认30秒总期限及指定版本SHA-256核对。嵌入可信context.read及restricted权限、SDK实际请求核对、每router两笔容量保持到底层读取结束；不自动翻页/重试/保存，比较保留原方向和完整本地结果。仅源码文档及格式/文本检查，未编译、类型检查、测试、运行或发布；R-003未完成，MCP接入见后续增量，Mock历史接入与运行证据待补。
+
+- P0/P5：SDK listContextItemHistory/getContextItemVersion增加可选timeout_ms/signal，已知平面查询/选项和上下文先捕获，固定范围及已有账号客户端条件，GET不继承写键/版本。目录256KiB、版本2MiB完整共享解析，Fetch沿用16KiB错误；版本WebCrypto SHA-256异步核对在原预算内，无能力或不匹配明确失败。新增compareContextItemVersions，要求完整project/actor/client约束、两个不同明确版本，顺序读取与解析/摘要/本地比较共用默认30秒总预算，无自动重试或部分结果。返回本地组合类型含原封套、方向、身份约束及snapshot-hashes-checked/not-checked来源状态。比较模型提取contracts并补独立结构解析，Web复用；本地函数不认证摘要/权限/来源。CLI/MCP专用接入见后续增量，Mock历史仍待补；R-003未完成、evidence为空，仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行SDK/产品/API/数据库或发布，独立提交push main带[skip ci]。
 
 - P5：新增/context/history/compare，历史页可选当页两版或单版预填，完整选择必须同条目两个不同正安全版本；严格单值URL，保留原历史before/version及已验证浏览/搜索返回链，交换方向/查看单版/失败重试不跳最新。两次顺序历史读取共用捕获会话/范围/Gateway与30秒总期限，每份复用2MiB完整快照/16KiB错误及SHA-256核对，首读失败不发第二读、任一失败不展示部分对比。十项属性、正文/来源/历史确认及九项记录信息分组比较；文字保留空白、JSON忽略对象键序但保留数组顺序与重复，缺省/null/空串保持区别，完整值滚动展示并支持窄屏堆叠，不做行内合并或恢复。无后端/共享协议/写表单/依赖/数据库变更，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、浏览器渲染、执行产品/API/数据库或发布；独立提交push main带[skip ci]。
 
