@@ -2,6 +2,13 @@
 
 import { backupHash } from '../sync/receipt/backup-operation';
 import {
+  matchesReviewHistory,
+  parseReviewHistoryQuery,
+  REVIEW_HISTORY_PAGE_SIZE,
+  REVIEW_HISTORY_SCAN_LIMIT,
+  type ReviewHistoryQuery,
+} from './review-history-query';
+import {
   inBrowserStores,
   readBrowserPair,
   removeBrowserPair,
@@ -47,7 +54,9 @@ const summary = (file: ReviewHistoryFile) => ({
 export type ReviewHistorySummary = ReturnType<typeof summary>;
 export interface ReviewHistoryPage {
   entries: ReviewHistorySummary[];
-  next: string | null;
+  scanned: number;
+  query: ReviewHistoryQuery;
+  next: ReviewHistoryQuery | null;
 }
 function key(binding: ProposalSubmissionBinding, digest: string) {
   if (!/^[a-f0-9]{64}$/.test(digest)) throw new TypeError();
@@ -209,12 +218,14 @@ export async function removeReviewHistory(
 /** Read a bounded consistent page, then verify every content digest before exposing it. */
 export async function listReviewHistory(
   input: ProposalSubmissionBinding,
-  after: string | null,
+  queryInput: ReviewHistoryQuery,
   signal: AbortSignal,
   check: () => void,
 ): Promise<ReviewHistoryPage> {
   check();
   const binding = parseProposalSubmissionBinding(input);
+  const query = parseReviewHistoryQuery(queryInput);
+  const after = query.after;
   key(binding, '0'.repeat(64));
   const prefix = proposalOriginalStoragePrefix(binding);
   const page = await inBrowserStores<{ entries: ReviewHistoryCandidate[]; next: string | null }>(
@@ -224,6 +235,7 @@ export async function listReviewHistory(
     () => ({ entries: [], next: null }),
     (context) => {
       const entries: ReviewHistoryCandidate[] = [];
+      let matches = 0;
       const request = context.directory.openCursor(
         IDBKeyRange.bound(
           after === null ? prefix : key(binding, after),
@@ -239,6 +251,11 @@ export async function listReviewHistory(
           context.accept({ entries, next: null });
           return;
         }
+        // A lookahead establishes only that scanning can continue; it is not a result.
+        if (matches === REVIEW_HISTORY_PAGE_SIZE || entries.length === REVIEW_HISTORY_SCAN_LIMIT) {
+          context.accept({ entries, next: entries[entries.length - 1]!.file.document_sha256 });
+          return;
+        }
         if (
           typeof cursor.primaryKey !== 'string' ||
           new TextEncoder().encode(cursor.primaryKey).byteLength > 16384 ||
@@ -246,14 +263,12 @@ export async function listReviewHistory(
           new TextEncoder().encode(cursor.value).byteLength > 4096
         )
           throw new TypeError();
-        if (entries.length === 20) {
-          context.accept({ entries, next: entries[19]!.file.document_sha256 });
-          return;
-        }
         const slot = cursor.primaryKey;
         readBrowserPair(context, slot, (raw, index, exists) => {
           if (!exists) throw new TypeError();
-          entries.push(pair(raw, index, binding, slot));
+          const candidate = pair(raw, index, binding, slot);
+          entries.push(candidate);
+          if (matchesReviewHistory(candidate.file.document, query)) matches += 1;
           cursor.continue();
         });
       });
@@ -262,10 +277,17 @@ export async function listReviewHistory(
   const entries: ReviewHistorySummary[] = [];
   for (const entry of page.entries) {
     check();
-    entries.push(summary((await inspectReviewHistory(entry.raw, binding, check)).file));
+    // Nonmatching records must also pass their full checksum; corruption is never hidden by a filter.
+    const candidate = await inspectReviewHistory(entry.raw, binding, check);
+    if (matchesReviewHistory(candidate.file.document, query)) entries.push(summary(candidate.file));
   }
   check();
-  return { entries, next: page.next };
+  return {
+    entries,
+    scanned: page.entries.length,
+    query,
+    next: page.next === null ? null : { ...query, after: page.next },
+  };
 }
 
 /** Verify every digest outside transactions; keep original observation times and traces. */

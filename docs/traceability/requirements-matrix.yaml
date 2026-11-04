@@ -3452,6 +3452,23 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_review_history_filter_development_increment:
+      date: "2026-11-04"
+      status: "Source-only exact history filtering with bounded scanning and preserved continuation filters; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/review-history-query.ts"
+        - "apps/web-console/src/app/proposals/review-history-store.ts"
+        - "apps/web-console/src/app/proposals/review-history-panel.tsx"
+        - "docs/design/01-contracts/proposal-review-history-runtime.md"
+      behavior: "Combine exact proposal ID, original request key, historical status and response source within the current binding. Each readonly page scans at most 100 complete pairs and returns at most 20 matches, verifying every scanned checksum including nonmatches before exposing results. Continuations retain filters and the last scanned digest even for empty result pages. Filter changes and read attempts clear the directory and removal eligibility while retaining inspected copies. Selected-copy actions use only the current filtered page; full-scope backup remains independent."
+      evidence: []
+      pending_evidence:
+        - "Strict filter parsing, combined exact matches, all-results compatibility and malformed continuation rejection"
+        - "Sparse or empty matching pages, 20-match and 100-scan boundaries, final exhaustion and unchanged continuation filters"
+        - "Nonmatching damaged records, full checksum verification, cancellation/deadlines and no partial result exposure"
+        - "Filter/edit/read failure invalidation of single and batch removal, retained candidates, standalone page and unchanged backup scope"
+      remaining_scope: "Time-indexed search, cross-page snapshots, automatic retention management and runtime/compatibility evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, product/browser/database execution or release. Existing v1 history format and stores; no schema or dependency changes."
     proposal_review_history_automatic_retention_development_increment:
       date: "2026-11-04"
       status: "Source-only opt-in retention of newly received review observations with isolated local retry; R-009 remains incomplete."

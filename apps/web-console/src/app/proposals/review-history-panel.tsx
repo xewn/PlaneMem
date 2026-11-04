@@ -5,6 +5,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { backupOperation } from '../sync/receipt/backup-operation';
 import type { BrowserRemovalResult } from '../sync/receipt/browser-store';
 import type { ProposalSubmissionBinding } from './original-model';
+import {
+  parseReviewHistoryQuery,
+  REVIEW_HISTORY_PAGE_SIZE,
+  REVIEW_HISTORY_SCAN_LIMIT,
+  type ReviewHistoryQuery,
+} from './review-history-query';
 import { ReviewHistoryBackupPanel } from './review-history-backup-panel';
 import { ReviewHistoryCleanupPanel } from './review-history-cleanup-panel';
 import {
@@ -52,6 +58,12 @@ export function ReviewHistoryPanel({
   const [removeConfirmed, setRemoveConfirmed] = useState(false);
   const [removalStatus, setRemovalStatus] = useState<BrowserRemovalResult | 'unknown'>();
   const [page, setPage] = useState<ReviewHistoryPage>();
+  const [filters, setFilters] = useState({
+    proposal_id: '',
+    request_key: '',
+    status: '',
+    source: '',
+  });
   const [digest, setDigest] = useState('');
   const [busy, setBusy] = useState(false);
   const [localStorageEpoch, setStorageEpoch] = useState(0);
@@ -150,16 +162,50 @@ export function ReviewHistoryPanel({
       'The complete historical observation is available below for inspection, saving and export. Internal consistency does not prove file authenticity or current proposal state.',
     );
   }
-  function browse(after: string | null) {
+  function clearDirectory() {
+    setPage(undefined);
+    setRemovalFresh(false);
+    setRemoveConfirmed(false);
+  }
+  function changeFilter(name: keyof typeof filters, value: string) {
+    if (active.current || disabled) return;
+    setFilters((previous) => ({ ...previous, [name]: value }));
+    clearDirectory();
+    setMessage(
+      'History filters changed. Find saved review history to apply them from the beginning.',
+    );
+  }
+  function browse(continuation: ReviewHistoryQuery | null) {
     void run(
-      (signal, check) => listReviewHistory(binding, after, signal, check),
+      (signal, check) =>
+        listReviewHistory(
+          binding,
+          parseReviewHistoryQuery(
+            continuation ?? {
+              proposal_id: filters.proposal_id || null,
+              request_key: filters.request_key || null,
+              status: filters.status || null,
+              source: filters.source || null,
+              after: null,
+            },
+          ),
+          signal,
+          check,
+        ),
       (value) => {
         setPage(value);
         setMessage(
           value.entries.length
-            ? 'Choose a saved observation to inspect. Entries are ordered by content digest, not time.'
-            : 'No saved review history on this page for the current gateway and account.',
+            ? 'Choose a matching saved observation to inspect. Entries are ordered by content digest, not time.'
+            : value.next
+              ? 'No matches in this scan. Continue scanning for later matches with the same filters.'
+              : 'No matches in this final scan. Earlier pages and records added since scanning began are not included.',
         );
+      },
+      {
+        start: clearDirectory,
+        failureMessage:
+          'History search could not be completed. Check the exact proposal ID and request key. Invalid filters, damaged stored records or an expired read stop the whole page; no partial results are shown. Inspected copies are retained.',
       },
     );
   }
@@ -250,6 +296,54 @@ export function ReviewHistoryPanel({
           </button>
         </div>
       ))}
+      <fieldset disabled={locked}>
+        <legend>Find saved review history</legend>
+        <label>
+          Proposal ID (exact, optional)
+          <input
+            value={filters.proposal_id}
+            maxLength={26}
+            onChange={(event) => changeFilter('proposal_id', event.target.value)}
+          />
+        </label>
+        <label>
+          Original request key (exact, optional)
+          <input
+            value={filters.request_key}
+            maxLength={255}
+            onChange={(event) => changeFilter('request_key', event.target.value)}
+          />
+        </label>
+        <label>
+          Historical result
+          <select
+            value={filters.status}
+            onChange={(event) => changeFilter('status', event.target.value)}
+          >
+            <option value="">All results</option>
+            <option value="verified">Verified</option>
+            <option value="rejected">Rejected</option>
+            <option value="not-observed">No matching receipt observed</option>
+          </select>
+        </label>
+        <label>
+          Response source
+          <select
+            value={filters.source}
+            onChange={(event) => changeFilter('source', event.target.value)}
+          >
+            <option value="">All sources</option>
+            <option value="submission">Review submission</option>
+            <option value="receipt-query">Receipt query</option>
+          </select>
+        </label>
+        <p>
+          Filters are combined. Each read checks up to {REVIEW_HISTORY_SCAN_LIMIT} saved
+          observations and returns up to {REVIEW_HISTORY_PAGE_SIZE} matches. Continue even when a
+          scan has no matches. Pages follow content checksums, not time; changes in another page can
+          affect later reads.
+        </p>
+      </fieldset>
       <div className="heading-actions">
         <button
           type="button"
@@ -266,10 +360,18 @@ export function ReviewHistoryPanel({
             disabled={locked}
             onClick={() => browse(page.next)}
           >
-            Next history entries
+            Continue history search
           </button>
         )}
       </div>
+      {page && (
+        <p role="status">
+          This scan checked {page.scanned} observations and found {page.entries.length} matches.
+          {page.next
+            ? ' More stored observations remain to scan.'
+            : ' Reached the end of this read.'}
+        </p>
+      )}
       {page && (
         <ul>
           {page.entries.map((entry) => (
@@ -535,6 +637,10 @@ export function ReviewHistoryPanel({
         end={endStorage}
         onStorageChange={storageChanged}
       />
+      <p>
+        History filters limit the directory and its selected-copy actions. The backup below still
+        covers all history for this gateway and account.
+      </p>
       <ReviewHistoryBackupPanel
         binding={binding}
         disabled={locked}
