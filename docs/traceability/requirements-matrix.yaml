@@ -954,6 +954,23 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_pack_web_receipt_restore_preview_development_increment:
+      date: "2026-11-05"
+      status: "Source-only complete target comparison before explicit browser history restore; R-003 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/context/save-receipt-store.ts"
+        - "apps/web-console/src/app/context/save-receipt-backup-panel.tsx"
+        - "apps/web-console/src/app/context/packs/receipts/loader.tsx"
+        - "docs/design/01-contracts/context-pack-runtime.md"
+      behavior: "Validate the complete backup, full binding and every digest before comparing at most 100 target pairs in one readonly transaction. Check keys and values to distinguish missing pairs, byte-identical complete pairs and conflicts including one-sided/non-string data. Return all rows and counts only after completion, without exposing invalid stored payloads, creating a missing database or touching extra history. Require an explicit current preview with missing targets and zero conflicts before confirmation. Bind preview to exact backup plus parent review/storage generations; reject stale handlers and late results, revoke eligibility on any operation or invalidation and retain the backup. Restore independently revalidates/preflights all targets in its existing atomic write transaction."
+      evidence: []
+      pending_evidence:
+        - "Missing/identical/conflicting mixtures, undefined-valued existing keys, one-sided slots, missing database, empty backup and complete digest rejection"
+        - "All-target readonly snapshot, request/transaction failures without partial preview, no extra-history scan or writes"
+        - "Preview/checkbox generation binding, stale handlers and in-flight invalidation, unchanged backup, changed targets during restore and outcome counts; no runtime verification performed"
+      remaining_gaps:
+        - "Comparison is a past target snapshot without a cross-operation lock; runtime evidence remains pending"
+        - "Larger-history multipart backups, CLI/SDK batch support, batch cleanup and full-database auditing/quota management"
     context_pack_web_receipt_changes_development_increment:
       date: "2026-11-05"
       status: "Source-only scoped cross-tab browser history invalidation; R-003 remains incomplete."

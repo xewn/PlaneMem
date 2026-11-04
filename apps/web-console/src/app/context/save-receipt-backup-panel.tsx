@@ -9,10 +9,25 @@ import {
   type PackReceiptBackupCandidate,
 } from './save-receipt-backup-model';
 import {
+  comparePackReceiptBackup,
   inspectPackReceiptBackup,
   preparePackReceiptBackup,
   restorePackReceiptBackup,
+  type PackReceiptRestoreComparison,
 } from './save-receipt-store';
+
+interface RestorePreview {
+  comparison: PackReceiptRestoreComparison;
+  backupRaw: string;
+  reviewGeneration: number;
+  storageGeneration: number;
+}
+
+const comparisonLabels = {
+  missing: 'Will be added',
+  identical: 'Identical copy retained',
+  conflict: 'Conflict — restore blocked',
+};
 
 function download(raw: string) {
   const url = URL.createObjectURL(new Blob([raw], { type: 'application/json' }));
@@ -32,6 +47,7 @@ export function PackReceiptBackupPanel({
   binding,
   disabled,
   reviewGeneration,
+  getReviewGeneration,
   getStorageGeneration,
   begin,
   end,
@@ -40,12 +56,22 @@ export function PackReceiptBackupPanel({
   binding: PackSaveBinding;
   disabled: boolean;
   reviewGeneration: number;
+  getReviewGeneration: () => number;
   getStorageGeneration: () => number;
   begin: () => boolean;
   end: () => void;
   onHistoryWrite: () => void;
 }) {
   const [backup, setBackup] = useState<PackReceiptBackupCandidate>();
+  const [preview, setPreview] = useState<RestorePreview>();
+  const currentPreview =
+    preview?.reviewGeneration === reviewGeneration && preview.backupRaw === backup?.raw
+      ? preview
+      : undefined;
+  const canRestore =
+    !!currentPreview &&
+    currentPreview.comparison.conflicting === 0 &&
+    currentPreview.comparison.missing > 0;
   const [busy, setBusy] = useState(false);
   const [reviewed, setReviewed] = useState<number | null>(null);
   const reviewedRef = useRef<number | null>(null);
@@ -72,13 +98,23 @@ export function PackReceiptBackupPanel({
     };
   }, []);
 
-  async function run(kind: 'prepare' | 'import' | 'export' | 'restore', source?: File) {
-    if ((kind === 'export' || kind === 'restore') && !backup) return;
+  async function run(kind: 'prepare' | 'import' | 'export' | 'compare' | 'restore', source?: File) {
+    if ((kind === 'export' || kind === 'compare' || kind === 'restore') && !backup) return;
     if (kind === 'import' && !source) return;
-    if (kind === 'restore' && reviewedRef.current !== reviewGeneration) return;
+    if (
+      kind === 'restore' &&
+      (!canRestore ||
+        !currentPreview ||
+        reviewedRef.current !== reviewGeneration ||
+        currentPreview.reviewGeneration !== getReviewGeneration() ||
+        currentPreview.storageGeneration !== getStorageGeneration())
+    )
+      return;
     if (!mounted.current || active.current || disabled || !begin()) return;
     const startedGeneration = getStorageGeneration();
+    const startedReviewGeneration = getReviewGeneration();
     const captured = backup;
+    setPreview(undefined);
     active.current = true;
     reviewedRef.current = null;
     setReviewed(null);
@@ -116,6 +152,11 @@ export function PackReceiptBackupPanel({
           };
         }
         if (!captured) throw new TypeError();
+        if (kind === 'compare')
+          return {
+            kind: 'comparison' as const,
+            comparison: await comparePackReceiptBackup(captured.raw, binding, signal, check),
+          };
         if (kind === 'restore')
           return {
             kind: 'restored' as const,
@@ -138,6 +179,32 @@ export function PackReceiptBackupPanel({
         setMessage(
           'The complete backup and every observation checksum match this identity. Review or export it; no history was restored.',
         );
+      } else if (result.kind === 'comparison') {
+        if (
+          !captured ||
+          startedGeneration !== getStorageGeneration() ||
+          startedReviewGeneration !== getReviewGeneration()
+        ) {
+          setMessage(
+            'History may have changed during comparison. Compare again before restoring. Your complete backup is retained.',
+          );
+          return;
+        }
+        setPreview({
+          comparison: result.comparison,
+          backupRaw: captured.raw,
+          reviewGeneration: startedReviewGeneration,
+          storageGeneration: startedGeneration,
+        });
+        setMessage(
+          result.comparison.conflicting
+            ? 'Some target copies differ or are incomplete. Restore is blocked. Keep this backup; no history was changed.'
+            : result.comparison.missing
+              ? 'Comparison is ready. Review the observations below, then confirm restoration. No history has been changed.'
+              : result.comparison.total
+                ? 'Every backup observation already has an identical browser copy. Nothing needs to be restored.'
+                : 'This backup contains no observations. Nothing needs to be restored.',
+        );
       } else if (result.kind === 'restored') {
         setMessage(
           `Restore completed: ${result.restored.added} added, ${result.restored.already_present} identical copies retained (${result.restored.total} total). The backup remains here. Read history again to see the current directory.`,
@@ -152,8 +219,10 @@ export function PackReceiptBackupPanel({
       if (mounted.current && operation.current === controller)
         setMessage(
           kind === 'restore'
-            ? 'Restore could not be confirmed; the transaction may have committed. This backup remains available. Keep it and read history again before another explicit restore. No gateway request was sent.'
-            : 'The complete backup could not be prepared, imported or exported. It may exceed the limit, contain damaged records, differ from this identity, or the operation may have stopped. Any earlier backup below is unchanged; no partial backup was accepted.',
+            ? 'Restore could not be confirmed; the transaction may have committed. This backup remains available. Keep it and compare again before another explicit restore. No gateway request was sent.'
+            : kind === 'compare'
+              ? 'Comparison could not be completed. No partial preview was accepted and no history was changed. Your complete backup remains available; compare again before restoring.'
+              : 'The complete backup could not be prepared, imported or exported. It may exceed the limit, contain damaged records, differ from this identity, or the operation may have stopped. Any earlier backup below is unchanged; no partial backup was accepted.',
         );
     } finally {
       if (operation.current === controller) {
@@ -218,28 +287,88 @@ export function PackReceiptBackupPanel({
             <summary>Complete backup, originals and historical receipts</summary>
             <pre>{backup.raw}</pre>
           </details>
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={busy || disabled}
+            onClick={() => void run('compare')}
+          >
+            Compare with browser history
+          </button>
+          {currentPreview ? (
+            <div>
+              <p>
+                {currentPreview.comparison.total} observations compared ·{' '}
+                {currentPreview.comparison.missing} to add · {currentPreview.comparison.identical}{' '}
+                identical · {currentPreview.comparison.conflicting} conflicts
+              </p>
+              {!!currentPreview.comparison.entries.length && (
+                <details>
+                  <summary>Review each observation before restoring</summary>
+                  <table>
+                    <caption>Backup observations compared with browser copies</caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">Original request</th>
+                        <th scope="col">Observed (UTC)</th>
+                        <th scope="col">Restore action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentPreview.comparison.entries.map((entry) => (
+                        <tr key={entry.document_sha256}>
+                          <td>
+                            {entry.request_key}
+                            <details>
+                              <summary>Observation checksum</summary>
+                              <code>{entry.document_sha256}</code>
+                            </details>
+                          </td>
+                          <td>{entry.observed_at}</td>
+                          <td>{comparisonLabels[entry.status]}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </details>
+              )}
+            </div>
+          ) : (
+            <p>Compare this backup with browser history before confirming a restore.</p>
+          )}
           <label className="confirmation-box">
             <input
               type="checkbox"
-              checked={reviewed === reviewGeneration}
-              disabled={busy || disabled}
+              checked={canRestore && reviewed === reviewGeneration}
+              disabled={busy || disabled || !canRestore}
               onChange={(event) => {
-                if (active.current || disabled) return;
+                if (
+                  active.current ||
+                  disabled ||
+                  !canRestore ||
+                  !currentPreview ||
+                  currentPreview.reviewGeneration !== getReviewGeneration() ||
+                  currentPreview.storageGeneration !== getStorageGeneration()
+                )
+                  return;
                 const value = event.target.checked ? reviewGeneration : null;
                 reviewedRef.current = value;
                 setReviewed(value);
               }}
             />
-            I reviewed this backup and want to add its missing observations to this browser.
+            I reviewed this comparison and backup and want to add its missing observations to this
+            browser.
           </label>
           <p>
             Restore retains identical copies. Different or incomplete stored copies reject the whole
-            restore; other history is kept.
+            restore; other history is kept. Comparison only covers targets in this backup at the
+            time of reading. Restore checks them again; counts may change. Any new operation or
+            reported history change requires another comparison and confirmation.
           </p>
           <button
             type="button"
             className="secondary-button"
-            disabled={busy || disabled || reviewed !== reviewGeneration}
+            disabled={busy || disabled || !canRestore || reviewed !== reviewGeneration}
             onClick={() => void run('restore')}
           >
             Restore missing observations
@@ -255,7 +384,11 @@ export function PackReceiptBackupPanel({
           Stop waiting
         </button>
       )}
-      <p role="status">{message}</p>
+      <p role="status">
+        {preview && !currentPreview
+          ? 'The previous comparison no longer applies after page activity or a possible history change. Your backup is retained; compare again before restoring.'
+          : message}
+      </p>
     </section>
   );
 }

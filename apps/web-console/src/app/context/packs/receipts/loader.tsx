@@ -42,6 +42,7 @@ export function PackReceiptHistoryBrowser({ binding }: { binding: PackSaveBindin
   const [busy, setBusy] = useState(false);
   const [reviewGeneration, setReviewGeneration] = useState(0);
   const reviewGenerationRef = useRef(0);
+  const getReviewGeneration = useCallback(() => reviewGenerationRef.current, []);
   const storageGeneration = useRef(0);
   const getStorageGeneration = useCallback(() => storageGeneration.current, []);
   const [message, setMessage] = useState(
@@ -361,6 +362,7 @@ export function PackReceiptHistoryBrowser({ binding }: { binding: PackSaveBindin
         binding={binding}
         disabled={busy}
         reviewGeneration={reviewGeneration}
+        getReviewGeneration={getReviewGeneration}
         getStorageGeneration={getStorageGeneration}
         begin={begin}
         end={end}

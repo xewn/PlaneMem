@@ -374,6 +374,96 @@ export async function preparePackReceiptBackup(
   return { file, raw: packReceiptBackupFileJson(file) };
 }
 
+export interface PackReceiptRestoreComparison {
+  entries: {
+    document_sha256: string;
+    request_key: string;
+    observed_at: string;
+    status: 'missing' | 'identical' | 'conflict';
+  }[];
+  total: number;
+  missing: number;
+  identical: number;
+  conflicting: number;
+}
+
+/** Compare only backup targets in one readonly snapshot; never accept partial results. */
+export async function comparePackReceiptBackup(
+  raw: string,
+  input: PackSaveBinding,
+  signal: AbortSignal,
+  check: () => void,
+): Promise<PackReceiptRestoreComparison> {
+  const binding = parsePackSaveBinding(input);
+  const candidate = await inspectPackReceiptBackup(raw, binding, check);
+  const targets = candidate.file.document.entries.map((file) => ({
+    key: slot(binding, file.document_sha256),
+    raw: contextPackSaveReceiptFileJson(file),
+    document_sha256: file.document_sha256,
+    request_key: file.document.original.request_key,
+    observed_at: file.document.observed_at,
+  }));
+  const row = (target: (typeof targets)[number], status: 'missing' | 'identical' | 'conflict') => ({
+    document_sha256: target.document_sha256,
+    request_key: target.request_key,
+    observed_at: target.observed_at,
+    status,
+  });
+  check();
+  const entries = targets.length
+    ? await inBrowserStores<PackReceiptRestoreComparison['entries']>(
+        layout,
+        'readonly',
+        signal,
+        () => targets.map((target) => row(target, 'missing')),
+        (context) => {
+          const rows: PackReceiptRestoreComparison['entries'] = [];
+          const next = () => {
+            check();
+            const target = targets[rows.length];
+            if (!target) {
+              context.accept(rows);
+              return;
+            }
+            // Read key presence too: an existing undefined value is a conflict, not absence.
+            const contentKey = context.content.getKey(target.key);
+            const directoryKey = context.directory.getKey(target.key);
+            const content = context.content.get(target.key);
+            const directory = context.directory.get(target.key);
+            directory.onsuccess = context.guard(() => {
+              check();
+              const hasContent = contentKey.result !== undefined;
+              const hasDirectory = directoryKey.result !== undefined;
+              rows.push(
+                row(
+                  target,
+                  !hasContent && !hasDirectory
+                    ? 'missing'
+                    : hasContent &&
+                        hasDirectory &&
+                        content.result === target.raw &&
+                        directory.result === target.document_sha256
+                      ? 'identical'
+                      : 'conflict',
+                ),
+              );
+              next();
+            });
+          };
+          next();
+        },
+      )
+    : [];
+  check();
+  return {
+    entries,
+    total: entries.length,
+    missing: entries.filter((entry) => entry.status === 'missing').length,
+    identical: entries.filter((entry) => entry.status === 'identical').length,
+    conflicting: entries.filter((entry) => entry.status === 'conflict').length,
+  };
+}
+
 /** Preflight every target in one transaction before adding any missing immutable observation. */
 export async function restorePackReceiptBackup(
   raw: string,
