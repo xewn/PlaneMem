@@ -9,6 +9,7 @@ import {
 export interface PackComparisonNavigation {
   from_pack_id?: string;
   to_pack_id?: string;
+  query?: string;
   show?: 'changes';
   return_href?: string;
 }
@@ -38,7 +39,7 @@ function returnHref(value: unknown): string {
 /** Partial selections fill the form only; neither side silently selects latest. */
 export function parsePackComparisonParams(params: ContextSearchParams): PackComparisonNavigation {
   if (
-    Object.keys(params).some((key) => !['from', 'to', 'show', 'return_to'].includes(key)) ||
+    Object.keys(params).some((key) => !['from', 'to', 'q', 'show', 'return_to'].includes(key)) ||
     Object.values(params).some((value) => value !== undefined && typeof value !== 'string')
   )
     throw new Error('Use one value per known saved pack comparison parameter.');
@@ -51,9 +52,20 @@ export function parsePackComparisonParams(params: ContextSearchParams): PackComp
       throw new Error('Choose saved pack IDs in the original project.');
   if (params.show !== undefined && params.show !== 'all' && params.show !== 'changes')
     throw new Error('Choose all candidates or changes only.');
+  if (
+    params.q !== undefined &&
+    (typeof params.q !== 'string' ||
+      params.q.length > 256 ||
+      /[\u0000-\u001f\u007f\p{Cs}]/u.test(params.q))
+  )
+    throw new Error(
+      'Use up to 256 characters without control characters to find saved candidates.',
+    );
+  const query = typeof params.q === 'string' ? params.q.trim() : '';
   return {
     ...(params.from === undefined ? {} : { from_pack_id: params.from as string }),
     ...(params.to === undefined ? {} : { to_pack_id: params.to as string }),
+    ...(query ? { query } : {}),
     ...(params.show === 'changes' ? { show: 'changes' as const } : {}),
     ...(params.return_to === undefined ? {} : { return_href: returnHref(params.return_to) }),
   };
@@ -63,6 +75,7 @@ export function packComparisonHref(navigation: PackComparisonNavigation): string
   const input = {
     ...(navigation.from_pack_id === undefined ? {} : { from: navigation.from_pack_id }),
     ...(navigation.to_pack_id === undefined ? {} : { to: navigation.to_pack_id }),
+    ...(navigation.query === undefined ? {} : { q: navigation.query }),
     ...(navigation.show === undefined ? {} : { show: navigation.show }),
     ...(navigation.return_href === undefined ? {} : { return_to: navigation.return_href }),
   };
@@ -70,6 +83,7 @@ export function packComparisonHref(navigation: PackComparisonNavigation): string
   const params = new URLSearchParams();
   if (normalized.from_pack_id !== undefined) params.set('from', normalized.from_pack_id);
   if (normalized.to_pack_id !== undefined) params.set('to', normalized.to_pack_id);
+  if (normalized.query !== undefined) params.set('q', normalized.query);
   if (normalized.show !== undefined) params.set('show', normalized.show);
   if (normalized.return_href !== undefined) params.set('return_to', normalized.return_href);
   return '/context/packs/compare' + (params.size ? '?' + params.toString() : '');

@@ -109,6 +109,20 @@ export default async function SavedPackComparisonPage({
               <option value="all">All candidates and fields</option>
               <option value="changes">Changes only</option>
             </select>
+            <label htmlFor="pack-compare-query">Find candidate ID or saved text (optional)</label>
+            <input
+              id="pack-compare-query"
+              name="q"
+              type="search"
+              maxLength={256}
+              defaultValue={navigation.query ?? ''}
+              aria-describedby="pack-compare-query-help"
+            />
+            <p id="pack-compare-query-help" className="muted">
+              Finds candidate IDs, included content or exclusion reason codes from either saved
+              pack, ignoring case. Pack information and source comparisons keep their original
+              scope.
+            </p>
             <p className="muted">
               Choose two different saved pack IDs in this project. Both must still be readable;
               expired or stale packs are not replaced with newer ones.
@@ -140,9 +154,18 @@ async function Comparison({
   try {
     const { from, to, comparison } = await getWorkbenchContextPackComparison(query);
     const changesOnly = navigation.show === 'changes';
-    const rows = comparison.candidates.filter((row) => !changesOnly || row.status !== 'same');
+    const needle = navigation.query?.toLowerCase() ?? '';
+    // Filter only the finished report; both complete packs have already passed their read checks.
+    const matches = comparison.candidates.filter(
+      (row) =>
+        row.id.toLowerCase().includes(needle) ||
+        candidateMatches(row.before, needle) ||
+        candidateMatches(row.after, needle),
+    );
+    const rows = matches.filter((row) => !changesOnly || row.status !== 'same');
     const fields = comparison.fields.filter((field) => !changesOnly || field.changed);
     const { show: _show, ...selection } = navigation;
+    const { query: _candidateQuery, ...unfiltered } = navigation;
     const controls = (
       <nav className="heading-actions" aria-label="Saved pack comparison display">
         <Link
@@ -248,11 +271,73 @@ async function Comparison({
         <div id="pack-candidates" className="context-comparison-section" tabIndex={-1}>
           <Panel title="Saved candidate changes" icon="context">
             <div className="side-detail">
+              <form
+                action="/context/packs/compare"
+                method="get"
+                className="artifact-lookup-form"
+                key={JSON.stringify(navigation)}
+              >
+                <input type="hidden" name="from" value={query.from_pack_id} />
+                <input type="hidden" name="to" value={query.to_pack_id} />
+                {navigation.show && <input type="hidden" name="show" value={navigation.show} />}
+                {navigation.return_href && (
+                  <input type="hidden" name="return_to" value={navigation.return_href} />
+                )}
+                <label htmlFor="pack-candidate-query">Find in compared candidates</label>
+                <input
+                  id="pack-candidate-query"
+                  name="q"
+                  type="search"
+                  maxLength={256}
+                  defaultValue={navigation.query ?? ''}
+                  aria-describedby="pack-candidate-query-help"
+                />
+                <button type="submit" className="primary-button">
+                  Find in these saved packs
+                </button>
+              </form>
+              <p id="pack-candidate-query-help" className="muted">
+                Searches candidate IDs and saved content or exclusion reason codes on either side.
+                It keeps these two pack IDs and the current display mode. Differences, positions and
+                the totals above are computed from both complete packs.
+              </p>
+              <p>
+                {matches.length} of {comparison.candidates.length} candidates match the text;{' '}
+                {rows.length} shown in this view.
+                {changesOnly &&
+                  matches.length > rows.length &&
+                  ` ${matches.length - rows.length} matching unchanged candidates are hidden.`}
+              </p>
+              {(navigation.query !== undefined ||
+                (changesOnly && matches.length > rows.length)) && (
+                <nav className="heading-actions" aria-label="Saved candidate search results">
+                  {navigation.query && (
+                    <Link
+                      className="panel-link"
+                      href={packComparisonHref(unfiltered)}
+                      prefetch={false}
+                    >
+                      Clear candidate text filter
+                    </Link>
+                  )}
+                  {changesOnly && matches.length > rows.length && (
+                    <Link
+                      className="panel-link"
+                      href={packComparisonHref(selection)}
+                      prefetch={false}
+                    >
+                      Show all matching candidates
+                    </Link>
+                  )}
+                </nav>
+              )}
               {rows.length === 0 && (
                 <p>
-                  {changesOnly
-                    ? 'No candidate changes. Pack information or aggregate sources may still differ.'
-                    : 'Both packs have empty candidate lists.'}
+                  {comparison.candidates.length === 0
+                    ? 'Both packs have empty candidate lists.'
+                    : matches.length === 0
+                      ? 'No saved candidates match this text. Clear the text filter to inspect other candidates.'
+                      : 'Matching candidates are unchanged and hidden by Changes only. Pack information or aggregate sources may still differ.'}
                 </p>
               )}
               {rows.map((row) => (
@@ -360,6 +445,12 @@ async function Comparison({
       </>
     );
   }
+}
+
+function candidateMatches(value: SavedPackCandidate, needle: string): boolean {
+  if (value.state === 'selected') return value.item.content.toLowerCase().includes(needle);
+  if (value.state === 'excluded') return value.exclusion.reason.toLowerCase().includes(needle);
+  return false;
 }
 
 function Candidate({ title, value }: { title: string; value: SavedPackCandidate }) {
