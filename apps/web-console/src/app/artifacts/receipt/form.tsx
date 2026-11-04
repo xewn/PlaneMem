@@ -6,6 +6,7 @@ import type { ArtifactReceiptQuery } from '@planemem/contracts';
 import { Badge, Panel } from '../../../components/ui';
 import { artifactPageHref } from '../query';
 import { checkArtifactReceipt } from './actions';
+import { ArtifactReceiptFileActions } from './file-actions';
 import {
   ARTIFACT_REQUEST_BYTES,
   decodeArtifactRequest,
@@ -330,6 +331,7 @@ export function ReceiptFeedback({ feedback }: { feedback: ArtifactReceiptFeedbac
           <p>
             Read trace: <code>{trace_id}</code>
           </p>
+          <ArtifactReceiptFileActions key={trace_id} receipt={feedback.response} />
         </div>
       </Panel>
     );
@@ -376,6 +378,7 @@ export function ReceiptFeedback({ feedback }: { feedback: ArtifactReceiptFeedbac
             Read current metadata in a new tab ↗
           </Link>
         </div>
+        <ArtifactReceiptFileActions key={trace_id} receipt={feedback.response} />
       </div>
     </Panel>
   );

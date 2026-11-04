@@ -11,6 +11,25 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    web_artifact_receipt_file_development_increment:
+      date: "2026-11-04"
+      status: "Source-only workbench artifact receipt download and local file review; R-001 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/artifacts/receipt/saved-model.ts"
+        - "apps/web-console/src/app/artifacts/receipt/file-actions.tsx"
+        - "apps/web-console/src/app/artifacts/receipt/saved/form.tsx"
+        - "apps/web-console/src/app/artifacts/receipt/saved/page.tsx"
+        - "apps/web-console/src/app/artifacts/receipt/form.tsx"
+        - "apps/web-console/src/app/artifacts/receipt/page.tsx"
+        - "docs/design/01-contracts/artifact-persistence-runtime.md"
+      behavior: "Add explicit bare-envelope receipt downloads to checked feedback, including upload-page receipt lookups. Review compatible CLI/browser receipt files locally with 4 MiB receipt/1 MiB original limits, strict UTF-8, complete shared parsing, actual byte digests and optional independent original matching. Separate file-claimed historical outcomes from live confirmation. Export receipt/original only on explicit clicks and report browser save requests without claiming disk completion. Reuse the 30-second bounded operation/stream reader, discard late results, clear views on page exit/cache restoration, and revoke object URLs. Imported contents never trigger a server action, upload or browser storage write."
+      evidence: []
+      pending_evidence:
+        - "Browser/CLI envelope compatibility, both historical statuses, full original mismatch and malformed/oversized files"
+        - "Cancellation, digest timeout, unmount/pagehide/cache restoration and no late or stale comparison"
+        - "Explicit downloads, URL cleanup, save-request wording, accessible responsive layout and absence of imported-data network calls"
+      remaining_scope: "Signed origin authentication, receipt collections, durable recovery and browser/runtime evidence. The normal page shell still loads the application/session; local review is not an offline installation guarantee."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, browser rendering, product/API/database execution or release. No server/schema/dependency change."
     cli_artifact_receipt_file_development_increment:
       date: "2026-11-04"
       status: "Source-only CLI original artifact receipt capture and offline inspection; R-001 remains incomplete."

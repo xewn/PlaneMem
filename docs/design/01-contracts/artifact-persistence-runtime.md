@@ -618,3 +618,17 @@ PostgreSQL/S3 适配、显式服务器配置、HTTP/SDK/CLI/MCP/工作台按原�
 离线输出使用当前检查trace，外层source_refs为空，嵌套receipt保留原查询trace及其声称的来源；返回完整receipt/original、实际回执文件大小/字节摘要，适用时带独立原文件路径/实际字节摘要。BOM/空白影响实际字节摘要，即使解析结果相同。status=locally-valid、identity_state=not-authenticated、server_outcome=not-checked、content_state=not-checked、upload_dispatch_state=not-sent；recorded是文件声称的历史观察，not-observed不证明原上传失败，本地有效或hash均不认证服务器、签名或当前附件可下载性。需要当前服务器观察时仍显式使用完整未改动原请求查询receipt，不生成新键、更新版本或上传。
 
 本增量无新共享schema/服务端/依赖/迁移，仅源码文档人工审阅；未编译、类型检查、测试、执行CLI/SDK/Mock/API/数据库或发布。签名来源认证、回执集合管理与恢复、持久上传恢复编排和运行证据仍未完成，R-001保持未完成。
+
+## 工作台原回执文件保存与本地查看（源码阶段）
+
+现有/artifacts/receipt在线查询反馈的recorded及not-observed均增加Save receipt JSON；上传页复用相同ReceiptFeedback，因此其显式回执查询结果也可保存。错误反馈和上传成功封套不冒充原回执。点击时重新以完整共享契约和4 MiB纯JSON限制核验，再序列化为与CLI保存相同的裸WCP ArtifactReceiptEnvelope，固定本地文件名。浏览器只报告Save requested，要求查看下载列表；不宣称最终路径、无覆盖、落盘或目录持久性。Blob URL约一秒后释放，离页/卸载也释放，不持久存浏览器库。
+
+新增/artifacts/receipt/saved及原回执页导航。页面选择本地回执文件（最多4 MiB），按实际大小有界stream读取、严格UTF-8及完整共享封套解析，提取原identity/command另限1 MiB，检查历史资料/版本/hash/size/source/trace与原命令一致。展示文件声称的历史recorded/not-observed和原身份、键、目标、版本、内容描述，始终标识Local file only；不复用在线Original receipt confirmed，not-observed不当作原上传失败。文件名与所有内容由React文本渲染，无文件内链接跳转或原文HTML。
+
+可选择独立原请求文件（最多1 MiB）比对全部identity/command。匹配、有效但不同和未能完整读取三种结果区分；每次开始比对先撤销上次匹配，非法或取消不能留下旧的已匹配结论。原输入不改变，不生成键或刷新版本。页面显示实际回执字节大小/SHA-256及适用独立原文件SHA-256，BOM/空白会改变实际摘要；本地hash不认证服务器签名或当前可下载内容。可明确保存解析后回执副本或其中的原请求供用户另行查询，保存后的JSON字节摘要可能因规范化空白不同于导入文件。
+
+文件读取及Web Crypto摘要复用现有backupOperation的30秒本地期限/AbortSignal和有界stream reader；检查当前操作controller和挂载状态后才能展示结果。取消、pagehide、卸载撤销操作，缓存恢复再次清除本地视图；迟到读取/摘要不重建视图或启动后续工作。同步JSON检查不能被计时器抢占，完成后检查期限；原生摘要可能后台结束。本地视图可明确清空，选中回执期间不能被另一份文件静默替换。导出下载独立显式发起，不自动保存。
+
+新文件页不导入server action，不将文件内容发往Gateway、上传端点或浏览器持久存储，不自动查回执、下载附件或校正历史状态。页面壳仍按现有RootLayout读取会话且工作台资源需正常加载；“本地查看”指文件检查在浏览器进行，不承诺断网启动应用。跳转到服务器查询页是独立用户动作，不通过URL携带原身份/键/正文。既有在线查询身份、权限和期限流程不在本增量改动；其原请求输入仍受1,000,000字节动作上限，离线原文件与CLI支持1 MiB，超出在线限制的原请求须使用合适客户端，不能裁剪字段。
+
+仅源码文档人工审阅，未编译、类型检查、测试、浏览器渲染、执行CLI/SDK/Mock/API/数据库或发布。无新共享schema/API/依赖/迁移；签名来源认证、回执集合管理、持久上传恢复和浏览器/运行证据仍缺，R-001未完成。

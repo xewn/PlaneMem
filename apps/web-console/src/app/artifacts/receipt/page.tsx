@@ -14,6 +14,15 @@ export default function ArtifactReceiptPage() {
         <div className="heading-actions">
           <Link
             className="panel-link"
+            href="/artifacts/receipt/saved"
+            target="_blank"
+            rel="noreferrer"
+            prefetch={false}
+          >
+            Review a saved receipt file ↗
+          </Link>
+          <Link
+            className="panel-link"
             href="/artifacts/upload"
             target="_blank"
             rel="noreferrer"
