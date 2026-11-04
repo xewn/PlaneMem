@@ -1038,7 +1038,7 @@ const definitions: ToolDefinition[] = [
   ),
   tool(
     'compile_context_pack',
-    'Compile and save a project context pack with a bounded content budget',
+    'Compile and save one project context pack under the original verified unexpired client with actual context.read. Keep the original project/account/client, budget, lifetime and stable idempotency_key; arguments accept only these two optional parameters and the key (4 KiB). Defaults: budget 4096, lifetime 3600 seconds. Verify the complete 2 MiB receipt, HTTP/body ETag, original budget/maximum lifetime and SHA-256. A 30-second local deadline or invalid response after dispatch leaves the save outcome unknown; internal work may still complete. No automatic retry, new key, readback or persistence. Retry explicitly only with the exact original request.',
     ['context.read'],
     'POST',
     '/v1/context-pack/compile',
@@ -1796,6 +1796,7 @@ export function listMcpTools(context: RequestContext) {
         (entry.name !== 'list_artifacts' || canReadArtifactRegistryTool(context)) &&
         (!isWorkItemReadTool(entry.name) || canReadWorkItemsTool(context)) &&
         (!isContextReadTool(entry.name) || canReadContextTool(context)) &&
+        (entry.name !== 'compile_context_pack' || canReadContextTool(context)) &&
         (entry.name !== 'get_artifact_receipt' ||
           (context.authenticated_client === true &&
             context.capability.includes('artifact.write'))) &&
@@ -1884,6 +1885,21 @@ export function prepareMcpTool(
       trace_id: context.trace_id,
     });
   if (isSyncReadTool(name)) return prepareSyncReadTool(name, raw, context);
+  if (name === 'compile_context_pack') {
+    if (!canReadContextTool(context))
+      throw new ContractError(
+        'DENIED',
+        'A verified unexpired context reader is required to save a pack',
+        {
+          trace_id: context.trace_id,
+        },
+      );
+    throw new ContractError(
+      'MCP_TOOL_EXECUTOR_REQUIRED',
+      'Saving a context pack requires dispatchMcp or the dedicated complete save executor',
+      { trace_id: context.trace_id },
+    );
+  }
   if (isWorkItemReadTool(name)) return prepareWorkItemReadTool(name, raw, context);
   if (isContextReadTool(name)) {
     if (!canReadContextTool(context))

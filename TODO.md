@@ -4,6 +4,8 @@
 
 ## 当前基线
 
+- P2/P4：MCP compile_context_pack接入专用保存执行器，发现/prepare/调用统一可信未过期实际context.read和完整身份；严格4 KiB参数/相等原键，保留可信context键回退，规范预算/期限、单次内部POST。完整2 MiB成功/16 KiB错误、原范围/trace/预算/最大TTL、HTTP状态/type/ETag、Node SHA-256及restricted核对，4 MiB+4096转义文本包装。独立每ApiGateway两笔保存/30秒期限，底层结束才释放；阶段/派发/unknown固定诊断，无自动重试/换键/读回/持久化。prepare现要求专用executor，旧不完整返回或无可信实际能力的替身须迁移。内部请求不可取消、授权等待超时后仍可能写入，恢复存储/Mock保存及运行证据待补；R-003未完成、evidence为空。仅源码文档人工审阅和格式文本检查，未编译、类型检查、测试、执行MCP/API/保存或发布。
+
 - P2/P4：`context compile`的main/callGateway/runWorkctx接入SDK完整保存核验，单一4 KiB JSON/稳定文件、网络有界stdin、默认{}与30秒timeout-ms；预算/期限规范化，可选成对expected身份，--key/正文idempotency_key/嵌入原context键必须一致。嵌入实际未过期context.read及完整身份，严格单次POST/头/正文/2 MiB限额，授权审计后复查取消/到期，结果restricted过滤补查，独立每router两笔提交容量直到底层结束。完整回执/摘要及预算/最大TTL沿SDK，派发后任何失败保留unknown；不自动重试/换键/读回/保存文件。旧不完整返回及无可信身份嵌入替身需迁移，MCP专用保存核验、运行兼容及恢复存储待补；R-003未完成、evidence为空。仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/SDK/API/保存请求或发布。
 
 - P0/P2：SDK `compileContextPack` 改为专用单次 POST，捕获原范围、可选账号/客户端、幂等键及规范预算/期限，增加默认30秒总期限和取消。共享4 KiB严格参数解析、2 MiB完整封套、预算/最大有效期及WebCrypto SHA-256核验；提交后的任何失败保守标记结果未知，不自动重试或换键。保留原可选身份兼容，旧不完整自定义传输/模拟回执需迁移，非法输入改为Promise拒绝；没有键/请求TTL回显或HTTP头核对，也没有本地恢复存储。R-003未完成、evidence为空，真实客户端/重放/取消/摘要及兼容证据待补。仅源码文档人工审阅和格式文本检查，未编译、类型检查、测试、执行SDK/API/保存请求或发布。

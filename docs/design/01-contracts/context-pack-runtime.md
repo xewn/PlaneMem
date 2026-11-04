@@ -1,5 +1,7 @@
 # 持久化 ContextPack 开发说明
 
+2026-11-05完善[MCP保存包提交核验](#mcp-保存包提交核验2026-11-05源码增量)：专用执行器检查完整回执、HTTP状态及摘要，固定原可信身份与参数，独立30秒/两笔容量，失败保留unknown。仅源码文档，未运行保存请求、编译构建、类型检查、测试或发布。
+
 2026-11-05完善[CLI保存包提交核验](#cli-保存包提交核验2026-11-05源码增量)：三个入口共用SDK完整回执/摘要核验，增加有界输入、等待期限及原身份约束；嵌入保存容量和授权后检查独立管理，失败保留unknown。仅编辑源码文档，未运行保存命令、编译构建、类型检查、测试或发布。
 
 2026-11-05完善[SDK保存包提交核验](#sdk-保存包提交核验2026-11-05源码增量)：专用单次POST捕获原请求、限定等待期限，核对完整返回包与摘要、原预算及最大有效期；派发后失败保留结果未知，不自动重试。此处仅开发保存方法源码，未实际执行包编排/保存请求、编译构建、类型检查、测试或发布。
@@ -525,3 +527,37 @@ workctx context compile --json-file saved-pack-request.json --timeout-ms 30000
 ```
 
 R-003未完成，evidence为空。三入口/输入和文件边界、旧键兼容、授权等待取消、过期及容量保留、完整真实回执/摘要和未知结果恢复均待运行证据。本轮只源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行CLI/SDK/Mock/API/保存命令、数据库或发布；未改变Gateway、SDK、共享契约、Web、MCP、Mock、Schema、依赖或迁移。
+
+## MCP 保存包提交核验（2026-11-05源码增量）
+
+`compile_context_pack`沿既有tools/call名称和write语义进入专用执行器。发现、prepare以及直接执行共同要求schema_version=1、authenticated_client=true、有效未过期令牌、实际context.read、合法项目/账号ULID及非空客户端/trace；管理员角色不替代实际能力。工具身份全部来自捕获的可信上下文，禁止参数覆写账号、客户端、范围或版本。mcpToolRequiresClient继续通过write标记生效。
+
+输入为最多4 KiB普通有限JSON，仅budget_tokens、ttl_seconds、idempotency_key；共享解析规范默认4096/3600和整数范围128–32768/60–86400。工具Schema仍要求显式idempotency_key，直接调用兼容此前可信context.idempotency_key回退，两个来源同时提供时必须相同；不自动生成键。键1–255 UTF-16单元，拒绝空白、C0/DEL及孤立代理项。捕获原参数、完整身份和键后发送独立规范参数副本，清除外层版本条件；保留明确原键及身份相等头，实际内部身份仍以可信context为准。
+
+每次最多一次内部POST /v1/context-pack/compile，仍沿原ApiGateway路由、策略/审计及持久幂等处理。完整响应仅接受HTTP200，核对application/json、x-trace-id和HTTP ETag与JSON内版本ETag相等；成功2 MiB、错误16 KiB。共享保存解析覆盖完整封套/范围/候选/来源/用量/时间关系，预算等于原预算，保存至到期间隔不超过原TTL，允许来源缩短有效期和重放原创建时间/包内trace。没有data.restricted.read时拒绝返回restricted入选项。Node SHA-256能力在派发前初始化，随后按原完整包规范JSON计算摘要，仅匹配pack_hash才包装完整内容；不交付半份或未核对包。
+
+错误要求五字段普通封套、原trace、无ETag及已知code/status组合，并丢弃上游消息/details/retryable，改用固定文本和本地未知结果诊断。映射针对当前**内部ApiGateway**：INVALID_INPUT、CONTEXT_SOURCE_LIMIT、WORKBENCH_AUTH_UNAVAILABLE为400，DENIED为403，路由/handler/包不存在为404，旧键重用或来源变化为409，包过期410，RATE_LIMITED429，存储数据损坏和INTERNAL_ERROR500，存储或审计不可用503；INTERNAL_ERROR只转换为固定GATEWAY_UNAVAILABLE。外层HTTP认证监听器另有其401/503行为，不能套用这些内部映射；未知或不一致组合返回GATEWAY_RESPONSE_INVALID。
+
+整次执行自输入捕获起共用30秒期限，包含内部等待、完整解析、Node摘要及MCP转义文本包装，阶段结束均复查期限和身份有效期。独立每ApiGateway最多两笔保存，与上下文读取容量分开；MCP_CONTEXT_PACK_COMPILE_BUSY表示本次未调用内部接口，TIMEOUT表示停止等待。超时名额只在底层工作实际结束后释放，迟到结果不会再交付。**内部api.handle不可取消**：即使超时发生在策略/审计等待期间，内部操作之后仍可能执行保存；不提供授权后取消、数据库回滚或进程终止恢复保证。外层HTTP认证和实际网络发送不计入工具期限。
+
+输出沿content文本返回完整WCP封套，封套2 MiB，工具content包装上限4 MiB+4096；JSON-RPC外层元数据继续由协议层添加。失败由协议层返回isError及固定错误JSON，details含compile_stage=input/integrity/transport/response/output、compile_dispatch_state=not-sent/started和server_outcome=not-checked/unknown。调用api.handle前失败仅not-checked，不能否定历史同键保存；开始调用后任何错误（含4xx、返回核验/摘要/包装失败）均unknown，不采纳上游“未保存”声明。调用方保留原项目、账号/客户端、预算、期限和键，显式恢复时只能使用相同原请求；无自动重试、换键、读回、回执文件或恢复存储。完整摘要和参数关系仍不能证明原请求键归属，回执没有原键/请求TTL回显；真实权限、来源有效性和幂等绑定由服务端负责。
+
+兼容性：旧prepareMcpTool裸HttpRequest路径对本工具返回MCP_TOOL_EXECUTOR_REQUIRED，调用方迁移至dispatchMcp或专用执行器；不完整模拟响应、缺ETag/trace、错误状态映射或摘要的旧替身会失败。工具发现现在要求有效且具有实际context.read的可信完整身份。SDK/CLI/Web与Mock源码在本增量未改，Mock仍无保存实现。仅源码示例，未执行：
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "save-context-pack",
+  "method": "tools/call",
+  "params": {
+    "name": "compile_context_pack",
+    "arguments": {
+      "budget_tokens": 4096,
+      "ttl_seconds": 3600,
+      "idempotency_key": "pack-001"
+    }
+  }
+}
+```
+
+R-003未完成、evidence为空。工具发现/prepare兼容、真实身份/重放、完整状态及回执/摘要、超时与迟到写入、占用容量和MCP输出边界均待运行证据。本轮仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行MCP/API/SDK/CLI/Mock/保存请求、数据库或发布；无REST路由、共享契约、依赖或迁移变化。

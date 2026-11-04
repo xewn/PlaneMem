@@ -1,5 +1,7 @@
 # MCP HTTP 运行时开发说明
 
+2026-11-05 保存包提交增补：compile_context_pack由专用执行器处理，严格4 KiB预算/期限/原键，保留外层可信键回退但多个来源一致；发现/prepare/执行均要求完整可信身份及实际未过期context.read。单次内部POST，2 MiB完整成功/16 KiB错误、HTTP状态/type/trace/ETag、原预算/最大TTL、Node SHA-256及restricted核验，MCP文本包装4 MiB+4096。独立每Gateway两笔保存和30秒期限，底层未结束不释放；错误阶段及派发状态由本适配器标记，api.handle开始后任何失败均unknown，不采纳上游完成声明。prepareMcpTool改要求专用executor；内部请求不能取消，等待策略/审计时超时也可能随后保存。无自动重试/读回/换键/本地保存，完整边界见[MCP保存包提交核验](context-pack-runtime.md#mcp-保存包提交核验2026-11-05源码增量)。仅源码文档，未编译、类型检查、测试、执行MCP/API/保存或发布。
+
 2026-11-05 保存包元数据目录增补：新增`list_context_packs`，严格4 KiB可选pack_id/limit/cursor，默认25最大100。可信完整身份与实际未过期context.read贯穿发现/客户端/prepare/调用；复用内部GET /v1/context-packs及原父项目/read_restricted过滤。仅六字段metadata-only/not-checked目录，包含过期或来源变化记录，完整256 KiB页/16 KiB错误、HTTP/type/trace/无ETag、原scope/query/排序/续页和错误status核验，MCP文本包装512 KiB+4096。九类上下文读共用每Gateway两容量/30秒，目录使用MCP_CONTEXT_PACK_DIRECTORY_BUSY/TIMEOUT，底层结束才释放。不逐包读取、核验hash或访问来源，也不替代resources/list既有候选检查；无自动翻页/重试/写入。详见[MCP保存包目录](context-pack-runtime.md#mcp-保存包目录读取2026-11-05源码增量)，仅源码文档，未编译、类型检查、测试、执行MCP/API/数据库或发布。
 
 2026-11-04 保存包对比增补：新增 `compare_context_packs`，仅接收不同ULID的 from_pack_id/to_pack_id（4 KiB），身份来自可信当前会话，实际未过期context.read与完整身份是发现/prepare/调用共同门禁。两次指定json读取复用保存包完整HTTP/ETag/trace/Node SHA-256/restricted核对；各侧2 MiB、错误16 KiB、共享比较8 MiB、完整本地结果12 MiB、转义文本包装24 MiB+4096。与其他七种上下文读共用每Gateway两笔容量，整次读取/比较/包装共用30秒，超时底层结束才释放；沿用MCP_CONTEXT_PACK_BUSY/TIMEOUT。无部分结果/换包/重试/编译/写入，内部请求不可中止，外层授权审计及网络发送在期限外。详见[MCP保存包对比](context-pack-runtime.md#mcp-指定保存包对比2026-11-04源码增量)。仅源码文档，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布。

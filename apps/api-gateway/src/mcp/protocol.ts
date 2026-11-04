@@ -19,6 +19,7 @@ import { executeArtifactRegistryTool } from './artifact-registry.js';
 import { executeArtifactComparisonTool } from './artifact-comparison.js';
 import { isWorkItemReadTool, executeWorkItemReadTool } from './work-item-reads.js';
 import { isContextReadTool, executeContextReadTool } from './context-history.js';
+import { executeContextPackCompileTool } from './context-pack-compile.js';
 import { isAuditTool, executeAuditTool } from './audit.js';
 import { executeAdminSnapshot } from './admin.js';
 import { isSyncReadTool, executeSyncReadTool } from './sync-reads.js';
@@ -175,6 +176,10 @@ export async function dispatchMcp(
             { trace_id },
           );
         try {
+          if (params.name === 'compile_context_pack') {
+            result = await executeContextPackCompileTool(api, params.arguments ?? {}, context);
+            break;
+          }
           if (isContextReadTool(params.name)) {
             result = await executeContextReadTool(
               api,
