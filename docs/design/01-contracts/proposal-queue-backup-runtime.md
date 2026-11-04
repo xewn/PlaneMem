@@ -42,6 +42,26 @@ sha256 是去掉 sha256 字段后整个规范文档的 SHA-256，覆盖所有任
 
 准备目标或保存失败后，标准错误保留同一完整 backup 和本次阶段；原输入无效时不输出不可信的部分备份。再次失败的完整 JSON 可重新交给本命令。成功与预览的标准输出仅含原备份摘要和操作结果，不打印任务正文。原队列关闭失败的快照也可以补存，但本命令不会声称原关闭问题已解决；not-opened/queue_access=none 只说明本次没有打开队列。补存不需要凭据，不连接网关，不恢复数据库、回收租约、结算回执或重发任务。补存后的文件可用 `inspect-queue-backup` 核验。
 
+## 备份离线目录与原查询取回
+
+2026-11-04 增量提供三个离线入口，无需queue、binding文件、模型配置或访问令牌；不接受这些参数，也不打开SQLite或联网。所有入口复用稳定普通文件的有界UTF-8读取与完整备份核验，保留100任务/100生成关联/32 MiB及原单行预算。即使只查看一项，所有未选任务、生成关联、内外摘要和原绑定仍须有效，损坏不能通过筛选跳过。输入只能是完整备份，原导出失败封套先经已有补存入口保存。
+
+| 命令 | 参数 | 输出 |
+| --- | --- | --- |
+| `queue-backup-list` | `--file BACKUP.json`；可选`--state all/queued/sending/retry/blocked/submitted`、`--limit 1..100`；续页`--before JOB_ID --sha256 BACKUP_SHA256` | 有界任务元数据页、全备份任务数/所选状态总数、get_query及next_query |
+| `queue-backup-get` | `--file BACKUP.json --sha256 BACKUP_SHA256 --id JOB_ID` | 单份完整原任务与全部相关生成关联 |
+| `queue-backup-receipt-query` | 同一文件、摘要及ID选择，另需`--output NEW_QUERY.json` | 独占保存原回执查询文件；标准输出仅来源、绑定和保存摘要 |
+
+列表默认25条、最多100，默认state=all。严格限制参数和枚举，未知/重复/不适用选项拒绝；库函数查询仅允许limit/state/before/backup_sha256，输出query补入当前实际备份摘要。任务按原job_id倒序，before为排他位置，必须是这份备份内的原ID；有before时必须带摘要，即使路径相同也不能把旧位置用于新备份。首屏可带摘要明确固定文件。next_query保留state/limit/backup_sha256，仅before更新为本页末项，最后一页为null；重新选择状态时应从首屏开始。matching_jobs统计这份完整备份中该状态的所有任务，不是当前队列数量。列表只有ID、状态、attempts、uncertain、error_code、created_at、生成关联数及get_query，不输出正文、原请求键、回执、trace或租约令牌。
+
+get和receipt-query必须传完整备份sha256与原job_id；摘要不符或缺项明确失败，不输出部分内容或创建文件。get返回原14字段、原payload/receipt字符串及所选job_id的全部原生成关联，保留原状态、时间、租约和未知标记；不凭当前时钟回收租约，也不把submitted当成刚查询过的远端结果。generation_history_present保留原可选表存在含义，即使所选任务没有关联；这份报告不是全库备份或可导入的新备份格式。输出包含原绑定、捕获时间、backup_sha256及file-consistency-only/queue_access=none/current_queue=not-checked/current_remote=not-checked/restoration=not-performed边界。备份内部一致不能认证来源或赋予发送资格。
+
+receipt-query从备份原binding取五字段identity，从所选任务取原request_key和完整规范payload，经既有parseProposalCreateReceiptQuery重新核验，生成仅包含identity/request_key/draft的原查询。输出使用紧凑JSON，无额外封套或换行，保持既有1 MiB输入预算；原网关、备份摘要、捕获时间和任务ID在成功报告中保留，文件自身不包含gateway_url。调用者后续可在该原网关及同身份配置下显式使用`workctx proposals receipt --json-file NEW_QUERY.json`；本命令不执行查询，不生成回执、不结算队列、不清除uncertain、不修改草稿或换键，也不生成可重发授权。原查询与来源备份、成功报告应一起保留。
+
+源和选择全部核验后才准备新目标；目标必须位于已有目录且尚不存在，不允许标准输出、覆盖源文件或并发出现的已有文件。沿用独占临时文件、完整写入/同步/读回、不覆盖目标发布及最终完整读回流程；成功只说明查询文件保存完成。准备或保存失败返回PROPOSAL_QUEUE_BACKUP_QUERY_EXPORT_FAILED，保留完整recovery.query、原绑定/摘要/ID及prepare/save阶段，底层失败另含保存阶段、可能已发布状态及临时路径。源无效或选择失败不构造不可信查询。原备份仍可重新用于另一个新输出，不自动覆盖或清理旧文件；失败JSON不是备份或纯查询文件，不能直接交给已有inspect-queue-backup或回执查询入口。退出0表示本次离线读取或文件保存完成，退出1表示失败，均不表示原任务成功或当前可重发。
+
+纯函数listProposalQueueBackupJobs/getProposalQueueBackupJob/prepareProposalQueueBackupReceiptQuery及两种查询解析器同步重新核验输入，不访问文件、数据库或远端；CLI在其外层执行明确文件读取/保存。没有新备份格式、数据库schema、依赖或服务器API，仅源码文档及人工审阅，未编译、类型检查、测试、运行CLI/产品/SQL/数据库或发布。
+
 ## 与现有队列只读比较
 
 `proposal-worker queue-backup-compare --queue EXISTING.sqlite --binding binding.json --file BACKUP.json` 先完整核验备份文件，再核对指定绑定与备份原网关/项目/actor/client 完全一致，随后原生只读打开已有目标。目标复用完整快照读取路径：同读事务核对原绑定、已知结构、全部任务和生成关联，计数/大小预检后完整读取；双方分别受 100 任务、100 关联、32 MiB 限制，目标超限或损坏不降级为部分比较。缺库不初始化，可选生成关联表不创建。目标关闭确认后才计算并输出比较结果。
@@ -104,4 +124,4 @@ sha256 是去掉 sha256 字段后整个规范文档的 SHA-256，覆盖所有任
 
 ## 剩余工作
 
-已完成完整备份导出、离线核验、保留快照文件补存、现有目标只读比较、新文件恢复及已有队列严格补缺合并源码。冲突内容处置、显式解除未知、旧版本进程协调、自动备份/保留/清理、超大队列分卷、独立生成日志联合备份、文件签名及运行证据仍缺。R-009/P7-01 保持未完成；沿用原 v1 schema，无实际 SQL/数据库执行、迁移或依赖变化。
+已完成完整备份导出、离线核验/目录/单任务审阅/原查询导出、保留快照文件补存、现有目标只读比较、新文件恢复及已有队列严格补缺合并源码。冲突内容处置、显式解除未知、旧版本进程协调、自动备份/保留/清理、超大队列分卷、独立生成日志联合备份、文件签名及运行证据仍缺。R-009/P7-01 保持未完成；沿用原 v1 schema，无实际 SQL/数据库执行、迁移或依赖变化。

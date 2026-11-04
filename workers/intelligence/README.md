@@ -6,6 +6,8 @@
 
 ## 配置与命令
 
+新增 [备份离线目录与原查询取回](../../docs/design/01-contracts/proposal-queue-backup-runtime.md#备份离线目录与原查询取回)：`queue-backup-list --file BACKUP.json [--state all|queued|sending|retry|blocked|submitted] [--limit 25]` 返回原任务摘要，后续将next_query的before/backup_sha256/state/limit分别传为同名参数（摘要使用`--sha256`）。`queue-backup-get --file BACKUP.json --sha256 BACKUP_SHA256 --id JOB_ID` 完整显示原任务和相关生成记录；`queue-backup-receipt-query` 使用同一选择并加`--output NEW_QUERY.json`保存原identity/request_key/draft查询。每次先核验全部备份，翻页与选择固定摘要；输出查询可供后续在原网关显式执行`workctx proposals receipt --json-file NEW_QUERY.json`，不会自动查询、入队或发送。缺项/损坏拒绝，保存失败保留原查询；不打开数据库、不读取凭据。仅源码，未执行命令。
+
 新增 [已有队列补缺合并](../../docs/design/01-contracts/proposal-queue-backup-runtime.md#向已有队列补入缺失内容)：`queue-backup-merge --queue EXISTING.sqlite --binding binding.json --file BACKUP.json --preview` 返回完整计划，以 `--confirm-sha256 PLAN_SHA256` 替换preview执行。确认绑定源备份和完整目标逻辑状态，BEGIN IMMEDIATE内重读核对，全量预检后只补缺项、完整读回后提交；已有行须与原文或已隔离恢复行完全相同，冲突整批拒绝，不更新已有任务/租约。新增未知任务暂停，生成关联和目标独有项保留，合并总量100任务/100关联/32 MiB；未知事务/关闭保留结果并需重新预览。仅源码，未运行数据库。
 
 新增 [备份恢复新队列](../../docs/design/01-contracts/proposal-queue-backup-runtime.md#从备份恢复新队列)：`queue-backup-restore --file BACKUP.json --binding binding.json --output NEW_QUEUE.sqlite --preview` 预览后，以 `--confirm-sha256 BACKUP_SHA256` 替换 preview 执行。完整备份恢复至新文件，submitted保留，其他任务转blocked/uncertain并解除旧副本租约，原ID/键/正文/生成关联保留。临时新库事务导入、关闭后只读完整核对，再独占保存并校验文件；已有目标/日志拒绝覆盖，失败保留阶段/路径。原备份须保留，当前worker的retry保留未知，后续flush只查原回执，补缺合并见上，显式解除未知和冲突处置仍缺。仅源码，未实际运行数据库。

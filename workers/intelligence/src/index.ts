@@ -6,6 +6,7 @@ export * from './proposal-receipt-record.js';
 export * from './proposal-receipt-recovery.js';
 export * from './proposal-queue-backup-recovery.js';
 export * from './proposal-queue-backup-comparison.js';
+export * from './proposal-queue-backup-access.js';
 export * from './proposal-queue-restore.js';
 export { planProposalQueueMerge, type ProposalQueueMergePlan } from './proposal-queue-merge.js';
 export {

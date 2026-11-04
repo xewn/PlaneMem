@@ -3821,6 +3821,24 @@ requirements:
         - "Manual-operation pause, exact removal without writer resurrection, export compatibility and explicit backup scope"
       remaining_scope: "Automatic-copy batch backup/cleanup and retention, review-draft autosave, cross-scope or remote drafts, and runtime/compatibility evidence."
       execution: "Source/docs and manual review only; no build, typecheck, tests, product/browser/database execution or release. Separate browser v1 schema source only; no server schema or dependency changes."
+    proposal_queue_backup_access_development_increment:
+      date: "2026-11-04"
+      status: "Source-only offline queue-backup browsing, full job inspection and original receipt-query export; R-009 remains incomplete."
+      artifacts:
+        - "workers/intelligence/src/proposal-queue-backup-access.ts"
+        - "workers/intelligence/src/main.ts"
+        - "workers/intelligence/src/index.ts"
+        - "workers/intelligence/README.md"
+        - "docs/design/01-contracts/proposal-queue-backup-runtime.md"
+      behavior: "Every list/get/query export verifies the entire bounded backup including unselected jobs and generation associations. Metadata lists support original job-ID descending pages and state filters; continuation positions and all selections bind the exact backup digest. Complete job inspection preserves all original fields, receipts, uncertainty, copied leases and related generation records. Query export reconstructs only the original identity/key/normalized draft under the existing 1 MiB receipt-query contract, saves compact JSON to an exclusive new file with full readback, and reports the original gateway/binding. Save failures retain the complete query and phases. No queue is opened, credentials read, network contacted, task sent, lease reclaimed or uncertainty cleared."
+      evidence: []
+      pending_evidence:
+        - "Complete-source corruption and association checks even outside selected pages; strict list/selection parameters, digest mismatch and missing IDs"
+        - "Descending pagination, status totals, preserved next-query filters, empty/final pages and metadata-only lists"
+        - "Exact original query identity/key/draft, 1 MiB compact serialization, existing-target refusal, full output readback and retained failure content"
+        - "CLI option isolation, duplicate rejection, offline early return without database/network access and unchanged existing commands"
+      remaining_scope: "Conflict disposition, explicit uncertainty release, process coordination, combined journals, automatic retention and runtime/compatibility evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/product/SQL/database execution, migrations or release. No schema, backup format or dependency changes."
     proposal_queue_merge_development_increment:
       date: "2026-11-04"
       status: "Source-only atomic missing-row merge into an existing queue with complete preview confirmation; R-009 remains incomplete."
