@@ -11,6 +11,21 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    web_artifact_lookup_bounds_development_increment:
+      date: "2026-11-04"
+      status: "Source-only bounded workbench artifact metadata and original receipt reads; R-001 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/lib/artifact-read-response.ts"
+        - "apps/web-console/src/lib/server-api.ts"
+        - "docs/design/01-contracts/artifact-persistence-runtime.md"
+      behavior: "Route current/historical metadata GET and original receipt read-only POST through a dedicated bounded response reader: 2 MiB metadata, 4 MiB receipt, 16 KiB errors. Reuse the 30-second request signal/deadline through full parsing; require 200 JSON, strict UTF-8, decoded body bounds, identity-wire Content-Length equality and matching header/envelope trace. Bind current ETag to the validated envelope; reject ETag on history, receipt and errors. Check the captured session before dispatch, on response arrival and before publishing success; cancel unread bodies for expired sessions/401. Map only allowlisted codes to fixed messages and preserve the original request on receipt failures without automatic retry/upload."
+      evidence: []
+      pending_evidence:
+        - "Current/historical/receipt route separation, full contract/identity binding and original request preservation"
+        - "Success/error bounds, UTF-8, compressed/identity Content-Length, status/content-type/trace and ETag compatibility"
+        - "Header/body/parse deadline, session expiry, cancellation, fixed error mapping and browser presentation"
+      remaining_scope: "Runtime, proxy and browser evidence. Read failure does not establish original upload failure, and cancellation does not prove gateway work stopped."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, browser rendering, SDK/Mock/CLI/product/API/database execution or release. No protocol, dependency or database schema change."
     web_artifact_preparation_selection_development_increment:
       date: "2026-11-04"
       status: "Source-only workbench append preparation bound to the selected version; R-001 remains incomplete."

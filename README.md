@@ -1,5 +1,7 @@
 # PlaneMem
 
+补齐 [工作台文件详情与原回执读取限制](docs/design/01-contracts/artifact-persistence-runtime.md#工作台详情与原回执读取限制源码阶段)：完整详情最多2 MiB、原回执最多4 MiB、错误16 KiB，沿用30秒期限并核对追踪号、ETag和会话到期；失败保留原请求并使用固定提示。仅源码文档，未编译、测试、运行或发布。
+
 新增 [工作台追加版本选择](docs/design/01-contracts/artifact-persistence-runtime.md#工作台追加版本选择源码阶段)：从目录或详情准备追加时保留所见版本；若当前版本已变化，提示重新查看并停止准备，重新读取仍保留原选择。可明确另开准备页选择当前版本。仅源码文档，未编译、测试、运行或发布。
 
 新增 [项目文件目录独立 Schema](packages/contracts/schemas/README.md#项目文件目录)：提供输入查询、规范回显、完整续页、文件摘要和响应结构，可通过 contracts 包子路径引用；权限和分页绑定继续由运行时检查。仅源码文档，未编译、执行校验、测试或发布。

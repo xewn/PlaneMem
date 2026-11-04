@@ -1,6 +1,11 @@
 import { readWorkbenchAuditResponse } from './audit-response';
 import { readWorkbenchJsonResponse } from './workbench-response';
 import { readConflictResponse } from './conflict-read-response';
+import {
+  artifactLookupFailure,
+  readArtifactLookupResponse,
+  type ArtifactLookupKind,
+} from './artifact-read-response';
 import { validateProposalReceipt } from './mutation-receipts';
 import {
   parseReviewOriginal,
@@ -1962,6 +1967,24 @@ async function gatewayRequest<T>(
   const trace_id = `trace_web_${crypto.randomUUID()}`;
   const scope = scopeFromSession(session);
   const path = typeof requestPath === 'function' ? requestPath(scope) : requestPath;
+  const artifactLookupKind: ArtifactLookupKind | undefined =
+    method === 'POST' && path === '/v1/artifacts/receipt'
+      ? 'receipt'
+      : method === 'GET' && /^\/v1\/artifacts\/[0-9A-HJKMNP-TV-Z]{26}$/.test(path)
+        ? 'current'
+        : method === 'GET' &&
+            /^\/v1\/artifacts\/[0-9A-HJKMNP-TV-Z]{26}\/versions\/[1-9][0-9]*$/.test(path)
+          ? 'historical'
+          : undefined;
+  const assertArtifactLookupSession = () => {
+    if (
+      !session.access_token.trim() ||
+      !Number.isSafeInteger(session.expires_at) ||
+      session.expires_at * 1000 <= Date.now()
+    )
+      throw new AuthRequiredError();
+  };
+  if (artifactLookupKind !== undefined) assertArtifactLookupSession();
   const artifactVersionsRequest =
     method === 'GET' && /^\/v1\/artifacts\/[0-9A-HJKMNP-TV-Z]{26}\/versions\?/.test(path);
   const artifactRegistryRequest = method === 'GET' && path.startsWith('/v1/artifacts?');
@@ -2049,6 +2072,16 @@ async function gatewayRequest<T>(
       ...(method === 'POST' ? { body: JSON.stringify(body) } : {}),
     });
   } catch {
+    if (artifactLookupKind !== undefined) {
+      const error = artifactLookupFailure(
+        artifactLookupKind,
+        requestSignal.aborted || Date.now() >= requestDeadline
+          ? 'GATEWAY_REQUEST_TIMEOUT'
+          : 'GATEWAY_UNAVAILABLE',
+        trace_id,
+      );
+      throw new WorkbenchApiError(error.envelope.message, trace_id, 502, error.envelope.code);
+    }
     if (artifactDirectoryRequest)
       throw new WorkbenchApiError(
         requestSignal.aborted || Date.now() >= requestDeadline
@@ -2089,6 +2122,7 @@ async function gatewayRequest<T>(
   }
   if (response.status === 401) {
     if (
+      artifactLookupKind !== undefined ||
       artifactDirectoryRequest ||
       conflictOriginalRequest ||
       proposalOriginalRequest ||
@@ -2101,6 +2135,44 @@ async function gatewayRequest<T>(
     )
       void response.body?.cancel().catch(() => undefined);
     throw new AuthRequiredError();
+  }
+  if (artifactLookupKind !== undefined) {
+    try {
+      assertArtifactLookupSession();
+    } catch (error) {
+      void response.body?.cancel().catch(() => undefined);
+      throw error;
+    }
+    let result: WorkbenchResponse<T>;
+    try {
+      result = await readArtifactLookupResponse(
+        response,
+        requestSignal,
+        trace_id,
+        requestDeadline,
+        artifactLookupKind,
+        (payload) => {
+          if (!parseResponse) throw new TypeError('Missing file response parser');
+          return parseResponse(payload as WorkbenchResponse<unknown>, scope, trace_id);
+        },
+      );
+    } catch (error) {
+      const failure =
+        error instanceof ContractError
+          ? error
+          : artifactLookupFailure(artifactLookupKind, 'GATEWAY_RESPONSE_INVALID', trace_id);
+      throw new WorkbenchApiError(
+        failure.envelope.message,
+        trace_id,
+        response.ok ||
+        ['GATEWAY_RESPONSE_INVALID', 'GATEWAY_REQUEST_TIMEOUT'].includes(failure.envelope.code)
+          ? 502
+          : response.status,
+        failure.envelope.code,
+      );
+    }
+    assertArtifactLookupSession();
+    return result;
   }
   if (artifactDirectoryRequest) {
     const assertDeadline = () => {
