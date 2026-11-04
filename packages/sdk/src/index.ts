@@ -19,6 +19,12 @@ export {
 export * from './continuity.js';
 export * from './fetch-transport.js';
 export type { WcpArtifactUploadContextOptions } from './artifact-upload-context.js';
+export type { WcpArtifactReadOptions } from './artifact-reads.js';
+export type {
+  ArtifactReadDetail,
+  ArtifactMetadataView,
+  ArtifactReceiptEnvelope,
+} from '@planemem/contracts';
 export type {
   WcpArtifactPreparationOptions,
   WcpPreparedArtifactUpload,

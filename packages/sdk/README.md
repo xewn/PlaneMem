@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-04：`getArtifact(id, options?)`、`getArtifactVersion(id, version, options?)`、`getArtifactReceipt(original, options?)` 新增 `WcpArtifactReadOptions`，支持 `timeout_ms/signal`，默认本地等待30秒。当前/历史元数据完整响应最多2 MiB，原回执4 MiB，原请求输入1 MiB，Fetch错误16 KiB；固定范围、原身份约束与请求副本，完整共享解析后返回，不继承写条件或自动重试。失败不会转换为not-observed，不证明此前上传失败；元数据仍不核对内容。下载内部的元数据阶段也受默认预算约束，内容阶段选项不变。导出 `ArtifactReadDetail/ArtifactMetadataView/ArtifactReceiptEnvelope`；自定义transport须支持bounded-json与signal，SDK不限制其预先分配的内存。详见 [SDK元数据与原回执读取](../../docs/design/01-contracts/artifact-persistence-runtime.md#sdk-元数据与原回执有界读取源码阶段)。仅源码文档人工审阅，未编译、类型检查、测试、调用SDK/Mock/API或发布。
+
 2026-11-04：新增 `prepareArtifactUpload(draft, content, {max_bytes?,timeout_ms?,signal?})`、`WcpArtifactPreparationOptions/WcpPreparedArtifactUpload/ArtifactUploadDraft`，同步捕获新草稿与非共享Uint8Array内容副本，核对当前上传身份/限制，追加须匹配草稿明确审阅的expected_version。默认64 MiB、180秒，使用Web Crypto内容摘要与有界只读响应，最后生成一次新键并返回完整original、可保存的request_json及其SHA-256；状态prepared-not-saved，调用方须保存审阅后明确调用createArtifact/putArtifactVersion。上传和getArtifactReceipt核对scope及已配置的actor/client，省略时仍用原身份前置头交Gateway验证，支持普通字符串账号。原结果不明时保持原请求，不重新prepare。CLI草稿共用新共享解析器，见 [准备与保存边界](../../docs/design/01-contracts/artifact-persistence-runtime.md#sdk-原请求准备源码阶段)。无新依赖/迁移，仅源码文档，未编译、类型检查、测试或调用SDK/Mock/API。
 
 2026-11-04：上传身份读取已接 `workctx artifacts identity` 与实际Gateway MCP `get_artifact_upload_context`，共用可信身份/权限提示核验；SDK新增固定错误码消息ARTIFACT_UPLOAD_CONTEXT_INVALID。两入口只读、不生成键/上传/替换旧原请求，CLI HTTP复用SDK期限与大小控制，见 [CLI/MCP上传身份](../../docs/design/01-contracts/artifact-persistence-runtime.md#cli-与-mcp-上传身份读取源码阶段)。仅源码文档，未编译、测试、调用或发布。

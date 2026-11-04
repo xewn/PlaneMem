@@ -363,6 +363,28 @@ SDK准备返回的原文件可由CLI inspect-request检查，并由已有上传/
 
 工具客户端须把request_json作为原UTF-8 JSON保存并核对摘要，不能保存整段MCP/业务封套或双重编码字符串。审阅后才明确将完整original与相同content_base64交create_artifact/put_artifact_version；状态未确认时继续用原文件get_artifact_receipt，不再prepare替换原键/版本。当前准备不预留版本、检查存储健康、确认上传权限未来有效，也不证明客户端已保存。无新SDK依赖、schema或迁移；仅源码文档人工审阅，未编译、类型检查、测试、执行MCP/API/SDK/数据库或发布，客户端/大正文/超时/并发及存储衔接均无运行证据，R-001保持未完成。
 
+## SDK 元数据与原回执有界读取（源码阶段）
+
+三个既有入口保留返回封套，新增可选 `WcpArtifactReadOptions`：
+
+```ts
+const current = await client.getArtifact(artifactId, { timeout_ms: 30_000, signal });
+const historical = await client.getArtifactVersion(artifactId, reviewedVersion, { signal });
+const receipt = await client.getArtifactReceipt(savedOriginal, { signal });
+```
+
+示例只说明接口，未执行。`timeout_ms` 为1至2,147,483,647的安全整数，省略时30,000；选项仅接受timeout_ms/signal的普通数据属性，拒绝未知字段、访问器和符号。调用开始同步捕获配置、范围/trace、查询和完整原请求，随后创建本地异步等待预算。它不是同步输入校验的硬墙钟上限；Fetch transport自身期限仍独立生效。预先取消不派发读取；到期或取消后不接受迟到结果，不自动重试。
+
+当前与固定历史元数据使用bounded-json GET，完整成功响应最多2 MiB；原回执使用bounded-json POST，原请求输入及规范副本各最多1 MiB，成功响应最多4 MiB；Fetch错误最多16 KiB。自定义transport返回的结果也须通过有界普通JSON快照与共享完整解析，拒绝超限、访问器/循环/非JSON对象、错误范围/目标/版本/trace和不匹配回执，不返回部分结果。transport须实现bounded-json与signal；其自行分配的对象/网络缓冲不受SDK全局内存上限控制。
+
+请求仅附范围、trace和身份前置头，不继承上下文中的幂等键、If-Match或写条件。元数据查询附已配置的actor/client约束；原回执核对三层范围及所有已配置身份约束，始终从保存original发送完整原账号/客户端前置头供Gateway核对。请求正文与本地回执验证期望分别复制，即使transport修改正文也不会改变本地原请求判断。读取不重新准备原请求、不换键、不刷新原版本或上传内容。
+
+成功元数据保留current/historical与content_state=not-checked；原回执保留recorded/not-observed及原历史版本语义。失败只返回同trace的有限错误码、固定消息、retryable=false和本次只读状态，不透出上游异常详情；原回执错误明确not-confirmed-by-this-read。not-observed、取消、超时、权限拒绝或响应损坏均不证明此前上传失败，也不授权新键重发。upload_dispatch_state=not-sent仅描述这次读取，不描述此前上传。
+
+SDK导出WcpArtifactReadOptions、ArtifactReadDetail、ArtifactMetadataView和ArtifactReceiptEnvelope。既有downloadArtifactVersion内部历史元数据查询随之获得默认30秒及2 MiB限制；其内容阶段和max_bytes接口不变，没有增加整个下载的超时/取消能力。Mock既有读取路由源码支持这些transport选项，尚无执行证据。
+
+本增量只有源码文档和人工审阅；没有服务端协议、schema或依赖变化，未编译、类型检查、测试、执行SDK/Mock/API/数据库或发布。实际传输、取消/迟到、数据隔离和兼容性证据仍待补。
+
 ## SDK 上传身份读取（源码阶段）
 
 2026-11-04：`WcpClient.getArtifactUploadContext({timeout_ms?,signal?})` 接入既有 GET /v1/artifacts/upload-context，导出 `WcpArtifactUploadContextOptions` 和 `ArtifactUploadContextEnvelope`。返回当前可信五项 identity、expires_at、max_bytes、can_read/can_read_restricted；不生成请求键、不选择文件、不预留版本，也不检查对象存储健康。调用方必须另行保存并审阅新上传的完整原请求；恢复旧请求时禁止用新身份替换原身份。

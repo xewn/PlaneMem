@@ -11,6 +11,24 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    sdk_artifact_bounded_reads_development_increment:
+      date: "2026-11-04"
+      status: "Source-only SDK bounded metadata and original receipt reads; R-001 remains incomplete."
+      artifacts:
+        - "packages/sdk/src/artifact-reads.ts"
+        - "packages/sdk/src/client.ts"
+        - "packages/sdk/src/index.ts"
+        - "packages/sdk/README.md"
+        - "docs/design/01-contracts/artifact-persistence-runtime.md"
+        - "docs/design/01-contracts/artifact-mock-runtime.md"
+      behavior: "Add optional timeout_ms/signal to current, fixed-version and original receipt reads. Capture scope/options/original before asynchronous work; default 30-second local waiting budget. Bound complete metadata to 2 MiB, receipt to 4 MiB, original input to 1 MiB and Fetch errors to 16 KiB. Pin original receipt identity, detach transport body from validation expectations, parse complete shared envelopes and sanitize errors. No inherited write headers, retries, uploads or conversion of errors into not-observed. Existing download metadata lookup gains the default budget; binary stage is unchanged."
+      evidence: []
+      pending_evidence:
+        - "Current/historical/receipt full envelope limits, identity/scope/version binding and raw plain JSON rejection"
+        - "Pre-cancellation, deadlines, late transport results, input/body mutation and independent Fetch timeout"
+        - "Fixed errors and recorded/not-observed preservation; existing SDK/Mock/download compatibility"
+      remaining_scope: "Custom transport compliance and memory allocation, binary download cancellation and runtime evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, SDK/Mock/API/database execution or release. No server/schema/dependency change."
     mcp_artifact_original_preparation_development_increment:
       date: "2026-11-04"
       status: "Source-only actual Gateway MCP new original preparation; R-001 remains incomplete."

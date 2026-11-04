@@ -4,10 +4,7 @@ import {
   type SessionRegistryQuery,
   type HandoffRegistryQuery,
   type AuditExportDocument,
-  parseArtifactReadQuery,
-  parseArtifactReadEnvelope,
   parseArtifactReceiptQuery,
-  parseArtifactReceiptEnvelope,
   parseArtifactUploadEnvelope,
   ARTIFACT_UPLOAD_MAX_BYTES,
   ARTIFACT_UPLOAD_REQUEST_BYTES,
@@ -176,6 +173,11 @@ import {
   prepareArtifactUpload,
   type WcpArtifactPreparationOptions,
 } from './artifact-preparation.js';
+import {
+  readArtifactMetadata,
+  readArtifactReceipt,
+  type WcpArtifactReadOptions,
+} from './artifact-reads.js';
 import { uploadSyncEvents, type WcpSyncUploadOptions } from './sync-upload.js';
 import { readSyncChanges, iterateSyncChanges, type WcpSyncChangesOptions } from './sync-changes.js';
 import {
@@ -1707,8 +1709,8 @@ export class WcpClient {
     });
   }
 
-  async getArtifact(artifactId: string) {
-    return this.readArtifactMetadata({ artifact_id: artifactId });
+  getArtifact(artifactId: string, options: WcpArtifactReadOptions = {}) {
+    return readArtifactMetadata(this.transport, this.context, { artifact_id: artifactId }, options);
   }
 
   /** Save the original identity/command before calling; uncertain outcomes use getArtifactReceipt. */
@@ -1772,37 +1774,23 @@ export class WcpClient {
   }
 
   /** Read the original write receipt. Absence never proves failure or authorizes a new request. */
-  async getArtifactReceipt(input: ArtifactReceiptQuery) {
-    const context = { ...this.context };
-    let query;
-    try {
-      query = parseArtifactReceiptQuery(input);
-      this.assertArtifactOriginalContext(query, context);
-    } catch {
-      throw this.invalid(
-        'Supply the original artifact command and matching account, client and project',
-      );
-    }
-    const result = await this.envelope<unknown>(
-      'POST',
-      '/v1/artifacts/receipt',
-      parseArtifactReceiptQuery(query),
-      {
-        'x-expected-actor-id': query.identity.actor_id,
-        'x-expected-client-id': query.identity.client_id,
-      },
-    );
-    try {
-      return parseArtifactReceiptEnvelope(result, query, context.trace_id);
-    } catch {
-      throw this.invalidResponse();
-    }
+  getArtifactReceipt(input: ArtifactReceiptQuery, options: WcpArtifactReadOptions = {}) {
+    return readArtifactReceipt(this.transport, this.context, input, options);
   }
 
-  async getArtifactVersion(artifactId: string, version: number) {
+  async getArtifactVersion(
+    artifactId: string,
+    version: number,
+    options: WcpArtifactReadOptions = {},
+  ) {
     if (!Number.isSafeInteger(version) || version < 1)
       throw this.invalid('Supply a positive artifact version');
-    return this.readArtifactMetadata({ artifact_id: artifactId, version });
+    return readArtifactMetadata(
+      this.transport,
+      this.context,
+      { artifact_id: artifactId, version },
+      options,
+    );
   }
 
   /** Download one immutable version after metadata lookup; release audit does not prove client delivery. */
@@ -1901,26 +1889,6 @@ export class WcpClient {
       },
       content: bytes,
     };
-  }
-
-  private async readArtifactMetadata(input: { artifact_id: string; version?: number }) {
-    const context = { ...this.context };
-    let query;
-    try {
-      query = parseArtifactReadQuery(input);
-    } catch {
-      throw this.invalid('Supply an artifact ULID and a positive version when reading history');
-    }
-    const path =
-      '/v1/artifacts/' +
-      this.segment(query.artifact_id) +
-      (query.version === undefined ? '' : '/versions/' + query.version);
-    const result = await this.envelope<unknown>('GET', path);
-    try {
-      return parseArtifactReadEnvelope(result, query, context, context.trace_id);
-    } catch {
-      throw this.invalidResponse();
-    }
   }
 
   async getSessionRun(sessionId: string, runId: string) {

@@ -93,6 +93,8 @@ transport 请求必须指定 `response_type:'bytes'` 与安全整数 `max_respon
 
 ## 后续证据与范围
 
+SDK `getArtifact/getArtifactVersion/getArtifactReceipt` 现向既有Mock路由传入bounded-json、max_response_bytes及本地预算signal。Mock既有完整响应复制/大小检查、原身份前置头及取消检查可承接；SDK另核对全部共享封套，当前/历史上限2 MiB、原回执4 MiB，默认等待30秒。此处仅人工审阅源码兼容，未执行Mock；模拟响应不构成真实认证、持久回执或网络故障证据。SDK下载的元数据阶段随之获得默认预算，内容阶段仍沿用既有接口。
+
 SDK `prepareArtifactUpload` 已有源码，可经此Mock的上传身份与当前元数据GET准备新原请求，不调用multipart写路由；当前模拟权限、版本和大小限制照常生效。调用方明确保存/审阅后才可交既有创建/追加方法，SDK允许省略构造上下文中的actor/client但始终发送原请求身份前置头。此衔接只有人工源码核对，尚未执行准备、上传或Mock场景。
 
 待获准后验证 SDK multipart和下载兼容、摘要/长度拒绝、并发同键/同版本、原历史重放、身份/读取/导出分类隔离、返回数据复制、空文件/容量/响应/取消/到期失败、下载期间追加历史保持、释放记录绑定与旧 Mock 兼容。当前 evidence 保持空。
