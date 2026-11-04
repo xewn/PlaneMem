@@ -954,6 +954,25 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_pack_save_receipt_file_development_increment:
+      date: "2026-11-05"
+      status: "Source-only historical save observation file and CLI explicit publication/offline inspection; R-003 remains incomplete."
+      artifacts:
+        - "packages/contracts/src/context-pack-save-receipt-file.ts"
+        - "packages/contracts/src/index.ts"
+        - "apps/workctx-cli/src/context-pack-receipt-file.ts"
+        - "apps/workctx-cli/src/context-pack-original.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/context-pack-runtime.md"
+      behavior: "A closed 32 KiB file retains a 28 KiB document with local observation time, complete original Gateway/identity/restricted/key/parameters and the matching complete receipt, plus canonical document SHA-256. Optional CLI save-receipt output preflights a new path before one read-only query, exclusively publishes and fully rereads the file after the query deadline settles. Local failure preserves original/receipt/constructed candidate in stdout with save-failed state and exit 1; no-output shape remains unchanged. Offline inspect-receipt in main and embedded CLI checks bounded stable UTF-8, canonical digest and optional full original-file equality without login/network/router, retaining historical/not-checked semantics."
+      evidence: []
+      pending_evidence:
+        - "Closed shapes, canonical document digest, exact historical original binding and corrupted/oversized files"
+        - "Exclusive publication, path races, cleanup and final readback; local failure must retain the complete observation"
+        - "Offline main/embedded routing and old query shape compatibility; no runtime verification performed"
+      remaining_gaps:
+        - "Offline failed-output recapture, original extraction, browser durable history/directory, batch backup/cleanup and runtime evidence"
     context_pack_mcp_save_receipt_development_increment:
       date: "2026-11-05"
       status: "Source-only MCP original save receipt tool with bounded shared context reader; R-003 remains incomplete."

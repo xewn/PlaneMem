@@ -108,6 +108,7 @@ import {
   callContextPackOriginal,
 } from './context-pack-original.js';
 import { callContextCompileArguments } from './context-pack-compile.js';
+import { inspectContextPackReceipt } from './context-pack-receipt-file.js';
 
 const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
 
@@ -347,7 +348,8 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   context prepare-save           Save a complete original to a new --output file; requires --key, optional --json-file draft
   context inspect-save           Review a complete --json-file original locally, without connecting
   context submit-save            Send the unchanged --json-file original after --reviewed; optional --timeout-ms
-  context save-receipt            Observe historical save metadata from --json-file ORIGINAL; no save or automatic retry
+  context save-receipt            Observe historical save metadata from --json-file ORIGINAL; optional --output NEW_RECEIPT.json
+  context inspect-receipt         Inspect --receipt-file RECEIPT.json offline; optional --json-file ORIGINAL.json
   context create                 Add proposed context; title/content/source_refs and --key
   context read                   Read complete current item_id; bounded response and timeout
   context list                   Read one complete page by query/layer/classification/status/item_type/archived/limit/cursor
@@ -662,6 +664,7 @@ export async function main(args: string[]): Promise<number> {
       'context inspect-save',
       'context submit-save',
       'context save-receipt',
+      'context inspect-receipt',
       'context create',
       'context read',
       'context list',
@@ -699,20 +702,23 @@ export async function main(args: string[]): Promise<number> {
       print(await inspectContextPackOriginal(args, trace));
       return 0;
     }
-    if (isContextPackOriginalCommand(name)) {
-      print(
-        await callContextPackOriginal(args, {
-          base: process.env.WORKCTX_URL ?? 'http://127.0.0.1:3000',
-          token: token(),
-          trace,
-          scope: {
-            tenant_id: envId('WORKCTX_TENANT_ID'),
-            workspace_id: envId('WORKCTX_WORKSPACE_ID'),
-            project_id: envId('WORKCTX_PROJECT_ID'),
-          },
-        }),
-      );
+    if (name === 'context inspect-receipt') {
+      print(await inspectContextPackReceipt(args, trace));
       return 0;
+    }
+    if (isContextPackOriginalCommand(name)) {
+      const result = await callContextPackOriginal(args, {
+        base: process.env.WORKCTX_URL ?? 'http://127.0.0.1:3000',
+        token: token(),
+        trace,
+        scope: {
+          tenant_id: envId('WORKCTX_TENANT_ID'),
+          workspace_id: envId('WORKCTX_WORKSPACE_ID'),
+          project_id: envId('WORKCTX_PROJECT_ID'),
+        },
+      });
+      print(result);
+      return 'local' in result.data && result.data.local.state === 'save-failed' ? 1 : 0;
     }
     if (name === 'artifacts inspect-request') {
       print(await inspectArtifactRequestArguments(args, trace));

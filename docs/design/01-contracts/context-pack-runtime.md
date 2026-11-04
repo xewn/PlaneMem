@@ -1,5 +1,7 @@
 # 持久化 ContextPack 开发说明
 
+2026-11-05新增[保存回执文件与离线查看](#保存回执文件与离线查看2026-11-05源码增量)：完整原请求与历史查询观察可显式留存新文件，离线核对规范摘要和原文绑定；本地写入失败保留查询输出，不变更历史结果或触发重发。仅源码文档，未编译、类型检查、测试、执行CLI/文件工作流或发布。
+
 2026-11-05新增[MCP原保存回执查询](#mcp原保存回执查询2026-11-05源码增量)：工具按原身份/权限桶/键/显式参数查询历史记录，沿上下文读期限与容量，完整核验原查询及封套，不发保存或自动重试。仅源码文档，未编译、类型检查、测试、执行MCP/API或发布。
 
 2026-11-05新增[网页原保存回执查询](#网页原保存回执查询2026-11-05源码增量)：准备与恢复共用面板显式查询完整原请求，不发保存；已确认历史保留，显示固定包链接、完整元数据及内容/来源尚未检查。仅源码文档，未编译、类型检查、测试、渲染、执行网页/接口或发布。
@@ -788,3 +790,23 @@ R-003未完成、evidence为空。真实session/原Gateway路径/身份权限变
 十一类上下文读共享每ApiGateway两路容量；本工具使用MCP_CONTEXT_PACK_SAVE_RECEIPT_BUSY/TIMEOUT，30秒从执行器开始覆盖内部授权审计等待、读取和完整输出核验，逐阶段复查有效身份。内部api.handle不可被此计时器取消，超时停止本地等待但名额保留至底层实际结束；公开HTTP认证/外层审计与网络交付不在执行器期限内。prepareMcpTool返回MCP_TOOL_EXECUTOR_REQUIRED，调用者须使用dispatchMcp或专用执行器，不能绕过限额/输出核验。readOnlyHint为true，未注册新写操作或REST路径。
 
 R-003仍未完成、evidence为空。工具发现/认证客户端/直接prepare门禁、严格原身份与restricted绑定、HTTP与完整封套/错误边界、共享容量/迟到授权、旧十类读取兼容和客户端展示均待运行证据。Mock/嵌入CLI、MCP完整原文件与持久恢复流程、历史回执备份/清理及独立Schema/OpenAPI仍有缺口。本轮仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行MCP/API/产品/数据库或发布；无SDK/CLI/Web/Mock/共享协议/依赖/迁移变化。
+
+## 保存回执文件与离线查看（2026-11-05源码增量）
+
+新增共享`ContextPackSaveReceiptDocument/File`及结构解析/规范JSON helper，从contracts根导出。文件只允许document/document_sha256两字段，最多32 KiB；document最多28 KiB，闭合五字段：schema_version=1、kind=context-pack-save-observation、observed_at、original和receipt。original沿完整8 KiB Web/CLI原请求格式，保留Gateway、五身份、restricted、原键和显式参数；receipt沿完整16 KiB只读查询封套，必须精确匹配original提取的原查询，包含recorded或not-observed及原trace/source_refs。
+
+observed_at为本地接收并准备留存时的UTC时间，严格有效四位年份ISO毫秒格式；不是服务端保存时间或签名，不与服务端created_at强行排序，也不因导入时已过期而失效。document_sha256为规范document UTF-8的64位小写SHA-256，不是整个文件字节摘要。共享解析只检查摘要形状及完整结构/原请求绑定，适配器必须计算规范document摘要并比较；实际文件摘要另行返回，空白/字段顺序可改变实际文件摘要但不改变规范document摘要。
+
+网络CLI `context save-receipt --json-file ORIGINAL.json [--timeout-ms 30000] [--output NEW_RECEIPT.json]`新增可选output。读取完整原文件、预检新输出路径后才查询；已存在文件/链接、原请求文件本身或不可用目录均拒绝，不进行查询。保留既有原Gateway含路径/范围与token约束和单次只读POST，不自动补身份、读正文或发送保存。无output时成功返回原完整查询封套，兼容旧行为。
+
+指定output时，网络期限只覆盖原查询；成功之后构造历史document及摘要，调用既有新文件工具独占创建临时文件、写入/同步/摘要读回、硬链接发布，再重新稳定读取目标文件，核对完整结构、document摘要、全部实际字节和文件摘要。不存在覆盖回退，不删除原请求或已有目标；临时文件清理未完成保留路径。文件发布开始后等待其实际结束，不用网络计时器与文件写入竞速；进程退出/中断或外部后续改写不构成保证。
+
+指定output的成功或本地失败均使用独立外层封套，`data.status=receipt-observed`，包含完整original、receipt、已构造时的receipt_file及local。文件本身只含receipt_file，不含stdout外层或本地路径。local.state=saved-and-read-back时返回目标路径、实际文件摘要/字节数和cleanup_pending，退出0；本地捕获/发布/读回失败为save-failed，返回阶段、候选摘要/恢复路径并退出1，stdout仍保留完整原请求和远端观察，已构造文件也完整保留。若查询失败或超时，不启动文件保存；失败不重查、不重发，也不改变recorded/not-observed含义。stdout交付本身不能保证，需保留输出或已经创建的文件。
+
+新增`context inspect-receipt --receipt-file RECEIPT.json [--json-file ORIGINAL.json]`，main在登录/项目环境检查前处理，嵌入runWorkctx也有独立离线分支，仅使用调用trace，不授权或调用router。拒绝输出、网络超时、键、确认、stdin/内联JSON、重复或未知选项。稳定普通文件读取上限32 KiB、严格UTF-8、完整结构及规范document摘要核验；可选原文件上限8 KiB，规范完整原文必须相等，包括Gateway/全部身份/权限桶/键/参数，不仅比较pack_id或请求键。
+
+离线成功输出完整receipt_file及实际文件摘要/大小、可选原文件摘要，标注observation_state=historical、server_authenticity/current_server_outcome/content_state/source_state均not-checked；file_state=structure-and-digest-checked只代表文件自洽。外层source_refs为空，原历史引用保留在文件内部，避免冒充本次新读。用法错误退出2，文件不可用/摘要异常/原文不匹配退出1，不输出部分通过结果；不根据历史not-observed重发，不联网刷新或改写时间。
+
+普通JSON和自带摘要可被一起改写，不认证网关或远端来源；历史文件中原Gateway也只是保留声明，离线核对不能证明实际请求曾发到该目标。此格式是查询观察文件，不是原请求文件或完整ContextPack正文，不能直接传submit-save。当前无失败stdout外层直接导入/离线补存命令，已有候选可从data.receipt_file保留为独立文件再检查；自动恢复、浏览器历史目录/持久化、原请求提取、批量备份清理另行开发。
+
+R-003未完成、evidence为空。文件格式/规范摘要/历史绑定、非UTF-8与损坏边界、输出路径竞争/硬链接/清理、发布后完整读回、本地失败保留观察、离线main/嵌入入口及已有查询返回形状兼容均缺运行证据。本轮只源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/SDK/API/文件工作流/数据库或发布；无后端、SDK、Web、MCP、Mock、依赖或迁移变化。

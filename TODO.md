@@ -4,6 +4,8 @@
 
 ## 当前基线
 
+- P0/P4：新增ContextPack历史观察文件共享格式，28 KiB document/32 KiB file，含完整原请求（含Gateway）、本地观察时间、完整recorded/not-observed回执及规范document SHA-256。CLI context save-receipt可选--output新文件，路径预检后查询，查询预算结束后独占发布/同步/完整读回；stdout保留完整原请求/回执/候选与独立local状态，本地失败退出1、不重查或重发。新增context inspect-receipt --receipt-file [--json-file ORIGINAL]，main及嵌入离线有界稳定读取/摘要实算/可选原文精确匹配，不需登录或路由，不把历史文件当服务端签名或当前状态。浏览器持久回执/目录、历史文件离线补存与原请求提取、批量备份清理、Mock/嵌入查询及运行证据仍待补；R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行CLI/API/数据库或发布。
+
 - P4：新增MCP get_context_pack_save_receipt，严格4 KiB原五身份/restricted/键/显式预算TTL与可信未过期context.read会话相等；身份只作约束，原MCP/Gateway目标由调用方保持。接入context-history专用执行器，十一类上下文读共用每Gateway两路容量/30秒，实际底层结束才释放；单只读POST、继承写条件清除、原查询独立复制、16 KiB完整响应/错误和HTTP状态/type/trace/无ETag核验，32 KiB+4096文本包装。发现/prepare/认证客户端门禁已接，不能通过通用prepare绕过执行器；recorded只历史元数据且正文/来源not-checked，not-observed不授权重发。Mock/嵌入CLI、完整MCP原文件工作流、回执持久化及运行证据仍待补；R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行MCP/API/数据库或发布。
 
 - P5：原ContextPack准备/恢复共用面板新增显式历史回执查询，独立server reader/action固定配置Gateway含路径、原范围/账号/客户端/restricted/参数/键；当前会话检查后单次只读POST，30秒含session读取、独立两路在途容量到真实工作结束、16 KiB完整响应/HTTP状态/type/trace/无ETag及原查询校验。查询不依赖本地副本写入、不调用保存或自动重发；recorded显示历史元数据/固定包链接/完整封套，内容与来源not-checked，关闭同页发送入口。后续错误或not-observed不清除已确认保存/历史，异文回执拒绝，原请求保留。历史仅留当前页面，持久保存/备份清理、MCP/Mock/嵌入CLI及运行证据仍缺；R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、渲染、执行网页/API/数据库或发布。

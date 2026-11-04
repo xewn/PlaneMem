@@ -20,6 +20,10 @@ import {
 import { FetchWcpTransport, WcpClient } from '@planemem/sdk';
 import { readBoundedArtifactFile } from './artifact-files.js';
 import { prepareArtifactOutput, saveArtifactOutput } from './artifact-output.js';
+import {
+  captureContextPackReceipt,
+  prepareContextPackReceiptOutput,
+} from './context-pack-receipt-file.js';
 
 interface NetworkOptions {
   base: string;
@@ -51,7 +55,7 @@ function fail(
 function invalid(trace: string) {
   return fail(
     'USAGE_ERROR',
-    'Use context prepare-save --key ORIGINAL_KEY --output NEW_ORIGINAL.json [--json-file DRAFT.json] [--timeout-ms 30000]; context inspect-save --json-file ORIGINAL.json; context save-receipt --json-file ORIGINAL.json [--timeout-ms 30000] to observe only; or context submit-save --json-file ORIGINAL.json --reviewed [--timeout-ms 30000]. No stdin, inline JSON, repeated or unrelated options. Drafts accept only budget_tokens/ttl_seconds; submit and receipt never accept replacement settings or keys.',
+    'Use context prepare-save --key ORIGINAL_KEY --output NEW_ORIGINAL.json [--json-file DRAFT.json] [--timeout-ms 30000]; context inspect-save --json-file ORIGINAL.json; context save-receipt --json-file ORIGINAL.json [--timeout-ms 30000] [--output NEW_RECEIPT.json] to observe only; or context submit-save --json-file ORIGINAL.json --reviewed [--timeout-ms 30000]. No stdin, inline JSON, repeated or unrelated options. Drafts accept only budget_tokens/ttl_seconds; submit and receipt never accept replacement settings or keys.',
     trace,
   );
 }
@@ -86,7 +90,7 @@ function argumentsFor(argv: string[], trace: string) {
         : mode === 'submit-save'
           ? ['json-file', 'reviewed', 'timeout-ms']
           : mode === 'save-receipt'
-            ? ['json-file', 'timeout-ms']
+            ? ['json-file', 'timeout-ms', 'output']
             : ['json-file'];
     const seen = new Set<string>();
     for (const option of args.tokens) {
@@ -394,7 +398,11 @@ export async function callContextPackOriginal(argv: string[], input: NetworkOpti
 
   if (args.mode === 'save-receipt') {
     const saved = await originalFile(args.file!, options.trace);
-    return network(
+    const output =
+      args.output === undefined
+        ? undefined
+        : await prepareContextPackReceiptOutput(args.output, options.trace);
+    const receipt = await network(
       options,
       args.timeout,
       saved.original.binding,
@@ -405,6 +413,20 @@ export async function callContextPackOriginal(argv: string[], input: NetworkOpti
         }),
       true,
     );
+    if (!output) return receipt;
+    // Network waiting has settled. Await local publication/readback without a timeout race.
+    const capture = await captureContextPackReceipt(saved.original, receipt, output, options.trace);
+    return {
+      schema_version: 1,
+      trace_id: options.trace,
+      source_refs: receipt.source_refs,
+      data: {
+        status: 'receipt-observed' as const,
+        original: saved.original,
+        receipt,
+        ...capture,
+      },
+    };
   }
 
   if (args.mode === 'submit-save') {
