@@ -29,6 +29,7 @@ import { FetchWcpTransport, WcpClient, type WcpRequest, type WcpTransport } from
 import type { CommandRouter, RequestContext } from '@planemem/api-gateway';
 import { readBoundedArtifactFile } from './artifact-files.js';
 import { runContextRead } from './context-history.js';
+import { runContextCompile } from './context-pack-compile.js';
 import {
   prepareArtifactOutput,
   saveArtifactOutput,
@@ -603,6 +604,53 @@ export async function runContextPackSaveReceipt(
   return finishReceiptObservation(saved.original, receipt, output, trace);
 }
 
+async function readEmbeddedOriginalAuthority(
+  router: CommandRouter,
+  host: ReturnType<typeof embeddedOriginalAuthority>,
+  timeout: number,
+) {
+  const { context, trace, binding, authority } = host;
+  authority();
+  let response;
+  try {
+    response = await runContextRead(
+      ['context', 'save-identity', '--timeout-ms', String(timeout)],
+      router,
+      context,
+    );
+    authority();
+  } catch (error) {
+    const envelope = error instanceof ContractError ? error.envelope : undefined;
+    throw fail(
+      envelope?.trace_id === trace && knownErrors.has(envelope.code)
+        ? envelope.code
+        : 'GATEWAY_UNAVAILABLE',
+      'Save identity could not be confirmed. No pack save was sent by this lookup.',
+      trace,
+    );
+  }
+  try {
+    const result = parseContextPackSaveContextEnvelope(response, binding.identity, trace);
+    assertPackSaveBinding(
+      {
+        gateway_url: binding.gateway_url,
+        identity: result.data.identity,
+        read_restricted: result.data.permissions.read_restricted,
+      },
+      binding,
+    );
+    if (Date.parse(result.data.expires_at) !== Date.parse(context.token_expires_at!))
+      throw new TypeError();
+    return result;
+  } catch {
+    throw fail(
+      'GATEWAY_RESPONSE_INVALID',
+      'The complete save identity differs from the verified embedded reader.',
+      trace,
+    );
+  }
+}
+
 export async function runContextPackPrepareSave(
   argv: string[],
   router: CommandRouter,
@@ -611,48 +659,139 @@ export async function runContextPackPrepareSave(
 ) {
   const args = argumentsFor(argv, input.trace_id);
   if (args.mode !== 'prepare-save') throw invalid(input.trace_id);
-  const { context, trace, binding, authority } = embeddedOriginalAuthority(input, gatewayUrl);
-  return prepareOriginalFile(args, binding.gateway_url, trace, async () => {
+  const host = embeddedOriginalAuthority(input, gatewayUrl);
+  return prepareOriginalFile(args, host.binding.gateway_url, host.trace, () =>
+    readEmbeddedOriginalAuthority(router, host, args.timeout),
+  );
+}
+
+export async function runContextPackSubmitSave(
+  argv: string[],
+  router: CommandRouter,
+  input: RequestContext,
+  gatewayUrl: string | undefined,
+) {
+  const args = argumentsFor(argv, input.trace_id);
+  if (args.mode !== 'submit-save') throw invalid(input.trace_id);
+  const host = embeddedOriginalAuthority(input, gatewayUrl);
+  const { context, trace, binding, authority } = host;
+  const saved = await originalFile(args.file!, trace);
+  authority();
+  try {
+    assertPackSaveBinding(binding, saved.original.binding);
+  } catch {
+    throw fail(
+      'DENIED',
+      'Restore the original gateway, identity and permissions before submitting.',
+      trace,
+    );
+  }
+
+  const controller = new AbortController();
+  const deadline = performance.now() + args.timeout;
+  let dispatched = false;
+  let preDispatchError: unknown;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const check = () => {
+    if (controller.signal.aborted || performance.now() >= deadline)
+      throw fail(
+        'GATEWAY_REQUEST_TIMEOUT',
+        'Stopped waiting for the original request.',
+        trace,
+        dispatched,
+      );
     authority();
-    let response;
-    try {
-      response = await runContextRead(
-        ['context', 'save-identity', '--timeout-ms', String(args.timeout)],
+  };
+  const remaining = () => {
+    check();
+    return Math.max(1, Math.ceil(deadline - performance.now()));
+  };
+  try {
+    // Arm cancellation before starting asynchronous work; late identity/file reads cannot save.
+    const stopped = new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(() => {
+        controller.abort();
+        reject(
+          fail(
+            'GATEWAY_REQUEST_TIMEOUT',
+            'Stopped waiting for the original request.',
+            trace,
+            dispatched,
+          ),
+        );
+      }, remaining());
+      timer.unref();
+    });
+    const operation = (async () => {
+      await readEmbeddedOriginalAuthority(router, host, remaining());
+      check();
+      const result = await runContextCompile(
+        [
+          'context',
+          'compile',
+          '--json',
+          JSON.stringify({
+            ...saved.original.parameters,
+            expected_actor_id: binding.identity.actor_id,
+            expected_client_id: binding.identity.client_id,
+          }),
+          '--key=' + saved.original.request_key,
+          '--timeout-ms',
+          String(remaining()),
+        ],
         router,
         context,
-      );
-      authority();
-    } catch (error) {
-      const envelope = error instanceof ContractError ? error.envelope : undefined;
-      throw fail(
-        envelope?.trace_id === trace && knownErrors.has(envelope.code)
-          ? envelope.code
-          : 'GATEWAY_UNAVAILABLE',
-        'Save identity could not be confirmed. No original file was published and no pack save was sent.',
-        trace,
-      );
-    }
-    try {
-      const result = parseContextPackSaveContextEnvelope(response, binding.identity, trace);
-      assertPackSaveBinding(
         {
-          gateway_url: binding.gateway_url,
-          identity: result.data.identity,
-          read_restricted: result.data.permissions.read_restricted,
+          deadline,
+          signal: controller.signal,
+          beforeDispatch: async () => {
+            try {
+              check();
+              const again = await originalFile(args.file!, trace);
+              check();
+              if (!Buffer.from(saved.bytes).equals(again.bytes) || saved.raw !== again.raw)
+                throw fail(
+                  'CONTEXT_PACK_ORIGINAL_CHANGED',
+                  'The original file changed before sending.',
+                  trace,
+                );
+            } catch (error) {
+              preDispatchError = error;
+              throw error;
+            }
+          },
+          onDispatch: () => {
+            check();
+            dispatched = true;
+          },
         },
-        binding,
       );
-      if (Date.parse(result.data.expires_at) !== Date.parse(context.token_expires_at!))
-        throw new TypeError();
+      check();
       return result;
-    } catch {
-      throw fail(
-        'GATEWAY_RESPONSE_INVALID',
-        'The complete save identity differs from the verified embedded reader.',
-        trace,
-      );
+    })();
+    return await Promise.race([operation, stopped]);
+  } catch (error) {
+    let finalError = !dispatched && preDispatchError !== undefined ? preDispatchError : error;
+    try {
+      check();
+    } catch (stopped) {
+      finalError = stopped;
     }
-  });
+    const envelope = finalError instanceof ContractError ? finalError.envelope : undefined;
+    throw fail(
+      envelope?.trace_id === trace && knownErrors.has(envelope.code)
+        ? envelope.code
+        : 'GATEWAY_UNAVAILABLE',
+      dispatched
+        ? 'The original pack save is not confirmed. Keep the file unchanged.'
+        : 'This attempt stopped before sending a pack save. Keep the original file; an earlier save may still exist.',
+      trace,
+      dispatched,
+    );
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+    controller.abort();
+  }
 }
 
 export async function callContextPackOriginal(argv: string[], input: NetworkOptions) {

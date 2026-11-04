@@ -1,5 +1,7 @@
 # 持久化 ContextPack 开发说明
 
+2026-11-05新增[内嵌CLI原请求提交](#内嵌cli原请求提交2026-11-05源码增量)：runWorkctx在明确审阅后固定完整原文件，核对可信身份并在授权后复读文件，再按原参数/键提交；共用期限与现有提交容量，失败保留实际派发状态。仅源码文档，未编译、类型检查、测试、执行CLI/文件流程/API或发布。
+
 2026-11-05新增[内嵌CLI原请求准备](#内嵌cli原请求准备2026-11-05源码增量)：runWorkctx读取宿主可信身份后，将完整原请求独占保存并读回；网络和内嵌共用文件流程，准备不提交保存。仅源码文档，未编译、类型检查、测试、执行CLI/文件流程/API或发布。
 
 2026-11-05新增[内嵌CLI原保存回执查询](#内嵌cli原保存回执查询2026-11-05源码增量)：宿主提供实际Gateway后，runWorkctx复用完整原文件、原身份/权限约束、只读历史查询及可选回执留存，不调用保存。仅源码文档，未编译、类型检查、测试、执行CLI/文件流程/API或发布。
@@ -1016,3 +1018,28 @@ const result = await runWorkctx(
 网络和内嵌入口共用prepareOriginalFile：按相同8 KiB格式固定Gateway、完整身份、权限、原键与参数，计算规范原文SHA-256，独占发布并同步，随后完整读回核对字节及原文。成功stdout保持schema_version/trace_id/source_refs及data.status=prepared、original_file、完整original、request_sha256、identity_observed_expires_at、local_state=saved-and-read-back、next_action=review-original-file和清理信息。准备不会预留键或发送保存包请求，compile_dispatch_state=not-sent、server_outcome=not-checked；可继续inspect-save审阅，并由后续明确操作决定提交。
 
 发布失败保留可用恢复路径；已发布但读回失败返回published-unconfirmed并保留目标与临时路径信息，不宣称服务端保存成功。成功退出0，用法错误2，配置/身份/读取或文件失败1。原网络准备输出和既有回执入口保持，文件格式不变。R-003仍未完成、evidence为空；身份/期限/容量、网络兼容、文件失败恢复与真实宿主接线均缺运行证据。仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/文件流程/API/数据库或发布；无生产Gateway、SDK、共享格式、其他客户端、依赖或迁移变化。
+
+## 内嵌CLI原请求提交（2026-11-05源码增量）
+
+runWorkctx新增`context submit-save --json-file ORIGINAL.json --reviewed [--timeout-ms 30000]`，补齐前述内嵌原请求提交缺口。必须明确提供reviewed；只接受完整原文件和等待期限，拒绝新键、替换参数、内联JSON、stdin、输出路径、重复或未知选项。宿主继续通过第四参数提供实际router对应的Gateway基址，含部署路径；旧三参数调用保持兼容，新提交命令缺失Gateway则拒绝。
+
+下面为未执行的接线示例。originalPath应是调用者已经审阅的完整原请求；router、verifiedContext和actualGatewayBase来自宿主可信配置/认证结果：
+
+```ts
+const result = await runWorkctx(
+  ['context', 'submit-save', '--json-file', originalPath, '--reviewed'],
+  router,
+  verifiedContext,
+  { gateway_url: actualGatewayBase },
+);
+```
+
+首先复制可信上下文、清除继承写条件，检查schema、认证客户端、context.read、未来会话期限与完整身份。读取最多8 KiB稳定UTF-8原文件，要求原Gateway、tenant/workspace/project/actor/client及restricted与宿主完全一致；不一致不读取身份或派发保存。然后复用准备流程的save-identity helper，经既有上下文读适配器读取一次完整16 KiB身份封套，并精确核对可信身份、权限和会话期限。此读取不预留键，也不证明原键尚未使用。
+
+内嵌提交调用现有runContextCompile，以捕获的原参数、原键及成对actor/client约束构造内部请求；用户不能用提交参数覆盖这些值。新增内部可选生命周期接线，在实际router的策略/审计授权结束后，再次完整读取原文件，比较全部原始字节及规范原文。文件不可读或发生变化（包括仅空白变化）拒绝提交，并保留原文错误码；随后再次检查期限/取消/会话，标记派发开始，再调用保存处理器。此复读并非跨进程文件锁，但处理器只接收先前捕获且复核一致的原参数和键，之后磁盘变化不会替换本次请求。
+
+首次文件读取在等待期限之前；其后的身份读取、授权、复读、保存及完整结果/摘要核验共用默认30秒单调截止和外层取消。内嵌compile也新增单调截止检查，防止同步耗时后尚未触发的计时器允许继续派发。外层超时或失败会取消等待；迟到身份/文件结果不能再启动保存。身份读取沿原上下文两读容量，保存沿真实router现有两提交容量并与旧compile命令共享，授权/复读期间也占用保存槽，底层实际结束才释放。已经开始的保存不保证被取消或回滚，stdout交付不在等待期限内。
+
+保存仍经原SDK进行单次请求、完整2 MiB封套解析、原项目/参数/预算/有效期/来源结构及SHA-256核验，适配器保持restricted检查。成功输出原完整保存封套并退出0；内嵌无HTTP，不能声明验证了HTTP状态或响应头ETag。用法错误退出2，其他错误退出1；派发前失败保留compile_dispatch_state=not-sent、server_outcome=not-checked，派发后失败为started/unknown。前者不否认历史同键保存，后者不当作失败证明；均保留原文件恢复提示，不自动重试、换键、回执查询或改写文件。可由后续明确调用save-receipt查询历史。
+
+本增量只完成内嵌准备、离线审阅、提交和回执查询的源码接线。独立Schema/OpenAPI、真实宿主/网络兼容、期限/并发、文件变化及异常恢复仍缺运行证据；R-003未完成、evidence为空。仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/文件流程/API/数据库或发布；无生产Gateway、SDK、共享格式、其他客户端、依赖或迁移变化。

@@ -4,6 +4,8 @@
 
 ## 当前基线
 
+- P4：runWorkctx新增context submit-save --json-file ORIGINAL --reviewed [--timeout-ms N]，固定宿主gateway_url、五字段身份/restricted与完整8 KiB原文件，复用save-identity核对后沿现有compile发送原参数/键；授权后复读全部原字节，变化或不可读拒绝。首次读文件在期限前，之后身份/授权/复读/保存/完整封套/hash共用总期限，单调复查与取消阻止迟到派发；实际router两提交容量与旧compile共享，底层结束才释放。派发前失败not-sent/not-checked，派发后失败started/unknown，不自动重试或换键，不写原文件。补齐内嵌原请求准备/审阅/提交/回执源码流程，独立Schema/OpenAPI和真实兼容证据仍缺，R-003未完成、evidence为空；仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/文件流程/API/数据库或发布。
+
 - P4：runWorkctx新增context prepare-save --key ORIGINAL_KEY --output NEW_ORIGINAL [--json-file DRAFT] [--timeout-ms N]，沿宿主第四参数gateway_url和复制的完整可信身份。与网络入口共用输出预检、4 KiB预算/TTL草稿、8 KiB完整原请求、规范摘要、独占保存/同步/完整读回；身份读取经原save-identity适配，复核五字段身份、restricted及会话期限，沿上下文两读容量并新增单调期限检查。文件I/O不计入身份查询超时，发布前复查到期，失败保留恢复路径，不发送保存包请求。内嵌原请求提交、独立Schema/OpenAPI和运行兼容仍待补，R-003未完成、evidence为空；仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/文件流程/API/数据库或发布。
 
 - P4：runWorkctx新增context save-receipt --json-file ORIGINAL [--timeout-ms N] [--output NEW_RECEIPT]，可选第四参数EmbeddedCliOptions.gateway_url必须由宿主实际router配置提供，新命令缺配置拒绝；旧三参调用保持。共享8 KiB完整稳定原文件及严格参数，核对含路径Gateway、五字段可信身份和restricted，要求schema/真实context.read/未过期会话，清除继承写条件。经SDK单次bounded-json POST适配到原context.pack.save-receipt，精确头/正文与16 KiB完整封套检查，授权审计后复查单调期限/取消/到期，独立每router两读容量保留到底层结束。复用网络回执输出，未指定output返回完整历史封套；输出预检后查询、查询结束后独占发布/读回，本地失败仍保留原观察/候选且退出1，用法2、成功观察含not-observed退出0。无HTTP、身份GET、编排保存或自动重查/重发。内嵌原请求准备/提交、独立Schema/OpenAPI与运行兼容仍待补，R-003未完成、evidence为空；仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/文件流程/API/数据库或发布。

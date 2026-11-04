@@ -197,10 +197,11 @@ function networkClient(options: Options, expected?: Expected) {
     throw invalid(options.trace);
   }
 }
-function execute(client: WcpClient, target: Target, timeout_ms: number) {
+function execute(client: WcpClient, target: Target, timeout_ms: number, signal?: AbortSignal) {
   return client.compileContextPack(target.parameters, {
     idempotency_key: target.key,
     timeout_ms,
+    ...(signal === undefined ? {} : { signal }),
   });
 }
 export async function callContextCompile(input: unknown, options: Options) {
@@ -225,11 +226,21 @@ export async function callContextCompileArguments(argv: string[], options: Optio
   return execute(networkClient({ ...saved, timeout_ms }, target.expected), target, timeout_ms);
 }
 
+/** Internal original-file submission guards; the supplied router still owns save capacity. */
+interface EmbeddedCompileLifecycle {
+  deadline: number;
+  signal: AbortSignal;
+  beforeDispatch: () => Promise<void>;
+  onDispatch: () => void;
+}
+
 export async function runContextCompile(
   argv: string[],
   router: CommandRouter,
   original: RequestContext,
+  lifecycle?: EmbeddedCompileLifecycle,
 ) {
+  const guard = lifecycle === undefined ? undefined : { ...lifecycle };
   const context = structuredClone(original);
   const trace = context.trace_id;
   const scope = {
@@ -273,6 +284,24 @@ export async function runContextCompile(
     false,
     context.idempotency_key,
   );
+  const deadline = Math.min(performance.now() + timeout_ms, guard?.deadline ?? Infinity);
+  const checkDeadline = () => {
+    if (performance.now() >= deadline)
+      throw failure(
+        'GATEWAY_REQUEST_TIMEOUT',
+        'Stopped waiting for the save; retain the original request',
+        trace,
+        true,
+      );
+    if (guard?.signal.aborted)
+      throw failure(
+        'GATEWAY_REQUEST_CANCELED',
+        'Stopped waiting for the save; retain the original request',
+        trace,
+        true,
+      );
+  };
+  checkDeadline();
   if (
     target.expected &&
     (target.expected.actor_id !== identity.actor_id ||
@@ -301,6 +330,7 @@ export async function runContextCompile(
   const transport: WcpTransport = {
     async request<T = unknown>(request: WcpRequest): Promise<T> {
       const active = () => {
+        checkDeadline();
         if (request.signal?.aborted)
           throw failure(
             'GATEWAY_REQUEST_CANCELED',
@@ -347,6 +377,11 @@ export async function runContextCompile(
           },
           async (run) => {
             active();
+            if (guard) {
+              await guard.beforeDispatch();
+              active();
+              guard.onDispatch();
+            }
             return run();
           },
         );
@@ -382,7 +417,8 @@ export async function runContextCompile(
     },
   };
   const client = new WcpClient(transport, validateRequestContext({ ...identity, trace_id: trace }));
-  const result = await execute(client, target, timeout_ms);
+  const result = await execute(client, target, timeout_ms, guard?.signal);
+  checkDeadline();
   authority(true);
   return result;
 }

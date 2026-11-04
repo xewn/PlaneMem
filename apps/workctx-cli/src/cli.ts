@@ -13,6 +13,7 @@ import {
   inspectContextPackOriginal,
   runContextPackSaveReceipt,
   runContextPackPrepareSave,
+  runContextPackSubmitSave,
 } from './context-pack-original.js';
 import {
   inspectContextPackReceipt,
@@ -303,6 +304,7 @@ export async function runWorkctx(
     'context save-identity': 'context.pack.save-context',
     'context save-receipt': 'context.pack.save-receipt',
     'context prepare-save': 'context.pack.original.prepare',
+    'context submit-save': 'context.pack.original.submit',
     'context inspect-save': 'context.pack.original.inspect',
     'context inspect-receipt': 'context.pack.receipt.inspect',
     'context extract-original': 'context.pack.receipt.extract-original',
@@ -386,6 +388,10 @@ export async function runWorkctx(
       }),
     };
   try {
+    if (command === 'context submit-save') {
+      const result = await runContextPackSubmitSave(argv, router, context, options.gateway_url);
+      return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
+    }
     if (command === 'context prepare-save') {
       const result = await runContextPackPrepareSave(argv, router, context, options.gateway_url);
       return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
