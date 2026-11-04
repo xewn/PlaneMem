@@ -1,5 +1,17 @@
 # 工作项投影详情（开发状态）
 
+## 2026-11-04 保存截止日期排序增量
+
+工作项列表新增 `sort=updated_desc|due_asc`。省略、空串及显式updated_desc统一规范化为原默认，保持更新时间倒序/ID升序以及原v1–v4筛选绑定和位置编码。MCP未使用时省略或明确updated_desc，不接受空串。due_asc按保存due_at从早到晚，null统一放在最后；同一截止时刻按本地ID升序。排序不自动排除已完成/取消/无日期项目，不读取当前时间、不表示逾期或实时Plane状态。
+
+Gateway在权限和全部筛选之后、LIMIT之前执行 `due_at ASC NULLS LAST, id COLLATE "C" ASC`。续页使用数据库原微秒时间及C顺序ID：有日期位置之后读取更晚日期、相同日期更大ID及null；已经进入null区段时，只读取更大ID的null记录。位置由专用v2编码固定due_asc、微秒UTC日期或null以及本地ID，不使用客户端显示精度构造续页，拒绝非规范base64url、非法日期/ID及其他位置版本。需要续页的保存日期须可表示为0001–9999年有效微秒UTC时间，否则整页拒绝，不发出无法继续的游标。记录本身的时间格式仍按原投影返回，显示时间相同不代表数据库微秒完全相同。
+
+due_asc查询键使用v5，固定原范围/受限数据可见性及所有搜索、状态、优先级、负责人、分配、日期条件和排序。续页应原样保留排序与条件；改变排序须去掉cursor回首页，limit仍可调整，trace不参与绑定。默认排序不会使用新位置。Mock使用独立v3绑定/v2位置，预存按微秒及Unicode标量ID排序的目录，同样把null放在末尾；默认Mock仍保留v1/v2绑定，生产与Mock游标不可交换。
+
+SDK listWorkItemProjections/workItemPages、CLI work-items list JSON、MCP list_work_item_projections都接受sort，仍沿原有界输入/完整页校验/期限。示例（未执行）：`{"sort":"due_asc","status":"todo","due_before":"2026-12-01"}`。Web下拉选择最近更新或截止日期升序，提交从第一页开始；看板各列保持当前结果相对顺序，列表是整页顺序，卡片/表格显示原保存日期或No due date。换视图、选择任务、详情return_to、错误原页重试及原条件第一页保留排序，清除筛选也保留当前排序。无日期筛选与due_asc可组合，此时全部条目仅按ID升序。
+
+排序由Gateway/Mock执行，客户端不对单页重新排序，也不从显示精度证明数据库细粒度顺序；共享解析仍核对完整记录、过滤、重复ID、页大小及续页结构。读取之间记录可能修改/删除，不提供跨页一致快照、自动去重、预取或后台遍历。本任务无新路由/数据库schema/迁移/索引/依赖，仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行产品/SDK/CLI/MCP/Mock/API/SQL/浏览器或发布；真实SQL性能、null/微秒续页、兼容和导航证据仍待补，R-002未完成、evidence为空。
+
 ## 2026-11-04 保存截止日期筛选增量
 
 列表共享查询新增 `due=scheduled|unscheduled`、`due_from` 和 `due_before`。scheduled只要求保存的due_at非null，unscheduled只匹配null；不等同于已安排工作流、已完成或逾期。两日期必须是真实 `YYYY-MM-DD`（0001–9999年），拒绝无效闰日、零年、时间/偏移后缀、空白、数组和其他类型。省略或空串表示不使用该字段；MCP schema不接受空串，未使用时省略。unscheduled不能与任一日期边界共用；同时给出两日期时必须due_from早于due_before。
@@ -44,7 +56,7 @@ item_id 是 `wcp_work_items.id`，不是 Plane external_id；允许非 ULID 标�
 
 ## 列表分页补充
 
-`POST /v1/workbench/query` 的 `operation=work_items` 现支持 query/status/priority/owner/assignment/due/due_from/due_before/cursor/limit。默认25条，每页1–100条；query最多500字符，搜索external_id/title/owner，空可选筛选字段表示不过滤。共享parseWorkItemListQuery拒绝未知字段、非法状态/优先级/负责人/分配/日期及游标，日期规则见上方增量；SDK/CLI/Web使用同一规范化逻辑，MCP未使用时省略字段。
+`POST /v1/workbench/query` 的 `operation=work_items` 现支持query/status/priority/owner/assignment/due/due_from/due_before/sort/cursor/limit。默认25条，每页1–100条；query最多500字符，搜索external_id/title/owner，空可选筛选字段表示不过滤、空sort表示默认。共享parseWorkItemListQuery拒绝未知字段和非法筛选/排序/游标，日期及排序规则见上方增量；SDK/CLI/Web使用同一规范化逻辑，MCP不用的可选字段省略。
 
 响应 data 仍是数组，条目增加 created_at 并与详情使用相同字段验证。存在后续数据时在外层返回 next_cursor；调用方把它作为下一次 cursor，并保留查询、状态、优先级和负责人条件。没有 next_cursor 即当前读取结束，不能把单页条数当项目总数。SDK `listWorkItemProjections`、CLI `work-items list`、MCP `list_work_item_projections` 均接入；共享响应解析验证页大小、重复 ID、所选状态/优先级/负责人和游标形状。
 
@@ -164,7 +176,7 @@ filters.json示例为`{"assignment":"unassigned","limit":25}`；selection.json�
 
 `list_work_item_projections`和`get_work_item_projection`改由专用executeWorkItemReadTool执行。tools/list、prepareMcpTool、直接执行器及HTTP tools/call的客户端要求保持一致：必须是schema_version=1、authenticated_client=true、有实际context.read、明确未到期token_expires_at及有效完整范围/账号/客户端/trace的上下文。admin角色不替代context.read能力，发现时可见不保证之后调用仍获授权；真实Router仍执行原Policy/Audit，父项目与记录可见性沿原数据库读取。没有注册新的工具名、REST路由或读取资源。
 
-两工具内层arguments普通JSON最多8 KiB。列表字段为query/status/priority/owner/assignment/due/due_from/due_before/cursor/limit，默认25最多100条，详情只接受本地item_id。复用共享解析及MCP schema语义：不筛选枚举/负责人/日期时省略，不能发送空串；unassigned不能与非空owner组合，unscheduled不能与日期区间组合。拒绝未知字段、写条件、范围、账号及CLI专用expected_actor_id/expected_client_id；身份只来自已验证MCP上下文，不接受参数覆盖。不提供工具内timeout参数或自动翻页选项，保留全部原筛选显式传回next_cursor读取下一页。
+两工具内层arguments普通JSON最多8 KiB。列表字段为query/status/priority/owner/assignment/due/due_from/due_before/sort/cursor/limit，默认25最多100条，详情只接受本地item_id。复用共享解析及MCP schema语义：不用的枚举/负责人/日期省略，不能发送空串，sort可省略或显式updated_desc；unassigned不能与非空owner组合，unscheduled不能与日期区间组合。拒绝未知字段、写条件、范围、账号及CLI专用expected_actor_id/expected_client_id；身份只来自已验证MCP上下文，不接受参数覆盖。不提供工具内timeout或自动翻页选项，保留全部原筛选和排序显式传回next_cursor读取下一页。
 
 参数和上下文先复制，清除继承idempotency_key/expected_version/if_match，只派发一次固定POST /v1/workbench/query，使用work_items或work_item操作。交给ApiGateway的请求是额外副本，不能通过Handler修改它来改变原查询或权限校验依据。prepareMcpTool只准备请求和检查权限/输入；完整预算与响应校验由dispatchMcp或专用执行器提供，直接自行调用api.handle不是本节的有界工具执行流程。
 

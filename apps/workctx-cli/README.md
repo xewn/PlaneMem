@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+2026-11-04：`work-items list`的JSON增加sort，例如`{"sort":"due_asc","status":"todo"}`按保存截止日期从早到晚读取，null最后、同日期ID升序。省略/显式updated_desc仍为最近更新；续页保留排序和全部筛选，换排序去掉cursor。原单页/预算/期限保持，详见[工作项排序](../../docs/design/01-contracts/work-item-projection-runtime.md)。仅源码文档，未编译、测试、执行或发布。
+
 2026-11-04：`work-items list`的JSON增加`due=scheduled|unscheduled`、`due_from`、`due_before`。日期为有效YYYY-MM-DD，UTC含起始、不含结束；示例文件内容`{"due_from":"2026-11-01","due_before":"2026-12-01","status":"todo"}`。unscheduled只匹配due_at=null且与区间互斥；区间排除null，不自动判断逾期或工作状态。下一页保留这些条件和原cursor，换条件回首页，原8 KiB输入/单页读取/期限保持。见[工作项筛选](../../docs/design/01-contracts/work-item-projection-runtime.md)。仅源码文档，未编译、测试、运行命令或发布。
 
 2026-11-04：`work-items list/get`新增`--timeout-ms`，默认30000；网络和嵌入统一复用SDK有界单页/详情读取，成功2 MiB、Fetch错误16 KiB和完整trace/结果校验。输入支持最多8 KiB内联JSON/稳定普通文件，列表省略为{}，网络支持有界`--json -`、嵌入不读stdin；本地输入等待不计入网络期限。可选成对expected_actor_id/expected_client_id只转成身份相等头；嵌入要求可信未过期context.read，按原身份派发、两笔容量到真实读取结束才释放。拒绝key/output/重复/未知/写选项，不自动翻页、保存或重试。下一页保留原筛选/身份和外层next_cursor。详见[命令行工作项读取](../../docs/design/01-contracts/work-item-projection-runtime.md)。仅源码文档人工审阅，未编译、测试、运行命令或发布。
@@ -535,7 +537,7 @@ observed-item.json 示例：`{"work_item_id":"plane-item-42"}`。CLI 核对返�
 | `index delete` | id、expected_revision、reason；软删除手工索引 | `--key` 必需 |
 | `index restore` | id、expected_revision、reason；恢复手工索引，保留原到期和分类 | `--key` 必需 |
 | `work-items get` | 本地 `item_id`；返回工作项投影、字符串版本及来源 | 无 |
-| `work-items list` | 可选 query/status/priority/owner/assignment/due/due_from/due_before/cursor/limit；priority为P0–P3，owner精确文本，assignment为assigned/unassigned；due为scheduled/unscheduled，日期严格YYYY-MM-DD、UTC含起始/不含结束，无日期与区间互斥。默认25、最多100条，保留全部筛选并用外层next_cursor继续，换条件回首页 | 无 |
+| `work-items list` | 可选 query/status/priority/owner/assignment/due/due_from/due_before/sort/cursor/limit；priority为P0–P3，owner精确文本，assignment为assigned/unassigned；due为scheduled/unscheduled，UTC日期含起始/不含结束，无日期与区间互斥。sort默认updated_desc，可选due_asc（日期升序/null最后）。默认25、最多100条，保留全部筛选和排序并用外层next_cursor继续，换条件回首页 | 无 |
 | `sessions start` | `expected_identity`，可选原 `parent_session_id/actor_id/client_id` | `--key` 或正文 idempotency_key，出现多个时须一致 |
 | `sessions start-receipt` | `expected_identity`、`request_key`、`session` 原业务正文 | 禁止新键 |
 | `sessions end` | `session_id`、`expected_identity`、`status`、`expected_version` | `--key` |

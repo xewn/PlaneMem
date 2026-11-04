@@ -29,6 +29,7 @@ export interface WcpWorkItemPagesOptions extends WcpWorkItemReadOptions {
 const responseBytes = 2 * 1024 * 1024;
 const queryFields = [
   'query',
+  'sort',
   'status',
   'priority',
   'owner',

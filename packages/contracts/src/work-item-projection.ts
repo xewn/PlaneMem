@@ -12,8 +12,11 @@ export const WORK_ITEM_STATUSES = [
 export const WORK_ITEM_PRIORITIES = ['P0', 'P1', 'P2', 'P3'] as const;
 export const WORK_ITEM_ASSIGNMENTS = ['assigned', 'unassigned'] as const;
 export const WORK_ITEM_DUE_FILTERS = ['scheduled', 'unscheduled'] as const;
+export const WORK_ITEM_SORTS = ['updated_desc', 'due_asc'] as const;
 
 export interface WorkItemListQuery {
+  /** Defaults to updated_desc; due_asc puts null deadlines last. */
+  sort?: (typeof WORK_ITEM_SORTS)[number];
   query?: string;
   status?: WorkItemProjection['status'];
   priority?: WorkItemProjection['priority'];
@@ -40,6 +43,7 @@ export function parseWorkItemListQuery(value: unknown): WorkItemListQuery {
       (key) =>
         ![
           'query',
+          'sort',
           'status',
           'priority',
           'owner',
@@ -54,6 +58,12 @@ export function parseWorkItemListQuery(value: unknown): WorkItemListQuery {
   )
     throw new TypeError('Unknown work item list query field');
   const query: WorkItemListQuery = {};
+  if (input.sort !== undefined && input.sort !== '') {
+    if (!WORK_ITEM_SORTS.includes(input.sort as NonNullable<WorkItemListQuery['sort']>))
+      throw new TypeError('sort must be updated_desc or due_asc');
+    // An explicit default is identical to omission, including existing cursor bindings.
+    if (input.sort === 'due_asc') query.sort = 'due_asc';
+  }
   if (input.query !== undefined) {
     if (
       typeof input.query !== 'string' ||

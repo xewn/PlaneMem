@@ -19,6 +19,7 @@ export interface WorkItemDetailNavigation {
 
 const fields = [
   'q',
+  'sort',
   'status',
   'priority',
   'owner',
@@ -42,6 +43,7 @@ export function parseWorkItemBrowseParams(params: WorkItemSearchParams): WorkIte
     throw new Error('Use one value per work item filter and select the board or list view.');
   const filters = parseWorkItemListQuery({
     query: params.q ?? '',
+    sort: params.sort ?? '',
     status: params.status ?? '',
     priority: params.priority ?? '',
     owner: params.owner ?? '',
@@ -73,6 +75,7 @@ export function workItemBrowseHref(state: WorkItemBrowseState): string {
     throw new Error('Use the work item browser page size and view.');
   const search = new URLSearchParams();
   if (filters.query) search.set('q', filters.query);
+  if (filters.sort) search.set('sort', filters.sort);
   if (filters.status) search.set('status', filters.status);
   if (filters.priority) search.set('priority', filters.priority);
   if (filters.owner) search.set('owner', filters.owner);

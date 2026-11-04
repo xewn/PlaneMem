@@ -42,6 +42,7 @@ export default async function WorkItemsPage({
     const due = filters.due ?? '';
     const dueFrom = filters.due_from ?? '';
     const dueBefore = filters.due_before ?? '';
+    const sort = filters.sort ?? 'updated_desc';
     const hasFilters = Boolean(
       query || status || priority || owner || assignment || due || dueFrom || dueBefore,
     );
@@ -100,6 +101,7 @@ export default async function WorkItemsPage({
             due,
             dueFrom,
             dueBefore,
+            sort,
           ])}
         >
           {list && <input type="hidden" name="view" value="list" />}
@@ -142,11 +144,24 @@ export default async function WorkItemsPage({
           </select>
           <WorkItemOwnerFilter initialAssignment={assignment} initialOwner={owner} />
           <WorkItemDueFilter initialDue={due} initialFrom={dueFrom} initialBefore={dueBefore} />
+          <select
+            className="filter-chip"
+            name="sort"
+            aria-label="Work item order"
+            defaultValue={sort}
+          >
+            <option value="updated_desc">Recently updated first</option>
+            <option value="due_asc">Earliest due date first</option>
+          </select>
           <button className="secondary-button" type="submit">
             Apply filters
           </button>
           {hasFilters && (
-            <Link className="panel-link" href={list ? '/work-items?view=list' : '/work-items'}>
+            <Link
+              className="panel-link"
+              href={workItemBrowseHref({ filters: { sort }, view: browse.view })}
+              prefetch={false}
+            >
               Clear filters
             </Link>
           )}
@@ -171,7 +186,10 @@ export default async function WorkItemsPage({
         </form>
         <nav className="heading-actions" aria-label="Work item pages">
           <span className="muted">
-            Newest updates first · Up to 25 per page. Column counts are for this page.
+            {sort === 'due_asc'
+              ? 'Earliest due date first · Items without a due date last'
+              : 'Newest updates first'}
+            {' · Up to 25 per page. Column counts are for this page.'}
           </span>
           {cursor ? (
             <Link
@@ -214,6 +232,7 @@ export default async function WorkItemsPage({
                       <th>Status</th>
                       <th>Priority</th>
                       <th>Owner</th>
+                      <th>Saved due date</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -235,6 +254,9 @@ export default async function WorkItemsPage({
                         </td>
                         <td>{textValue(item.priority)}</td>
                         <td>{textValue(item.owner)}</td>
+                        <td>
+                          <WorkItemDueDate value={item.due_at} />
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -408,7 +430,14 @@ function WorkCard({ item, href, selected }: { item: WorkItem; href: string; sele
         <small>{textValue(item.owner)}</small>
       </div>
       <p>{textValue(item.description)}</p>
+      <p>
+        Due: <WorkItemDueDate value={item.due_at} />
+      </p>
       <Progress value={numberValue(item.progress)} tone={toneFor(item.status)} />
     </Link>
   );
+}
+
+function WorkItemDueDate({ value }: { value: string | null }) {
+  return value === null ? <span>No due date</span> : <time dateTime={value}>{value}</time>;
 }

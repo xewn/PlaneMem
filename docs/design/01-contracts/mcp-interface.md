@@ -1,5 +1,7 @@
 # MCP 接口契约 v1
 
+2026-11-04 工作项排序：list_work_item_projections接受sort=updated_desc/due_asc，默认最近更新，due_asc按保存截止日期升序/null最后/同日期ID升序。省略或显式默认等价，空串拒绝，续页保留全部筛选与sort，换排序回首页；权限与预算保持。详见[工作项排序](work-item-projection-runtime.md)，仅源码文档，未编译、测试、调用或发布。
+
 2026-11-04 工作项日期筛选：list_work_item_projections新增due=scheduled/unscheduled和严格YYYY-MM-DD的due_from（UTC含起始）/due_before（UTC不含结束）。无日期仅due_at=null且不能组合区间，双边须起始早于结束；不使用的字段必须省略。日期筛选不推断逾期或工作流状态，原权限/输入输出预算/期限不变。新条件生产v4游标绑定全部筛选，旧条件保留v1–v3，见[工作项筛选](work-item-projection-runtime.md)。仅源码文档，未编译、测试、调用或发布。
 
 2026-11-04 工作项读取增补：原list_work_item_projections/get_work_item_projection保留原输入/封套JSON文本形状，发现与调用均要求可信未过期实际context.read客户端。专用读取限制8 KiB参数、2 MiB完整成功、16 KiB错误、两笔容量及30秒本地期限，完整核对后才返回；不接收身份/写条件覆盖，不自动翻页或重试。旧缺客户端/期限/能力或非完整JSON封套的fixture需迁移。详见[工作项MCP读取](work-item-projection-runtime.md)，仅源码文档，未编译、测试、调用或发布。

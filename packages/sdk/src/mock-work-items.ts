@@ -36,8 +36,9 @@ export interface MockWorkItemSession {
 }
 
 type Session = MockWorkItemSession & { visible: Set<string> };
-type Stored = { item: WorkItemProjection; updated: string };
+type Stored = { item: WorkItemProjection; updated: string; due: string | null };
 type Position = { updated: string; id: string };
+type DuePosition = { due: string | null; id: string };
 const messages = {
   MOCK_WORK_ITEM_CONFIGURATION_INVALID:
     'Supply a bounded work item dataset and explicit simulated session',
@@ -100,11 +101,43 @@ function compareIds(left: string, right: string): number {
   }
   return a.length - b.length;
 }
-function encodeCursor(position: Position, key: string): string {
-  const text = JSON.stringify([1, 'mock-work-items', key, position.updated, position.id]);
+function encodeValue(value: unknown[]): string {
+  const text = JSON.stringify(value);
   let binary = '';
   for (const byte of new TextEncoder().encode(text)) binary += String.fromCharCode(byte);
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function encodeCursor(position: Position, key: string): string {
+  return encodeValue([1, 'mock-work-items', key, position.updated, position.id]);
+}
+function encodeDueCursor(position: DuePosition, key: string): string {
+  return encodeValue([2, 'mock-work-items', key, 'due_asc', position.due, position.id]);
+}
+function compareDue(a: DuePosition, b: DuePosition): number {
+  if (a.due === b.due) return compareIds(a.id, b.id);
+  if (a.due === null) return 1;
+  if (b.due === null) return -1;
+  return a.due < b.due ? -1 : 1;
+}
+function decodeDueCursor(cursor: string | undefined, key: string): DuePosition | undefined {
+  if (cursor === undefined) return undefined;
+  if (!/^[A-Za-z0-9_-]{1,2048}$/.test(cursor)) throw new TypeError();
+  const binary = atob(cursor.replace(/-/g, '+').replace(/_/g, '/'));
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  const value: unknown = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
+  if (!Array.isArray(value) || value.length !== 6) throw new TypeError();
+  const [version, kind, binding, sort, due, id] = value;
+  if (
+    version !== 2 ||
+    kind !== 'mock-work-items' ||
+    binding !== key ||
+    sort !== 'due_asc' ||
+    (due !== null && micros(due) !== due)
+  )
+    throw new TypeError();
+  const position: DuePosition = { due, id: parseWorkItemProjectionQuery({ item_id: id }).item_id };
+  if (encodeDueCursor(position, key) !== cursor) throw new TypeError();
+  return position;
 }
 function decodeCursor(cursor: string | undefined, key: string): Position | undefined {
   if (cursor === undefined) return undefined;
@@ -130,6 +163,7 @@ export class MockWorkItemStore {
   readonly #scope: MockWorkItemSeed['scope'];
   readonly #items = new Map<string, Stored>();
   readonly #ordered: Stored[];
+  readonly #dueOrdered: Stored[];
   #active = 0;
 
   constructor(seed: MockWorkItemSeed) {
@@ -170,8 +204,8 @@ export class MockWorkItemStore {
         for (const source of row.source_refs as unknown[])
           record(source, ['type', 'id'], ['revision', 'uri']);
         micros(item.created_at);
-        if (item.due_at !== null) micros(item.due_at);
-        this.#items.set(item.id, { item, updated: micros(item.updated_at) });
+        const due = item.due_at === null ? null : micros(item.due_at);
+        this.#items.set(item.id, { item, updated: micros(item.updated_at), due });
       }
       return {
         tenant_id: identity.tenant_id,
@@ -181,6 +215,9 @@ export class MockWorkItemStore {
     });
     this.#ordered = [...this.#items.values()].sort((a, b) =>
       a.updated === b.updated ? compareIds(a.item.id, b.item.id) : a.updated > b.updated ? -1 : 1,
+    );
+    this.#dueOrdered = [...this.#items.values()].sort((a, b) =>
+      compareDue({ due: a.due, id: a.item.id }, { due: b.due, id: b.item.id }),
     );
   }
 
@@ -236,11 +273,16 @@ export class MockWorkItemStore {
   }
 
   private async list(query: WorkItemListQuery, session: Session, trace: string, live: () => void) {
+    const dueSort = query.sort === 'due_asc';
     const withDue =
       query.due !== undefined || query.due_from !== undefined || query.due_before !== undefined;
     const binding = syncJsonSnapshot(
       [
-        withDue ? 'mock-work-item-list-v2' : 'mock-work-item-list-v1',
+        dueSort
+          ? 'mock-work-item-list-v3'
+          : withDue
+            ? 'mock-work-item-list-v2'
+            : 'mock-work-item-list-v1',
         this.#id,
         session.identity,
         session.expires_at,
@@ -253,7 +295,10 @@ export class MockWorkItemStore {
         query.priority ?? '',
         query.owner ?? '',
         query.assignment ?? '',
-        ...(withDue ? [query.due ?? '', query.due_from ?? '', query.due_before ?? ''] : []),
+        ...(withDue || dueSort
+          ? [query.due ?? '', query.due_from ?? '', query.due_before ?? '']
+          : []),
+        ...(dueSort ? ['due_asc'] : []),
       ],
       1024 * 1024,
     );
@@ -271,11 +316,16 @@ export class MockWorkItemStore {
       return fail('MOCK_WORK_ITEM_INTEGRITY_UNAVAILABLE', trace);
     }
     live();
-    const after = checked('INVALID_INPUT', trace, () => decodeCursor(query.cursor, key));
+    const after = dueSort
+      ? undefined
+      : checked('INVALID_INPUT', trace, () => decodeCursor(query.cursor, key));
+    const afterDue = dueSort
+      ? checked('INVALID_INPUT', trace, () => decodeDueCursor(query.cursor, key))
+      : undefined;
     const limit = query.limit ?? 25;
     const selected: Stored[] = [];
     const search = query.query?.toLowerCase();
-    for (const stored of this.#ordered) {
+    for (const stored of dueSort ? this.#dueOrdered : this.#ordered) {
       live();
       const item = stored.item;
       if (
@@ -286,6 +336,7 @@ export class MockWorkItemStore {
         (query.assignment === 'unassigned' && item.owner !== '') ||
         (query.assignment === 'assigned' && item.owner === '') ||
         !matchesWorkItemDueFilter(item.due_at, query) ||
+        (afterDue !== undefined && compareDue({ due: stored.due, id: item.id }, afterDue) <= 0) ||
         (search !== undefined &&
           ![item.external_id, item.title, item.owner].join(' ').toLowerCase().includes(search)) ||
         (after !== undefined &&
@@ -305,7 +356,11 @@ export class MockWorkItemStore {
         {
           data: page.map((entry) => entry.item),
           ...(selected.length > limit && last
-            ? { next_cursor: encodeCursor({ updated: last.updated, id: last.item.id }, key) }
+            ? {
+                next_cursor: dueSort
+                  ? encodeDueCursor({ due: last.due, id: last.item.id }, key)
+                  : encodeCursor({ updated: last.updated, id: last.item.id }, key),
+              }
             : {}),
         },
         query,

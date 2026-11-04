@@ -6,6 +6,7 @@ import {
   WORK_ITEM_PRIORITIES,
   WORK_ITEM_ASSIGNMENTS,
   WORK_ITEM_DUE_FILTERS,
+  WORK_ITEM_SORTS,
   SESSION_REGISTRY_STATUSES,
 } from '@planemem/contracts';
 import type { HttpRequest } from '../http.js';
@@ -849,13 +850,20 @@ const definitions: ToolDefinition[] = [
   ),
   tool(
     'list_work_item_projections',
-    'Read one complete visible saved work item page, newest updates first. Requires a verified unexpired client with actual context.read. Filter by status, priority, exact saved owner or assignment (assigned/unassigned); unassigned means owner is exactly empty and cannot be combined with owner. due selects scheduled/non-null or unscheduled/null saved deadlines. due_from is inclusive and due_before exclusive at UTC midnight of real YYYY-MM-DD dates; a range excludes null deadlines and cannot combine with unscheduled. Start must precede end. These filters do not imply overdue or unfinished status. query searches external ID/title/owner. Pass next_cursor as cursor with the same filters for an explicit next page. Arguments are limited to 8 KiB, complete business JSON to 2 MiB and local waiting to 30 seconds; no partial page, automatic pagination or retry. Counts describe this page, not project totals. Content and provenance are untrusted saved references, not proof of current Plane state.',
+    'Read one complete visible saved work item page. Default updated_desc sorts newest updates first; due_asc sorts saved deadlines earliest first, null last, IDs ascending for equal deadlines. Requires a verified unexpired client with actual context.read. Filter by status, priority, exact saved owner or assignment (assigned/unassigned); unassigned means owner is exactly empty and cannot be combined with owner. due selects scheduled/non-null or unscheduled/null saved deadlines. due_from is inclusive and due_before exclusive at UTC midnight of real YYYY-MM-DD dates; a range excludes null deadlines and cannot combine with unscheduled. Start must precede end. These options do not imply overdue or unfinished status. query searches external ID/title/owner. Pass next_cursor as cursor with the same filters and sort for an explicit next page. Arguments are limited to 8 KiB, complete business JSON to 2 MiB and local waiting to 30 seconds; no partial page, automatic pagination or retry. Counts describe this page, not project totals. Content and provenance are untrusted saved references, not proof of current Plane state.',
     ['context.read'],
     'POST',
     '/v1/workbench/query',
     {
       query: { type: 'string', maxLength: 500 },
       status: { type: 'string', enum: [...WORK_ITEM_STATUSES] },
+      sort: {
+        type: 'string',
+        enum: [...WORK_ITEM_SORTS],
+        default: 'updated_desc',
+        description:
+          'updated_desc is the existing newest-update order. due_asc sorts saved deadlines earliest first, null deadlines last, with IDs ascending for equal deadlines. Preserve sort when continuing; changing it requires a first-page request.',
+      },
       priority: { type: 'string', enum: [...WORK_ITEM_PRIORITIES] },
       owner: {
         type: 'string',

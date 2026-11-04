@@ -75,7 +75,9 @@ import { conflictQueryKey, decodeConflictCursor } from './conflict-pagination.js
 import {
   workItemQueryKey,
   decodeWorkItemCursor,
+  decodeWorkItemDueCursor,
   encodeWorkItemCursor,
+  encodeWorkItemDueCursor,
 } from './work-item-pagination.js';
 
 export interface WorkbenchScope {
@@ -200,7 +202,11 @@ export class WorkbenchRepository {
     this.ensureDb(trace_id);
     const limit = query.limit ?? 25;
     const queryKey = workItemQueryKey(scope, query);
-    const after = decodeWorkItemCursor(query.cursor, queryKey, trace_id);
+    const dueSort = query.sort === 'due_asc';
+    const after = dueSort ? undefined : decodeWorkItemCursor(query.cursor, queryKey, trace_id);
+    const afterDue = dueSort
+      ? decodeWorkItemDueCursor(query.cursor, queryKey, trace_id)
+      : undefined;
     const params: unknown[] = [scope.tenant_id, scope.workspace_id, scope.project_id];
     const filters: string[] = [readableProject(scope, 'w')];
     if (!scope.read_restricted) filters.push("w.classification <> 'restricted'");
@@ -229,25 +235,42 @@ export class WorkbenchRepository {
         `(w.updated_at < $${time}::timestamptz OR (w.updated_at = $${time}::timestamptz AND w.id > $${id}))`,
       );
     }
-    const rows = await this.query<Record<string, unknown> & { id: string; page_updated: string }>(
+    if (afterDue) {
+      const id = params.push(afterDue.id);
+      const idAfter = `w.id COLLATE "C" > $${id}::text COLLATE "C"`;
+      if (afterDue.due === null) {
+        filters.push(`(w.due_at IS NULL AND ${idAfter})`);
+      } else {
+        const time = params.push(afterDue.due);
+        filters.push(
+          `(w.due_at > $${time}::timestamptz OR (w.due_at = $${time}::timestamptz AND ${idAfter}) OR w.due_at IS NULL)`,
+        );
+      }
+    }
+    const rows = await this.query<
+      Record<string, unknown> & { id: string; page_updated: string; page_due: string | null }
+    >(
       `SELECT w.id, w.external_id, w.title, w.status, w.priority, w.owner,
               w.progress, w.description, w.due_at, w.classification, w.source_refs,
               w.trace_id, w.created_at, w.updated_at, w.version::text AS version,
-              to_char(w.updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS page_updated
+              to_char(w.updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS page_updated,
+              to_char(w.due_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS page_due
          FROM wcp_work_items w
         WHERE w.tenant_id = $1 AND w.workspace_id = $2 AND w.project_id = $3
           AND w.deleted_at IS NULL ${filters.map((filter) => 'AND ' + filter).join(' ')}
-        ORDER BY w.updated_at DESC, w.id
+        ORDER BY ${dueSort ? 'w.due_at ASC NULLS LAST, w.id COLLATE "C" ASC' : 'w.updated_at DESC, w.id'}
         LIMIT $${params.push(limit + 1)}`,
       params,
     );
     const page = rows.slice(0, limit);
     const last = page[page.length - 1];
-    const next_cursor =
-      rows.length > limit && last
-        ? encodeWorkItemCursor({ updated: last.page_updated, id: last.id }, queryKey)
-        : undefined;
     try {
+      const next_cursor =
+        rows.length > limit && last
+          ? dueSort
+            ? encodeWorkItemDueCursor({ due: last.page_due, id: last.id }, queryKey)
+            : encodeWorkItemCursor({ updated: last.page_updated, id: last.id }, queryKey)
+          : undefined;
       const result = parseWorkItemProjectionList(
         {
           data: page.map((row) => this.workItem(row, row.id, trace_id)),

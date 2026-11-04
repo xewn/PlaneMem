@@ -1,5 +1,7 @@
 # MCP HTTP 运行时开发说明
 
+2026-11-04 工作项排序：list_work_item_projections沿专用有界执行器与共享解析支持sort=updated_desc/due_asc；MCP schema及直接调用拒绝空排序，默认省略与updated_desc等价。新排序和全部条件进入生产v5游标绑定，权限/固定预算不变，见[工作项排序](work-item-projection-runtime.md)。仅源码文档，未编译、测试、调用或发布。
+
 2026-11-04 工作项日期筛选：list_work_item_projections既有有界执行器沿共享解析支持due/due_from/due_before，并拒绝MCP schema不接受的空字段。按保存due_at有无及严格UTC日区间筛选，完整页再次核对；未使用字段省略，日期区间不能组合unscheduled。旧发现/实际context.read/输入响应/容量/30秒控制保持，新日期条件纳入生产v4游标绑定。详见[工作项筛选](work-item-projection-runtime.md)。仅源码文档，未编译、测试、执行或发布。
 
 2026-11-04 工作项读取增补：list_work_item_projections/get_work_item_projection已接专用执行器，发现/prepare/调用要求可信未过期实际context.read及有效身份/trace，admin不替代。8 KiB参数、2 MiB完整成功/16 KiB错误、4 MiB+4096转义结果，原目标/整页筛选/trace/可选范围/restricted权限核对；两工具每Gateway共用两笔容量与30秒期限，超时底层未结束仍占槽。无部分成功/自动翻页/重试/写入，清除继承写条件，普通HTTP输入预算不变。源码与兼容限制见[工作项MCP读取](work-item-projection-runtime.md)。仅源码文档人工审阅，未编译、测试、执行或发布。
@@ -173,7 +175,7 @@ get_plane_event_retry_receipt 使用原 request_key，拒绝 confirmed/idempoten
 
 新增只读 `get_project_overview`（context.read），无业务参数，读取当前项目可见记录的汇总及有限预览。置信度为保存值均值，proposed 不是审核就绪承诺；具体统计和快照边界见 [项目概览读取](workbench-overview-runtime.md)。
 
-新增只读`list_work_item_projections`（context.read），输入query/status/priority/owner/assignment/due/due_from/due_before/cursor/limit，默认25、最多100条；priority为P0–P3，owner为大小写和空格精确保存文本。assignment按非空/空owner筛选，due按非null/null截止日期筛选；UTC日期区间规则见顶部增量，未使用字段省略。按更新时间倒序读取，外层next_cursor作为cursor并保留全部筛选，换条件回首页。完整响应核对所选状态/优先级/负责人/分配/日期条件；单页数量不表示项目总数或当前Plane状态。2026-11-04筛选增量仅源码，未运行或测试。
+新增只读list_work_item_projections（context.read），输入query/status/priority/owner/assignment/due/due_from/due_before/sort/cursor/limit，默认25、最多100条；精确owner、assignment及UTC日期规则见顶部增量，未使用字段省略。sort默认updated_desc，可选due_asc；外层next_cursor作为cursor并保留全部筛选和排序，换条件回首页。完整响应核对所选状态/优先级/负责人/分配/日期条件，客户端不重排单页；单页数量不表示项目总数或当前Plane状态。2026-11-04增量仅源码，未运行或测试。
 
 新增只读 `get_work_item_projection`（context.read），输入本地 item_id；返回保存的工作项投影、字符串版本和来源，与原 get_work_item_context 的上下文组合读取区分。投影版本不能作为 Plane 写入条件，详见 [工作项投影详情](work-item-projection-runtime.md)。
 

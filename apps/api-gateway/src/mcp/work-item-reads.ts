@@ -88,7 +88,7 @@ function captureQuery(name: string, raw: unknown, trace: string): Query {
     const row = value as Record<string, unknown>;
     // Optional enum/owner/date schema fields must be omitted rather than supplied as empty values.
     if (
-      ['status', 'priority', 'owner', 'assignment', 'due', 'due_from', 'due_before'].some(
+      ['status', 'priority', 'owner', 'assignment', 'due', 'due_from', 'due_before', 'sort'].some(
         (key) => row[key] === '',
       )
     )
