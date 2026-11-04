@@ -232,6 +232,52 @@ HTTP MCP 在读取前鉴权，严格 UTF-8 JSON 对象与无压缩 Content-Type�
 
 无新依赖、迁移或 Gateway 写操作；只改源码和文档，未编译、类型检查、测试、实际上传、浏览器渲染/服务运行或发布，016–045 未执行。Next multipart、浏览器生命周期、反向代理容量/时限及真实存储行为没有运行证据；P2-01/R-008 保持未完成。
 
+## CLI 上传原请求准备（源码阶段）
+
+2026-11-04：`workctx artifacts prepare --json-file DRAFT.json --file CONTENT --output NEW_ORIGINAL.json` 只准备一个新上传原请求。草稿必填，创建示例：
+
+```json
+{
+  "operation": "artifact.create",
+  "name": "notes.txt",
+  "mime": "text/plain",
+  "classification": "internal",
+  "source_refs": []
+}
+```
+
+追加示例（替换为实际目标和已经审阅的版本）：
+
+```json
+{
+  "operation": "artifact.put-version",
+  "artifact_id": "01J000000000000000000000001",
+  "expected_version": 3
+}
+```
+
+草稿复用现有写命令字段校验，拒绝额外字段、旧identity/command包装、request_key/idempotency_key、sha256/size。只允许上述三个必填文件参数及可选一次 `--max-bytes`、`--timeout-ms`；不接受内联JSON、stdin、重复参数或额外位置参数。草稿必须为UTF-8普通文件，输入与规范化完整原请求各最多1 MiB。输出必须在现有目录内选择全新路径，已有文件或链接均拒绝；草稿和目标路径先检查，之后才发只读请求。
+
+读取已认证且实际具备artifact.write的当前上传身份，固定范围、账号、客户端与期限。内容文件默认最多64 MiB；`--max-bytes` 接受0至1 GiB十进制整数，实际上限取用户值与服务器身份封套max_bytes的较小值。使用同一文件句柄有界读取、额外字节探测及前后长度/mtime/ctime核对，计算读取字节的SHA-256；零字节文件允许。此观察不锁定文件，后续上传入口仍须核验所选内容与原请求hash/size完全相同。
+
+创建restricted资料要求当前restricted读取能力提示；追加还要求实际artifact.read，并按原身份读取当前元数据（完整响应上限2 MiB），核对范围/目标/trace/版本及restricted权限。当前版本必须等于草稿明确填写的expected_version，否则ARTIFACT_VERSION_CONFLICT，不自动刷新版本。HTTP绑定原账号/客户端前置头，嵌入router使用固定可信上下文并在读取前后核对；嵌入准备拒绝继承idempotency_key/expected_version。身份提示和元数据观察不预留版本、不确认存储健康或将来写入权限。
+
+使用同长度占位键先校验完整请求与大小，确认读取期限和身份未到期后才分配一次 `workctx-artifact-<ULID>` 新键。保存格式沿用 `{ identity, command }`，没有令牌或内容字节。临时文件独占创建，写入、同步、完整读回后通过硬链接不可覆盖地发布；不支持硬链接的文件系统明确失败，没有覆盖替代方案。再打开最终文件核对精确长度、SHA-256及完整规范化原请求，成功返回original_file/request_sha256、原身份/键/版本/内容描述符、identity_observed_expires_at、local_state=saved-and-read-back、upload_dispatch_state=not-sent和next_action=review-original-file。stdout是结果摘要，不是可直接上传的原请求文件。
+
+`--timeout-ms` 为1至2147483647毫秒，默认180000；使用单调准备期限，在本地读取结束及远程读取前后检查。只读网络等待有剩余预算，迟到结果不会继续保存；本地文件I/O始终等待结算，故这不是硬性的整命令墙钟上限。开始保存前再次检查身份到期和期限；保存开始后不与超时/到期竞速，完整等待保存、清理尝试与最终读回。保存后会话到期不会删除原文件，也不授权后续上传。
+
+保存失败返回ARTIFACT_PREPARATION_SAVE_FAILED，保留output_path/save_phase和有待清理时的temporary_path/temporary_state；最终读回失败返回ARTIFACT_PREPARATION_READBACK_FAILED、published-unconfirmed及输出/临时路径。清理只针对本次拥有的临时文件；不删除或替换最终目标。失败时检查已报告路径，不把失败理解为可以直接生成另一请求；成功但cleanup_pending=true也需检查临时路径。所有准备路径都不发送上传、不查询上传回执或自动重试。
+
+明确审阅保存的文件之后，可按其操作使用以下既有命令（示例未执行）：
+
+```text
+workctx artifacts create --json-file NEW_ORIGINAL.json --file CONTENT
+workctx artifacts put-version --json-file NEW_ORIGINAL.json --file CONTENT
+workctx artifacts receipt --json-file NEW_ORIGINAL.json
+```
+
+上传结果不明时保留原文件、原键与版本，用原回执入口查询；不重新prepare以替换未知请求。当前增量没有SDK/MCP完整准备工具、专用本地恢复工具、新依赖或迁移；仅源码文档人工审阅，未编译、类型检查、测试、执行CLI/SDK/Mock/API/数据库或发布。文件系统兼容、失败恢复、身份变化与上传衔接均无运行证据，R-001仍未完成。
+
 ## SDK 上传身份读取（源码阶段）
 
 2026-11-04：`WcpClient.getArtifactUploadContext({timeout_ms?,signal?})` 接入既有 GET /v1/artifacts/upload-context，导出 `WcpArtifactUploadContextOptions` 和 `ArtifactUploadContextEnvelope`。返回当前可信五项 identity、expires_at、max_bytes、can_read/can_read_restricted；不生成请求键、不选择文件、不预留版本，也不检查对象存储健康。调用方必须另行保存并审阅新上传的完整原请求；恢复旧请求时禁止用新身份替换原身份。
@@ -317,7 +363,7 @@ HTTP MCP 与二进制 GET 共用 ArtifactDownloadGate 的两路名额，处理�
 
 ## 尚未完成
 
-PostgreSQL/S3 适配、显式服务器配置、HTTP/SDK/CLI/MCP/工作台按原请求上传、可审计下载、元数据与原回执查询及工作台新请求准备已有源码，尚未运行验证；S3 签名、条件写入和 MinIO 版本兼容性仍缺证据。下载处理阶段失败与 HTTP/MCP 发送观察已有源码，观察 outbox/丢失补偿和客户端收取/保存回执仍缺；事件 outbox、健康状态、保留与清理、流式大文件、旧数据升级、备份恢复与运行证据均待后续开发。没有签名下载链接，也不生成虚假的 audit_id。P2-01/R-008 保持未完成。
+PostgreSQL/S3 适配、显式服务器配置、HTTP/SDK/CLI/MCP/工作台按原请求上传、可审计下载、元数据与原回执查询及CLI/工作台新请求准备已有源码，尚未运行验证；S3 签名、条件写入和 MinIO 版本兼容性仍缺证据。下载处理阶段失败与 HTTP/MCP 发送观察已有源码，观察 outbox/丢失补偿和客户端收取/保存回执仍缺；事件 outbox、健康状态、保留与清理、流式大文件、旧数据升级、备份恢复与运行证据均待后续开发。没有签名下载链接，也不生成虚假的 audit_id。P2-01/R-008 保持未完成。
 
 ## 工作台查询（源码阶段）
 

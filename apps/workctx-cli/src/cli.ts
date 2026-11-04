@@ -20,6 +20,7 @@ import { isArtifactReadCommand, prepareArtifactRead, artifactReadResult } from '
 import { prepareArtifactReceipt, artifactReceiptResult } from './artifact-receipt.js';
 import { runArtifactDownload } from './artifact-download.js';
 import { runArtifactUploadContext } from './artifact-upload-context.js';
+import { runArtifactPreparation } from './artifact-preparation.js';
 import { isAuditCommand, runAudit } from './audit.js';
 import { runAdminSnapshot } from './admin.js';
 import { runSessionCommandContext } from './session-command-context.js';
@@ -251,6 +252,7 @@ export async function runWorkctx(
     'audit export': 'audit.export',
     'artifacts get': 'artifact.read',
     'artifacts identity': 'artifact.upload-context',
+    'artifacts prepare': 'artifact.upload-context',
     'artifacts version': 'artifact.version.read',
     'artifacts receipt': 'artifact.receipt',
     'artifacts create': 'artifact.create',
@@ -605,6 +607,10 @@ export async function runWorkctx(
     }
     if (command === 'artifacts identity') {
       const result = await runArtifactUploadContext(argv, router, context);
+      return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
+    }
+    if (command === 'artifacts prepare') {
+      const result = await runArtifactPreparation(argv, router, context);
       return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
     }
     if (command && isSyncConsumerCommand(command)) {

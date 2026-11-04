@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [CLI上传原请求准备](docs/design/01-contracts/artifact-persistence-runtime.md#cli-上传原请求准备源码阶段)：`artifacts prepare` 根据草稿和本地文件生成完整原请求，读取可信上传身份、计算内容摘要，追加版本须匹配明确填写的版本号；保存到全新文件并完整读回，不发送上传。仅源码文档，未编译、测试、调用或发布。
+
 新增 [CLI/MCP上传身份读取](docs/design/01-contracts/artifact-persistence-runtime.md#cli-与-mcp-上传身份读取源码阶段)：命令行 `artifacts identity` 与工具 `get_artifact_upload_context` 可读取当前上传账号和限制，严格核对权限与期限；不创建或发送上传请求。仅源码文档，未编译、测试、调用或发布。
 
 新增 [SDK上传身份读取](docs/design/01-contracts/artifact-persistence-runtime.md#sdk-上传身份读取源码阶段)：客户端可读取当前上传账号、大小限制和读取权限提示，支持取消、期限与完整身份核对；不替换旧上传请求、不自动上传。仅源码文档，未编译、测试、运行或发布。

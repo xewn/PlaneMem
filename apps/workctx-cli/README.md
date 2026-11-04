@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+新增 `artifacts prepare --json-file DRAFT.json --file CONTENT --output NEW_ORIGINAL.json`：为新建或追加版本准备完整原上传请求；追加草稿须含已审阅的 `expected_version`，与当前版本不同即拒绝。读取当前可信上传身份并核对文件大小/摘要后，生成一次新键，独占保存 `{ identity, command }` 并完整读回；不发送上传。可选 `--max-bytes` 默认64 MiB，实际不超过身份返回上限；`--timeout-ms` 默认180秒，保存开始后等待保存与读回结束。新输出路径必须不存在，草稿和请求各最多1 MiB，拒绝旧身份、键、hash/size、stdin及重复参数。保存失败保留可检查路径；见 [草稿示例、后续上传与恢复边界](../../docs/design/01-contracts/artifact-persistence-runtime.md#cli-上传原请求准备源码阶段)。仅源码文档，未编译、测试或执行命令。
+
 新增 `artifacts identity [--timeout-ms 30000]`，只读当前可信上传账号、会话期限、上传大小上限和读取权限提示；要求实际artifact.write，admin不能代替。仅允许一次timeout-ms，不接JSON、请求键、文件或输出路径；HTTP复用SDK，内嵌router核对完整原可信身份/期限/能力，不创建请求或上传。见 [CLI/MCP上传身份](../../docs/design/01-contracts/artifact-persistence-runtime.md#cli-与-mcp-上传身份读取源码阶段)。仅源码文档，未编译、测试、调用或发布。
 
 `inbox application-apply/application-apply-preview/application-pending/application-replay` 新增 `application:{name:'client-event-history',version:'1'}`，按原消费者的连续接收页保存完整客户端事件内容；不同生产者同名事件分开记录，重复原身份或游标回退拒绝。见 [客户端事件历史](../../docs/design/01-contracts/sync-client-event-application-runtime.md)。不把接收记录当成源字段生效或outbox结算依据，仅源码文档，未执行、编译、测试或发布。
