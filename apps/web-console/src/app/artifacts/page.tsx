@@ -36,6 +36,15 @@ export default async function ArtifactsPage({
         <div className="heading-actions">
           <Link
             className="panel-link"
+            href="/artifacts/browse"
+            prefetch={false}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Browse project files ↗
+          </Link>
+          <Link
+            className="panel-link"
             href="/artifacts/versions"
             prefetch={false}
             target="_blank"

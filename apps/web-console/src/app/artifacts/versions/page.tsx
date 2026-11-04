@@ -29,9 +29,20 @@ export default async function ArtifactVersionsPage({
           <h1>File version history</h1>
           <p>Browse saved versions and open their details.</p>
         </div>
-        <Link className="panel-link" href="/artifacts" prefetch={false}>
-          File lookup
-        </Link>
+        <nav className="heading-actions" aria-label="Other file views">
+          <Link className="panel-link" href="/artifacts" prefetch={false}>
+            File lookup
+          </Link>
+          <Link
+            className="panel-link"
+            href="/artifacts/browse"
+            prefetch={false}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Browse project files ↗
+          </Link>
+        </nav>
       </div>
       <Panel title="Find file history" icon="search">
         <div className="side-detail">

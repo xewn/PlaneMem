@@ -1062,7 +1062,8 @@ button {
   align-content: start;
   min-width: 0;
 }
-.artifact-lookup-form input {
+.artifact-lookup-form input,
+.artifact-lookup-form select {
   width: 100%;
   min-width: 0;
   padding: 10px;
@@ -1072,7 +1073,8 @@ button {
   border-radius: 7px;
   font: inherit;
 }
-.artifact-lookup-form input:focus-visible {
+.artifact-lookup-form input:focus-visible,
+.artifact-lookup-form select:focus-visible {
   outline: 2px solid var(--cyan);
   outline-offset: 2px;
 }

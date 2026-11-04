@@ -49,6 +49,10 @@ import {
   parseArtifactVersionsEnvelope,
   ARTIFACT_VERSIONS_RESPONSE_BYTES,
   type ArtifactVersionsPage,
+  parseArtifactRegistryQuery,
+  parseArtifactRegistryEnvelope,
+  ARTIFACT_REGISTRY_RESPONSE_BYTES,
+  type ArtifactRegistryPage,
   parseArtifactReceiptQuery,
   parseArtifactReceiptEnvelope,
   type ArtifactReceiptView,
@@ -530,6 +534,33 @@ export function getWorkbenchArtifactVersions(input: unknown) {
       } catch {
         throw new WorkbenchApiError(
           'The returned file history did not match this page.',
+          trace,
+          502,
+          'GATEWAY_RESPONSE_INVALID',
+        );
+      }
+    },
+  );
+}
+
+export function getWorkbenchArtifacts(input: unknown) {
+  const query = parseArtifactRegistryQuery(input);
+  const params = new URLSearchParams({ limit: String(query.limit) });
+  if (query.query !== undefined) params.set('query', query.query);
+  if (query.classification !== undefined) params.set('classification', query.classification);
+  if (query.cursor !== undefined) params.set('cursor', query.cursor);
+  return gatewayRequest<ArtifactRegistryPage>(
+    '/v1/artifacts?' + params.toString(),
+    {},
+    undefined,
+    'GET',
+    undefined,
+    (result, scope, trace) => {
+      try {
+        return parseArtifactRegistryEnvelope(result, query, scope, trace);
+      } catch {
+        throw new WorkbenchApiError(
+          'The returned file directory did not match this page.',
           trace,
           502,
           'GATEWAY_RESPONSE_INVALID',
@@ -1933,6 +1964,9 @@ async function gatewayRequest<T>(
   const path = typeof requestPath === 'function' ? requestPath(scope) : requestPath;
   const artifactVersionsRequest =
     method === 'GET' && /^\/v1\/artifacts\/[0-9A-HJKMNP-TV-Z]{26}\/versions\?/.test(path);
+  const artifactRegistryRequest = method === 'GET' && path.startsWith('/v1/artifacts?');
+  const artifactDirectoryRequest = artifactVersionsRequest || artifactRegistryRequest;
+  const artifactDirectoryName = artifactRegistryRequest ? 'File directory' : 'File history';
   const auditRequest =
     path === '/v1/workbench/query' && method === 'POST' && body.operation === 'audit';
   const adminRequest =
@@ -2015,11 +2049,11 @@ async function gatewayRequest<T>(
       ...(method === 'POST' ? { body: JSON.stringify(body) } : {}),
     });
   } catch {
-    if (artifactVersionsRequest)
+    if (artifactDirectoryRequest)
       throw new WorkbenchApiError(
         requestSignal.aborted || Date.now() >= requestDeadline
-          ? 'File history exceeded the local read deadline.'
-          : 'File history could not be read.',
+          ? `${artifactDirectoryName} exceeded the local read deadline.`
+          : `${artifactDirectoryName} could not be read.`,
         trace_id,
         502,
         requestSignal.aborted || Date.now() >= requestDeadline
@@ -2055,7 +2089,7 @@ async function gatewayRequest<T>(
   }
   if (response.status === 401) {
     if (
-      artifactVersionsRequest ||
+      artifactDirectoryRequest ||
       conflictOriginalRequest ||
       proposalOriginalRequest ||
       conflictRequest ||
@@ -2068,11 +2102,11 @@ async function gatewayRequest<T>(
       void response.body?.cancel().catch(() => undefined);
     throw new AuthRequiredError();
   }
-  if (artifactVersionsRequest) {
+  if (artifactDirectoryRequest) {
     const assertDeadline = () => {
       if (requestSignal.aborted || Date.now() >= requestDeadline)
         throw new WorkbenchApiError(
-          'File history exceeded the local read deadline.',
+          `${artifactDirectoryName} exceeded the local read deadline.`,
           trace_id,
           502,
           'GATEWAY_REQUEST_TIMEOUT',
@@ -2086,13 +2120,15 @@ async function gatewayRequest<T>(
       payload = await readWorkbenchJsonResponse(
         response,
         requestSignal,
-        ARTIFACT_VERSIONS_RESPONSE_BYTES,
+        artifactRegistryRequest
+          ? ARTIFACT_REGISTRY_RESPONSE_BYTES
+          : ARTIFACT_VERSIONS_RESPONSE_BYTES,
       );
     } catch {
       void response.body?.cancel().catch(() => undefined);
       assertDeadline();
       throw new WorkbenchApiError(
-        'The file history response could not be validated.',
+        `The ${artifactDirectoryName.toLowerCase()} response could not be validated.`,
         trace_id,
         502,
         'GATEWAY_RESPONSE_INVALID',
@@ -2107,27 +2143,29 @@ async function gatewayRequest<T>(
         code = failure.code;
       } catch {
         throw new WorkbenchApiError(
-          'The file history error could not be validated.',
+          `The ${artifactDirectoryName.toLowerCase()} error could not be validated.`,
           trace_id,
           502,
           'GATEWAY_RESPONSE_INVALID',
         );
       }
       const errors: Record<string, string> = {
-        INVALID_INPUT: 'History page settings were rejected. Start again from the latest versions.',
-        ARTIFACT_ACCESS_DENIED:
-          'Your account cannot read this file history in the selected project.',
-        ARTIFACT_NOT_FOUND: 'This file is unavailable in the selected project.',
+        INVALID_INPUT: artifactRegistryRequest
+          ? 'The directory page no longer matches this account, project or filters. Use Search files to start again from the first page.'
+          : 'History page settings were rejected. Start again from the latest versions.',
+        ARTIFACT_ACCESS_DENIED: `Your account cannot read this ${artifactDirectoryName.toLowerCase()} in the selected project.`,
+        ARTIFACT_NOT_FOUND: artifactRegistryRequest
+          ? 'This project is unavailable to the current account.'
+          : 'This file is unavailable in the selected project.',
         ARTIFACT_VERSION_NOT_FOUND:
           'This saved version range is unavailable in the selected project.',
-        ARTIFACT_LEGACY_UNVERIFIED:
-          'A complete saved version record is missing. This history page cannot be shown.',
-        ARTIFACT_STORED_INVALID: 'The saved file history could not be validated.',
-        ARTIFACT_STORAGE_UNAVAILABLE: 'File history is temporarily unavailable.',
-        RATE_LIMITED: 'File history reads are temporarily busy.',
+        ARTIFACT_LEGACY_UNVERIFIED: `A complete saved version record is missing. This ${artifactDirectoryName.toLowerCase()} page cannot be shown.`,
+        ARTIFACT_STORED_INVALID: `The saved ${artifactDirectoryName.toLowerCase()} could not be validated.`,
+        ARTIFACT_STORAGE_UNAVAILABLE: `${artifactDirectoryName} is temporarily unavailable.`,
+        RATE_LIMITED: `${artifactDirectoryName} reads are temporarily busy.`,
       };
       throw new WorkbenchApiError(
-        Object.hasOwn(errors, code) ? errors[code]! : 'File history could not be read.',
+        Object.hasOwn(errors, code) ? errors[code]! : `${artifactDirectoryName} could not be read.`,
         trace_id,
         response.status,
         Object.hasOwn(errors, code) ? code : 'GATEWAY_UNAVAILABLE',
@@ -2135,7 +2173,7 @@ async function gatewayRequest<T>(
     }
     if (!parseResponse)
       throw new WorkbenchApiError(
-        'File history validation is unavailable.',
+        `${artifactDirectoryName} validation is unavailable.`,
         trace_id,
         502,
         'GATEWAY_RESPONSE_INVALID',

@@ -11,6 +11,25 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    web_artifact_project_registry_development_increment:
+      date: "2026-11-04"
+      status: "Source-only workbench project file directory; R-001 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/artifacts/browse/query.ts"
+        - "apps/web-console/src/app/artifacts/browse/page.tsx"
+        - "apps/web-console/src/app/artifacts/page.tsx"
+        - "apps/web-console/src/app/artifacts/versions/page.tsx"
+        - "apps/web-console/src/lib/server-api.ts"
+        - "apps/web-console/src/styles.css"
+        - "docs/design/01-contracts/artifact-registry-runtime.md"
+      behavior: "Add /artifacts/browse with strict single-valued name/classification/page settings, default/max twenty, explicit GET search/reset and complete server next_query navigation. Reuse authenticated scope, no-store GET, the existing 30-second deadline, 256 KiB success/16 KiB error limits and complete envelope/trace/query validation. Display actual filters and per-page counts with current summaries; open the listed saved version, current details or history through that version in new tabs without prefetch. Preserve valid filters after a rejected cursor, use fixed errors, distinguish empty continuation from first page, and explain mutable ID-descending pagination and unchecked content. No auto-pagination, download, upload, receipt query or browser persistence."
+      evidence: []
+      pending_evidence:
+        - "URL duplicates/unknowns, filter normalization, invalid cursor recovery and complete next_query navigation"
+        - "Explicit first-page reload, session/project changes, authorization and bounded response/deadline failures"
+        - "Saved/current/history links, absence of prefetch, accessible responsive forms and browser rendering"
+      remaining_scope: "CLI/MCP/Mock registry integration, standalone schema/OpenAPI and runtime/browser evidence. Pages do not form a cross-page snapshot or establish content availability or write authorization."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, browser rendering, SDK/product/API/database execution or release. No server directory, dependency or database schema change."
     artifact_project_registry_development_increment:
       date: "2026-11-04"
       status: "Source-only persistent project artifact registry, HTTP route and SDK read; R-001 remains incomplete."
@@ -32,7 +51,7 @@ requirements:
         - "Scoped SQL locks, bounded JSON projections, timestamp conversion, legacy/corrupt snapshots and lookahead validation"
         - "Literal Unicode/ASCII search, classification visibility, canonical cursor identity/filter/permission binding and concurrent changes"
         - "HTTP/SDK routing, explicit configuration, response bounds, cancellation and preserved historical/metadata behavior"
-      remaining_scope: "CLI/MCP/workbench/Mock registry integration, standalone schema/OpenAPI, performance and runtime/concurrency/storage evidence. Current registry pages are not a cross-page snapshot, content verification or write authorization."
+      remaining_scope: "CLI/MCP/Mock registry integration, standalone schema/OpenAPI, performance and runtime/concurrency/storage evidence; workbench source integration is recorded separately. Current registry pages are not a cross-page snapshot, content verification or write authorization."
       execution: "Source/docs and manual review only; no build, typecheck, tests, SDK/product/API/SQL/database/migration execution or release. No dependency or database schema change."
     artifact_versions_schema_development_increment:
       date: "2026-11-04"
