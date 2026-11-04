@@ -83,7 +83,7 @@ MCP resources/list 已增加保存包发现：按 ID 顺序每页最多检查 8 
 - json 格式不接受额外 rendered；markdown/mcp 格式要求 rendered 存在，URI 必须为原项目和具体包 ID，文本必须完整匹配既有 Markdown 规则，空包对应空文本。
 - 固定错误提示不展示服务端任意错误文本；未找到/来源改变/过期代码还需分别匹配 404/409/410。包读取失败仍保留独立目录，异常响应提供保留原筛选、条目、页位置及包选择的显式重试。重试 latest 仍为 latest；指定包不自动改读其他包或重新编译。
 
-超限/不完整的旧返回将明确失败，不自动缩小包、隐藏条目或回退旧快照。SDK 专用适配见下节；Schema、CLI、MCP 与 Mock 的专用适配和运行兼容证据仍待后续任务。R-003 保持未完成，`evidence: []`；本轮仅源码文档人工审阅与格式/文本检查，未编译、类型检查、测试、运行产品/浏览器/API/数据库或发布。
+超限/不完整的旧返回将明确失败，不自动缩小包、隐藏条目或回退旧快照。SDK 与 CLI 专用适配见下文；Schema、MCP 与 Mock 的专用适配和运行兼容证据仍待后续任务。R-003 保持未完成，`evidence: []`；本轮仅源码文档人工审阅与格式/文本检查，未编译、类型检查、测试、运行产品/浏览器/API/数据库或发布。
 
 ## SDK 保存包完整读取（2026-11-04，源码增量）
 
@@ -109,7 +109,20 @@ const envelope = await pending;
 const receipt = envelope.data;
 ```
 
-摘要一致性不是来源真实性或持续有效性证明；Gateway 继续检查保存包和来源数据库快照。CLI/MCP/Mock/独立 Schema、取消与旧调用兼容等运行证据仍缺，R-003 未完成、`evidence: []`。本轮只开发并人工审阅源码文档、格式及文本，不编译、类型检查、测试、执行 SDK/产品/API/数据库或发布。
+摘要一致性不是来源真实性或持续有效性证明；Gateway 继续检查保存包和来源数据库快照。CLI 适配见下节，MCP/Mock/独立 Schema 及取消与旧调用兼容等运行证据仍缺，R-003 未完成、`evidence: []`。本轮只开发并人工审阅源码文档、格式及文本，不编译、类型检查、测试、执行 SDK/产品/API/数据库或发布。
+
+## CLI 保存包完整读取（2026-11-04，源码增量）
+
+`workctx context get` 的网络 main、`callGateway` 和嵌入 `runWorkctx` 均接入现有上下文专用读取执行器，再调用 SDK `getContextPack`。输出保留完整原封套，结构、JSON 内版本/ETag/游标、原范围/trace、完整内容/来源/预算及 rendered/SHA-256 检查沿上述共享契约。
+
+- 最多一个 `--json` 或 `--json-file`，省略等于 `{}`；输入含可选 pack_id、format=json|markdown|mcp，最多 4 KiB。空 ID 不回退 latest；JSON 内可提供成对 expected_actor_id/expected_client_id，只有一项或不合法则用法错误。网络支持有界 `--json -`，嵌入不读 stdin；文件沿现有稳定文件读取，文件/stdin 采集发生在 SDK 预算前，等待 EOF 不受该期限控制。
+- 可选 `--timeout-ms` 为 1–2147483647 的整数，默认 30000；成功 2 MiB、Fetch 错误 16 KiB，涵盖接收/校验/摘要。不接受 --key、--output、写字段、未知或重复参数，不自动编译、回退、重试、保存或截断输出。
+- 嵌入复制可信上下文、清除写条件，调用前后复核未过期实际 context.read；admin 不替代该能力。完整项目/actor/client 来自该上下文，可选 expected 只约束相等；核对 SDK 实际 GET 路径、头、无正文、bounded-json 和响应上限，再由原 router 执行 context.pack.read，保持原策略与审计。
+- 嵌入完整结构检查后复核入选项 sensitivity；缺少 data.restricted.read 时拒绝任何 restricted 入选内容。排除项只有 ID/理由，其可见性和候选来源检查仍由 Gateway 负责，不从缺失分类推断权限。SDK 再独立核对完整响应与 SHA-256，不把来源引用视为外部真实性证明。
+- 保存包、目录、当前/归档详情、历史、版本、比较共用每 router 两笔读取容量。SDK 超时只停止等待，底层 router 真正结束才释放；容量约束该嵌入 router 等待，不声称覆盖之后 SDK 的本地摘要计算、输出写入或网络服务端并发。
+- 通用 SDK 返回值不暴露 HTTP ETag 或实际状态，CLI 只核对 JSON 内版本/ETag；网络 Fetch 沿有界 JSON 媒体类型/字节/trace 处理。结构不完整、未知字段、超限或摘要错误均失败，不再接受旧的元数据占位封套。
+
+`context get` 默认 latest 的用法与 JSON 输出形状保持，默认格式请求会规范为 json。CLI/SDK 兼容、权限/容量/超时、输入边界与真实 Gateway 摘要运行证据待补；MCP、Mock、独立 Schema 仍待专用适配。R-003 未完成，`evidence: []`；仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行 CLI/SDK/产品/API/数据库或发布。
 
 ## 后续范围
 

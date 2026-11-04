@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+2026-11-04：`context get` 接入保存包专用完整读取，网络 main/callGateway 与嵌入 runWorkctx 均复用 SDK getContextPack 的结构/范围/版本/来源/预算/格式与 SHA-256 校验。最多一个 `--json`/`--json-file`（4 KiB），默认 `{}` 读取 latest，网络支持有界 `--json -`；可选 `--timeout-ms` 默认 30000，以及 JSON 内成对 expected_actor_id/expected_client_id。完整成功 2 MiB、Fetch 错误 16 KiB，不输出部分或未核对内容；嵌入要求可信未过期实际 context.read，核对原 GET/头/空正文/限额和入选 restricted 分类，与其他六类上下文读取共用每 router 两笔容量，底层 router 未结束则超时后仍占槽。共享 SDK 仅核对 JSON 内 ETag，不宣称通用传输可见 HTTP ETag/状态；无自动换包、重试、编译或保存。见[CLI保存包读取](../../docs/design/01-contracts/context-pack-runtime.md#cli-保存包完整读取2026-11-04源码增量)。仅源码文档，未编译、类型检查、测试、执行 CLI/SDK 或发布。
+
 2026-11-04：`context list`接入SDK完整目录读取，支持最多一个`--json`/`--json-file`（8 KiB），省略为{}，网络支持有界`--json -`；可选`--timeout-ms`默认30000及JSON内成对expected_actor_id/expected_client_id。完整响应2 MiB、Fetch错误16 KiB，核对原项目/trace/筛选回显/完整记录/归档/排序/续页，失败不返回局部结果。嵌入实际未过期context.read、完整身份/POST正文/头及restricted核验，六类上下文读取共用每router两笔容量，超时底层未结束仍占槽。每次一页，下一页保留原身份/筛选/归档/limit并传回next_cursor，换页大小或旧游标须回首屏；无自动翻页/重试/缩页/保存。拒绝key/output/写字段/重复未知参数，文件/stdin等待在SDK期限前，其他五类读取仍要求恰一4 KiB输入。见[CLI上下文目录](../../docs/design/01-contracts/context-item-runtime.md#2026-11-04-cli上下文目录完整读取增量)。仅源码文档，未编译、类型检查、测试、执行CLI/SDK或发布。
 
 2026-11-04：`context read` / `context read-archived`接入SDK完整读取，接受恰一`--json`或`--json-file`（4 KiB），可选`--timeout-ms`（默认30000）；网络入口支持`--json -`，嵌入不读stdin。输入为`{item_id}`及可选成对expected_actor_id/expected_client_id，拒绝key/output/写字段/重复未知选项。完整详情2 MiB、Fetch错误16 KiB，核对原条目/范围/版本/正文ETag/来源诊断/确认信息，失败不输出部分正文或切换当前/归档视图。嵌入要求可信未过期context.read，核对restricted权限及实际SDK请求；详情/历史/比较共用每router两笔容量，超时后底层未结束仍占槽。原item_id输入保持，旧不完整自定义返回须迁移；不自动重试或保存，通用SDK不暴露HTTP ETag。详见[CLI当前/归档详情](../../docs/design/01-contracts/context-item-runtime.md#2026-11-04-cli当前与归档详情读取增量)。仅源码文档，未编译、测试、执行或发布。
@@ -621,7 +623,7 @@ observed-item.json 示例：`{"work_item_id":"plane-item-42"}`。CLI 核对返�
 | `outbox restore-export ID` | 必须 --outbox EXISTING_FILE、--output NEW_FILE；不接受 JSON | 独占保存历史中的完整原档案，不改当前队列 |
 | `sync ack` | 保存的五字段 `expected_identity` 和非负安全整数 `cursor` | 不接受键/版本 |
 | `context compile` | 可选 `budget_tokens`、`ttl_seconds` | `--key` |
-| `context get` | 可选 `pack_id`、`format` | 无 |
+| `context get` | 可选 `pack_id`、`format`，及成对 expected_actor_id/expected_client_id；可选 --timeout-ms | 无 |
 | `context create` | `title`、`content`、`source_refs`，可选层级、分类等 | `--key` |
 | `context read` | `item_id`，可选成对 expected_actor_id/expected_client_id | 恰一 --json/--json-file，可选 --timeout-ms；无写条件 |
 | `context list` | 可选 query/layer/classification/status/item_type/cursor/limit/archived，及成对 expected_actor_id/expected_client_id；可选 --timeout-ms | 无 |
@@ -706,12 +708,13 @@ Proposal 审核使用 `expected_revision`，要求令牌含 `actor_type=human` �
 
 `context confirm` 是独立人工确认命令，JSON 包含 item_id、expected_version、reason，并提供固定 `--key`。需要签名 human 身份、有效客户端和 context.review，context.write 不足以确认。只接受未过期 proposed 条目，核对直接本地来源的版本、状态和分类；成功增加版本、记录理由，后续编辑撤去确认。`context read` 与历史详情可读取确认元数据。未知结果用原版本、原理由、原键重试。022 迁移文件尚未执行，命令未在本轮运行。
 
-`context compile` 默认以 4096 的估计内容 token 预算、3600 秒最大寿命生成项目上下文包，预算范围为 128–32768，寿命范围为 60–86400。`context get` 不带 ID 时读取最新可见完整包。`format` 支持 `json`、`markdown`、`mcp`；后两者仍输出 JSON，并在 `data.rendered.text` 提供 Markdown。源记录改变或包过期时，需要使用新请求键重新编译；网络结果不确定时保留原键重试。详见 [ContextPack 运行时](../../docs/design/01-contracts/context-pack-runtime.md)。
+`context compile` 默认以 4096 的估计内容 token 预算、3600 秒最大寿命生成项目上下文包，预算范围为 128–32768，寿命范围为 60–86400。`context get` 不带 ID 时读取最新可见完整包；默认输入 `{}`，可选单一 4 KiB `--json` 或 `--json-file`，网络 `--json -` 有界读取 stdin。`format` 支持 `json`、`markdown`、`mcp`；后两者仍输出 JSON，并在 `data.rendered.text` 提供完整匹配的 Markdown。`--timeout-ms` 默认 30000，覆盖 SDK 读取及 SHA-256；输入可加成对 expected_actor_id/expected_client_id。完整成功上限 2 MiB，不截断包；拒绝 --key/--output/未知或重复参数。源记录改变或包过期时，需要显式使用新请求键重新编译；编译网络结果不确定时保留原键重试。文件/stdin 采集在 SDK 期限之前；通用传输仅提供 JSON 内 ETag，读取不会自动编译、换包或保存文件。详见 [ContextPack 运行时](../../docs/design/01-contracts/context-pack-runtime.md)。
 
 ```text
 workctx context compile --key pack-001
 workctx context get
 workctx context get --json-file pack-query.json
+workctx context get --json-file pack-query.json --timeout-ms 30000
 ```
 
 2026-11-03：`workctx conflicts` 读取元数据分页，默认 25、最多 100 条；`--json` 或 `--json-file` 可提供 query/status/entity_type/conflict_id/limit/cursor。后续请求沿用原筛选及 limit，显式传回 next_cursor；没有自动翻页。拒绝写键和重复选项。`workctx conflicts get` 按 conflict_id 独立获取双方值与决策信息；列表不再提供这些值。版本保留十进制字符串，两路 CLI 复用 SDK 的完整解析及本地预算；嵌入只接受一次 --json。无 outbox 或保存行为。仅源码开发，未运行命令，见 [冲突目录分页](../../docs/design/01-contracts/conflict-registry-runtime.md)。

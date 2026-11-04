@@ -4,6 +4,8 @@
 
 ## 当前基线
 
+- P4/P0：CLI context get 接入现有上下文专用读取执行器，网络main/callGateway和嵌入runWorkctx复用SDK完整封套/格式/SHA-256；4 KiB可选单JSON/文件/网络有界stdin，默认latest，可选成对expected身份与默认30秒timeout-ms。完整成功2 MiB/Fetch错误16 KiB，嵌入可信未过期实际context.read、完整身份/真实GET/头/空正文/限额和入选restricted核验，与原六类读取共用每router两笔容量；超时底层router结束才释放。原编译保持，读取不回退/重试/写入/保存；通用SDK只见JSON内ETag，不宣称HTTP头/状态核验。MCP/Mock/Schema适配及CLI权限/取消/输入/旧返回运行兼容证据待补，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行CLI/SDK/产品/API/数据库或发布。
+
 - P0/P2：SDK getContextPack(input?, options?) 接入完整共享读取，新增 WcpContextPackReadOptions（timeout_ms/signal）与查询/完整封套类型导出；固定原项目/可选账号客户端约束/包与格式，4 KiB 查询、2 MiB 成功/Fetch16 KiB 错误、默认30秒总预算，核对 JSON 内版本/ETag/游标/完整内容/来源/rendered，并以 WebCrypto SHA-256 核对保存摘要。摘要不可用/不匹配、取消/超时明确错误，finally清理；不继承写条件、不自动回退/重试/编译。通用transport不暴露HTTP ETag/状态，非法输入改为Promise拒绝，自定义transport需支持bounded-json/signal及完整封套。CLI/MCP/Mock/独立Schema与运行兼容证据待补，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行SDK/产品/API/数据库或发布。
 
 - P0/P2/P5：新增 ContextPack 完整读取共享契约与 Web 专用读取，4 KiB 查询、2 MiB 成功/16 KiB 错误、原 30 秒期限；核对完整内容/来源/预算/原 ID 与项目/版本/游标/trace/HTTP ETag，并按现有编译器规则重算 SHA-256。显式空 ID 不回退 latest，保存 trace 保持，rendered 需匹配具体 URI 与全文；页面失败保留原包和目录选择重试。原编译/命令解析保持，来源实时有效性仍由 Gateway 负责。SDK/CLI/MCP/Mock/Schema 专用接入与运行兼容证据待补，R-003 未完成、evidence 为空。仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、运行产品/浏览器/API/数据库或发布。

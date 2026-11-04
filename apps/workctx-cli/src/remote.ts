@@ -201,15 +201,6 @@ function route(command: string, input: Record<string, unknown>) {
       };
     case 'context compile':
       return { method: 'POST', path: '/v1/context-pack/compile' };
-    case 'context get': {
-      const query = new URLSearchParams();
-      for (const [key, value] of Object.entries(input)) {
-        if (!['pack_id', 'format'].includes(key) || typeof value !== 'string' || !value.trim())
-          usage('context get accepts string pack_id and format fields');
-        query.set(key, value);
-      }
-      return { method: 'GET', path: '/v1/context-pack?' + query };
-    }
     case 'sessions get':
       return { method: 'GET', path: '/v1/sessions/' + segment(input, 'session_id') };
     case 'handoffs get':

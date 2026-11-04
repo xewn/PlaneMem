@@ -330,7 +330,8 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   conflicts resolve              Resolve conflict_id with expected_version and --key
   doctor                         Read gateway readiness
   context compile                Save a context pack; optional budget_tokens/ttl_seconds and --key
-  context get                    Read a pack; optional pack_id and format (json/markdown/mcp)
+  context get                    Read and hash-check a complete pack; optional pack_id/format (json/markdown/mcp)
+                                 Optional --json/--json-file (4 KiB), default {}; optional --timeout-ms
   context create                 Add proposed context; title/content/source_refs and --key
   context read                   Read complete current item_id; bounded response and timeout
   context list                   Read one complete page by query/layer/classification/status/item_type/archived/limit/cursor
