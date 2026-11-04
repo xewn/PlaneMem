@@ -1,0 +1,419 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem artifact metadata reads",
+    "version": "0.1.0",
+    "description": "Source-only contract for four existing metadata GET operations. Load the adjacent artifact-read, artifact-comparison, artifact-registry and artifact-versions schema resources locally under their full IDs. This is not the complete WCP API or deployment evidence. No validator, generator, build, typecheck, test, API or database execution was performed."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Relative Gateway base; configure the actual deployment origin and base path."
+    }
+  ],
+  "security": [{ "GatewayBearer": [] }],
+  "tags": [{ "name": "Artifact metadata" }],
+  "x-todo": "P0-01",
+  "x-source-boundaries": {
+    "registry-query-json-bytes": 8192,
+    "versions-query-json-bytes": 4096,
+    "directory-complete-success-bytes": 262144,
+    "client-detail-complete-success-bytes": 2097152,
+    "client-error-bytes": 16384,
+    "description": "Directory budgets are enforced by shared parsers used in the handlers after URL decoding. They do not limit raw request-line allocation or database scanning. Detail handlers do not impose a whole-response 2 MiB bound; that limit and 16 KiB errors belong to dedicated clients. These four handlers have no dedicated 30-second/two-slot request guard. Database statement/lock limits are separate from total request deadlines."
+  },
+  "paths": {
+    "/v1/artifacts": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "get": {
+        "operationId": "listArtifacts",
+        "tags": ["Artifact metadata"],
+        "summary": "Read one page of currently visible project files",
+        "description": "Require verified Bearer scope, an authenticated nonblank client claim, actual artifact.read and a Policy decision. This handler checks client authentication and token expiry before and after its reader. The persistent reader checks parent-project visibility, filters current nondeleted artifacts and checks each selected current record against its saved version snapshot, including lookahead. An empty visible result is a successful empty page; a missing/invisible parent is 404. Restricted rows are excluded without data.restricted.read; explicitly selecting restricted without it is 403. Order is descending artifact ID in C/ASCII order, not updated_at or a promised creation chronology. Cursor binding includes original scope, actor/client, restricted capability, normalized filters and limit. Carry the entire next_query to continue; no cross-page snapshot is promised. Summaries expose source counts, not full source lists, storage keys, object bytes or upload outcomes.",
+        "x-wcp-operation": "artifact.registry.list",
+        "x-policy-action": "artifact.read",
+        "x-decoded-query-schema": {
+          "$ref": "../schemas/artifact-registry.json#ArtifactRegistryQuery"
+        },
+        "x-http-input": "Only query/classification/limit/cursor are accepted, each once. No body: reject Transfer-Encoding and Content-Length other than absent or exactly 0. Reject Idempotency-Key, If-Match, If-Match-Version, X-Expected-Version, Range, If-Range, If-None-Match, If-Modified-Since, If-Unmodified-Since and Content-Encoding. No conditional 304 or partial 206.",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "description": "Literal name substring; trim outer whitespace and omit if empty. ASCII A-Z folding only; percent and underscore remain literal. Runtime uses UTF-16 length and rejects lone surrogates. Single value.",
+            "schema": { "$ref": "../schemas/artifact-registry.json#/$defs/nameQuery" }
+          },
+          {
+            "name": "classification",
+            "in": "query",
+            "description": "Omit for every allowed classification; empty is invalid. Single value.",
+            "schema": { "$ref": "../schemas/artifact-registry.json#/$defs/classification" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Default 20, range 1..20. One canonical positive decimal value, no leading zeros, sign, fraction or exponent.",
+            "schema": {
+              "$ref": "../schemas/artifact-registry.json#/$defs/ArtifactRegistryQuery/properties/limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Use unchanged with the complete prior next_query. Canonical base64url binding is checked by the persistent reader; changing scope, identity, restricted access, filters or page size invalidates it. Single value.",
+            "schema": { "$ref": "../schemas/artifact-registry.json#/$defs/cursor" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Complete bounded current-summary page with normalized query and complete next_query or null. No outer revision, JSON etag or HTTP ETag; content_state is not-checked.",
+            "headers": {
+              "cache-control": { "$ref": "#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "#/components/headers/SuccessTrace" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "../schemas/artifact-registry.json#ArtifactRegistryEnvelope" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Legacy" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/artifacts/{artifact_id}": {
+      "parameters": [
+        { "$ref": "#/components/parameters/ArtifactId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "get": {
+        "operationId": "getArtifact",
+        "tags": ["Artifact metadata"],
+        "summary": "Read complete current artifact metadata",
+        "description": "Require verified Bearer scope, actual artifact.read and a Policy decision. The persistent reader locks the visible parent/current record for the read and requires consistency with its saved current-version snapshot. Missing legacy snapshots are errors, never synthesized metadata. Public projection excludes storage_key and content. Unlike the project directory, this legacy route does not require an authenticated client claim or perform a final session-expiry check after its reader; the existing authenticated-context client fallback can apply. Restricted current artifacts/parents are invisible without data.restricted.read. content_state=not-checked means no object read, hash recomputation or availability check occurred.",
+        "x-wcp-operation": "artifact.read",
+        "x-policy-action": "artifact.read",
+        "x-decoded-query-schema": {
+          "$ref": "../schemas/artifact-read.json#ArtifactCurrentReadQuery"
+        },
+        "x-current-http-parser": "No URL query fields are accepted. Send no GET body or write/cache/range conditions. This legacy detail route does not explicitly reject unread GET body framing or implement the directory forbidden-header guard. Generic If-Match/If-Match-Version syntax parsing does not implement compare-and-swap, conditional 304 or Range 206. Those gaps are documented, not repaired here.",
+        "responses": {
+          "200": {
+            "description": "Complete current/not-checked envelope. revision equals metadata.version; outer etag, metadata.etag and HTTP ETag agree. The single outer source is the requested artifact. Metadata trace is the saved version trace; outer trace identifies this read.",
+            "headers": {
+              "cache-control": { "$ref": "#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "#/components/headers/SuccessTrace" },
+              "ETag": { "$ref": "#/components/headers/CurrentEtag" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "../schemas/artifact-read.json#ArtifactCurrentReadEnvelope" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Legacy" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/artifacts/{artifact_id}/versions": {
+      "parameters": [
+        { "$ref": "#/components/parameters/ArtifactId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "get": {
+        "operationId": "listArtifactVersions",
+        "tags": ["Artifact metadata"],
+        "summary": "Read one page of saved historical version summaries",
+        "description": "Require verified Bearer scope, actual artifact.read and a Policy decision. Each page rechecks visible parent/current artifact and current snapshot consistency. Unlike the project directory, this route does not require a verified client claim or explicitly recheck session expiry after the reader. The first omitted at_version captures the current version; continuation retains this inclusive ceiling and uses exclusive before_version. Return existing versions descending, never invent missing gaps. The persistent reader validates limit+1 snapshots including lookahead, and restricted historical metadata requires data.restricted.read; failure returns no partial page. This is not a cross-page database snapshot or proof of complete history. No object content is read.",
+        "x-wcp-operation": "artifact.versions.list",
+        "x-policy-action": "artifact.read",
+        "x-decoded-query-schema": {
+          "$ref": "../schemas/artifact-versions.json#ArtifactVersionsQuery"
+        },
+        "x-http-input": "Only limit/at_version/before_version are accepted once each. Every number must be a canonical positive decimal of 1..16 digits and a safe integer. Reject Transfer-Encoding, Content-Length other than absent or exactly 0, Idempotency-Key, If-Match, If-Match-Version, X-Expected-Version, Range, If-Range, If-None-Match, If-Modified-Since, If-Unmodified-Since and Content-Encoding. The path artifact_id is not a URL query parameter.",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Default 10, range 1..20. Single canonical positive decimal.",
+            "schema": {
+              "$ref": "../schemas/artifact-versions.json#/$defs/ArtifactVersionsQuery/properties/limit"
+            }
+          },
+          {
+            "name": "at_version",
+            "in": "query",
+            "description": "Inclusive ceiling no greater than the currently visible version. Omit initially to capture it. Single canonical positive decimal safe integer.",
+            "schema": { "$ref": "../schemas/artifact-versions.json#/$defs/positiveInteger" }
+          },
+          {
+            "name": "before_version",
+            "in": "query",
+            "description": "Exclusive position. Requires at_version and must not exceed it; 1 can yield an empty page. Cross-parameter relationships are enforced by runtime. Single canonical positive decimal safe integer.",
+            "schema": { "$ref": "../schemas/artifact-versions.json#/$defs/positiveInteger" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Complete bounded page, including snapshot_version, normalized query, has_more and complete next_query or null. No outer revision, JSON etag or HTTP ETag. Exactly one outer artifact source remains even for an empty page.",
+            "headers": {
+              "cache-control": { "$ref": "#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "#/components/headers/SuccessTrace" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "../schemas/artifact-versions.json#ArtifactVersionsEnvelope" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Legacy" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/artifacts/{artifact_id}/versions/{version}": {
+      "parameters": [
+        { "$ref": "#/components/parameters/ArtifactId" },
+        { "$ref": "#/components/parameters/Version" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "get": {
+        "operationId": "getArtifactVersion",
+        "tags": ["Artifact metadata"],
+        "summary": "Read complete metadata for one explicit saved version",
+        "description": "Require verified Bearer scope, actual artifact.read and a Policy decision. The persistent reader first checks parent/current visibility and current snapshot consistency, then reads exactly the requested historical snapshot and checks its stored version/hash/size/trace/time/scope relationships. Historical restricted classification additionally requires data.restricted.read. Missing, legacy or inconsistent history fails without substituting current metadata. Like current detail, this route has no mandatory verified client claim or final session-expiry recheck. Saved SHA-256 and ETag describe metadata; content_state=not-checked means object bytes were not read or verified.",
+        "x-wcp-operation": "artifact.version.read",
+        "x-policy-action": "artifact.read",
+        "x-decoded-query-schema": {
+          "$ref": "../schemas/artifact-read.json#ArtifactHistoricalReadQuery"
+        },
+        "x-current-http-parser": "No URL query fields are accepted. Send no GET body or write/cache/range conditions. This legacy detail route does not explicitly reject unread GET body framing or apply the directory forbidden-header guard. Generic version-header parsing does not implement compare-and-swap, 304 or 206.",
+        "responses": {
+          "200": {
+            "description": "Complete historical/not-checked envelope with revision and metadata.version equal to the requested version. No outer JSON etag or HTTP ETag; the nested saved metadata.etag is retained and is not a current write precondition. No version substitution or partial metadata.",
+            "headers": {
+              "cache-control": { "$ref": "#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "#/components/headers/SuccessTrace" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "../schemas/artifact-read.json#ArtifactHistoricalReadEnvelope" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Legacy" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "GatewayBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Verified issuer token. Scope headers constrain authorized claims or the configured fallback project; they never supply identity or capabilities. All four operations require actual artifact.read even for an administrator, plus Policy approval. Restricted access requires data.restricted.read. Only the project file directory additionally requires a nonblank authenticated client claim and explicit before/after session checks."
+      }
+    },
+    "parameters": {
+      "ArtifactId": {
+        "name": "artifact_id",
+        "in": "path",
+        "required": true,
+        "description": "Exact artifact ULID in the authorized project. Decode once; malformed encoding is rejected.",
+        "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/artifactId" }
+      },
+      "Version": {
+        "name": "version",
+        "in": "path",
+        "required": true,
+        "description": "One canonical positive decimal of 1..16 digits, no leading zeros/sign/fraction/exponent; converted to a positive safe integer. No latest alias.",
+        "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/positiveInteger" }
+      },
+      "TenantId": {
+        "name": "x-tenant-id",
+        "in": "header",
+        "required": true,
+        "description": "Exact authorized tenant. Metadata scopes are general identifiers, not necessarily ULIDs; SDK construction can impose a narrower rule.",
+        "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/scopeIdentifier" }
+      },
+      "WorkspaceId": {
+        "name": "x-workspace-id",
+        "in": "header",
+        "required": true,
+        "description": "Exact authorized workspace.",
+        "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/scopeIdentifier" }
+      },
+      "ProjectId": {
+        "name": "x-project-id",
+        "in": "header",
+        "required": true,
+        "description": "Exact authorized project; persistent reads also check current parent visibility.",
+        "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/scopeIdentifier" }
+      },
+      "TraceParent": {
+        "name": "traceparent",
+        "in": "header",
+        "description": "Nonempty value takes precedence over x-trace-id as opaque text; this HTTP boundary does not parse W3C Trace Context or require both headers to agree. Supply a value compatible with shared response trace rules.",
+        "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/trace" }
+      },
+      "TraceId": {
+        "name": "x-trace-id",
+        "in": "header",
+        "description": "Used if traceparent is absent/empty; if both are absent/empty, the server generates trace_http_<ULID>. Shared parsers constrain accepted traces more strictly than generic HTTP selection.",
+        "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/trace" }
+      },
+      "ExpectedActorId": {
+        "name": "x-expected-actor-id",
+        "in": "header",
+        "description": "Independently optional exact comparison to the verified actor, never an identity input. No paired-field requirement is enforced here.",
+        "schema": { "type": "string" }
+      },
+      "ExpectedClientId": {
+        "name": "x-expected-client-id",
+        "in": "header",
+        "description": "Independently optional exact comparison to the authenticated-context client, including the legacy fallback where allowed. The project file directory separately requires a verified client claim.",
+        "schema": { "type": "string" }
+      }
+    },
+    "headers": {
+      "NoStore": {
+        "description": "Application JSON response cache policy; pre-application proxy/parser responses are outside this contract.",
+        "required": true,
+        "schema": { "type": "string", "const": "private, no-store" }
+      },
+      "SuccessTrace": {
+        "description": "Exactly matches outer body.trace_id; saved metadata trace may differ.",
+        "required": true,
+        "schema": { "$ref": "../schemas/artifact-comparison.json#/$defs/trace" }
+      },
+      "CurrentEtag": {
+        "description": "Current metadata version tag, matching JSON outer/nested ETag. Its presence does not implement conditional reads.",
+        "required": true,
+        "schema": {
+          "$ref": "../schemas/artifact-comparison.json#/$defs/ArtifactComparisonMetadata/properties/etag"
+        }
+      },
+      "ErrorTrace": {
+        "description": "Command-boundary errors include this header; early authentication/input errors can omit it. Preserve the error body's trace_id.",
+        "schema": { "type": "string", "minLength": 1 }
+      }
+    },
+    "schemas": {
+      "ErrorEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message", "details", "trace_id", "retryable"],
+        "properties": {
+          "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]+$" },
+          "message": { "type": "string", "minLength": 1 },
+          "details": { "type": "object", "additionalProperties": true },
+          "trace_id": { "type": "string", "minLength": 1 },
+          "retryable": { "type": "boolean" }
+        },
+        "description": "Existing application error shape; details stay open. This schema does not impose the clients' 16 KiB error budget or authorize automatic retry."
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Application error with no partial success page/detail. Proxy and HTTP parser errors before this boundary may use another representation.",
+        "headers": {
+          "cache-control": { "$ref": "#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "#/components/headers/ErrorTrace" }
+        },
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } }
+        }
+      },
+      "BadInput": {
+        "$ref": "#/components/responses/Error",
+        "description": "INVALID_INPUT for malformed paths/query, duplicate or unsupported parameters, forbidden directory headers/body framing, invalid cursor binding or version bounds. INVALID_REQUEST_CONTEXT can arise from generic version-header parsing. retryable=false; not a partial page or an implicit restart."
+      },
+      "Unauthenticated": {
+        "$ref": "#/components/responses/Error",
+        "description": "UNAUTHENTICATED: missing/rejected Bearer token; retryable=false. Early errors do not guarantee WWW-Authenticate or x-trace-id headers."
+      },
+      "Denied": {
+        "$ref": "#/components/responses/Error",
+        "description": "DENIED or ARTIFACT_ACCESS_DENIED: unauthorized scope/expected identity, missing actual capability, Policy denial, missing verified client or expired session where checked, explicit restricted filter or inaccessible historical classification. retryable=false. Missing/invisible current records instead use 404."
+      },
+      "NotFound": {
+        "$ref": "#/components/responses/Error",
+        "description": "ARTIFACT_NOT_FOUND for missing/deleted/invisible parent or current artifact; ARTIFACT_VERSION_NOT_FOUND for an absent explicitly requested historical version. retryable=false. The project directory can return an empty successful page when the parent exists."
+      },
+      "Legacy": {
+        "$ref": "#/components/responses/Error",
+        "description": "ARTIFACT_LEGACY_UNVERIFIED: missing trusted current or historical metadata snapshot, including directory lookahead. retryable=false. Do not synthesize history, substitute the current version or return partial results."
+      },
+      "RateLimited": {
+        "$ref": "#/components/responses/Error",
+        "description": "RATE_LIMITED from the general actor/path limiter; retryable=true. No dedicated artifact-read two-slot capacity error or Retry-After header is promised."
+      },
+      "InvalidStored": {
+        "$ref": "#/components/responses/Error",
+        "description": "ARTIFACT_STORED_INVALID for invalid/inconsistent stored metadata, invalid reader output or oversized directory envelope; retryable=false. Unexpected command-boundary INTERNAL_ERROR uses serializer default retryable=true."
+      },
+      "Unavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "ARTIFACT_STORAGE_UNAVAILABLE for an absent reader or non-ContractError persistent storage failure; WORKBENCH_AUTH_UNAVAILABLE or AUDIT_PERSISTENCE_UNAVAILABLE at outer boundaries. These sources set retryable=true. No fallback memory data or partial success is returned."
+      }
+    }
+  }
+}

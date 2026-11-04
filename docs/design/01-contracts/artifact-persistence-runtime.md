@@ -1,5 +1,7 @@
 # Artifact 持久化服务基础（源码阶段）
 
+2026-11-05，TODO P0-01：[文件元数据读取 OpenAPI](../../../packages/contracts/openapi/README.md#文件元数据读取)覆盖当前/历史详情及两种目录。新增 artifact-read Schema 的完整封套和查询锚点，复用 comparison 公开元数据/历史封套，不使用比较结果根。准确记录当前快照一致性、历史不回退、公开投影无 storage_key、当前外层 ETag/历史仅内层 ETag及 content_state=not-checked。详情客户端 2 MiB 不冒称服务端统一限额；未改持久化逻辑、数据库或依赖，未运行校验器、编译、测试、接口及数据库。
+
 2026-11-02：`apps/artifact-service/src/persistent.ts` 新增 `PersistentArtifactService`，由包入口导出。旧 `ArtifactService` 保留内存兼容实现。当前已补入 PostgreSQL/S3 适配、显式服务器配置、HTTP/SDK/CLI/MCP/工作台按原请求上传、可审计下载，以及元数据与原请求回执查询源码；工作台另有新请求的可视化准备并交接至原上传流程。以上均没有运行验证。
 
 当前仅源码与文档开发，未编译、类型检查、测试、连接业务存储、启动服务、执行迁移或发布。S3 开发曾尝试检索官方文档，但未返回可读结果，不作为接口核对证据。`045_artifact_command_receipts.sql` 只新增文件，016–045 均未执行；不提供运行或恢复验收证据。

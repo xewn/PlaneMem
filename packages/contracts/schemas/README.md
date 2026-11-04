@@ -1,5 +1,9 @@
 # 独立契约结构定义
 
+2026-11-05，TODO **P0-01**：新增 `artifact-read.json`，包子路径 `@planemem/contracts/schemas/artifact-read.json`。根为当前/历史详情完整成功封套的互斥联合；`ArtifactCurrentReadEnvelope` 要求外层 ETag、current/not-checked，`ArtifactHistoricalReadEnvelope` 复用原 comparison 历史封套且禁止外层 ETag。`ArtifactReadQuery` 联合当前/历史查询锚点，分别要求 artifact_id 与 artifact_id/version；这些是解码后的对象，HTTP 使用路径而非 URL 查询。
+
+本资源依赖 `artifact-comparison.json` 的公开完整元数据/历史封套锚点与标量，须本地加载两份完整资源并注册 `$id`；comparison 根仍只表示本地比较结果，不能用作 HTTP 响应。版本/ETag/来源/原 scope/trace 相等、日历顺序、普通 JSON 和 UTF-16 限制仍由共享解析器负责；客户端 2 MiB 限额不是本 Schema 或 Gateway 详情处理器的统一保证。没有执行校验器/生成器或修改已有 Schema。四路 HTTP 对应关系及目录 Schema 另见[文件元数据读取 OpenAPI](../openapi/README.md#文件元数据读取)。
+
 这些文件是开发源码，尚未经过本轮编译、生成器、Schema校验器、测试或运行验证。`$id`是契约标识，不代表已发布网站；消费者应从工作区或包子路径加载文件，不依赖远端下载。
 
 2026-11-05，TODO P0-01：新增[保存包生成与完整读取 OpenAPI](../openapi/README.md#保存包生成与完整读取)，复用这里的 context-pack-read 完整成功/格式锚点及 context-pack-save 预算/TTL标量。生成 POST 的可选正文幂等键另在 OpenAPI 描述，保留旧 HTTP 与严格 SDK/原请求文件规则差异；现有两份 Schema 未修改，未运行解析器或生成器。

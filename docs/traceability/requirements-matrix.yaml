@@ -11,6 +11,26 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    artifact_reads_openapi_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only four-route artifact metadata OpenAPI and complete detail schema; P0-01 and R-001 remain incomplete."
+      artifacts:
+        - "packages/contracts/openapi/artifact-reads.json"
+        - "packages/contracts/schemas/artifact-read.json"
+        - "packages/contracts/package.json"
+        - "packages/contracts/openapi/README.md"
+        - "packages/contracts/schemas/README.md"
+      behavior: "Describes current project registry, current detail, historical version directory and explicit historical detail GETs. Reuses registry/versions schemas and comparison metadata/historical-envelope anchors; new current detail is closed and requires outer ETag. Documents actual capabilities, differing client/expiry checks, pagination, traces, metadata-only content state, errors and byte-budget enforcement layers."
+      boundaries: "No runtime handler or existing schema changes. Legacy details do not enforce directory body/header guards, a uniform server 2 MiB response bound, dedicated 30-second/two-slot guard or final session-expiry recheck. No content read/hash verification, SDK/Mock machine-contract wiring, database/dependency changes, generated client or published API."
+      evidence: []
+      remaining_scope: "Complete WCP/MCP machine contracts, runtime/schema integration, SDK/Mock derivation or checking, breaking-change CI and tool/runtime/release evidence."
+      pending_evidence:
+        - "Local resource IDs, external anchors, closed current/historical unions and OpenAPI tool compatibility"
+        - "HTTP canonical numbers, duplicate/unknown fields, identity constraints, directory body/header rejection and legacy detail gaps"
+        - "Current/historical ETag distinctions, original query/scope/trace/version equality and complete pagination"
+        - "Permissions, stored/legacy failure mapping, directory bounds and distinct client/server budgets"
+      execution: "Manual source/docs review and explicit formatting/Git text checks only; no build, typecheck, tests, validators, generators, SDK/Mock/product/API/database execution or release."
     canonical_cloudevent_catalog_development_increment:
       date: "2026-11-05"
       todo: "P0-01"

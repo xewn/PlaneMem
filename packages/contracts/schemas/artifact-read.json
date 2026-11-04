@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/artifact-read.json",
+  "title": "Complete artifact metadata reads v1",
+  "description": "Complete current or historical Gateway success envelopes. Metadata only; no object bytes, storage address or upload receipt.",
+  "$comment": "Source-only contract for parseArtifactReadQuery/parseArtifactReadEnvelope. Register this resource and artifact-comparison.json under their complete IDs before resolving anchors. The comparison resource supplies metadata and historical-envelope definitions, not its local comparison-result root. Runtime remains authoritative for scope/query/trace/version/ETag equality, valid calendar timestamps, UTF-16 limits and ordinary JSON. Client byte budgets are not enforced by this schema or the Gateway detail parser. No authorization or content verification is established.",
+  "oneOf": [
+    { "$ref": "#ArtifactCurrentReadEnvelope" },
+    { "$ref": "#ArtifactHistoricalReadEnvelope" }
+  ],
+  "$defs": {
+    "ArtifactReadQuery": {
+      "$anchor": "ArtifactReadQuery",
+      "oneOf": [
+        { "$ref": "#ArtifactCurrentReadQuery" },
+        { "$ref": "#ArtifactHistoricalReadQuery" }
+      ],
+      "description": "Decoded SDK/shared query objects. The HTTP API puts these values in path segments, never URL query fields."
+    },
+    "ArtifactCurrentReadQuery": {
+      "$anchor": "ArtifactCurrentReadQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id"],
+      "properties": {
+        "artifact_id": { "$ref": "artifact-comparison.json#/$defs/artifactId" }
+      },
+      "examples": [{ "artifact_id": "01J000000000000000000000001" }]
+    },
+    "ArtifactHistoricalReadQuery": {
+      "$anchor": "ArtifactHistoricalReadQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id", "version"],
+      "properties": {
+        "artifact_id": { "$ref": "artifact-comparison.json#/$defs/artifactId" },
+        "version": { "$ref": "artifact-comparison.json#/$defs/positiveInteger" }
+      },
+      "examples": [{ "artifact_id": "01J000000000000000000000001", "version": 2 }]
+    },
+    "ArtifactReadMetadata": {
+      "$anchor": "ArtifactReadMetadata",
+      "$ref": "artifact-comparison.json#ArtifactComparisonMetadata"
+    },
+    "ArtifactCurrentReadEnvelope": {
+      "$anchor": "ArtifactCurrentReadEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "revision", "etag", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "artifact-comparison.json#/$defs/trace" },
+        "revision": { "$ref": "artifact-comparison.json#/$defs/positiveInteger" },
+        "etag": {
+          "$ref": "artifact-comparison.json#/$defs/ArtifactComparisonMetadata/properties/etag"
+        },
+        "source_refs": {
+          "$ref": "artifact-comparison.json#/$defs/ArtifactComparisonHistoricalEnvelope/properties/source_refs"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["artifact", "snapshot", "content_state"],
+          "properties": {
+            "artifact": { "$ref": "#ArtifactReadMetadata" },
+            "snapshot": { "const": "current" },
+            "content_state": { "const": "not-checked" }
+          }
+        }
+      },
+      "$comment": "Runtime requires revision=data.artifact.version and outer etag=data.artifact.etag=the version-derived weak tag. The HTTP ETag matches the outer tag. The single outer artifact source binds to the requested ID. Outer trace is this read; metadata trace is the saved version's original trace."
+    },
+    "ArtifactHistoricalReadEnvelope": {
+      "$anchor": "ArtifactHistoricalReadEnvelope",
+      "$ref": "artifact-comparison.json#ArtifactComparisonHistoricalEnvelope",
+      "$comment": "Complete closed historical envelope; outer etag is forbidden, including null. Metadata etag remains descriptive. Runtime binds revision and metadata.version to the explicit requested version, and requires historical/not-checked."
+    }
+  }
+}

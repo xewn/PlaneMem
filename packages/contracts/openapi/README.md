@@ -1,6 +1,33 @@
 # OpenAPI 源码契约
 
-这里的文档描述已有HTTP实现，尚未经过OpenAPI校验器、生成器、编译、类型检查、测试或运行验证。文档中的版本不表示已发布或部署；目前覆盖保存包生成/完整读取、保存身份/历史回执和保存包目录五个接口，尚不是完整WCP接口目录。
+这里的文档描述已有HTTP实现，尚未经过OpenAPI校验器、生成器、编译、类型检查、测试或运行验证。文档中的版本不表示已发布或部署；目前覆盖五个保存包接口和四个文件元数据读取接口，共九个接口，尚不是完整WCP接口目录。
+
+## 文件元数据读取
+
+2026-11-05，TODO **P0-01** / T0.3 / T4.1 / R-001：新增 `artifact-reads.json`（OpenAPI 3.1.0），包子路径为 `@planemem/contracts/openapi/artifact-reads.json`。描述现有四个 GET，不修改运行逻辑。
+
+| 路径 | WCP 操作 | 完整成功 Schema |
+| --- | --- | --- |
+| `/v1/artifacts` | `artifact.registry.list` | `artifact-registry.json#ArtifactRegistryEnvelope` |
+| `/v1/artifacts/{artifact_id}` | `artifact.read` | `artifact-read.json#ArtifactCurrentReadEnvelope` |
+| `/v1/artifacts/{artifact_id}/versions` | `artifact.versions.list` | `artifact-versions.json#ArtifactVersionsEnvelope` |
+| `/v1/artifacts/{artifact_id}/versions/{version}` | `artifact.version.read` | `artifact-read.json#ArtifactHistoricalReadEnvelope` |
+
+本地加载本 OpenAPI 及 `schemas/` 下 `artifact-read.json`、`artifact-comparison.json`、`artifact-registry.json`、`artifact-versions.json` 四份完整资源，保留相对目录并注册各 `$id`。新详情 Schema 复用 comparison 中的公开元数据和历史封套锚点，**不使用其本地比较结果根**作为 HTTP 响应；没有新增运行时 JSON 导入或校验器依赖。`planemem.local` 标识不表示托管服务。
+
+四路均要求 Bearer 验证、原项目范围、实际 `artifact.read` 和 Policy 放行，管理员角色不替代该能力；受限数据还要求 `data.restricted.read`。范围是现有一般标识符，不能仅因 SDK 的额外限制就将全部 HTTP 范围写成 ULID。可选 expected actor/client 头分别比较可信身份，不要求成对，也不提供身份。文件目录额外要求已验证且未过期的客户端，在读取前后复查；其他三路使用既有认证上下文，未专门要求 client claim，也没有同样的读取后到期复查。
+
+文件目录按名称 ASCII 折叠字面子串和分类筛选，默认/最大 20 条，按 Artifact ID 的 C/ASCII 序倒序；游标绑定范围、账号、客户端、受限能力、规范筛选和页大小。版本目录默认 10、最多 20 条，`at_version` 固定包含上界，`before_version` 为排他位置，需同时提供上界且不得超过它。两者均保留完整 `next_query`；不存在跨页数据库快照承诺，不补造缺失历史。每页当前权限与探测行仍需通过核验。
+
+两目录只接受各自列出的单值查询，数字必须为无前导零的正十进制安全整数；拒绝有正文的 framing、写条件、缓存条件、Range 和 Content-Encoding。两个详情接口拒绝所有 URL 查询，但旧入口没有同样的正文/禁止头检查：GET 正文未读取，通用版本头只做语法解析，不构成 CAS、304 或 206。新文档不会修复这些差异。
+
+当前详情具有外层/内层/HTTP ETag 且与版本相同；历史详情只保留内层保存 ETag，不能用作当前写前提。两目录没有外层 revision/ETag，详情带完整公开元数据而不暴露 storage_key。外层 trace 为本次读取，元数据 trace 保持保存值。所有成功的 `content_state=not-checked` 均表示未读取文件正文，不能推导对象存在、摘要已核验或上传结果。
+
+目录查询对象分别限制 8 KiB/4 KiB，完整成功限制 256 KiB；这些不是原始 URL、数据库扫描或分配限额。详情 2 MiB 和错误 16 KiB 是专用客户端的限制，不能冒称 Gateway 详情处理器的统一保证。四个处理器没有专用 30 秒/两笔容量边界，数据库语句/锁时限也不等于整个请求期限。
+
+错误描述覆盖 400/401/403/404/409/429/500/503 及 retryable：不存在或当前不可见为 404，旧版本缺可信快照为 409，坏存储/非法完整页为 500，未配置读取器/持久存储失败为 503。不返回部分页、伪造历史或替换为当前版本。早期认证/输入错误未保证 x-trace-id、WWW-Authenticate 或 Retry-After，保留错误正文 trace。
+
+源码依据为 Gateway server/http/authenticated-context/artifact-reads/artifact-registry/artifact-versions、Artifact persistent 服务及 contracts 共享解析器。仅人工源码审阅、格式/Git 文本检查；未执行校验器、生成器、编译、类型检查、测试、接口、数据库或发布。P0-01/R-001 未完成、evidence 为空；其余 WCP/MCP、SDK/Mock 机器契约接线和破坏性差异 CI 待补。
 
 ## 保存包生成与完整读取
 

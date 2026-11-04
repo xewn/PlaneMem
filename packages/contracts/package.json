@@ -8,6 +8,7 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./schemas/artifact-read.json": "./schemas/artifact-read.json",
     "./schemas/artifact-versions.json": "./schemas/artifact-versions.json",
     "./schemas/artifact-registry.json": "./schemas/artifact-registry.json",
     "./schemas/artifact-comparison.json": "./schemas/artifact-comparison.json",
@@ -17,7 +18,8 @@
     "./schemas/context-pack-save.json": "./schemas/context-pack-save.json",
     "./openapi/context-pack-directory.json": "./openapi/context-pack-directory.json",
     "./openapi/context-pack-save.json": "./openapi/context-pack-save.json",
-    "./openapi/context-pack-operations.json": "./openapi/context-pack-operations.json"
+    "./openapi/context-pack-operations.json": "./openapi/context-pack-operations.json",
+    "./openapi/artifact-reads.json": "./openapi/artifact-reads.json"
   },
   "type": "module",
   "name": "@planemem/contracts",
