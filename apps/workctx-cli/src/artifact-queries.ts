@@ -13,6 +13,8 @@ import type { CommandRouter, RequestContext } from '@planemem/api-gateway';
 import { prepareArtifactRead, isArtifactReadCommand } from './artifact-read.js';
 import { prepareArtifactReceipt } from './artifact-receipt.js';
 import { readBoundedArtifactFile } from './artifact-files.js';
+import { captureArtifactReceipt, prepareArtifactReceiptOutput } from './artifact-receipt-file.js';
+import type { ArtifactOutput } from './artifact-output.js';
 
 type Scope = { tenant_id: string; workspace_id: string; project_id: string };
 type Query =
@@ -33,7 +35,7 @@ export function isArtifactQueryCommand(command: string) {
 function invalid(trace: string) {
   return new ContractError(
     'USAGE_ERROR',
-    'Use artifacts get/version/receipt with one --json or --json-file and optional --timeout-ms (1..2147483647); no --key or repeated options. Metadata JSON is limited to 4 KiB and original receipt JSON to 1 MiB. Keep the complete saved original unchanged.',
+    'Use artifacts get/version/receipt with one --json or --json-file and optional --timeout-ms (1..2147483647). Only receipt accepts --output NEW_FILE; no --key or repeated options. Metadata JSON is limited to 4 KiB and original receipt JSON to 1 MiB. Keep the complete saved original unchanged.',
     { trace_id: trace, retryable: false },
   );
 }
@@ -81,6 +83,7 @@ async function readArguments(argv: string[], scope: Scope, trace: string, allowS
         json: { type: 'string' },
         'json-file': { type: 'string' },
         'timeout-ms': { type: 'string' },
+        output: { type: 'string' },
       },
     });
     const seen = new Set<string>();
@@ -94,12 +97,18 @@ async function readArguments(argv: string[], scope: Scope, trace: string, allowS
     const timeout_ms = Number(rawTimeout);
     const file = args.values['json-file'];
     const raw = args.values.json;
+    const output = args.values.output;
     if (
       args.positionals.length !== 2 ||
       !isArtifactQueryCommand(command) ||
       (raw === undefined) === (file === undefined) ||
       (file !== undefined && (!file.trim() || file === '-')) ||
       (raw === '-' && !allowStdin) ||
+      (output !== undefined &&
+        (command !== 'artifacts receipt' ||
+          !output.trim() ||
+          output === '-' ||
+          /[\u0000-\u001f]/.test(output))) ||
       !/^[1-9][0-9]{0,9}$/.test(rawTimeout) ||
       timeout_ms > 2147483647
     )
@@ -116,7 +125,7 @@ async function readArguments(argv: string[], scope: Scope, trace: string, allowS
       if (raw === undefined || Buffer.byteLength(raw, 'utf8') > maximum) throw new TypeError();
       text = raw;
     }
-    return { target: prepare(command, JSON.parse(text), scope, trace), timeout_ms };
+    return { target: prepare(command, JSON.parse(text), scope, trace), timeout_ms, output };
   } catch {
     throw invalid(trace);
   }
@@ -126,6 +135,28 @@ function execute(client: WcpClient, target: Query, timeout_ms: number) {
   return target.query.version === undefined
     ? client.getArtifact(target.query.artifact_id, { timeout_ms })
     : client.getArtifactVersion(target.query.artifact_id, target.query.version, { timeout_ms });
+}
+async function executeWithOutput(
+  client: WcpClient,
+  target: Query,
+  timeout_ms: number,
+  trace: string,
+  output: ArtifactOutput | undefined,
+) {
+  if (target.kind !== 'receipt' || output === undefined) return execute(client, target, timeout_ms);
+  const receipt = await client.getArtifactReceipt(target.query, { timeout_ms });
+  const local = await captureArtifactReceipt(receipt, target.query, output, trace);
+  return {
+    schema_version: 1 as const,
+    trace_id: trace,
+    source_refs: receipt.source_refs,
+    data: { receipt, local, upload_dispatch_state: 'not-sent' as const },
+  };
+}
+export function artifactQueryExitCode(
+  result: Awaited<ReturnType<typeof executeWithOutput>>,
+): 0 | 1 {
+  return 'local' in result.data && result.data.local.state !== 'saved-and-read-back' ? 1 : 0;
 }
 function networkClient(options: Options) {
   try {
@@ -155,8 +186,21 @@ export async function callArtifactQueryArguments(argv: string[], options: Option
   const snapshot = structuredClone(options);
   // Reject invalid credentials/configuration before consuming a file or stdin.
   networkClient(snapshot);
-  const { target, timeout_ms } = await readArguments(argv, snapshot.scope, snapshot.trace, true);
-  return execute(networkClient({ ...snapshot, timeout_ms }), target, timeout_ms);
+  const { target, timeout_ms, output } = await readArguments(
+    argv,
+    snapshot.scope,
+    snapshot.trace,
+    true,
+  );
+  const destination =
+    output === undefined ? undefined : await prepareArtifactReceiptOutput(output, snapshot.trace);
+  return executeWithOutput(
+    networkClient({ ...snapshot, timeout_ms }),
+    target,
+    timeout_ms,
+    snapshot.trace,
+    destination,
+  );
 }
 
 export async function runArtifactQuery(
@@ -174,7 +218,7 @@ export async function runArtifactQuery(
     workspace_id: context.workspace_id,
     project_id: context.project_id,
   };
-  const { target, timeout_ms } = await readArguments(argv, scope, trace, false);
+  const { target, timeout_ms, output } = await readArguments(argv, scope, trace, false);
   const authority = () => {
     try {
       const expiry = Date.parse(context.token_expires_at ?? '');
@@ -198,6 +242,8 @@ export async function runArtifactQuery(
     }
   };
   authority();
+  const destination =
+    output === undefined ? undefined : await prepareArtifactReceiptOutput(output, trace);
   const headers: Record<string, string> = {
     'x-trace-id': trace,
     'x-tenant-id': scope.tenant_id,
@@ -261,5 +307,11 @@ export async function runArtifactQuery(
       return result as unknown as T;
     },
   };
-  return execute(new WcpClient(transport, { ...scope, trace_id: trace }), target, timeout_ms);
+  return executeWithOutput(
+    new WcpClient(transport, { ...scope, trace_id: trace }),
+    target,
+    timeout_ms,
+    trace,
+    destination,
+  );
 }

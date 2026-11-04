@@ -1,5 +1,9 @@
 # workctx 开发入口
 
+新增 `artifacts receipt --json-file ORIGINAL.json --output NEW_RECEIPT.json`，网络与嵌入均可显式保存原回执；不指定output时保持原返回形状。指定后stdout含`data.receipt`与独立`data.local`，文件保存失败也保留完整查询结果，退出1；保存并读回成功退出0，临时清理待处理仍在local中说明。文件本身只含完整WCP回执封套，最多4 MiB，查询前检查新路径，独占发布后完整读回；查询超时不启动保存，保存不受查询计时器竞速。`recorded/not-observed`原义保持，未观察到不能当作上传失败。
+
+新增离线 `artifacts inspect-receipt --receipt-file RECEIPT.json [--json-file ORIGINAL.json]`，不需要配置/登录/网络。稳定读取并完整核对封套、原身份/命令及适用历史快照，可选比对独立原请求文件（1 MiB）；返回实际文件字节摘要、完整回执/原请求及original_binding。本地结构有效不认证服务器或内容，外层source_refs为空，原回执trace保留在嵌套receipt内；不改键/版本、不上传或写文件。输入需使用保存的回执文件或无output查询得到的裸封套，不能把带local的stdout包装当作回执文件。见 [保存与离线核验](../../docs/design/01-contracts/artifact-persistence-runtime.md#cli-原回执保存与离线核验源码阶段)。仅源码文档人工审阅，未编译、类型检查、测试、执行上述命令或发布。
+
 网络 `artifacts create/put-version` 已改用FetchWcpTransport的bounded-json multipart路径，完整成功响应最多4 MiB、错误16 KiB，HTTP超时覆盖凭据/网络/逐块响应等待，完整结果解析后再次检查期限。共享结果解析对嵌入入口也施加4 MiB纯JSON限制；派发后错误只保留同trace有限错误码与固定消息，丢弃上游details/重试建议，固定retryable=false、artifact_outcome=unconfirmed和server_outcome=unknown。嵌入入口同时清除旧if_match；文件读取/原SHA预检和参数保持，没有给文件I/O或嵌入writer添加隐藏后台超时。详见 [上传响应限制](../../docs/design/01-contracts/artifact-persistence-runtime.md#cli-上传响应限制与未知结果源码阶段)，仅源码文档人工审阅，未编译、测试、执行或发布。
 
 网络 `artifacts download` 的历史元数据GET已改用2 MiB bounded-json，衔接SDK Fetch bytes新增的严格二进制媒体类型、完整长度、16 KiB错误上限及凭据/正文期限。原CLI参数、固定版本校验和文件保存流程保持；下载传输改动仅源码兼容审阅，未编译、测试或执行命令，详见 [下载期限与取消](../../docs/design/01-contracts/artifact-persistence-runtime.md#sdk-下载期限与取消源码阶段)。

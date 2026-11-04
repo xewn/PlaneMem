@@ -6,6 +6,8 @@
 
 ### 2026-11-04 开发补充（未编译、未发布、未测试）
 
+- P0/P2/P4：已补CLI artifacts receipt显式--output NEW_FILE及离线inspect-receipt --receipt-file，可选--json-file ORIGINAL。新路径预检在查询前，完整原回执4 MiB独占保存并按实际hash/大小/共享封套读回；stdout包装保留receipt/local，文件失败退出1仍保留原回执，发布后不确认明确保留目标。无output返回形状保持，get/version拒绝output。离线无需配置/网络/数据库，核对完整原身份/键/版本/命令及适用历史快照，可选独立原文件1 MiB比对，返回实际字节摘要且外层sources空、身份未认证/服务器与内容未检查。不把not-observed或本地有效当作上传失败/成功，不自动重试或上传。签名认证、回执集合恢复、持久上传恢复编排及运行证据仍缺；无服务端/schema/依赖变化，只源码文档人工审阅，未编译/类型检查/测试/执行CLI/SDK/Mock/API/数据库或发布。
+
 - P0/P2/P4：已补CLI artifacts download整次读取期限，网络与嵌入--timeout-ms默认180秒覆盖历史元数据/正文/完整校验，Fetch两阶段共用signal，嵌入迟到结果丢弃且不启动保存。文件输入/路径预检在预算前完成，保存前最后检查，写盘/清理开始后等待结束。元数据及正文非字节封套2 MiB纯JSON限制、HTTP头16 KiB，非共享内容复制并独立SHA核对，失败保留已确认release ID；远端异常只有限同trace代码/固定消息，只有本地save错误保留文件恢复信息。嵌入重查有效reader并清除旧写条件。流式下载、后台provider容量、文件取消、客户端持久交付回执及运行证据仍缺；无服务端/schema/依赖变化，只源码文档人工审阅，未编译/类型检查/测试/执行CLI/SDK/Mock/API/数据库或发布。
 
 - P0/P2/P4：已补CLI artifacts get/version/receipt共用有界SDK查询，网络与嵌入支持--timeout-ms默认30秒，元数据响应2 MiB/回执4 MiB/HTTP错误16 KiB，完整scope/trace/版本/原身份及命令校验，固定查询错误不证明此前上传失败。查询JSON限制4 KiB、原请求1 MiB，文件稳定读取与网络--json -有界读取，嵌入新增--json-file但不消费进程stdin；输入等待在查询期限之外。嵌入要求可信未过期reader/writer和原身份匹配，清除继承写条件，迟到结果不发布；底层router可能继续。保留content_state及recorded/not-observed，不上传/重试/刷新版本。文件/stdin取消、后台provider并发限制和运行证据仍缺；仅源码文档人工审阅，无服务端/schema/依赖变化，未编译/类型检查/测试/执行CLI/SDK/Mock/API/数据库或发布。

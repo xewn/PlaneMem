@@ -11,6 +11,23 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    cli_artifact_receipt_file_development_increment:
+      date: "2026-11-04"
+      status: "Source-only CLI original artifact receipt capture and offline inspection; R-001 remains incomplete."
+      artifacts:
+        - "apps/workctx-cli/src/artifact-receipt-file.ts"
+        - "apps/workctx-cli/src/artifact-queries.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "docs/design/01-contracts/artifact-persistence-runtime.md"
+      behavior: "Allow receipt --output NEW_FILE only after preflight of a new path and a complete bounded SDK receipt query. Persist the verified bare WCP envelope within 4 MiB using exclusive publication, then read back the final path with full parsing and exact byte/hash comparison. With output, retain the full receipt alongside independent local state; save failure exits 1 without erasing recorded/not-observed. Add offline inspect-receipt with optional independent original file binding, 4 MiB receipt/1 MiB original bounds, actual byte digests, empty outer sources and explicit unauthenticated/not-checked states. No configuration, network, upload, file mutation or automatic retry during inspection."
+      evidence: []
+      pending_evidence:
+        - "Network/embedded capture, unchanged no-output shape, duplicate/unknown options and preflight before dispatch"
+        - "Exclusive publication, final readback mismatch, cleanup failure and preservation of receipt on local save failure"
+        - "Strict UTF-8/bounds, recorded/not-observed, complete original mismatch, offline routing and distinct read/inspection traces"
+      remaining_scope: "Signed receipt authenticity, receipt collection recovery, durable upload recovery orchestration and runtime evidence. Local hashes and structural validation do not authenticate server outcomes or current content."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/SDK/Mock/API/database execution or release. No server/schema/dependency change."
     cli_artifact_download_budget_development_increment:
       date: "2026-11-04"
       status: "Source-only CLI fixed-version download read deadline and settled file publication; R-001 remains incomplete."

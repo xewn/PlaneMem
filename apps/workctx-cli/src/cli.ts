@@ -16,7 +16,12 @@ import {
   checkpointHistoryResult,
   checkpointWorkbenchHistoryResult,
 } from './checkpoint-history.js';
-import { isArtifactQueryCommand, runArtifactQuery } from './artifact-queries.js';
+import {
+  isArtifactQueryCommand,
+  runArtifactQuery,
+  artifactQueryExitCode,
+} from './artifact-queries.js';
+import { inspectArtifactReceiptArguments } from './artifact-receipt-file.js';
 import { runArtifactDownload } from './artifact-download.js';
 import { runArtifactUploadContext } from './artifact-upload-context.js';
 import { runArtifactPreparation } from './artifact-preparation.js';
@@ -254,6 +259,7 @@ export async function runWorkctx(
     'artifacts identity': 'artifact.upload-context',
     'artifacts prepare': 'artifact.upload-context',
     'artifacts inspect-request': 'artifact.inspect-request',
+    'artifacts inspect-receipt': 'artifact.inspect-receipt',
     'artifacts version': 'artifact.version.read',
     'artifacts receipt': 'artifact.receipt',
     'artifacts create': 'artifact.create',
@@ -350,6 +356,10 @@ export async function runWorkctx(
   try {
     if (command === 'artifacts inspect-request') {
       const result = await inspectArtifactRequestArguments(argv, context.trace_id);
+      return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
+    }
+    if (command === 'artifacts inspect-receipt') {
+      const result = await inspectArtifactReceiptArguments(argv, context.trace_id);
       return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
     }
     if (command && isOutboxRestoreRequeueImportCommand(command)) {
@@ -723,7 +733,7 @@ export async function runWorkctx(
     if (isArtifactQueryCommand(command!)) {
       const result = await runArtifactQuery(argv, router, context);
       return {
-        exit_code: 0,
+        exit_code: artifactQueryExitCode(result),
         stdout: JSON.stringify(result),
         stderr: '',
       };

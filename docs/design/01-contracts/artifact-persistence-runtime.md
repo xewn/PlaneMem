@@ -602,3 +602,19 @@ PostgreSQL/S3 适配、显式服务器配置、HTTP/SDK/CLI/MCP/工作台按原�
 查询/正文/校验阶段错误只接收同trace白名单代码和固定消息，retryable=false，不透传任意上游message/details或重试建议。输出local_state=not-saved、配置的output_path、content_dispatch_state和本地已核对的audit_state/audit_id；未发起内容时为not-requested，开始后未核对结果为unconfirmed。只有实际调用本地saveArtifactOutput后的ARTIFACT_SAVE_FAILED可保留可信临时路径、保存阶段和清理状态，避免远端异常冒充本地文件恢复信息。release-recorded仍不等于已保存，not-saved仍只描述本次，不授权清理已经存在的目标。
 
 限制：底层router/存储可以在本地超时后继续，未新增全局后台容量限制；自定义provider分配内存不能由本地返回值检查阻止。仍整份内容驻内存，未提供流式下载、文件取消、目录同步、持久客户端交付回执或自动恢复。只有源码文档人工审阅，无编译、类型检查、测试、CLI/SDK/Mock/API/数据库执行或发布，无服务端/schema/依赖变化，R-001未完成。
+
+## CLI 原回执保存与离线核验（源码阶段）
+
+`artifacts receipt --json-file ORIGINAL.json --output NEW_RECEIPT.json` 在网络和嵌入入口均可保存完整原回执，也可沿既有内联JSON及网络stdin输入。--output只对receipt开放，get/version仍拒绝；不接受重复/未知参数或--key。输出父目录和新目标在SDK查询前预检，已有文件/目录/链接均拒绝且不发查询。SDK查询仍使用完整原身份/键/版本和默认30秒期限；成功且完整校验后才写文件，超时/失败不创建回执文件，不自动查询第二次或上传。
+
+保存文件是解析后重新序列化的完整WCP ArtifactReceiptEnvelope，最多4 MiB，不包含local信息、凭据或附件正文，也不是HTTP原始字节转储。沿既有prepareArtifactOutput/saveArtifactOutput独占临时文件、写入/同步/读回/无覆盖硬链接发布，再从最终路径稳定读取，严格UTF-8及完整共享契约解析，并匹配实际字节长度和SHA-256。保存和最终读回等待结束，不与查询期限竞速；成功清理待处理仍返回成功且保留临时路径。文件/目录同步和恶意并发路径替换仍沿既有用户控制目录的限制。
+
+不指定output时保持原始查询输出封套。指定output时stdout改为外层WCP形状，data.receipt保留完整查询结果，data.local独立报告保存状态：saved-and-read-back含path/file_bytes/file_sha256和清理信息；save-failed含固定文件错误和恢复details，适用时提供candidate_file_bytes/candidate_file_sha256。保存失败退出1但仍输出完整receipt，不把已收到recorded改成未知，也不隐藏not-observed。最终发布后读回失败明确local_state=published-unconfirmed，保留目标，不删除或重写；一般保存失败沿底层可信文件恢复状态。摘要只描述这次实际文件字节，不是服务器签名。
+
+`artifacts inspect-receipt --receipt-file RECEIPT.json` 是网络主入口和嵌入runWorkctx中的本地分支，无需WORKCTX配置、令牌、Gateway或数据库；可选--json-file ORIGINAL.json核对独立保存的完整原请求。仅这两个文件选项可用，拒绝stdin、输出、网络期限、--key及重复/额外参数。回执文件最多4 MiB、原请求文件最多1 MiB，使用稳定常规文件句柄、额外字节和前后属性检查及严格UTF-8解码。文件内容需是裸回执封套，带local的命令输出包装或上传成功封套不是此格式。
+
+检查器从回执data.identity/command取出完整原请求（另限1 MiB），共享parseArtifactReceiptEnvelope核对原回执trace/身份/命令、recorded的历史资料/来源/版本/hash/size，或not-observed的空来源约束。提供独立原请求时再逐项绑定原身份、键、预期版本、内容描述和命令字段，匹配失败不输出部分通过。未提供时original_binding=embedded-only，提供且匹配时为matches-original-file；这只是本地文件一致性，不认证任何账号。
+
+离线输出使用当前检查trace，外层source_refs为空，嵌套receipt保留原查询trace及其声称的来源；返回完整receipt/original、实际回执文件大小/字节摘要，适用时带独立原文件路径/实际字节摘要。BOM/空白影响实际字节摘要，即使解析结果相同。status=locally-valid、identity_state=not-authenticated、server_outcome=not-checked、content_state=not-checked、upload_dispatch_state=not-sent；recorded是文件声称的历史观察，not-observed不证明原上传失败，本地有效或hash均不认证服务器、签名或当前附件可下载性。需要当前服务器观察时仍显式使用完整未改动原请求查询receipt，不生成新键、更新版本或上传。
+
+本增量无新共享schema/服务端/依赖/迁移，仅源码文档人工审阅；未编译、类型检查、测试、执行CLI/SDK/Mock/API/数据库或发布。签名来源认证、回执集合管理与恢复、持久上传恢复编排和运行证据仍未完成，R-001保持未完成。
