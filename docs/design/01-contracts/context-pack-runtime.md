@@ -809,9 +809,27 @@ observed_at为本地接收并准备留存时的UTC时间，严格有效四位年
 
 离线成功输出完整receipt_file及实际文件摘要/大小、可选原文件摘要，标注observation_state=historical、server_authenticity/current_server_outcome/content_state/source_state均not-checked；file_state=structure-and-digest-checked只代表文件自洽。外层source_refs为空，原历史引用保留在文件内部，避免冒充本次新读。用法错误退出2，文件不可用/摘要异常/原文不匹配退出1，不输出部分通过结果；不根据历史not-observed重发，不联网刷新或改写时间。
 
-普通JSON和自带摘要可被一起改写，不认证网关或远端来源；历史文件中原Gateway也只是保留声明，离线核对不能证明实际请求曾发到该目标。此格式是查询观察文件，不是原请求文件或完整ContextPack正文，不能直接传submit-save。当前无失败stdout外层直接导入/离线补存命令，已有候选可从data.receipt_file保留为独立文件再检查；自动恢复、浏览器历史目录/持久化、原请求提取、批量备份清理另行开发。
+普通JSON和自带摘要可被一起改写，不认证网关或远端来源；历史文件中原Gateway也只是保留声明，离线核对不能证明实际请求曾发到该目标。此格式是查询观察文件，不是原请求文件或完整ContextPack正文，不能直接传submit-save。当前无失败stdout外层直接导入/离线补存命令，已有候选可从data.receipt_file保留为独立文件再检查；浏览器历史目录/持久化及CLI原请求提取见后续源码增量，自动恢复、批量备份清理另行开发。
 
 R-003未完成、evidence为空。文件格式/规范摘要/历史绑定、非UTF-8与损坏边界、输出路径竞争/硬链接/清理、发布后完整读回、本地失败保留观察、离线main/嵌入入口及已有查询返回形状兼容均缺运行证据。本轮只源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/SDK/API/文件工作流/数据库或发布；无后端、SDK、Web、MCP、Mock、依赖或迁移变化。
+
+## CLI从历史回执提取原请求（2026-11-05源码增量）
+
+新增`workctx context extract-original --receipt-file RECEIPT.json --output NEW_ORIGINAL.json [--json-file ORIGINAL.json]`。普通main和嵌入runWorkctx均在凭据读取/网络或router派发前处理，参数只有上述三个文件选项，拒绝重复、未知选项、stdin、内联JSON及额外位置参数。inspect-receipt原返回格式保持，仍拒绝output。该命令只接受共享回执文件，不接受save-receipt的stdout外层封套或裸查询结果。
+
+先稳定读取32 KiB以内完整UTF-8文件，复用共享闭合结构、原请求/回执精确绑定以及规范document SHA-256实算；可选json-file再稳定读取8 KiB独立原请求，比较全部规范字段，保留独立文件实际摘要。未通过此阶段不写文件，也不交付部分通过的候选。recorded/not-observed及过期历史均只保留原义，不改observed_at/trace，也不将本地摘要视为服务器认证。
+
+候选原文件使用既有8 KiB规范格式，完整保留Gateway含路径、五身份、read_restricted、request_key和显式budget_tokens/ttl_seconds。先预检调用方指定的新路径；已有文件/链接或输入文件本身拒绝，不覆盖。发布前再次稳定读取完整回执并比较全部实际字节，内容、空白或字段顺序变化都停止。此复读检查只约束捕获期间的输入，不能阻止之后外部改写文件；可选独立原文件的匹配仅代表它被读取时的内容，不提供文件锁。
+
+本地写入沿现有独占临时文件、同步、摘要读回和硬链接发布；目标目录必须存在且支持硬链接，无覆盖回退。发布后稳定读取8 KiB目标，核对全部实际字节、SHA-256及完整原请求解析和规范相等，全部成功才报告local.state=saved-and-read-back。文件工作等待实际结束，不与网络/本地超时竞速，不承诺进程中断或外部文件变更后的持久性。
+
+输出使用本地封套和空source_refs；data.status=original-extracted只表示已从历史提取候选，包含完整receipt_file、来源路径/实际摘要/大小、original/request_sha256及可选matched_original。receipt_file_state=structure-and-digest-checked；observation_state=historical，服务器认证、当前结果、内容和来源均not-checked，compile_dispatch_state=not-sent。成功local给出路径、实际摘要/大小和临时清理状态，退出0，next_action=review-original-file。
+
+已得到完整候选后，目标预检、源复读、发布或目标读回失败均保留完整data和候选摘要/大小，local.state=save-failed及phase，退出1；不重查、不重发、不自动选新路径。发布失败保留既有工具的恢复信息；已发布但无法确认时标记published-unconfirmed并保留目标及未清理临时路径。next_action改为keep-observation-and-review-local-state，避免把失败当作原文件已保存。输入损坏或独立绑定不匹配走原错误封套退出1，用法错误退出2。
+
+保存出来的是原请求文件，可由`context inspect-save --json-file NEW_ORIGINAL.json`审阅，之后显式`context save-receipt`重新查询或`context submit-save --reviewed`沿既有当前身份复核提交；提取本身不授予重发许可，不调用这些操作或查当前身份。历史not-observed不能证明之前没有保存，recorded也不证明目前内容/来源可用。
+
+R-003仍未完成、evidence为空。普通/嵌入离线派发、旧inspect兼容、完整绑定/摘要损坏、原文件变化、目标竞争/无覆盖、发布/清理/读回失败保留候选均待运行证据。失败stdout整体离线补存、批量备份/清理、嵌入在线查询等仍待开发。本轮仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行CLI/文件流程/产品/API/数据库或发布；无共享格式、SDK、Gateway、Web、MCP、Mock、依赖或迁移变化。
 
 ## 网页历史回执留存与找回（2026-11-05源码增量）
 

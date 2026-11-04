@@ -108,7 +108,10 @@ import {
   callContextPackOriginal,
 } from './context-pack-original.js';
 import { callContextCompileArguments } from './context-pack-compile.js';
-import { inspectContextPackReceipt } from './context-pack-receipt-file.js';
+import {
+  inspectContextPackReceipt,
+  extractContextPackReceiptOriginal,
+} from './context-pack-receipt-file.js';
 
 const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
 
@@ -350,6 +353,8 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   context submit-save            Send the unchanged --json-file original after --reviewed; optional --timeout-ms
   context save-receipt            Observe historical save metadata from --json-file ORIGINAL; optional --output NEW_RECEIPT.json
   context inspect-receipt         Inspect --receipt-file RECEIPT.json offline; optional --json-file ORIGINAL.json
+  context extract-original       Recover its original offline with --receipt-file RECEIPT.json --output NEW_ORIGINAL.json
+                                 Optional --json-file ORIGINAL.json checks full binding; no query or pack save
   context create                 Add proposed context; title/content/source_refs and --key
   context read                   Read complete current item_id; bounded response and timeout
   context list                   Read one complete page by query/layer/classification/status/item_type/archived/limit/cursor
@@ -665,6 +670,7 @@ export async function main(args: string[]): Promise<number> {
       'context submit-save',
       'context save-receipt',
       'context inspect-receipt',
+      'context extract-original',
       'context create',
       'context read',
       'context list',
@@ -705,6 +711,11 @@ export async function main(args: string[]): Promise<number> {
     if (name === 'context inspect-receipt') {
       print(await inspectContextPackReceipt(args, trace));
       return 0;
+    }
+    if (name === 'context extract-original') {
+      const result = await extractContextPackReceiptOriginal(args, trace);
+      print(result);
+      return result.data.local.state === 'save-failed' ? 1 : 0;
     }
     if (isContextPackOriginalCommand(name)) {
       const result = await callContextPackOriginal(args, {
