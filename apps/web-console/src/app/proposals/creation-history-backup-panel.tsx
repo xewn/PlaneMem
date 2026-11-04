@@ -24,6 +24,7 @@ export function CreationHistoryBackupPanel({
   begin,
   end,
   onStorageChange,
+  getStorageGeneration,
 }: {
   binding: ProposalSubmissionBinding;
   disabled: boolean;
@@ -31,6 +32,7 @@ export function CreationHistoryBackupPanel({
   begin: () => boolean;
   end: () => void;
   onStorageChange: () => void;
+  getStorageGeneration: () => number;
 }) {
   const [reviewed, setReviewed] = useState<CreationHistoryBackupCandidate>();
   const [comparison, setComparison] = useState<{
@@ -89,6 +91,7 @@ export function CreationHistoryBackupPanel({
     const controller = new AbortController();
     operation.current = controller;
     release.current = end;
+    const generation = getStorageGeneration();
     setBusy(true);
     const isCurrent = () =>
       mounted.current && operation.current === controller && !controller.signal.aborted;
@@ -111,7 +114,9 @@ export function CreationHistoryBackupPanel({
         setReviewed(result);
         setMessage(
           action === 'prepare'
-            ? 'The complete saved creation history backup is ready to download. Save any received result in the history panel first if you want it included.'
+            ? generation !== getStorageGeneration()
+              ? 'The complete backup from this read is retained, but saved history may have changed while it was prepared. Prepare again for a fresh snapshot, or compare before restoring this retained file.'
+              : 'The complete saved creation history backup is ready to download. Save any received result in the history panel first if you want it included.'
             : 'The creation history backup matches this gateway and account. Compare it with this browser before restoring.',
         );
       } else if (action === 'compare') {
@@ -122,6 +127,12 @@ export function CreationHistoryBackupPanel({
         );
         if (!isCurrent()) return;
         setReviewed({ file: result.file, raw: result.raw });
+        if (generation !== getStorageGeneration()) {
+          setMessage(
+            'Saved history may have changed during the comparison. The complete backup is retained; compare again before confirming a restore.',
+          );
+          return;
+        }
         setComparison({
           digest: result.file.document_sha256,
           epoch: storageEpoch,

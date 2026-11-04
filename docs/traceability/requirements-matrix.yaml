@@ -3452,6 +3452,24 @@ requirements:
     design: ["desired-observed-verified", "ai-proposal-flow"]
     subprojects: ["P2", "P6", "P7"]
     tests: ["unit.proposed_not_verified", "security.approval_required", "evaluation.hallucinated_progress"]
+    proposal_creation_history_cross_page_development_increment:
+      date: "2026-11-04"
+      status: "Source-only scoped browser history invalidation and stale-read qualification guards; R-009 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/proposals/creation-history-changes.ts"
+        - "apps/web-console/src/app/proposals/creation-history-store.ts"
+        - "apps/web-console/src/app/proposals/creation-history-panel.tsx"
+        - "apps/web-console/src/app/proposals/creation-history-backup-panel.tsx"
+        - "apps/web-console/src/app/proposals/creation-history-cleanup-panel.tsx"
+        - "docs/design/01-contracts/proposal-creation-history-runtime.md"
+      behavior: "All creation-history writes notify at attempt start and settlement, including unknown outcomes. Exact bounded binding scopes route synchronous local notifications and best-effort cross-page messages without history contents or authority. Focus/visibility/page-cache return also invalidate directories and old removal/restore qualifications. Synchronous generations block stale callbacks before rerender and prevent in-flight directory/copy reads, selection inspection and backup comparison from requalifying changed snapshots; complete retained files remain exportable. Writes keep original transactional validation and outcome reporting. No automatic reads, writes or proposal changes result from a notification."
+      evidence: []
+      pending_evidence:
+        - "Exact scope isolation, strict malformed/oversized message rejection and same-page/cross-page delivery"
+        - "All four write paths including autosave and unknown outcomes; unavailable channels and listener failures do not alter storage outcomes"
+        - "Pending-render and in-flight-read races, focus/visibility/page-cache invalidation, retained exports and listener/channel cleanup"
+      remaining_scope: "Automatic backup and capacity cleanup, cross-device coordination and runtime/compatibility evidence; notifications are not a cross-page lock or guaranteed delivery."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, product/browser/database execution or release. Existing browser v1 reused; no schema or dependency changes."
     proposal_creation_history_autosave_development_increment:
       date: "2026-11-04"
       status: "Source-only opt-in retention of new valid creation responses with independent local recovery; R-009 remains incomplete."

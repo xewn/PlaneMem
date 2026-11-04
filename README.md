@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [创建历史跨页面刷新提示](docs/design/01-contracts/proposal-creation-history-runtime.md#跨页面变更与旧资格失效)：同范围存储尝试通知其他页面撤销旧目录和确认，切回页面也要求重新读取；变更中的读取不授予删除/恢复资格，完整副本仍可导出。仅源码文档，未编译、测试、运行或发布。
+
 新增 [创建结果自动留存](docs/design/01-contracts/proposal-creation-history-runtime.md#新收到结果的自动留存)：可选择为本页后续有效回执保存完整历史；本地失败单独提示并关闭自动留存，保留原观察供导出或显式补存，不重发创建请求。仅源码文档，未编译、测试、运行或发布。
 
 新增 [创建历史所选批量整理](docs/design/01-contracts/proposal-creation-history-runtime.md#当前结果页的批量整理)：从当前筛选页选择最多5份，完整审阅并导出可恢复子集，独立确认后原子移除完全同文副本；冲突拒绝整批，未知保留副本并要求重新读取。仅源码文档，未编译、测试、运行或发布。

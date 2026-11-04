@@ -31,6 +31,7 @@ import {
 } from './creation-history-query';
 import { CreationHistoryBackupPanel } from './creation-history-backup-panel';
 import { CreationHistoryCleanupPanel } from './creation-history-cleanup-panel';
+import { subscribeCreationHistoryChanges } from './creation-history-changes';
 
 export function CreationHistoryPanel({
   binding,
@@ -65,6 +66,8 @@ export function CreationHistoryPanel({
   });
   const [digest, setDigest] = useState('');
   const [localStorageEpoch, setStorageEpoch] = useState(0);
+  const storageGeneration = useRef(0);
+  const getStorageGeneration = useCallback(() => storageGeneration.current, []);
   // Revoke old qualifications in this render, before the effect clears the visible directory.
   const storageEpoch = localStorageEpoch + externalStorageEpoch;
   const lastExternalEpoch = useRef(externalStorageEpoch);
@@ -80,13 +83,19 @@ export function CreationHistoryPanel({
   const operation = useRef<AbortController | undefined>(undefined);
   const release = useRef<(() => void) | undefined>(undefined);
   const beginStorage = useCallback(() => {
-    if (!mounted.current || active.current || (begin && !begin())) return false;
+    if (
+      !mounted.current ||
+      active.current ||
+      storageGeneration.current !== localStorageEpoch ||
+      (begin && !begin())
+    )
+      return false;
     active.current = true;
     release.current = end;
     setBusy(true);
     setRemoveConfirmed(false);
     return true;
-  }, [begin, end]);
+  }, [begin, end, localStorageEpoch]);
   const endStorage = useCallback(() => {
     active.current = false;
     if (mounted.current) setBusy(false);
@@ -109,7 +118,8 @@ export function CreationHistoryPanel({
   }, [disabled]);
   const storageChanged = useCallback(() => {
     if (!mounted.current) return;
-    setStorageEpoch((value) => value + 1);
+    storageGeneration.current += 1;
+    setStorageEpoch(storageGeneration.current);
     setPage(undefined);
     setRemovalFresh(false);
     setRemoveConfirmed(false);
@@ -117,26 +127,61 @@ export function CreationHistoryPanel({
   useEffect(() => {
     if (lastExternalEpoch.current === externalStorageEpoch) return;
     lastExternalEpoch.current = externalStorageEpoch;
-    setPage(undefined);
-    setRemovalFresh(false);
-    setRemoveConfirmed(false);
+    storageChanged();
     setMessage(
       'Browser history may have changed. Find saved creation history again, and compare a retained backup again before restoring. Received results and inspected copies are retained.',
     );
-  }, [externalStorageEpoch]);
+  }, [externalStorageEpoch, storageChanged]);
+  useEffect(() => {
+    const invalidate = () => {
+      if (!mounted.current) return;
+      storageChanged();
+      setMessage(
+        'Saved history may have changed. Refresh the directory and inspect or compare again before removing or restoring copies. Retained files and received results are unchanged.',
+      );
+    };
+    const unsubscribe = subscribeCreationHistoryChanges(binding, invalidate);
+    const visible = () => {
+      if (document.visibilityState === 'visible') invalidate();
+    };
+    const restored = (event: PageTransitionEvent) => {
+      if (event.persisted) invalidate();
+    };
+    window.addEventListener('focus', invalidate);
+    window.addEventListener('pageshow', restored);
+    document.addEventListener('visibilitychange', visible);
+    return () => {
+      unsubscribe();
+      window.removeEventListener('focus', invalidate);
+      window.removeEventListener('pageshow', restored);
+      document.removeEventListener('visibilitychange', visible);
+    };
+  }, [binding, storageChanged]);
   async function run<T>(
     work: (signal: AbortSignal, check: () => void) => Promise<T>,
     receive: (value: T) => void,
-    options: { start?: () => void; failureMessage?: string } = {},
+    options: {
+      start?: () => void;
+      failureMessage?: string;
+      requireUnchangedStorage?: boolean;
+    } = {},
   ) {
     if (!mounted.current || disabled || operation.current || !beginStorage()) return;
     const controller = new AbortController();
     operation.current = controller;
     try {
       options.start?.();
+      const generation = getStorageGeneration();
       const candidate = await backupOperation(controller.signal, work);
-      if (mounted.current && operation.current === controller && !controller.signal.aborted)
+      if (mounted.current && operation.current === controller && !controller.signal.aborted) {
+        if (options.requireUnchangedStorage && generation !== getStorageGeneration()) {
+          setMessage(
+            'Saved history may have changed during this read. Its result was not applied. Refresh the directory or read the copy again; the previous inspected copy is retained.',
+          );
+          return;
+        }
         receive(candidate);
+      }
     } catch {
       if (mounted.current && operation.current === controller)
         setMessage(
@@ -212,6 +257,7 @@ export function CreationHistoryPanel({
       },
       {
         start: clearDirectory,
+        requireUnchangedStorage: true,
         failureMessage:
           'History search could not be completed. Check the exact proposal ID and request key. Invalid filters, damaged stored records or an expired read stop the whole page; no partial results are shown. Inspected copies are retained.',
       },
@@ -221,7 +267,7 @@ export function CreationHistoryPanel({
     void run(
       (signal, check) => loadCreationHistory(binding, value, signal, check, entry),
       (candidate) => inspect(candidate, 'browser'),
-      { start: () => setRemovalFresh(false) },
+      { start: () => setRemovalFresh(false), requireUnchangedStorage: true },
     );
   }
   function save() {
@@ -609,6 +655,7 @@ export function CreationHistoryPanel({
         begin={beginStorage}
         end={endStorage}
         onStorageChange={storageChanged}
+        getStorageGeneration={getStorageGeneration}
       />
       <p>
         Filters apply to this directory and its selected-copy actions. The backup below includes all
@@ -621,7 +668,13 @@ export function CreationHistoryPanel({
         begin={beginStorage}
         end={endStorage}
         onStorageChange={storageChanged}
+        getStorageGeneration={getStorageGeneration}
       />
+      <p className="muted">
+        This page clears old history confirmations when it hears about a storage attempt or regains
+        focus. Messages can be missed; refresh before acting. Notifications never load or change
+        history, and every removal or restore still checks the stored contents again.
+      </p>
       <Link href="/proposals/recover" prefetch={false} target="_blank" rel="noopener noreferrer">
         Open original request recovery ↗
       </Link>

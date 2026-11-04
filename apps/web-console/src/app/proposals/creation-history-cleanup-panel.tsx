@@ -26,6 +26,7 @@ export function CreationHistoryCleanupPanel({
   begin,
   end,
   onStorageChange,
+  getStorageGeneration,
 }: {
   binding: ProposalSubmissionBinding;
   page: CreationHistoryPage | undefined;
@@ -34,6 +35,7 @@ export function CreationHistoryCleanupPanel({
   begin: () => boolean;
   end: () => void;
   onStorageChange: () => void;
+  getStorageGeneration: () => number;
 }) {
   const [selection, setSelection] = useState<{ page: CreationHistoryPage; digests: string[] }>();
   const [reviewed, setReviewed] = useState<{
@@ -128,6 +130,7 @@ export function CreationHistoryCleanupPanel({
     const controller = new AbortController();
     operation.current = controller;
     release.current = end;
+    const generation = getStorageGeneration();
     setBusy(true);
     setConfirmed(null);
     if (action !== 'export') setFresh(false);
@@ -141,6 +144,12 @@ export function CreationHistoryCleanupPanel({
         const candidate = await prepareCreationHistorySelection(binding, rows, controller.signal);
         if (!isCurrent()) return;
         setReviewed({ candidate, page: page!, epoch: storageEpoch, selectionKey });
+        if (generation !== getStorageGeneration()) {
+          setMessage(
+            'Saved history may have changed during inspection. This subset remains available for export. Refresh the directory, select and inspect again before confirming removal.',
+          );
+          return;
+        }
         setFresh(true);
         setMessage(
           'Inspect every selected observation below. You can export this selected subset before deciding whether to remove its browser copies.',
