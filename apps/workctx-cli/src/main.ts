@@ -337,6 +337,8 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
                                  Optional --json/--json-file (4 KiB), default {}; optional --timeout-ms
   context list-packs             List saved pack metadata by optional pack_id/limit/cursor; content/sources unchecked
                                  Optional --json/--json-file (4 KiB), default {}; limit 25 (1-100), one page per call
+  context save-identity          Read current save account/client/project/permissions; no save
+                                 Optional --json/--json-file (4 KiB), default {}; paired expected_actor_id/expected_client_id, optional --timeout-ms
   context create                 Add proposed context; title/content/source_refs and --key
   context read                   Read complete current item_id; bounded response and timeout
   context list                   Read one complete page by query/layer/classification/status/item_type/archived/limit/cursor
@@ -646,6 +648,7 @@ export async function main(args: string[]): Promise<number> {
       'context compile',
       'context get',
       'context list-packs',
+      'context save-identity',
       'context create',
       'context read',
       'context list',

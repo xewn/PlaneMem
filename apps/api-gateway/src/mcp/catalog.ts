@@ -1070,6 +1070,14 @@ const definitions: ToolDefinition[] = [
     { write: true, versioned: true },
   ),
   tool(
+    'get_context_pack_save_context',
+    'Read current verified context pack save identity, token expiry and compile/restricted permission hints. Requires an unexpired authenticated client with actual context.read; identity comes only from the trusted session. Arguments must be an empty object (4 KiB limit), complete business JSON 16 KiB, escaped MCP text wrapper 32 KiB+4096, local waiting 30 seconds. Shares context read capacity. Does not read project records, packs or sources, reserve a key, save a pack, or prove a historical save. Retain any existing original request binding; this response must not automatically replace it or authorize a retry.',
+    ['context.read'],
+    'GET',
+    '/v1/context-pack/save-context',
+    {},
+  ),
+  tool(
     'get_context_pack',
     'Read a complete saved context pack, latest when pack_id is omitted. Requires a verified unexpired client with actual context.read and project visibility. Arguments accept only optional pack_id/format, limited to 4 KiB; complete business JSON 2 MiB, local waiting 30 seconds. Verify original scope, HTTP/body ETag, sources, budget, rendered content and saved SHA-256. Gateway checks expiry and current sources; matching hashes do not authenticate external references. No partial content, fallback pack, automatic retry, compilation or write.',
     ['context.read'],
@@ -1908,7 +1916,7 @@ export function prepareMcpTool(
       });
     throw new ContractError(
       'MCP_TOOL_EXECUTOR_REQUIRED',
-      'Context pack/directory/detail/history reads and comparisons require dispatchMcp or the dedicated executor',
+      'Context save identity, pack/directory/detail/history reads and comparisons require dispatchMcp or the dedicated executor',
       { trace_id: context.trace_id },
     );
   }

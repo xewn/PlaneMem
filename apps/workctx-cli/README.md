@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+2026-11-05：新增`context save-identity`，读取当前可信tenant/workspace/project/actor/client、expires_at及compile/read_restricted提示。最多一个4 KiB `--json`或`--json-file`，省略为{}；仅网络入口支持有界`--json -`，可选`--timeout-ms`默认30000。输入只能含成对expected_actor_id/expected_client_id，用来核对原账号/客户端；拒绝其他参数和写选项。网络main/callGateway及嵌入runWorkctx统一复用SDK getContextPackSaveContext，完整16 KiB封套，嵌入与其他九类上下文读共用两路容量并核对可信权限/期限。读取不会保存包、预留键或替换已有原请求；完整边界与未执行示例见[CLI/MCP保存身份入口](../../docs/design/01-contracts/context-pack-runtime.md#climcp保存身份入口2026-11-05源码增量)。仅源码文档，未编译、类型检查、测试、执行CLI/SDK/API或发布。
+
 2026-11-05：`context compile`的网络main/callGateway和嵌入runWorkctx接入SDK完整保存回执及SHA-256核验。默认{}，最多一个4 KiB `--json`/`--json-file`，网络支持有界stdin；稳定键沿--key或正文idempotency_key，嵌入还可沿原context键，多来源必须相等。新增默认30秒 `--timeout-ms`，可选成对expected_actor_id/expected_client_id；完整回执2 MiB、Fetch错误16 KiB，失败不返回部分内容，派发后保留结果未知。嵌入要求可信未过期实际context.read/完整身份，授权后复查取消及到期，独立每router两笔提交容量到底层结束才释放；无自动重试、新键、读回或文件保存。详见[CLI保存包提交核验](../../docs/design/01-contracts/context-pack-runtime.md#cli-保存包提交核验2026-11-05源码增量)。仅源码文档，未编译、类型检查、测试、执行CLI/SDK/API/保存命令或发布。
 
 2026-11-05：新增`context list-packs`，网络main/callGateway和嵌入runWorkctx复用SDK listContextPacks完整元数据读取。最多一个4 KiB `--json`/`--json-file`，默认{}，仅网络支持有界`--json -`；可选pack_id/limit/cursor及成对expected_actor_id/expected_client_id，默认30秒timeout-ms。每次一页、完整256 KiB封套，保留筛选和续页，不读取正文/hash/来源，过期或来源变化记录仍可能列出；打开具体包另行检查。嵌入原handler负责父项目/read_restricted过滤，九类上下文读共用每router两容量、底层结束才释放。无自动翻页/重试/换包/写入，详见[CLI保存包目录](../../docs/design/01-contracts/context-pack-runtime.md#cli-保存包目录读取2026-11-05源码增量)。仅源码文档，未编译、类型检查、测试、执行CLI/SDK或发布。

@@ -1,5 +1,7 @@
 # 持久化 ContextPack 开发说明
 
+2026-11-05新增[CLI/MCP保存身份入口](#climcp保存身份入口2026-11-05源码增量)：CLI context save-identity及MCP get_context_pack_save_context读取完整可信身份/期限/权限提示，沿原上下文读期限与容量，不保存包或替换原请求。仅源码文档，未编译、类型检查、测试、执行客户端/接口或发布。
+
 2026-11-05新增[网页原请求准备与恢复](#网页原请求准备与恢复2026-11-05源码增量)：完整原请求固定网关/身份/权限桶/参数/键，浏览器双槽保存和完整分页找回，文件导入导出；每次发送同token复核原save-context，身份变化不改绑。仅源码文档，未编译、类型检查、测试、渲染、执行浏览器/API/保存请求或发布。
 
 2026-11-05新增[保存前可信身份读取](#保存前可信身份读取2026-11-05源码增量)：Gateway/SDK/Mock统一返回当前完整身份与会话期限，为跨登录原请求绑定提供基础；不读取保存包、不预留键或覆盖旧请求。仅源码文档，未执行API/SDK/Mock、编译、类型检查、测试或发布。
@@ -646,4 +648,29 @@ const visibilityBucket = authority.data.permissions.read_restricted;
 // Reading authority alone does not submit or reserve an idempotency key.
 ```
 
-本增量提供可信身份发现基础；网页接线已由上节“网页原请求准备与恢复”补充，包含跨重登录的原绑定核对和浏览器原文恢复。CLI/MCP身份读取工具、独立Schema/OpenAPI及历史成功回执持久化仍待补。读取当前身份不能找回旧键、证明历史保存、证明项目可读或延长旧权限；既有compile入口保持其原兼容行为。R-003未完成、evidence为空，真实认证/策略审计/会话到期、HTTP与内嵌限制、SDK/Mock兼容和取消/限额运行证据待补。仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行校验器/API/SDK/Mock/保存请求、数据库或发布。
+本增量提供可信身份发现基础；网页接线已由上节“网页原请求准备与恢复”补充，包含跨重登录的原绑定核对和浏览器原文恢复；CLI/MCP身份读取入口见下节。独立Schema/OpenAPI及历史成功回执持久化仍待补。读取当前身份不能找回旧键、证明历史保存、证明项目可读或延长旧权限；既有compile入口保持其原兼容行为。R-003未完成、evidence为空，真实认证/策略审计/会话到期、HTTP与内嵌限制、SDK/Mock兼容和取消/限额运行证据待补。仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行校验器/API/SDK/Mock/保存请求、数据库或发布。
+
+## CLI/MCP保存身份入口（2026-11-05源码增量）
+
+CLI新增`context save-identity`，网络main/callGateway和嵌入runWorkctx共用既有context-history适配，并调用SDK getContextPackSaveContext。最多一个4 KiB内联JSON或稳定普通文件，省略输入为{}；网络可用有界`--json -`，嵌入拒绝stdin。输入只接受可选成对expected_actor_id/expected_client_id，两者只转为原身份相等头，不允许外部提供新的项目、权限或会话期限。未知/重复选项、--key、--output、写字段和不成对约束拒绝。可选--timeout-ms为1..2147483647整数，默认30000；文件/stdin采集及stdout发送在SDK期限外。
+
+网络客户端固定原Gateway配置、token、三范围、trace与可选身份，发送一次GET /v1/context-pack/save-context，无正文、查询或写条件；完整成功16 KiB，Fetch错误16 KiB。SDK核对完整共享封套、原范围/可选账号客户端、trace及到期；通用transport只返回JSON，SDK不声称独立读取HTTP头或状态。返回的是当前身份，不是完整保存原请求，也未包含原Gateway、预算、TTL和请求键。不要把重新读取的身份自动覆盖已有绑定；本入口不修改现有compile行为。
+
+嵌入入口捕获原可信上下文、清除继承写条件，要求认证客户端与实际未过期context.read；外部成对身份必须与捕获值相等。只接受SDK规定的确切GET路径、六个原身份/范围/trace头、无正文、bounded-json及16 KiB限额。沿context.pack.save-context授权审计，在handler执行前复查取消和到期；返回后完整核对五身份、可信会话期限相等且未过期、restricted提示与原能力相等。与原九类上下文读取共用每router两路容量，SDK停止等待后底层router实际结束才释放名额。成功stdout为完整原封套；输入错误退出2，读取/身份/响应错误退出1，无半份输出或文件写入。
+
+MCP新增`get_context_pack_save_context`，省略arguments等同{}；严格4 KiB空对象，拒绝外部身份、写字段及任何其他参数。发现、prepare、客户端要求与执行沿isContextReadTool统一门禁：schema_version=1、可信认证客户端、实际未过期context.read和完整身份，admin角色不能代替能力。prepareMcpTool要求专用执行器，不退回通用工具调用。单次内部GET使用捕获原身份头及空输入，经既有ApiGateway策略/审计和身份handler；不读取项目记录、包或来源。
+
+MCP成功必须200 application/json、原x-trace-id、无ETag；完整16 KiB封套核对原五身份、会话期限相等且未过期、restricted提示与原能力相等。错误最多16 KiB，拒绝未知字段、错误trace及未知或不匹配code/status：INVALID_INPUT/400、UNAUTHENTICATED/401、DENIED/403、NOT_FOUND/404、RATE_LIMITED/429、CONTEXT_PACK_SAVE_CONTEXT_INVALID/500及认证/审计不可用503，转固定文本，不透传上游details。输出为原完整封套的JSON文本，二次转义包装32 KiB+4096。
+
+十类MCP上下文工具共用每Gateway两路容量；本工具整次读取/校验/包装共用30秒单调时钟期限，使用MCP_CONTEXT_PACK_SAVE_CONTEXT_BUSY/TIMEOUT。超时不取消内部ApiGateway，容量保留至底层真实结束，迟到结果不返回；原handler在策略审计之后再核对期限。进入执行器前的认证/外层审计及HTTP发送不计入期限。CLI/MCP均不自动重试、保存、换键或保留文件，读取身份不能证明保存成功/历史键归属/项目记录可读，也不能保证未来授权。
+
+以下只是未执行的调用示例：
+
+```text
+workctx context save-identity --timeout-ms 10000
+workctx context save-identity --json-file original-identity.json
+```
+
+第二条的文件必须只包含成对`expected_actor_id`和`expected_client_id`，取自原请求，不接受完整网页原请求文件；Gateway与项目仍由原CLI环境配置提供。MCP tools/call示例为`{"name":"get_context_pack_save_context","arguments":{}}`，不调用compile工具。
+
+R-003未完成，evidence为空。真实网络/嵌入/MCP调用、权限发现、参数/身份不符、损坏/过期响应、超时/容量与旧工具兼容证据待补；CLI/MCP完整原请求持久化和恢复、历史回执及独立Schema/OpenAPI仍待开发。仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/MCP/SDK/API/产品/数据库或发布；无共享契约、SDK、REST保存器、Web、Mock、独立schema、依赖或迁移变化。

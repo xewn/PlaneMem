@@ -1,5 +1,7 @@
 # WCP API 契约 v1
 
+2026-11-05保存身份客户端增补：CLI `context save-identity`和MCP `get_context_pack_save_context`接入已有GET /v1/context-pack/save-context，无新增REST路由。CLI可选成对原账号/客户端相等条件；MCP身份只来自可信会话。完整16 KiB身份/有效期/权限提示检查、30秒读取预算及原容量保持，不保存、预留键或自动替换原绑定。见[CLI/MCP保存身份入口](context-pack-runtime.md#climcp保存身份入口2026-11-05源码增量)，仅源码文档，未编译、类型检查、测试、执行CLI/MCP/SDK/API或发布。
+
 2026-11-05保存原身份增补：新增只读`GET /v1/context-pack/save-context` → `context.pack.save-context`，无查询/正文/写/缓存条件，要求可信未过期实际context.read与认证客户端；16 KiB完整封套返回当前五项identity、expires_at及compile/read_restricted提示。SDK getContextPackSaveContext和Mock已接源码，不读包或来源，不证明项目可见、保存结果或后续授权。身份原文及期限规则、头部/状态和限制见[保存前可信身份读取](context-pack-runtime.md#保存前可信身份读取2026-11-05源码增量)。仅源码文档，未编译、类型检查、测试、执行API/SDK/Mock或发布。
 
 2026-11-05 CLI保存包目录增补：`context list-packs`网络main/callGateway和嵌入runWorkctx接入既有GET /v1/context-packs与context.pack.list。4 KiB可选查询/稳定文件/仅网络stdin，原筛选游标及可选成对身份约束；通过SDK有界单页读取和默认30秒期限核对完整256 KiB元数据封套，不自动翻页或读取正文。嵌入沿原handler权限过滤并共用上下文读容量，详见[CLI保存包目录](context-pack-runtime.md#cli-保存包目录读取2026-11-05源码增量)。仅源码文档，无新服务端路由；未编译、测试、执行CLI/API或发布。

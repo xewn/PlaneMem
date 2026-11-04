@@ -2,12 +2,16 @@ import { readSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import {
   ContractError,
+  isUlid,
+  isSyncIdentifier,
   CONTEXT_HISTORY_RESPONSE_BYTES,
   CONTEXT_REVISION_RESPONSE_BYTES,
   CONTEXT_ITEM_READ_RESPONSE_BYTES,
   CONTEXT_ITEM_DIRECTORY_RESPONSE_BYTES,
   CONTEXT_PACK_READ_RESPONSE_BYTES,
   CONTEXT_PACK_DIRECTORY_RESPONSE_BYTES,
+  CONTEXT_PACK_SAVE_CONTEXT_BYTES,
+  parseContextPackSaveContextEnvelope,
   parseContextPackDirectoryEnvelope,
   parseContextPackDirectoryQuery,
   parseContextPackReadEnvelope,
@@ -46,7 +50,8 @@ type ReadQuery =
   | ContextItemReadQuery
   | DirectoryQuery
   | PackQuery
-  | PackDirectoryQuery;
+  | PackDirectoryQuery
+  | { kind: 'save-identity' };
 type Target = (
   | ReadQuery
   | { kind: 'compare'; query: ContextComparisonQuery }
@@ -72,6 +77,7 @@ const activeReads = new WeakMap<CommandRouter, { active: number }>();
 
 export function isContextReadCommand(command: string) {
   return [
+    'context save-identity',
     'context get',
     'context list-packs',
     'context list',
@@ -86,7 +92,7 @@ export function isContextReadCommand(command: string) {
 function invalid(trace: string) {
   return new ContractError(
     'USAGE_ERROR',
-    'Use context get/list-packs/list/read/read-archived/history/version/compare/compare-packs with --json or --json-file and optional --timeout-ms (1..2147483647). Get accepts at most one input (4 KiB), defaults to {}, and accepts optional pack_id/format (json/markdown/mcp). List-packs accepts at most one input (4 KiB), defaults to {}, and accepts optional pack_id/limit/cursor for saved metadata only. List accepts at most one input (8 KiB), defaults to {}, and preserves filters/view/limit/cursor for explicit continuation. Other reads require exactly one input (4 KiB): details accept item_id; history adds optional before_version/limit, version requires version, compare requires item_id and distinct from_version/to_version; compare-packs requires distinct from_pack_id/to_pack_id. Optional expected_actor_id/expected_client_id must be paired; both comparison commands require them. No --key, --output, write fields, repeated or unknown options.',
+    'Use context save-identity/get/list-packs/list/read/read-archived/history/version/compare/compare-packs with --json or --json-file and optional --timeout-ms (1..2147483647). Save-identity accepts at most one input (4 KiB), defaults to {}, and accepts only optional paired expected_actor_id/expected_client_id; it reads current authority without saving or replacing original requests. Get accepts at most one input (4 KiB), defaults to {}, and accepts optional pack_id/format (json/markdown/mcp). List-packs accepts at most one input (4 KiB), defaults to {}, and accepts optional pack_id/limit/cursor for saved metadata only. List accepts at most one input (8 KiB), defaults to {}, and preserves filters/view/limit/cursor for explicit continuation. Other reads require exactly one input (4 KiB): details accept item_id; history adds optional before_version/limit, version requires version, compare requires item_id and distinct from_version/to_version; compare-packs requires distinct from_pack_id/to_pack_id. Optional expected_actor_id/expected_client_id must be paired; both comparison commands require them. No --key, --output, write fields, repeated or unknown options.',
     { trace_id: trace, retryable: false },
   );
 }
@@ -123,6 +129,14 @@ function prepare(command: string, input: unknown, scope: Scope, trace: string): 
       expected = { actor_id: identity.actor_id, client_id: identity.client_id };
     }
     const { expected_actor_id: _actor, expected_client_id: _client, ...query } = row;
+    if (command === 'context save-identity') {
+      if (
+        Object.keys(query).length ||
+        (expected && (!isUlid(expected.actor_id) || !isSyncIdentifier(expected.client_id)))
+      )
+        throw new TypeError();
+      return { kind: 'save-identity', ...(expected ? { expected } : {}) };
+    }
     if (command === 'context compare-packs')
       return {
         kind: 'compare-packs',
@@ -205,7 +219,9 @@ async function argumentsFor(argv: string[], scope: Scope, trace: string, allowSt
       args.positionals.length !== 2 ||
       !isContextReadCommand(command) ||
       (raw !== undefined && file !== undefined) ||
-      (!['context list', 'context get', 'context list-packs'].includes(command) &&
+      (!['context list', 'context get', 'context list-packs', 'context save-identity'].includes(
+        command,
+      ) &&
         raw === undefined &&
         file === undefined) ||
       (file !== undefined && (!file.trim() || file === '-' || /[\u0000-\u001f]/.test(file))) ||
@@ -231,6 +247,7 @@ async function argumentsFor(argv: string[], scope: Scope, trace: string, allowSt
   }
 }
 function execute(client: WcpClient, target: Target, timeout_ms: number) {
+  if (target.kind === 'save-identity') return client.getContextPackSaveContext({ timeout_ms });
   if (target.kind === 'compare-packs')
     return client.compareContextPacks(target.query, { timeout_ms });
   if (target.kind === 'pack') return client.getContextPack(target.query, { timeout_ms });
@@ -289,6 +306,7 @@ export async function callContextReadArguments(argv: string[], options: Options)
 }
 
 function readPath(query: ReadQuery) {
+  if (query.kind === 'save-identity') return '/v1/context-pack/save-context';
   if (query.kind === 'pack-list') {
     const params = new URLSearchParams({ limit: String(query.query.limit) });
     if (query.query.pack_id !== undefined) params.set('pack_id', query.query.pack_id);
@@ -312,6 +330,7 @@ function readPath(query: ReadQuery) {
 }
 
 function responseLimit(query: ReadQuery) {
+  if (query.kind === 'save-identity') return CONTEXT_PACK_SAVE_CONTEXT_BYTES;
   if (query.kind === 'pack-list') return CONTEXT_PACK_DIRECTORY_RESPONSE_BYTES;
   if (query.kind === 'pack') return CONTEXT_PACK_READ_RESPONSE_BYTES;
   if (query.kind === 'list') return CONTEXT_ITEM_DIRECTORY_RESPONSE_BYTES;
@@ -384,26 +403,28 @@ export async function runContextRead(
             }),
           )
         : [
-            target.kind === 'pack'
-              ? { kind: 'pack', query: parseContextPackReadQuery(target.query) }
-              : target.kind === 'pack-list'
-                ? { kind: 'pack-list', query: parseContextPackDirectoryQuery(target.query) }
-                : target.kind === 'list'
-                  ? { kind: 'list', query: parseContextItemDirectoryQuery(target.query) }
-                  : isDetailQuery(target)
-                    ? parseContextItemReadQuery({ kind: target.kind, item_id: target.item_id })
-                    : parseContextHistoryReadQuery(
-                        target.kind === 'history'
-                          ? {
-                              kind: 'history',
-                              item_id: target.item_id,
-                              limit: target.limit,
-                              ...(target.before_version === undefined
-                                ? {}
-                                : { before_version: target.before_version }),
-                            }
-                          : { kind: 'version', item_id: target.item_id, version: target.version },
-                      ),
+            target.kind === 'save-identity'
+              ? { kind: 'save-identity' }
+              : target.kind === 'pack'
+                ? { kind: 'pack', query: parseContextPackReadQuery(target.query) }
+                : target.kind === 'pack-list'
+                  ? { kind: 'pack-list', query: parseContextPackDirectoryQuery(target.query) }
+                  : target.kind === 'list'
+                    ? { kind: 'list', query: parseContextItemDirectoryQuery(target.query) }
+                    : isDetailQuery(target)
+                      ? parseContextItemReadQuery({ kind: target.kind, item_id: target.item_id })
+                      : parseContextHistoryReadQuery(
+                          target.kind === 'history'
+                            ? {
+                                kind: 'history',
+                                item_id: target.item_id,
+                                limit: target.limit,
+                                ...(target.before_version === undefined
+                                  ? {}
+                                  : { before_version: target.before_version }),
+                              }
+                            : { kind: 'version', item_id: target.item_id, version: target.version },
+                        ),
           ];
   let step = 0;
   const transport: WcpTransport = {
@@ -454,11 +475,20 @@ export async function runContextRead(
             input: { ...query.query, operation: 'context' },
             context: structuredClone(context),
           });
-        } else if (query.kind === 'pack' || query.kind === 'pack-list') {
+        } else if (
+          query.kind === 'save-identity' ||
+          query.kind === 'pack' ||
+          query.kind === 'pack-list'
+        ) {
           raw = await router.execute(
             {
-              operation: query.kind === 'pack' ? 'context.pack.read' : 'context.pack.list',
-              input: { ...query.query },
+              operation:
+                query.kind === 'save-identity'
+                  ? 'context.pack.save-context'
+                  : query.kind === 'pack'
+                    ? 'context.pack.read'
+                    : 'context.pack.list',
+              input: query.kind === 'save-identity' ? {} : { ...query.query },
               context: structuredClone(context),
             },
             async (run) => {
@@ -480,6 +510,30 @@ export async function runContextRead(
           });
         }
         active();
+        if (query.kind === 'save-identity') {
+          try {
+            const result = parseContextPackSaveContextEnvelope(raw, context, trace);
+            if (
+              Date.parse(result.data.expires_at) !== Date.parse(context.token_expires_at!) ||
+              Date.parse(result.data.expires_at) <= Date.now() ||
+              result.data.permissions.read_restricted !==
+                context.capability.includes('data.restricted.read')
+            )
+              throw new TypeError();
+            active();
+            return result as unknown as T;
+          } catch {
+            active();
+            throw new ContractError(
+              'GATEWAY_RESPONSE_INVALID',
+              'The complete save identity differs from the verified reader',
+              {
+                trace_id: trace,
+                retryable: false,
+              },
+            );
+          }
+        }
         if (query.kind === 'pack-list') {
           let page: ContextPackDirectoryEnvelope;
           try {
