@@ -36,6 +36,7 @@ import {
 } from './creation-history-backup-model';
 
 const layout = { databaseName: 'planemem-proposal-creation-history', contentStore: 'observations' };
+export const CREATION_HISTORY_SELECTION_MAX_ENTRIES = 5;
 const summary = (file: CreationHistoryFile) => ({
   digest: file.document_sha256,
   request_key: file.document.original.request_key,
@@ -373,6 +374,142 @@ async function backupEntries(input: CreationHistoryBackupDocument, check: () => 
   }));
 }
 
+/** Read every selected directory pair in one snapshot. Missing or changed rows reject the selection. */
+export async function readCreationHistorySelection(
+  input: ProposalSubmissionBinding,
+  selection: CreationHistorySummary[],
+  signal: AbortSignal,
+  check: () => void,
+) {
+  check();
+  const binding = parseProposalSubmissionBinding(input);
+  if (
+    !Array.isArray(selection) ||
+    selection.length < 1 ||
+    selection.length > CREATION_HISTORY_SELECTION_MAX_ENTRIES
+  )
+    throw new TypeError();
+  const selected = selection
+    .map((entry) => {
+      const slot = key(binding, entry.digest);
+      const expected = JSON.stringify(entry);
+      if (new TextEncoder().encode(expected).byteLength > 4096) throw new TypeError();
+      return { slot, expected };
+    })
+    .sort((a, b) => (a.slot < b.slot ? -1 : a.slot > b.slot ? 1 : 0));
+  if (new Set(selected.map((item) => item.slot)).size !== selected.length) throw new TypeError();
+  const document = await inBrowserStores<CreationHistoryBackupDocument>(
+    layout,
+    'readonly',
+    signal,
+    () => {
+      throw new TypeError();
+    },
+    (context) => {
+      const entries: CreationHistoryFile[] = [];
+      const account = backupReadBudget();
+      const next = () => {
+        check();
+        const item = selected[entries.length];
+        if (!item) {
+          context.accept(
+            parseCreationHistoryBackupDocument({
+              schema_version: 1,
+              kind: 'proposal-creation-history-backup',
+              binding,
+              entries,
+            }),
+          );
+          return;
+        }
+        readBrowserPair(context, item.slot, (raw, index, exists) => {
+          if (!exists || index !== item.expected) throw new TypeError();
+          account(raw, index);
+          entries.push(pair(raw, index, binding, item.slot).file);
+          next();
+        });
+      };
+      next();
+    },
+  );
+  check();
+  return verifyCreationHistoryBackup(document, check);
+}
+
+export interface CreationHistorySelectionRemoval {
+  total: number;
+  removed: number;
+  not_present: number;
+}
+/** Preflight all selected observations before deleting any. Count absent pairs without recreating them. */
+export async function removeCreationHistorySelection(
+  input: CreationHistoryBackupDocument,
+  signal: AbortSignal,
+  check: () => void,
+) {
+  check();
+  if (
+    !Array.isArray(input.entries) ||
+    input.entries.length < 1 ||
+    input.entries.length > CREATION_HISTORY_SELECTION_MAX_ENTRIES
+  )
+    throw new TypeError();
+  const prepared = await backupEntries(input, check);
+  check();
+  return inBrowserStores<CreationHistorySelectionRemoval>(
+    layout,
+    'readwrite',
+    signal,
+    () => ({ total: prepared.length, removed: 0, not_present: prepared.length }),
+    (context) => {
+      const present: typeof prepared = [];
+      const account = backupReadBudget();
+      let inspected = 0;
+      let verified = 0;
+      const verify = () => {
+        check();
+        const item = prepared[verified];
+        if (!item) {
+          context.accept({
+            total: prepared.length,
+            removed: present.length,
+            not_present: prepared.length - present.length,
+          });
+          return;
+        }
+        readBrowserPair(context, item.slot, (_raw, _index, exists) => {
+          if (exists) throw new TypeError();
+          verified += 1;
+          verify();
+        });
+      };
+      const inspect = () => {
+        check();
+        const item = prepared[inspected];
+        if (!item) {
+          for (const match of present) {
+            check();
+            context.content.delete(match.slot);
+            context.directory.delete(match.slot);
+          }
+          verify();
+          return;
+        }
+        readBrowserPair(context, item.slot, (raw, index, exists) => {
+          if (exists) {
+            account(raw, index);
+            if (backupEntryState(item, raw, index, exists) !== 'same') throw new TypeError();
+            present.push(item);
+          }
+          inspected += 1;
+          inspect();
+        });
+      };
+      inspect();
+    },
+    { create: false },
+  );
+}
 function backupEntryState(
   item: Awaited<ReturnType<typeof backupEntries>>[number],
   raw: unknown,

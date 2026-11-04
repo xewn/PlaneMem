@@ -30,6 +30,7 @@ import {
   type CreationHistoryQuery,
 } from './creation-history-query';
 import { CreationHistoryBackupPanel } from './creation-history-backup-panel';
+import { CreationHistoryCleanupPanel } from './creation-history-cleanup-panel';
 
 export function CreationHistoryPanel({
   binding,
@@ -580,9 +581,18 @@ export function CreationHistoryPanel({
         </div>
       )}
       <p role="status">{message}</p>
+      <CreationHistoryCleanupPanel
+        binding={binding}
+        page={page}
+        disabled={locked}
+        storageEpoch={storageEpoch}
+        begin={beginStorage}
+        end={endStorage}
+        onStorageChange={storageChanged}
+      />
       <p>
-        Filters apply to this directory only. The backup below includes all saved creation history
-        for the current gateway and account, regardless of these filters.
+        Filters apply to this directory and its selected-copy actions. The backup below includes all
+        saved creation history for the current gateway and account, regardless of these filters.
       </p>
       <CreationHistoryBackupPanel
         binding={binding}

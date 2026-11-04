@@ -14,6 +14,9 @@ import {
   readCreationHistoryBackup,
   restoreCreationHistoryBackup,
   verifyCreationHistoryBackup,
+  readCreationHistorySelection,
+  removeCreationHistorySelection,
+  type CreationHistorySummary,
 } from './creation-history-store';
 
 export interface CreationHistoryBackupCandidate {
@@ -103,6 +106,41 @@ export function restoreCreationHistoryArchive(
     if (reviewed.file.document_sha256 !== reviewedDigest) throw new TypeError();
     check();
     const result = await restoreCreationHistoryBackup(
+      reviewed.file.document,
+      operationSignal,
+      check,
+    );
+    check();
+    return result;
+  });
+}
+
+/** The returned archive contains only the explicitly selected observations, not the whole scope. */
+export function prepareCreationHistorySelection(
+  binding: ProposalSubmissionBinding,
+  selection: CreationHistorySummary[],
+  signal: AbortSignal,
+) {
+  return backupOperation(signal, async (operationSignal, check) => {
+    const document = await readCreationHistorySelection(binding, selection, operationSignal, check);
+    check();
+    const document_sha256 = await backupHash(creationHistoryBackupDocumentJson(document));
+    check();
+    const file = parseCreationHistoryBackupFile({ document, document_sha256 });
+    return { file, raw: creationHistoryBackupFileJson(file) };
+  });
+}
+export function removeReviewedCreationHistorySelection(
+  raw: string,
+  binding: ProposalSubmissionBinding,
+  reviewedDigest: string,
+  signal: AbortSignal,
+) {
+  return backupOperation(signal, async (operationSignal, check) => {
+    const reviewed = await inspect(raw, binding, check);
+    if (reviewed.file.document_sha256 !== reviewedDigest) throw new TypeError();
+    check();
+    const result = await removeCreationHistorySelection(
       reviewed.file.document,
       operationSignal,
       check,
