@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+新增 `artifacts identity [--timeout-ms 30000]`，只读当前可信上传账号、会话期限、上传大小上限和读取权限提示；要求实际artifact.write，admin不能代替。仅允许一次timeout-ms，不接JSON、请求键、文件或输出路径；HTTP复用SDK，内嵌router核对完整原可信身份/期限/能力，不创建请求或上传。见 [CLI/MCP上传身份](../../docs/design/01-contracts/artifact-persistence-runtime.md#cli-与-mcp-上传身份读取源码阶段)。仅源码文档，未编译、测试、调用或发布。
+
 `inbox application-apply/application-apply-preview/application-pending/application-replay` 新增 `application:{name:'client-event-history',version:'1'}`，按原消费者的连续接收页保存完整客户端事件内容；不同生产者同名事件分开记录，重复原身份或游标回退拒绝。见 [客户端事件历史](../../docs/design/01-contracts/sync-client-event-application-runtime.md)。不把接收记录当成源字段生效或outbox结算依据，仅源码文档，未执行、编译、测试或发布。
 
 新增 `outbox restore-requeue-backup-import-preview/restore-requeue-backup-import --outbox EXISTING_FILE --archive-file BACKUP --json/--json-file QUERY`，使用备份摘要提供的import_query。完整源验证后打开已有库，预览原生只读，实际整批只补缺失父历史和批次、相同保留、冲突拒绝。保留未知提交/回滚及关闭状态；不恢复当前事件。见 [联合备份导入](../../docs/design/01-contracts/outbox-restore-requeue-backup-import-runtime.md)。仅源码文档，未执行、编译、测试或发布。

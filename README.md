@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [CLI/MCP上传身份读取](docs/design/01-contracts/artifact-persistence-runtime.md#cli-与-mcp-上传身份读取源码阶段)：命令行 `artifacts identity` 与工具 `get_artifact_upload_context` 可读取当前上传账号和限制，严格核对权限与期限；不创建或发送上传请求。仅源码文档，未编译、测试、调用或发布。
+
 新增 [SDK上传身份读取](docs/design/01-contracts/artifact-persistence-runtime.md#sdk-上传身份读取源码阶段)：客户端可读取当前上传账号、大小限制和读取权限提示，支持取消、期限与完整身份核对；不替换旧上传请求、不自动上传。仅源码文档，未编译、测试、运行或发布。
 
 新增 [资料上传与版本历史 Mock](docs/design/01-contracts/artifact-mock-runtime.md)：支持模拟上传、追加版本、查看当前与历史资料元数据、查询原上传回执和下载固定版本文件。下载显式核对模拟导出权限、摘要与长度，并保留独立内存释放记录；历史保持原样。仅源码文档，未编译、测试、执行 Mock 或发布。

@@ -11,6 +11,28 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    cli_mcp_artifact_upload_context_development_increment:
+      date: "2026-11-04"
+      status: "Source-only CLI and actual Gateway MCP upload identity adapters; R-001 remains incomplete."
+      artifacts:
+        - "apps/workctx-cli/src/artifact-upload-context.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/api-gateway/src/artifact-upload-context.ts"
+        - "apps/api-gateway/src/index.ts"
+        - "apps/api-gateway/src/mcp/artifact-upload-context.ts"
+        - "apps/api-gateway/src/mcp/catalog.ts"
+        - "apps/api-gateway/src/mcp/protocol.ts"
+        - "packages/sdk/src/artifact-upload-context.ts"
+        - "docs/design/01-contracts/artifact-persistence-runtime.md"
+      behavior: "Require actual artifact.write and verified unexpired sessions for CLI identity reads and MCP discovery/direct calls. CLI accepts only one optional timeout, reuses SDK HTTP budgets and validates full embedded authority. MCP uses an empty-argument dedicated executor with two active operations, 30-second local deadline, 16 KiB success/error envelopes, complete identity/expiry/capability comparison and fixed errors. Timed-out work retains its slot until settlement; inherited write conditions are removed and no original upload is prepared, saved, replaced or dispatched."
+      evidence: []
+      pending_evidence:
+        - "CLI strict arguments, HTTP/embedded parity, ordinary actor identity and complete authority validation"
+        - "MCP schema/discovery/direct permission denial, actual-writer versus admin-only, status/headers/envelopes and sanitized errors"
+        - "Expiry, size limits, two-operation capacity, timeout/late completion and unchanged original context/write conditions"
+      remaining_scope: "Complete original upload preparation/file persistence, other public routes, actual transport and policy/audit/runtime evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/MCP/SDK/API/database execution or release. No schema or dependency change."
     sdk_artifact_upload_context_development_increment:
       date: "2026-11-04"
       status: "Source-only typed upload identity reader connected to existing gateway and Mock routes; R-001 remains incomplete."
@@ -26,7 +48,7 @@ requirements:
         - "Gateway/Mock/Fetch compatibility, identity discovery versus fixed constraints, expired or malformed envelopes and detached results"
         - "Pre-cancellation, timeout/late responses, bounded success/error bodies and sanitized same-trace errors"
         - "No inherited write headers, dispatch retries, original-request mutation or upload side effects"
-      remaining_scope: "CLI/MCP dedicated upload preparation, runtime compatibility evidence and other public SDK/Mock routes."
+      remaining_scope: "CLI/MCP identity reads are covered by a separate increment; complete original upload preparation, runtime compatibility evidence and other public SDK/Mock routes remain incomplete."
       execution: "Source/docs and manual review only; no build, typecheck, tests, SDK/Mock/API/database execution or release. No server, schema or dependency change."
     sdk_artifact_download_mock_development_increment:
       date: "2026-11-04"

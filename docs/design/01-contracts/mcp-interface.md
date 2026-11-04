@@ -1,5 +1,7 @@
 # MCP 接口契约 v1
 
+2026-11-04 上传身份读取增补：新增只读工具 `get_artifact_upload_context({})`，发现与调用要求可信未过期客户端和实际artifact.write，admin不代替。返回完整身份/期限/上传上限/读取能力提示；不接受范围/身份/键或额外参数，不准备文件/命令或上传。独立两笔准备容量、30秒本地期限、成功/错误16 KiB、二次转义36 KiB；超时保留底层名额，核对完整原可信身份/期限/能力，错误固定且不重试。见 [CLI/MCP上传身份](artifact-persistence-runtime.md#cli-与-mcp-上传身份读取源码阶段)。仅源码文档，未编译、测试、调用或发布。
+
 2026-11-04 工作项筛选增补：`list_work_item_projections` 新增 priority=P0..P3 和 owner 完整保存文本精确筛选，大小写和首尾空格均有意义，空值规范化为不筛选；MCP schema 建议省略不用的字段。与 query/status 组合，筛选和权限在分页前生效，返回整页再次核对筛选。续读保持原筛选；无新筛选的旧游标兼容，有新筛选时使用扩展绑定摘要。只读本地投影，未新增写操作/账号推断，见 [工作项投影](work-item-projection-runtime.md)。仅源码，未编译、测试、调用或发布。
 
 2026-11-03 原消费者确认增补：acknowledge_sync 必填保存的 expected_identity/cursor，不接收键或版本；get_sync_cursor 可带原 expected_identity，只读当前确认位点/是否已有记录/身份/到期，不能当作原请求历史回执。两工具要求可信未过期 sync.read/admin，读写各自两笔准备容量、30 秒期限，成功 32 KiB/错误 16 KiB；确认派发后异常为 unknown，不自动重试或查询。get_sync_changes 可选原身份前置条件，固定下载和确认同一消费者。见 [原消费者确认](sync-cursor-runtime.md)，仅源码，未编译、测试、调用或发布。

@@ -39,6 +39,8 @@ import { isSyncCursorTool, prepareSyncCursorTool } from './sync-cursor.js';
 import { canReadSyncStream } from '../sync-reader.js';
 import { canReadSyncCommandContext } from '../sync-command-context.js';
 import { prepareArtifactReceiptTool } from './artifact-receipt.js';
+import { prepareArtifactUploadContextTool } from './artifact-upload-context.js';
+import { canReadArtifactUploadContext } from '../artifact-upload-context.js';
 import {
   isArtifactUploadTool,
   canUploadArtifactTool,
@@ -454,6 +456,15 @@ const definitions: ToolDefinition[] = [
       reviewed: { type: 'boolean', enum: [true] },
     },
     ['scope', 'audit_id', 'sha256', 'reviewed'],
+  ),
+  tool(
+    'get_artifact_upload_context',
+    'Read current verified upload identity, expiry, upload size limit and read capability hints. Requires actual artifact.write and an authenticated unexpired client; admin alone is insufficient. No arguments, request key, file access, upload or automatic retry. This does not reserve a version or verify storage health. Keep existing original upload identity/command/key unchanged; this response only helps prepare a new request.',
+    ['artifact.write'],
+    'GET',
+    '/v1/artifacts/upload-context',
+    {},
+    [],
   ),
   tool(
     'create_artifact',
@@ -1606,6 +1617,7 @@ export function listMcpTools(context: RequestContext) {
           canReadConflictReceipt(context)) &&
         (!isAuditTool(entry.name) || canUseAuditTool(entry.name, context)) &&
         (!isArtifactUploadTool(entry.name) || canUploadArtifactTool(context)) &&
+        (entry.name !== 'get_artifact_upload_context' || canReadArtifactUploadContext(context)) &&
         (entry.name !== 'download_artifact_version' || canDownloadArtifactTool(context)) &&
         (!isArtifactReadTool(entry.name) || context.capability.includes('artifact.read')) &&
         (entry.name !== 'get_artifact_receipt' ||
@@ -1666,6 +1678,7 @@ export function mcpToolRequiresClient(name: unknown): boolean {
     name === 'get_session_start_receipt' ||
     name === 'get_session_command_context' ||
     name === 'get_artifact_receipt' ||
+    name === 'get_artifact_upload_context' ||
     name === 'get_conflict_receipt' ||
     name === 'get_proposal_create_receipt' ||
     name === 'get_proposal_review_receipt' ||
@@ -1685,6 +1698,7 @@ export function prepareMcpTool(
       trace_id: context.trace_id,
     });
   if (isSyncReadTool(name)) return prepareSyncReadTool(name, raw, context);
+  if (name === 'get_artifact_upload_context') return prepareArtifactUploadContextTool(raw, context);
   if (name === 'get_proposal_create_receipt') return prepareProposalCreateReceiptTool(raw, context);
   if (name === 'get_proposal_review_receipt') return prepareProposalReviewReceiptTool(raw, context);
   if (name === 'upload_events') return prepareSyncUploadTool(raw, context);

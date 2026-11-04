@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-04：上传身份读取已接 `workctx artifacts identity` 与实际Gateway MCP `get_artifact_upload_context`，共用可信身份/权限提示核验；SDK新增固定错误码消息ARTIFACT_UPLOAD_CONTEXT_INVALID。两入口只读、不生成键/上传/替换旧原请求，CLI HTTP复用SDK期限与大小控制，见 [CLI/MCP上传身份](../../docs/design/01-contracts/artifact-persistence-runtime.md#cli-与-mcp-上传身份读取源码阶段)。仅源码文档，未编译、测试、调用或发布。
+
 2026-11-04：新增 `getArtifactUploadContext({timeout_ms?,signal?})` 与 `WcpArtifactUploadContextOptions/ArtifactUploadContextEnvelope`，读取当前上传账号、期限、大小上限及读取权限提示。请求固定项目/trace和可选actor/client约束，默认30秒、成功和Fetch错误各16 KiB，复制并完整核对封套及到期，不继承写条件、不重试或保存原请求。现有资料Mock支持该方法；读取不预留版本或授予未来上传资格。详见 [SDK上传身份读取](../../docs/design/01-contracts/artifact-persistence-runtime.md#sdk-上传身份读取源码阶段)。仅源码文档人工审阅，未编译、类型检查、测试、执行SDK/Mock/API或发布。
 
 2026-11-04：资料Mock新增 `downloadArtifactVersion` 对应的固定版本内容路由；session显式提供 `download_access:{export_data,export_restricted,policy_allowed}` 才能模拟下载。当前/历史分类、固定摘要/长度、独立单次限制和两并发检查后，复制字节并重新计算SHA-256，返回完整二进制响应头。store保存有界的模拟释放记录，可用 `getDownloadRelease(auditId)` 本地查看副本；不代表持久审计或客户端收妥。seed可选 `max_download_bytes`，导出 `MockArtifactDownloadAccess/MockArtifactDownloadRelease`，详见 [固定版本下载](../../docs/design/01-contracts/artifact-mock-runtime.md#固定版本下载)。仅源码文档人工审阅，未编译、类型检查、测试、执行SDK/Mock/API或发布。

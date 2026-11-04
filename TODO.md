@@ -6,7 +6,9 @@
 
 ### 2026-11-04 开发补充（未编译、未发布、未测试）
 
-- P0/P2：SDK已补getArtifactUploadContext及选项/响应类型，连接既有上传身份GET与资料Mock；固定范围/trace和可选actor/client约束，30秒本地期限/取消/16 KiB完整响应及纯JSON副本/到期核对，规范错误，不继承写条件、不重试或保存/替换原上传请求。无服务端/schema/依赖变化；CLI/MCP专用准备入口及实际兼容证据仍待补，R-001未完成。仅源码文档人工审阅，未编译/类型检查/测试/执行SDK/Mock/API/数据库或发布；独立提交push main带[skip ci]。
+- P0/P2/P4：已补CLI artifacts identity与MCP get_artifact_upload_context，要求实际artifact.write及可信有效会话，admin不代替；空参数读取原可信身份/期限/限制/能力，不生成键、准备文件或上传。CLI严格单次timeout参数，HTTP复用SDK、嵌入router核对完整可信authority；MCP目录和直接调用一致，独立两并发/30秒期限/16 KiB封套与固定错误，超时底层继续占槽。Gateway抽取原身份校验并新增不可表示错误码，服务端上传协议不改。完整原请求准备/文件保存、其他公开路由及运行证据仍缺；只源码文档人工审阅，无schema/依赖变化，未编译/类型检查/测试/执行CLI/MCP/SDK/API/数据库或发布；独立提交push main带[skip ci]。
+
+- P0/P2：SDK已补getArtifactUploadContext及选项/响应类型，连接既有上传身份GET与资料Mock；固定范围/trace和可选actor/client约束，30秒本地期限/取消/16 KiB完整响应及纯JSON副本/到期核对，规范错误，不继承写条件、不重试或保存/替换原上传请求。无服务端/schema/依赖变化；CLI/MCP身份读取入口已由独立增量补齐，完整原请求准备与实际兼容证据仍待补，R-001未完成。仅源码文档人工审阅，未编译/类型检查/测试/执行SDK/Mock/API/数据库或发布；独立提交push main带[skip ci]。
 
 - P0/P2：资料Mock已追加固定版本二进制下载，独立download_access导出/策略配置、当前与历史分类/描述符核对、字节副本及SHA-256、单次限制与两并发、取消到期和完整响应头检查。成功前同步保留模拟释放记录，最多1000条/16 MiB，getDownloadRelease供store持有者读取副本；每次下载独立记录，既有版本及原上传回执不改写。拒绝审计、传输观察、动态权限、持久恢复、真实Policy/存储/审计及运行证据仍缺。仅源码文档人工审阅，无schema/依赖变化，未编译/类型检查/测试/执行SDK/Mock/API/数据库或发布；独立提交push main带[skip ci]。
 

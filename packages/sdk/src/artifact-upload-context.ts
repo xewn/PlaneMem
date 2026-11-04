@@ -19,6 +19,7 @@ const messages: Record<string, string> = {
     'Supply a project scope, optional account/client constraints and valid timeout/signal options',
   DENIED: 'A verified unexpired artifact writer is required',
   ARTIFACT_ACCESS_DENIED: 'The current account or client cannot read this upload identity',
+  ARTIFACT_UPLOAD_CONTEXT_INVALID: 'The verified upload identity could not be represented',
   UNAUTHENTICATED: 'Renew the session to read its artifact upload identity',
   RATE_LIMITED: 'Artifact upload identity reads are temporarily busy',
   WORKBENCH_AUTH_UNAVAILABLE: 'Gateway authentication is unavailable',

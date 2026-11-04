@@ -1,5 +1,7 @@
 # MCP HTTP 运行时开发说明
 
+2026-11-04 上传身份读取增补：新增只读工具 `get_artifact_upload_context({})`，发现与调用要求可信未过期客户端和实际artifact.write，admin不代替。返回完整身份/期限/上传上限/读取能力提示；不接受范围/身份/键或额外参数，不准备文件/命令或上传。独立两笔准备容量、30秒本地期限、成功/错误16 KiB、二次转义36 KiB；超时保留底层名额，核对完整原可信身份/期限/能力，错误固定且不重试。见 [CLI/MCP上传身份](artifact-persistence-runtime.md#cli-与-mcp-上传身份读取源码阶段)。仅源码文档，未编译、测试、调用或发布。
+
 2026-11-04 原审核回执增补：get_proposal_review_receipt接收完整原identity/request_key/proposal_id/decision/expected_revision/reason，发现/调用都要求未过期可信human及proposal.review/admin。复用原审核只读路由和严格封套，不发送决定；not-observed不证明失败。每Gateway独立两笔准备名额、30秒本地等待，超时保留名额到底层结束；输入32 KiB、成功64 KiB、错误16 KiB、二次转义结果128 KiB+4096字节。保持普通HTTP 1 MiB，无大正文扩容权限；继承写条件清除，不保存结果或重试。见[CLI/MCP原审核查询](proposal-review-receipt-runtime.md#cli-与-mcp-原审核查询)，仅源码文档，未编译/类型检查/测试/运行或发布。
 
 2026-11-04 提案创建回执增补：新增 `get_proposal_create_receipt({identity,request_key,draft})`，发现/调用要求可信未过期 proposal.write/admin，并核对原账号/客户端/项目。复用只读创建回执路由，完整原规范草稿必含分类/TTL，未知结果不触发创建/审核。每 Gateway 独立两笔准备名额、30秒本地期限，超时保留名额到底层结束；成功2 MiB、错误16 KiB、二次转义结果4 MiB+4096字节。普通 HTTP 1 MiB 不变，可信 proposal writer 可使用1 MiB+64 KiB封套额度，最终工具名必须匹配且内层原请求仍限1 MiB；Artifact 自身扩容预留保持。清除继承写条件，不生成键或保存回执；见 [CLI/MCP 原创建回执](proposal-runtime.md#cli-与-mcp-原创建回执)。仅源码文档，未编译、类型检查、测试、执行接口/数据库或发布。

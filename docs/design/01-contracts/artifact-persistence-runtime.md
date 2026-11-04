@@ -246,6 +246,20 @@ HTTP MCP 在读取前鉴权，严格 UTF-8 JSON 对象与无压缩 Content-Type�
 
 现有资料Mock无需新增路由即可支持该方法。仅源码文档人工审阅，未编译、类型检查、测试、执行SDK/Mock/网关/数据库或发布。身份约束、取消/期限、大小边界、错误归一化及真实transport兼容仍待运行证据，R-001不标完成。
 
+## CLI 与 MCP 上传身份读取（源码阶段）
+
+2026-11-04：新增 `workctx artifacts identity [--timeout-ms 30000]` 和 MCP `get_artifact_upload_context({})`。只返回既有上传身份封套；不读取或写入文件、不生成请求键、不执行上传、不准备完整原命令，也不替换旧请求的identity/request_key/expected_version。能力提示不能证明项目可读、文件可导出、存储健康或后续上传成功。
+
+CLI使用既有WORKCTX_URL、Bearer令牌与tenant/workspace/project配置，普通HTTP路径复用SDK `getArtifactUploadContext`，成功输出完整JSON封套。仅允许可选一次timeout-ms，1至2147483647的规范正整数；拒绝JSON/JSON文件、键、文件路径、输出路径、额外位置参数和重复选项。默认30秒本地预算，成功及Fetch错误16 KiB，无缓存/重试。内嵌runWorkctx路径复制可信上下文，删除继承的幂等键/版本，以同一空输入调用router.execute；共享结果校验器核对全部五项身份、规范到期时间和两个读取能力提示。SDK上下文只传范围与trace，因此可信账号可以是资料契约允许的普通字符串，不冒充客户端输入的账号。
+
+Gateway抽取canReadArtifactUploadContext和artifactUploadContextAuthority，真实REST行为仍要求authenticated_client=true、有限未过期token_expires_at和实际artifact.write；admin不代替。新增ARTIFACT_UPLOAD_CONTEXT_INVALID表示可信身份无法表示，SDK和MCP均使用固定错误消息。artifactUploadContextResult先有界复制再完整解析，并与原可信authority比较；max_bytes只能从服务端响应获取，仍受共享0至1 GiB规则约束。现有注册处理器复用authority，不改变上传协议或存储写入。
+
+MCP工具发现与直接调用都检查上述权限，标为只读、非破坏性，无需请求键。参数只能是普通空JSON对象；禁止通过参数传入identity、范围、timeout或写条件，范围来自认证上下文。专用执行器删除继承写条件，以原可信上下文的独立副本调用既有GET路由，再核对HTTP状态、content-type、trace、完整响应以及原身份/到期/能力提示。
+
+每个ApiGateway独立最多两笔MCP上传身份读取，默认30秒单调本地等待期限，参数/成功/错误封套各最多16 KiB，二次JSON转义结果最多36 KiB。超过容量返回MCP_ARTIFACT_CONTEXT_BUSY，超时返回MCP_ARTIFACT_CONTEXT_TIMEOUT；超时底层读取未结束仍占名额，直到其finally完成，迟到结果不发布。底层无取消承诺；此期限不覆盖HTTP外层最终发送，也不替代入口现有请求体限制。已知同trace错误只保留码和固定消息，未知/异trace/损坏响应统一GATEWAY_RESPONSE_INVALID，不回显底层详情。所有失败retryable=false，无自动重试。
+
+沿用既有Policy/OPA与授权决定审计；没有新增审计事件、数据库、文件落盘或上传副作用。独立的apps/mcp-gateway通用注册容器保持原行为；本工具接在实际API Gateway MCP目录与协议入口。仅源码文档人工审阅，未编译、类型检查、测试、执行CLI/MCP/SDK/API/数据库或发布。CLI严格参数、HTTP与嵌入路径、MCP目录及直接调用、身份/期限/权限提示不匹配、容量/迟到结果和真实运行兼容仍待证据。
+
 ## 工作台新请求准备（源码阶段）
 
 新增 `GET /v1/artifacts/upload-context` 与 `artifact.upload-context`，无输入字段、查询参数或写入前置头。必须是已验证客户端、实际 artifact.write、具有有限且未过期的 token_expires_at；admin 不能代替该能力。通过现有 artifact.write Policy/OPA 和授权决定审计，返回 schema_version/trace/source_refs=[]，data 为自身 identity、规范 UTC expires_at、服务器 max_bytes、can_read 与 can_read_restricted。共享解析器核对完整字段、项目、trace、日期、布尔能力提示及 0–1 GiB 上限；不返回 token、存储键、对象内容或其他账号身份。

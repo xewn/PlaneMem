@@ -16,6 +16,7 @@ import { parseInputObject, usage } from './cli.js';
 import { callGateway, callArtifactUpload, readReadiness } from './remote.js';
 import { isArtifactUploadCommand, parseArtifactUploadArguments } from './artifact-upload.js';
 import { callArtifactDownload, parseArtifactDownloadArguments } from './artifact-download.js';
+import { callArtifactUploadContext } from './artifact-upload-context.js';
 import { callAudit, isAuditCommand } from './audit.js';
 import { callAdminSnapshot } from './admin.js';
 import { callSessionCommandContext } from './session-command-context.js';
@@ -233,6 +234,7 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   audit export                   Export --json-file REVIEWED_SINGLE_RECORD.json --reviewed --output NEW_FILE
                                  Optional --timeout-ms; no --key, inline export JSON or automatic retries
   artifacts get                  Read current metadata by artifact_id; no bytes or --key
+  artifacts identity             Read current upload identity/limits; optional --timeout-ms, no JSON or --key
   artifacts version              Read historical metadata by artifact_id and positive version; no --key
   artifacts receipt              Query the original write with saved identity and command JSON; no --key
   artifacts create               Upload --json-file ORIGINAL.json --file CONTENT; no --json or --key
@@ -569,6 +571,7 @@ export async function main(args: string[]): Promise<number> {
       'sessions start',
       'sessions get',
       'artifacts get',
+      'artifacts identity',
       'artifacts version',
       'artifacts receipt',
       'artifacts create',
@@ -880,16 +883,19 @@ export async function main(args: string[]): Promise<number> {
       name === 'admin snapshot' ||
       name === 'sessions identity' ||
       name === 'conflicts identity' ||
-      name === 'sync identity'
+      name === 'sync identity' ||
+      name === 'artifacts identity'
     ) {
       const call =
-        name === 'admin snapshot'
-          ? callAdminSnapshot
-          : name === 'sync identity'
-            ? callSyncCommandContext
-            : name === 'conflicts identity'
-              ? callConflictCommandContext
-              : callSessionCommandContext;
+        name === 'artifacts identity'
+          ? callArtifactUploadContext
+          : name === 'admin snapshot'
+            ? callAdminSnapshot
+            : name === 'sync identity'
+              ? callSyncCommandContext
+              : name === 'conflicts identity'
+                ? callConflictCommandContext
+                : callSessionCommandContext;
       print(
         await call(args, {
           base: process.env.WORKCTX_URL ?? 'http://127.0.0.1:3000',
