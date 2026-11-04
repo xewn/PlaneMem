@@ -6,6 +6,8 @@
 
 ## 配置与命令
 
+新增 [生成请求日志完整备份](../../docs/design/01-contracts/proposal-generation-journal-backup-runtime.md)：`generation-journal-backup --journal EXISTING_DIR --binding binding.json --output NEW_BACKUP.json` 将同范围原请求、领取和结果一起保存，最多100请求/32 MiB；两轮完整读取与目录集合核对，损坏/孤立文件/变化拒绝整份。先暂停日志写者；该观察不构成事务快照或重发资格。`inspect-generation-journal-backup --file BACKUP.json` 离线核验；`generation-journal-backup-recover --file BACKUP_OR_ERROR.json --output NEW_BACKUP.json [--preview]` 从保留备份或完整失败封套另存新副本，原时间/摘要保持，失败保留完整内容。三个入口均不调用模型、不打开队列或改变原日志；整套日志恢复仍待开发。仅源码，未执行命令。
+
 新增 [备份生成记录目录与导出](../../docs/design/01-contracts/proposal-queue-backup-runtime.md#备份生成记录目录与独立导出)：`queue-backup-generation-list --file BACKUP.json --sha256 BACKUP_SHA256 --id JOB_ID [--after RECORD_SHA256] [--limit 10]`返回生成关联元数据及下一查询；`queue-backup-generation-get`使用同一备份/任务，并以`--record-sha256 RECORD_SHA256`选取完整记录，可加`--output NEW_RECORD.json`独占保存为既有proposal-generation文件。每次核验完整源和父任务，记录原时间/来源/模型/草稿/摘要保持；保存失败保留完整记录与阶段。导出可接`inspect-generation --file NEW_RECORD.json`，不打开队列、联网或触发模型/入队/发送。仅源码，未执行命令。
 
 新增 [备份离线目录与原查询取回](../../docs/design/01-contracts/proposal-queue-backup-runtime.md#备份离线目录与原查询取回)：`queue-backup-list --file BACKUP.json [--state all|queued|sending|retry|blocked|submitted] [--limit 25]` 返回原任务摘要，后续将next_query的before/backup_sha256/state/limit分别传为同名参数（摘要使用`--sha256`）。`queue-backup-get --file BACKUP.json --sha256 BACKUP_SHA256 --id JOB_ID` 完整显示原任务和相关生成记录；`queue-backup-receipt-query` 使用同一选择并加`--output NEW_QUERY.json`保存原identity/request_key/draft查询。每次先核验全部备份，翻页与选择固定摘要；输出查询可供后续在原网关显式执行`workctx proposals receipt --json-file NEW_QUERY.json`，不会自动查询、入队或发送。缺项/损坏拒绝，保存失败保留原查询；不打开数据库、不读取凭据。仅源码，未执行命令。

@@ -34,3 +34,5 @@ export * from './generation-request.js';
 export * from './generation-journal.js';
 export * from './generation-recovery.js';
 export * from './generation-catalog.js';
+export * from './generation-journal-backup.js';
+export * from './generation-journal-backup-recovery.js';

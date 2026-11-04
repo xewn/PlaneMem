@@ -3821,6 +3821,25 @@ requirements:
         - "Manual-operation pause, exact removal without writer resurrection, export compatibility and explicit backup scope"
       remaining_scope: "Automatic-copy batch backup/cleanup and retention, review-draft autosave, cross-scope or remote drafts, and runtime/compatibility evidence."
       execution: "Source/docs and manual review only; no build, typecheck, tests, product/browser/database execution or release. Separate browser v1 schema source only; no server schema or dependency changes."
+    generation_journal_backup_development_increment:
+      date: "2026-11-04"
+      status: "Source-only complete binding-scoped generation journal backup, offline inspection and retained-copy recovery; R-009 remains incomplete."
+      artifacts:
+        - "workers/intelligence/src/generation-journal-backup.ts"
+        - "workers/intelligence/src/generation-journal-backup-recovery.ts"
+        - "workers/intelligence/src/main.ts"
+        - "workers/intelligence/src/index.ts"
+        - "workers/intelligence/README.md"
+        - "docs/design/01-contracts/proposal-generation-journal-backup-runtime.md"
+        - "docs/design/01-contracts/proposal-generation-request-runtime.md"
+      behavior: "Preserve original request/attempt/outcome documents, keys, identities, input, provider, timestamps, hashes and uncertain attempts for one complete binding. Two bounded read passes compare selected content and canonical directory inventories; reject orphans, corruption, changes and limits without partial export. Strict v1 validation, digest ordering, parent associations, 100-request/32 MiB output and per-pass read bounds, and 10,000-entry enumeration. Exclusive publication with complete readback; failures retain the complete backup. Offline inspection and preview/new-file recovery validate complete retained copies or consistent error envelopes without following historical paths. No queue, credentials, provider calls, active journal restoration, claim release or retry authorization."
+      evidence: []
+      pending_evidence:
+        - "Scope isolation, canonical names, orphan detection, duplicate identifiers, nested corruption, ordering and all byte/count limits"
+        - "Concurrent publication/deletion/replacement across both read passes, directory replacement and non-transactional observation limits"
+        - "Exclusive output, publication/readback failure retention, compact error roundtrip and recovery preview with original hashes/times"
+      remaining_scope: "Full missing-journal restoration/merge, combined queue backup, provider reconciliation, original-process coordination, retention/cleanup, audit and runtime evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/product/network/database execution or release. No schema or dependency change."
     proposal_queue_backup_generation_development_increment:
       date: "2026-11-04"
       status: "Source-only offline generation-record discovery and standalone export from queue backups; R-009 remains incomplete."

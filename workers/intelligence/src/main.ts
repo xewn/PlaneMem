@@ -87,6 +87,14 @@ import {
 import { generationRequestSummary, validateGenerationRequestKey } from './generation-request.js';
 import { GENERATION_RECOVERY_BYTES } from './generation-recovery.js';
 import { listGenerationRequests, parseGenerationCatalogQuery } from './generation-catalog.js';
+import {
+  captureGenerationJournalBackup,
+  generationJournalBackupSummary,
+  prepareGenerationJournalBackupOutput,
+  readGenerationJournalBackup,
+  saveGenerationJournalBackup,
+} from './generation-journal-backup.js';
+import { readGenerationJournalBackupRecovery } from './generation-journal-backup-recovery.js';
 
 const help = `Proposal submission queue (Node.js 24)
   proposal-worker prepare-generation --binding binding.json --file selection.json --output NEW_SOURCES.json [--record]
@@ -99,6 +107,9 @@ const help = `Proposal submission queue (Node.js 24)
   proposal-worker generation-result --journal EXISTING_DIR --binding binding.json --key KEY --output NEW_RECORD.json
   proposal-worker generation-recover --journal EXISTING_DIR --binding binding.json --key KEY --file RETAINED_ERROR.json [--preview]
   proposal-worker generation-requests --journal EXISTING_DIR --binding binding.json [--state all|prepared|attempted|generated|failed] [--after CURSOR] [--limit 10]
+  proposal-worker generation-journal-backup --journal EXISTING_DIR --binding binding.json --output NEW_BACKUP.json
+  proposal-worker inspect-generation-journal-backup --file BACKUP.json
+  proposal-worker generation-journal-backup-recover --file BACKUP_OR_ERROR.json --output NEW_BACKUP.json [--preview]
   proposal-worker enqueue-generated --queue queue.sqlite --binding binding.json --file GENERATION_RECORD.json --key KEY
   proposal-worker generation-list --queue queue.sqlite --binding binding.json --id JOB_ID [--after SHA256] [--limit 10]
   proposal-worker generation-get --queue queue.sqlite --binding binding.json --id JOB_ID --sha256 SHA256 [--output NEW_RECORD.json]
@@ -143,6 +154,8 @@ generation-request saves immutable input; generation-run claims it once before c
 generation-status/result read saved journal files without model calls; a generated request can replay its saved result.
 generation-recover imports retained outcomes for the original existing attempt; --preview only reads. It never calls the model.
 generation-requests discovers requests for the original binding; follow next_cursor even when a filtered page is empty.
+generation-journal-backup retains complete requests, attempts and outcomes for the original binding after two matching read passes. Pause writers first; this is not a transactional snapshot or permission to resend.
+inspect-generation-journal-backup verifies the retained file offline; generation-journal-backup-recover saves a new copy of a complete retained backup. Preview writes nothing; neither restores a live journal or calls the model.
 prepare-generation reads pinned sources; flush submits known-unsent drafts or reads receipts for unknown outcomes.
 Both use PROPOSAL_WORKER_ACCESS_TOKEN. retry preserves unknown outcomes and never clears uncertainty.
 retry schedules the original draft/key; it does not send or regenerate content.
@@ -197,6 +210,9 @@ export async function main(args: string[]): Promise<number> {
       'generation-result': ['journal', 'binding', 'key', 'output'],
       'generation-recover': ['journal', 'binding', 'key', 'file', 'preview'],
       'generation-requests': ['journal', 'binding', 'state', 'after', 'limit'],
+      'generation-journal-backup': ['journal', 'binding', 'output'],
+      'inspect-generation-journal-backup': ['file'],
+      'generation-journal-backup-recover': ['file', 'output', 'preview'],
       'enqueue-generated': ['file', 'key'],
       'generation-list': ['id', 'after', 'limit'],
       'generation-get': ['id', 'sha256', 'output'],
@@ -247,6 +263,9 @@ export async function main(args: string[]): Promise<number> {
             'generation-result',
             'generation-recover',
             'generation-requests',
+            'generation-journal-backup',
+            'inspect-generation-journal-backup',
+            'generation-journal-backup-recover',
           ].includes(command)
             ? []
             : ['queue', 'binding']),
@@ -271,6 +290,65 @@ export async function main(args: string[]): Promise<number> {
     if (command === 'inspect-queue-backup') {
       const backup = await readProposalQueueBackup(required('file'));
       process.stdout.write(JSON.stringify(proposalQueueBackupSummary(backup), null, 2) + '\n');
+      return 0;
+    }
+    if (command === 'inspect-generation-journal-backup') {
+      const backup = await readGenerationJournalBackup(required('file'));
+      process.stdout.write(JSON.stringify(generationJournalBackupSummary(backup), null, 2) + '\n');
+      return 0;
+    }
+    if (
+      command === 'generation-journal-backup' ||
+      command === 'generation-journal-backup-recover'
+    ) {
+      const target = required('output');
+      const recovery =
+        command === 'generation-journal-backup-recover'
+          ? await readGenerationJournalBackupRecovery(required('file'))
+          : undefined;
+      const backup = recovery
+        ? recovery.backup
+        : await captureGenerationJournalBackup(
+            required('journal'),
+            (await readJson(required('binding'), 16_384)) as ProposalQueueBinding,
+          );
+      const summary = generationJournalBackupSummary(backup);
+      let outputPath = target;
+      let exportPhase = 'prepare';
+      let report: unknown;
+      try {
+        // Capture/validation finishes before touching the destination; failures retain all content.
+        const destination = await prepareGenerationJournalBackupOutput(target);
+        outputPath = destination.path;
+        let output;
+        if (values.preview) {
+          output = { state: 'preview', path: destination.path };
+        } else {
+          exportPhase = 'save';
+          output = await saveGenerationJournalBackup(destination, backup);
+        }
+        report = { ...summary, ...(recovery ? { recovery_source: recovery.source } : {}), output };
+      } catch (error) {
+        // Compact output remains within the backup recovery byte allowance.
+        process.stderr.write(
+          JSON.stringify({
+            code: recovery
+              ? 'PROPOSAL_GENERATION_JOURNAL_BACKUP_RECOVERY_FAILED'
+              : 'PROPOSAL_GENERATION_JOURNAL_BACKUP_EXPORT_FAILED',
+            backup,
+            output: {
+              output_path: outputPath,
+              export_phase: exportPhase,
+              ...(error instanceof ContractError &&
+              error.envelope.code === 'PROPOSAL_GENERATION_JOURNAL_BACKUP_SAVE_FAILED'
+                ? error.envelope.details
+                : {}),
+            },
+          }) + '\n',
+        );
+        return 1;
+      }
+      process.stdout.write(JSON.stringify(report, null, 2) + '\n');
       return 0;
     }
     if (command === 'queue-backup-list') {
