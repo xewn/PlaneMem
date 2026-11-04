@@ -15,6 +15,11 @@ export type {
 } from '@planemem/contracts';
 export type { WorkItemListQuery, WorkItemProjection } from '@planemem/contracts';
 export {
+  MockContextHistoryStore,
+  type MockContextHistorySeed,
+  type MockContextHistorySession,
+} from './mock-context-history.js';
+export {
   MockWorkItemStore,
   type MockWorkItemSeed,
   type MockWorkItemSession,

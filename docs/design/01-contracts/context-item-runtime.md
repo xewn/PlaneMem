@@ -1,5 +1,9 @@
 # ContextItem 录入与编辑开发说明
 
+## 2026-11-04 上下文历史Mock增量
+
+SDK新增可选MockContextHistoryStore及MockWcpServer context_history配置：固定单项目当前可见状态和完整原历史版本，允许空历史/版本缺口，显式完整模拟身份/到期/权限/可见集合。目录和单版沿共享封套与分页规则，指定快照WebCrypto SHA-256核对保存摘要；SDK比较沿两次指定读取接入，不增加比较路由或伪造版本。种子16 MiB/最多1000条目与总1000版本，目录256 KiB/版本2 MiB、固定30秒等待及每store两笔容量，超时后保留名额直到摘要结束。仅源码文档，未编译、测试、执行或发布；完整边界和未执行示例见[上下文历史Mock](context-history-mock-runtime.md)。模拟响应不是生产认证、来源真实性或持久审计证明，R-003仍缺运行/真实数据/客户端证据。
+
 ## 2026-11-04 MCP上下文历史与对比增量
 
 list_context_item_history({item_id,before_version?,limit?})与get_context_item_version({item_id,version})保留原输入及完整WCP封套JSON文本，改接专用context-history执行器。新增compare_context_item_versions({item_id,from_version,to_version})，两版本必须不同的正安全整数，方向不排序。共享查询限制4 KiB并拒绝未知/身份/范围/写字段、kind及非普通JSON；目录默认25、最多100，下一页保留item_id/limit并使用data.next_before_version。不新增资源模板或自动翻页。
@@ -12,7 +16,7 @@ list_context_item_history({item_id,before_version?,limit?})与get_context_item_v
 
 比较JSON文本保留与SDK一致的本地对象：schema_version=1、kind=context-version-comparison、comparison_origin=local、read_consistency=separate-reads、content_state=snapshot-hashes-checked、source_state=not-checked，含原query、可信identity_constraints、完整from/to封套及共享comparison，无额外data封套。正文/属性/历史字段/来源/确认比较规则沿共享模型。组合业务JSON上限16 MiB，MCP content转义结果上限32 MiB+4096；单读转义上限为对应业务上限两倍加4096。超限整次失败，不截断或返回部分比较。固定同trace错误只保留有限代码及本地消息，丢弃上游详情与重试建议。
 
-兼容变化：prepareMcpTool对三个工具均返回MCP_TOOL_EXECUTOR_REQUIRED，调用方需使用dispatchMcp或executeContextHistoryTool以完成整个读取和结果校验；旧缺真实客户端/期限/完整封套或提供非安全版本的fixture需迁移。工具来源和正文是不可信历史参考，摘要自洽不认证来源或当前有效性，也不是两次读取一致性证明。没有新增SDK依赖、REST操作、数据库schema/迁移或写行为。仅源码文档人工审阅和格式/文本检查，未编译、类型检查、测试、执行MCP/API/数据库或发布；Mock历史适配及运行证据待补，R-003仍未完成。
+兼容变化：prepareMcpTool对三个工具均返回MCP_TOOL_EXECUTOR_REQUIRED，调用方需使用dispatchMcp或executeContextHistoryTool以完成整个读取和结果校验；旧缺真实客户端/期限/完整封套或提供非安全版本的fixture需迁移。工具来源和正文是不可信历史参考，摘要自洽不认证来源或当前有效性，也不是两次读取一致性证明。没有新增SDK依赖、REST操作、数据库schema/迁移或写行为。仅源码文档人工审阅和格式/文本检查，未编译、类型检查、测试、执行MCP/API/数据库或发布；Mock源码适配见上述独立增量，运行证据待补，R-003仍未完成。
 
 ## 2026-11-04 CLI上下文历史与对比增量
 
@@ -30,7 +34,7 @@ history输入为{item_id,before_version?,limit?}，默认25最多100；version�
 {"item_id":"context-example","from_version":2,"to_version":3,"expected_actor_id":"01ARZ3NDEKTSV4RRFFQ69G5FAV","expected_client_id":"workctx-cli"}
 ```
 
-仅源码文档人工审阅及格式/文本检查，未编译、类型检查、测试、执行CLI/SDK/Mock/API/数据库或发布。没有自动重试、下载、保存或修改记录；MCP专用接入见上述独立增量，Mock历史接入与运行证据仍待补，R-003未完成。
+仅源码文档人工审阅及格式/文本检查，未编译、类型检查、测试、执行CLI/SDK/Mock/API/数据库或发布。没有自动重试、下载、保存或修改记录；MCP/Mock源码接入见上述独立增量，运行证据仍待补，R-003未完成。
 
 ## 2026-11-04 SDK历史读取与双版本对比增量
 
@@ -57,7 +61,7 @@ const comparison = await client.compareContextItemVersions(
 );
 ```
 
-兼容变化：原参数调用继续可用，但现在需要完整项目范围、合法本地trace/client、能提供完整匹配响应及支持bounded-json/signal的传输；非法未知字段不再忽略，失败统一为Promise拒绝。单版/比较需要WebCrypto。没有扩展Mock历史存储；CLI复用SDK、MCP复用共享契约的专用接入见上述独立增量。无新Gateway路由/schema、数据库/迁移、依赖或写入行为。本次仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、运行SDK/Mock/CLI/MCP/API/数据库或发布；自定义传输、凭据切换、取消/期限、摘要和真实数据兼容仍待运行证据，R-003未完成、evidence为空。
+兼容变化：原参数调用继续可用，但现在需要完整项目范围、合法本地trace/client、能提供完整匹配响应及支持bounded-json/signal的传输；非法未知字段不再忽略，失败统一为Promise拒绝。单版/比较需要WebCrypto。CLI复用SDK、MCP复用共享契约及Mock历史存储的专用接入见上述独立增量。无新Gateway路由/schema、数据库/迁移、依赖或写入行为。本次仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、运行SDK/Mock/CLI/MCP/API/数据库或发布；自定义传输、凭据切换、取消/期限、摘要和真实数据兼容仍待运行证据，R-003未完成、evidence为空。
 
 ## 2026-11-04 网页历史版本对比增量
 

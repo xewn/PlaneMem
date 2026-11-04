@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-04：新增`MockContextHistoryStore/MockContextHistorySeed/MockContextHistorySession`及`MockWcpServer({context_history:{store,session}})`，支持历史列表与指定版本GET，SDK比较沿两次读取接入。固定单项目种子最多1000条目/总1000版本/16 MiB，保留显式当前可见状态、版本缺口和完整原快照；结构校验在构造时完成，单版读取核对保存的WebCrypto SHA-256，不自动生成摘要/历史/确认。显式完整身份/到期/权限/可见集合，目录256 KiB、版本2 MiB、每store两并发/固定30秒预算，取消后底层摘要未结束仍占槽。输出遵守共享原来源/trace契约，但模拟数据不是生产认证或审计证据。接线示例及边界见[上下文历史Mock](../../docs/design/01-contracts/context-history-mock-runtime.md)。仅源码文档人工审阅，未编译、测试、运行Mock/SDK或发布。
+
 2026-11-04：`listContextItemHistory(id, query?, options?)`和`getContextItemVersion(id, version, options?)`新增`WcpContextHistoryReadOptions`（timeout_ms/signal），默认30秒，完整目录256KiB、版本2MiB，版本读取核对WebCrypto SHA-256。新增`compareContextItemVersions({item_id,from_version,to_version}, options?)`，要求构造上下文含完整project_id/actor_id/client_id，固定两版本并在同一总预算内读取、校验和比较；任一失败无部分结果。结果为`WcpContextComparisonResult`本地组合对象，保存原from/to封套与query/identity_constraints，明确snapshot-hashes-checked、source_state=not-checked，非新Gateway响应或来源真实性证明。根入口导出共享`parseContextComparisonQuery/compareContextSnapshots`及相关类型；本地函数做结构比较，不独立核对摘要或权限。接口、兼容变化与未执行示例见[SDK上下文历史读取](../../docs/design/01-contracts/context-item-runtime.md#2026-11-04-sdk历史读取与双版本对比增量)。仅源码文档，未编译、测试、执行SDK/Mock或发布。
 
 2026-11-04：工作项列表和workItemPages支持`sort:'due_asc'`，截止日期从早到晚、null最后、同日期按本地ID升序；例如`{sort:'due_asc',status:'todo',limit:25}`。默认`updated_desc`与省略相同，旧游标兼容；更换排序须从第一页重新开始，续页保留排序及原筛选。Mock同步支持；客户端不重排单页，不保证跨页快照或实时来源。详见[工作项排序](../../docs/design/01-contracts/work-item-projection-runtime.md)，仅源码文档，未编译、测试、运行或发布。

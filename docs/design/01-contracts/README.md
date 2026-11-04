@@ -12,6 +12,7 @@
 - [客户端事件完整内容同步历史](sync-client-event-application-runtime.md)
 - [SDK 同步消费内存 Mock](sync-mock-runtime.md)
 - [SDK 工作项目录与详情 Mock](work-item-mock-runtime.md)
+- [SDK 上下文历史与版本 Mock](context-history-mock-runtime.md)
 - [浏览器历史同步回执完整备份与恢复](sync-browser-receipts-backup-runtime.md)
 - [浏览器原同步查询完整备份与恢复](sync-browser-originals-backup-runtime.md)
 - [浏览器同步保存副本移除](sync-browser-storage-removal-runtime.md)
