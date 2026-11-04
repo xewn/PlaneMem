@@ -11,6 +11,22 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    web_work_item_reads_development_increment:
+      date: "2026-11-04"
+      status: "Source-only bounded Web work item reads and explicit browse recovery; R-001 and R-002 remain incomplete."
+      artifacts:
+        - "apps/web-console/src/lib/work-item-read-response.ts"
+        - "apps/web-console/src/lib/server-api.ts"
+        - "apps/web-console/src/app/work-items/page.tsx"
+        - "docs/design/01-contracts/work-item-projection-runtime.md"
+      behavior: "Capture normalized 8 KiB queries before session waiting; route existing list/detail operations through complete 2 MiB success/16 KiB error reads under the existing 30-second network/parse deadline. Validate HTTP status/type/trace/no ETag, closed envelopes, source refs, shared records/targets/page filters and optional record scope. Sanitize errors and recheck session expiry. List failure offers explicit GET retry preserving validated filters/view/cursor/selection, plus same-filter first page clearing cursor/selection. Detail preserves its original target/return path. No automatic retry/paging or write."
+      evidence: []
+      pending_evidence:
+        - "Actual Web/Gateway authorization, session expiry and preserved Policy/Audit behavior"
+        - "Complete body/type/trace/envelope/record/scope bounds, deadlines, sanitized errors and old response compatibility"
+        - "List exact-page retry, same-filter first page, invalid parameters and detail return navigation"
+      remaining_scope: "Runtime/client evidence, source freshness and broader parity; no cross-page snapshot or external source verification. Session loading precedes the request deadline and synchronous parsing is checked after completion."
+      execution: "Source/docs and manual review plus formatting/text checks only; no build, typecheck, tests, Web/API/browser/product/database execution or release. No new route, shared contract, schema or dependency."
     mcp_work_item_reads_development_increment:
       date: "2026-11-04"
       status: "Source-only dedicated bounded MCP work item list/detail reads; R-001 and R-002 remain incomplete."
@@ -27,7 +43,7 @@ requirements:
         - "Discovery/prepare/direct-call/HTTP authority parity, expiry and old client/fixture migration"
         - "Input bounds, shared filters, original query isolation, complete output and restricted/scope mismatch rejection"
         - "Error/trace/type/size boundaries, timeout/late completion, shared capacity and preserved Policy/Audit behavior"
-      remaining_scope: "Real MCP/Gateway/client evidence and source freshness; Web read budgets and broader parity remain incomplete. No cross-page snapshot or external source verification."
+      remaining_scope: "Real MCP/Gateway/client evidence and source freshness; Web read budget source coverage is recorded separately and broader parity remains incomplete. No cross-page snapshot or external source verification."
       execution: "Source/docs and manual review only; no build, typecheck, tests, MCP/API/SDK/CLI/Mock/product/database execution or release. No new REST route, shared contract, database schema or dependency change."
     cli_work_item_reads_development_increment:
       date: "2026-11-04"
@@ -45,7 +61,7 @@ requirements:
         - "Network/embedded routing, optional identity equality constraints and migration of old embedded fixtures"
         - "Inline/file/stdin UTF-8, size/stability, duplicate/unknown/write argument rejection and exit codes"
         - "SDK response limits, exact trace and filters, deadlines, late settlement, restricted responses and retained capacity"
-      remaining_scope: "Real CLI/SDK/transport/runtime evidence and source freshness. MCP budget source coverage is recorded separately; Web budgets and broader client parity remain incomplete."
+      remaining_scope: "Real CLI/SDK/transport/runtime evidence and source freshness. MCP and Web budget source coverage is recorded separately; broader client parity remains incomplete."
       execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/SDK/MCP/Mock/product/API/database execution or release. No production route, shared contract, database schema or dependency change."
     sdk_work_item_reads_development_increment:
       date: "2026-11-04"

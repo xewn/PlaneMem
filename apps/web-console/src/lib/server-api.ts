@@ -1,5 +1,10 @@
 import { readWorkbenchAuditResponse } from './audit-response';
 import { readWorkbenchJsonResponse } from './workbench-response';
+import {
+  prepareWorkItemReadBody,
+  readWorkItemResponse,
+  workItemReadFailure,
+} from './work-item-read-response';
 import { readConflictResponse } from './conflict-read-response';
 import {
   artifactLookupFailure,
@@ -81,10 +86,8 @@ import {
   type LegacyContextAction,
   type LegacyContextMutation,
   type LegacyContextMutationReceipt,
-  parseWorkItemProjection,
   parseWorkItemProjectionQuery,
   parseWorkItemListQuery,
-  parseWorkItemProjectionList,
   parseSessionRegistryQuery,
   parseSessionRegistryEnvelope,
   SESSION_REGISTRY_RESPONSE_BYTES,
@@ -1042,22 +1045,12 @@ function observedRead<T extends ObservedSnapshot | ObservedWorkItemContext>(
 
 export async function listWorkbenchWorkItems(input: WorkItemListQuery = {}) {
   const query = parseWorkItemListQuery(input);
-  const result = await queryWorkbench<WorkItemProjection[]>('work_items', { ...query });
-  try {
-    return { ...result, ...parseWorkItemProjectionList(result, query) };
-  } catch {
-    throw new WorkbenchApiError('Invalid work item list response.', result.trace_id);
-  }
+  return queryWorkbench<WorkItemProjection[]>('work_items', { ...query });
 }
 
 export async function getWorkbenchWorkItem(itemId: string) {
   const query = parseWorkItemProjectionQuery({ item_id: itemId });
-  const result = await queryWorkbench<WorkItemProjection>('work_item', query);
-  try {
-    return { ...result, data: parseWorkItemProjection(result.data, itemId) };
-  } catch {
-    throw new WorkbenchApiError('Invalid work item detail response.', result.trace_id);
-  }
+  return queryWorkbench<WorkItemProjection>('work_item', query);
 }
 
 export function createWorkbenchHandoff(
@@ -1962,6 +1955,11 @@ async function gatewayRequest<T>(
     trace: string,
   ) => WorkbenchResponse<T>,
 ): Promise<WorkbenchResponse<T>> {
+  const workItemRequest =
+    requestPath === '/v1/workbench/query' &&
+    method === 'POST' &&
+    (body.operation === 'work_items' || body.operation === 'work_item');
+  if (workItemRequest) body = prepareWorkItemReadBody(body);
   const session = await getSession();
   if (!session) throw new AuthRequiredError();
   const trace_id = `trace_web_${crypto.randomUUID()}`;
@@ -1976,7 +1974,7 @@ async function gatewayRequest<T>(
             /^\/v1\/artifacts\/[0-9A-HJKMNP-TV-Z]{26}\/versions\/[1-9][0-9]*$/.test(path)
           ? 'historical'
           : undefined;
-  const assertArtifactLookupSession = () => {
+  const assertReadSession = () => {
     if (
       !session.access_token.trim() ||
       !Number.isSafeInteger(session.expires_at) ||
@@ -1984,7 +1982,7 @@ async function gatewayRequest<T>(
     )
       throw new AuthRequiredError();
   };
-  if (artifactLookupKind !== undefined) assertArtifactLookupSession();
+  if (artifactLookupKind !== undefined || workItemRequest) assertReadSession();
   const artifactVersionsRequest =
     method === 'GET' && /^\/v1\/artifacts\/[0-9A-HJKMNP-TV-Z]{26}\/versions\?/.test(path);
   const artifactRegistryRequest = method === 'GET' && path.startsWith('/v1/artifacts?');
@@ -2072,6 +2070,16 @@ async function gatewayRequest<T>(
       ...(method === 'POST' ? { body: JSON.stringify(body) } : {}),
     });
   } catch {
+    if (workItemRequest) {
+      assertReadSession();
+      const error = workItemReadFailure(
+        requestSignal.aborted || Date.now() >= requestDeadline
+          ? 'GATEWAY_REQUEST_TIMEOUT'
+          : 'GATEWAY_UNAVAILABLE',
+        trace_id,
+      );
+      throw new WorkbenchApiError(error.envelope.message, trace_id, 502, error.envelope.code);
+    }
     if (artifactLookupKind !== undefined) {
       const error = artifactLookupFailure(
         artifactLookupKind,
@@ -2122,6 +2130,7 @@ async function gatewayRequest<T>(
   }
   if (response.status === 401) {
     if (
+      workItemRequest ||
       artifactLookupKind !== undefined ||
       artifactDirectoryRequest ||
       conflictOriginalRequest ||
@@ -2136,9 +2145,41 @@ async function gatewayRequest<T>(
       void response.body?.cancel().catch(() => undefined);
     throw new AuthRequiredError();
   }
+  if (workItemRequest) {
+    try {
+      assertReadSession();
+      const result = await readWorkItemResponse(
+        response,
+        requestSignal,
+        trace_id,
+        requestDeadline,
+        body,
+        scope,
+      );
+      assertReadSession();
+      return { ...result, data: result.data as unknown as T };
+    } catch (error) {
+      void response.body?.cancel().catch(() => undefined);
+      // Session expiry during either successful or failed body reading requires a new sign-in.
+      assertReadSession();
+      const failure =
+        error instanceof ContractError
+          ? error
+          : workItemReadFailure('GATEWAY_RESPONSE_INVALID', trace_id);
+      throw new WorkbenchApiError(
+        failure.envelope.message,
+        trace_id,
+        response.ok ||
+        ['GATEWAY_RESPONSE_INVALID', 'GATEWAY_REQUEST_TIMEOUT'].includes(failure.envelope.code)
+          ? 502
+          : response.status,
+        failure.envelope.code,
+      );
+    }
+  }
   if (artifactLookupKind !== undefined) {
     try {
-      assertArtifactLookupSession();
+      assertReadSession();
     } catch (error) {
       void response.body?.cancel().catch(() => undefined);
       throw error;
@@ -2171,7 +2212,7 @@ async function gatewayRequest<T>(
         failure.envelope.code,
       );
     }
-    assertArtifactLookupSession();
+    assertReadSession();
     return result;
   }
   if (artifactDirectoryRequest) {

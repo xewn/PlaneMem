@@ -9,6 +9,7 @@ import {
   parseWorkItemBrowseParams,
   workItemBrowseHref,
   workItemDetailHref,
+  type WorkItemBrowseState,
   type WorkItemSearchParams,
 } from './navigation';
 
@@ -27,8 +28,10 @@ export default async function WorkItemsPage({
 }: {
   searchParams: Promise<WorkItemSearchParams>;
 }) {
+  let navigation: WorkItemBrowseState | undefined;
   try {
     const browse = parseWorkItemBrowseParams(await searchParams);
+    navigation = browse;
     const { filters, item: requestedId } = browse;
     const query = filters.query ?? '';
     const status = filters.status ?? '';
@@ -136,6 +139,7 @@ export default async function WorkItemsPage({
               className={!list ? 'active' : ''}
               aria-current={!list ? 'page' : undefined}
               href={href('board', selected)}
+              prefetch={false}
             >
               Board
             </Link>
@@ -143,6 +147,7 @@ export default async function WorkItemsPage({
               className={list ? 'active' : ''}
               aria-current={list ? 'page' : undefined}
               href={href('list', selected)}
+              prefetch={false}
             >
               List
             </Link>
@@ -330,6 +335,10 @@ export default async function WorkItemsPage({
       </>
     );
   } catch (error) {
+    const retryFields = navigation
+      ? new URLSearchParams(workItemBrowseHref(navigation).split('?')[1] ?? '')
+      : undefined;
+    const { cursor: _cursor, ...firstPageFilters } = navigation?.filters ?? {};
     return (
       <>
         <div className="page-heading">
@@ -339,6 +348,25 @@ export default async function WorkItemsPage({
           </div>
         </div>
         <PageError error={error} />
+        {navigation && retryFields ? (
+          <div className="toolbar">
+            <form action="/work-items" method="get">
+              {Array.from(retryFields).map(([name, value]) => (
+                <input key={name} type="hidden" name={name} value={value} />
+              ))}
+              <button className="primary-button" type="submit">
+                Retry this page
+              </button>
+            </form>
+            <Link
+              className="panel-link"
+              href={workItemBrowseHref({ filters: firstPageFilters, view: navigation.view })}
+              prefetch={false}
+            >
+              First page with these filters
+            </Link>
+          </div>
+        ) : null}
         <Link className="panel-link" href="/work-items" prefetch={false}>
           Restart work item browsing
         </Link>

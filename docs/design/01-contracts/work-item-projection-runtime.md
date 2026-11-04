@@ -1,5 +1,17 @@
 # 工作项投影详情（开发状态）
 
+## 2026-11-04 工作台读取与失败恢复增量
+
+Web `listWorkbenchWorkItems`、`getWorkbenchWorkItem`以及现有 `queryWorkbench` 的 work_items/work_item 分支共用专用有界响应读取。等待会话前复制并规范化原查询，规范请求正文最多8 KiB；身份来自当前会话，仍仅一次POST /v1/workbench/query，no-store、redirect=error，不自动重试或翻页。读取沿既有30秒AbortSignal及绝对期限，覆盖网络等待、正文与完整解析；会话获取在该期限之前，同步解析不能中途抢占，结束后再次核对期限和会话到期。
+
+完整成功HTTP 200，解码正文最多2 MiB；400–599错误最多16 KiB。要求JSON类型、正确x-trace-id、无ETag，正文另受普通JSON深度/节点/规范化字节约束。成功外层只允许schema_version/trace_id/source_refs/data及列表next_cursor；验证来源、共享完整记录、详情原目标或列表大小/重复ID/状态/优先级/精确负责人/分配条件/续页。记录可选范围字段必须匹配当前请求，版本、记录来源和记录trace保持其原含义。超限、错目标/trace或不完整记录整份失败，无截断正文或部分页。共享解析不重做数据库locale搜索排序，也不验证外部来源真实性。
+
+错误只展示固定文案和本次trace，不回显远端message/details。HTTP 401直接要求登录并取消正文；发送前和读取结束后检查当前会话快照到期，错误读取或网络失败时已到期也要求重新登录。正文读取使用现有有界流读取与取消，不能把本地超时解释为服务器查询或审计已撤销。Web不从未验证的JWT字段推断context.read或restricted权限，仍由Gateway鉴权、Policy/Audit及数据库可见性负责；原投影没有强制范围回显，不把内容检查当作权限证明。
+
+列表错误页仅在原浏览参数验证成功时提供显式GET“Retry this page”，保留q/status/priority/owner/assignment/cursor/view/item；“First page with these filters”保留筛选和视图、清除旧游标及选择，适用于原游标因账号/项目/筛选绑定变化被拒绝的情况。非法参数仅提供固定重新浏览入口。详情继续按已验证item/return_to重试并返回原列表或搜索位置，缺失与不可见仍同样处理。没有新增自动恢复或后台分页。
+
+本增量无新路由/数据库/schema/依赖；仅源码文档人工审阅及格式/文本检查，未编译、类型检查、测试、执行Web/API/浏览器/数据库或发布。真实鉴权、期限/超限、错误映射、原导航恢复及旧响应兼容证据仍待补，R-001/R-002保持未完成、evidence为空。
+
 2026-11-04：SDK已另补可选[工作项目录与详情Mock](work-item-mock-runtime.md)，用固定数据集、模拟权限和独立游标接入现有列表/详情方法。没有真实数据库、Plane来源刷新或权限审计，生产游标与Mock游标不能互换；仅源码文档，未运行验证。
 
 2026-11-02：本批仅修改源码和文档，未编译、类型检查、测试、运行服务、执行迁移或发布。不代表已有运行验证。
