@@ -1,5 +1,19 @@
 # ContextItem 录入与编辑开发说明
 
+## 2026-11-04 网页历史完整读取增量
+
+共享context-history提供历史读取查询及完整响应解析。查询先复制为最多4KiB的普通JSON，只接受已知字段，kind=history/version；item_id沿用本地ID规则，版本和before_version为正安全整数，limit默认25、范围1–100。Web历史目录固定25条，网络等待前保存查询，非法输入不会读取会话或发送请求。
+
+目录返回必须绑定同一item_id，current_version为正安全整数，current_archived为布尔值；versions不超过请求limit，版本严格倒序、不重复、不大于current_version且小于before_version。若包含当前版本，其归档标记须与current_archived一致。next_before_version存在时必须对应满页最后一条且大于1，不根据短页补造游标。缺失历史和基线仍允许，不要求版本连续，也不将目录当成跨请求一致性快照。既有目录没有scope回显，客户端不能凭空证明它的租户范围，权限与范围查询仍依赖Gateway。
+
+版本快照核对请求item_id/version及tenant/workspace/project范围，检查完整文档与摘要的title/classification/status/version一致，保留普通JSON正文。元数据要求合法枚举、有限confidence、保存的规范UTC时间及归档标记一致；baseline的actor/client/event均为null，其余操作需明确作者、客户端和事件。create/update/archive/restore/confirm检查对应状态，confirm另核对前一版本、确认版本、作者/客户端/事件/记录时间和规范理由；其他操作不能携带确认对象。合法旧JSON正文、空来源数组和无作者baseline不补造信息。外层来源必须精确对应本条目，版本响应还须按序匹配完整快照来源。
+
+Web历史读取使用单独响应处理：目录成功最多256KiB、版本成功最多2MiB、错误最多16KiB（均为解码字节），结构复制另限制规范JSON字节、深度64和节点100000。响应须HTTP200或4xx/5xx、匹配请求trace、无ETag、合法JSON媒体类型、完整UTF-8及适用时匹配Content-Length；复用有界流读取，拒绝截断及超限，不裁剪内容。读取/解析/校验/摘要计算共用fetch开始时的30秒截止，不延长等待。错误正文仅提供经过验证的错误码，展示固定本地信息，不显示上游任意错误正文；401或读取前后会话过期要求重新登录。
+
+版本通过结构校验后，将{item, archived_at}递归按对象键排序，保持数组顺序，按与Gateway fingerprint一致的JSON规则计算SHA-256，并与snapshot_hash核对。摘要只检查返回快照自洽，不是签名或外部来源真实性证明；历史确认不会成为当前确认权限或当前来源有效性的证明。失败沿用页面原版本/原页重试，不自动切换版本、部分显示或自动重试。
+
+本次仅接入Web历史目录/版本读取及共享契约；当前正文、上下文主目录、已保存包、SDK/CLI/MCP、Gateway和数据库没有变化。仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行页面/API/SQL/数据库或发布。边界、真实数据兼容、流截断、摘要、时限/会话过期及浏览器错误恢复仍无运行证据，R-003保持未完成、evidence为空。
+
 ## 2026-11-04 上下文浏览与历史返回增量
 
 Web context/navigation统一主页面及历史导航。主页面只接受q/layer/classification/status/type/view/cursor/item/pack/return_to的单值已知字段，筛选复用parseContextItemListQuery和固定25条页大小；view仅active/archived（省略active），拒绝未知枚举、数组、重复字段、超长文本或非法游标，不再截断文本或忽略无效筛选。item沿既有历史ID规则，拒绝空白、控制字符和点路径；pack必须ULID。原搜索返回仍只允许item/return_to，绑定已验证搜索页的context_item及同一ID。

@@ -1,5 +1,6 @@
 import { readWorkbenchAuditResponse } from './audit-response';
 import { readWorkbenchJsonResponse } from './workbench-response';
+import { contextHistoryReadFailure, readContextHistoryResponse } from './context-history-response';
 import {
   prepareWorkItemReadBody,
   readWorkItemResponse,
@@ -32,6 +33,8 @@ import {
   PROPOSAL_CREATE_RECEIPT_RESPONSE_BYTES,
   type ProposalCreateReceiptEnvelope,
   ContractError,
+  parseContextHistoryReadQuery,
+  type ContextHistoryReadQuery,
   parseConflictReadQuery,
   parseConflictReadEnvelope,
   type ConflictReadRecord,
@@ -1740,6 +1743,12 @@ export function readArchivedWorkbenchContextItem(itemId: string) {
 }
 
 export function readWorkbenchContextHistory(itemId: string, before?: number) {
+  const read = parseContextHistoryReadQuery({
+    kind: 'history',
+    item_id: itemId,
+    limit: 25,
+    ...(before === undefined ? {} : { before_version: before }),
+  });
   const query = new URLSearchParams({ limit: '25' });
   if (before !== undefined) query.set('before_version', String(before));
   return gatewayRequest<ContextItemHistoryPage>(
@@ -1747,15 +1756,22 @@ export function readWorkbenchContextHistory(itemId: string, before?: number) {
     {},
     undefined,
     'GET',
+    undefined,
+    undefined,
+    read,
   );
 }
 
 export function readWorkbenchContextVersion(itemId: string, version: number) {
+  const read = parseContextHistoryReadQuery({ kind: 'version', item_id: itemId, version });
   return gatewayRequest<ContextItemRevision>(
     '/v1/context-items/' + encodeURIComponent(itemId) + '/versions/' + version,
     {},
     undefined,
     'GET',
+    undefined,
+    undefined,
+    read,
   );
 }
 
@@ -1954,7 +1970,12 @@ async function gatewayRequest<T>(
     scope: ObservedScope,
     trace: string,
   ) => WorkbenchResponse<T>,
+  contextHistoryInput?: ContextHistoryReadQuery,
 ): Promise<WorkbenchResponse<T>> {
+  const contextHistoryQuery =
+    contextHistoryInput === undefined
+      ? undefined
+      : parseContextHistoryReadQuery(contextHistoryInput);
   const workItemRequest =
     requestPath === '/v1/workbench/query' &&
     method === 'POST' &&
@@ -1982,7 +2003,8 @@ async function gatewayRequest<T>(
     )
       throw new AuthRequiredError();
   };
-  if (artifactLookupKind !== undefined || workItemRequest) assertReadSession();
+  if (artifactLookupKind !== undefined || workItemRequest || contextHistoryQuery)
+    assertReadSession();
   const artifactVersionsRequest =
     method === 'GET' && /^\/v1\/artifacts\/[0-9A-HJKMNP-TV-Z]{26}\/versions\?/.test(path);
   const artifactRegistryRequest = method === 'GET' && path.startsWith('/v1/artifacts?');
@@ -2070,6 +2092,16 @@ async function gatewayRequest<T>(
       ...(method === 'POST' ? { body: JSON.stringify(body) } : {}),
     });
   } catch {
+    if (contextHistoryQuery) {
+      assertReadSession();
+      const error = contextHistoryReadFailure(
+        requestSignal.aborted || Date.now() >= requestDeadline
+          ? 'GATEWAY_REQUEST_TIMEOUT'
+          : 'GATEWAY_UNAVAILABLE',
+        trace_id,
+      );
+      throw new WorkbenchApiError(error.envelope.message, trace_id, 502, error.envelope.code);
+    }
     if (workItemRequest) {
       assertReadSession();
       const error = workItemReadFailure(
@@ -2130,6 +2162,7 @@ async function gatewayRequest<T>(
   }
   if (response.status === 401) {
     if (
+      contextHistoryQuery ||
       workItemRequest ||
       artifactLookupKind !== undefined ||
       artifactDirectoryRequest ||
@@ -2144,6 +2177,37 @@ async function gatewayRequest<T>(
     )
       void response.body?.cancel().catch(() => undefined);
     throw new AuthRequiredError();
+  }
+  if (contextHistoryQuery) {
+    try {
+      assertReadSession();
+      const result = await readContextHistoryResponse(
+        response,
+        requestSignal,
+        trace_id,
+        requestDeadline,
+        contextHistoryQuery,
+        scope,
+      );
+      assertReadSession();
+      return { ...result, data: result.data as unknown as T };
+    } catch (error) {
+      void response.body?.cancel().catch(() => undefined);
+      assertReadSession();
+      const failure =
+        error instanceof ContractError
+          ? error
+          : contextHistoryReadFailure('GATEWAY_RESPONSE_INVALID', trace_id);
+      throw new WorkbenchApiError(
+        failure.envelope.message,
+        trace_id,
+        response.ok ||
+        ['GATEWAY_RESPONSE_INVALID', 'GATEWAY_REQUEST_TIMEOUT'].includes(failure.envelope.code)
+          ? 502
+          : response.status,
+        failure.envelope.code,
+      );
+    }
   }
   if (workItemRequest) {
     try {
