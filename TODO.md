@@ -4,6 +4,8 @@
 
 ## 当前基线
 
+- P0/P5：新增共享context-pack-comparison与Web /context/packs/compare显式双包对比，4 KiB两不同ULID、每侧完整2 MiB原范围json封套；逐ID联合selected/excluded/absent与原列表位置，完整两侧、字段变化、来源顺序/预算/保存元数据及added/removed/changed/same统计。共享函数只比结构，Web固定原会话/范围/基址，两次完整HTTP/trace/ETag/Node SHA-256读取与比较共用30秒，8 MiB比较/12 MiB组合及原JSON复杂度限制，失败不交付半份、不回退latest。目录头和保存包入口、部分选择只预填、全部/变化筛选、反向比较、原ID重试及受限原目录返回已接入，沿原读拒绝过期/失效包。无新Gateway路径/写入，SDK/CLI/MCP与专用Schema及真实兼容/导航/显示运行证据待补，R-003未完成、evidence为空；只源码文档人工审阅/格式文本检查，未编译、类型检查、测试、渲染、执行浏览器/产品/API/数据库或发布。
+
 - P0/P2：新增自包含context-pack-read.json（JSON Schema 2020-12）及contracts包子路径，覆盖SDK/MCP查询、CLI成对可选身份、规范查询、完整scope/来源/入选与排除项/保存包/回执/rendered及json/rendered格式封套。按当前解析器区分外层与保存trace、封闭字段、安全整数/预算/数量、摘要/版本ETag形状，旧sections实体保持。普通JSON/UTF-16/字节、原请求绑定、合计预算/跨数组ID/来源并集、动态URI文本/摘要与权限来源仍须运行时核对。未引入生产JSON导入/依赖，自动Schema一致性/OpenAPI及运行兼容证据待补，R-003未完成、evidence为空；仅源码文档人工审阅/格式文本检查，未运行校验器/生成器、编译、类型检查、测试、产品/API/数据库或发布。
 
 - P0/P2：新增MockContextPackStore/Seed/Session，经MockWcpServer可选context_packs接SDK getContextPack；独立单项目完整json种子16 MiB/100包，构造校验结构、读取核对WebCrypto SHA-256，显式权限桶/来源状态和原身份/到期/可见包集合。latest按可见version/ID降序选择后验hash/到期/来源，不回退旧包；json/markdown/mcp保留完整内容/来源/版本与具体URI，外层trace更新。4 KiB路径/16 KiB头/2 MiB完整输出及调用方更小限额，独立store两容量/30秒/取消，摘要未结束仍占槽。无自动生成/编译/写入/真实来源查询，与其他Mock独立；生产Schema、真实兼容、期限容量与多数据集接线运行证据待补，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布。

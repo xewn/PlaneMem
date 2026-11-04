@@ -19,6 +19,7 @@ import {
 } from '../../lib/server-api';
 import { CompilePackForm } from './form';
 import { PackExclusions } from './pack-exclusions';
+import { packComparisonHref } from './packs/compare/navigation';
 import { ContextSourceStatus } from './source-status';
 import {
   ArchiveContextItem,
@@ -137,6 +138,16 @@ export default async function ContextPage({
             <p>Browse project knowledge and compile a saved context pack for the next session.</p>
           </div>
           <div className="heading-actions">
+            <Link
+              className="secondary-button"
+              prefetch={false}
+              href={packComparisonHref({
+                from_pack_id: packId,
+                return_href: contextBrowseHref(browse),
+              })}
+            >
+              Compare saved packs
+            </Link>
             <Link className="secondary-button" href="/context/index" prefetch={false}>
               Manage indexes
             </Link>
@@ -672,8 +683,19 @@ export default async function ContextPage({
                   <Link
                     className="panel-link"
                     href={'/context?pack=' + encodeURIComponent(saved.pack_id)}
+                    prefetch={false}
                   >
                     Permalink to this pack
+                  </Link>
+                  <Link
+                    className="panel-link"
+                    prefetch={false}
+                    href={packComparisonHref({
+                      from_pack_id: saved.pack_id,
+                      return_href: contextBrowseHref(browse),
+                    })}
+                  >
+                    Compare with another saved pack
                   </Link>
                   <hr />
                 </>
