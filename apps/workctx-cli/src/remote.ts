@@ -1,7 +1,6 @@
 import {
   buildEtag,
   ContractError,
-  parseArtifactReceiptQuery,
   isSyncIdentifier,
   parseContextItemListQuery,
   parseProposalListQuery,
@@ -49,8 +48,7 @@ import { callProposalCreateReceipt } from './proposal-create-receipt.js';
 import { callProposalReviewReceipt } from './proposal-review-receipt.js';
 import { callSyncConsumer, isSyncConsumerCommand } from './sync-consumer.js';
 import { prepareHandoffRead, handoffReadResult } from './handoff-read.js';
-import { prepareArtifactRead, artifactReadResult } from './artifact-read.js';
-import { prepareArtifactReceipt, artifactReceiptResult } from './artifact-receipt.js';
+import { callArtifactQuery, isArtifactQueryCommand } from './artifact-queries.js';
 import {
   readArtifactUploadQuery,
   readArtifactUploadContent,
@@ -75,6 +73,7 @@ interface GatewayOptions {
   scope: OutboxScope;
   trace: string;
   key: string | undefined;
+  timeout_ms?: number;
 }
 
 function segment(input: Record<string, unknown>, field: string) {
@@ -85,17 +84,6 @@ function segment(input: Record<string, unknown>, field: string) {
 
 function route(command: string, input: Record<string, unknown>) {
   switch (command) {
-    case 'artifacts receipt':
-      return { method: 'POST', path: '/v1/artifacts/receipt' };
-    case 'artifacts get':
-    case 'artifacts version':
-      return {
-        method: 'GET',
-        path:
-          '/v1/artifacts/' +
-          segment(input, 'artifact_id') +
-          (command === 'artifacts version' ? '/versions/' + input.version : ''),
-      };
     case 'plane-events summary':
       return { method: 'GET', path: '/v1/plane/events/summary' };
     case 'plane-events list': {
@@ -590,6 +578,7 @@ export async function callGateway(
   input: Record<string, unknown>,
   options: GatewayOptions,
 ) {
+  if (isArtifactQueryCommand(command)) return callArtifactQuery(command, input, options);
   if (isSyncConsumerCommand(command)) return callSyncConsumer(command, input, options);
   if (command === 'sessions list') return callSessionRegistry(input, options);
   if (command === 'conflicts get') return callConflictRead(input, options);
@@ -608,15 +597,6 @@ export async function callGateway(
     command === 'checkpoints list'
   )
     return callCheckpointRead(command, input, options);
-  const artifactRead = prepareArtifactRead(command, input, options.trace, options.key);
-  const artifactScope = { ...options.scope };
-  const artifactTrace = options.trace;
-  const artifactReceipt =
-    command === 'artifacts receipt'
-      ? prepareArtifactReceipt(input, artifactScope, artifactTrace, options.key)
-      : undefined;
-  if (artifactReceipt) input = { ...parseArtifactReceiptQuery(artifactReceipt) };
-  if (artifactRead) input = { ...artifactRead };
   const handoffClaim = prepareHandoffClaim(
     command,
     input,
@@ -738,7 +718,6 @@ export async function callGateway(
     !handoffClaim &&
     !handoffCreate &&
     !sessionStart &&
-    !artifactReceipt &&
     !sessionActivity &&
     !checkpoint &&
     !resume &&
@@ -749,10 +728,6 @@ export async function callGateway(
   )
     usage('Supply --key for this command and reuse it when retrying');
   if (options.key && !listing) headers['idempotency-key'] = options.key;
-  if (artifactReceipt) {
-    headers['x-expected-actor-id'] = artifactReceipt.identity.actor_id;
-    headers['x-expected-client-id'] = artifactReceipt.identity.client_id;
-  }
   if (resume) {
     headers['x-expected-actor-id'] = resume.binding.identity.actor_id;
     headers['x-expected-client-id'] = resume.binding.identity.client_id;
@@ -860,8 +835,6 @@ export async function callGateway(
       trace_id: options.trace,
     });
   if (observed) return observedReadResult(body, observed, options.scope, options.trace);
-  if (artifactRead) return artifactReadResult(body, artifactRead, artifactScope, artifactTrace);
-  if (artifactReceipt) return artifactReceiptResult(body, artifactReceipt, artifactTrace);
   if (handoffClaim) return handoffClaimResult(body, handoffClaim, options.trace);
   if (handoffCreate) return handoffCreateResult(body, handoffCreate, options.trace);
   if (handoffRead) return handoffReadResult(body, handoffRead, options.scope, options.trace);

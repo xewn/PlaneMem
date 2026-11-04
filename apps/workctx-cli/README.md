@@ -705,3 +705,5 @@ workctx context get --json-file pack-query.json
 
 2026-11-03：新增 restoreArchive/readRestoreReceipt 与 outbox restore/restore-receipt。完整原档案恢复到已暂停的空项目，绑定原档案摘要/恢复ID/控制generation，预检全库事件和键冲突；未完成行改为failed待处理并清除租约，原正文/身份/摘要/尝试/调度保持。完整原档案、原查询与恢复回执同事务持久保存，全部写入后逐行及整回执读回；重复原请求只返回历史，不覆盖后来变化的队列。回执查询不改当前状态，未知提交保留原请求/候选和关闭信息，不自动resume/retry/发送。见 [受控恢复契约](../../docs/design/01-contracts/outbox-restore-runtime.md)。新增可选本地表仅源码，未编译、类型检查、测试、执行CLI、打开库、初始化schema或发布。
 
+
+2026-11-04：`artifacts get/version/receipt` 的网络与嵌入入口支持 `--timeout-ms`（默认30000），使用有界SDK查询并完整核对响应。通过 `--json` 或 `--json-file` 输入，元数据查询JSON最多4 KiB、完整原回执请求最多1 MiB；网络仍支持 `--json -`，嵌入不读取stdin。成功元数据2 MiB、回执4 MiB、HTTP错误16 KiB；输入读取在查询计时前完成，文件/stdin等待不受该期限约束。嵌入要求可信未过期资料reader或原writer，超时后底层处理可能继续。查询失败保留原请求，不推断此前上传失败。见 [附件查询限制](../../docs/design/01-contracts/artifact-persistence-runtime.md#cli-元数据与原回执查询限制源码阶段)。仅源码文档人工审阅，未编译、类型检查、测试、执行或发布。

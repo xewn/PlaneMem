@@ -6,6 +6,8 @@
 
 ### 2026-11-04 开发补充（未编译、未发布、未测试）
 
+- P0/P2/P4：已补CLI artifacts get/version/receipt共用有界SDK查询，网络与嵌入支持--timeout-ms默认30秒，元数据响应2 MiB/回执4 MiB/HTTP错误16 KiB，完整scope/trace/版本/原身份及命令校验，固定查询错误不证明此前上传失败。查询JSON限制4 KiB、原请求1 MiB，文件稳定读取与网络--json -有界读取，嵌入新增--json-file但不消费进程stdin；输入等待在查询期限之外。嵌入要求可信未过期reader/writer和原身份匹配，清除继承写条件，迟到结果不发布；底层router可能继续。保留content_state及recorded/not-observed，不上传/重试/刷新版本。文件/stdin取消、后台provider并发限制和运行证据仍缺；仅源码文档人工审阅，无服务端/schema/依赖变化，未编译/类型检查/测试/执行CLI/SDK/Mock/API/数据库或发布。
+
 - P0/P2/P4：已补CLI网络原附件上传的bounded-json multipart传输，完整成功4 MiB/错误16 KiB、HTTP期限覆盖凭据/网络/逐块响应，成功完整解析后重查期限。共享artifactUploadResult先做4 MiB纯JSON快照，网络/嵌入均生效；派发后失败仅同trace有限代码/固定消息，去除上游详情及retryable建议，固定false和started/unknown/unconfirmed，保留原身份/键/版本/内容查回执。嵌入清除旧if_match，参数/稳定文件读取/Node SHA流程保持，不新增文件I/O或嵌入writer隐藏超时。上传恢复持久化、文件读取取消、流式传输及运行证据仍缺；无服务端/schema/依赖变化，仅源码文档人工审阅，未编译/类型检查/测试/执行CLI/SDK/Mock/API/数据库或发布，独立提交push main带[skip ci]。
 
 - P0/P2：已补SDK createArtifact/putArtifactVersion的timeout_ms/signal及默认180秒整次预算，完整原请求1 MiB、非共享内容沿既有1 GiB协议上限，异步前复制，发送前SHA-256核对原描述；显式原身份/键/版本头，不继承旧写条件。Fetch bounded-json支持同步复制的原生FormData POST，凭据/网络/正文共用独立传输期限，成功4 MiB/错误16 KiB，完整原封套解析及迟到拒绝。错误固定retryable=false，派发前本次not-sent/服务器未查，开始transport后任何失败unknown，保留原请求并显式查回执，不重试/换键/刷新版本。Mock仅源码兼容，CLI通用json路径不自动增强；流式上传、调用方持久恢复及运行证据仍缺。无服务端/schema/依赖变化，仅源码文档人工审阅，未编译/类型检查/测试/执行SDK/CLI/Mock/API/数据库或发布，独立提交push main带[skip ci]。

@@ -1,0 +1,265 @@
+import { readSync } from 'node:fs';
+import { parseArgs } from 'node:util';
+import {
+  ARTIFACT_UPLOAD_REQUEST_BYTES,
+  ContractError,
+  assertArtifactReceiptIdentity,
+  syncJsonSnapshot,
+  type ArtifactReadQuery,
+  type ArtifactReceiptQuery,
+} from '@planemem/contracts';
+import { WcpClient, FetchWcpTransport, type WcpRequest, type WcpTransport } from '@planemem/sdk';
+import type { CommandRouter, RequestContext } from '@planemem/api-gateway';
+import { prepareArtifactRead, isArtifactReadCommand } from './artifact-read.js';
+import { prepareArtifactReceipt } from './artifact-receipt.js';
+import { readBoundedArtifactFile } from './artifact-files.js';
+
+type Scope = { tenant_id: string; workspace_id: string; project_id: string };
+type Query =
+  | { kind: 'metadata'; query: ArtifactReadQuery }
+  | { kind: 'receipt'; query: ArtifactReceiptQuery };
+interface Options {
+  base: string;
+  token: string;
+  trace: string;
+  scope: Scope;
+  key?: string | undefined;
+  timeout_ms?: number;
+}
+
+export function isArtifactQueryCommand(command: string) {
+  return isArtifactReadCommand(command) || command === 'artifacts receipt';
+}
+function invalid(trace: string) {
+  return new ContractError(
+    'USAGE_ERROR',
+    'Use artifacts get/version/receipt with one --json or --json-file and optional --timeout-ms (1..2147483647); no --key or repeated options. Metadata JSON is limited to 4 KiB and original receipt JSON to 1 MiB. Keep the complete saved original unchanged.',
+    { trace_id: trace, retryable: false },
+  );
+}
+function prepare(
+  command: string,
+  input: unknown,
+  scope: Scope,
+  trace: string,
+  key?: string,
+): Query {
+  try {
+    if (!isArtifactQueryCommand(command) || key !== undefined) throw new TypeError();
+    const maximum = command === 'artifacts receipt' ? ARTIFACT_UPLOAD_REQUEST_BYTES : 4096;
+    const snapshot: unknown = JSON.parse(syncJsonSnapshot(input, maximum));
+    if (command === 'artifacts receipt')
+      return { kind: 'receipt', query: prepareArtifactReceipt(snapshot, scope, trace) };
+    const query = prepareArtifactRead(command, snapshot, trace);
+    if (!query) throw new TypeError();
+    return { kind: 'metadata', query };
+  } catch {
+    throw invalid(trace);
+  }
+}
+
+// Preserve network --json - without buffering an unbounded stdin stream. Like file reads,
+// waiting for stdin/EOF happens before the SDK deadline and is not advertised as cancelable.
+function readStdin(maximum: number) {
+  const bytes = new Uint8Array(maximum + 1);
+  let offset = 0;
+  while (offset < bytes.length) {
+    const count = readSync(0, bytes, offset, Math.min(64 * 1024, bytes.length - offset), null);
+    if (count === 0) break;
+    offset += count;
+  }
+  if (offset > maximum) throw new TypeError();
+  return bytes.subarray(0, offset);
+}
+async function readArguments(argv: string[], scope: Scope, trace: string, allowStdin: boolean) {
+  try {
+    const args = parseArgs({
+      args: [...argv],
+      allowPositionals: true,
+      tokens: true,
+      options: {
+        json: { type: 'string' },
+        'json-file': { type: 'string' },
+        'timeout-ms': { type: 'string' },
+      },
+    });
+    const seen = new Set<string>();
+    for (const token of args.tokens) {
+      if (token.kind !== 'option') continue;
+      if (seen.has(token.name)) throw new TypeError();
+      seen.add(token.name);
+    }
+    const command = args.positionals.join(' ');
+    const rawTimeout = args.values['timeout-ms'] ?? '30000';
+    const timeout_ms = Number(rawTimeout);
+    const file = args.values['json-file'];
+    const raw = args.values.json;
+    if (
+      args.positionals.length !== 2 ||
+      !isArtifactQueryCommand(command) ||
+      (raw === undefined) === (file === undefined) ||
+      (file !== undefined && (!file.trim() || file === '-')) ||
+      (raw === '-' && !allowStdin) ||
+      !/^[1-9][0-9]{0,9}$/.test(rawTimeout) ||
+      timeout_ms > 2147483647
+    )
+      throw new TypeError();
+    const maximum = command === 'artifacts receipt' ? ARTIFACT_UPLOAD_REQUEST_BYTES : 4096;
+    let text: string;
+    if (file !== undefined || raw === '-') {
+      const bytes =
+        file === undefined
+          ? readStdin(maximum)
+          : await readBoundedArtifactFile(file, maximum, trace);
+      text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    } else {
+      if (raw === undefined || Buffer.byteLength(raw, 'utf8') > maximum) throw new TypeError();
+      text = raw;
+    }
+    return { target: prepare(command, JSON.parse(text), scope, trace), timeout_ms };
+  } catch {
+    throw invalid(trace);
+  }
+}
+function execute(client: WcpClient, target: Query, timeout_ms: number) {
+  if (target.kind === 'receipt') return client.getArtifactReceipt(target.query, { timeout_ms });
+  return target.query.version === undefined
+    ? client.getArtifact(target.query.artifact_id, { timeout_ms })
+    : client.getArtifactVersion(target.query.artifact_id, target.query.version, { timeout_ms });
+}
+function networkClient(options: Options) {
+  try {
+    if (options.key !== undefined) throw new TypeError();
+    const base = new URL(options.base);
+    const token = options.token.trim();
+    if (base.search || base.hash || !token) throw new TypeError();
+    new Headers({ authorization: 'Bearer ' + token });
+    return new WcpClient(
+      new FetchWcpTransport({
+        base_url: base.href,
+        access_token: () => token,
+        timeout_ms: options.timeout_ms ?? 30_000,
+      }),
+      { ...options.scope, trace_id: options.trace },
+    );
+  } catch {
+    throw invalid(options.trace);
+  }
+}
+export function callArtifactQuery(command: string, input: unknown, options: Options) {
+  const snapshot = structuredClone(options);
+  const target = prepare(command, input, snapshot.scope, snapshot.trace, snapshot.key);
+  return execute(networkClient(snapshot), target, snapshot.timeout_ms ?? 30_000);
+}
+export async function callArtifactQueryArguments(argv: string[], options: Options) {
+  const snapshot = structuredClone(options);
+  // Reject invalid credentials/configuration before consuming a file or stdin.
+  networkClient(snapshot);
+  const { target, timeout_ms } = await readArguments(argv, snapshot.scope, snapshot.trace, true);
+  return execute(networkClient({ ...snapshot, timeout_ms }), target, timeout_ms);
+}
+
+export async function runArtifactQuery(
+  argv: string[],
+  router: CommandRouter,
+  original: RequestContext,
+) {
+  const context = structuredClone(original);
+  delete context.idempotency_key;
+  delete context.expected_version;
+  Reflect.deleteProperty(context, 'if_match');
+  const trace = context.trace_id;
+  const scope: Scope = {
+    tenant_id: context.tenant_id,
+    workspace_id: context.workspace_id,
+    project_id: context.project_id,
+  };
+  const { target, timeout_ms } = await readArguments(argv, scope, trace, false);
+  const authority = () => {
+    try {
+      const expiry = Date.parse(context.token_expires_at ?? '');
+      if (
+        context.authenticated_client !== true ||
+        !Number.isFinite(expiry) ||
+        expiry <= Date.now() ||
+        !context.capability.includes(target.kind === 'receipt' ? 'artifact.write' : 'artifact.read')
+      )
+        throw new TypeError();
+      if (target.kind === 'receipt') assertArtifactReceiptIdentity(target.query.identity, context);
+    } catch {
+      throw new ContractError(
+        'ARTIFACT_ACCESS_DENIED',
+        'Use the matching verified, unexpired artifact reader or original writer',
+        {
+          trace_id: trace,
+          retryable: false,
+        },
+      );
+    }
+  };
+  authority();
+  const headers: Record<string, string> = {
+    'x-trace-id': trace,
+    'x-tenant-id': scope.tenant_id,
+    'x-workspace-id': scope.workspace_id,
+    'x-project-id': scope.project_id,
+    ...(target.kind === 'receipt'
+      ? {
+          'x-expected-actor-id': target.query.identity.actor_id,
+          'x-expected-client-id': target.query.identity.client_id,
+        }
+      : {}),
+  };
+  const path =
+    target.kind === 'receipt'
+      ? '/v1/artifacts/receipt'
+      : '/v1/artifacts/' +
+        encodeURIComponent(target.query.artifact_id) +
+        (target.query.version === undefined ? '' : '/versions/' + target.query.version);
+  const body =
+    target.kind === 'receipt'
+      ? syncJsonSnapshot(target.query, ARTIFACT_UPLOAD_REQUEST_BYTES)
+      : undefined;
+  const transport: WcpTransport = {
+    async request<T = unknown>(request: WcpRequest): Promise<T> {
+      authority();
+      if (
+        request.method !== (target.kind === 'receipt' ? 'POST' : 'GET') ||
+        request.path !== path ||
+        request.response_type !== 'bounded-json' ||
+        request.max_response_bytes !== (target.kind === 'receipt' ? 4 : 2) * 1024 * 1024 ||
+        Object.keys(request.headers).length !== Object.keys(headers).length ||
+        Object.entries(headers).some(([key, value]) => request.headers[key] !== value) ||
+        (body === undefined
+          ? request.body !== undefined
+          : syncJsonSnapshot(request.body, ARTIFACT_UPLOAD_REQUEST_BYTES) !== body)
+      )
+        throw invalid(trace);
+      if (request.signal?.aborted)
+        throw new ContractError('GATEWAY_REQUEST_CANCELED', 'Stopped waiting for artifact data', {
+          trace_id: trace,
+        });
+      const result = await router.execute({
+        operation:
+          target.kind === 'receipt'
+            ? 'artifact.receipt'
+            : target.query.version === undefined
+              ? 'artifact.read'
+              : 'artifact.version.read',
+        input:
+          target.kind === 'metadata'
+            ? {
+                ...target.query,
+                ...(target.query.version === undefined
+                  ? {}
+                  : { version: String(target.query.version) }),
+              }
+            : (JSON.parse(body!) as Record<string, unknown>),
+        context: structuredClone(context),
+      });
+      authority();
+      return result as unknown as T;
+    },
+  };
+  return execute(new WcpClient(transport, { ...scope, trace_id: trace }), target, timeout_ms);
+}

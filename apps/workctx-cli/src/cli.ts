@@ -16,8 +16,7 @@ import {
   checkpointHistoryResult,
   checkpointWorkbenchHistoryResult,
 } from './checkpoint-history.js';
-import { isArtifactReadCommand, prepareArtifactRead, artifactReadResult } from './artifact-read.js';
-import { prepareArtifactReceipt, artifactReceiptResult } from './artifact-receipt.js';
+import { isArtifactQueryCommand, runArtifactQuery } from './artifact-queries.js';
 import { runArtifactDownload } from './artifact-download.js';
 import { runArtifactUploadContext } from './artifact-upload-context.js';
 import { runArtifactPreparation } from './artifact-preparation.js';
@@ -695,7 +694,7 @@ export async function runWorkctx(
       const bytes = await readArtifactUploadContent(args, query, uploadContext.trace_id);
       delete uploadContext.idempotency_key;
       delete uploadContext.expected_version;
-      delete uploadContext.if_match;
+      Reflect.deleteProperty(uploadContext, 'if_match');
       uploadContext.idempotency_key = query.command.request_key;
       if (query.command.operation === 'artifact.put-version')
         uploadContext.expected_version = query.command.expected_version;
@@ -721,42 +720,11 @@ export async function runWorkctx(
         throw artifactUploadUnconfirmed(error, trace);
       }
     }
-    if (command === 'artifacts receipt') {
-      const receiptContext = { ...context, capability: [...context.capability] };
-      const values = parseRetryArguments(argv.slice(2));
-      const query = prepareArtifactReceipt(
-        values.json === undefined ? {} : parseInputObject(values.json),
-        receiptContext,
-        receiptContext.trace_id,
-        values.key,
-      );
-      try {
-        if (
-          receiptContext.authenticated_client !== true ||
-          !receiptContext.capability.includes('artifact.write')
-        )
-          throw new TypeError();
-        assertArtifactReceiptIdentity(query.identity, receiptContext);
-      } catch {
-        throw new ContractError(
-          'DENIED',
-          'The original artifact identity requires a matching verified writer',
-          {
-            trace_id: receiptContext.trace_id,
-          },
-        );
-      }
-      const trace = receiptContext.trace_id;
-      delete receiptContext.idempotency_key;
-      delete receiptContext.expected_version;
-      const result = await router.execute({
-        operation,
-        input: { ...parseArtifactReceiptQuery(query) },
-        context: receiptContext,
-      });
+    if (isArtifactQueryCommand(command!)) {
+      const result = await runArtifactQuery(argv, router, context);
       return {
         exit_code: 0,
-        stdout: JSON.stringify(artifactReceiptResult(result, query, trace)),
+        stdout: JSON.stringify(result),
         stderr: '',
       };
     }
@@ -779,23 +747,6 @@ export async function runWorkctx(
         ? {}
         : parseJsonArgument(argv.slice(subcommand ? 2 : 1));
     let commandContext = context;
-    let artifactRead;
-    const artifactScope = { ...context };
-    if (isArtifactReadCommand(command!)) {
-      const values = parseRetryArguments(argv.slice(subcommand ? 2 : 1));
-      artifactRead = prepareArtifactRead(
-        command!,
-        values.json === undefined ? {} : parseInputObject(values.json),
-        context.trace_id,
-        values.key,
-      );
-      input = {
-        ...artifactRead,
-        ...(artifactRead?.version === undefined ? {} : { version: String(artifactRead.version) }),
-      };
-      const { idempotency_key: _key, expected_version: _version, ...readContext } = context;
-      commandContext = { ...readContext, capability: [...readContext.capability] };
-    }
     let handoffRead;
     if (command === 'handoffs get') {
       const values = parseRetryArguments(argv.slice(subcommand ? 2 : 1));
@@ -1100,35 +1051,33 @@ export async function runWorkctx(
             ? 'work_items'
             : command!.split(' ')[0];
     const result = await router.execute({ operation, input, context: commandContext });
-    const output = artifactRead
-      ? artifactReadResult(result, artifactRead, artifactScope, artifactScope.trace_id)
-      : checkpointHistory
-        ? checkpointHistoryResult(result, checkpointHistory, context, context.trace_id)
-        : handoffRead
-          ? handoffReadResult(result, handoffRead, context, context.trace_id)
-          : checkpointRead
-            ? checkpointReadResult(result, checkpointRead, context, context.trace_id)
-            : resume
-              ? resumeResult(result, resume, context.trace_id)
-              : checkpoint
-                ? checkpointResult(result, checkpoint, context.trace_id)
-                : sessionState
-                  ? sessionStateResult(result, sessionState, context, context.trace_id)
-                  : sessionActivity
-                    ? sessionActivityResult(result, sessionActivity, context.trace_id)
-                    : sessionStart
-                      ? sessionStartResult(result, sessionStart, context.trace_id)
-                      : handoffCreate
-                        ? handoffCreateResult(result, handoffCreate, context.trace_id)
-                        : handoffClaim
-                          ? handoffClaimResult(result, handoffClaim, context.trace_id)
-                          : observed
-                            ? observedReadResult(result, observed, context, context.trace_id)
-                            : planeInbox
-                              ? planeInboxReadResult(result, planeInbox, context, context.trace_id)
-                              : planeRetry
-                                ? planeInboxRetryResult(result, planeRetry, context.trace_id)
-                                : result;
+    const output = checkpointHistory
+      ? checkpointHistoryResult(result, checkpointHistory, context, context.trace_id)
+      : handoffRead
+        ? handoffReadResult(result, handoffRead, context, context.trace_id)
+        : checkpointRead
+          ? checkpointReadResult(result, checkpointRead, context, context.trace_id)
+          : resume
+            ? resumeResult(result, resume, context.trace_id)
+            : checkpoint
+              ? checkpointResult(result, checkpoint, context.trace_id)
+              : sessionState
+                ? sessionStateResult(result, sessionState, context, context.trace_id)
+                : sessionActivity
+                  ? sessionActivityResult(result, sessionActivity, context.trace_id)
+                  : sessionStart
+                    ? sessionStartResult(result, sessionStart, context.trace_id)
+                    : handoffCreate
+                      ? handoffCreateResult(result, handoffCreate, context.trace_id)
+                      : handoffClaim
+                        ? handoffClaimResult(result, handoffClaim, context.trace_id)
+                        : observed
+                          ? observedReadResult(result, observed, context, context.trace_id)
+                          : planeInbox
+                            ? planeInboxReadResult(result, planeInbox, context, context.trace_id)
+                            : planeRetry
+                              ? planeInboxRetryResult(result, planeRetry, context.trace_id)
+                              : result;
     return { exit_code: 0, stdout: JSON.stringify(output), stderr: '' };
   } catch (error) {
     const envelope =
