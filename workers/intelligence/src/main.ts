@@ -96,6 +96,10 @@ import {
 } from './generation-journal-backup.js';
 import { readGenerationJournalBackupRecovery } from './generation-journal-backup-recovery.js';
 import { restoreGenerationJournalBackup } from './generation-journal-restore.js';
+import {
+  compareGenerationJournalBackups,
+  compareGenerationJournalDirectory,
+} from './generation-journal-comparison.js';
 
 const help = `Proposal submission queue (Node.js 24)
   proposal-worker prepare-generation --binding binding.json --file selection.json --output NEW_SOURCES.json [--record]
@@ -113,6 +117,8 @@ const help = `Proposal submission queue (Node.js 24)
   proposal-worker generation-journal-backup-recover --file BACKUP_OR_ERROR.json --output NEW_BACKUP.json [--preview]
   proposal-worker generation-journal-restore --file BACKUP.json --binding binding.json --output NEW_JOURNAL_DIR --preview
   proposal-worker generation-journal-restore --file BACKUP.json --binding binding.json --output NEW_JOURNAL_DIR --confirm-sha256 BACKUP_SHA256
+  proposal-worker generation-journal-compare --file BACKUP.json --against OTHER_BACKUP.json
+  proposal-worker generation-journal-compare --file BACKUP.json --journal EXISTING_DIR --binding binding.json
   proposal-worker enqueue-generated --queue queue.sqlite --binding binding.json --file GENERATION_RECORD.json --key KEY
   proposal-worker generation-list --queue queue.sqlite --binding binding.json --id JOB_ID [--after SHA256] [--limit 10]
   proposal-worker generation-get --queue queue.sqlite --binding binding.json --id JOB_ID --sha256 SHA256 [--output NEW_RECORD.json]
@@ -160,6 +166,7 @@ generation-requests discovers requests for the original binding; follow next_cur
 generation-journal-backup retains complete requests, attempts and outcomes for the original binding after two matching read passes. Pause writers first; this is not a transactional snapshot or permission to resend.
 inspect-generation-journal-backup verifies the retained file offline; generation-journal-backup-recover saves a new copy of a complete retained backup. Preview writes nothing; neither restores a live journal or calls the model.
 generation-journal-restore creates a new guarded directory after digest confirmation, preserving original requests, attempts and outcomes. It blocks new generation requests and model calls, including prepared observations; status/result and existing-outcome recovery remain available. Keep the marker, source backup and original directory; older workers do not implement this guard.
+generation-journal-compare compares two complete backups, or observes an existing directory read-only. It reports missing/extra files and immutable-content/identity conflicts; differences still exit 0. Comparison never merges, releases quarantine or authorizes provider calls.
 prepare-generation reads pinned sources; flush submits known-unsent drafts or reads receipts for unknown outcomes.
 Both use PROPOSAL_WORKER_ACCESS_TOKEN. retry preserves unknown outcomes and never clears uncertainty.
 retry schedules the original draft/key; it does not send or regenerate content.
@@ -200,6 +207,7 @@ export async function main(args: string[]): Promise<number> {
         'timeout-ms': { type: 'string' },
         'confirm-sha256': { type: 'string' },
         'record-sha256': { type: 'string' },
+        against: { type: 'string' },
       },
     });
     const command = positionals[0];
@@ -218,6 +226,7 @@ export async function main(args: string[]): Promise<number> {
       'inspect-generation-journal-backup': ['file'],
       'generation-journal-backup-recover': ['file', 'output', 'preview'],
       'generation-journal-restore': ['file', 'binding', 'output', 'preview', 'confirm-sha256'],
+      'generation-journal-compare': ['file', 'against', 'journal', 'binding'],
       'enqueue-generated': ['file', 'key'],
       'generation-list': ['id', 'after', 'limit'],
       'generation-get': ['id', 'sha256', 'output'],
@@ -272,6 +281,7 @@ export async function main(args: string[]): Promise<number> {
             'inspect-generation-journal-backup',
             'generation-journal-backup-recover',
             'generation-journal-restore',
+            'generation-journal-compare',
           ].includes(command)
             ? []
             : ['queue', 'binding']),
@@ -326,6 +336,24 @@ export async function main(args: string[]): Promise<number> {
         }
         throw error;
       }
+    }
+    if (command === 'generation-journal-compare') {
+      const against = values.against === undefined ? undefined : required('against');
+      if (against !== undefined && (values.journal !== undefined || values.binding !== undefined))
+        throw new TypeError('Use either --against, or --journal with --binding');
+      const journal = against === undefined ? required('journal') : undefined;
+      const bindingFile = against === undefined ? required('binding') : undefined;
+      const source = await readGenerationJournalBackup(required('file'));
+      const comparison =
+        against !== undefined
+          ? compareGenerationJournalBackups(source, await readGenerationJournalBackup(against))
+          : await compareGenerationJournalDirectory(
+              source,
+              journal!,
+              (await readJson(bindingFile!, 16_384)) as ProposalQueueBinding,
+            );
+      process.stdout.write(JSON.stringify(comparison, null, 2) + '\n');
+      return 0;
     }
     if (
       command === 'generation-journal-backup' ||
@@ -1271,7 +1299,8 @@ export async function main(args: string[]): Promise<number> {
     }
     if (
       error instanceof ContractError &&
-      error.envelope.code === 'PROPOSAL_GENERATION_JOURNAL_QUARANTINED'
+      (error.envelope.code === 'PROPOSAL_GENERATION_JOURNAL_QUARANTINED' ||
+        error.envelope.code.startsWith('PROPOSAL_GENERATION_JOURNAL_COMPARISON_'))
     ) {
       process.stderr.write(JSON.stringify(error.envelope, null, 2) + '\n');
       return 1;

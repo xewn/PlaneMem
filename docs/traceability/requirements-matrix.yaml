@@ -3821,6 +3821,25 @@ requirements:
         - "Manual-operation pause, exact removal without writer resurrection, export compatibility and explicit backup scope"
       remaining_scope: "Automatic-copy batch backup/cleanup and retention, review-draft autosave, cross-scope or remote drafts, and runtime/compatibility evidence."
       execution: "Source/docs and manual review only; no build, typecheck, tests, product/browser/database execution or release. Separate browser v1 schema source only; no server schema or dependency changes."
+    generation_journal_comparison_development_increment:
+      date: "2026-11-04"
+      status: "Source-only comparison of complete generation journal backups or an existing journal observation; R-009 remains incomplete."
+      artifacts:
+        - "workers/intelligence/src/generation-journal-comparison.ts"
+        - "workers/intelligence/src/main.ts"
+        - "workers/intelligence/src/index.ts"
+        - "workers/intelligence/README.md"
+        - "docs/design/01-contracts/proposal-generation-journal-comparison-runtime.md"
+        - "docs/design/01-contracts/proposal-generation-journal-backup-runtime.md"
+        - "docs/design/01-contracts/proposal-generation-journal-restore-runtime.md"
+      behavior: "Validate both complete bounded snapshots and exact original binding before matching original keys. Report identical/missing/source-extension/current-extension/conflict states, per-file presence and changed field names, cross-key request/attempt identity collisions and target-only keys. Preserve immutable times/digests and unknown attempts; return metadata without source/model text. Live-directory mode performs bounded two-pass capture with directory-identity and quarantine-policy observation checks. Logical equality ignores capture times, while both full snapshot hashes remain in the report. No writes, queue/credential/network/model access, merge permission or quarantine release; differences and conflicts still exit 0."
+      evidence: []
+      pending_evidence:
+        - "Both directions of file extension, empty snapshots, target-only keys, immutable request/attempt/outcome conflicts and cross-key identity ownership"
+        - "Full validation of unselected content, binding mismatch, metadata-only output, deterministic order/counts and different capture times"
+        - "Live-directory bounds, ordinary/restored/unreadable policies, directory/policy changes and no partial comparison"
+      remaining_scope: "Existing-journal merge, conflict disposition, explicit quarantine release, process/provider coordination and runtime evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/product/provider/database execution or release. No schema or dependency change."
     generation_journal_restore_development_increment:
       date: "2026-11-04"
       status: "Source-only complete restoration into a new quarantined generation journal; R-009 remains incomplete."

@@ -50,6 +50,8 @@ pnpm proposal-worker generation-result --journal NEW_JOURNAL_DIR --binding bindi
 
 ## 中断、失败与并发边界
 
+可用 [生成日志差异比较](proposal-generation-journal-comparison-runtime.md) 对照保留的源备份和现有目录，完整读取能通过时报告缺失/多出/冲突。比较不修复孤立或损坏文件，不验证隔离标记来源，也不能将半成品判定为已完成恢复或授权重新派发；只有比较输出相同不足以解除隔离。
+
 整个目录不是原子发布。成功报告前可能只写入了一部分文件，任何失败均保留已创建目录、原备份和已有文件，不覆盖、回滚删除或继续向失败目录写入。应保留所有副本，重新预览并选择另一个全新目录恢复；不能通过删除隔离文件把半成品转换为可运行目录。
 
 失败返回 `PROPOSAL_GENERATION_JOURNAL_RESTORE_FAILED`，details 包含原备份摘要、目标、restore_id、phase（create-directory/save-guard/save-source-backup/save-requests/verify）、target_created、guard_status、saved_files、active_file、temporary_paths 和 restoration=not-confirmed。实际发布错误额外保留保存阶段/发布状态/未知临时文件路径，不能将 saved_files 当作完整成功数或将失败当作未写入。guard_status 仅说明此前是否确认过隔离保存，不保证失败时文件仍存在。原始输入备份不被修改或删除。

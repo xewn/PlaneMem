@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [生成日志差异比较](docs/design/01-contracts/proposal-generation-journal-comparison-runtime.md)：比较两份备份或备份与现有日志，列出缺失、多出及冲突记录，保留原请求身份和未知调用状态；仅输出元数据，不修改日志或重发。仅源码文档，未编译、测试、运行或发布。
+
 新增 [生成日志恢复新目录](docs/design/01-contracts/proposal-generation-journal-restore-runtime.md)：预览并确认备份摘要后，恢复全部原请求、领取和结果，支持查询与结果取回；恢复目录阻止新的模型调用，失败保留已写文件和来源。仅源码文档，未编译、测试、运行或发布。
 
 新增 [生成请求日志完整备份](docs/design/01-contracts/proposal-generation-journal-backup-runtime.md)：按原项目与身份将请求、领取标记和结果一起保存，检测读取期间的变化，支持离线核验及失败副本补存。保留原时间、摘要和未知调用状态，不重新生成或发送。仅源码文档，未编译、测试、运行或发布。
