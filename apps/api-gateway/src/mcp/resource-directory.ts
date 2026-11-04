@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { ContractError, isSyncIdentifier, isUlid } from '@planemem/contracts';
+import { ContractError, isSyncIdentifier, isUlid, syncJsonSnapshot } from '@planemem/contracts';
 import { proposalVisibility } from '../proposals.js';
 import type { RequestContext } from '../router.js';
 import type { WorkbenchDatabase } from '../workbench/repository.js';
@@ -20,17 +20,21 @@ const pageSize = 100;
 // Full pack validation traverses source graphs. Bound work separately from metadata pagination.
 const packScanLimit = 8;
 const packKind = 7;
-const cursorVersion = 2;
+const cursorVersion = 3;
 
 function key(context: RequestContext): string {
   return createHash('sha256')
     .update(
       JSON.stringify([
-        'mcp-resource-directory-v2',
+        'mcp-resource-directory-v3',
         context.tenant_id,
         context.workspace_id,
         context.project_id,
-        context.capability.includes('data.restricted.read'),
+        context.actor_id,
+        context.client_id,
+        context.actor_type ?? null,
+        [...new Set(context.capability)].sort(),
+        [...new Set(context.roles ?? [])].sort(),
       ]),
     )
     .digest('hex');
@@ -42,8 +46,12 @@ function encode(position: Position, bound: string): string {
   );
 }
 
-function validPosition(value: Position, context: RequestContext): boolean {
+function validPosition(input: unknown, context: RequestContext): input is Position {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return false;
+  const value = input as Record<string, unknown>;
   return (
+    Object.keys(value).length === 2 &&
+    typeof value.kind === 'number' &&
     Number.isInteger(value.kind) &&
     value.kind >= 0 &&
     value.kind < kinds.length &&
@@ -51,7 +59,15 @@ function validPosition(value: Position, context: RequestContext): boolean {
     value.id !== '.' &&
     value.id !== '..' &&
     (value.kind !== 0 || value.id === context.project_id) &&
-    (![3, packKind].includes(value.kind) || isUlid(value.id))
+    (![3, 5, 6, packKind].includes(value.kind) || isUlid(value.id))
+  );
+}
+
+/** PostgreSQL C order for valid UTF-8 identifiers, not JavaScript UTF-16 order. */
+function compare(left: Position, right: Position): number {
+  return (
+    left.kind - right.kind ||
+    Buffer.compare(Buffer.from(left.id, 'utf8'), Buffer.from(right.id, 'utf8'))
   );
 }
 
@@ -126,7 +142,13 @@ export class McpResourceDirectory {
       });
   }
 
-  async list(context: RequestContext, cursor: unknown, checkPack: (id: string) => Promise<void>) {
+  async list(
+    context: RequestContext,
+    cursor: unknown,
+    checkPack: (id: string) => Promise<void>,
+    active: () => void = () => undefined,
+  ) {
+    active();
     const bound = key(context);
     const after = decode(cursor, bound, context);
     const continuation = (kind: number, id: string) =>
@@ -166,7 +188,8 @@ export class McpResourceDirectory {
           AND ($4::boolean OR NOT p.read_restricted) AND p.expires_at > statement_timestamp()
           AND ${continuation(packKind, 'p.pack_id')}`,
     ];
-    const rows = await this.query<Position>(
+    active();
+    const returned = await this.query<Position>(
       `WITH visible_project AS MATERIALIZED (
         SELECT id FROM wcp_projects WHERE tenant_id = $1 AND workspace_id = $2 AND id = $3
           AND deleted_at IS NULL AND ($4::boolean OR classification <> 'restricted')
@@ -182,14 +205,27 @@ export class McpResourceDirectory {
       ],
       context,
     );
-    if (rows.some((row) => !validPosition(row, context)))
+    active();
+    const rows: unknown = JSON.parse(syncJsonSnapshot(returned, 256 * 1024));
+    if (!Array.isArray(rows) || rows.length > pageSize + 1)
       throw new ContractError('MCP_RESOURCE_INVALID', 'Stored resource metadata is invalid', {
         trace_id: context.trace_id,
       });
+    const candidates: Position[] = [];
+    let previous = after;
+    for (const row of rows) {
+      if (!validPosition(row, context) || (previous !== undefined && compare(row, previous) <= 0))
+        throw new ContractError('MCP_RESOURCE_INVALID', 'Stored resource positions are invalid', {
+          trace_id: context.trace_id,
+        });
+      candidates.push(row);
+      previous = row;
+    }
     const scanned: Position[] = [];
     const page: Position[] = [];
     let packsChecked = 0;
-    for (const row of rows) {
+    for (const row of candidates) {
+      active();
       if (scanned.length >= pageSize || (row.kind === packKind && packsChecked >= packScanLimit))
         break;
       scanned.push(row);
@@ -198,7 +234,9 @@ export class McpResourceDirectory {
         try {
           // The normal read includes authorization, project visibility, hash, expiry and source checks.
           await checkPack(row.id);
+          active();
         } catch (error) {
+          active();
           if (
             error instanceof ContractError &&
             [
@@ -215,6 +253,7 @@ export class McpResourceDirectory {
       }
       page.push(row);
     }
+    active();
     const last = scanned[scanned.length - 1];
     return {
       resources: page.map((row) => {
@@ -222,7 +261,7 @@ export class McpResourceDirectory {
         return { uri, name: uri, mimeType: 'application/json' };
       }),
       // Continue after the last inspected candidate, even when every inspected pack was stale.
-      ...(last && rows.length > scanned.length ? { nextCursor: encode(last, bound) } : {}),
+      ...(last && candidates.length > scanned.length ? { nextCursor: encode(last, bound) } : {}),
     };
   }
 }

@@ -1,5 +1,7 @@
 # MCP HTTP 运行时开发说明
 
+2026-11-04 资源目录增补：`resources/list` 的内部 `mcp.catalog` resources 分支进入专用处理器，要求可信未过期实际 `context.read` 和完整身份，admin 不替代。内部查询仅 kind/cursor、8 KiB；候选副本256 KiB/最多101项，核对种类/编号、严格UTF-8 C顺序、去重及续页排他位置。保留100候选/8包扫描，逐包校验完整2 MiB封套、原范围/ID/trace/JSON内ETag/来源预算、Node SHA-256与入选restricted权限；16 KiB错误核验后使用固定说明。最终完整目录封套1 MiB，独立每router两容量与30秒处理器期限，超时底层结束才释放；外层授权审计及网络发送在期限之外。v3游标绑定账号/客户端/actor_type/完整角色和能力集合，旧游标从首屏重读。非包资源仅元数据发现，项目不可见仍空目录，不保证逐项正文可读。详见[资源目录完整读取](context-pack-runtime.md#mcp-资源目录完整读取2026-11-04源码增量)。仅源码文档，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布。
+
 2026-11-04 保存包资源增补：项目 context-pack/{ULID|latest} URI 接入现有上下文资源处理器，4 KiB仅uri、单次解码/原项目/指定包核验；可信未过期实际context.read与完整身份、父项目可见性及嵌套原读取策略审计保持。2 MiB完整json封套、JSON内版本/ETag/来源/预算/trace，Node SHA-256与入选restricted核验；16 KiB错误固定提示，原URI/MIME/contents/source_refs形状保持，转义正文加重复来源包装6 MiB+8192。包和条目资源共享每router两笔容量/处理器30秒，超时底层结束才释放；工具容量独立。内层router不提供HTTP ETag/状态，外层审计与HTTP发送不计入期限；模板/候选目录仍保持既有实现，不自动换包/重试/编译或来源访问。详见[保存包资源](context-pack-runtime.md#mcp-保存包资源完整读取2026-11-04源码增量)。仅源码文档，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布。
 
 2026-11-04 保存包工具增补：`get_context_pack` 接入原上下文专用读取执行器，发现/prepare/调用要求可信未过期实际 context.read 与完整项目/账号/客户端，HTTP 调用也要求已认证客户端，admin 不替代。4 KiB 仅可选 pack_id（ULID）/format，默认 latest/json；完整成功 2 MiB、错误 16 KiB，HTTP 状态/type/trace/ETag 与共享完整封套/原范围/包/来源/预算/rendered 核验，再以 Node SHA-256 核对保存摘要及入选 restricted 分类。七类工具共用每 Gateway 两笔容量/30秒期限，超时底层完成才释放；包独立 MCP_CONTEXT_PACK_BUSY/TIMEOUT，摘要不可用/不一致明确失败。完整文本 JSON 包装限 4 MiB+4096，无自动换包/重试/编译/来源访问；prepareMcpTool 要求专用执行器。资源 URI 和发现目录的专用边界仍待后续，不声称工具期限涵盖 HTTP 发送。详见[保存包 MCP 工具](context-pack-runtime.md#mcp-保存包工具完整读取2026-11-04源码增量)。仅源码文档，未编译、类型检查、测试、执行 MCP/产品/API/数据库或发布。
@@ -294,7 +296,7 @@ work://session/{session_id}/handoff
 
 `resources/list` 已改为 PostgreSQL 持久元数据目录，每页最多 100 条，使用响应 `nextCursor` 继续。依次列出项目 overview、未归档 ContextItem、有效 wcp://context/... 旧索引、可见 Proposal、本地工作项投影、有检查点的会话、有交接的会话及检查通过的保存包；每类按原始 ID 的 C 排序继续，不按编码后的 URI 排序。ID 在 URI 中经过百分号编码，应使用目录返回的完整 URI。名称只使用 URI，不复制标题、正文或来源内容。目录先过滤当前项目、分类和删除状态；旧索引额外过滤到期，Proposal 复用本地来源与派生链可见性规则。ContextItem 的过期/excluded 和 Proposal 的历史状态不影响其作为可读历史资料出现，不表示可用于确认或编译。
 
-游标版本现为 2，绑定租户、工作空间、项目与 data.restricted.read 权限；旧内存目录和版本 1 游标失效，范围或权限变化须重新从第一页开始。单页元数据候选在一条查询内读取，保存包另作逐包读取检查；跨页为实时目录，增删和权限变化可能改变后续结果，不是快照导出。目录存储未配置/查询失败返回 MCP_STORAGE_UNAVAILABLE；不回退内存、不吞错为空目录。项目不可见返回空目录；目录出现也不保证稍后的读取成功。MCP 读取绕过 HTTP 幂等响应缓存，并移除通用 RuntimeResource 缓存短路，保留 source_refs。
+游标版本现为 3，绑定租户、工作空间、项目、账号、客户端、actor_type 及排序去重后的完整能力/角色集合；旧内存目录和版本 1/2 游标失效，范围、身份或权限变化须重新从第一页开始。trace 和令牌到期时间不参与绑定，同身份/权限续期后可继续；每次调用仍要求可信未过期的实际 context.read 与完整身份。单页元数据候选在一条查询内读取，保存包另作逐包读取检查；跨页为实时目录，增删和权限变化可能改变后续结果，不是快照导出。目录存储未配置/查询失败返回 MCP_STORAGE_UNAVAILABLE；不回退内存、不吞错为空目录。项目不可见返回空目录；非包候选只做元数据发现，目录出现也不保证稍后的读取成功。MCP 读取绕过 HTTP 幂等响应缓存，并移除通用 RuntimeResource 缓存短路，保留 source_refs。
 
 会话 checkpoint 地址按会话去重，实际读取最新检查点；handoff 地址合并持久交接和旧投影交接，同 ID 的持久记录优先，与读取端保持一致。已结束会话和历史交接仍可出现，资源存在不表示仍可领取或续接。会话、检查点和交接工作台查询同样重新过滤当前父项目。会话笔记仍沿用项目级读取权限，目录不会读取或内联其绑定的 ContextPack 正文，也不把旧笔记视为当前包有效的证明。
 

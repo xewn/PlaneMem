@@ -4,6 +4,8 @@
 
 ## 当前基线
 
+- P4/P0：MCP resources/list 接入专用完整读取处理器，可信未过期实际context.read/完整身份，内部kind/cursor输入8 KiB；独立每router两容量/30秒，超时底层结束才释放。候选副本256 KiB/最多101项，严格kind/ID、UTF-8 C顺序、去重及after排他位置；保留100候选/8包扫描与空页续游标。逐包完整2 MiB封套/原范围-ID-trace/JSON内ETag/来源预算/Node SHA-256/restricted核验，16 KiB固定错误，只有经核对的不可用包可跳过；最终完整目录封套1 MiB。v3游标绑定原scope/actor/client/actor_type/能力角色集合，旧游标从首屏重读。非包候选仅元数据发现，项目不可见仍空目录；不改SQL，外层审计/发送不计期限，内层无HTTP头或状态核验。模板/其他资源、Mock/Schema、真实兼容与SQL成本证据待补，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布。
+
 - P4/P0：MCP 保存包资源URI接入context-resource专用处理器，4 KiB仅uri、原项目/ULID或latest单次解码，可信未过期实际context.read/完整身份与父项目可见性、嵌套原策略审计保持；完整2 MiB json包/JSON内ETag/范围/来源/预算及Node SHA-256/入选restricted核验。包和当前条目资源共用每router两容量/处理器30秒，超时底层结束才释放；错误16 KiB固定提示，原URI/MIME/contents/source_refs保持、包装6 MiB+8192。不声称内层HTTP头/状态或外层审计/发送期限，无自动换包/重试/编译。模板/候选目录专用边界、Mock/Schema及运行兼容证据待补，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布。
 
 - P4/P0：MCP get_context_pack 接入上下文专用读取执行器，4 KiB可选pack_id/format、工具Schema用ULID；发现/prepare/调用与HTTP客户端门槛要求可信未过期实际context.read/完整身份。2 MiB成功/16 KiB错误，HTTP状态/type/trace/ETag及共享原范围/包/完整内容/来源/预算/rendered校验，Node SHA-256核对摘要和入选restricted权限；七工具共享两容量/30秒，超时底层结束才释放，包新增BUSY/TIMEOUT/完整性错误。输出原封套文本及4 MiB+4096转义上限，无换包/重试/编译/来源访问；prepare须迁专用执行器。resources/read与发现目录、Mock/独立Schema和运行兼容证据待补，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布。

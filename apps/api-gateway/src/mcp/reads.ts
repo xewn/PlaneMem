@@ -4,6 +4,7 @@ import type { PostgresLegacySearch } from '@planemem/search-service';
 import type { CommandRouter } from '../router.js';
 import type { WorkbenchDatabase, WorkbenchRepository } from '../workbench/repository.js';
 import { McpResourceDirectory } from './resource-directory.js';
+import { executeResourceDirectory } from './resource-directory-read.js';
 import {
   executeContextItemResource,
   isContextItemResourceUri,
@@ -57,14 +58,7 @@ export function registerMcpReads(
         data = { resourceTemplates: structuredClone(MCP_RESOURCE_TEMPLATES) };
         break;
       case 'resources': {
-        data = await directory.list(context, input.cursor, async (packId) => {
-          await router.execute({
-            operation: 'context.pack.read',
-            context,
-            input: { pack_id: packId },
-          });
-        });
-        break;
+        return executeResourceDirectory(router, directory, input, context);
       }
       case 'initialize':
       case 'ping':
