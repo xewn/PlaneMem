@@ -112,6 +112,7 @@ import {
   inspectContextPackReceipt,
   extractContextPackReceiptOriginal,
 } from './context-pack-receipt-file.js';
+import { recoverContextPackReceipt } from './context-pack-receipt-recovery.js';
 
 const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
 
@@ -355,6 +356,8 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   context inspect-receipt         Inspect --receipt-file RECEIPT.json offline; optional --json-file ORIGINAL.json
   context extract-original       Recover its original offline with --receipt-file RECEIPT.json --output NEW_ORIGINAL.json
                                  Optional --json-file ORIGINAL.json checks full binding; no query or pack save
+  context recover-receipt         Save a captured observation offline from --result-file RESULT.json to --output NEW_RECEIPT.json
+                                 Optional --json-file ORIGINAL.json; preserves historical time and never queries again
   context create                 Add proposed context; title/content/source_refs and --key
   context read                   Read complete current item_id; bounded response and timeout
   context list                   Read one complete page by query/layer/classification/status/item_type/archived/limit/cursor
@@ -671,6 +674,7 @@ export async function main(args: string[]): Promise<number> {
       'context save-receipt',
       'context inspect-receipt',
       'context extract-original',
+      'context recover-receipt',
       'context create',
       'context read',
       'context list',
@@ -714,6 +718,11 @@ export async function main(args: string[]): Promise<number> {
     }
     if (name === 'context extract-original') {
       const result = await extractContextPackReceiptOriginal(args, trace);
+      print(result);
+      return result.data.local.state === 'save-failed' ? 1 : 0;
+    }
+    if (name === 'context recover-receipt') {
+      const result = await recoverContextPackReceipt(args, trace);
       print(result);
       return result.data.local.state === 'save-failed' ? 1 : 0;
     }

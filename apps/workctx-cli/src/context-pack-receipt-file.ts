@@ -30,14 +30,18 @@ function failure(code: string, message: string, trace: string) {
     details: { compile_dispatch_state: 'not-sent', server_outcome: 'not-checked' },
   });
 }
-async function readReceipt(path: string, trace: string) {
+export function verifyContextPackReceiptFile(input: unknown) {
+  const file = parseContextPackSaveReceiptFile(input);
+  if (hash(contextPackSaveReceiptDocumentJson(file.document)) !== file.document_sha256)
+    throw new TypeError();
+  return file;
+}
+export async function readContextPackReceiptFile(path: string, trace: string) {
   try {
     const bytes = await readBoundedArtifactFile(path, CONTEXT_PACK_SAVE_RECEIPT_FILE_BYTES, trace);
-    const file = parseContextPackSaveReceiptFile(
+    const file = verifyContextPackReceiptFile(
       JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)),
     );
-    if (hash(contextPackSaveReceiptDocumentJson(file.document)) !== file.document_sha256)
-      throw new TypeError();
     return { file, bytes, file_sha256: hash(bytes) };
   } catch {
     throw failure(
@@ -90,7 +94,7 @@ export async function captureContextPackReceipt(
     phase = 'publish';
     published = await saveArtifactOutput(destination, bytes, fileHash, trace);
     phase = 'readback';
-    const stored = await readReceipt(published.path, trace);
+    const stored = await readContextPackReceiptFile(published.path, trace);
     if (
       stored.file_sha256 !== fileHash ||
       !Buffer.from(stored.bytes).equals(bytes) ||
@@ -198,12 +202,11 @@ function receiptFileArguments(
   }
 }
 
-async function inspectReceiptFile(
-  filePath: string,
+export async function matchContextPackReceiptOriginal(
+  expected: PackSaveOriginal,
   originalPath: string | undefined,
   trace: string,
 ) {
-  const saved = await readReceipt(filePath, trace);
   let matched: { original_file: string; original_file_sha256: string } | undefined;
   if (originalPath !== undefined) {
     try {
@@ -211,7 +214,7 @@ async function inspectReceiptFile(
       const original = decodePackSaveOriginal(
         new TextDecoder('utf-8', { fatal: true }).decode(bytes),
       );
-      if (encodePackSaveOriginal(original) !== encodePackSaveOriginal(saved.file.document.original))
+      if (encodePackSaveOriginal(original) !== encodePackSaveOriginal(expected))
         throw new TypeError();
       matched = { original_file: originalPath, original_file_sha256: hash(bytes) };
     } catch {
@@ -222,6 +225,20 @@ async function inspectReceiptFile(
       );
     }
   }
+  return matched;
+}
+
+async function inspectReceiptFile(
+  filePath: string,
+  originalPath: string | undefined,
+  trace: string,
+) {
+  const saved = await readContextPackReceiptFile(filePath, trace);
+  const matched = await matchContextPackReceiptOriginal(
+    saved.file.document.original,
+    originalPath,
+    trace,
+  );
   return { saved, matched };
 }
 
@@ -284,7 +301,7 @@ export async function extractContextPackReceiptOriginal(argv: string[], trace: s
   try {
     destination = await prepareArtifactOutput(args.output!, trace);
     phase = 'source-readback';
-    const again = await readReceipt(args.filePath, trace);
+    const again = await readContextPackReceiptFile(args.filePath, trace);
     if (!Buffer.from(saved.bytes).equals(again.bytes)) throw new TypeError();
     // Await actual publication and readback; do not race a local write against a timer.
     phase = 'publish';

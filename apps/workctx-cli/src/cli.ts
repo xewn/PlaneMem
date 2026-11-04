@@ -14,6 +14,7 @@ import {
   inspectContextPackReceipt,
   extractContextPackReceiptOriginal,
 } from './context-pack-receipt-file.js';
+import { recoverContextPackReceipt } from './context-pack-receipt-recovery.js';
 import { prepareHandoffClaim, handoffClaimResult } from './handoff-claim.js';
 import { prepareHandoffCreate, handoffCreateResult } from './handoff-create.js';
 import { prepareSessionStart, sessionStartResult } from './session-start.js';
@@ -293,6 +294,7 @@ export async function runWorkctx(
     'context inspect-save': 'context.pack.original.inspect',
     'context inspect-receipt': 'context.pack.receipt.inspect',
     'context extract-original': 'context.pack.receipt.extract-original',
+    'context recover-receipt': 'context.pack.receipt.recover',
     'context create': 'context.item.create',
     'context read': 'context.item.read',
     'context read-archived': 'context.item.archived.read',
@@ -382,6 +384,14 @@ export async function runWorkctx(
     }
     if (command === 'context extract-original') {
       const result = await extractContextPackReceiptOriginal(argv, context.trace_id);
+      return {
+        exit_code: result.data.local.state === 'save-failed' ? 1 : 0,
+        stdout: JSON.stringify(result),
+        stderr: '',
+      };
+    }
+    if (command === 'context recover-receipt') {
+      const result = await recoverContextPackReceipt(argv, context.trace_id);
       return {
         exit_code: result.data.local.state === 'save-failed' ? 1 : 0,
         stdout: JSON.stringify(result),
