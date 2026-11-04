@@ -5,6 +5,7 @@ import { Badge, EmptyState, Panel } from '../../components/ui';
 import { getWorkbenchArtifact, WorkbenchApiError } from '../../lib/server-api';
 import { ArtifactLookup } from './lookup';
 import { ArtifactDownload } from './download';
+import { artifactVersionsPageHref } from './versions/query';
 import { newArtifactUploadHref } from './upload/preparation-model';
 import { artifactPageHref, parseArtifactPageQuery, type ArtifactPageParams } from './query';
 
@@ -33,6 +34,15 @@ export default async function ArtifactsPage({
           <p>Look up a saved file and review its current or historical details.</p>
         </div>
         <div className="heading-actions">
+          <Link
+            className="panel-link"
+            href="/artifacts/versions"
+            prefetch={false}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Browse version history ↗
+          </Link>
           <Link
             className="panel-link"
             href="/artifacts/upload/new"
@@ -94,6 +104,18 @@ async function ArtifactRecord({ query }: { query: ArtifactReadQuery }) {
     return (
       <>
         <nav className="heading-actions" aria-label="Compare file records">
+          <Link
+            className="panel-link"
+            href={artifactVersionsPageHref({
+              artifact_id: artifact.artifact_id,
+              at_version: artifact.version,
+            })}
+            prefetch={false}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Browse history through version {artifact.version} ↗
+          </Link>
           <Link
             className="panel-link"
             href={newArtifactUploadHref(artifact.artifact_id)}

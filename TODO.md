@@ -6,6 +6,8 @@
 
 ### 2026-11-04 开发补充（未编译、未发布、未测试）
 
+- P5：已补工作台/artifacts/versions历史目录，严格文件ID与1–20条分页参数、完整保留next_query原上界，默认10条。服务端读取复用当前认证项目，256/16 KiB成功/错误限额、30秒等待、完整共享封套及trace/无ETag检查，固定错误提示。明确区分较早页、同上界首页与重新读取最新；摘要显示分类/大小/时间/来源数，独立版本详情新标签页打开且禁用预取。缺可信旧快照/不存在/权限不足/未配置分别提示，无自动翻页/下载/上传/回执查询/浏览器持久存储。Mock目录、独立schema和运行证据仍缺，R-001保持未完成。仅源码文档人工审阅，未编译/类型检查/测试/浏览器渲染/执行产品、SDK、CLI、API或数据库/发布。
+
 - P0/P2/P4：已补CLI artifacts versions与MCP list_artifact_versions，复用现有版本目录契约及完整next_query。CLI网络/嵌入沿SDK有界256 KiB响应、默认30秒和固定错误，4 KiB内联/稳定文件查询，网络可有界stdin，拒绝key/output/重复参数；嵌入清除写条件并校验未过期实际reader、规范路径/方法/正文/响应限额。MCP目录/直接调用均要求已验证未过期实际artifact.read，独立两笔/30秒期限，底层未结束不释放超时名额；成功/错误256/16 KiB、转义结果另限，完整共享核验并丢弃上游错误详情。只读历史摘要，不自动翻页/下载/查上传回执/恢复/上传；工作台/Mock目录及运行证据仍缺，R-001未完成。无服务端目录/数据库schema/依赖变化，仅源码文档人工审阅，未编译/类型检查/测试/执行CLI、MCP、SDK、API、数据库或发布。
 
 - P0/P2：已补PersistentArtifactService.listVersions、GET /v1/artifacts/{artifact_id}/versions与SDK listArtifactVersions，默认10最多20条历史摘要，首轮固定版本上界、续页完整query/at_version/before_version，明确非当前写条件。当前项目/附件共享锁及每页权限检查，最多21份历史快照各先限2 MiB并完整核验（包括探测行），公开只含元数据摘要/来源计数，无对象正文或storage_key；成功封套256 KiB，SDK默认30秒与signal，不自动翻页。显式artifact_versions reader或既有artifact_storage接线，旧reader必需方法保持；CLI/MCP/Web/Mock目录、Schema生成物和运行证据仍缺，R-001未完成。无依赖/数据库schema变化，仅源码文档人工审阅，未编译/类型检查/测试/执行SDK、产品、API、SQL、数据库、迁移或发布。

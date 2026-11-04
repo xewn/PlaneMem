@@ -45,6 +45,10 @@ import {
   parseArtifactReadQuery,
   parseArtifactReadEnvelope,
   type ArtifactReadDetail,
+  parseArtifactVersionsQuery,
+  parseArtifactVersionsEnvelope,
+  ARTIFACT_VERSIONS_RESPONSE_BYTES,
+  type ArtifactVersionsPage,
   parseArtifactReceiptQuery,
   parseArtifactReceiptEnvelope,
   type ArtifactReceiptView,
@@ -499,6 +503,33 @@ export function getWorkbenchArtifact(artifactId: string, version?: number) {
       } catch {
         throw new WorkbenchApiError(
           'The returned file details did not match this request.',
+          trace,
+          502,
+          'GATEWAY_RESPONSE_INVALID',
+        );
+      }
+    },
+  );
+}
+
+export function getWorkbenchArtifactVersions(input: unknown) {
+  const query = parseArtifactVersionsQuery(input);
+  const params = new URLSearchParams({ limit: String(query.limit) });
+  if (query.at_version !== undefined) params.set('at_version', String(query.at_version));
+  if (query.before_version !== undefined)
+    params.set('before_version', String(query.before_version));
+  return gatewayRequest<ArtifactVersionsPage>(
+    '/v1/artifacts/' + encodeURIComponent(query.artifact_id) + '/versions?' + params.toString(),
+    {},
+    undefined,
+    'GET',
+    undefined,
+    (result, scope, trace) => {
+      try {
+        return parseArtifactVersionsEnvelope(result, query, scope, trace);
+      } catch {
+        throw new WorkbenchApiError(
+          'The returned file history did not match this page.',
           trace,
           502,
           'GATEWAY_RESPONSE_INVALID',
@@ -1900,6 +1931,8 @@ async function gatewayRequest<T>(
   const trace_id = `trace_web_${crypto.randomUUID()}`;
   const scope = scopeFromSession(session);
   const path = typeof requestPath === 'function' ? requestPath(scope) : requestPath;
+  const artifactVersionsRequest =
+    method === 'GET' && /^\/v1\/artifacts\/[0-9A-HJKMNP-TV-Z]{26}\/versions\?/.test(path);
   const auditRequest =
     path === '/v1/workbench/query' && method === 'POST' && body.operation === 'audit';
   const adminRequest =
@@ -1982,6 +2015,17 @@ async function gatewayRequest<T>(
       ...(method === 'POST' ? { body: JSON.stringify(body) } : {}),
     });
   } catch {
+    if (artifactVersionsRequest)
+      throw new WorkbenchApiError(
+        requestSignal.aborted || Date.now() >= requestDeadline
+          ? 'File history exceeded the local read deadline.'
+          : 'File history could not be read.',
+        trace_id,
+        502,
+        requestSignal.aborted || Date.now() >= requestDeadline
+          ? 'GATEWAY_REQUEST_TIMEOUT'
+          : 'GATEWAY_UNAVAILABLE',
+      );
     if (conflictOriginalRequest)
       throw new WorkbenchApiError(
         'The original conflict receipt could not be read. Keep the saved request.',
@@ -2011,6 +2055,7 @@ async function gatewayRequest<T>(
   }
   if (response.status === 401) {
     if (
+      artifactVersionsRequest ||
       conflictOriginalRequest ||
       proposalOriginalRequest ||
       conflictRequest ||
@@ -2022,6 +2067,82 @@ async function gatewayRequest<T>(
     )
       void response.body?.cancel().catch(() => undefined);
     throw new AuthRequiredError();
+  }
+  if (artifactVersionsRequest) {
+    const assertDeadline = () => {
+      if (requestSignal.aborted || Date.now() >= requestDeadline)
+        throw new WorkbenchApiError(
+          'File history exceeded the local read deadline.',
+          trace_id,
+          502,
+          'GATEWAY_REQUEST_TIMEOUT',
+        );
+    };
+    let payload: unknown;
+    try {
+      assertDeadline();
+      if (response.headers.get('x-trace-id') !== trace_id || response.headers.has('etag'))
+        throw new TypeError();
+      payload = await readWorkbenchJsonResponse(
+        response,
+        requestSignal,
+        ARTIFACT_VERSIONS_RESPONSE_BYTES,
+      );
+    } catch {
+      void response.body?.cancel().catch(() => undefined);
+      assertDeadline();
+      throw new WorkbenchApiError(
+        'The file history response could not be validated.',
+        trace_id,
+        502,
+        'GATEWAY_RESPONSE_INVALID',
+      );
+    }
+    assertDeadline();
+    if (!response.ok) {
+      let code: string;
+      try {
+        const failure = validateErrorEnvelope(payload);
+        if (failure.trace_id !== trace_id) throw new TypeError();
+        code = failure.code;
+      } catch {
+        throw new WorkbenchApiError(
+          'The file history error could not be validated.',
+          trace_id,
+          502,
+          'GATEWAY_RESPONSE_INVALID',
+        );
+      }
+      const errors: Record<string, string> = {
+        INVALID_INPUT: 'History page settings were rejected. Start again from the latest versions.',
+        ARTIFACT_ACCESS_DENIED:
+          'Your account cannot read this file history in the selected project.',
+        ARTIFACT_NOT_FOUND: 'This file is unavailable in the selected project.',
+        ARTIFACT_VERSION_NOT_FOUND:
+          'This saved version range is unavailable in the selected project.',
+        ARTIFACT_LEGACY_UNVERIFIED:
+          'A complete saved version record is missing. This history page cannot be shown.',
+        ARTIFACT_STORED_INVALID: 'The saved file history could not be validated.',
+        ARTIFACT_STORAGE_UNAVAILABLE: 'File history is temporarily unavailable.',
+        RATE_LIMITED: 'File history reads are temporarily busy.',
+      };
+      throw new WorkbenchApiError(
+        Object.hasOwn(errors, code) ? errors[code]! : 'File history could not be read.',
+        trace_id,
+        response.status,
+        Object.hasOwn(errors, code) ? code : 'GATEWAY_UNAVAILABLE',
+      );
+    }
+    if (!parseResponse)
+      throw new WorkbenchApiError(
+        'File history validation is unavailable.',
+        trace_id,
+        502,
+        'GATEWAY_RESPONSE_INVALID',
+      );
+    const result = parseResponse(payload as WorkbenchResponse<unknown>, scope, trace_id);
+    assertDeadline();
+    return result;
   }
   const payload = conflictRequest
     ? await readConflictResponse(response, requestSignal, trace_id, requestDeadline).catch(

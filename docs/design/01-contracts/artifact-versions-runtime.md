@@ -53,7 +53,7 @@ const detail = await client.getArtifactVersion(artifactId, selectedVersion);
 
 错误使用现有有限错误码与固定信息、retryable=false，details.read_kind=versions及upload_dispatch_state=not-sent；不回显底层响应、不自动下载/查回执/恢复/上传。SDK根入口导出上述四个契约类型。
 
-工作台版本目录与Mock接入、独立JSON Schema生成物及跨存储/并发/权限/分页运行证据仍待开发，R-001保持未完成且本增量evidence为空。CLI与MCP源码接入见下节；现有指定版本各客户端读取仍保留。无依赖或数据库schema变更。
+Mock目录接入、独立JSON Schema生成物及跨存储/并发/权限/分页运行证据仍待开发，R-001保持未完成且本增量evidence为空。CLI、MCP与工作台源码接入见后续章节；现有指定版本各客户端读取仍保留。无依赖或数据库schema变更。
 
 ## 命令行与 MCP（源码阶段）
 
@@ -69,4 +69,18 @@ MCP新增 `list_artifact_versions`，参数与共享查询相同；发现schema�
 
 成功必须是200、JSON、原trace响应头且没有ETag，完整封套256 KiB；错误封套16 KiB且trace必须一致。共享解析核对范围、原query、历史摘要、顺序、条数及完整next_query；无restricted权限的摘要再拒绝。返回前重查期限和身份有效期，MCP文本转义后的content整体另限512 KiB+4096字节；这不是网络传输完成或客户端收到的证明。失败仅保留有限错误码和固定消息、retryable=false、read_kind=versions、content_state=not-checked、upload_dispatch_state=not-sent，不回显底层message/details；调用结果沿标准isError=true输出。
 
-两个入口均不读取对象正文、授予下载/恢复/写入权限、查询原上传回执或更改历史状态。选定版本后需另行读取完整元数据/下载，历史目录上界不能当成当前写条件。工作台与Mock目录接入和运行证据仍缺；无数据库schema、依赖或目录服务逻辑变化，仅源码文档人工审阅，未编译、类型检查、测试、执行CLI/MCP/SDK/API/SQL/数据库或发布。
+两个入口均不读取对象正文、授予下载/恢复/写入权限、查询原上传回执或更改历史状态。选定版本后需另行读取完整元数据/下载，历史目录上界不能当成当前写条件。Mock目录接入和运行证据仍缺，工作台源码接入见下节；无数据库schema、依赖或目录服务逻辑变化，仅源码文档人工审阅，未编译、类型检查、测试、执行CLI/MCP/SDK/API/SQL/数据库或发布。
+
+## 工作台历史目录（源码阶段）
+
+2026-11-04新增`/artifacts/versions`，使用现有工作台会话和当前选定项目，只接受单值`artifact`、`limit`、`at_version`、`before_version`。空查询显示查找表单；文件ID必须为ULID，数值必须为无前导零正安全整数，limit默认10且范围1–20，before必须带原at且不超过它。重复、未知或不完整参数在页面读取前拒绝，不默默重置游标。
+
+`getWorkbenchArtifactVersions`在异步前复制共享查询，构造规范GET URL，复用gatewayRequest的可信范围/令牌/本次trace、no-store与30秒请求期限。该目录专门沿有界读取器获取完整JSON：成功200且最多256 KiB，错误最多16 KiB；要求原trace响应头且无ETag，完整封套再次核对scope/query/排序/摘要/next_query。读取或解析期间超时不显示迟到成功，401走登录提示；失败只显示固定错误信息，不回显上游message/details。沿用Fetch取消语义，不能据此保证服务端事务已停止。
+
+页面按版本倒序显示名称、类型、分类、字节数、保存时间、来源计数，可展开原hash/记录trace和首次记录时间。页面说明正文与下载可用性未检查、目录不证明历史连续性；历史摘要不作为当前写版本。每项通过`/artifacts?artifact=ID&version=N`在新标签页打开既有完整详情/显式下载入口；目录自身没有下载或恢复操作。
+
+“Older versions”完整传递服务端next_query，固定原上界和页大小；“First page through version N”仅移除before并保持上界。查找表单的“Read latest history”使用明确GET提交，移除旧at/before，重新获取最新上界；不依赖点击同URL的缓存导航。文件详情提供截至所读版本的目录入口，文件主页面提供空查询入口。所有相关Link关闭预取；分页由用户点击，不自动翻页，不写localStorage/IndexedDB或保存下载文件。
+
+空页、缺可信旧快照、当前文件不存在、403拒绝与503未配置/不可用各沿独立提示，失败不会伪装为空目录。页面刷新或项目切换后重新沿当前会话授权；URL只有目标和分页参数，没有身份凭据。跨页仍不是一个数据库事务，目录读取也不确认上传请求结果。
+
+范围仅工作台源码、协调与契约文档；无依赖、数据库schema或服务端目录行为变化。未编译、类型检查、测试、渲染浏览器、执行SDK/CLI/Mock/产品/API/数据库或发布；R-001保持未完成，evidence为空，Mock目录、独立schema和运行证据仍待补齐。
