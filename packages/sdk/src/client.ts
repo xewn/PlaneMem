@@ -63,6 +63,7 @@ import {
   type SyncUploadEvent,
   type ContextPackReceipt,
   type ContextPackReadQuery,
+  type ContextPackComparisonQuery,
   type CheckpointReceiptQuery,
   type ResumeReceiptQuery,
   parseResumeBinding,
@@ -175,6 +176,7 @@ import {
   type WcpContextItemReadOptions,
 } from './context-item-read.js';
 import { readSavedContextPack, type WcpContextPackReadOptions } from './context-pack-read.js';
+import { compareContextPacks } from './context-pack-comparison.js';
 import {
   readContextDirectory,
   iterateContextDirectory,
@@ -590,6 +592,10 @@ export class WcpClient {
 
   getContextPack(input: ContextPackReadQuery = {}, options: WcpContextPackReadOptions = {}) {
     return readSavedContextPack(this.transport, this.context, input, options);
+  }
+
+  compareContextPacks(query: ContextPackComparisonQuery, options: WcpContextPackReadOptions = {}) {
+    return compareContextPacks(this.transport, this.context, query, options);
   }
 
   async startAgentRun(

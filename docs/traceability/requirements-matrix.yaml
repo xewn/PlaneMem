@@ -954,6 +954,24 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_pack_sdk_comparison_development_increment:
+      date: "2026-11-04"
+      status: "Source-only SDK complete saved ContextPack comparison; R-003 remains incomplete."
+      artifacts:
+        - "packages/sdk/src/context-pack-comparison.ts"
+        - "packages/sdk/src/client.ts"
+        - "packages/sdk/src/index.ts"
+        - "packages/sdk/README.md"
+        - "docs/design/01-contracts/context-pack-runtime.md"
+      behavior: "Add compareContextPacks(query, options?) with a captured 4 KiB distinct-ID selection and complete original scope/actor/client equality constraints. Reuse two sequential explicit json saved-pack reads with complete 2 MiB envelopes and WebCrypto SHA-256, shared 8 MiB comparison and bounded detached 12 MiB full local result. One default 30-second outer budget and signal cover both reads, digests, comparison and copying; no late or partial pair. Return original query/identity/from/to/comparison plus local/separate-reads/pack-hashes-checked/source-not-checked semantics. Fixed known errors and cleanup, no latest fallback/retry/compile/write. Export result/shared query/model types and pure comparison functions; existing Mock handles the two ordinary reads."
+      evidence: []
+      pending_evidence:
+        - "Input/accessor capture, required complete identity, both expected-identity headers and credential refresh behavior"
+        - "Both complete envelopes/digests, second-read failure, combined size/complexity and unchanged input/returned copies"
+        - "One total deadline, already canceled/during-read/digest cancellation, late work and timer/listener cleanup"
+        - "SDK/Mock/Fetch/custom-transport compatibility, pure model exports and real Gateway stale/expiry failures"
+      remaining_scope: "CLI/MCP comparison adapters, standalone result schema and runtime evidence. Pure shared comparison does not verify digests or authority; generic transport lacks HTTP ETag/status. Source freshness remains Gateway responsibility, reads are separate observations and no SDK concurrency limit is added."
+      execution: "Source/docs, manual review and formatting/text checks only; no build, typecheck, tests, SDK/Mock/product/API/database execution or release. No shared contract/Web/Gateway/CLI/MCP/Mock/schema/dependency changes."
     context_pack_comparison_development_increment:
       date: "2026-11-04"
       status: "Source-only explicit Web saved ContextPack comparison and shared model; R-003 remains incomplete."

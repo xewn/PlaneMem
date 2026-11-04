@@ -199,4 +199,48 @@ Web先捕获同一会话/项目范围及Gateway基址，随后两次顺序GET都
 - 单列保存ID、版本、创建时间、保存游标、包摘要、保存trace、预算、估算用量、到期时间及入选/排除数量。原HTTP读取trace不当作保存内容变化，单独显示供定位。包内容摘要相同并不要求保存ID/版本相同。
 - 聚合来源保留两侧完整引用及顺序，独立显示变化。每候选可展开两侧正文及完整保存字段；只看变化隐藏same候选及相同元数据，来源相同时保留提示。候选无变化时仍显示可能变化的包信息，不把空差异当成同一保存记录。
 
-当前仅Web接入，SDK/CLI/MCP双包对比和专用Schema后续开发；旧完整读取Schema描述各侧封套，不描述本地组合比较结果。R-003未完成、`evidence: []`；双侧完整性/摘要、状态迁移/位置/字段、原范围/期限、导航与真实页面兼容都缺运行证据。本轮只源码文档人工审阅和格式文本检查，未编译、类型检查、测试、渲染、启动浏览器/产品/API/数据库或发布。
+Web与下节SDK已接入双包对比，CLI/MCP双包对比和专用Schema后续开发；旧完整读取Schema描述各侧封套，不描述本地组合比较结果。R-003未完成、`evidence: []`；双侧完整性/摘要、状态迁移/位置/字段、原范围/期限、导航与真实页面兼容都缺运行证据。本轮只源码文档人工审阅和格式文本检查，未编译、类型检查、测试、渲染、启动浏览器/产品/API/数据库或发布。
+
+## SDK 指定保存包对比（2026-11-04，源码增量）
+
+`WcpClient.compareContextPacks({from_pack_id,to_pack_id}, options?)`返回`Promise<WcpContextPackComparisonResult>`。查询沿共享4 KiB普通JSON规则，两ID都必填且为不同ULID，保留方向，不接收format/latest/写字段。options复用`WcpContextPackReadOptions`：默认timeout_ms=30000，允许1–2147483647的安全整数，可传signal；非法输入以Promise拒绝，不发起第一份读取。
+
+调用前client context必须含合法tenant/workspace/project/actor/client及trace，actor与scope为ULID、client满足原上下文读取标识及共享完整身份约束（包括拒绝DEL字符）。参数、选项与身份在任何异步等待之前捕获；访问器、未知字段、非普通对象被拒绝。读取上下文不继承请求键、版本或If-Match。每次固定指定ID与json格式，并带相同`x-expected-actor-id/x-expected-client-id`及项目头；即使transport刷新凭据，也不能悄悄更换原身份约束。约束不是凭据，实际认证和来源当前有效性由Gateway负责。
+
+两次顺序读取复用原`readSavedContextPack`，每份完整2 MiB封套核对原ID/scope/trace、JSON版本/ETag、全部内容/来源/预算后计算WebCrypto SHA-256。共享纯模型生成最多8 MiB差异；SDK完整返回（含两侧原封套、查询、身份及差异）最多12 MiB，最终复制脱离内部引用。原普通JSON深度/100000节点限制也作用于组合，任一超限为GATEWAY_RESPONSE_INVALID，不返回半份或截断数据。
+
+外层单调预算覆盖两侧等待、摘要、比较和最终复制；内层单包读取收到同一外层取消信号，不会给第二份重新延长总期限。每阶段复查预算，超时归一为GATEWAY_REQUEST_TIMEOUT、显式取消为GATEWAY_REQUEST_CANCELED，不交付迟到结果；finally清理外层计时器与监听，内层沿原清理机制。同步解析/比较不能中途抢占，不能保证终止已经在运行的transport或WebCrypto任务。本增量不新增SDK并发限制；Mock或Gateway保留自身容量规则。
+
+结果包含：
+
+| 字段 | 含义 |
+| --- | --- |
+| schema_version / kind | 1 / saved-context-pack-comparison，本地组合格式 |
+| comparison_origin / read_consistency | local / separate-reads，两次读取不是同一数据库快照 |
+| content_state | pack-hashes-checked，两侧完整保存摘要均已核对 |
+| source_state | not-checked，SDK不独立访问或刷新来源；不否认Gateway已有来源检查 |
+| query / identity_constraints | 原双ID与完整账号/客户端/项目约束，无token |
+| from / to | 两份完整原json封套，方向、保存内容与trace保持 |
+| comparison | 上节共享完整候选/字段/来源/统计差异 |
+
+已知读取错误保留固定代码并使用对比固定说明；过期/来源变化/不可读、摘要不可用或不匹配、第二次网络失败等都使整次对比失败，不自动回退latest/旧包、重试、重编译或保存。通用`WcpTransport`不暴露HTTP状态与ETag头，本方法只核对JSON内ETag，不能声称HTTP头核验；FetchTransport错误仍沿16 KiB完整限制。自定义transport必须支持bounded-json/signal并交付完整封套，不能依靠两个旧不完整替身获得有效对比。
+
+SDK根导出`WcpContextPackComparisonResult`、`ContextPackComparisonQuery`、`SavedPackCandidate`、`SavedContextPackComparison`以及纯`parseContextPackComparisonQuery/compareSavedContextPacks`。纯比较可用于已持有封套的结构差异，但自身不做摘要/权限核验；不能把其输出标记为SDK已检查结果。原`MockContextPackStore`通过两次普通GET即可接线，同一store保留完整种子、模拟权限和失效状态，不新增比较路由或跨数据集同步。
+
+以下仅为未执行的源码用法，client已由调用者以完整身份构造，两个包均需在该会话下可读：
+
+```ts
+import type { WcpClient, ContextPackComparisonQuery } from '@planemem/sdk';
+
+declare const client: WcpClient;
+declare const selection: ContextPackComparisonQuery;
+const cancellation = new AbortController();
+const result = await client.compareContextPacks(selection, {
+  timeout_ms: 15_000,
+  signal: cancellation.signal,
+});
+// result.from/result.to保留完整两侧，result.comparison.candidates包含原方向差异。
+// 需取消时由调用方调用cancellation.abort()；不会重发或编译包。
+```
+
+CLI/MCP对比适配、组合Schema、自动一致性和SDK/Mock/真实Gateway兼容、身份刷新/总预算/取消/完整结果边界运行证据仍待补。R-003保持未完成、`evidence: []`；本轮仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布。
