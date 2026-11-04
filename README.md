@@ -1,5 +1,7 @@
 # PlaneMem
 
+完善 [MCP 上下文详情读取](docs/design/01-contracts/context-item-runtime.md)：当前与归档详情统一完整内容、来源诊断和 HTTP ETag 校验，发现与调用使用相同权限要求，并与历史读取共用并发限制。仅源码文档，未编译、测试、运行或发布。
+
 完善 [命令行上下文详情读取](docs/design/01-contracts/context-item-runtime.md)：当前与归档条目命令接入完整响应校验和可配置超时，支持成对身份约束，嵌入式读取统一权限与并发限制。仅源码文档，未编译、测试、运行或发布。
 
 完善 [SDK 上下文详情读取](docs/design/01-contracts/context-item-runtime.md)：当前与归档条目支持超时、取消和完整响应校验，固定原项目及可选身份约束，保留正文、来源诊断和确认记录。仅源码文档，未编译、测试、运行或发布。

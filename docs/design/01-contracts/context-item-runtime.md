@@ -1,5 +1,17 @@
 # ContextItem 录入与编辑开发说明
 
+## 2026-11-04 MCP当前与归档详情读取增量
+
+`get_context_item`和`get_archived_context_item`接入原context-history专用执行器，内部入口统一命名ContextRead。参数仅接受明确的item_id，严格普通JSON且最多4 KiB；视图由工具名决定，拒绝kind、调用方身份、写条件和额外字段。保留原完整成功封套，不自动切换当前/归档视图、重试、保存或读取外部来源。
+
+发现、prepare及实际调用统一要求可信未过期客户端、实际context.read和完整项目/账号/客户端/追踪号；admin不替代读取能力。prepareMcpTool通过权限检查后明确返回MCP_TOOL_EXECUTOR_REQUIRED，调用方须使用dispatchMcp或专用执行器。HTTP客户端门槛包含两详情工具。执行前复制原可信上下文、清除继承的写条件，每次内部GET使用独立副本。
+
+完整成功JSON最多2 MiB，错误最多16 KiB；核对HTTP 200或有效错误状态、JSON媒体类型及原trace，详情成功HTTP ETag必须匹配正文规范ETag，历史响应和所有错误禁止ETag。共享解析核对原条目、范围、版本/revision、完整正文与来源、当前来源诊断和原确认、归档状态及时间；restricted记录仍需对应能力。旧confirmed记录允许null确认，来源诊断是读取时观察，ETag是版本元数据，均不证明来源真实性或赋予写权限。
+
+当前/归档/历史/版本/比较五工具共用每ApiGateway两笔在途容量，每次调用总期限30秒；等待超时后底层读取未结束仍占槽。详情容量和超时分别返回MCP_CONTEXT_ITEM_BUSY、MCP_CONTEXT_ITEM_TIMEOUT，历史/版本/比较保留原MCP_CONTEXT_HISTORY_BUSY/TIMEOUT。详情业务结果限2 MiB，MCP转义后结果限4 MiB+4096字节；失败不返回部分内容。原历史快照摘要核验和双版本顺序保持，比较继续共用一次总期限。同步解析不能被计时器抢占，也不声称外层网络发送或全局容量保证。
+
+本增量只覆盖tools/call详情路径；resources/read、Mock详情、包和目录仍为后续工作。未改共享契约、SDK、CLI、Web、数据库/schema或依赖。仅源码文档人工审阅和格式文本检查，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布；工具发现/调用权限、旧prepare调用迁移、完整真实响应、ETag/错误、共享容量/期限和历史兼容均待运行证据，R-003未完成、evidence为空。
+
 ## 2026-11-04 CLI当前与归档详情读取增量
 
 `context read`和`context read-archived`的main网络、callGateway及runWorkctx嵌入入口统一接入SDK当前/归档详情读取。沿用原`{item_id}`输入，可选增加成对expected_actor_id/expected_client_id；账号须ULID、客户端为合法本地ID，作用只是与服务端可信身份相等，不能授予权限。只接受明确原条目，不允许kind、历史version、写键或expected_version混入。

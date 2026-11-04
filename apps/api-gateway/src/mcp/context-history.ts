@@ -4,6 +4,8 @@ import {
   CONTEXT_HISTORY_ERROR_BYTES,
   CONTEXT_HISTORY_RESPONSE_BYTES,
   CONTEXT_REVISION_RESPONSE_BYTES,
+  CONTEXT_ITEM_READ_RESPONSE_BYTES,
+  CONTEXT_ITEM_READ_ERROR_BYTES,
   compareContextSnapshots,
   contextRevisionSnapshotJson,
   isSyncIdentifier,
@@ -11,40 +13,63 @@ import {
   parseContextComparisonQuery,
   parseContextHistoryReadEnvelope,
   parseContextHistoryReadQuery,
+  parseContextItemReadEnvelope,
+  parseContextItemReadQuery,
   syncJsonSnapshot,
   validateErrorEnvelope,
   type ContextComparisonQuery,
   type ContextHistoryReadQuery,
   type ContextItemRevision,
+  type ContextItemReadQuery,
 } from '@planemem/contracts';
 import type { ApiGateway } from '../http.js';
 import type { RequestContext } from '../router.js';
 
 type ToolName =
+  | 'get_context_item'
+  | 'get_archived_context_item'
   | 'list_context_item_history'
   | 'get_context_item_version'
   | 'compare_context_item_versions';
-type Query = ContextHistoryReadQuery | { kind: 'compare'; query: ContextComparisonQuery };
+type ReadQuery = ContextHistoryReadQuery | ContextItemReadQuery;
+type Query = ReadQuery | { kind: 'compare'; query: ContextComparisonQuery };
+function isDetailQuery(query: Query): query is ContextItemReadQuery {
+  return query.kind === 'current' || query.kind === 'archived';
+}
+function readPath(query: ReadQuery) {
+  const root = '/v1/context-items/' + encodeURIComponent(query.item_id);
+  if (isDetailQuery(query)) return root + (query.kind === 'archived' ? '/archived' : '');
+  return root + (query.kind === 'history' ? '/history' : '/versions/' + query.version);
+}
+function responseLimit(query: ReadQuery) {
+  if (isDetailQuery(query)) return CONTEXT_ITEM_READ_RESPONSE_BYTES;
+  return query.kind === 'history'
+    ? CONTEXT_HISTORY_RESPONSE_BYTES
+    : CONTEXT_REVISION_RESPONSE_BYTES;
+}
 const comparisonBytes = 16 * 1024 * 1024;
 const activeReads = new WeakMap<ApiGateway, { active: number }>();
 const messages = {
   INVALID_INPUT:
-    'Supply one local item_id and valid history positions or two different positive safe versions, without identity or write fields',
+    'Supply one local item_id for current/archived details, valid history positions or two different positive safe versions, without identity or write fields',
   DENIED:
     'Use a verified unexpired client with actual context.read and the required record visibility',
-  UNAUTHENTICATED: 'Renew the intended session before reading context history',
-  NOT_FOUND: 'The context history read route is unavailable',
+  UNAUTHENTICATED: 'Renew the intended session before reading context details or history',
+  NOT_FOUND: 'The context read route is unavailable',
   CONTEXT_ITEM_NOT_FOUND: 'The selected item or recorded version is unavailable in this project',
-  CONTEXT_ITEM_INVALID: 'The stored context history could not be validated',
-  CONTEXT_ITEM_STORAGE_UNAVAILABLE: 'Context history storage is unavailable',
+  CONTEXT_ITEM_INVALID: 'The stored context details or history could not be validated',
+  CONTEXT_ITEM_STORAGE_UNAVAILABLE: 'Context storage is unavailable',
   WORKBENCH_AUTH_UNAVAILABLE: 'Gateway authentication is unavailable',
-  AUDIT_PERSISTENCE_UNAVAILABLE: 'The context history read audit could not be persisted',
+  AUDIT_PERSISTENCE_UNAVAILABLE: 'The context read audit could not be persisted',
   RATE_LIMITED: 'Gateway request capacity is occupied',
   MCP_CONTEXT_HISTORY_BUSY: 'MCP context history read capacity is occupied',
   MCP_CONTEXT_HISTORY_TIMEOUT:
     'Stopped waiting for context history; the underlying read may still be running',
+  MCP_CONTEXT_ITEM_BUSY: 'MCP context detail/history read capacity is occupied',
+  MCP_CONTEXT_ITEM_TIMEOUT:
+    'Stopped waiting for context details; the underlying read may still be running',
   GATEWAY_RESPONSE_INVALID:
-    'The complete context history response or comparison did not match this read or exceeded its size limit',
+    'The complete context response or comparison did not match this read or exceeded its size limit',
   CONTEXT_HISTORY_INTEGRITY_UNAVAILABLE:
     'Snapshot integrity checking is unavailable; no unchecked version was returned',
   CONTEXT_HISTORY_HASH_MISMATCH: 'The complete context snapshot differs from its saved hash',
@@ -53,14 +78,16 @@ type ErrorCode = keyof typeof messages;
 function fail(code: ErrorCode, trace: string) {
   return new ContractError(code, messages[code], { trace_id: trace, retryable: false });
 }
-export function isContextHistoryTool(name: unknown): name is ToolName {
+export function isContextReadTool(name: unknown): name is ToolName {
   return (
+    name === 'get_context_item' ||
+    name === 'get_archived_context_item' ||
     name === 'list_context_item_history' ||
     name === 'get_context_item_version' ||
     name === 'compare_context_item_versions'
   );
 }
-export function canReadContextHistoryTool(context: RequestContext): boolean {
+export function canReadContextTool(context: RequestContext): boolean {
   try {
     const expiry = Date.parse(context.token_expires_at ?? '');
     return (
@@ -83,12 +110,17 @@ export function canReadContextHistoryTool(context: RequestContext): boolean {
 }
 function captureQuery(name: string, raw: unknown, trace: string): Query {
   try {
-    if (!isContextHistoryTool(name)) throw new TypeError();
+    if (!isContextReadTool(name)) throw new TypeError();
     const value: unknown = JSON.parse(syncJsonSnapshot(raw, 4096));
     if (!value || typeof value !== 'object' || Array.isArray(value) || Object.hasOwn(value, 'kind'))
       throw new TypeError();
     if (name === 'compare_context_item_versions')
       return { kind: 'compare', query: parseContextComparisonQuery(value) };
+    if (name === 'get_context_item' || name === 'get_archived_context_item')
+      return parseContextItemReadQuery({
+        ...value,
+        kind: name === 'get_context_item' ? 'current' : 'archived',
+      });
     return parseContextHistoryReadQuery({
       ...value,
       kind: name === 'list_context_item_history' ? 'history' : 'version',
@@ -99,13 +131,15 @@ function captureQuery(name: string, raw: unknown, trace: string): Query {
 }
 
 /** One captured authority and deadline; capacity survives timeout until all underlying work settles. */
-export async function executeContextHistoryTool(
+export async function executeContextReadTool(
   api: ApiGateway,
   name: string,
   raw: unknown,
   original: RequestContext,
 ) {
   const deadline = performance.now() + 30_000;
+  const detail = name === 'get_context_item' || name === 'get_archived_context_item';
+  const timeoutCode = detail ? 'MCP_CONTEXT_ITEM_TIMEOUT' : 'MCP_CONTEXT_HISTORY_TIMEOUT';
   const trace = isSyncIdentifier(original.trace_id) ? original.trace_id : 'trace_unknown';
   let context: RequestContext;
   try {
@@ -114,8 +148,8 @@ export async function executeContextHistoryTool(
     throw fail('DENIED', trace);
   }
   const active = () => {
-    if (performance.now() >= deadline) throw fail('MCP_CONTEXT_HISTORY_TIMEOUT', trace);
-    if (!canReadContextHistoryTool(context)) throw fail('DENIED', trace);
+    if (performance.now() >= deadline) throw fail(timeoutCode, trace);
+    if (!canReadContextTool(context)) throw fail('DENIED', trace);
   };
   active();
   const query = captureQuery(name, raw, trace);
@@ -129,33 +163,26 @@ export async function executeContextHistoryTool(
     actor_id: context.actor_id,
     client_id: context.client_id,
   };
-  const maximum =
-    query.kind === 'compare'
-      ? comparisonBytes
-      : query.kind === 'history'
-        ? CONTEXT_HISTORY_RESPONSE_BYTES
-        : CONTEXT_REVISION_RESPONSE_BYTES;
+  const maximum = query.kind === 'compare' ? comparisonBytes : responseLimit(query);
   active();
   let gate = activeReads.get(api);
   if (!gate) {
     gate = { active: 0 };
     activeReads.set(api, gate);
   }
-  if (gate.active >= 2) throw fail('MCP_CONTEXT_HISTORY_BUSY', trace);
+  if (gate.active >= 2)
+    throw fail(detail ? 'MCP_CONTEXT_ITEM_BUSY' : 'MCP_CONTEXT_HISTORY_BUSY', trace);
   const lease = gate;
   lease.active++;
   const work = (async () => {
     try {
-      const read = async (selected: ContextHistoryReadQuery) => {
+      const read = async (selected: ReadQuery) => {
         active();
         const { kind, ...input } = selected;
         // Internal ApiGateway accepts query fields as body; public GET uses URL parameters.
         const response = await api.handle({
           method: 'GET',
-          path:
-            '/v1/context-items/' +
-            encodeURIComponent(selected.item_id) +
-            (selected.kind === 'history' ? '/history' : '/versions/' + selected.version),
+          path: readPath(selected),
           headers: {},
           body: { ...input },
           context: structuredClone(context),
@@ -167,7 +194,8 @@ export async function executeContextHistoryTool(
               response.status < 400 ||
               response.status > 599)) ||
           response.headers['x-trace-id'] !== trace ||
-          response.headers.etag !== undefined ||
+          ((!isDetailQuery(selected) || response.status !== 200) &&
+            response.headers.etag !== undefined) ||
           !/^application\/json(?:\s*;\s*charset\s*=\s*(?:utf-8|"utf-8"))?\s*$/i.test(
             response.headers['content-type'] ?? '',
           )
@@ -177,10 +205,10 @@ export async function executeContextHistoryTool(
           syncJsonSnapshot(
             response.body,
             response.status >= 400
-              ? CONTEXT_HISTORY_ERROR_BYTES
-              : kind === 'history'
-                ? CONTEXT_HISTORY_RESPONSE_BYTES
-                : CONTEXT_REVISION_RESPONSE_BYTES,
+              ? isDetailQuery(selected)
+                ? CONTEXT_ITEM_READ_ERROR_BYTES
+                : CONTEXT_HISTORY_ERROR_BYTES
+              : responseLimit(selected),
           ),
         );
         if (response.status >= 400) {
@@ -193,7 +221,14 @@ export async function executeContextHistoryTool(
             trace,
           );
         }
-        const envelope = parseContextHistoryReadEnvelope(value, selected, identity, trace);
+        const envelope = isDetailQuery(selected)
+          ? parseContextItemReadEnvelope(value, selected, identity, trace)
+          : parseContextHistoryReadEnvelope(value, selected, identity, trace);
+        if (
+          isDetailQuery(selected) &&
+          (!('etag' in envelope) || response.headers.etag !== envelope.etag)
+        )
+          throw fail('GATEWAY_RESPONSE_INVALID', trace);
         const records = 'versions' in envelope.data ? envelope.data.versions : [envelope.data];
         if (
           !context.capability.includes('data.restricted.read') &&
@@ -276,7 +311,7 @@ export async function executeContextHistoryTool(
       work,
       new Promise<never>((_resolve, reject) => {
         timer = setTimeout(
-          () => reject(fail('MCP_CONTEXT_HISTORY_TIMEOUT', trace)),
+          () => reject(fail(timeoutCode, trace)),
           Math.max(1, deadline - performance.now()),
         );
         timer.unref();

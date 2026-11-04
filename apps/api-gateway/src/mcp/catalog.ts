@@ -22,7 +22,7 @@ import { isArtifactReadTool } from './artifact-read.js';
 import { canReadArtifactVersionsTool, prepareArtifactVersionsTool } from './artifact-versions.js';
 import { canReadArtifactRegistryTool, prepareArtifactRegistryTool } from './artifact-registry.js';
 import { canCompareArtifactVersionsTool } from './artifact-comparison.js';
-import { isContextHistoryTool, canReadContextHistoryTool } from './context-history.js';
+import { isContextReadTool, canReadContextTool } from './context-history.js';
 import {
   isWorkItemReadTool,
   canReadWorkItemsTool,
@@ -959,7 +959,7 @@ const definitions: ToolDefinition[] = [
   ),
   tool(
     'get_context_item',
-    'Read a current context item',
+    'Read complete current context details, original sources, live source diagnostics and recorded confirmation. Requires a verified unexpired client with actual context.read and record visibility. Arguments accept only item_id, limited to 4 KiB; complete business JSON 2 MiB, local waiting 30 seconds. Validate scope, item, version and HTTP/body ETag. Diagnostic hints are observations, not source authenticity or write authorization; legacy confirmation can be null. No partial content, archived-view fallback, external source fetch, write or automatic retry.',
     ['context.read'],
     'GET',
     '/v1/context-items/{item_id}',
@@ -968,7 +968,7 @@ const definitions: ToolDefinition[] = [
   ),
   tool(
     'get_archived_context_item',
-    'Read an archived context item and its archive timestamp at the current version',
+    'Read complete archived context details and archive timestamp at the current saved version. Requires a verified unexpired client with actual context.read and record visibility. Arguments accept only item_id, limited to 4 KiB; complete business JSON 2 MiB, local waiting 30 seconds. Validate scope, item, archive state, version and HTTP/body ETag. This does not restore the item or verify its source targets. No partial content, active-view fallback, write or automatic retry.',
     ['context.read'],
     'GET',
     '/v1/context-items/{item_id}/archived',
@@ -1774,7 +1774,7 @@ export function listMcpTools(context: RequestContext) {
         (entry.name !== 'compare_artifact_versions' || canCompareArtifactVersionsTool(context)) &&
         (entry.name !== 'list_artifacts' || canReadArtifactRegistryTool(context)) &&
         (!isWorkItemReadTool(entry.name) || canReadWorkItemsTool(context)) &&
-        (!isContextHistoryTool(entry.name) || canReadContextHistoryTool(context)) &&
+        (!isContextReadTool(entry.name) || canReadContextTool(context)) &&
         (entry.name !== 'get_artifact_receipt' ||
           (context.authenticated_client === true &&
             context.capability.includes('artifact.write'))) &&
@@ -1825,7 +1825,7 @@ export function mcpToolRequiresClient(name: unknown): boolean {
   return (
     isAuditTool(name) ||
     isWorkItemReadTool(name) ||
-    isContextHistoryTool(name) ||
+    isContextReadTool(name) ||
     isSyncReadTool(name) ||
     name === 'get_sync_changes' ||
     isSyncCursorTool(name) ||
@@ -1864,14 +1864,14 @@ export function prepareMcpTool(
     });
   if (isSyncReadTool(name)) return prepareSyncReadTool(name, raw, context);
   if (isWorkItemReadTool(name)) return prepareWorkItemReadTool(name, raw, context);
-  if (isContextHistoryTool(name)) {
-    if (!canReadContextHistoryTool(context))
-      throw new ContractError('DENIED', 'A verified unexpired context history reader is required', {
+  if (isContextReadTool(name)) {
+    if (!canReadContextTool(context))
+      throw new ContractError('DENIED', 'A verified unexpired context reader is required', {
         trace_id: context.trace_id,
       });
     throw new ContractError(
       'MCP_TOOL_EXECUTOR_REQUIRED',
-      'Context history reads and comparisons require dispatchMcp or the dedicated executor',
+      'Context detail/history reads and comparisons require dispatchMcp or the dedicated executor',
       { trace_id: context.trace_id },
     );
   }

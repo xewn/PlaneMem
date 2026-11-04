@@ -954,6 +954,23 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    mcp_context_item_detail_read_development_increment:
+      date: "2026-11-04"
+      status: "Source-only bounded MCP current/archived context detail reads; R-003 remains incomplete."
+      artifacts:
+        - "apps/api-gateway/src/mcp/context-history.ts"
+        - "apps/api-gateway/src/mcp/catalog.ts"
+        - "apps/api-gateway/src/mcp/protocol.ts"
+        - "docs/design/01-contracts/context-item-runtime.md"
+        - "docs/design/01-contracts/mcp-runtime.md"
+      behavior: "Route get_context_item/get_archived_context_item through the dedicated context read executor. Discovery, prepare and invocation require verified unexpired actual context.read and complete identity. Strict 4 KiB item-only input, complete 2 MiB success/16 KiB error, HTTP status/type/trace and matching HTTP/body ETag, shared scope/version/content/source-diagnostic/confirmation parsing and restricted checks. Five detail/history/comparison tools share two per-Gateway slots until underlying work settles and a 30-second per-call deadline. Detail output is bounded to 4 MiB+4096 after MCP escaping. Detail uses MCP_CONTEXT_ITEM_BUSY/TIMEOUT; historical codes remain. No fallback, retry, external source fetch, partial result or write."
+      evidence: []
+      pending_evidence:
+        - "Discovery, HTTP client gate, dedicated preparation and direct invocation compatibility; actual permissions, identity and expiry"
+        - "Complete current/archived response, legacy confirmation, restricted records, HTTP/body ETag and malformed or oversized errors"
+        - "Five-tool shared capacity, total deadline, late settlement, escaped output bounds and history/version/comparison compatibility"
+      remaining_scope: "resources/read, Mock dedicated detail reads, bounded directory/pack reads and runtime evidence. ETag and source observations are not authenticity or write authorization. Synchronous parsing is not preempted; no outer-send or global capacity guarantee."
+      execution: "Source/docs, manual review and formatting/text checks only; no build, typecheck, tests, MCP/product/API/database execution or release. No contracts/SDK/CLI/Web/schema/dependency changes."
     cli_context_item_detail_read_development_increment:
       date: "2026-11-04"
       status: "Source-only bounded CLI current/archived context detail reads; R-003 remains incomplete."
