@@ -55,6 +55,7 @@ export * from './plane-inbox.js';
 export * from './plane-inbox-diagnosis.js';
 export * from './artifact-read.js';
 export * from './artifact-versions.js';
+export * from './artifact-registry.js';
 export * from './artifact-command.js';
 export * from './artifact-receipt.js';
 export * from './artifact-saved-receipt.js';

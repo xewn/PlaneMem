@@ -123,50 +123,12 @@ export function parseArtifactVersionsPage(
     throw new TypeError('Invalid artifact version page');
   let previous = query.before_version;
   const items = row.items.map((value: unknown) => {
-    const item = object(value, [
-      'version',
-      'name',
-      'mime',
-      'classification',
-      'sha256',
-      'size',
-      'trace_id',
-      'created_at',
-      'updated_at',
-      'source_ref_count',
-    ]);
-    const version = integer(item.version);
+    const item = parseArtifactVersionSummary(value);
+    const version = item.version;
     if (version > snapshot || (previous !== undefined && version >= previous))
       throw new TypeError('Artifact versions must descend within the selected range');
     previous = version;
-    const name = text(item.name, 255);
-    const mime = text(item.mime, 255);
-    if (
-      !/^[a-zA-Z0-9!#$&^_.+-]+\/[a-zA-Z0-9!#$&^_.+-]+$/.test(mime) ||
-      !['public', 'internal', 'confidential', 'restricted'].includes(
-        item.classification as string,
-      ) ||
-      typeof item.sha256 !== 'string' ||
-      !/^[a-f0-9]{64}$/.test(item.sha256)
-    )
-      throw new TypeError('Invalid artifact version descriptor');
-    const created = date(item.created_at);
-    const updated = date(item.updated_at);
-    const count = integer(item.source_ref_count, 0);
-    if (Date.parse(updated) < Date.parse(created) || count > 200)
-      throw new TypeError('Invalid artifact version summary');
-    return {
-      version,
-      name,
-      mime,
-      classification: item.classification as ArtifactVersionSummary['classification'],
-      sha256: item.sha256,
-      size: integer(item.size, 0),
-      trace_id: text(item.trace_id, 1024),
-      created_at: created,
-      updated_at: updated,
-      source_ref_count: count,
-    };
+    return item;
   });
   let next: ArtifactVersionsPage['next_query'] = null;
   if (row.has_more) {
@@ -191,6 +153,49 @@ export function parseArtifactVersionsPage(
     has_more: row.has_more,
     next_query: next,
     content_state: 'not-checked',
+  };
+}
+
+/** Shared bounded public summary, independent of page order or current/historical semantics. */
+export function parseArtifactVersionSummary(value: unknown): ArtifactVersionSummary {
+  const item = object(JSON.parse(syncJsonSnapshot(value, 16 * 1024)), [
+    'version',
+    'name',
+    'mime',
+    'classification',
+    'sha256',
+    'size',
+    'trace_id',
+    'created_at',
+    'updated_at',
+    'source_ref_count',
+  ]);
+  const version = integer(item.version);
+  const name = text(item.name, 255);
+  const mime = text(item.mime, 255);
+  if (
+    !/^[a-zA-Z0-9!#$&^_.+-]+\/[a-zA-Z0-9!#$&^_.+-]+$/.test(mime) ||
+    !['public', 'internal', 'confidential', 'restricted'].includes(item.classification as string) ||
+    typeof item.sha256 !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(item.sha256)
+  )
+    throw new TypeError('Invalid artifact version descriptor');
+  const created = date(item.created_at);
+  const updated = date(item.updated_at);
+  const count = integer(item.source_ref_count, 0);
+  if (Date.parse(updated) < Date.parse(created) || count > 200)
+    throw new TypeError('Invalid artifact version summary');
+  return {
+    version,
+    name,
+    mime,
+    classification: item.classification as ArtifactVersionSummary['classification'],
+    sha256: item.sha256,
+    size: integer(item.size, 0),
+    trace_id: text(item.trace_id, 1024),
+    created_at: created,
+    updated_at: updated,
+    source_ref_count: count,
   };
 }
 

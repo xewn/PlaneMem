@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-04：新增`client.listArtifacts({query?, classification?, limit?, cursor?}, options?)`，默认20最多20条当前文件摘要，按ID倒序，名称ASCII折叠字面子串、分类精确筛选。完整next_query保留原筛选和身份/权限绑定游标；当前目录不是固定历史快照。复用WcpArtifactReadOptions的30秒本地期限/取消、256 KiB成功与Fetch16 KiB错误限制、完整scope/trace/query/排序/续页校验；不自动翻页、下载或保存，不以摘要授予写条件。导出ArtifactRegistryQuery/Item/Page/Envelope；需配置真实artifact_registry reader或artifact_storage。Mock/CLI/MCP/Web项目目录后续接入，详见[项目目录](../../docs/design/01-contracts/artifact-registry-runtime.md)。仅源码文档，未编译、测试、执行SDK或发布。
+
 2026-11-04：`MockArtifactStore`新增GET历史目录，通过既有`MockWcpServer({artifacts:{store,session}})`接入`listArtifactVersions`。已上传版本按倒序返回，默认10最多20，明确传入完整next_query继续读取并保持原上界。当前和选中/探测历史元数据完整核验，256 KiB封套并遵守调用方更低限制；只读能力/固定范围与身份、分类、取消/到期照常生效，不读正文、不增加释放记录或回执。见 [Mock历史版本目录](../../docs/design/01-contracts/artifact-mock-runtime.md#历史版本目录)。仅源码文档人工审阅，未编译、类型检查、测试、调用Mock或发布。
 
 2026-11-04：CLI `artifacts versions`的网络与嵌入入口已复用`listArtifactVersions`完整分页校验、256 KiB响应及默认30秒期限；MCP `list_artifact_versions`使用同一契约和独立有界执行器。两者保留next_query且不自动翻页；这只是源码接线，未编译、测试或调用。详见 [目录客户端](../../docs/design/01-contracts/artifact-versions-runtime.md#命令行与-mcp源码阶段)。

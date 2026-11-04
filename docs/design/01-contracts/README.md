@@ -18,6 +18,7 @@
 - [原页应用只读预览](sync-application-apply-preview-runtime.md)
 - [WCP API](wcp-api.md)
 - [附件历史版本目录](artifact-versions-runtime.md)
+- [项目文件目录](artifact-registry-runtime.md)
 - [附件目录独立 JSON Schema 使用说明](../../../packages/contracts/schemas/README.md)
 - [Canonical Event](canonical-events.md)
 - [MCP Interface](mcp-interface.md)

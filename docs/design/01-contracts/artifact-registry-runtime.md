@@ -1,0 +1,68 @@
+# 项目文件目录（源码阶段）
+
+日期：2026-11-04。仅源码、文档与人工审阅；未编译、类型检查、测试、执行SDK/产品/API/SQL/数据库或发布。R-001保持未完成，本增量evidence为空。
+
+## HTTP与查询
+
+新增`GET /v1/artifacts`，操作名`artifact.registry.list`，与同路径POST创建区分。要求真实artifact.read、已验证且未过期客户端、完整原租户/工作区/项目和当前项目/资料可见性；admin角色不替代能力。已提供的X-Expected-Actor-Id/X-Expected-Client-Id仍只作可信身份相等约束。入口沿现有策略与授权决定审计，不新增对象下载或导出审计。
+
+| 字段 | 规则 |
+| --- | --- |
+| query | 可选名称字面子串，输入最多255个JS字符，去除首尾空白后空串等同省略；拒绝控制符和无效代理字符；仅ASCII A–Z折叠，其他Unicode保持原样 |
+| classification | 可选public/internal/confidential/restricted精确值，空串和未知值拒绝；显式restricted而无受限读取能力返回403 |
+| limit | 默认20，正安全整数1–20；HTTP使用无前导零单值十进制 |
+| cursor | 可选完整上一页next_query内的游标，规范base64url字符串，最长256字符 |
+
+HTTP每个字段只允许一次，未知字段拒绝；GET无正文，拒绝写键/If-Match/写版本、Range/条件缓存、content-encoding、transfer-encoding和非零content-length。JSON查询仅用于SDK/内部路由，不放进HTTP GET正文。完整共享查询最多8 KiB，非法查询或不匹配游标400。
+
+名称查询在SQL中使用参数化strpos与ASCII translate，百分号和下划线没有通配符语义。返回项通过相同共享折叠再次匹配；没有语言相关的隐式大小写规则。分页按artifact_id的C序倒序，不按updated_at排序，也不把ULID顺序描述为严格保存时间。页内不会重复ID，下一页位置排除最后一个已返回ID。
+
+## 当前可见性和分页边界
+
+游标保存版本标记1、SHA-256绑定值和最后artifact_id。绑定值来自固定命名空间、可信tenant/workspace/project/actor/client、当前data.restricted.read能力、规范query/classification及limit。续页逐次重算，范围/身份/能力/筛选/页大小变化须重新从首屏读取。其内容不含凭据；绑定值不是签名，也不是权限凭证，调用方构造位置不会绕过每次权限检查。
+
+首屏与后续页都读取当时当前可见元数据，没有固定历史上界或跨页事务。新增文件、分类/权限变化、外部元数据修改可能影响后续结果；新文件需重新读取首屏，不能把一次遍历认定为全项目一致快照或全历史审计。
+
+每页最多20项，用第21项判断has_more；探测项的元数据、范围、分类与筛选同样验证。next_query包含规范筛选、limit和新cursor；has_more=false时为null。SDK不自动翻页，调用方必须显式传递完整next_query，不能只复制位置或改用旧筛选。
+
+## 持久读取
+
+`PersistentArtifactService.listArtifacts(access, input={})`在既有数据库事务中锁定当前可见父项目，单语句选择当前范围、未删除、允许分类且匹配筛选的资料，并对最多limit+1条当前行FOR SHARE。复用003的范围索引和现有版本主键，不新增表/迁移；目录排序和名称筛选可能扫描更多候选，当前源码不声明大项目性能基线或严格数据库内存上限。
+
+SELECT对to_jsonb(current row)和当前版本metadata_snapshot分别检查JSONB文本字节数，不超过2 MiB才传回完整JSON。SQL中的字节检查和参数只写入源码，没有连接数据库或执行。保留驱动返回的原时间列供既有毫秒UTC转换使用，避免将PostgreSQL JSONB带偏移日期误当作已规范的Z时间。
+
+选中行和探测行先有界复制，复用从原current读取中提取的currentRow核验：当前元数据与可信保存快照完整一致，版本/范围/目标、storage_key、hash、size、trace和保存时间对应。快照缺失保持ARTIFACT_LEGACY_UNVERIFIED，不以当前行补造历史；损坏/超限/顺序或筛选不符整页失败。仍检查当前分类读取权限，不跳过坏记录制造部分成功。
+
+既有当前/指定历史读取继续沿原路径，不受新目录JSON投影限额改变。目录只投影摘要，不执行对象I/O、计算正文摘要、恢复旧版本、创建原回执或写业务数据。
+
+## 配置与响应
+
+Gateway新增可选`artifact_registry: ArtifactRegistryReader`，只要求listArtifacts并负责当前可见性、完整快照和游标绑定；与artifact_storage互斥。配置artifact_storage时自动使用同一持久服务。旧artifact_reader、artifact_versions、artifact_content不会自动宣称支持项目目录；未配置返回503 ARTIFACT_STORAGE_UNAVAILABLE。提供自定义reader时也必须遵守全部查询/身份/权限约束，Gateway再次有界验证完整输出和restricted项。
+
+`ArtifactRegistryEnvelope`只含schema_version=1、本次trace、与项逐一对应的artifact来源及data。data包含tenant/workspace/project、规范query、items、has_more、next_query和content_state=not-checked。每项是artifact_id加共享ArtifactVersionSummary：当前版本/名称/类型/分类/hash/大小/原trace/时间/来源数量，无完整来源列表、存储地址、正文、ETag或上传回执。
+
+完整响应最多256 KiB，单条摘要解析另限16 KiB。共享parseArtifactVersionSummary从原历史目录解析中提取，两个目录使用相同字段校验，历史排序与上界仍在原版本目录解析器中检查。当前目录解析核对范围、原query、ID倒序/排他位置、筛选、条数和完整next_query；续页游标绑定值必须与原cursor相同。客户端不从哈希推导权限，首屏绑定由可信服务端负责。
+
+响应private/no-store，无HTTP或外层ETag。常见错误：参数/游标400；真实能力/客户端/受限读取不足403；当前项目不可见404；缺可信快照409；损坏500；未配置/存储不可用503。错误不带部分列表，空列表只有成功读取且没有当前可见匹配项时返回，不证明项目历史中从无文件。
+
+## SDK
+
+`client.listArtifacts(input?, options?)`导出ArtifactRegistryQuery/Item/Page/Envelope，复用WcpArtifactReadOptions默认30秒本地等待及signal。异步前捕获完整查询、范围与可选账号/客户端前置约束，构造GET路径；成功256 KiB，Fetch错误16 KiB，自定义transport结果也做有界完整解析。错误沿固定有限消息、retryable=false和read_kind=registry，不回显底层内容，不自动重试或下载。
+
+```ts
+// 开发示例，未执行；实际账户必须具有artifact.read。
+const page = await client.listArtifacts({ query: 'report', classification: 'internal', limit: 20 });
+// 用户选择下一页时，保留全部筛选和游标。
+if (page.data.next_query) {
+  const next = await client.listArtifacts(page.data.next_query);
+}
+// 选中某项后明确读取当前/历史详情，不将目录摘要用作写条件。
+const selected = page.data.items[0];
+if (selected) {
+  const detail = await client.getArtifactVersion(selected.artifact_id, selected.version);
+}
+```
+
+取消或本地超时丢弃迟到结果，不能保证底层数据库工作停止。目录不会保存本地文件、获取对象正文、查询上传结果或修改原写请求。
+
+CLI/MCP/工作台/Mock项目目录入口、独立Schema/OpenAPI、性能与权限/并发/错误运行证据后续补齐；本轮不据源码推断这些入口已可用。不新增依赖或数据库schema，不编译、测试、运行服务、执行SQL/迁移或发布。

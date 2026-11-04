@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [项目文件目录服务与 SDK](docs/design/01-contracts/artifact-registry-runtime.md)：`GET /v1/artifacts` 和 `listArtifacts` 可按名称、分类查找当前项目文件，逐页返回摘要，续页绑定原身份与筛选。工作台入口后续接入。仅源码文档，未编译、测试、执行或发布。
+
 新增 [附件历史目录独立 Schema](packages/contracts/schemas/README.md)：提供查询、摘要、分页结果和完整响应的结构定义，可通过 contracts 包的显式 JSON 子路径引用。版本排序、原请求匹配和权限等继续由运行时检查。仅源码文档，未编译、校验、测试或发布。
 
 新增 [附件历史目录 Mock](docs/design/01-contracts/artifact-mock-runtime.md#历史版本目录)：现有内存附件存储可通过 `listArtifactVersions` 分页浏览已上传历史，保持原版本上界、权限与响应限制，返回完整续页查询。仅源码文档，未编译、测试、运行 Mock 或发布。

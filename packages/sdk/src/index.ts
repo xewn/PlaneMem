@@ -36,6 +36,10 @@ export {
 export type {
   ArtifactReadDetail,
   ArtifactVersionsQuery,
+  ArtifactRegistryQuery,
+  ArtifactRegistryItem,
+  ArtifactRegistryPage,
+  ArtifactRegistryEnvelope,
   ArtifactVersionsPage,
   ArtifactVersionsEnvelope,
   ArtifactVersionSummary,

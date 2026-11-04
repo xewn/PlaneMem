@@ -1,6 +1,7 @@
 import {
   ARTIFACT_UPLOAD_REQUEST_BYTES,
   ARTIFACT_VERSIONS_RESPONSE_BYTES,
+  ARTIFACT_REGISTRY_RESPONSE_BYTES,
   ContractError,
   assertArtifactReceiptIdentity,
   isSyncIdentifier,
@@ -10,9 +11,12 @@ import {
   parseArtifactReceiptQuery,
   parseArtifactVersionsQuery,
   parseArtifactVersionsEnvelope,
+  parseArtifactRegistryQuery,
+  parseArtifactRegistryEnvelope,
   syncJsonSnapshot,
   type ArtifactReceiptQuery,
   type ArtifactVersionsQuery,
+  type ArtifactRegistryQuery,
   type RequestContext,
 } from '@planemem/contracts';
 import type { WcpTransport } from './client.js';
@@ -50,7 +54,7 @@ const messages: Record<string, string> = {
     'The complete artifact response did not match this read or exceeded its size limit',
   GATEWAY_UNAVAILABLE: 'Artifact metadata or receipt could not be read',
 };
-type ReadKind = 'metadata' | 'receipt' | 'versions';
+type ReadKind = 'metadata' | 'receipt' | 'versions' | 'registry';
 function failure(code: string, trace: string, kind: ReadKind) {
   return new ContractError(code, messages[code]!, {
     trace_id: trace,
@@ -261,6 +265,31 @@ export function readArtifactVersions(
       },
       parse: (raw: unknown) =>
         parseArtifactVersionsEnvelope(raw, query, snapshot, snapshot.trace_id),
+    };
+  });
+}
+
+export function readArtifactRegistry(
+  transport: WcpTransport,
+  context: RequestContext,
+  input: ArtifactRegistryQuery,
+  options: WcpArtifactReadOptions,
+) {
+  return read(transport, context, options, 'registry', (snapshot) => {
+    const query = parseArtifactRegistryQuery(input);
+    const parameters = new URLSearchParams({ limit: String(query.limit) });
+    if (query.query !== undefined) parameters.set('query', query.query);
+    if (query.classification !== undefined) parameters.set('classification', query.classification);
+    if (query.cursor !== undefined) parameters.set('cursor', query.cursor);
+    return {
+      path: '/v1/artifacts?' + parameters.toString(),
+      maximum: ARTIFACT_REGISTRY_RESPONSE_BYTES,
+      expected: {
+        ...(snapshot.actor_id === undefined ? {} : { actor_id: snapshot.actor_id }),
+        ...(snapshot.client_id === undefined ? {} : { client_id: snapshot.client_id }),
+      },
+      parse: (raw: unknown) =>
+        parseArtifactRegistryEnvelope(raw, query, snapshot, snapshot.trace_id),
     };
   });
 }

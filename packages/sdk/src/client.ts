@@ -6,6 +6,7 @@ import {
   type AuditExportDocument,
   type ArtifactReceiptQuery,
   type ArtifactVersionsQuery,
+  type ArtifactRegistryQuery,
   type ArtifactUploadDraft,
   parseObservedReadInput,
   parseObservedSnapshot,
@@ -170,6 +171,7 @@ import {
   readArtifactMetadata,
   readArtifactReceipt,
   readArtifactVersions,
+  readArtifactRegistry,
   type WcpArtifactReadOptions,
 } from './artifact-reads.js';
 import { downloadArtifactVersion, type WcpArtifactDownloadOptions } from './artifact-download.js';
@@ -1703,6 +1705,11 @@ export class WcpClient {
   /** One historical metadata page. Follow next_query explicitly; listing never reads content. */
   listArtifactVersions(input: ArtifactVersionsQuery, options: WcpArtifactReadOptions = {}) {
     return readArtifactVersions(this.transport, this.context, input, options);
+  }
+
+  /** Current project metadata, ordered by file ID. Follow next_query explicitly. */
+  listArtifacts(input: ArtifactRegistryQuery = {}, options: WcpArtifactReadOptions = {}) {
+    return readArtifactRegistry(this.transport, this.context, input, options);
   }
 
   /** Save the original identity/command before calling; uncertain outcomes use getArtifactReceipt. */

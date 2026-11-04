@@ -11,6 +11,29 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    artifact_project_registry_development_increment:
+      date: "2026-11-04"
+      status: "Source-only persistent project artifact registry, HTTP route and SDK read; R-001 remains incomplete."
+      artifacts:
+        - "packages/contracts/src/artifact-registry.ts"
+        - "packages/contracts/src/artifact-versions.ts"
+        - "packages/contracts/src/index.ts"
+        - "apps/artifact-service/src/persistent.ts"
+        - "apps/api-gateway/src/artifact-registry.ts"
+        - "apps/api-gateway/src/server.ts"
+        - "apps/api-gateway/src/index.ts"
+        - "packages/sdk/src/artifact-reads.ts"
+        - "packages/sdk/src/client.ts"
+        - "packages/sdk/src/index.ts"
+        - "docs/design/01-contracts/artifact-registry-runtime.md"
+      behavior: "Add GET /v1/artifacts and listArtifacts with ASCII-folded literal name search, exact classification, default/max twenty and descending file-ID keyset paging. Bind continuation to verified scope, actor/client, restricted-read ability, normalized filters and limit; recheck current visibility per page. Lock the parent and selected current rows, cap current JSON and saved snapshots at 2 MiB each before transfer, validate every selected/lookahead current record against its saved snapshot and project scope, and return only public summaries. Extract shared bounded summary parsing, validate full 256 KiB envelopes and complete next_query, and retain SDK 30-second local deadline/cancellation with fixed errors. Require actual artifact.read and verified unexpired client; configure an explicit registry reader or the existing persistent store. No object content, write ETag, receipt read, auto-pagination or state write."
+      evidence: []
+      pending_evidence:
+        - "Scoped SQL locks, bounded JSON projections, timestamp conversion, legacy/corrupt snapshots and lookahead validation"
+        - "Literal Unicode/ASCII search, classification visibility, canonical cursor identity/filter/permission binding and concurrent changes"
+        - "HTTP/SDK routing, explicit configuration, response bounds, cancellation and preserved historical/metadata behavior"
+      remaining_scope: "CLI/MCP/workbench/Mock registry integration, standalone schema/OpenAPI, performance and runtime/concurrency/storage evidence. Current registry pages are not a cross-page snapshot, content verification or write authorization."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, SDK/product/API/SQL/database/migration execution or release. No dependency or database schema change."
     artifact_versions_schema_development_increment:
       date: "2026-11-04"
       status: "Source-only standalone artifact version directory schema; R-001 remains incomplete."

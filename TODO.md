@@ -6,6 +6,8 @@
 
 ### 2026-11-04 开发补充（未编译、未发布、未测试）
 
+- P0/P2：已补GET /v1/artifacts与SDK listArtifacts当前项目文件目录，按名称ASCII折叠字面子串/分类筛选，默认20最多20，ULID C序倒序，完整next_query绑定原范围/账号/客户端/受限读取能力/筛选/页大小；不是跨页快照或写条件。持久读取沿父项目锁和最多21条当前行共享锁，当前JSON与保存快照各先限2 MiB，复用完整currentRow一致核验且验证探测行，坏/旧快照不返回部分成功。响应256 KiB、公开当前摘要/来源数无存储键/正文/ETag/回执；Gateway显式artifact_registry或沿artifact_storage、实际artifact.read及未过期已验证客户端，SDK30秒/取消/固定错误。CLI/MCP/Web/Mock项目目录、独立Schema和性能/运行证据仍缺，R-001未完成；无依赖/迁移，只源码文档人工审阅，未编译/类型检查/测试/执行SDK、产品、API、SQL、数据库或发布。
+
 - P0：已补contracts/schemas/artifact-versions.json自包含2020-12结构定义和显式包子路径，完整成功封套为根，提供输入/规范回显/完整续页/摘要/页面/封套锚点与静态示例。拒绝未知字段，区分limit默认输入与必需规范输出，约束安全整数/分类/来源/分页形状，before依赖at，has_more关联next_query。共享解析器仍承担字节/JS属性/UTF-16/规范日期/原query、scope、trace绑定和版本顺序/下一查询比较；Schema不替代实际授权、完整解析或正文核验。旧Artifact实体Schema不变，无运行时JSON导入/新依赖/迁移；完整OpenAPI、自动生成/契约一致性及运行证据仍缺，R-001未完成。仅源码文档人工审阅，未编译/类型检查/执行生成器或校验器/测试/运行SDK、Mock、产品、API、数据库或发布。
 
 - P0：已补MockArtifactStore的GET附件版本目录，复用既有内存上传历史与固定模拟会话，listArtifactVersions可经MockWcpServer接入。只有目录GET接受严格limit/at_version/before_version参数，默认10最多20，保留原上界和完整next_query；POST追加及其他路由的查询/正文/写条件约束保持。当前与最多21条选中/探测元数据完整有界校验，历史分类权限再检查，完整封套256 KiB并遵守更低调用方限额；目录不读字节/计算内容摘要、不写回执/版本/释放记录，不自动翻页。Mock只覆盖已有上传历史，不模拟历史损坏/缺失种子、动态权限、SQL锁或真实审计；独立schema及运行证据仍缺，R-001未完成。仅源码文档人工审阅，未编译/类型检查/测试/执行SDK、Mock、CLI、产品、API或数据库/发布。

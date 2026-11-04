@@ -9,7 +9,15 @@ import {
   syncJsonSnapshot,
   type ArtifactVersionsQuery,
   type ArtifactVersionsPage,
+  parseArtifactRegistryQuery,
+  parseArtifactRegistryCursor,
+  encodeArtifactRegistryCursor,
+  parseArtifactRegistryPage,
+  foldArtifactRegistryQuery,
+  type ArtifactRegistryQuery,
+  type ArtifactRegistryPage,
 } from '@planemem/contracts';
+import { createHash } from 'node:crypto';
 import {
   artifactCommandHash,
   artifactDigest,
@@ -79,6 +87,164 @@ export class PersistentArtifactService {
         await this.project(tx, access);
         const current = await this.current(tx, access, artifactId);
         return this.version(tx, access, current, version);
+      }),
+    );
+  }
+
+  async listArtifacts(
+    rawAccess: ArtifactAccess,
+    input: ArtifactRegistryQuery = {},
+  ): Promise<ArtifactRegistryPage> {
+    const access = this.access(rawAccess, 'artifact.read');
+    let query;
+    let before: string | undefined;
+    let key: string;
+    try {
+      query = parseArtifactRegistryQuery(input);
+      key = createHash('sha256')
+        .update(
+          JSON.stringify([
+            'artifact-registry-v1',
+            access.tenant_id,
+            access.workspace_id,
+            access.project_id,
+            access.actor_id,
+            access.client_id,
+            this.restricted(access),
+            query.query ?? null,
+            query.classification ?? null,
+            query.limit,
+          ]),
+        )
+        .digest('hex');
+      if (query.cursor !== undefined) {
+        const cursor = parseArtifactRegistryCursor(query.cursor);
+        if (cursor.key !== key) throw new TypeError();
+        before = cursor.artifact_id;
+      }
+    } catch {
+      throw this.error(
+        'INVALID_INPUT',
+        'Supply a valid file directory query and retain its original scope and filters',
+        access,
+      );
+    }
+    if (query.classification === 'restricted' && !this.restricted(access))
+      throw this.error('ARTIFACT_ACCESS_DENIED', 'Restricted artifact access is required', access);
+    return this.storage(access, () =>
+      this.database.transaction(async (tx) => {
+        await this.project(tx, access);
+        const maximum = 2 * 1024 * 1024;
+        const rows = await tx.query<Row>(
+          `SELECT a.artifact_id, a.created_at AS current_created_at, a.updated_at AS current_updated_at,
+          octet_length(to_jsonb(a)::text) AS record_bytes,
+          CASE WHEN octet_length(to_jsonb(a)::text) <= $8 THEN to_jsonb(a) ELSE NULL END AS current_record,
+          octet_length(v.metadata_snapshot::text) AS snapshot_bytes,
+          CASE WHEN octet_length(v.metadata_snapshot::text) <= $8 THEN v.metadata_snapshot ELSE NULL END AS metadata_snapshot,
+          v.storage_key AS saved_key, v.sha256 AS saved_hash, v.size_bytes AS saved_size,
+          v.trace_id AS saved_trace, v.created_at AS saved_at
+        FROM wcp_artifacts a LEFT JOIN wcp_artifact_versions v ON v.artifact_id=a.artifact_id AND v.version=a.version
+        WHERE a.tenant_id=$1 AND a.workspace_id=$2 AND a.project_id=$3 AND a.deleted_at IS NULL
+          AND a.classification IN ('public','internal','confidential'${this.restricted(access) ? ",'restricted'" : ''})
+          AND ($4::text IS NULL OR a.classification=$4)
+          AND ($5::text IS NULL OR strpos(translate(a.name, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), $5)>0)
+          AND ($6::text IS NULL OR a.artifact_id COLLATE "C" < $6 COLLATE "C")
+        ORDER BY a.artifact_id COLLATE "C" DESC LIMIT $7 FOR SHARE OF a`,
+          [
+            access.tenant_id,
+            access.workspace_id,
+            access.project_id,
+            query.classification ?? null,
+            query.query === undefined ? null : foldArtifactRegistryQuery(query.query),
+            before ?? null,
+            query.limit + 1,
+            maximum,
+          ],
+        );
+        try {
+          if (rows.length > query.limit + 1) throw new TypeError();
+          let previous = before;
+          const selected = rows.map((row) => {
+            if (
+              !isUlid(row.artifact_id) ||
+              row.artifact_id.length !== 26 ||
+              (previous !== undefined && row.artifact_id >= previous)
+            )
+              throw new TypeError();
+            previous = row.artifact_id;
+            const recordBytes = this.number(row.record_bytes);
+            const snapshotBytes =
+              row.snapshot_bytes == null ? null : this.number(row.snapshot_bytes);
+            if (
+              !Number.isSafeInteger(recordBytes) ||
+              recordBytes < 1 ||
+              recordBytes > maximum ||
+              (snapshotBytes !== null &&
+                (!Number.isSafeInteger(snapshotBytes) ||
+                  snapshotBytes < 1 ||
+                  snapshotBytes > maximum))
+            )
+              throw new TypeError();
+            const raw = JSON.parse(
+              syncJsonSnapshot(this.json(row.current_record), maximum),
+            ) as unknown;
+            if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new TypeError();
+            const artifact = this.currentRow(
+              {
+                ...raw,
+                // JSONB timestamps use PostgreSQL offsets; retain the driver's original dates.
+                created_at: row.current_created_at,
+                updated_at: row.current_updated_at,
+                metadata_snapshot:
+                  row.metadata_snapshot == null
+                    ? null
+                    : JSON.parse(syncJsonSnapshot(this.json(row.metadata_snapshot), maximum)),
+                saved_key: row.saved_key,
+                saved_hash: row.saved_hash,
+                saved_size: row.saved_size,
+                saved_trace: row.saved_trace,
+                saved_at: row.saved_at,
+              },
+              access,
+              row.artifact_id,
+            );
+            this.classification(access, artifact.classification);
+            if (
+              (query.classification !== undefined &&
+                artifact.classification !== query.classification) ||
+              (query.query !== undefined &&
+                !foldArtifactRegistryQuery(artifact.name).includes(
+                  foldArtifactRegistryQuery(query.query),
+                ))
+            )
+              throw new TypeError();
+            return { artifact_id: artifact.artifact_id, ...summarizeArtifactVersion(artifact) };
+          });
+          const items = selected.slice(0, query.limit);
+          const more = selected.length > query.limit;
+          return parseArtifactRegistryPage(
+            {
+              tenant_id: access.tenant_id,
+              workspace_id: access.workspace_id,
+              project_id: access.project_id,
+              query,
+              items,
+              has_more: more,
+              next_query: more
+                ? {
+                    ...query,
+                    cursor: encodeArtifactRegistryCursor(key, items[items.length - 1]!.artifact_id),
+                  }
+                : null,
+              content_state: 'not-checked',
+            },
+            query,
+            access,
+          );
+        } catch (error) {
+          if (error instanceof ContractError) throw error;
+          throw this.invalidStored(access);
+        }
       }),
     );
   }
@@ -451,6 +617,11 @@ export class PersistentArtifactService {
     const row = rows[0];
     if (!row)
       throw this.error('ARTIFACT_NOT_FOUND', 'Artifact is unavailable in this project', access);
+    if (rows.length !== 1) throw this.invalidStored(access);
+    return this.currentRow(row, access, artifactId);
+  }
+
+  private currentRow(row: Row, access: ArtifactAccess, artifactId: string) {
     if (row.metadata_snapshot == null)
       throw this.error(
         'ARTIFACT_LEGACY_UNVERIFIED',
@@ -458,7 +629,6 @@ export class PersistentArtifactService {
         access,
       );
     try {
-      if (rows.length !== 1) throw new TypeError();
       const result = parsePersistentArtifact({
         ...row,
         schema_version: 1,

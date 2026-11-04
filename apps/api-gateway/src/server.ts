@@ -92,6 +92,7 @@ import { registerCheckpointRead } from './checkpoint-read.js';
 import { registerCheckpointHistory } from './checkpoint-history.js';
 import { registerArtifactReads, type ArtifactMetadataReader } from './artifact-reads.js';
 import { registerArtifactVersions, type ArtifactVersionReader } from './artifact-versions.js';
+import { registerArtifactRegistry, type ArtifactRegistryReader } from './artifact-registry.js';
 import { registerArtifactReceipts, type ArtifactReceiptReader } from './artifact-receipts.js';
 import { registerArtifactWrites, type ArtifactWriter } from './artifact-writes.js';
 import { ArtifactUploadGate, readArtifactUpload } from './artifact-upload.js';
@@ -152,6 +153,8 @@ export interface PlatformServerOptions {
   artifact_reader?: ArtifactMetadataReader;
   /** Trusted version directory reader; validates current visibility and complete historical snapshots. */
   artifact_versions?: ArtifactVersionReader;
+  /** Trusted current-file directory reader with scoped, permission-bound continuation. */
+  artifact_registry?: ArtifactRegistryReader;
   /** Trusted original-request reader; enforces identity, current visibility and saved snapshot integrity. */
   artifact_receipts?: ArtifactReceiptReader;
   /** Trusted writer with immutable object verification and durable original-request receipts. */
@@ -218,6 +221,7 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
   if (
     (options.artifact_reader !== undefined ||
       options.artifact_versions !== undefined ||
+      options.artifact_registry !== undefined ||
       options.artifact_receipts !== undefined ||
       options.artifact_writer !== undefined ||
       options.artifact_content !== undefined) &&
@@ -254,6 +258,11 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
     typeof options.artifact_versions?.listVersions !== 'function'
   )
     throw new TypeError('Invalid artifact version directory reader');
+  if (
+    options.artifact_registry !== undefined &&
+    typeof options.artifact_registry?.listArtifacts !== 'function'
+  )
+    throw new TypeError('Invalid artifact project directory reader');
   if (
     options.artifact_receipts !== undefined &&
     typeof options.artifact_receipts?.getCommandReceipt !== 'function'
@@ -1412,6 +1421,7 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
   registerCheckpointHistory(router, workbench);
   registerArtifactReads(router, artifactReader);
   registerArtifactVersions(router, options.artifact_versions ?? artifactService);
+  registerArtifactRegistry(router, options.artifact_registry ?? artifactService);
   registerArtifactReceipts(router, artifactReceipts);
   registerArtifactWrites(router, artifactWriter);
   registerArtifactUploadContext(router, artifactUploads.maxBytes);
@@ -1451,6 +1461,7 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
   api.route('GET', '/v1/artifacts/upload-context', 'artifact.upload-context');
   api.route('POST', '/v1/artifacts/receipt', 'artifact.receipt');
   api.route('POST', '/v1/artifacts', 'artifact.create');
+  api.route('GET', '/v1/artifacts', 'artifact.registry.list');
   api.routeTemplate(
     'GET',
     '/v1/artifacts/{artifact_id}/versions/{version}/content',
@@ -1681,7 +1692,12 @@ function policyAction(request: CommandRequest): string {
   )
     return 'artifact.write';
   if (
-    ['artifact.read', 'artifact.version.read', 'artifact.versions.list'].includes(request.operation)
+    [
+      'artifact.read',
+      'artifact.version.read',
+      'artifact.versions.list',
+      'artifact.registry.list',
+    ].includes(request.operation)
   )
     return 'artifact.read';
   if (request.operation === 'plane.inbox.retry') return 'plane.retry';
@@ -1948,6 +1964,7 @@ async function handleRequest(
     const syncCommandContextRoute = url.pathname === '/v1/sync/commands/context';
     const syncCursorRoute = url.pathname === '/v1/sync/cursor';
     const artifactRoute = /^\/v1\/artifacts(?:\/|$)/.test(url.pathname);
+    const artifactRegistryRoute = request.method === 'GET' && url.pathname === '/v1/artifacts';
     const artifactVersionsRoute =
       request.method === 'GET' && /^\/v1\/artifacts\/[^/]+\/versions$/.test(url.pathname);
     const sessionRecordRead =
@@ -2015,6 +2032,7 @@ async function handleRequest(
           conflictCommandContextRoute ||
           sessionCommandContextRoute ||
           artifactDownload ||
+          artifactRegistryRoute ||
           url.pathname === '/v1/artifacts/upload-context' ||
           (artifactRoute && request.method === 'POST') ||
           (contextIndexRoute && request.method === 'POST') ||
@@ -2224,13 +2242,18 @@ async function handleRequest(
           'Conflict detail is an unconditional read without query, body or write conditions',
           { trace_id: traceId },
         );
-      if (artifactRoute && !artifactVersionsRoute && url.searchParams.size)
+      if (
+        artifactRoute &&
+        !artifactVersionsRoute &&
+        !artifactRegistryRoute &&
+        url.searchParams.size
+      )
         throw new ContractError(
           'INVALID_INPUT',
           'Artifact endpoints do not accept query parameters',
           { trace_id: traceId },
         );
-      if (artifactVersionsRoute) {
+      if (artifactVersionsRoute || artifactRegistryRoute) {
         if (
           Object.keys(body).length ||
           header(request, 'transfer-encoding') !== undefined ||
@@ -2250,14 +2273,26 @@ async function handleRequest(
         )
           throw new ContractError(
             'INVALID_INPUT',
-            'Artifact versions accepts pagination without body, cache or write conditions',
+            'Artifact directories accept pagination without body, cache or write conditions',
             {
               trace_id: traceId,
             },
           );
         for (const [field, value] of url.searchParams) {
+          if (artifactRegistryRoute && ['query', 'classification', 'cursor'].includes(field)) {
+            if (url.searchParams.getAll(field).length !== 1)
+              throw new ContractError(
+                'INVALID_INPUT',
+                'File directory parameters must be single values',
+                { trace_id: traceId },
+              );
+            body[field] = value;
+            continue;
+          }
           if (
-            !['limit', 'at_version', 'before_version'].includes(field) ||
+            !(
+              artifactRegistryRoute ? ['limit'] : ['limit', 'at_version', 'before_version']
+            ).includes(field) ||
             url.searchParams.getAll(field).length !== 1 ||
             !/^[1-9][0-9]{0,15}$/.test(value) ||
             !Number.isSafeInteger(Number(value))
