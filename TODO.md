@@ -4,6 +4,8 @@
 
 ## 当前基线
 
+- P0/P4：新增contracts/openapi/context-pack-save.json及包子路径，覆盖已有GET save-context与只读POST save-receipt，引用自包含原请求Schema。按实际源码描述三范围/Bearer/独立身份条件、双trace一致、重复与禁止头、JSON/4 KiB/Content-Length、16 KiB成功与错误状态/retryable；区分身份GET无项目查询/专用两槽期限，历史POST项目检查/两槽30秒/早期trace及connection close。源码OpenAPI缺口补齐这两条路径，全量接口和本地解析/自动一致性/真实客户端证据仍缺，R-003未完成、evidence为空；仅人工源码审阅及格式文本检查，未运行校验器、生成器、编译、类型检查、测试、API/SQL/产品或发布。
+
 - P0：新增自包含context-pack-save.json及包子路径，根为完整历史查询封套，锚点覆盖身份/草稿/显式参数/身份封套/Gateway绑定/原文件/原查询/十字段历史记录/来源/document/file。闭合字段并联动recorded与not-observed来源数量，沿原数字/标识/时间/hash词法；不以格式代替完整绑定、WHATWG规范化、字节/UTF-16预算、时间/TTL关系、摘要或真实权限。原请求及历史回执独立Schema源码缺口补齐，OpenAPI/自动一致性和真实客户端证据仍缺，R-003未完成、evidence为空；仅源码文档人工审阅及格式文本检查，未运行Schema校验、生成器、编译、类型检查、测试、解析器/产品/API或发布。
 
 - P4：runWorkctx新增context submit-save --json-file ORIGINAL --reviewed [--timeout-ms N]，固定宿主gateway_url、五字段身份/restricted与完整8 KiB原文件，复用save-identity核对后沿现有compile发送原参数/键；授权后复读全部原字节，变化或不可读拒绝。首次读文件在期限前，之后身份/授权/复读/保存/完整封套/hash共用总期限，单调复查与取消阻止迟到派发；实际router两提交容量与旧compile共享，底层结束才释放。派发前失败not-sent/not-checked，派发后失败started/unknown，不自动重试或换键，不写原文件。补齐内嵌原请求准备/审阅/提交/回执源码流程，独立Schema/OpenAPI和真实兼容证据仍缺，R-003未完成、evidence为空；仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、执行CLI/文件流程/API/数据库或发布。

@@ -1,0 +1,352 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem ContextPack save identity and historical receipts",
+    "version": "0.1.0",
+    "description": "Source-only description of two existing read operations, not the complete WCP API or the pack save operation. No validator, generator or runtime verification was executed. Load this document and ../schemas/context-pack-save.json locally with their original relative layout; register the complete schema resource and its $id instead of fetching planemem.local."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Replace with the intended Gateway base, including any deployment path. No deployed host is implied."
+    }
+  ],
+  "tags": [
+    {
+      "name": "ContextPack original saves",
+      "description": "Read current identity metadata or observe an original request's historical save; neither operation saves a pack."
+    }
+  ],
+  "paths": {
+    "/v1/context-pack/save-context": {
+      "get": {
+        "operationId": "getContextPackSaveContext",
+        "tags": ["ContextPack original saves"],
+        "summary": "Read the current verified save identity",
+        "description": "Require a verified unexpired Bearer session with an authenticated client and normalized context.read capability. Existing authentication can map workbench.read or the designated workbench client's Base capability to context.read; admin alone is insufficient. Return complete tenant/workspace/project/actor/client, session expiry and compile/read_restricted hints. This handler does not query project existence, packs or sources, reserve a key, prove a save or grant future authorization. No query parameters, fragment, body or duplicate header names are accepted. Content-Length must be absent or literal 0; write/cache/range/encoding headers listed below are forbidden. When either trace header is present it must equal the selected trace, so conflicting or empty trace headers are rejected even when another header supplies a valid trace. Expected identity headers are independently optional equality constraints, not credentials.",
+        "security": [{ "GatewayBearer": [] }],
+        "x-wcp-operation": "context.pack.save-context",
+        "x-required-normalized-capabilities": ["context.read"],
+        "x-runtime-limits": {
+          "header-pairs-json-bytes": 16384,
+          "success-envelope-bytes": 16384,
+          "description": "Annotations only. Header budget applies to the serialized defined raw header pairs, not a per-header or raw HTTP byte limit. The synchronous identity handler has no dedicated two-slot limiter or 30-second deadline; client read budgets and outer authentication/policy/audit are separate."
+        },
+        "x-rejected-request-headers": [
+          "idempotency-key",
+          "if-match",
+          "if-match-version",
+          "x-expected-version",
+          "if-none-match",
+          "if-modified-since",
+          "if-unmodified-since",
+          "range",
+          "if-range",
+          "content-encoding",
+          "transfer-encoding"
+        ],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantId" },
+          { "$ref": "#/components/parameters/WorkspaceId" },
+          { "$ref": "#/components/parameters/ProjectId" },
+          { "$ref": "#/components/parameters/TraceParent" },
+          { "$ref": "#/components/parameters/TraceId" },
+          { "$ref": "#/components/parameters/ExpectedActorId" },
+          { "$ref": "#/components/parameters/ExpectedClientId" },
+          {
+            "name": "content-length",
+            "in": "header",
+            "required": false,
+            "description": "Absent or the literal 0 only; no body or transfer encoding.",
+            "schema": { "type": "string", "const": "0" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Complete current identity envelope, at most 16 KiB, with empty source_refs. No ETag, revision or saved-pack result. Session expiry is metadata; subsequent operations must recheck authority.",
+            "headers": {
+              "cache-control": { "$ref": "#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "#/components/headers/SuccessTrace" }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../schemas/context-pack-save.json#ContextPackSaveContextEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/IdentityError",
+            "description": "INVALID_INPUT for query, forbidden/duplicate headers, body conditions or inconsistent trace headers; retryable=false. No partial identity is returned."
+          },
+          "401": {
+            "$ref": "#/components/responses/IdentityError",
+            "description": "UNAUTHENTICATED for missing/rejected Bearer credentials; retryable=false. Early errors do not guarantee x-trace-id or WWW-Authenticate response headers."
+          },
+          "403": {
+            "$ref": "#/components/responses/IdentityError",
+            "description": "DENIED for unauthorized scope, expected identity mismatch, missing authenticated client, missing context.read, policy denial or expiry; retryable=false."
+          },
+          "429": {
+            "$ref": "#/components/responses/IdentityError",
+            "description": "RATE_LIMITED from the shared actor/path request-rate limiter; retryable=true. This handler has no independent two-read gate; no Retry-After header is promised."
+          },
+          "500": {
+            "$ref": "#/components/responses/IdentityError",
+            "description": "CONTEXT_PACK_SAVE_CONTEXT_INVALID if verified metadata cannot be represented by the complete schema (retryable=false), or unexpected INTERNAL_ERROR (generic serialization uses retryable=true)."
+          },
+          "503": {
+            "$ref": "#/components/responses/IdentityError",
+            "description": "WORKBENCH_AUTH_UNAVAILABLE or AUDIT_PERSISTENCE_UNAVAILABLE, retryable=true. Identity generation does not itself perform a pack-storage query."
+          },
+          "default": {
+            "$ref": "#/components/responses/IdentityError",
+            "description": "Other application errors retain the shared envelope; proxy or HTTP parser errors before this application boundary need not have this shape."
+          }
+        }
+      }
+    },
+    "/v1/context-pack/save-receipt": {
+      "post": {
+        "operationId": "getContextPackSaveReceipt",
+        "tags": ["ContextPack original saves"],
+        "summary": "Observe the historical result of an original pack save",
+        "description": "Read-only POST with the complete original identity, restricted bucket, key and explicit budget/TTL. Require a verified unexpired context.read client; all five identity fields and read_restricted must equal trusted current context. Check the visible parent project, then observe matching historical metadata in a repeatable-read read-only transaction. No row yields not-observed; a different stored parameter/permission fingerprint yields conflict. Do not send an Idempotency-Key header: the original key is in request_key and this operation never saves, reserves, activates or automatically retries a pack. No query parameters, fragment, duplicate headers, write/cache/range/encoding conditions are accepted. Send application/json, optionally followed only by charset=utf-8 (quoted or unquoted, case-insensitive). Content-Length, if supplied, must be a canonical decimal 1..4096; transfer-encoding is forbidden. Authentication and header/authority checks precede bounded body reading. Both supplied trace headers must match the selected trace. A recorded result only confirms historical metadata, not present content/source validity; not-observed does not disprove a save committed outside this snapshot or authorize resubmission.",
+        "security": [{ "GatewayBearer": [] }],
+        "x-wcp-operation": "context.pack.save-receipt",
+        "x-required-normalized-capabilities": ["context.read"],
+        "x-runtime-limits": {
+          "header-pairs-json-bytes": 16384,
+          "raw-body-bytes": 4096,
+          "parsed-query-bytes": 4096,
+          "success-envelope-bytes": 16384,
+          "handler-timeout-ms": 30000,
+          "handler-concurrency-per-router": 2,
+          "description": "Annotations only. Handler budget starts after outer authentication, body acquisition and policy/audit authorization; it does not bound the complete HTTP request. Underlying SQL retains its slot after timeout until settlement. No global server error-size limit is promised; clients impose their own limits."
+        },
+        "x-rejected-request-headers": [
+          "idempotency-key",
+          "if-match",
+          "if-match-version",
+          "x-expected-version",
+          "if-none-match",
+          "if-modified-since",
+          "if-unmodified-since",
+          "range",
+          "if-range",
+          "content-encoding",
+          "transfer-encoding"
+        ],
+        "parameters": [
+          { "$ref": "#/components/parameters/TenantId" },
+          { "$ref": "#/components/parameters/WorkspaceId" },
+          { "$ref": "#/components/parameters/ProjectId" },
+          { "$ref": "#/components/parameters/TraceParent" },
+          { "$ref": "#/components/parameters/TraceId" },
+          { "$ref": "#/components/parameters/ExpectedActorId" },
+          { "$ref": "#/components/parameters/ExpectedClientId" },
+          {
+            "name": "content-length",
+            "in": "header",
+            "required": false,
+            "description": "When present, canonical positive decimal bytes 1..4096, without whitespace/sign/leading zero. Header validation permits omission but does not supply HTTP framing; clients must send a complete bounded body without transfer-encoding.",
+            "schema": {
+              "type": "string",
+              "pattern": "^(?:[1-9][0-9]{0,2}|[1-3][0-9]{3}|40[0-8][0-9]|409[0-6])$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Complete original query, at most 4 KiB raw body and canonical parsed JSON. JSON object only; no defaulted budget/TTL, gateway_url, token, replacement key, review flag or partial identity. Invalid, empty or oversized bodies produce INVALID_INPUT/400 rather than a special 413 response. A duplicate-header prohibition does not imply duplicate JSON property detection by JSON.parse.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/context-pack-save.json#ContextPackSaveReceiptQuery" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Complete recorded or not-observed observation, both successful HTTP outcomes, at most 16 KiB. No ETag or outer revision/server_cursor. Recorded has one matching pack source and historical metadata; not-observed has empty source_refs and no receipt. The application sets Connection: close and x-trace-id before authentication on this route.",
+            "headers": {
+              "cache-control": { "$ref": "#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "#/components/headers/SuccessTrace" },
+              "connection": { "$ref": "#/components/headers/Close" }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../schemas/context-pack-save.json#ContextPackSaveReceiptEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ReceiptError",
+            "description": "INVALID_INPUT for query/body/headers, malformed or oversized JSON, invalid original structure or write conditions; retryable=false. This route's bounded body rejection maps to 400, not 413."
+          },
+          "401": {
+            "$ref": "#/components/responses/ReceiptError",
+            "description": "UNAUTHENTICATED for missing/rejected credentials; retryable=false. Direct application response retains its early trace/connection headers, but does not promise WWW-Authenticate."
+          },
+          "403": {
+            "$ref": "#/components/responses/ReceiptError",
+            "description": "DENIED for invalid/mismatched trusted identity, scope, restricted bucket, expected header, policy/capability or expired session; retryable=false."
+          },
+          "404": {
+            "$ref": "#/components/responses/ReceiptError",
+            "description": "CONTEXT_PACK_NOT_FOUND for unavailable/deleted/invisible parent project, retryable=false. A visible project's absent original save instead yields 200 not-observed."
+          },
+          "409": {
+            "$ref": "#/components/responses/ReceiptError",
+            "description": "IDEMPOTENCY_KEY_REUSED for a stored original key with different parameter/permission fingerprint, retryable=false. Recover the exact original; do not invent a new key."
+          },
+          "429": {
+            "$ref": "#/components/responses/ReceiptError",
+            "description": "RATE_LIMITED: shared actor/path rate limit sets retryable=true; two-slot receipt handler capacity sets retryable=false. No Retry-After or automatic retry is promised."
+          },
+          "500": {
+            "$ref": "#/components/responses/ReceiptError",
+            "description": "CONTEXT_PACK_RECEIPT_INVALID for malformed/incomplete historical records, retryable=false; unexpected INTERNAL_ERROR uses retryable=true. No partial record is returned."
+          },
+          "503": {
+            "$ref": "#/components/responses/ReceiptError",
+            "description": "CONTEXT_PACK_STORAGE_UNAVAILABLE or CONTEXT_PACK_RECEIPT_TIMEOUT set retryable=false; WORKBENCH_AUTH_UNAVAILABLE or AUDIT_PERSISTENCE_UNAVAILABLE set retryable=true. Timeout stops waiting without proving SQL cancellation or any original save failure."
+          },
+          "default": {
+            "$ref": "#/components/responses/ReceiptError",
+            "description": "Other application errors retain the shared envelope; failures from outer proxies or HTTP parsing need not follow it."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "GatewayBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Authorization: Bearer <token>. Verified claims supply actor/client, roles/capabilities and expiry; scope headers constrain authorized scope. This declares syntax, not an acquisition flow or permission grant."
+      }
+    },
+    "parameters": {
+      "TenantId": {
+        "name": "x-tenant-id",
+        "in": "header",
+        "required": true,
+        "description": "Original authorized tenant, equal to verified scope.",
+        "schema": { "$ref": "../schemas/context-pack-save.json#/$defs/ulid" }
+      },
+      "WorkspaceId": {
+        "name": "x-workspace-id",
+        "in": "header",
+        "required": true,
+        "description": "Original authorized workspace, equal to verified scope.",
+        "schema": { "$ref": "../schemas/context-pack-save.json#/$defs/ulid" }
+      },
+      "ProjectId": {
+        "name": "x-project-id",
+        "in": "header",
+        "required": true,
+        "description": "Original authorized project. Identity lookup does not establish project existence; receipt lookup separately checks parent visibility.",
+        "schema": { "$ref": "../schemas/context-pack-save.json#/$defs/ulid" }
+      },
+      "TraceParent": {
+        "name": "traceparent",
+        "in": "header",
+        "required": false,
+        "description": "Nonempty value takes precedence over x-trace-id. Current server treats this as opaque text, not W3C Trace Context parsing. Every supplied trace header must equal the selected trace; empty or conflicting values are rejected.",
+        "schema": { "$ref": "../schemas/context-pack-save.json#/$defs/identifier" }
+      },
+      "TraceId": {
+        "name": "x-trace-id",
+        "in": "header",
+        "required": false,
+        "description": "Used when no nonempty traceparent is present. If both headers are absent, server generates trace_http_<ULID>. If both are supplied, they must be identical; success echoes this trace in body and response header.",
+        "schema": { "$ref": "../schemas/context-pack-save.json#/$defs/identifier" }
+      },
+      "ExpectedActorId": {
+        "name": "x-expected-actor-id",
+        "in": "header",
+        "required": false,
+        "description": "Optional exact constraint on verified actor, independent of expected client; never supplies identity. Receipt body still requires all five original fields.",
+        "schema": { "$ref": "../schemas/context-pack-save.json#/$defs/ulid" }
+      },
+      "ExpectedClientId": {
+        "name": "x-expected-client-id",
+        "in": "header",
+        "required": false,
+        "description": "Optional exact constraint on verified client, independent of expected actor. Successful responses require the save identity's 255 UTF-16 unit, C0/DEL/surrogate checks; structure length is only a code-point limit.",
+        "schema": { "$ref": "../schemas/context-pack-save.json#/$defs/identifier" }
+      }
+    },
+    "headers": {
+      "NoStore": {
+        "description": "All application JSON responses use this cache policy.",
+        "required": true,
+        "schema": { "type": "string", "const": "private, no-store" }
+      },
+      "SuccessTrace": {
+        "description": "Equals the selected request trace and body.trace_id.",
+        "required": true,
+        "schema": { "$ref": "../schemas/context-pack-save.json#/$defs/identifier" }
+      },
+      "OptionalErrorTrace": {
+        "description": "Present for command errors; early identity-route authentication/input errors may omit it. Use body.trace_id.",
+        "required": false,
+        "schema": { "type": "string", "minLength": 1 }
+      },
+      "ReceiptErrorTrace": {
+        "description": "Set before authentication on the direct receipt route. Invalid input can yield a trace that fails the successful-response identifier rules; preserve body.trace_id as well.",
+        "required": true,
+        "schema": { "type": "string", "minLength": 1 }
+      },
+      "Close": {
+        "description": "Set by the direct Node HTTP receipt route before authentication to close after the response, including rejected unread bodies. This hop-by-hop header may be changed by proxies; it is not an HTTP/2 transport requirement.",
+        "required": true,
+        "schema": { "type": "string", "const": "close" }
+      }
+    },
+    "schemas": {
+      "ErrorEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message", "details", "trace_id", "retryable"],
+        "properties": {
+          "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]+$" },
+          "message": { "type": "string", "minLength": 1 },
+          "details": { "type": "object", "additionalProperties": true },
+          "trace_id": { "type": "string", "minLength": 1 },
+          "retryable": { "type": "boolean" }
+        },
+        "description": "Existing five-field serialized error. Open details are diagnostic JSON, not a receipt. Early invalid traces need not satisfy the success schema. Raw HTTP retryable varies by source; SDK/client mappings may replace it and it never authorizes automatic resubmission."
+      }
+    },
+    "responses": {
+      "IdentityError": {
+        "description": "Application identity-read error; no partial data or guaranteed early trace header.",
+        "headers": {
+          "cache-control": { "$ref": "#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "#/components/headers/OptionalErrorTrace" }
+        },
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } }
+        }
+      },
+      "ReceiptError": {
+        "description": "Application historical-read error, never evidence that an original save failed. Direct server sets trace and connection headers before authentication.",
+        "headers": {
+          "cache-control": { "$ref": "#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "#/components/headers/ReceiptErrorTrace" },
+          "connection": { "$ref": "#/components/headers/Close" }
+        },
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } }
+        }
+      }
+    }
+  }
+}

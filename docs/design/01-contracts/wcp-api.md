@@ -1,5 +1,7 @@
 # WCP API 契约 v1
 
+2026-11-05保存身份/历史回执OpenAPI增补：独立`context-pack-save.json`描述已有GET save-context及POST save-receipt，复用原请求独立Schema，明确认证/原身份/双trace、无查询/禁止条件、正文与响应限额、两接口不同的期限/容量/早期响应头及错误状态。使用说明见[保存身份与历史回执OpenAPI](../../../packages/contracts/openapi/README.md#保存身份与历史回执)，不新增路由或改变JSON，不涵盖保存提交和完整WCP目录。仅源码文档，未运行校验器、生成器、编译、类型检查、测试、API/SQL或发布。
+
 2026-11-05原保存回执增补：新增只读`POST /v1/context-pack/save-receipt` → `context.pack.save-receipt`，4 KiB完整原身份/restricted/键/显式参数查询；真实未过期context.read、认证客户端、原身份及权限桶相等、父项目可见后，在只读快照中匹配既有保存指纹。16 KiB闭合封套返回recorded历史元数据或not-observed；不访问包正文/来源，不保存、预留键或自动重发。成功200、private/no-store、原trace且无ETag；无查询参数，拒绝重复/写/缓存/Range/编码头。SDK与网络CLI已接源码，详细形状、错误及限制见[原保存请求回执查询](context-pack-runtime.md#原保存请求回执查询2026-11-05源码增量)。仅源码文档，未编译、类型检查、测试、执行接口/客户端/数据库或发布。
 
 2026-11-05保存身份客户端增补：CLI `context save-identity`和MCP `get_context_pack_save_context`接入已有GET /v1/context-pack/save-context，无新增REST路由。CLI可选成对原账号/客户端相等条件；MCP身份只来自可信会话。完整16 KiB身份/有效期/权限提示检查、30秒读取预算及原容量保持，不保存、预留键或自动替换原绑定。见[CLI/MCP保存身份入口](context-pack-runtime.md#climcp保存身份入口2026-11-05源码增量)，仅源码文档，未编译、类型检查、测试、执行CLI/MCP/SDK/API或发布。

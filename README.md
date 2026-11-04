@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [保存身份与历史回执 OpenAPI](packages/contracts/openapi/README.md#保存身份与历史回执)：描述已有身份读取和原请求历史查询接口，复用独立格式定义，补充认证、正文限制、响应及错误约定。仅源码文档，未运行校验器、生成器、编译、测试或发布。
+
 新增 [原请求与历史回执格式定义](packages/contracts/schemas/README.md#contextpack-原请求与历史回执)：提供完整身份、保存原请求、历史查询与回执文件的独立JSON Schema，可从包子路径加载；明确原请求匹配、权限与摘要仍需核对。仅源码文档，未运行校验器、编译、测试或发布。
 
 新增 [内嵌CLI原请求提交](docs/design/01-contracts/context-pack-runtime.md#内嵌cli原请求提交2026-11-05源码增量)：runWorkctx可在明确审阅后按完整原文件提交，复核宿主网关、身份和权限，并在授权后再次核对文件；失败保留原请求及是否已开始保存的信息。仅源码文档，未编译、测试、执行CLI或发布。

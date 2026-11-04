@@ -1,5 +1,7 @@
 # 持久化 ContextPack 开发说明
 
+2026-11-05新增[保存身份与历史回执OpenAPI](#保存身份与历史回执openapi2026-11-05源码增量)：按既有两个只读接口定义认证、请求/响应和错误，引用独立原请求Schema，保留身份与历史查询不同的项目检查、期限及响应头。仅源码文档，未运行校验器、生成器、编译、类型检查、测试或发布。
+
 2026-11-05新增[原请求与历史回执格式定义](#原请求与历史回执格式定义2026-11-05源码增量)：独立自包含Schema覆盖完整原文、可信身份、历史查询/记录及本地观察文件，可从包子路径加载；保留运行时绑定、摘要和权限检查。仅源码文档，未运行校验器、生成器、编译、类型检查、测试或发布。
 
 2026-11-05新增[内嵌CLI原请求提交](#内嵌cli原请求提交2026-11-05源码增量)：runWorkctx在明确审阅后固定完整原文件，核对可信身份并在授权后复读文件，再按原参数/键提交；共用期限与现有提交容量，失败保留实际派发状态。仅源码文档，未编译、类型检查、测试、执行CLI/文件流程/API或发布。
@@ -1055,3 +1057,15 @@ const result = await runWorkctx(
 格式沿现有数字、标识、UTC毫秒和摘要词法；Gateway只作http(s)/长度限制，不用RFC URI断言替代既有WHATWG规范化。保留实际目标、五字段身份、restricted、原参数/键、trace、来源和document内原查询的完整匹配，以及时间往返/先后/TTL、UTF-8字节和UTF-16/有效字符限制。document_sha256是对规范document UTF-8求得的不带前缀摘要；历史pack_hash仅有格式检查，不重算正文。离线观察时间不与服务器时钟比较。
 
 此Schema不涵盖HTTP头/状态、保存成功的完整包回执、CLI stdout/恢复包装、MCP外层或浏览器批量备份，也不修改已有格式和处理器。not-observed不能证明失败，recorded也不证明当前内容或来源有效；Schema不能认证权限、签名或摘要。原文/历史回执独立Schema源码缺口已补，身份/回执OpenAPI、本地资源解析和自动一致性/真实客户端证据仍缺。R-003未完成、evidence为空；仅人工源码审阅及格式文本检查，未运行Schema校验器、生成器、编译、类型检查、测试、解析器/产品/API或发布，无依赖或数据库变化。
+
+## 保存身份与历史回执OpenAPI（2026-11-05源码增量）
+
+新增`packages/contracts/openapi/context-pack-save.json`及`@planemem/contracts/openapi/context-pack-save.json`子路径，OpenAPI 3.1.0描述已有GET save-context和只读POST save-receipt。成功封套和POST输入本地引用完整context-pack-save Schema，错误保持五字段公共封套；具体请求头、错误表及本地加载约定见[OpenAPI说明](../../../packages/contracts/openapi/README.md#保存身份与历史回执)。版本及servers配置不代表已发布部署。
+
+两接口均要求可信Bearer/三范围/认证客户端/context.read，身份条件头可独立提供，原始头名不区分大小写拒绝重复；所有提供的trace头须等于选定trace，不能只依据优先级忽略冲突值。拒绝查询、片段、写入、缓存、Range及编码条件。身份GET不带正文，Content-Length只可缺省或0；回执POST发送完整4 KiB内原查询，Content-Type必须JSON（可选UTF-8 charset），Content-Length若存在须规范1–4096，无transfer-encoding。原键在正文且Idempotency-Key头禁止；超限或无效正文返回400，不误列为413。
+
+身份返回当前可信身份/到期/权限提示，无项目存在性查询或专用两笔/30秒处理器限制。回执读取先检查可见父项目，再在只读快照中观察历史；没有记录为200 not-observed，父项目不可见404，指纹不同409。它有每router两笔及30秒处理器预算，外层认证、正文读取、策略/审计、发送不在期限内，底层结束才释放槽。不得将客户端期限或错误字节上限误写成整个HTTP边界保证。
+
+两种成功封套均限16 KiB、无ETag；应用JSON有private, no-store。回执路径在认证前设置trace与Connection: close，包括早期失败；身份路径早期失败则可能没有trace响应头。文档区分这些直接服务端行为及代理/协议差异，错误仍保留body.trace_id。retryable按通用频率、专用容量、认证/审计和存储/超时来源分别描述，不意味着自动重发原保存。
+
+本增量完成两条已存在读取路径的OpenAPI源码说明，不新增保存接口、路由或校验器；全量WCP OpenAPI、本地解析/生成兼容和自动一致性/真实客户端证据仍待补。R-003未完成、evidence为空；只做人工源码审阅及格式文本检查，未运行校验器、生成器、编译、类型检查、测试、API/SQL/产品或发布，无依赖或数据库变化。

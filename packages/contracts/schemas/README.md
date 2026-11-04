@@ -4,6 +4,8 @@
 
 ## ContextPack 原请求与历史回执
 
+身份GET及历史回执POST的HTTP请求头、状态和错误差异另见[保存身份与历史回执OpenAPI](../openapi/README.md#保存身份与历史回执)。它本地引用本资源，未改变JSON结构，也不描述保存包提交接口。
+
 `context-pack-save.json`采用JSON Schema 2020-12，包子路径为`@planemem/contracts/schemas/context-pack-save.json`。根`ContextPackSaveReceiptEnvelope`对应历史回执查询的完整成功封套，供Gateway、SDK、CLI无output查询、MCP文本内JSON及Mock同形结果使用。本地文件须选择`#ContextPackSaveReceiptFile`；CLI指定output的stdout还含original/receipt/local等包装，不能把整个stdout当作回执文件。
 
 文件自包含全部定义，不依赖目录或完整包Schema；从工作区或包子路径加载整份资源，以其`$id`注册，再解析锚点。标识`https://planemem.local/schemas/context-pack-save.json`不代表托管服务，无需联网下载。没有生产JSON导入、校验器或生成器依赖，Schema与运行时的一致性尚未自动验证。
