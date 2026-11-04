@@ -299,6 +299,37 @@ workctx artifacts inspect-request --json-file NEW_ORIGINAL.json --file report.pd
 
 也可选择prepare报告的已发布文件或保留临时文件进行检查；检查通过不证明它就是预期来源，须核对原身份/命令及此前保存的摘要。检查结果中的original供审阅，整个stdout封套不能交上传入口；后续继续使用原JSON文件和完全相同内容。曾经上传而结果不明时，仍需用原文件查询artifacts receipt，不自动prepare、改版本或重新上传。本增量不恢复/移动/补存/清理文件，无新依赖或迁移；只有源码文档人工审阅，未编译、类型检查、测试、执行CLI/SDK/API/数据库或发布，运行证据仍待补。
 
+## SDK 原请求离线核验（源码阶段）
+
+独立导出 `inspectArtifactUploadRequest(input, options)`、WcpArtifactInspectionOptions和WcpInspectedArtifactUploadRequest。此函数不依赖WcpClient、令牌或当前项目配置，只检查调用方已经加载到内存的原请求，可接CLI/SDK/MCP准备后保存的 `{identity,command}`。不接受准备结果/检查报告/服务器回执的整个封套，也不接受JavaScript请求对象替代文件文本；不会猜测缺失字段或新建请求键。
+
+input为非空string或非共享Uint8Array，实际UTF-8编码最多1 MiB，规范请求再次限制1 MiB。文本拒绝未配对代理字符，字节先复制再严格UTF-8解码；接受UTF-8 BOM，实际输入摘要包含BOM、空白和字段排列差异。完整共享解析器保留五项原身份、键、SHA-256/长度、全部创建元数据或原追加ID/expected_version。此函数不读取当前版本、会话、权限或存储，不把原文件内容当认证凭据。
+
+options必需本次本地trace_id；可选content、max_bytes、expected_request_sha256、expected_canonical_request_sha256、timeout_ms、signal，仅接受普通数据属性。content必须为非共享Uint8Array，有内容时才允许max_bytes，默认64 MiB，可设0–1 GiB安全整数。核对原command.size、复制完整内容并计算SHA-256，空文件也须核对空内容摘要；没有content时返回not-checked，不根据描述符推断已核验，也不将默认内容预算用于原请求中的size。
+
+返回标准外层schema_version/trace_id/source_refs/data，其中source_refs为空。data.status=locally-valid、original为完整规范请求；request_bytes/request_sha256描述实际输入，canonical_request_json/canonical_request_bytes/canonical_request_sha256描述共享解析后的规范UTF-8 JSON。字段命名与CLI离线检查的两种摘要含义一致；规范JSON不保持原文件空白/BOM，调用方仍应保留原输入。预期摘要必须为64位小写十六进制，任一不匹配返回ARTIFACT_REQUEST_DIGEST_MISMATCH，所有检查成功才返回结果。摘要不是签名，匹配只说明与调用方提供值相同，未单独证明来源可信。
+
+以下示例仅说明接口，未执行；originalBytes和originalContent由调用方预先有界读取，savedRequestDigest是原准备输出或保存时保留的实际文件摘要：
+
+```ts
+import { inspectArtifactUploadRequest } from '@planemem/sdk';
+
+const inspected = await inspectArtifactUploadRequest(originalBytes, {
+  trace_id: 'trace_local_original_review',
+  content: originalContent,
+  expected_request_sha256: savedRequestDigest,
+  timeout_ms: 180_000,
+  signal: cancelController.signal,
+});
+// inspected.data.original 可在审阅后用于独立的原回执查询。
+```
+
+若原文件已重新排版而希望匹配相同规范请求，可显式使用expected_canonical_request_sha256与此前规范摘要比对；SDK准备输出本身就是规范JSON，其request_sha256也可用作这个约束。不能把任意非规范文件的实际摘要直接当规范摘要。content_state仅not-checked或matches-original，identity_state固定not-authenticated、server_outcome固定not-checked、upload_dispatch_state固定not-sent、filesystem_access固定not-performed；这些状态只描述本次检查，不否定以前的上传或回执。
+
+默认180秒本地预算，timeout_ms可设1–2,147,483,647。配置、原请求、内容在首次异步摘要前固定，避免等待期间外部修改；signal已取消则不开始解析/摘要，超时/取消不返回迟到结果或部分报告，固定错误消息且retryable=false。预算不承诺抢占同步解析/复制；Web Crypto摘要不可主动停止，超时后可能继续后台完成。调用方须限制文件读取和自身内存，SDK的内存输入边界不能替代文件句柄稳定性检查，检查通过也不能保证调用方稍后使用的原文件或内容未变化。
+
+不查询回执、不自动上传/重试、不刷新版本或替换原身份、不保存/覆盖/移动文件。曾经上传但结果不明时仍须保留原输入、键和内容，后续明确调用getArtifactReceipt(original)；检查成功不授予重发资格。CLI既有文件I/O和命令行为保持。此增量无服务端/schema/依赖变化，仅源码文档人工审阅，未编译、类型检查、测试、执行SDK/CLI/Mock/API/数据库或发布；格式、摘要、取消及互操作运行证据仍缺。
+
 ## SDK 原请求准备（源码阶段）
 
 2026-11-04：新增 `WcpClient.prepareArtifactUpload(draft, content, options?)`，导出 `WcpArtifactPreparationOptions`、`WcpPreparedArtifactUpload` 与 `ArtifactUploadDraft/ArtifactReceiptQuery` 类型。contracts新增 `ArtifactUploadDraft/parseArtifactUploadDraft`，CLI prepare同步使用；草稿格式与上面的创建/追加示例相同。拒绝旧identity/command/request_key/idempotency_key/hash/size，追加版本必须显式提供，既有完整写命令和HTTP协议不变。

@@ -21,6 +21,11 @@ export * from './fetch-transport.js';
 export type { WcpArtifactUploadContextOptions } from './artifact-upload-context.js';
 export type { WcpArtifactReadOptions } from './artifact-reads.js';
 export type { WcpArtifactDownloadOptions, WcpArtifactDownloadResult } from './artifact-download.js';
+export {
+  inspectArtifactUploadRequest,
+  type WcpArtifactInspectionOptions,
+  type WcpInspectedArtifactUploadRequest,
+} from './artifact-inspection.js';
 export type {
   ArtifactReadDetail,
   ArtifactMetadataView,

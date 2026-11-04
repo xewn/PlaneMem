@@ -11,6 +11,22 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    sdk_artifact_original_inspection_development_increment:
+      date: "2026-11-04"
+      status: "Source-only SDK offline inspection of saved artifact originals; R-001 remains incomplete."
+      artifacts:
+        - "packages/sdk/src/artifact-inspection.ts"
+        - "packages/sdk/src/index.ts"
+        - "packages/sdk/README.md"
+        - "docs/design/01-contracts/artifact-persistence-runtime.md"
+      behavior: "Inspect complete saved identity/command UTF-8 bytes or JSON text without a client, credentials or I/O. Bound raw and normalized request to 1 MiB; capture optional unshared content before awaiting. Preserve original identity/key/version and provide raw versus normalized request digests, normalized JSON and optional exact content length/hash comparison. Expected raw/canonical digests are independent constraints. Default 180-second local budget and cancellation discard late results. Report local validity, unauthenticated identity, unchecked server outcome and no upload/filesystem access; never infer prior upload failure or replace the original."
+      evidence: []
+      pending_evidence:
+        - "CLI/SDK/MCP preparation interoperability, full original parsing and raw/BOM/whitespace versus normalized digests"
+        - "Content absent/empty/matching/mismatched/over-limit, shared buffers, strict UTF-8 and invalid options"
+        - "Expected digest binding, input mutation isolation, unavailable crypto, cancellation/timeout and no partial result"
+      remaining_scope: "Caller file loading/persistence and recovery orchestration, authenticity, server outcomes and runtime evidence."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, SDK/CLI/Mock/API/database execution or release. No server/schema/dependency change."
     sdk_artifact_download_budget_development_increment:
       date: "2026-11-04"
       status: "Source-only SDK complete download budget and cancelable binary transport; R-001 remains incomplete."

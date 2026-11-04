@@ -6,6 +6,8 @@
 
 ### 2026-11-04 开发补充（未编译、未发布、未测试）
 
+- P0/P2：已补SDK独立inspectArtifactUploadRequest，接收1 MiB内原identity/command UTF-8字节或JSON文本，可选非共享内容（默认64 MiB/最多1 GiB）与实际/规范请求预期SHA-256；异步前复制所有输入、保留原键/版本/身份/内容描述，默认180秒预算及signal、完整Web Crypto摘要，失败无部分报告。返回完整original、实际字节和规范JSON各自大小/摘要、content_state，明确本地有效/身份未认证/服务器未查询/未上传/无文件I/O；无需WcpClient/当前会话，不重新prepare或生成键。与CLI共用原请求格式但不修改CLI文件流程，文件读取/保存、上传恢复编排及运行证据仍由后续补齐。无服务端/schema/依赖变化，仅源码文档人工审阅，未编译/类型检查/测试/执行SDK/CLI/Mock/API/数据库或发布，独立提交push main带[skip ci]。
+
 - P0/P2/P4：已补SDK固定版本下载整次180秒本地预算与AbortSignal，max_bytes默认64 MiB仍保持，元数据/二进制/摘要共用期限，固定身份/版本/描述、复制非共享字节并核验完整头和SHA-256；失败无部分返回，已核对放行ID保留、未确认不推断无记录。Fetch bytes新增凭据/网络/逐块正文取消与独立期限、严格成功200/trace/octet-stream/规范长度、错误16 KiB，清理不等待、迟到响应取消；网络CLI原bytes读取JSON改为bounded-json以保持兼容。Mock沿既有signal衔接，普通json不受影响；自定义transport/摘要后台、流式大文件、客户端保存回执及运行证据仍缺。无schema/依赖变化，仅源码文档人工审阅，未编译/类型检查/测试/执行SDK/CLI/Mock/API/数据库或发布，独立提交push main带[skip ci]。
 
 - P0/P2：已补SDK getArtifact/getArtifactVersion/getArtifactReceipt的WcpArtifactReadOptions，默认30秒本地预算、signal、当前/历史2 MiB和原回执4 MiB完整响应上限、原请求1 MiB及Fetch错误16 KiB。异步前固定上下文/选项/原查询，transport正文与本地期望分离，scope及可选账号客户端约束保持，回执始终附原身份前置头；完整共享解析、固定错误及迟到检查，不继承写条件、不重试/上传/刷新版本，失败不改成not-observed。下载元数据阶段受默认预算，内容接口保持；自定义transport须执行bounded-json/signal，其预先分配内存不受SDK全局控制。文档和Mock源码兼容说明已补，运行证据仍缺；无服务端/schema/依赖变化，仅源码文档人工审阅，未编译/类型检查/测试/执行SDK/Mock/API/数据库或发布，独立提交push main带[skip ci]。
