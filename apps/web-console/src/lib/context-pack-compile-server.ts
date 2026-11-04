@@ -3,11 +3,13 @@ import {
   ContractError,
   CONTEXT_PACK_READ_RESPONSE_BYTES,
   CONTEXT_PACK_READ_ERROR_BYTES,
+  CONTEXT_PACK_SAVE_CONTEXT_BYTES,
   contextPackReadHashJson,
   isSyncIdentifier,
   isUlid,
   parseContextPackCompileEnvelope,
   parseContextPackCompileParameters,
+  parseContextPackSaveContextEnvelope,
   syncJsonSnapshot,
   validateErrorEnvelope,
   validateIdempotencyKey,
@@ -15,6 +17,12 @@ import {
 import { decodeJwtClaims, getSession } from './auth';
 import { runtimeConfig } from './config';
 import { readWorkbenchJsonResponse } from './workbench-response';
+import {
+  assertPackSaveBinding,
+  packGateway,
+  parsePackSaveBinding,
+  type PackSaveBinding,
+} from '../app/context/save-model';
 
 const messages: Record<string, string> = {
   INVALID_INPUT:
@@ -45,6 +53,7 @@ const messages: Record<string, string> = {
     'Saved content verification is unavailable. Keep the original request.',
   CONTEXT_PACK_HASH_MISMATCH:
     'The returned complete pack differs from its saved digest. Keep the original request.',
+  CONTEXT_PACK_SAVE_CONTEXT_INVALID: 'The verified save identity could not be represented.',
 };
 const errorStatuses: Record<string, number> = {
   INVALID_INPUT: 400,
@@ -59,6 +68,7 @@ const errorStatuses: Record<string, number> = {
   WORKBENCH_AUTH_UNAVAILABLE: 503,
   AUDIT_PERSISTENCE_UNAVAILABLE: 503,
   RATE_LIMITED: 429,
+  CONTEXT_PACK_SAVE_CONTEXT_INVALID: 500,
 };
 type Stage = 'input' | 'session' | 'integrity' | 'transport' | 'response';
 export class ContextPackSaveError extends ContractError {
@@ -83,11 +93,169 @@ export class ContextPackSaveError extends ContractError {
   }
 }
 
+type SaveScope = { tenant_id: string; workspace_id: string; project_id: string };
+type SaveFailure = (code: string, status?: number) => ContextPackSaveError;
+async function readPackAuthority(
+  captured: { token: string; scope: SaveScope; base: string },
+  trace: string,
+  signal: AbortSignal,
+  active: () => void,
+  fail: SaveFailure,
+  expected?: PackSaveBinding,
+) {
+  let response: Response | undefined;
+  try {
+    active();
+    response = await fetch(captured.base + '/v1/context-pack/save-context', {
+      method: 'GET',
+      cache: 'no-store',
+      redirect: 'error',
+      signal,
+      headers: {
+        authorization: 'Bearer ' + captured.token,
+        accept: 'application/json',
+        'x-trace-id': trace,
+        'x-tenant-id': captured.scope.tenant_id,
+        'x-workspace-id': captured.scope.workspace_id,
+        'x-project-id': captured.scope.project_id,
+        ...(expected
+          ? {
+              'x-expected-actor-id': expected.identity.actor_id,
+              'x-expected-client-id': expected.identity.client_id,
+            }
+          : {}),
+      },
+    });
+    active();
+    if (response.status === 401) throw fail('UNAUTHENTICATED', 401);
+    if (
+      (response.status !== 200 && (response.status < 400 || response.status > 599)) ||
+      response.headers.get('x-trace-id') !== trace ||
+      response.headers.has('etag')
+    )
+      throw fail('GATEWAY_RESPONSE_INVALID');
+    const raw = await readWorkbenchJsonResponse(response, signal, CONTEXT_PACK_SAVE_CONTEXT_BYTES);
+    active();
+    if (!response.ok) {
+      const value: unknown = JSON.parse(syncJsonSnapshot(raw, CONTEXT_PACK_READ_ERROR_BYTES));
+      if (
+        !value ||
+        typeof value !== 'object' ||
+        Array.isArray(value) ||
+        Object.keys(value).some(
+          (key) => !['code', 'message', 'details', 'trace_id', 'retryable'].includes(key),
+        )
+      )
+        throw fail('GATEWAY_RESPONSE_INVALID');
+      const error = validateErrorEnvelope(value);
+      if (
+        error.trace_id !== trace ||
+        ![
+          'INVALID_INPUT',
+          'DENIED',
+          'RATE_LIMITED',
+          'WORKBENCH_AUTH_UNAVAILABLE',
+          'AUDIT_PERSISTENCE_UNAVAILABLE',
+          'CONTEXT_PACK_SAVE_CONTEXT_INVALID',
+        ].includes(error.code) ||
+        errorStatuses[error.code] !== response.status
+      )
+        throw fail('GATEWAY_RESPONSE_INVALID');
+      throw fail(error.code, response.status);
+    }
+    const result = parseContextPackSaveContextEnvelope(
+      raw,
+      expected?.identity ?? captured.scope,
+      trace,
+    );
+    if (Date.parse(result.data.expires_at) <= Date.now()) throw fail('UNAUTHENTICATED');
+    const binding = parsePackSaveBinding({
+      gateway_url: captured.base,
+      identity: result.data.identity,
+      read_restricted: result.data.permissions.read_restricted,
+    });
+    if (expected) {
+      try {
+        assertPackSaveBinding(binding, expected);
+      } catch {
+        throw fail('DENIED');
+      }
+    }
+    active();
+    return { binding, expires_at: result.data.expires_at };
+  } catch (error) {
+    void response?.body?.cancel().catch(() => undefined);
+    active();
+    if (error instanceof ContextPackSaveError) throw error;
+    throw fail(response ? 'GATEWAY_RESPONSE_INVALID' : 'GATEWAY_UNAVAILABLE');
+  }
+}
+
+/** Identity discovery only. Its result never replaces an existing request's binding. */
+export async function getWorkbenchContextPackSaveBinding() {
+  const trace = 'trace_web_pack_identity_' + randomUUID();
+  const fail: SaveFailure = (code, status) =>
+    new ContextPackSaveError(code, trace, false, 'session', status);
+  let session: Awaited<ReturnType<typeof getSession>>;
+  try {
+    session = await getSession();
+  } catch {
+    throw fail('GATEWAY_UNAVAILABLE');
+  }
+  if (
+    !session ||
+    !session.access_token.trim() ||
+    !Number.isSafeInteger(session.expires_at) ||
+    session.expires_at * 1000 <= Date.now()
+  )
+    throw fail('UNAUTHENTICATED');
+  const token = session.access_token;
+  const expiry = session.expires_at;
+  const claims = decodeJwtClaims(token);
+  const scope = {
+    tenant_id: claims.tenant_id ?? session.tenant_id ?? runtimeConfig.tenantId,
+    workspace_id: claims.workspace_id ?? session.workspace_id ?? runtimeConfig.workspaceId,
+    project_id: claims.project_id ?? session.project_id ?? runtimeConfig.projectId,
+  };
+  let base: string;
+  try {
+    base = packGateway(runtimeConfig.apiUrl);
+    if (![scope.tenant_id, scope.workspace_id, scope.project_id].every(isUlid))
+      throw new TypeError();
+    new Headers({ authorization: 'Bearer ' + token });
+  } catch {
+    throw fail('INVALID_INPUT');
+  }
+  const controller = new AbortController();
+  const deadline = performance.now() + 30_000;
+  const active = () => {
+    if (controller.signal.aborted || performance.now() >= deadline)
+      throw fail('GATEWAY_REQUEST_TIMEOUT');
+    if (expiry * 1000 <= Date.now()) throw fail('UNAUTHENTICATED');
+  };
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      readPackAuthority({ token, scope, base }, trace, controller.signal, active, fail),
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => {
+          controller.abort();
+          reject(fail('GATEWAY_REQUEST_TIMEOUT'));
+        }, 30_000);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+    controller.abort();
+  }
+}
+
 /** Return only a complete verified receipt. One invocation sends at most one original save. */
 export async function compileWorkbenchContextPack(
   budget: number,
   ttl: number,
   originalKey: string,
+  originalBinding?: PackSaveBinding,
 ) {
   const trace = 'trace_web_pack_save_' + randomUUID();
   let dispatched = false;
@@ -96,10 +264,12 @@ export async function compileWorkbenchContextPack(
     new ContextPackSaveError(code, trace, dispatched, stage, status);
   let parameters: ReturnType<typeof parseContextPackCompileParameters>;
   let key: string;
+  let binding: PackSaveBinding | undefined;
   try {
     parameters = parseContextPackCompileParameters({ budget_tokens: budget, ttl_seconds: ttl });
     key = validateIdempotencyKey(originalKey);
     if (!isSyncIdentifier(key) || /\u007f/.test(key)) throw new TypeError();
+    binding = originalBinding === undefined ? undefined : parsePackSaveBinding(originalBinding);
   } catch {
     throw fail('INVALID_INPUT');
   }
@@ -142,6 +312,14 @@ export async function compileWorkbenchContextPack(
   } catch {
     throw fail('INVALID_INPUT');
   }
+  if (
+    binding &&
+    (binding.gateway_url !== packGateway(base.href) ||
+      binding.identity.tenant_id !== scope.tenant_id ||
+      binding.identity.workspace_id !== scope.workspace_id ||
+      binding.identity.project_id !== scope.project_id)
+  )
+    throw fail('DENIED');
   stage = 'integrity';
   let digest: ReturnType<typeof createHash>;
   try {
@@ -151,15 +329,29 @@ export async function compileWorkbenchContextPack(
   }
   const deadline = performance.now() + 30_000;
   const controller = new AbortController();
+  let authorityExpiry = Infinity;
   const active = () => {
     if (controller.signal.aborted || performance.now() >= deadline)
       throw fail('GATEWAY_REQUEST_TIMEOUT');
-    if (expiry * 1000 <= Date.now()) throw fail('UNAUTHENTICATED');
+    if (Math.min(expiry * 1000, authorityExpiry) <= Date.now()) throw fail('UNAUTHENTICATED');
   };
   let response: Response | undefined;
   const work = (async () => {
     try {
       active();
+      if (binding) {
+        stage = 'session';
+        const authority = await readPackAuthority(
+          { token, scope, base: binding.gateway_url },
+          trace,
+          controller.signal,
+          active,
+          fail,
+          binding,
+        );
+        authorityExpiry = Date.parse(authority.expires_at);
+        active();
+      }
       stage = 'transport';
       const init: RequestInit = {
         method: 'POST',
@@ -175,12 +367,21 @@ export async function compileWorkbenchContextPack(
           'x-workspace-id': scope.workspace_id,
           'x-project-id': scope.project_id,
           'idempotency-key': key,
+          ...(binding
+            ? {
+                'x-expected-actor-id': binding.identity.actor_id,
+                'x-expected-client-id': binding.identity.client_id,
+              }
+            : {}),
         },
         body: JSON.stringify(parameters),
       };
       active();
       dispatched = true;
-      response = await fetch(base.href.replace(/\/$/, '') + '/v1/context-pack/compile', init);
+      response = await fetch(
+        (binding?.gateway_url ?? base.href.replace(/\/$/, '')) + '/v1/context-pack/compile',
+        init,
+      );
       stage = 'response';
       active();
       // Early HTTP authentication rejection can omit the normal business trace/body.

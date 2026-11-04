@@ -954,6 +954,28 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_pack_web_original_development_increment:
+      date: "2026-11-05"
+      status: "Source-only Web original ContextPack request preparation, browser retention and explicit recovery; R-003 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/context/save-model.ts"
+        - "apps/web-console/src/app/context/save-store.ts"
+        - "apps/web-console/src/app/context/save-submission.tsx"
+        - "apps/web-console/src/app/context/actions.ts"
+        - "apps/web-console/src/app/context/form.tsx"
+        - "apps/web-console/src/app/context/packs/recover/page.tsx"
+        - "apps/web-console/src/app/context/packs/recover/loader.tsx"
+        - "apps/web-console/src/lib/context-pack-compile-server.ts"
+        - "docs/design/01-contracts/context-pack-runtime.md"
+      behavior: "Prepare a closed 8 KiB original binding canonical Gateway base, complete identity, restricted bucket, explicit budget/TTL and original key. Retain canonical original plus SHA-256 in an independent IndexedDB pair, add only missing pairs and reject altered copies; confirm committed read-back before every send. Recover up to 20 complete checked originals per page or import/export an original file without auto-submission. Server captures one session/token, checks current save-context against the original binding, and sends the same scope/parameters/key with expected actor/client headers under one 30-second wait and full receipt/hash verification. Unknown results retain originals; verified success links to the saved pack and cache refresh failure does not request resubmission."
+      evidence: []
+      pending_evidence:
+        - "Browser preparation/review/save/recovery and original file compatibility across page closure and reauthentication"
+        - "Original Gateway/scope/actor/client/restricted constraints on both authority discovery and POST"
+        - "IndexedDB atomic missing-only pair writes, same/different copies, complete page hashes and source loss"
+        - "Cancellation/deadline, storage failure before dispatch, late results, explicit retry and stale/expired fresh requests"
+      remaining_scope: "Browser originals are not persistent save receipts, signed provenance or a remote receipt lookup. Old unbound forms cannot be reconstructed. Storage clearing removes local recovery; unavailable storage blocks this UI's send. History receipt retention, backups/cleanup and actual browser/runtime evidence remain pending. The original three-argument server helper remains compatible without original binding; new Web actions require the complete original."
+      execution: "Source/docs, manual review and formatting/text checks only; no build, typecheck, tests, rendering, browser/API/product/save execution, database work or release. No backend/shared contract/other client/dependency/style/migration changes."
     context_pack_save_context_development_increment:
       date: "2026-11-05"
       status: "Source-only trusted ContextPack save identity discovery across Gateway, SDK and Mock; R-003 remains incomplete."
