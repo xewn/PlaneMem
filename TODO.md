@@ -6,6 +6,8 @@
 
 ### 2026-11-04 开发补充（未编译、未发布、未测试）
 
+- P0/P2/P4/P5：已补SDK独立inspectArtifactReceipt，4 MiB文本/非共享UTF-8字节、1 MiB内嵌原请求，支持完整expected_original和实际/规范回执SHA-256约束。默认30秒本地预算与signal，异步前捕获输入/约束，取消或失败不返回部分结果。contracts共享parseSavedArtifactReceipt统一CLI及工作台解析；原裸封套、历史trace/status和既有文件行为保持。输出本地trace/空外层sources、完整回执/原请求及规范JSON和摘要、明确身份未认证/服务器与内容未检查/未上传/未读写文件；不需要WcpClient或凭据。签名认证、回执集合/持久恢复及运行证据仍缺，R-001未完成。无服务端/schema/依赖变化，仅源码文档人工审阅，未编译/类型检查/测试/执行SDK、CLI、浏览器、Mock、API、数据库或发布。
+
 - P2/P4/P5：已补工作台在线回执反馈的显式保存按钮，覆盖receipt页与上传页已查询反馈，浏览器仅报告保存请求。新增/artifacts/receipt/saved本地文件查看，兼容CLI裸WCP回执4 MiB与原命令1 MiB，完整共享解析/实际字节SHA、可选独立原文件比对；固定历史状态加本地未认证提示，不复用服务器confirmed样式。不提交导入内容、不查Gateway、不写浏览器存储；原请求可显式导出后由用户另行查询。沿现有30秒有界operation/stream，取消/卸载/pagehide/缓存恢复撤销迟到结果与内存视图，下载URL及时释放。页面壳仍沿既有会话读取，不承诺脱网启动；签名认证、集合管理、持久恢复及浏览器/运行证据仍缺。无服务端/schema/依赖变化，只源码文档人工审阅，未编译/类型检查/测试/渲染/执行产品、接口、数据库或发布。
 
 - P0/P2/P4：已补CLI artifacts receipt显式--output NEW_FILE及离线inspect-receipt --receipt-file，可选--json-file ORIGINAL。新路径预检在查询前，完整原回执4 MiB独占保存并按实际hash/大小/共享封套读回；stdout包装保留receipt/local，文件失败退出1仍保留原回执，发布后不确认明确保留目标。无output返回形状保持，get/version拒绝output。离线无需配置/网络/数据库，核对完整原身份/键/版本/命令及适用历史快照，可选独立原文件1 MiB比对，返回实际字节摘要且外层sources空、身份未认证/服务器与内容未检查。不把not-observed或本地有效当作上传失败/成功，不自动重试或上传。签名认证、回执集合恢复、持久上传恢复编排及运行证据仍缺；无服务端/schema/依赖变化，只源码文档人工审阅，未编译/类型检查/测试/执行CLI/SDK/Mock/API/数据库或发布。

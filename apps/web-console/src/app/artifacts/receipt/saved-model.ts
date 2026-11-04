@@ -1,48 +1,21 @@
 'use client';
 
 import {
+  ARTIFACT_SAVED_RECEIPT_BYTES,
   ARTIFACT_UPLOAD_REQUEST_BYTES,
   parseArtifactReceiptEnvelope,
   parseArtifactReceiptQuery,
+  parseSavedArtifactReceipt,
   syncJsonSnapshot,
   type ArtifactReceiptEnvelope,
 } from '@planemem/contracts';
 import { readArtifactTransferBytes } from '../../../lib/artifact-transfer';
 import { backupOperation } from '../../sync/receipt/backup-operation';
 
-export const SAVED_ARTIFACT_RECEIPT_BYTES = 4 * 1024 * 1024;
+export const SAVED_ARTIFACT_RECEIPT_BYTES = ARTIFACT_SAVED_RECEIPT_BYTES;
 
 export function inspectSavedArtifactReceipt(value: unknown) {
-  const row = JSON.parse(syncJsonSnapshot(value, SAVED_ARTIFACT_RECEIPT_BYTES)) as Record<
-    string,
-    unknown
-  >;
-  if (
-    !row ||
-    typeof row !== 'object' ||
-    Array.isArray(row) ||
-    typeof row.trace_id !== 'string' ||
-    !row.data ||
-    typeof row.data !== 'object' ||
-    Array.isArray(row.data)
-  )
-    throw new TypeError();
-  const data = row.data as Record<string, unknown>;
-  const original = parseArtifactReceiptQuery(
-    JSON.parse(
-      syncJsonSnapshot(
-        { identity: data.identity, command: data.command },
-        ARTIFACT_UPLOAD_REQUEST_BYTES,
-      ),
-    ),
-  );
-  const receipt = parseArtifactReceiptEnvelope(row, original, row.trace_id);
-  return {
-    receipt,
-    original,
-    receipt_json: syncJsonSnapshot(receipt, SAVED_ARTIFACT_RECEIPT_BYTES),
-    original_json: syncJsonSnapshot(original, ARTIFACT_UPLOAD_REQUEST_BYTES),
-  };
+  return parseSavedArtifactReceipt(value);
 }
 
 async function fileBytes(file: File, maximum: number, signal: AbortSignal) {

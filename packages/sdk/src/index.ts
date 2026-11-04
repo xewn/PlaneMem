@@ -28,6 +28,11 @@ export {
   type WcpArtifactInspectionOptions,
   type WcpInspectedArtifactUploadRequest,
 } from './artifact-inspection.js';
+export {
+  inspectArtifactReceipt,
+  type WcpArtifactReceiptInspectionOptions,
+  type WcpInspectedArtifactReceipt,
+} from './artifact-receipt-inspection.js';
 export type {
   ArtifactReadDetail,
   ArtifactMetadataView,

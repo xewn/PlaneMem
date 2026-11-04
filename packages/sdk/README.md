@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-04：新增独立 `inspectArtifactReceipt(input, options)` 及 `WcpArtifactReceiptInspectionOptions/WcpInspectedArtifactReceipt`。接受已有裸 `ArtifactReceiptEnvelope` 的 JSON 文本或非共享 UTF-8 `Uint8Array`（最多4 MiB），要求本地 `trace_id`；可传完整 `expected_original`（1 MiB）、`expected_receipt_sha256`、`expected_canonical_receipt_sha256`、`timeout_ms/signal`，默认30秒本地期限。返回完整历史回执及原请求、实际输入与规范回执的大小/SHA-256/规范JSON，以及原请求比对状态。CLI与工作台同步改用contracts共享解析，不增加文件包装。无需WcpClient、网络、凭据或文件I/O，SHA-256使用Web Crypto；本地有效与摘要匹配不认证服务器或当前内容，not-observed不证明先前上传失败。详见 [SDK回执离线核验](../../docs/design/01-contracts/artifact-persistence-runtime.md#sdk-原回执离线核验与共享解析源码阶段)。仅源码文档人工审阅，未编译、类型检查、测试、调用或发布。
+
 2026-11-04：网络CLI `artifacts create/put-version` 已接入FetchWcpTransport的bounded-json原生表单支持，成功4 MiB/错误16 KiB及凭据/网络/响应期限随之生效。CLI继续使用既有Node文件稳定读取和摘要预检，没有转调WcpClient或重复执行Web Crypto摘要；这是源码兼容衔接，未编译、测试或调用，详见 [CLI上传响应限制](../../docs/design/01-contracts/artifact-persistence-runtime.md#cli-上传响应限制与未知结果源码阶段)。
 
 2026-11-04：`createArtifact(original, bytes, options?)` / `putArtifactVersion(original, bytes, options?)` 新增 `WcpArtifactUploadOptions(timeout_ms/signal)`，默认180秒本地预算。异步前固定完整原请求/身份约束及非共享内容副本，发送前Web Crypto核对原长度/SHA-256；原键/版本/返回ArtifactUploadEnvelope保持。成功完整响应最多4 MiB，Fetch错误16 KiB，FormData现可使用bounded-json及signal，仍由fetch生成boundary。错误不回显上游细节，派发前标记本次not-sent，调用transport后任何失败保持unknown，不自动重试或替换原请求；Web Crypto与原生multipart成为明确运行要求。详见 [SDK上传期限与取消](../../docs/design/01-contracts/artifact-persistence-runtime.md#sdk-原请求上传期限与取消源码阶段)。仅源码文档人工审阅，未编译、类型检查、测试、执行SDK/CLI/Mock/API或发布。

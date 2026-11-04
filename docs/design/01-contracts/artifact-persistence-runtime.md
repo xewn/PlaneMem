@@ -632,3 +632,33 @@ PostgreSQL/S3 适配、显式服务器配置、HTTP/SDK/CLI/MCP/工作台按原�
 新文件页不导入server action，不将文件内容发往Gateway、上传端点或浏览器持久存储，不自动查回执、下载附件或校正历史状态。页面壳仍按现有RootLayout读取会话且工作台资源需正常加载；“本地查看”指文件检查在浏览器进行，不承诺断网启动应用。跳转到服务器查询页是独立用户动作，不通过URL携带原身份/键/正文。既有在线查询身份、权限和期限流程不在本增量改动；其原请求输入仍受1,000,000字节动作上限，离线原文件与CLI支持1 MiB，超出在线限制的原请求须使用合适客户端，不能裁剪字段。
 
 仅源码文档人工审阅，未编译、类型检查、测试、浏览器渲染、执行CLI/SDK/Mock/API/数据库或发布。无新共享schema/API/依赖/迁移；签名来源认证、回执集合管理、持久上传恢复和浏览器/运行证据仍缺，R-001未完成。
+
+## SDK 原回执离线核验与共享解析（源码阶段）
+
+新增独立inspectArtifactReceipt(input, options)，不依赖WcpClient及当前账号。input为完整裸ArtifactReceiptEnvelope的JSON文本或非共享Uint8Array，实际UTF-8输入最多4 MiB；严格解码，文本不允许未配对代理字符，字节输入按原生byteLength/buffer槽检查后复制（包含Node Buffer所表示的视图），共享缓冲区拒绝。同步解析全封套并将内嵌identity/command另限1 MiB，完整校验记录的历史快照、来源和命令关系。不能传带local的CLI输出包装；原上传返回值必须符合原回执全部字段语义才可解析。没有新增文件包装、签名或schema。
+
+options要求有效本地trace_id，可选expected_original、expected_receipt_sha256、expected_canonical_receipt_sha256、timeout_ms及signal；仅允许普通自有数据字段，未知字段/访问器/符号拒绝。expected_original必须是完整独立identity/command对象，纯JSON快照及规范值均限1 MiB，全部原身份、键、版本和命令字段比较，非法与有效但不匹配分别报ARTIFACT_RECEIPT_ORIGINAL_INVALID/ARTIFACT_RECEIPT_ORIGINAL_MISMATCH。未传为original_binding=embedded-only，匹配为matches-expected-original；不使用当前会话替换原身份，不补全缺失字段。
+
+预期摘要必须是64位小写十六进制，可独立提供。receipt_sha256对应实际输入UTF-8字节（包含BOM、空白及原属性顺序）；canonical_receipt_sha256对应共享解析器输出的规范receipt_json，字段顺序来自现有契约，来源数组顺序保留，不是跨实现通用JSON规范化标准。摘要不符报ARTIFACT_RECEIPT_DIGEST_MISMATCH；预期值来源的可信度由调用方决定，本地摘要本身不能证明签名或账号真实性。提供canonical_receipt_json/bytes/sha256、实际receipt_bytes/sha256、完整receipt/original及original_json，供调用方显式保留。
+
+默认30秒本地期限，timeout_ms允许1..2147483647整数，signal支持取消。所有输入、完整原请求比对和摘要约束在首次异步等待前捕获；本地副本不随调用方后续修改改变。两次Web Crypto SHA-256和完整解析共享期限，摘要必须是32字节；取消/超时/摘要不可用/任何解析失败不返回部分通过。同步JSON工作无法被计时器抢占，结束后检查期限；取消后原生摘要可能后台结束，其迟到结果不能重新完成本次检查。固定错误消息、retryable=false，不回显解析输入或底层错误。
+
+成功外层为本地trace、source_refs=[]及data.status=locally-valid；嵌套receipt保留原trace及recorded/not-observed，不改为本次服务器观察。成功与失败均明确identity_state=not-authenticated、server_outcome=not-checked、content_state=not-checked、upload_dispatch_state=not-sent、filesystem_access=not-performed。没有文件读取/保存、网络、凭据、内容核验、回执查询或自动重试；not-observed不证明原上传失败，recorded也不保证当前可下载。需要当前观察时由调用方另行使用完整未改动原请求查询。
+
+```ts
+import { inspectArtifactReceipt, type ArtifactReceiptQuery } from '@planemem/sdk';
+
+// receiptBytes/original由调用方取得；此函数本身不读文件、不查询服务器。
+declare const receiptBytes: Uint8Array;
+declare const original: ArtifactReceiptQuery;
+const inspected = await inspectArtifactReceipt(receiptBytes, {
+  trace_id: 'trace_local_receipt_review',
+  expected_original: original,
+  timeout_ms: 30_000,
+});
+// inspected.data.receipt仍是历史回执，不能视为刚刚确认的上传结果。
+```
+
+contracts导出ARTIFACT_SAVED_RECEIPT_BYTES、parseSavedArtifactReceipt和ParsedSavedArtifactReceipt。共享函数接受未知解析值，先做4 MiB纯JSON快照、再提取并校验完整1 MiB原请求，返回receipt/original及两份规范JSON；这是同步结构解析，原始输入字节大小由各入口先行约束。CLI稳定文件读取/Node摘要/保存读回与工作台stream/30秒operation/下载行为保持，只替换重复解析逻辑。SDK不将浏览器保存请求冒充已落盘。
+
+仅源码文档人工审阅，未编译、类型检查、测试、执行SDK/CLI/Mock/浏览器/API/数据库或发布。无服务端/schema/依赖变化，R-001证据保持空且未完成；签名认证、回执集合和持久恢复另行开发。

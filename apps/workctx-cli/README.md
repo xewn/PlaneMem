@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+2026-11-04：回执文件解析已与工作台及新增SDK `inspectArtifactReceipt`共用contracts的`parseSavedArtifactReceipt`和4 MiB上限；仍使用现有裸WCP封套、稳定文件读取与Node摘要，参数、输出和本地保存流程保持。独立SDK调用可额外约束实际/规范回执SHA-256，详见 [共享解析](../../docs/design/01-contracts/artifact-persistence-runtime.md#sdk-原回执离线核验与共享解析源码阶段)。仅源码文档人工审阅，未执行命令或测试。
+
 新增 `artifacts receipt --json-file ORIGINAL.json --output NEW_RECEIPT.json`，网络与嵌入均可显式保存原回执；不指定output时保持原返回形状。指定后stdout含`data.receipt`与独立`data.local`，文件保存失败也保留完整查询结果，退出1；保存并读回成功退出0，临时清理待处理仍在local中说明。文件本身只含完整WCP回执封套，最多4 MiB，查询前检查新路径，独占发布后完整读回；查询超时不启动保存，保存不受查询计时器竞速。`recorded/not-observed`原义保持，未观察到不能当作上传失败。
 
 新增离线 `artifacts inspect-receipt --receipt-file RECEIPT.json [--json-file ORIGINAL.json]`，不需要配置/登录/网络。稳定读取并完整核对封套、原身份/命令及适用历史快照，可选比对独立原请求文件（1 MiB）；返回实际文件字节摘要、完整回执/原请求及original_binding。本地结构有效不认证服务器或内容，外层source_refs为空，原回执trace保留在嵌套receipt内；不改键/版本、不上传或写文件。输入需使用保存的回执文件或无output查询得到的裸封套，不能把带local的stdout包装当作回执文件。见 [保存与离线核验](../../docs/design/01-contracts/artifact-persistence-runtime.md#cli-原回执保存与离线核验源码阶段)。仅源码文档人工审阅，未编译、类型检查、测试、执行上述命令或发布。

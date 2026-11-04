@@ -2,10 +2,12 @@ import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import {
+  ARTIFACT_SAVED_RECEIPT_BYTES,
   ARTIFACT_UPLOAD_REQUEST_BYTES,
   ContractError,
   parseArtifactReceiptEnvelope,
   parseArtifactReceiptQuery,
+  parseSavedArtifactReceipt,
   syncJsonSnapshot,
   type ArtifactReceiptEnvelope,
   type ArtifactReceiptQuery,
@@ -17,7 +19,7 @@ import {
   type ArtifactOutput,
 } from './artifact-output.js';
 
-const RECEIPT_BYTES = 4 * 1024 * 1024;
+const RECEIPT_BYTES = ARTIFACT_SAVED_RECEIPT_BYTES;
 const hash = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
 function failure(
   code: string,
@@ -35,26 +37,9 @@ function validPath(path: string) {
   return !!path.trim() && path !== '-' && !/[\u0000-\u001f]/.test(path);
 }
 function parseSaved(bytes: Uint8Array) {
-  const row = JSON.parse(
-    syncJsonSnapshot(
-      JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)),
-      RECEIPT_BYTES,
-    ),
-  ) as Record<string, unknown>;
-  if (!row || typeof row !== 'object' || Array.isArray(row) || typeof row.trace_id !== 'string')
-    throw new TypeError();
-  const data = row.data;
-  if (!data || typeof data !== 'object' || Array.isArray(data)) throw new TypeError();
-  const view = data as Record<string, unknown>;
-  const original = parseArtifactReceiptQuery(
-    JSON.parse(
-      syncJsonSnapshot(
-        { identity: view.identity, command: view.command },
-        ARTIFACT_UPLOAD_REQUEST_BYTES,
-      ),
-    ),
+  const { original, receipt } = parseSavedArtifactReceipt(
+    JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)),
   );
-  const receipt = parseArtifactReceiptEnvelope(row, original, row.trace_id);
   return { original, receipt };
 }
 

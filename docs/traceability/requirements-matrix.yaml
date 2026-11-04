@@ -11,6 +11,25 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    sdk_artifact_receipt_inspection_development_increment:
+      date: "2026-11-04"
+      status: "Source-only SDK standalone artifact receipt inspection and shared saved-envelope parsing; R-001 remains incomplete."
+      artifacts:
+        - "packages/contracts/src/artifact-saved-receipt.ts"
+        - "packages/contracts/src/index.ts"
+        - "packages/sdk/src/artifact-receipt-inspection.ts"
+        - "packages/sdk/src/index.ts"
+        - "apps/workctx-cli/src/artifact-receipt-file.ts"
+        - "apps/web-console/src/app/artifacts/receipt/saved-model.ts"
+        - "docs/design/01-contracts/artifact-persistence-runtime.md"
+      behavior: "Inspect an existing bare artifact receipt from at most 4 MiB of UTF-8 bytes or JSON text, with a complete embedded original within 1 MiB. Share detached full parsing across SDK/CLI/workbench, preserve historical trace/status, optionally bind a complete independent original and exact-input/normalized-receipt SHA-256 constraints. Capture inputs before asynchronous hashing, apply a default 30-second local deadline and cancellation, and return no partial result. Report local validity with complete receipt/original, normalized JSON, actual/normalized byte digests, empty outer sources and unauthenticated/not-checked/not-sent/no-filesystem states. No WcpClient, credentials, network, file access or new wire wrapper."
+      evidence: []
+      pending_evidence:
+        - "Both historical outcomes, full independent original mismatch, malformed UTF-8 and input/original size bounds"
+        - "Exact versus normalized digests, BOM/whitespace, shared/overridden byte views and caller mutation during digest"
+        - "Cancellation/deadlines/late digests, fixed errors, unchanged CLI and workbench receipt-file behavior"
+      remaining_scope: "Signed origin authentication, receipt collections, durable recovery and runtime evidence. Local structure and hashes cannot authenticate a server observation or establish current content availability."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, SDK/CLI/Mock/browser/API/database execution or release. No server/schema/dependency change."
     web_artifact_receipt_file_development_increment:
       date: "2026-11-04"
       status: "Source-only workbench artifact receipt download and local file review; R-001 remains incomplete."
