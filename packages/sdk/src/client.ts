@@ -5,6 +5,7 @@ import {
   type HandoffRegistryQuery,
   type AuditExportDocument,
   type ArtifactReceiptQuery,
+  type ArtifactVersionsQuery,
   type ArtifactUploadDraft,
   parseObservedReadInput,
   parseObservedSnapshot,
@@ -168,6 +169,7 @@ import {
 import {
   readArtifactMetadata,
   readArtifactReceipt,
+  readArtifactVersions,
   type WcpArtifactReadOptions,
 } from './artifact-reads.js';
 import { downloadArtifactVersion, type WcpArtifactDownloadOptions } from './artifact-download.js';
@@ -1696,6 +1698,11 @@ export class WcpClient {
 
   getArtifact(artifactId: string, options: WcpArtifactReadOptions = {}) {
     return readArtifactMetadata(this.transport, this.context, { artifact_id: artifactId }, options);
+  }
+
+  /** One historical metadata page. Follow next_query explicitly; listing never reads content. */
+  listArtifactVersions(input: ArtifactVersionsQuery, options: WcpArtifactReadOptions = {}) {
+    return readArtifactVersions(this.transport, this.context, input, options);
   }
 
   /** Save the original identity/command before calling; uncertain outcomes use getArtifactReceipt. */

@@ -91,6 +91,7 @@ import { registerCheckpointReceipts } from './checkpoint-receipts.js';
 import { registerCheckpointRead } from './checkpoint-read.js';
 import { registerCheckpointHistory } from './checkpoint-history.js';
 import { registerArtifactReads, type ArtifactMetadataReader } from './artifact-reads.js';
+import { registerArtifactVersions, type ArtifactVersionReader } from './artifact-versions.js';
 import { registerArtifactReceipts, type ArtifactReceiptReader } from './artifact-receipts.js';
 import { registerArtifactWrites, type ArtifactWriter } from './artifact-writes.js';
 import { ArtifactUploadGate, readArtifactUpload } from './artifact-upload.js';
@@ -149,6 +150,8 @@ export interface PlatformServerOptions {
   workbench_db?: WorkbenchDatabase;
   /** Trusted reader that enforces current project/artifact visibility; mutually exclusive with artifact_storage. */
   artifact_reader?: ArtifactMetadataReader;
+  /** Trusted version directory reader; validates current visibility and complete historical snapshots. */
+  artifact_versions?: ArtifactVersionReader;
   /** Trusted original-request reader; enforces identity, current visibility and saved snapshot integrity. */
   artifact_receipts?: ArtifactReceiptReader;
   /** Trusted writer with immutable object verification and durable original-request receipts. */
@@ -214,6 +217,7 @@ const MAX_BODY_BYTES = 1024 * 1024;
 export function createPlatformServer(options: PlatformServerOptions = {}): PlatformServer {
   if (
     (options.artifact_reader !== undefined ||
+      options.artifact_versions !== undefined ||
       options.artifact_receipts !== undefined ||
       options.artifact_writer !== undefined ||
       options.artifact_content !== undefined) &&
@@ -245,6 +249,11 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
       typeof options.artifact_reader?.getVersion !== 'function')
   )
     throw new TypeError('Invalid artifact metadata reader');
+  if (
+    options.artifact_versions !== undefined &&
+    typeof options.artifact_versions?.listVersions !== 'function'
+  )
+    throw new TypeError('Invalid artifact version directory reader');
   if (
     options.artifact_receipts !== undefined &&
     typeof options.artifact_receipts?.getCommandReceipt !== 'function'
@@ -1402,6 +1411,7 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
   registerCheckpointRead(router, auditDb);
   registerCheckpointHistory(router, workbench);
   registerArtifactReads(router, artifactReader);
+  registerArtifactVersions(router, options.artifact_versions ?? artifactService);
   registerArtifactReceipts(router, artifactReceipts);
   registerArtifactWrites(router, artifactWriter);
   registerArtifactUploadContext(router, artifactUploads.maxBytes);
@@ -1447,6 +1457,7 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
     'artifact.download',
   );
   api.routeTemplate('POST', '/v1/artifacts/{artifact_id}/versions', 'artifact.put-version');
+  api.routeTemplate('GET', '/v1/artifacts/{artifact_id}/versions', 'artifact.versions.list');
   api.routeTemplate(
     'GET',
     '/v1/artifacts/{artifact_id}/versions/{version}',
@@ -1669,7 +1680,9 @@ function policyAction(request: CommandRequest): string {
     ].includes(request.operation)
   )
     return 'artifact.write';
-  if (request.operation === 'artifact.read' || request.operation === 'artifact.version.read')
+  if (
+    ['artifact.read', 'artifact.version.read', 'artifact.versions.list'].includes(request.operation)
+  )
     return 'artifact.read';
   if (request.operation === 'plane.inbox.retry') return 'plane.retry';
   if (request.operation.startsWith('plane.inbox.')) return 'admin.read';
@@ -1935,6 +1948,8 @@ async function handleRequest(
     const syncCommandContextRoute = url.pathname === '/v1/sync/commands/context';
     const syncCursorRoute = url.pathname === '/v1/sync/cursor';
     const artifactRoute = /^\/v1\/artifacts(?:\/|$)/.test(url.pathname);
+    const artifactVersionsRoute =
+      request.method === 'GET' && /^\/v1\/artifacts\/[^/]+\/versions$/.test(url.pathname);
     const sessionRecordRead =
       request.method === 'GET' &&
       !sessionCommandContextRoute &&
@@ -2209,12 +2224,50 @@ async function handleRequest(
           'Conflict detail is an unconditional read without query, body or write conditions',
           { trace_id: traceId },
         );
-      if (artifactRoute && url.searchParams.size)
+      if (artifactRoute && !artifactVersionsRoute && url.searchParams.size)
         throw new ContractError(
           'INVALID_INPUT',
           'Artifact endpoints do not accept query parameters',
           { trace_id: traceId },
         );
+      if (artifactVersionsRoute) {
+        if (
+          Object.keys(body).length ||
+          header(request, 'transfer-encoding') !== undefined ||
+          !['0', undefined].includes(header(request, 'content-length')) ||
+          [
+            'idempotency-key',
+            'if-match',
+            'if-match-version',
+            'x-expected-version',
+            'range',
+            'if-range',
+            'if-none-match',
+            'if-modified-since',
+            'if-unmodified-since',
+            'content-encoding',
+          ].some((name) => header(request, name) !== undefined)
+        )
+          throw new ContractError(
+            'INVALID_INPUT',
+            'Artifact versions accepts pagination without body, cache or write conditions',
+            {
+              trace_id: traceId,
+            },
+          );
+        for (const [field, value] of url.searchParams) {
+          if (
+            !['limit', 'at_version', 'before_version'].includes(field) ||
+            url.searchParams.getAll(field).length !== 1 ||
+            !/^[1-9][0-9]{0,15}$/.test(value) ||
+            !Number.isSafeInteger(Number(value))
+          )
+            throw new ContractError('INVALID_INPUT', 'Invalid artifact version pagination', {
+              trace_id: traceId,
+            });
+          body[field] = Number(value);
+        }
+      }
       if (request.method === 'GET' && url.pathname === '/v1/conflicts') {
         if (
           header(request, 'transfer-encoding') !== undefined ||

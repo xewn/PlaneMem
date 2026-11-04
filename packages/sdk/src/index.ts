@@ -35,6 +35,10 @@ export {
 } from './artifact-receipt-inspection.js';
 export type {
   ArtifactReadDetail,
+  ArtifactVersionsQuery,
+  ArtifactVersionsPage,
+  ArtifactVersionsEnvelope,
+  ArtifactVersionSummary,
   ArtifactMetadataView,
   ArtifactReceiptEnvelope,
 } from '@planemem/contracts';

@@ -1,4 +1,15 @@
-import { buildEtag, ContractError, createUlid, isUlid } from '@planemem/contracts';
+import {
+  buildEtag,
+  ContractError,
+  createUlid,
+  isUlid,
+  parseArtifactVersionsQuery,
+  parseArtifactVersionsPage,
+  summarizeArtifactVersion,
+  syncJsonSnapshot,
+  type ArtifactVersionsQuery,
+  type ArtifactVersionsPage,
+} from '@planemem/contracts';
 import {
   artifactCommandHash,
   artifactDigest,
@@ -68,6 +79,110 @@ export class PersistentArtifactService {
         await this.project(tx, access);
         const current = await this.current(tx, access, artifactId);
         return this.version(tx, access, current, version);
+      }),
+    );
+  }
+
+  async listVersions(
+    rawAccess: ArtifactAccess,
+    input: ArtifactVersionsQuery,
+  ): Promise<ArtifactVersionsPage> {
+    const access = this.access(rawAccess, 'artifact.read');
+    let query;
+    try {
+      query = parseArtifactVersionsQuery(input);
+    } catch {
+      throw this.error(
+        'INVALID_INPUT',
+        'Supply an artifact and a bounded version page query',
+        access,
+      );
+    }
+    return this.storage(access, () =>
+      this.database.transaction(async (tx) => {
+        // Share locks keep the parent and current artifact visible throughout this page read.
+        await this.project(tx, access);
+        const current = await this.current(tx, access, query.artifact_id);
+        const ceiling = query.at_version ?? current.version;
+        if (ceiling > current.version)
+          throw this.error(
+            'INVALID_INPUT',
+            'Version ceiling exceeds the current artifact version',
+            access,
+          );
+        const maximum = 2 * 1024 * 1024;
+        const rows = await tx.query<Row>(
+          `SELECT version, storage_key, sha256, size_bytes, trace_id, created_at,
+          octet_length(metadata_snapshot::text) AS snapshot_bytes,
+          CASE WHEN octet_length(metadata_snapshot::text) <= $5 THEN metadata_snapshot ELSE NULL END AS metadata_snapshot
+        FROM wcp_artifact_versions
+        WHERE artifact_id=$1 AND version <= $2 AND ($3::bigint IS NULL OR version < $3)
+        ORDER BY version DESC LIMIT $4`,
+          [query.artifact_id, ceiling, query.before_version ?? null, query.limit + 1, maximum],
+        );
+        try {
+          if (rows.length > query.limit + 1) throw new TypeError();
+          let previous = query.before_version;
+          // Validate the lookahead too; never hide an inaccessible or invalid row behind has_more.
+          const summaries = rows.map((row) => {
+            if (
+              row.snapshot_bytes !== null &&
+              row.snapshot_bytes !== undefined &&
+              (!Number.isSafeInteger(this.number(row.snapshot_bytes)) ||
+                this.number(row.snapshot_bytes) < 1 ||
+                this.number(row.snapshot_bytes) > maximum)
+            )
+              throw new TypeError();
+            const version = this.number(row.version);
+            if (
+              !Number.isSafeInteger(version) ||
+              version < 1 ||
+              version > ceiling ||
+              (previous !== undefined && version >= previous)
+            )
+              throw new TypeError();
+            previous = version;
+            // Also detach and bound custom adapter snapshots before interpreting their fields.
+            const bounded =
+              row.metadata_snapshot == null
+                ? row
+                : {
+                    ...row,
+                    metadata_snapshot: JSON.parse(
+                      syncJsonSnapshot(this.json(row.metadata_snapshot), maximum),
+                    ),
+                  };
+            const saved = this.versionRow(bounded, access, current, version);
+            return summarizeArtifactVersion(saved);
+          });
+          const items = summaries.slice(0, query.limit);
+          const more = summaries.length > query.limit;
+          return parseArtifactVersionsPage(
+            {
+              tenant_id: access.tenant_id,
+              workspace_id: access.workspace_id,
+              project_id: access.project_id,
+              query,
+              snapshot_version: ceiling,
+              items,
+              has_more: more,
+              next_query: more
+                ? {
+                    artifact_id: query.artifact_id,
+                    limit: query.limit,
+                    at_version: ceiling,
+                    before_version: items[items.length - 1]!.version,
+                  }
+                : null,
+              content_state: 'not-checked',
+            },
+            query,
+            access,
+          );
+        } catch (error) {
+          if (error instanceof ContractError) throw error;
+          throw this.invalidStored(access);
+        }
       }),
     );
   }
@@ -382,6 +497,16 @@ export class PersistentArtifactService {
     const row = rows[0];
     if (!row)
       throw this.error('ARTIFACT_VERSION_NOT_FOUND', 'Artifact version is unavailable', access);
+    if (rows.length !== 1) throw this.invalidStored(access);
+    return this.versionRow(row, access, current, version);
+  }
+
+  private versionRow(
+    row: Row,
+    access: ArtifactAccess,
+    current: PersistentArtifactMetadata,
+    version: number,
+  ) {
     if (row.metadata_snapshot == null)
       throw this.error(
         'ARTIFACT_LEGACY_UNVERIFIED',
@@ -393,7 +518,6 @@ export class PersistentArtifactService {
       result = parsePersistentArtifact(this.json(row.metadata_snapshot));
       this.scope(result, access, current.artifact_id);
       if (
-        rows.length !== 1 ||
         result.version !== version ||
         version > current.version ||
         this.number(row.version) !== version ||

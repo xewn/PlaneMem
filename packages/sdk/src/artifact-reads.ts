@@ -1,5 +1,6 @@
 import {
   ARTIFACT_UPLOAD_REQUEST_BYTES,
+  ARTIFACT_VERSIONS_RESPONSE_BYTES,
   ContractError,
   assertArtifactReceiptIdentity,
   isSyncIdentifier,
@@ -7,8 +8,11 @@ import {
   parseArtifactReadQuery,
   parseArtifactReceiptEnvelope,
   parseArtifactReceiptQuery,
+  parseArtifactVersionsQuery,
+  parseArtifactVersionsEnvelope,
   syncJsonSnapshot,
   type ArtifactReceiptQuery,
+  type ArtifactVersionsQuery,
   type RequestContext,
 } from '@planemem/contracts';
 import type { WcpTransport } from './client.js';
@@ -23,7 +27,7 @@ const METADATA_BYTES = 2 * 1024 * 1024;
 const RECEIPT_BYTES = 4 * 1024 * 1024;
 const messages: Record<string, string> = {
   INVALID_INPUT:
-    'Supply valid artifact identifiers or the complete original receipt query, matching scope/identity constraints and timeout/signal options',
+    'Supply valid artifact identifiers, version pagination or the complete original receipt query, matching scope/identity constraints and timeout/signal options',
   DENIED: 'The current verified session cannot read the requested artifact data',
   UNAUTHENTICATED: 'Renew the matching session before reading artifact data',
   ARTIFACT_ACCESS_DENIED:
@@ -46,7 +50,7 @@ const messages: Record<string, string> = {
     'The complete artifact response did not match this read or exceeded its size limit',
   GATEWAY_UNAVAILABLE: 'Artifact metadata or receipt could not be read',
 };
-type ReadKind = 'metadata' | 'receipt';
+type ReadKind = 'metadata' | 'receipt' | 'versions';
 function failure(code: string, trace: string, kind: ReadKind) {
   return new ContractError(code, messages[code]!, {
     trace_id: trace,
@@ -228,6 +232,35 @@ export function readArtifactReceipt(
       expected: { actor_id: query.identity.actor_id, client_id: query.identity.client_id },
       body,
       parse: (raw: unknown) => parseArtifactReceiptEnvelope(raw, query, snapshot.trace_id),
+    };
+  });
+}
+
+export function readArtifactVersions(
+  transport: WcpTransport,
+  context: RequestContext,
+  input: ArtifactVersionsQuery,
+  options: WcpArtifactReadOptions,
+) {
+  return read(transport, context, options, 'versions', (snapshot) => {
+    const query = parseArtifactVersionsQuery(input);
+    const parameters = new URLSearchParams({ limit: String(query.limit) });
+    if (query.at_version !== undefined) parameters.set('at_version', String(query.at_version));
+    if (query.before_version !== undefined)
+      parameters.set('before_version', String(query.before_version));
+    return {
+      path:
+        '/v1/artifacts/' +
+        encodeURIComponent(query.artifact_id) +
+        '/versions?' +
+        parameters.toString(),
+      maximum: ARTIFACT_VERSIONS_RESPONSE_BYTES,
+      expected: {
+        ...(snapshot.actor_id === undefined ? {} : { actor_id: snapshot.actor_id }),
+        ...(snapshot.client_id === undefined ? {} : { client_id: snapshot.client_id }),
+      },
+      parse: (raw: unknown) =>
+        parseArtifactVersionsEnvelope(raw, query, snapshot, snapshot.trace_id),
     };
   });
 }

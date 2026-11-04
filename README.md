@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [附件版本目录](docs/design/01-contracts/artifact-versions-runtime.md)：服务端和SDK可分页查找历史版本，续页固定原版本上界，逐页核验权限与历史快照；目录不读取文件正文。仅源码文档，未编译、测试、执行或发布。
+
 新增 [SDK 回执离线核验](docs/design/01-contracts/artifact-persistence-runtime.md#sdk-原回执离线核验与共享解析源码阶段)：直接检查回执文本或字节，可对照完整原请求与预期摘要；命令行、工作台和 SDK 共用相同解析规则。只核验本地内容，不认证服务器状态。仅源码文档，未编译、测试、执行或发布。
 
 新增 [工作台回执文件查看](docs/design/01-contracts/artifact-persistence-runtime.md#工作台原回执文件保存与本地查看源码阶段)：在线回执可显式保存，新页面可读取相同格式的回执文件并对照独立原请求；本地核验不自动查询或上传，也不把文件内容当作服务器认证结果。仅源码文档，未编译、测试、渲染或发布。

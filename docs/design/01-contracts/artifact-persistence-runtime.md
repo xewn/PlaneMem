@@ -662,3 +662,6 @@ const inspected = await inspectArtifactReceipt(receiptBytes, {
 contracts导出ARTIFACT_SAVED_RECEIPT_BYTES、parseSavedArtifactReceipt和ParsedSavedArtifactReceipt。共享函数接受未知解析值，先做4 MiB纯JSON快照、再提取并校验完整1 MiB原请求，返回receipt/original及两份规范JSON；这是同步结构解析，原始输入字节大小由各入口先行约束。CLI稳定文件读取/Node摘要/保存读回与工作台stream/30秒operation/下载行为保持，只替换重复解析逻辑。SDK不将浏览器保存请求冒充已落盘。
 
 仅源码文档人工审阅，未编译、类型检查、测试、执行SDK/CLI/Mock/浏览器/API/数据库或发布。无服务端/schema/依赖变化，R-001证据保持空且未完成；签名认证、回执集合和持久恢复另行开发。
+## 历史版本目录（源码阶段）
+
+2026-11-04：新增持久listVersions、GET /v1/artifacts/{artifact_id}/versions与SDK listArtifactVersions。默认10最多20条历史摘要，固定首轮at_version上界、before_version续页，完整query随next_query返回；本页项目/当前附件共享锁及当前/历史分类校验，全部选中与探测快照核对后才返回，不读对象正文、不返回存储键或当前写ETag。目录可通过独立artifact_versions reader或artifact_storage服务配置，旧metadata reader必需方法保持。分页参数是其他Artifact端点禁止查询参数规则的显式例外，其余端点保持；完整限制、协议和边界见[历史版本目录](artifact-versions-runtime.md)。仅源码文档人工审阅，未编译、类型检查、测试、运行SDK/API/SQL/数据库或发布，CLI/MCP/Web/Mock目录与运行证据仍待开发。
