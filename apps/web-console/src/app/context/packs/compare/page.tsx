@@ -8,6 +8,7 @@ import { PageError } from '../../../../components/page-state';
 import { Badge, Panel } from '../../../../components/ui';
 import { getWorkbenchContextPackComparison } from '../../../../lib/context-pack-comparison-server';
 import type { ContextSearchParams } from '../../navigation';
+import { packReadHref } from '../read/navigation';
 import {
   packComparisonHref,
   parsePackComparisonParams,
@@ -176,14 +177,20 @@ async function Comparison({
             <nav className="heading-actions" aria-label="Compared saved packs">
               <Link
                 className="panel-link"
-                href={'/context?pack=' + encodeURIComponent(query.from_pack_id)}
+                href={packReadHref({
+                  pack_id: query.from_pack_id,
+                  return_href: packComparisonHref(navigation),
+                })}
                 prefetch={false}
               >
                 Open base pack
               </Link>
               <Link
                 className="panel-link"
-                href={'/context?pack=' + encodeURIComponent(query.to_pack_id)}
+                href={packReadHref({
+                  pack_id: query.to_pack_id,
+                  return_href: packComparisonHref(navigation),
+                })}
                 prefetch={false}
               >
                 Open comparison pack
@@ -306,6 +313,28 @@ async function Comparison({
           The full comparison could not be completed. Retry the same saved IDs or change the
           selection above.
         </p>
+        <nav className="heading-actions" aria-label="Read compared packs">
+          <Link
+            className="panel-link"
+            prefetch={false}
+            href={packReadHref({
+              pack_id: query.from_pack_id,
+              return_href: packComparisonHref(navigation),
+            })}
+          >
+            Read base pack
+          </Link>
+          <Link
+            className="panel-link"
+            prefetch={false}
+            href={packReadHref({
+              pack_id: query.to_pack_id,
+              return_href: packComparisonHref(navigation),
+            })}
+          >
+            Read comparison pack
+          </Link>
+        </nav>
         <form action="/context/packs/compare" method="get">
           {Array.from(params).map(([name, value]) => (
             <input key={name} name={name} value={value} type="hidden" />

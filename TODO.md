@@ -4,6 +4,8 @@
 
 ## 当前基线
 
+- P5/P2：新增/context/packs/read独立保存包查看页，空页仅查找、pack必须完整ULID、latest=1显式读取且与pack互斥；不先查询context目录或条目详情。复用原Web完整2 MiB JSON/HTTP-ETag/trace/Node SHA-256/16 KiB错误与30秒读取，显示保存元数据、完整入选正文/字段、排除原因/来源及完整封套；支持实际编号固定链接、预填对比和原条件重试。context头/保存卡片/目录失败及compare两侧/失败恢复接入，return仅接受重建的context或compare内部地址，保留原筛选/对比方向/显示条件，不接受重复或外部/片段返回，导航不授权。latest重复读取可能换包、失效/过期仍失败；页面渲染/发送不计读取期限，无新API/写操作/自动回退重试。R-003未完成、evidence为空；仅源码文档人工审阅/格式文本检查，未编译、类型检查、测试、渲染、浏览器/产品/API/数据库执行或发布。
+
 - P0/P2：新增context-pack-comparison.json及contracts包子路径，JSON Schema 2020-12描述SDK/CLI/MCP完整本地结果，网页内部组合另有锚点。复用相邻context-pack-read本地资源，需注册两份完整文件、不联网下载；封闭查询/CLI身份/候选状态、最多2000行及位置1000、固定十一元数据行类型顺序、来源/计数/8 MiB纯报告对应形状。区分MCP client与SDK/CLI额外DEL限制；跨字段相等、摘要、精确差异/统计/来源并集、字节/UTF-16/节点/权限/期限仍归原实现，结构通过不证明真实性。原读取Schema/TS/各客户端未改，自动一致性、依赖资源解析/OpenAPI及运行证据仍待补，R-003未完成、evidence为空。仅源码文档人工审阅/格式文本检查，未执行Schema校验器/生成器、编译、类型检查、测试、产品/API/数据库或发布。
 
 - P2：新增MCP `compare_context_packs`，严格4 KiB双不同from_pack_id/to_pack_id，身份来自可信上下文、拒绝外部身份/写条件。发现/prepare/调用及HTTP客户端门禁复用上下文读识别；两次原方向指定json读取沿原Gateway策略审计，完整2 MiB封套/16 KiB错误、HTTP状态/type/trace/ETag、Node SHA-256及入选restricted核对。共享比较8 MiB、完整两侧及差异组合12 MiB、转义MCP正文24 MiB+4096；八类上下文工具共用每Gateway两容量和一次30秒期限，底层结束才释放，无半份/自动换包/重试/编译/来源访问/写入。内部请求不可中止、外层授权审计/网络发送不计工具期限；两次读取不是同一快照。独立组合Schema及客户端/容量/超时/输出运行证据待补，R-003未完成、evidence为空。仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布。

@@ -20,6 +20,7 @@ import {
 import { CompilePackForm } from './form';
 import { PackExclusions } from './pack-exclusions';
 import { packComparisonHref } from './packs/compare/navigation';
+import { packReadHref } from './packs/read/navigation';
 import { ContextSourceStatus } from './source-status';
 import {
   ArchiveContextItem,
@@ -138,6 +139,16 @@ export default async function ContextPage({
             <p>Browse project knowledge and compile a saved context pack for the next session.</p>
           </div>
           <div className="heading-actions">
+            <Link
+              className="secondary-button"
+              prefetch={false}
+              href={packReadHref({
+                pack_id: packId,
+                return_href: contextBrowseHref(browse),
+              })}
+            >
+              Open a saved pack
+            </Link>
             <Link
               className="secondary-button"
               prefetch={false}
@@ -682,7 +693,10 @@ export default async function ContextPage({
                   </details>
                   <Link
                     className="panel-link"
-                    href={'/context?pack=' + encodeURIComponent(saved.pack_id)}
+                    href={packReadHref({
+                      pack_id: saved.pack_id,
+                      return_href: contextBrowseHref(browse),
+                    })}
                     prefetch={false}
                   >
                     Permalink to this pack
@@ -717,6 +731,16 @@ export default async function ContextPage({
           <h1>Context</h1>
         </div>
         <PageError error={error} />
+        <Link
+          className="panel-link"
+          prefetch={false}
+          href={packReadHref({
+            pack_id: navigation?.pack,
+            return_href: navigation ? contextBrowseHref(navigation) : undefined,
+          })}
+        >
+          Open a saved pack
+        </Link>
         {searchReturn && <SearchContextReturn navigation={searchReturn} retry />}
         {navigation && !searchReturn && <ContextBrowseRecovery navigation={navigation} />}
         <Link className="panel-link" href="/context" prefetch={false}>
