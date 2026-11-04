@@ -11,6 +11,25 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    mcp_artifact_version_comparison_development_increment:
+      date: "2026-11-04"
+      status: "Source-only MCP artifact version comparison; R-001 remains incomplete."
+      artifacts:
+        - "apps/api-gateway/src/mcp/artifact-comparison.ts"
+        - "apps/api-gateway/src/mcp/catalog.ts"
+        - "apps/api-gateway/src/mcp/protocol.ts"
+        - "packages/contracts/src/artifact-comparison.ts"
+        - "docs/design/01-contracts/artifact-versions-runtime.md"
+        - "docs/design/01-contracts/mcp-runtime.md"
+      behavior: "Add compare_artifact_versions with a strict 4 KiB query and distinct positive safe versions. Discovery/direct calls require actual artifact.read and a verified unexpired complete session. Capture identity and remove write conditions; compose two existing historical reads in order under one 30-second deadline and two active comparisons per Gateway, retaining slots until underlying settlement after timeout. Validate each 2 MiB success/16 KiB error, JSON/trace/no ETag, full scope/version envelopes and restricted capability. Return both complete originals and shared local metadata differences within 8 MiB plus an independently bounded 16 MiB+4096 escaped content result. Omit absent source-side properties for strict JSON serialization. No partial result, retry, current fallback, content download or writes; synchronous preparation requires the dedicated executor."
+      evidence: []
+      pending_evidence:
+        - "Discovery/direct-call authority, invalid input, synchronous prepare rejection and inherited write removal"
+        - "Shared deadline, expiry between reads, capacity retained through late settlement and no partial/late output"
+        - "Exact historical paths/envelopes, headers, restricted records, response/result limits and fixed errors"
+        - "Shared source additions/removals, SDK/Web compatibility and actual MCP client consumption"
+      remaining_scope: "Runtime/client compatibility, independent comparison schema and real permission/deadline evidence. Separate reads do not verify bytes or establish one database snapshot."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, MCP/SDK/CLI/Mock/product/API/database execution or release. No REST/storage operation, schema or dependency change."
     cli_artifact_version_comparison_development_increment:
       date: "2026-11-04"
       status: "Source-only CLI artifact version comparison; R-001 remains incomplete."
@@ -26,7 +45,7 @@ requirements:
         - "Strict argument/JSON/file/stdin limits, duplicate/unknown fields, equal/unsafe versions and SDK actor/client format"
         - "Fixed network token, embedded identity/capability/expiry, ordered two-read adapter and total deadline/response limits"
         - "Local composite stdout and exits, no partial/late results, original receipt-output compatibility"
-      remaining_scope: "Runtime/client compatibility and MCP comparison entry. Separate metadata reads do not verify file content or establish one database snapshot."
+      remaining_scope: "Runtime/client compatibility. MCP comparison source entry is recorded separately above. Separate metadata reads do not verify file content or establish one database snapshot."
       execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/SDK/Mock/product/API/database execution or release. No server operation, schema or dependency change."
     sdk_artifact_version_comparison_development_increment:
       date: "2026-11-04"

@@ -64,8 +64,8 @@ export function compareArtifactMetadata(before: unknown, after: unknown) {
       const after = to.source_refs[index];
       return {
         position: index + 1,
-        before,
-        after,
+        ...(before === undefined ? {} : { before }),
+        ...(after === undefined ? {} : { after }),
         status:
           before === undefined
             ? ('added' as const)

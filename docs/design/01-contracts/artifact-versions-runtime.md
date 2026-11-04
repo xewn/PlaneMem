@@ -35,7 +35,7 @@ const result = await client.compareArtifactVersions(
 // result.comparison 是本地差异；from/to 是两次独立历史读取，正文仍未检查。
 ```
 
-固定允许列表错误使用原trace及retryable=false、read_kind=comparison、comparison_state=not-completed、content_state=not-checked和upload_dispatch_state=not-sent；不回显transport原始异常或上游details。没有新增HTTP/MCP操作、数据库/schema/依赖或Mock专用路由；CLI接入见下节。可通过已有历史读取适配器接入，但未执行SDK、Mock或服务。共享契约自动一致性、独立比较Schema、真实客户端/取消/期限/身份变化和浏览器兼容仍待证据；本次仅源码文档人工审阅，未编译、类型检查、测试、运行产品/API/数据库或发布，R-001保持未完成。
+固定允许列表错误使用原trace及retryable=false、read_kind=comparison、comparison_state=not-completed、content_state=not-checked和upload_dispatch_state=not-sent；不回显transport原始异常或上游details。此SDK增量没有新增HTTP/MCP操作、数据库/schema/依赖或Mock专用路由；CLI及MCP接入见后续章节。可通过已有历史读取适配器接入，但未执行SDK、Mock或服务。共享契约自动一致性、独立比较Schema、真实客户端/取消/期限/身份变化和浏览器兼容仍待证据；本次仅源码文档人工审阅，未编译、类型检查、测试、运行产品/API/数据库或发布，R-001保持未完成。
 
 ## 命令行版本对比（源码阶段）
 
@@ -60,6 +60,20 @@ const result = await client.compareArtifactVersions(
 成功stdout直接输出WcpArtifactComparisonResult，保留query、identity_constraints、from/to原封套及comparison，并标明local/separate-reads/not-checked；没有外层data，不能按目录页封套读取。相同或不同都退出0，差异本身不是错误；读取/权限/参数失败沿现有退出码和固定错误路径。公共退出码判定兼容该本地对象，原artifacts receipt --output的保存失败仍退出1。不写结果文件、自动下载或读取正文，不上传/恢复旧版/查回执。
 
 仅源码文档人工审阅；未编译、类型检查、测试、执行CLI/SDK/Mock/API/产品/数据库或发布。参数/文件/stdin边界、完整返回形状、网络/嵌入路径、身份不匹配和过期、两次请求期限/顺序及现有回执保存兼容仍待运行证据。无新公共协议、Schema、依赖或数据库变化，R-001保持未完成且evidence为空。
+
+## MCP版本对比（源码阶段）
+
+2026-11-04新增`compare_artifact_versions({artifact_id,from_version,to_version})`。输入最多4 KiB，复用共享完整查询解析，拒绝未知字段、缺字段、相同/非正/非安全整数版本，保留from/to方向。范围、账号、客户端来自捕获的可信会话，不接受输入覆盖。工具目录和直接调用都要求schema_version=1、完整身份和有效trace、authenticated_client=true、未过期令牌及实际artifact.read；admin角色不替代能力。
+
+专用执行器复制一次上下文、去除继承写键和版本条件，顺序调用既有两次历史GET；每次给Gateway独立上下文副本，沿原artifact.version.read授权审计和当前/历史可见性检查。共同30秒单调期限覆盖解析、两份读取、比较和结果序列化；每次发送前、响应到达、完整解析后和返回前重查期限及会话到期。每ApiGateway独立最多两笔比较，等待超时后底层未结束仍占容量，迟到首读不会触发第二读；不宣称取消底层工作或保证客户端收取时间。
+
+每份成功封套最多2 MiB，错误最多16 KiB；核对200、JSON、原trace响应头、无ETag以及完整历史封套、项目/文件/所选版本；restricted记录须实际data.restricted.read。失败只返回固定允许列表错误，retryable=false、read_kind=comparison、comparison_state=not-completed、content_state=not-checked、upload_dispatch_state=not-sent，不回显上游原消息/details。任一失败不返回部分记录，不替换成当前版本或自动重试。
+
+成功MCP文本内容是与SDK相同字段的本地组合：schema_version=1、kind=artifact-version-comparison、comparison_origin=local、read_consistency=separate-reads、content_state=not-checked，加query、identity_constraints、from/to完整原封套和comparison。共享模型比较八字段及完整来源位置，保留顺序/重复/可选字段；缺失的一侧省略before或after属性，避免undefined破坏严格JSON输出，原JSON序列化形状保持。组合最多8 MiB，转义后的MCP content整体另限16 MiB+4096字节，超限拒绝而不截断；JSON-RPC外层仍附原schema_version/trace_id。
+
+工具标记只读、可重复查询；`prepareMcpTool`拒绝把两份读取映射成一份请求，要求dispatchMcp或专用执行器。HTTP普通输入限额不变，无新REST/数据库操作、Schema、依赖或SDK依赖。两次读取是分别授权的独立观察，不构成数据库一致快照；保存的size/hash相同不证明真实字节相同，不下载/上传/恢复旧版/查回执或写文件。
+
+仅源码文档人工审阅，未编译、类型检查、测试、运行MCP/API/SDK/CLI/Mock/产品/数据库或发布。发现/直接调用/同步prepare边界、会话过期、容量/迟到结果、完整响应/输出限额、来源增删与真实客户端兼容仍待运行证据；R-001保持未完成且evidence为空。
 
 ## 查询与续页
 

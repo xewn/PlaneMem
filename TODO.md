@@ -6,6 +6,8 @@
 
 ### 2026-11-04 开发补充（未编译、未发布、未测试）
 
+- P0/P4：已补 MCP `compare_artifact_versions`，严格4 KiB查询、两个不同正安全版本，发现/调用均要求可信未过期实际artifact.read。固定身份顺序读取两份历史记录，共用30秒及每Gateway两笔容量，超时底层未结束仍占槽；每份2 MiB/错误16 KiB，完整scope/版本/trace/JSON/无ETag/restricted核对。共享八字段与来源位置比较省略缺失侧undefined，返回两份原封套及local/separate-reads/not-checked组合，8 MiB结果/16 MiB+4096转义限制，无部分结果、重试或内容读取。运行兼容、独立比较Schema和真实权限/超时证据仍缺，R-001未完成且evidence为空。仅源码文档人工审阅，无REST/存储操作/schema/依赖变化，未编译、类型检查、测试、运行产品/CLI/MCP/SDK/Mock/API/数据库或发布；独立提交push main带[skip ci]。
+
 - P4：已补CLI artifacts compare网络/嵌入及callGateway入口，4 KiB JSON仅artifact_id/from_version/to_version/expected_actor_id/expected_client_id，两个不同正安全版本，账号ULID及客户端沿SDK上下文规则；项目使用既有配置，身份只作相等约束。--json/--json-file二选一，网络支持有界stdin，嵌入不读stdin；默认30秒总读取/比较期限，拒绝key/output/重复未知参数。复用SDK固定两版本读取及本地组合结果，嵌入逐次核对可信未过期reader、原身份/路径/方法/顺序/完整头/2 MiB限额/空正文，清除继承写条件，成功返回前再查期限身份。首读失败不继续，任一失败不输出部分结果，无自动重试/下载/保存/新服务操作；原回执保存退出语义保持。R-001未完成，命令参数/文件/stdin/身份切换/超时/路由及输出兼容待运行证据；无新协议/schema/依赖/数据库变化，仅源码文档人工审阅，未编译/类型检查/测试/执行CLI、SDK、Mock、API、产品、数据库或发布。
 
 - P0/P5：已补SDK compareArtifactVersions，严格4 KiB完整查询/两个不同安全版本，要求构造上下文含完整项目/actor/client相等约束；异步前复制查询/身份/选项，沿两次历史元数据读取、默认30秒统一可取消预算和每份2 MiB成功/Fetch16 KiB错误限制，不继承写条件。首读失败不发起第二读，任何失败不返回部分对比或自动重试，成功返回明确本地组合结果、原查询/身份约束及两份完整封套，保留方向/原trace，非新Gateway协议或一致快照。完整比较模型已提取至contracts并供Web复用，两份元数据各2 MiB普通JSON复制，八标量字段及完整按位置来源保持顺序/重复/缺省语义。共享函数也可本地比较已持有记录，但不认证身份/内容/来源；无下载/上传/回执/落盘/新服务路由/schema/依赖/数据库变化。R-001未完成，SDK取消/总期限/自定义transport/凭据切换约束和Web兼容尚无运行证据；仅源码文档人工审阅，未编译/类型检查/测试/运行SDK、Mock、API、产品、数据库或发布。

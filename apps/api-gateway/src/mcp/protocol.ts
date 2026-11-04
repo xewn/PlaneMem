@@ -16,6 +16,7 @@ import { conflictReceiptToolResult } from './conflict-receipt.js';
 import { isArtifactReadTool, artifactReadToolResult } from './artifact-read.js';
 import { executeArtifactVersionsTool } from './artifact-versions.js';
 import { executeArtifactRegistryTool } from './artifact-registry.js';
+import { executeArtifactComparisonTool } from './artifact-comparison.js';
 import { isAuditTool, executeAuditTool } from './audit.js';
 import { executeAdminSnapshot } from './admin.js';
 import { isSyncReadTool, executeSyncReadTool } from './sync-reads.js';
@@ -178,6 +179,10 @@ export async function dispatchMcp(
           }
           if (params.name === 'get_artifact_upload_context') {
             result = await executeArtifactUploadContextTool(api, params.arguments ?? {}, context);
+            break;
+          }
+          if (params.name === 'compare_artifact_versions') {
+            result = await executeArtifactComparisonTool(api, params.arguments ?? {}, context);
             break;
           }
           if (params.name === 'list_artifact_versions') {

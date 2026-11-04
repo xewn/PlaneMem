@@ -1,5 +1,7 @@
 # MCP HTTP 运行时开发说明
 
+2026-11-04 版本对比增补：新增`compare_artifact_versions({artifact_id,from_version,to_version})`，发现和调用要求已验证未过期实际artifact.read。捕获同一身份，两次固定历史读取共用30秒/两笔比较容量，超时保留底层名额；4 KiB查询、每份2 MiB成功/16 KiB错误、8 MiB本地组合/16 MiB+4096转义结果，完整核对后返回两份原封套和共享字段/来源位置差异。`prepareMcpTool`明确要求专用执行器，不生成单请求替代；普通HTTP输入预算不变，无正文下载/当前替代/部分成功/重试。详见 [MCP版本对比](artifact-versions-runtime.md#mcp版本对比源码阶段)。仅源码文档，未编译、类型检查、测试、运行或发布。
+
 2026-11-04 项目文件目录增补：新增`list_artifacts`专用执行器，发现、prepare及直接调用均要求已验证未过期实际artifact.read；严格query/classification/limit/cursor共享查询，8 KiB内层输入、256 KiB成功/16 KiB错误、二次转义结果512 KiB+4096字节。每Gateway独立两笔目录读取和固定30秒本地期限，底层未结束仍占用超时名额；完整scope/trace/筛选/排序/next_query和restricted权限检查，固定错误、retryable=false、read_kind=registry。清除继承写条件，仍沿普通HTTP正文限额，不自动翻页/下载/写文件；详见 [项目目录客户端](artifact-registry-runtime.md#命令行与-mcp源码阶段)。仅源码文档人工审阅，未编译、测试、执行MCP/API/数据库或发布。
 
 2026-11-04 附件版本目录增补：新增只读 `list_artifact_versions({artifact_id,limit?,at_version?,before_version?})`，发现/调用要求已验证未过期实际artifact.read，admin不替代。首轮固定版本上界并返回完整next_query；仅历史摘要，不读正文或自动翻页。专用执行器每Gateway独立两笔、30秒等待，超时底层未结束仍占槽；输入4 KiB、成功256 KiB、错误16 KiB、二次转义结果512 KiB+4096字节。核对完整范围/trace/原查询/顺序/下一查询，固定错误及retryable=false，清除继承写条件；没有HTTP正文扩容或新数据库访问逻辑。见 [版本目录客户端](artifact-versions-runtime.md#命令行与-mcp源码阶段)，仅源码文档人工审阅，未编译、测试、执行MCP/API或发布。
