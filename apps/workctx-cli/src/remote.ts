@@ -30,6 +30,7 @@ import {
   validateErrorEnvelope,
 } from '@planemem/contracts';
 import type { OutboxScope } from '@planemem/context-bridge';
+import { FetchWcpTransport } from '@planemem/sdk';
 import { usage } from './cli.js';
 import { prepareObservedRead, observedReadResult } from './observed.js';
 import { prepareHandoffClaim, handoffClaimResult } from './handoff-claim.js';
@@ -56,6 +57,7 @@ import {
   artifactUploadForm,
   artifactUploadResult,
   artifactUploadUnconfirmed,
+  ARTIFACT_UPLOAD_RESPONSE_BYTES,
   type ArtifactUploadArguments,
 } from './artifact-upload.js';
 import { prepareCheckpoint, checkpointResult } from './checkpoint.js';
@@ -495,9 +497,27 @@ export async function callArtifactUpload(
 ) {
   const args = { ...rawArgs };
   const options = { ...rawOptions, scope: { ...rawOptions.scope } };
+  const invalid = (message: string): never => {
+    throw new ContractError('USAGE_ERROR', message, {
+      trace_id: options.trace,
+      retryable: false,
+      details: {
+        dispatch_state: 'not-sent',
+        upload_dispatch_state: 'not-sent',
+        server_outcome: 'not-checked',
+      },
+    });
+  };
   if (options.key !== undefined)
-    usage('Artifact uploads use the saved command.request_key, without --key');
-  if (!options.token.trim()) usage('A bearer token is required for artifact uploads');
+    invalid('Artifact uploads use the saved command.request_key, without --key');
+  if (typeof options.token !== 'string' || !options.token.trim())
+    invalid('A bearer token is required for artifact uploads');
+  if (
+    !Number.isSafeInteger(args.timeout_ms) ||
+    args.timeout_ms < 1 ||
+    args.timeout_ms > 2_147_483_647
+  )
+    invalid('Supply an artifact HTTP timeout between 1 and 2147483647 milliseconds');
   let base: URL;
   try {
     base = new URL(options.base);
@@ -510,7 +530,19 @@ export async function callArtifactUpload(
     )
       throw new TypeError();
   } catch {
-    return usage('WORKCTX_URL must be an HTTP(S) URL without credentials, query or fragment');
+    return invalid('WORKCTX_URL must be an HTTP(S) URL without credentials, query or fragment');
+  }
+  let transport: FetchWcpTransport;
+  try {
+    const token = options.token.trim();
+    new Headers({ authorization: 'Bearer ' + token });
+    transport = new FetchWcpTransport({
+      base_url: base.href,
+      access_token: () => token,
+      timeout_ms: args.timeout_ms,
+    });
+  } catch {
+    return invalid('Supply valid artifact upload credentials and HTTP timeout');
   }
   const query = await readArtifactUploadQuery(args, options.scope, options.trace);
   const bytes = await readArtifactUploadContent(args, query, options.trace);
@@ -519,7 +551,6 @@ export async function callArtifactUpload(
       ? '/v1/artifacts'
       : '/v1/artifacts/' + encodeURIComponent(query.command.artifact_id) + '/versions';
   const headers: Record<string, string> = {
-    authorization: 'Bearer ' + options.token,
     'x-tenant-id': options.scope.tenant_id,
     'x-workspace-id': options.scope.workspace_id,
     'x-project-id': options.scope.project_id,
@@ -532,19 +563,23 @@ export async function callArtifactUpload(
   if (query.command.operation === 'artifact.put-version')
     headers['if-match'] = buildEtag(query.command.expected_version);
   const form = artifactUploadForm(query, bytes);
+  const deadline = performance.now() + args.timeout_ms;
   try {
-    const { response, body } = await request(
-      new URL(path, base),
-      {
-        method: 'POST',
-        headers,
-        body: form,
-      },
-      options.trace,
-      args.timeout_ms,
-    );
-    if (!response.ok) gatewayError(response, body, options.trace);
-    return artifactUploadResult(body, query, options.trace);
+    const body = await transport.request({
+      method: 'POST',
+      path,
+      headers,
+      body: form,
+      response_type: 'bounded-json',
+      max_response_bytes: ARTIFACT_UPLOAD_RESPONSE_BYTES,
+    });
+    const result = artifactUploadResult(body, query, options.trace);
+    if (performance.now() >= deadline)
+      throw new ContractError('GATEWAY_REQUEST_TIMEOUT', 'Upload response exceeded its deadline', {
+        trace_id: options.trace,
+        retryable: false,
+      });
+    return result;
   } catch (error) {
     throw artifactUploadUnconfirmed(error, options.trace);
   }

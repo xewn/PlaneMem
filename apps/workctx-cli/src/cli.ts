@@ -695,6 +695,7 @@ export async function runWorkctx(
       const bytes = await readArtifactUploadContent(args, query, uploadContext.trace_id);
       delete uploadContext.idempotency_key;
       delete uploadContext.expected_version;
+      delete uploadContext.if_match;
       uploadContext.idempotency_key = query.command.request_key;
       if (query.command.operation === 'artifact.put-version')
         uploadContext.expected_version = query.command.expected_version;

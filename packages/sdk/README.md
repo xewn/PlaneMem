@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-04：网络CLI `artifacts create/put-version` 已接入FetchWcpTransport的bounded-json原生表单支持，成功4 MiB/错误16 KiB及凭据/网络/响应期限随之生效。CLI继续使用既有Node文件稳定读取和摘要预检，没有转调WcpClient或重复执行Web Crypto摘要；这是源码兼容衔接，未编译、测试或调用，详见 [CLI上传响应限制](../../docs/design/01-contracts/artifact-persistence-runtime.md#cli-上传响应限制与未知结果源码阶段)。
+
 2026-11-04：`createArtifact(original, bytes, options?)` / `putArtifactVersion(original, bytes, options?)` 新增 `WcpArtifactUploadOptions(timeout_ms/signal)`，默认180秒本地预算。异步前固定完整原请求/身份约束及非共享内容副本，发送前Web Crypto核对原长度/SHA-256；原键/版本/返回ArtifactUploadEnvelope保持。成功完整响应最多4 MiB，Fetch错误16 KiB，FormData现可使用bounded-json及signal，仍由fetch生成boundary。错误不回显上游细节，派发前标记本次not-sent，调用transport后任何失败保持unknown，不自动重试或替换原请求；Web Crypto与原生multipart成为明确运行要求。详见 [SDK上传期限与取消](../../docs/design/01-contracts/artifact-persistence-runtime.md#sdk-原请求上传期限与取消源码阶段)。仅源码文档人工审阅，未编译、类型检查、测试、执行SDK/CLI/Mock/API或发布。
 
 2026-11-04：新增独立 `inspectArtifactUploadRequest(input, options)`、`WcpArtifactInspectionOptions/WcpInspectedArtifactUploadRequest`，离线核对已保存的完整原请求，无需WcpClient或登录。输入为1 MiB内UTF-8字节/JSON文本，必需本地trace，可选内容副本、实际输入/规范请求预期摘要及timeout_ms/signal；默认180秒，内容默认64 MiB。返回完整original、实际与规范请求摘要、规范JSON及content_state，保留原身份/键/版本；明确身份未认证、服务器未查询、未上传、未访问文件。仅原请求检查不施加内容大小预算，摘要一致不证明来源可信或先前上传成功。详见 [SDK离线核验](../../docs/design/01-contracts/artifact-persistence-runtime.md#sdk-原请求离线核验源码阶段)。仅源码文档人工审阅，未编译、类型检查、测试、调用SDK/CLI/API或发布。

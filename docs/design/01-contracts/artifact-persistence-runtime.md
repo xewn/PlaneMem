@@ -212,6 +212,20 @@ SDK 只接受完整 200，校验范围/目标/版本/trace/hash/长度/审计头
 
 stdout 只在完整成功时输出原历史结果；参数/大小/hash 错误退出 2，文件读取/远端错误退出 1。发送前错误的 dispatch_state=not-sent 仅描述本次调用，不确认原请求以前失败。发送后的错误附 artifact_outcome=unconfirmed 与保留原 JSON/内容、显式查询 artifacts receipt 的提示；网络查询可直接重用同一 --json-file，嵌入回执仍传 --json。上传不生成或改写原文件/请求键/版本，不保存 outbox，也不把本地路径当作 Artifact 名称发送。当前没有命令执行或传输验证证据。
 
+## CLI 上传响应限制与未知结果（源码阶段）
+
+网络 `artifacts create/put-version` 现在使用FetchWcpTransport的bounded-json FormData POST，替代直接fetch后无上限response.json的通用路径。保留原`--json-file`、`--file`、`--max-bytes`、HTTP-only `--timeout-ms`，默认180,000毫秒；在文件I/O前校验网络配置、凭据头和期限。稳定文件读取与Node SHA-256预检保持，读取/关闭必须结束后才准备发送，不用Promise.race留下后台文件读取；该HTTP期限不含文件读取或表单构造，不承诺整个CLI执行都有硬截止时间。
+
+请求保持原范围/账号/客户端/键及追加原版本；传输前同步复制表单及头，由fetch设置boundary，Bearer在固定凭据回调中提供。传输预算覆盖凭据、网络及每个响应块，成功只接受200、同trace头和JSON媒体类型，完整成功最多4 MiB、错误最多16 KiB，严格UTF-8及适用的声明长度校验。无缓存、重定向或重试；迟到响应由传输层清理，结果完整解析后另按本次上传起点检查期限。服务器即使已提交，超时也不会返回迟到成功。
+
+共享artifactUploadResult对网络和嵌入router返回值均先执行4 MiB普通JSON快照，再完整核对原identity/command/内容描述/历史版本/source_refs/trace。超限、访问器、非JSON对象、错误目标或损坏封套拒绝，不返回部分资料。成功返回形状与首次保存/原键重放语义保持；成功退出0仍只证明收到匹配的历史保存封套，不是当前正文下载保证。
+
+开始调用transport/router后的任何错误均经artifactUploadUnconfirmed收口：仅同trace的有限已知代码可保留，其他为ARTIFACT_UPLOAD_UNCONFIRMED，消息使用固定文本，丢弃上游message/details和retryable提示。输出固定retryable=false、artifact_outcome=unconfirmed、upload_dispatch_state=started、server_outcome=unknown和原回执恢复说明；started只是已调用传输/执行器，不证明网络送达或事务开始。即使收到明确拒绝，也不据本次失败否定原请求在先前尝试中成功。参数/文件预检发生在派发之前，沿既有not-sent和退出码；未确认上传退出1，不以远端USAGE_ERROR冒充本地用法错误。
+
+嵌入入口仍不接受HTTP-only超时选项；执行前清除继承idempotency_key/expected_version/if_match，再只设置原命令的键及适用版本。可信writer、原身份完全相等要求保持，底层writer仍需自己的资源期限。没有新增自动回执查询、换键、刷新版本、文件写入或持久队列。
+
+只有源码文档人工审阅，无新依赖/服务端/schema/迁移；未编译、类型检查、测试、执行CLI/SDK/Mock/API/数据库、实际上传或发布。HTTP表单/截止时间、错误详情隔离、嵌入返回值、真实持久结果与客户端兼容性仍缺运行证据。
+
 ## CLI 下载（源码阶段）
 
 `workctx artifacts download --json-file QUERY.json --output NEW_FILE` 或 `--json OBJECT` 只接收 artifact_id 和明确的正整数 version；查询最多 16 KiB。重复/额外参数、stdin、--key 和覆盖选项拒绝。--max-bytes 默认 64 MiB，可设 0–1 GiB；HTTP --timeout-ms 默认 180000，范围 1–2147483647，分别作用于元数据和内容请求，不是写盘超时。网络和嵌入 runWorkctx 共用流程；嵌入拒绝 HTTP 超时参数、要求可信 artifact.read 和未过期会话，清除继承键/版本。输出路径预检在网络请求前完成，父目录必须存在，目标不得已有文件、目录或链接。

@@ -8,8 +8,11 @@ import {
   ContractError,
   parseArtifactReceiptQuery,
   parseArtifactUploadEnvelope,
+  syncJsonSnapshot,
   type ArtifactReceiptQuery,
 } from '@planemem/contracts';
+
+export const ARTIFACT_UPLOAD_RESPONSE_BYTES = 4 * 1024 * 1024;
 
 export interface ArtifactUploadArguments {
   operation: ArtifactReceiptQuery['command']['operation'];
@@ -144,7 +147,11 @@ export function artifactUploadForm(original: ArtifactReceiptQuery, bytes: Uint8A
 
 export function artifactUploadResult(value: unknown, query: ArtifactReceiptQuery, trace: string) {
   try {
-    return parseArtifactUploadEnvelope(value, query, trace);
+    return parseArtifactUploadEnvelope(
+      JSON.parse(syncJsonSnapshot(value, ARTIFACT_UPLOAD_RESPONSE_BYTES)),
+      query,
+      trace,
+    );
   } catch {
     throw new ContractError(
       'GATEWAY_RESPONSE_INVALID',
@@ -154,23 +161,59 @@ export function artifactUploadResult(value: unknown, query: ArtifactReceiptQuery
   }
 }
 
-/** Failure of this attempt never disproves an earlier success with the same request. */
+const uploadFailureMessages: Record<string, string> = {
+  INVALID_INPUT:
+    'Gateway could not accept this original upload; retain the original and check its receipt',
+  UNAUTHENTICATED: 'Renew the matching session, then check the original artifact receipt',
+  DENIED: 'The current verified session cannot perform this upload; retain the original',
+  ARTIFACT_ACCESS_DENIED: 'The current account or client cannot upload this original',
+  ARTIFACT_NOT_FOUND: 'The original artifact target is unavailable in this project',
+  ARTIFACT_VERSION_NOT_FOUND: 'The original historical version is unavailable',
+  ARTIFACT_VERSION_CONFLICT:
+    'The original version could not be matched; keep it unchanged and check its receipt',
+  ARTIFACT_LEGACY_UNVERIFIED: 'The original target lacks a verified historical snapshot',
+  ARTIFACT_STORED_INVALID: 'Stored artifact metadata or receipt could not be verified',
+  ARTIFACT_STORAGE_UNAVAILABLE: 'Artifact storage is unavailable; retain the original request',
+  ARTIFACT_OBJECT_UNAVAILABLE:
+    'Artifact content storage is unavailable; retain the original request',
+  ARTIFACT_OBJECT_MISSING: 'Stored content is unavailable; retain the original request',
+  ARTIFACT_TOO_LARGE: 'The upload exceeds a gateway or storage limit; retain the original request',
+  ARTIFACT_HASH_MISMATCH:
+    'Content could not be matched to the original SHA-256; retain the original',
+  ARTIFACT_UPLOAD_BUSY: 'Artifact upload capacity is occupied; retain the original request',
+  IDEMPOTENCY_KEY_REUSED:
+    'The original key belongs to different parameters; recover the exact original',
+  WORKBENCH_AUTH_UNAVAILABLE: 'Gateway authentication is unavailable; retain the original request',
+  AUDIT_PERSISTENCE_UNAVAILABLE: 'The upload request audit could not be confirmed',
+  RATE_LIMITED: 'Gateway capacity is occupied; retain the original request',
+  GATEWAY_REQUEST_TIMEOUT:
+    'Stopped waiting after the upload deadline; the original outcome remains unconfirmed',
+  GATEWAY_REQUEST_CANCELED:
+    'Stopped waiting for the upload; the original outcome remains unconfirmed',
+  GATEWAY_RESPONSE_INVALID:
+    'The complete upload response could not be verified against the original',
+  GATEWAY_UNAVAILABLE: 'The gateway upload could not be confirmed',
+  ARTIFACT_UPLOAD_UNCONFIRMED: 'The original artifact upload could not be confirmed',
+};
+
+/** Call only after dispatch starts. This attempt never disproves earlier success with the same original. */
 export function artifactUploadUnconfirmed(error: unknown, trace: string): ContractError {
   const original = error instanceof ContractError ? error.envelope : undefined;
-  return new ContractError(
-    original?.code ?? 'ARTIFACT_UPLOAD_UNCONFIRMED',
-    original?.message ?? 'Artifact upload could not be confirmed',
-    {
-      trace_id: trace,
-      retryable: original?.retryable ?? false,
-      details: {
-        ...original?.details,
-        artifact_outcome: 'unconfirmed',
-        recovery:
-          'Keep the original request JSON and content. Query artifacts receipt with that JSON; do not change its identity, key or expected version.',
-      },
+  const code =
+    original?.trace_id === trace && Object.hasOwn(uploadFailureMessages, original.code)
+      ? original.code
+      : 'ARTIFACT_UPLOAD_UNCONFIRMED';
+  return new ContractError(code, uploadFailureMessages[code]!, {
+    trace_id: trace,
+    retryable: false,
+    details: {
+      artifact_outcome: 'unconfirmed',
+      upload_dispatch_state: 'started',
+      server_outcome: 'unknown',
+      recovery:
+        'Keep the original request JSON and content. Query artifacts receipt with that JSON; do not change its identity, key or expected version.',
     },
-  );
+  });
 }
 
 function integerOption(

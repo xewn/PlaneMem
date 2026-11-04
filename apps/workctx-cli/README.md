@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+网络 `artifacts create/put-version` 已改用FetchWcpTransport的bounded-json multipart路径，完整成功响应最多4 MiB、错误16 KiB，HTTP超时覆盖凭据/网络/逐块响应等待，完整结果解析后再次检查期限。共享结果解析对嵌入入口也施加4 MiB纯JSON限制；派发后错误只保留同trace有限错误码与固定消息，丢弃上游details/重试建议，固定retryable=false、artifact_outcome=unconfirmed和server_outcome=unknown。嵌入入口同时清除旧if_match；文件读取/原SHA预检和参数保持，没有给文件I/O或嵌入writer添加隐藏后台超时。详见 [上传响应限制](../../docs/design/01-contracts/artifact-persistence-runtime.md#cli-上传响应限制与未知结果源码阶段)，仅源码文档人工审阅，未编译、测试、执行或发布。
+
 网络 `artifacts download` 的历史元数据GET已改用2 MiB bounded-json，衔接SDK Fetch bytes新增的严格二进制媒体类型、完整长度、16 KiB错误上限及凭据/正文期限。原CLI参数、固定版本校验和文件保存流程保持；下载传输改动仅源码兼容审阅，未编译、测试或执行命令，详见 [下载期限与取消](../../docs/design/01-contracts/artifact-persistence-runtime.md#sdk-下载期限与取消源码阶段)。
 
 CLI `artifacts prepare` 与 SDK `prepareArtifactUpload` 现共用 `ArtifactUploadDraft/parseArtifactUploadDraft`，同样拒绝旧身份/键/内容描述符及未明确填写的追加版本。CLI仍独占保存并读回文件；SDK仅返回待保存原请求。共享调整仅源码文档，未编译、测试或执行命令。

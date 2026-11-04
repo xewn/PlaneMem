@@ -1,5 +1,7 @@
 # PlaneMem
 
+补齐 [命令行附件上传响应限制](docs/design/01-contracts/artifact-persistence-runtime.md#cli-上传响应限制与未知结果源码阶段)：上传通过有界传输读取完整回执，失败只给出固定信息并保持结果未确认；网络和嵌入入口均保留原请求用于回执查询。仅源码文档，未编译、测试、调用或发布。
+
 补齐 [SDK附件上传校验与取消](docs/design/01-contracts/artifact-persistence-runtime.md#sdk-原请求上传期限与取消源码阶段)：发送前固定原请求并核对文件摘要，上传支持超时取消和完整响应大小限制；发送后的异常保持结果未知，继续使用原请求查回执。仅源码文档，未编译、测试、调用或发布。
 
 新增 [SDK附件原请求离线核验](docs/design/01-contracts/artifact-persistence-runtime.md#sdk-原请求离线核验源码阶段)：重新读取保存的请求文本或字节，核对原身份、命令及可选文件内容，支持预期摘要比对；无需登录、不访问网络或文件，不改原请求键和版本。仅源码文档，未编译、测试、调用或发布。
