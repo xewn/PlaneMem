@@ -41,12 +41,13 @@ const client = new WcpClient(transport, {
 
 写入/回执/上传身份要求 write_artifacts；元数据读取要求 read_artifacts。实际记录操作还要求 project_readable；上传身份只描述会话，不证明项目存在或有未来写入资格。restricted 资料要求 read_restricted；创建时拒绝无权写入，读取/追加/重放时按当前可见资料核对。此版本不提供动态权限或删除模拟；来源引用只保存原文，不推导额外来源权限。
 
-## 八条路由
+## 九条路由
 
 | 路由 | 行为 |
 | --- | --- |
 | GET /v1/artifacts/upload-context | 返回模拟身份、到期时间、单次上传限制与读取能力 |
 | POST /v1/artifacts | multipart 创建 version 1 |
+| GET /v1/artifacts | 按名称和分类分页查找当前项目文件摘要 |
 | POST /v1/artifacts/{id}/versions | 原 If-Match 版本一致时追加一版 |
 | GET /v1/artifacts/{id} | 当前元数据与当前 ETag |
 | GET /v1/artifacts/{id}/versions | 固定上界的历史摘要目录，显式分页 |
@@ -54,9 +55,34 @@ const client = new WcpClient(transport, {
 | POST /v1/artifacts/receipt | 核对完整原上传请求，返回 recorded/not-observed |
 | GET /v1/artifacts/{id}/versions/{version}/content | 固定版本二进制内容与模拟释放记录 ID |
 
-现有 `getArtifactUploadContext/createArtifact/putArtifactVersion/getArtifact/getArtifactVersion/listArtifactVersions/getArtifactReceipt/downloadArtifactVersion` 可通过上述 transport 接线。上传身份专用方法默认30秒期限、支持取消、16 KiB响应限制，并核验完整身份/权限提示/到期时间，详见 [SDK上传身份读取](artifact-persistence-runtime.md#sdk-上传身份读取源码阶段)。下载只模拟进程内内容释放，不能用此实现宣称真实审计、网络传输或客户端收妥已完成。
+现有 `getArtifactUploadContext/createArtifact/putArtifactVersion/getArtifact/getArtifactVersion/listArtifacts/listArtifactVersions/getArtifactReceipt/downloadArtifactVersion` 可通过上述 transport 接线。上传身份专用方法默认30秒期限、支持取消、16 KiB响应限制，并核验完整身份/权限提示/到期时间，详见 [SDK上传身份读取](artifact-persistence-runtime.md#sdk-上传身份读取源码阶段)。下载只模拟进程内内容释放，不能用此实现宣称真实审计、网络传输或客户端收妥已完成。
 
-只有历史目录GET接受下述分页查询参数，其余路由继续拒绝查询参数；所有路由拒绝片段、原始控制字符、错误方法及多余写条件。GET 不接收正文。元数据/回执/目录支持 JSON/bounded-json 响应上限，内容路由必须使用 bytes；Mock 支持 AbortSignal，没有自动重试。
+只有历史目录GET和项目目录GET接受各自的分页/筛选查询参数，其余路由继续拒绝查询参数；所有路由拒绝片段、原始控制字符、错误方法及多余写条件。GET 不接收正文。元数据/回执/目录支持 JSON/bounded-json 响应上限，内容路由必须使用 bytes；Mock 支持 AbortSignal，没有自动重试。
+
+## 项目文件目录
+
+`GET /v1/artifacts`读取同一store既有上传形成的当前版本，与POST创建分别处理。`client.listArtifacts({query?,classification?,limit?,cursor?})`沿已有MockWcpServer配置接入，不增加构造参数、种子或导出类型。URL仅接受单值四字段，limit使用无前导零正安全整数；共享解析将名称去首尾空白，空串省略，长度最多255个JS字符；分类必须是明确枚举值，空串拒绝。默认20最多20，游标保持规范base64url；未知/重复字段、正文、写/缓存/范围条件、transfer-encoding及非零content-length均拒绝。
+
+只有项目目录GET路径上限扩至8192字符，以容纳Unicode名称的百分号编码；解码后的完整查询仍受8 KiB共享限制。其他路由保持512字符上限和原查询规则，创建POST不因此接受查询参数。读取要求固定模拟会话read_artifacts、project_readable和未过期，原范围及可选预期账号/客户端头必须匹配。默认列表排除无权读取的restricted记录；显式restricted筛选而无read_restricted返回ARTIFACT_ACCESS_DENIED。
+
+游标绑定与持久目录相同的artifact-registry-v1命名空间、五项原身份、read_restricted、规范名称/分类和limit，通过Web Crypto SHA-256计算。绑定字段不含正文或凭据；摘要不是签名或权限凭证，也不保证不同store的记录相同。完整next_query用于显式续页，改变账号/客户端/权限/筛选/页大小后旧游标拒绝，须移除cursor重读。仅ASCII A–Z折叠匹配名称字面子串，百分号和下划线不是通配符；分类精确匹配，在分页之前过滤。
+
+每个store独立最多两笔在途项目目录读取，覆盖异步绑定摘要至完整页准备，finally释放；SDK取消或本地期限到达不会提前释放仍等待摘要的名额。摘要不可用在transport报ARTIFACT_INTEGRITY_UNAVAILABLE，SDK按既有固定未知读取错误处理。完成摘要后重新检查取消/会话期限，再同步读取当前状态；扫描既有文件ID键，按C等价字符串倒序和游标排他位置挑选最多limit+1条可见匹配记录。存储仍沿全部上传最多1000条/64 MiB约束，不声明数据库级内存或性能保证。
+
+筛选只使用store自身已验证上传的字段；每条选中项及探测项再在2 MiB内复制元数据，核对完整契约、范围、ID及当前版本Map同一对象，解析16 KiB内摘要。生成has_more及完整next_query后，完整ArtifactRegistryEnvelope核验范围、trace、原查询、条数、ID顺序、筛选、来源和续页。封套最多256 KiB，且服从调用方更低响应限额；任何选中/探测记录无效均拒绝整页，不返回部分成功。
+
+```ts
+// 源码用法示例，未执行；文件来自同一store此前保存的上传。
+const page = await client.listArtifacts({ query: 'report', classification: 'internal', limit: 20 });
+// 只在明确选择下一页时调用，完整保留原筛选和位置。
+if (page.data.next_query) {
+  const next = await client.listArtifacts(page.data.next_query);
+}
+// 重新搜索时不携带旧cursor。
+const refreshed = await client.listArtifacts({ query: 'report', limit: 20 });
+```
+
+返回当前摘要和来源计数，content_state=not-checked；不读取内容字节、不计算正文hash、不返回ETag/存储键/上传回执，不写版本、回执或下载释放记录。结果与store脱离。各页读取当时当前状态，新文件或版本可能在续页前加入；不是固定历史上界或跨页快照。没有自动分页、下载、文件保存或状态恢复。仍不模拟删除、动态权限/分类、损坏/缺失快照种子、SQL锁、持久事务或真实审计；独立Schema/运行证据待补，未编译、类型检查、测试或调用Mock。
 
 ## 历史版本目录
 

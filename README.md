@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [项目文件目录 Mock](docs/design/01-contracts/artifact-mock-runtime.md#项目文件目录)：`listArtifacts` 可通过既有内存上传存储按名称、分类分页查找当前文件，续页绑定原身份、权限和筛选；仅返回摘要。仅源码文档，未编译、测试、运行 Mock 或发布。
+
 新增 [项目文件目录 CLI 与 MCP](docs/design/01-contracts/artifact-registry-runtime.md#命令行与-mcp源码阶段)：`artifacts list` 和 `list_artifacts` 支持按名称、分类查找文件，显式使用完整 `next_query` 读取下一页；沿用权限、响应大小与等待期限限制。仅源码文档，未编译、测试、执行或发布。
 
 新增 [工作台项目文件目录](docs/design/01-contracts/artifact-registry-runtime.md#工作台目录源码阶段)：`/artifacts/browse` 支持名称搜索、分类筛选和逐页浏览，可打开所见版本、当前详情及历史。下一页保留完整原查询，重新搜索回到第一页。仅源码文档，未编译、测试、渲染或发布。

@@ -65,7 +65,7 @@ if (selected) {
 
 取消或本地超时丢弃迟到结果，不能保证底层数据库工作停止。目录不会保存本地文件、获取对象正文、查询上传结果或修改原写请求。
 
-Mock项目目录入口、独立Schema/OpenAPI、性能与权限/并发/错误运行证据后续补齐；工作台及CLI/MCP源码接入见后续章节。不新增依赖或数据库schema，不编译、测试、运行服务、执行SQL/迁移或发布。
+独立Schema/OpenAPI、性能与权限/并发/错误运行证据后续补齐；工作台、CLI/MCP和Mock源码接入见后续章节。不新增依赖或数据库schema，不编译、测试、运行服务、执行SQL/迁移或发布。
 
 ## 工作台目录（源码阶段）
 
@@ -95,4 +95,12 @@ MCP新增`list_artifacts`，参数与共享查询相同，允许空对象首屏�
 
 成功需200、JSON、原trace响应头且无ETag，完整封套256 KiB，错误16 KiB且trace一致；共享解析完整核对范围/查询/摘要/ID顺序/筛选/续页。返回前再次核对身份期限和本地期限；返回单项文本JSON，MCP转义后content整体再限512 KiB+4096字节。失败只保留有限代码与固定消息、retryable=false、read_kind=registry、content_state=not-checked、upload_dispatch_state=not-sent，沿协议isError=true输出，不泄露上游message/details或返回部分目录。
 
-CLI/MCP不会自动翻页、下载正文、上传、查询原回执、写本地文件或恢复旧版，也没有新增资源URI。无服务端目录、数据库schema、迁移或依赖变化；仅源码文档人工审阅，未编译、类型检查、测试、执行CLI/MCP/SDK/API/数据库或发布。Mock目录、独立Schema/OpenAPI及运行证据待补，R-001保持未完成，evidence为空。
+CLI/MCP不会自动翻页、下载正文、上传、查询原回执、写本地文件或恢复旧版，也没有新增资源URI。无服务端目录、数据库schema、迁移或依赖变化；仅源码文档人工审阅，未编译、类型检查、测试、执行CLI/MCP/SDK/API/数据库或发布。独立Schema/OpenAPI及运行证据待补，Mock源码接入见下节，R-001保持未完成，evidence为空。
+
+## Mock目录接入（源码阶段）
+
+2026-11-04新增MockArtifactStore项目目录GET，既有MockWcpServer的artifacts配置可直接接SDK listArtifacts。只读同一store已上传的当前版本，固定模拟会话与共享范围/查询/分页规则，默认20最多20；名称ASCII字面子串、精确分类及可读权限在分页前过滤，完整next_query绑定原身份/受限能力/筛选/页大小。
+
+项目目录GET允许8192字符路径以容纳Unicode编码，内层查询8 KiB；其他路径仍限512。Web Crypto仅计算游标绑定，沿同一命名空间和字段顺序，摘要后再检查取消/到期并同步选择当前记录；每store独立最多两笔目录读取，底层摘要未结束仍占名额。当前与探测记录各先在2 MiB内复制并核对当前版本Map一致，摘要独立16 KiB、完整封套256 KiB及更低调用方限额；不读取正文、不增加版本/回执/释放记录或自动翻页。详见[Mock项目文件目录](artifact-mock-runtime.md#项目文件目录)。
+
+模拟数据仍从空store的实际模拟上传产生，没有缺失/损坏历史种子、动态权限/分类、真实数据库锁或持久审计；同形游标不证明不同store数据相同，当前分页不是跨页快照。只开发源码与文档，不运行SDK/Mock或测试，不编译、类型检查、执行API/数据库或发布。独立Schema/OpenAPI、真实服务兼容性及运行证据仍缺，R-001保持未完成且evidence为空。

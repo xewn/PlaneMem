@@ -2,10 +2,13 @@ import {
   ARTIFACT_DOWNLOAD_MAX_BYTES,
   ARTIFACT_UPLOAD_REQUEST_BYTES,
   ARTIFACT_VERSIONS_RESPONSE_BYTES,
+  ARTIFACT_REGISTRY_RESPONSE_BYTES,
   ContractError,
   assertArtifactReceiptIdentity,
   buildEtag,
   createUlid,
+  encodeArtifactRegistryCursor,
+  foldArtifactRegistryQuery,
   isUlid,
   parseArtifactCommandIdentity,
   parseArtifactDownloadHeaders,
@@ -16,16 +19,22 @@ import {
   parseArtifactReadQuery,
   parseArtifactReceiptEnvelope,
   parseArtifactReceiptQuery,
+  parseArtifactRegistryCursor,
+  parseArtifactRegistryEnvelope,
+  parseArtifactRegistryQuery,
   parseArtifactUploadContextEnvelope,
   parseArtifactUploadEnvelope,
   parseArtifactVersionsEnvelope,
   parseArtifactVersionsQuery,
+  parseArtifactVersionSummary,
   summarizeArtifactVersion,
   syncJsonSnapshot,
   type ArtifactCommandIdentity,
   type ArtifactDownloadQuery,
   type ArtifactMetadataView,
   type ArtifactReceiptQuery,
+  type ArtifactRegistryQuery,
+  type ArtifactRegistryItem,
   type ArtifactVersionsQuery,
 } from '@planemem/contracts';
 import type { WcpBinaryResponse, WcpRequest, WcpTransport } from './client.js';
@@ -125,6 +134,7 @@ export class MockArtifactStore {
   #bytes = 0;
   #activeUploads = 0;
   #activeDownloads = 0;
+  #activeRegistryReads = 0;
   #releaseBytes = 0;
 
   constructor(seed: MockArtifactSeed) {
@@ -443,6 +453,120 @@ export class MockArtifactStore {
     );
   }
 
+  private async listArtifacts(
+    query: ArtifactRegistryQuery & { limit: number },
+    session: MockArtifactSession,
+    trace: string,
+    live: () => void,
+  ) {
+    if (query.classification === 'restricted' && !session.read_restricted)
+      fail('ARTIFACT_ACCESS_DENIED', trace);
+    if (this.#activeRegistryReads >= 2) fail('RATE_LIMITED', trace);
+    this.#activeRegistryReads++;
+    try {
+      live();
+      // Keep the same binding as the persistent reader; this digest is not an authorization token.
+      const binding = JSON.stringify([
+        'artifact-registry-v1',
+        session.identity.tenant_id,
+        session.identity.workspace_id,
+        session.identity.project_id,
+        session.identity.actor_id,
+        session.identity.client_id,
+        session.read_restricted,
+        query.query ?? null,
+        query.classification ?? null,
+        query.limit,
+      ]);
+      let key: string;
+      try {
+        const digest = await globalThis.crypto.subtle.digest(
+          'SHA-256',
+          new TextEncoder().encode(binding),
+        );
+        key = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join(
+          '',
+        );
+      } catch {
+        live();
+        return fail('ARTIFACT_INTEGRITY_UNAVAILABLE', trace);
+      }
+      live();
+      const before = checked('INVALID_INPUT', trace, () => {
+        if (query.cursor === undefined) return undefined;
+        const cursor = parseArtifactRegistryCursor(query.cursor);
+        if (cursor.key !== key) throw new TypeError();
+        return cursor.artifact_id;
+      });
+      // No awaits while selecting a page. All filter fields come from this store's checked uploads.
+      // Only selected/lookahead records are fully copied; the store caps all saved versions at 1000.
+      const selected: ArtifactRegistryItem[] = [];
+      const search = query.query === undefined ? undefined : foldArtifactRegistryQuery(query.query);
+      const ids = Array.from(this.#artifacts.keys()).sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
+      for (const id of ids) {
+        if (before !== undefined && id >= before) continue;
+        const history = this.#artifacts.get(id)!;
+        const stored = history.current;
+        if (
+          (stored.metadata.classification === 'restricted' && !session.read_restricted) ||
+          (query.classification !== undefined &&
+            stored.metadata.classification !== query.classification) ||
+          (search !== undefined &&
+            !foldArtifactRegistryQuery(stored.metadata.name).includes(search))
+        )
+          continue;
+        const artifact = checked('ARTIFACT_STORED_INVALID', trace, () => {
+          const value = parseArtifactMetadataView(snapshot(stored.metadata, RESPONSE_BYTES));
+          if (
+            value.artifact_id !== id ||
+            value.tenant_id !== this.#scope.tenant_id ||
+            value.workspace_id !== this.#scope.workspace_id ||
+            value.project_id !== this.#scope.project_id ||
+            history.versions.get(value.version) !== stored
+          )
+            throw new TypeError();
+          return {
+            artifact_id: value.artifact_id,
+            ...parseArtifactVersionSummary(summarizeArtifactVersion(value)),
+          };
+        });
+        selected.push(artifact);
+        if (selected.length > query.limit) break;
+      }
+      const items = selected.slice(0, query.limit);
+      const hasMore = selected.length > query.limit;
+      const result = checked('ARTIFACT_STORED_INVALID', trace, () =>
+        parseArtifactRegistryEnvelope(
+          {
+            schema_version: 1,
+            trace_id: trace,
+            source_refs: items.map((item) => ({ type: 'artifact', id: item.artifact_id })),
+            data: {
+              ...this.#scope,
+              query,
+              items,
+              has_more: hasMore,
+              next_query: hasMore
+                ? {
+                    ...query,
+                    cursor: encodeArtifactRegistryCursor(key, items[items.length - 1]!.artifact_id),
+                  }
+                : null,
+              content_state: 'not-checked',
+            },
+          },
+          query,
+          this.#scope,
+          trace,
+        ),
+      );
+      live();
+      return result;
+    } finally {
+      this.#activeRegistryReads--;
+    }
+  }
+
   private async respond(raw: WcpRequest, session: MockArtifactSession): Promise<unknown> {
     // Capture every mutable request property before multipart parsing or hashing can yield.
     const { method, path, body, response_type, max_response_bytes, signal } = raw;
@@ -484,16 +608,37 @@ export class MockArtifactStore {
         fail('ARTIFACT_ACCESS_DENIED', trace);
     if (
       typeof path !== 'string' ||
-      path.length > 512 ||
+      path.length > 8192 ||
       path.includes('#') ||
       /[\u0000-\u001f\u007f]/.test(path)
     )
       fail('INVALID_INPUT', trace);
+    const registry = method === 'GET' ? /^\/v1\/artifacts(?:\?(.*))?$/.exec(path) : null;
+    if (!registry && path.length > 512) fail('INVALID_INPUT', trace);
     const directory =
       method === 'GET'
         ? /^\/v1\/artifacts\/([0-9A-HJKMNP-TV-Z]{26})\/versions(?:\?(.*))?$/.exec(path)
         : null;
-    if (path.includes('?') && !directory) fail('INVALID_INPUT', trace);
+    if (path.includes('?') && !directory && !registry) fail('INVALID_INPUT', trace);
+    const registryQuery = registry
+      ? checked('INVALID_INPUT', trace, () => {
+          const params = new URLSearchParams(registry[1] ?? '');
+          const input: Record<string, unknown> = {};
+          for (const [field, value] of params) {
+            if (
+              !['query', 'classification', 'limit', 'cursor'].includes(field) ||
+              params.getAll(field).length !== 1
+            )
+              throw new TypeError();
+            if (field === 'limit') {
+              if (!/^[1-9][0-9]{0,15}$/.test(value) || !Number.isSafeInteger(Number(value)))
+                throw new TypeError();
+              input[field] = Number(value);
+            } else input[field] = value;
+          }
+          return parseArtifactRegistryQuery(input);
+        })
+      : undefined;
     const versionsQuery = directory
       ? checked('INVALID_INPUT', trace, () => {
           const params = new URLSearchParams(directory[2] ?? '');
@@ -521,9 +666,9 @@ export class MockArtifactStore {
       /^\/v1\/artifacts\/([0-9A-HJKMNP-TV-Z]{26})\/versions\/([1-9][0-9]{0,15})\/content$/.exec(
         path,
       );
-    const upload = collection || (!!append && !directory);
+    const upload = (collection && !registry) || (!!append && !directory);
     if (
-      (!context && !receiptRoute && !upload && !read && !download && !directory) ||
+      (!context && !receiptRoute && !upload && !read && !download && !directory && !registry) ||
       method !== (upload || receiptRoute ? 'POST' : 'GET')
     )
       fail('MOCK_ROUTE_NOT_FOUND', trace);
@@ -543,7 +688,7 @@ export class MockArtifactStore {
     )
       fail('INVALID_INPUT', trace);
     if (
-      directory &&
+      (directory || registry) &&
       (headers.has('transfer-encoding') ||
         (headers.has('content-length') && headers.get('content-length') !== '0'))
     )
@@ -587,7 +732,14 @@ export class MockArtifactStore {
       const detached = checked('GATEWAY_RESPONSE_INVALID', trace, () =>
         snapshot(
           value,
-          Math.min(maximum, directory ? ARTIFACT_VERSIONS_RESPONSE_BYTES : RESPONSE_BYTES),
+          Math.min(
+            maximum,
+            registry
+              ? ARTIFACT_REGISTRY_RESPONSE_BYTES
+              : directory
+                ? ARTIFACT_VERSIONS_RESPONSE_BYTES
+                : RESPONSE_BYTES,
+          ),
         ),
       );
       live();
@@ -617,6 +769,7 @@ export class MockArtifactStore {
         ),
       );
     if (!session.project_readable) fail('ARTIFACT_NOT_FOUND', trace);
+    if (registryQuery) return finish(await this.listArtifacts(registryQuery, session, trace, live));
     if (versionsQuery) return finish(this.listVersions(versionsQuery, session, trace));
     if (read) {
       const query = checked('INVALID_INPUT', trace, () =>
