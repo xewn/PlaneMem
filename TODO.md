@@ -4,6 +4,8 @@
 
 ## 当前基线
 
+- **P0-01 CloudEvents 源码增量**：新增独立 CloudEvents 1.0 structured JSON 双向对象转换与 2020-12 Schema，覆盖默认 38 类 v1 事件，data 保留完整原 CanonicalEvent。显式绝对 URI 来源及反向预期来源精确核对，id/type/time/subject 与原事件绑定；完整 1 MiB 普通有限 JSON、64 层/100000 节点、有效 UTC 日历及 Unicode 标量检查，复制后返回，不修改旧消费者。新入口不执行传输/认证/持久化，也不是支持任意扩展或 binary/batch 的通用 CloudEvents SDK。结构化格式的 AsyncAPI/传输及 SDK/Mock 接线、完整 payload/WCP/MCP、破坏性差异 CI 与运行证据仍缺。P0-01/R-001 保持未完成、evidence 为空；只源码文档人工审阅/格式与 Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/事件/产品/API/数据库或发布。
+
 - **P0-01 源码增量**：新增 AsyncAPI 3.0.0 事件消息组件目录和默认 v1 Schema 目录，覆盖当前注册的 38 类事件，每类以同名 const 锚点复用完整封套与原删除/恢复约束；新增 events 包显式资源子路径。2020-12 Multi Format Schema 需要消费工具支持，本轮仅人工源码审阅，未执行生成器/校验器或运行兼容检查。目录未声明未实现的服务器、通道、总线或投递承诺；CloudEvents 标准封装、普通业务 payload 完整模型、完整 OpenAPI/MCP schema、SDK/Mock 与机器契约接线及破坏性差异 CI 仍缺。P0-01/R-001 保持未完成、evidence 为空；未编译、类型检查、测试、运行事件/产品/API/数据库或发布。
 
 - 执行约束（2026-11-05）：严格按本 TODO 的现有主项、完成条件及“推荐执行顺序”开发；每项新增工作明确关联 TODO 编号，源码进展与整项验收分开记录。仅开发源码和文档，每完成一个任务独立提交并推送 main；不编译、类型检查、测试、运行产品流程或发布。未覆盖全部完成条件的主项保持未勾选。
@@ -832,7 +834,7 @@
 
 ## P0：契约、事件和开发平台
 
-- [ ] **[P0-01][缺实现] 生成并发布 OpenAPI v1、AsyncAPI/CloudEvents v1 和 MCP schema。** 当前已有 JSON Schema，以及保存包目录、保存身份/历史回执的 OpenAPI 源码文件；本轮新增覆盖默认 38 类事件的 AsyncAPI 消息组件目录与逐类完整封套 Schema。完整 WCP 路径、普通事件业务 payload、实际通道/传输绑定、CloudEvents 标准封装和独立完整 MCP schema 仍缺；SDK/Mock 从机器契约派生或核对及破坏性差异 CI 尚未闭合，也未执行工具兼容验证或发布。完成条件保持：生成物进入版本控制，SDK/Mock/契约测试从生成物校验，CI 对破坏性变更失败；当前源码增量不作为验收完成。
+- [ ] **[P0-01][缺实现] 生成并发布 OpenAPI v1、AsyncAPI/CloudEvents v1 和 MCP schema。** 当前已有 JSON Schema，以及保存包目录、保存身份/历史回执的 OpenAPI 源码文件；新增覆盖默认 38 类事件的 AsyncAPI 消息组件目录与逐类完整封套 Schema，以及独立 CloudEvents 1.0 结构化双向对象转换和 Schema。完整 WCP 路径、普通事件业务 payload、实际通道/传输绑定、结构化 CloudEvents 的 AsyncAPI/消费者接线和独立完整 MCP schema 仍缺；SDK/Mock 从机器契约派生或核对及破坏性差异 CI 尚未闭合，也未执行工具兼容验证或发布。完成条件保持：生成物进入版本控制，SDK/Mock/契约测试从生成物校验，CI 对破坏性变更失败；当前源码增量不作为验收完成。
 - [ ] **[P0-02][缺实现] 扩充 `packages/sdk` 和 Mock Server 到完整 WCP 面。** SDK 已有会话、同步、冲突、上下文、建议、资料、观察目录及审计查询/导出等源码入口；Mock Server 保留 `POST /v1/projects` 并可选配置同步身份/变化分页/当前游标/显式确认四路由，共享内存流与按原身份隔离的确认，显式配置可见集合。另已补显式来源/会话能力开启的上传及原事件回执两路由，原批次/事件重放、客户端序号、来源/版本冲突、历史回执及同流下载；不修改来源字段或推断旧种子上传账本。建议 Mock 已补身份/创建/列表/详情/确认/拒绝及原创建回执查询七路由、原请求回执与显式来源场景。上传产生的冲突已接目录/详情/身份/解决/原决定回执，显式权限与原版本/键约束并追加同流历史；资料Mock另已补上传身份/创建/追加版本/当前与历史元数据/原上传回执和固定版本二进制下载七路由，显式导出配置、摘要校验与有界模拟释放记录。工作项Mock已补workbench.query的列表/详情两操作，固定数据集、显式权限/可见集合、组合筛选和独立续页；其余公开路由尚未覆盖，客户端兼容与错误/幂等/ETag 契约证据尚未逐项闭合。完成条件仍为所有公开路由的类型化 SDK、Mock 与契约证据；当前新增源码不作为测试通过或发布完成依据。
 - [ ] **[P0-03][缺实现] 接入真实 NATS JetStream 事件总线。** 当前 TypeScript 源码没有 NATS publisher/consumer，NATS 只出现在 Compose 和故障脚本中。完成条件：事件写入、消费、重放、积压指标和故障恢复均使用真实 NATS；内存路径只保留为离线 fixture。
 - [ ] **[P0-04][文档漂移] 修正计划计数和追踪状态。** `plan-audit` 当前报告 `task_files=38`、`expected_task_files=37`，而 `docs/traceability/requirements-matrix.yaml` 仍为 `status: planned`。完成条件：统一 38 个任务（含 T8.4）的计数、需求状态、ReadMe 勾选项和完成审计。

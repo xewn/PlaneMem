@@ -11,6 +11,26 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    canonical_cloudevent_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only CloudEvents 1.0 structured JSON profile and bidirectional object conversion; P0-01 and R-001 remain incomplete."
+      artifacts:
+        - "packages/events/src/cloudevents.ts"
+        - "packages/events/src/index.ts"
+        - "packages/events/schemas/canonical-cloudevent.json"
+        - "packages/events/package.json"
+        - "docs/design/01-contracts/canonical-cloudevents.md"
+      behavior: "Complete original CanonicalEvent in data for all 38 default v1 types. Explicit absolute ASCII URI source and exact expected source on decode; id/type/time/subject mapping equality. Detached closed envelopes, existing validation and deletion/restoration rules, strict calendar UTC with up to nine fractional digits, exact ID lengths, finite scalar-string JSON, complete 1 MiB/64-depth/100000-node limits and fixed nonretryable error envelopes."
+      boundaries: "Standalone object adapter only, no transport, authentication, publication, persistence or changes to legacy consumers. Not a general CloudEvents SDK: no extensions, binary or batch mode. Schema is structural and cannot prove cross-field equality, URL parsing, byte/depth limits, business authorization or source identity. No raw-text duplicate-key or precision recovery guarantee."
+      evidence: []
+      remaining_scope: "Structured-message AsyncAPI references and transport/consumer wiring; full business payload/WCP/MCP schemas, SDK/Mock machine-contract consumption, breaking-change CI, compatibility/runtime/release evidence."
+      pending_evidence:
+        - "All default v1 event round trips, original scope/source refs/trace/sensitivity preservation and caller mutation isolation"
+        - "Source and mirrored attribute mismatches, closed fields, unsupported types/versions, malformed URI and optional client ID rejection"
+        - "Calendar/leap-year/fractional UTC, exact ULID lengths, Unicode scalar strings and complete wrapper byte/depth/node boundaries"
+        - "Deletion/restoration semantics, local resource references, runtime/schema differences and standards/tool compatibility"
+      execution: "Source/docs manual review and formatting/Git text checks only; no build, typecheck, tests, validators, generators, event/product/API/database execution or release."
     canonical_event_asyncapi_development_increment:
       date: "2026-11-05"
       todo: "P0-01"

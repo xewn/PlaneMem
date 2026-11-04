@@ -46,7 +46,7 @@
 
 ## CloudEvents 与未完成项
 
-现有 CanonicalEvent 是项目自定义封套，使用 event_id/event_type/occurred_at 等字段；它没有 CloudEvents 1.0 的 specversion/id/source/type 封装，不使用 application/cloudevents+json。这里的 v1 指项目 schema_version=1，AsyncAPI 文档版本另为 3.0.0，两者也不代表已经发布。标准 CloudEvents 映射、双向转换和传输绑定仍属于 P0-01 后续范围，不能仅改媒体类型来宣称支持。
+现有 CanonicalEvent 是项目自定义封套，使用 event_id/event_type/occurred_at 等字段；本目录仍描述该裸封套，使用 application/json。新增独立 [CloudEvents 结构化配置](../../../docs/design/01-contracts/canonical-cloudevents.md)，提供双向转换和 `schemas/canonical-cloudevent.json`；完整 CanonicalEvent 位于其 data，外层才使用 application/cloudevents+json。这里的 v1 指项目 schema_version=1，CloudEvents specversion 为 1.0，AsyncAPI 文档版本另为 3.0.0，都不代表已经发布。结构化消息的 AsyncAPI 引用、真实通道和传输接线仍属于后续范围，不能仅改本目录媒体类型来宣称已接入。
 
 P0-01 还缺完整 WCP OpenAPI、完整业务 payload 模型、独立完整 MCP schema、SDK/Mock 从机器契约派生或核对的接线、破坏性差异 CI 和运行兼容证据。P0-03 的真实总线另行开发，本目录没有虚构其 subject、持久订阅、重试或 ACK 语义。
 

@@ -13,6 +13,7 @@
     "./schemas/work-item-deleted.json": "./schemas/work-item-deleted.json",
     "./schemas/work-item-restored.json": "./schemas/work-item-restored.json",
     "./schemas/canonical-v1-catalog.json": "./schemas/canonical-v1-catalog.json",
+    "./schemas/canonical-cloudevent.json": "./schemas/canonical-cloudevent.json",
     "./asyncapi/canonical-events.json": "./asyncapi/canonical-events.json"
   },
   "type": "module",

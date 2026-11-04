@@ -15,6 +15,7 @@
 - [SDK 审计查询 Mock](audit-mock-runtime.md)
 - [SDK 管理快照 Mock](admin-mock-runtime.md)
 - [Canonical Event v1 AsyncAPI 消息目录](../../../packages/events/asyncapi/README.md)
+- [CanonicalEvent 的 CloudEvents 结构化配置](canonical-cloudevents.md)
 - [SDK 上下文历史与版本 Mock](context-history-mock-runtime.md)
 - [浏览器历史同步回执完整备份与恢复](sync-browser-receipts-backup-runtime.md)
 - [浏览器原同步查询完整备份与恢复](sync-browser-originals-backup-runtime.md)
