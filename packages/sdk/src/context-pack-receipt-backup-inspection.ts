@@ -19,6 +19,7 @@ import {
   type PackSaveBinding,
 } from '@planemem/contracts';
 import { createRequestBudget, type RequestBudget } from './request-budget.js';
+import { captureContextBackupBytes, contextBackupSha256 } from './context-pack-backup-local.js';
 
 export interface WcpContextPackReceiptBackupInspectionOptions {
   /** Local inspection trace; embedded observations keep their original traces. */
@@ -143,30 +144,6 @@ function settingsFor(input: WcpContextPackReceiptBackupInspectionOptions) {
   }
 }
 
-function captureBytes(input: string | Uint8Array): Uint8Array<ArrayBuffer> {
-  let bytes: Uint8Array<ArrayBuffer>;
-  if (typeof input === 'string') {
-    if (!input || input.length > PACK_RECEIPT_BACKUP_FILE_BYTES || /[\p{Cs}]/u.test(input))
-      throw new TypeError();
-    bytes = new TextEncoder().encode(input);
-  } else {
-    if (!(input instanceof Uint8Array)) throw new TypeError();
-    const prototype: object = Object.getPrototypeOf(Uint8Array.prototype);
-    const buffer: unknown = Object.getOwnPropertyDescriptor(prototype, 'buffer')!.get!.call(input);
-    const size: number = Object.getOwnPropertyDescriptor(prototype, 'byteLength')!.get!.call(input);
-    const offset: number = Object.getOwnPropertyDescriptor(prototype, 'byteOffset')!.get!.call(
-      input,
-    );
-    if (!(buffer instanceof ArrayBuffer) || !size || size > PACK_RECEIPT_BACKUP_FILE_BYTES)
-      throw new TypeError();
-    // Copy native slots, including Buffer slices, without invoking a custom iterator.
-    bytes = new Uint8Array(size);
-    bytes.set(new Uint8Array(buffer, offset, size));
-  }
-  if (!bytes.byteLength || bytes.byteLength > PACK_RECEIPT_BACKUP_FILE_BYTES) throw new TypeError();
-  return bytes;
-}
-
 function captureFiles(inputs: readonly (string | Uint8Array)[], check: () => void) {
   if (!Array.isArray(inputs) || inputs.length < 1 || inputs.length > PACK_RECEIPT_MAX_VOLUMES + 1)
     throw new TypeError();
@@ -180,7 +157,7 @@ function captureFiles(inputs: readonly (string | Uint8Array)[], check: () => voi
     check();
     const field = Object.getOwnPropertyDescriptor(inputs, String(index));
     if (!field || !Object.hasOwn(field, 'value')) throw new TypeError();
-    const bytes = captureBytes(field.value);
+    const bytes = captureContextBackupBytes(field.value, PACK_RECEIPT_BACKUP_FILE_BYTES);
     totalBytes += bytes.byteLength;
     if (totalBytes > PACK_RECEIPT_VOLUMES_SET_BYTES) throw new TypeError();
     const parsed: unknown = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
@@ -240,20 +217,14 @@ function captureFiles(inputs: readonly (string | Uint8Array)[], check: () => voi
 
 async function verifyHash(raw: string, expected: string, budget: RequestBudget, trace: string) {
   budget.check();
-  let digest: ArrayBuffer;
+  let actual: string;
   try {
-    if (typeof globalThis.crypto?.subtle?.digest !== 'function') throw new TypeError();
-    const bytes = new TextEncoder().encode(raw);
-    digest = await budget.wait(() => globalThis.crypto.subtle.digest('SHA-256', bytes));
-    if (!(digest instanceof ArrayBuffer) || digest.byteLength !== 32) throw new TypeError();
+    actual = await contextBackupSha256(raw, budget);
   } catch {
     budget.check();
     throw fail('CONTEXT_BACKUP_INTEGRITY_UNAVAILABLE', trace);
   }
   budget.check();
-  const actual = Array.from(new Uint8Array(digest), (byte) =>
-    byte.toString(16).padStart(2, '0'),
-  ).join('');
   if (actual !== expected) throw fail('CONTEXT_BACKUP_DIGEST_MISMATCH', trace);
 }
 

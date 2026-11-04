@@ -1153,3 +1153,33 @@ workctx context inspect-backup --backup-file volume-2.json --backup-file manifes
 成功stdout为本地schema_version/trace_id/source_refs:[]，data保留locally-valid、完整binding/binding_state、根document_sha256、input_files/input_bytes、observations及completeness。contents.kind=single携带backup_file；kind=volumes携带manifest_file和清单顺序的volume_files，均为完整规范文件对象，不重复SDK的raw字符串。local_inputs按参数顺序列出绝对path、实际file_bytes/file_sha256；提供绑定文件时matched_binding_file记录其路径/实际字节摘要。既有观察时间、原请求键、内嵌trace和回执内容保持。
 
 CLI数据明确storage_access=file-read-only、browser_history_access=not-performed、restore_state=not-started，不继承SDK的未访问存储声明；identity_state=not-authenticated、server_outcome/content_state=not-checked、save_dispatch_state=not-sent。成功退出0，用法错误2，文件/绑定/摘要/核验/超时错误1；固定错误不含输入正文、无部分成功输出。核验不查询原保存状态，不给出重新发送或恢复授权。批量离线核验已补源码；备份构造/拆分/导出、流式集合及运行证据仍待补，R-003未完成、evidence为空。仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行CLI/SDK/文件工作流/浏览器/API/数据库或发布。
+
+## SDK历史备份构造（2026-11-05源码增量）
+
+SDK根新增prepareContextPackReceiptBackup(observationFiles, options)，从调用方已有的完整历史观察文件准备既有Web备份格式。options要求trace_id、完整原binding及format=single|volumes，不推断当前账号、网关或输出格式；空数组也需完整binding。single最多100份观察，volumes最多1000份；超过所选上限整批拒绝，不自动升级格式、截断或丢弃重复。
+
+输入为稠密数组，元素为JSON文本或UTF-8 Uint8Array，支持混合类型和Node Buffer切片。每份不超过32 KiB、共享document不超过28 KiB、保留节点/深度上限；数组数量自然限制输入原字节总量为single 3.125 MiB或volumes 31.25 MiB。不接受访问器/稀疏项/额外数组字段，共享缓冲或孤立代理文本；严格UTF-8、允许BOM。所有文件在首次await前复制并完整解析、绑定与原文/回执自洽性核对；参数、输入数组或字节后续变化不改变准备对象。
+
+每份观察规范document的SHA-256必须与其已存摘要相等。重复document摘要明确拒绝，包括同一文件以不同空白/BOM输入，不隐式去重；相同请求键的不同观察（例如时间或查询结果不同）只要摘要不同且合法就全部保留，不替换not-observed或recorded。按摘要严格字典序排序，不依赖输入顺序或区域排序，不改观察时间、Gateway、五字段身份、restricted、请求键、预算、回执trace或来源。
+
+所有观察核验完成后，single构造一份既有context-pack-save-history-backup；volumes按100条切分，最后一卷为剩余，空输入生成一空卷。逐卷核对共享文档及文件预算、计算规范document摘要，再生成具有连续卷号/精确数量/各卷摘要的既有manifest。分卷最多10，格式/版本不变；每卷4 MiB document/4 MiB+1 KiB file，清单31 KiB document/32 KiB file，节点或字节超限拒绝整次准备，不返回已生成的部分卷。与网页相同输入的规范文件内容不依赖本次本地trace或输入顺序。
+
+成功返回schema_version/trace_id/source_refs:[]，data.status=prepared-not-saved，contents与离线核验入口相同：single含backup，volumes含collection（清单file/raw及有序volumes）。data另含独立binding、根document_sha256、input_files/input_bytes、observations及output_files/output_bytes；输出字节数是全部规范raw的UTF-8总量，包括清单，不是内存对象或外层结果JSON大小。输出字符串可由宿主另行显式保存，随后交CLI/SDK或网页既有核验入口；此函数不执行保存或恢复。
+
+下列仅为未执行的调用示意，observationJson及observationBytes必须是已有完整观察文件，不能只给摘要或原请求：
+
+```ts
+import { prepareContextPackReceiptBackup } from '@planemem/sdk';
+
+const prepared = await prepareContextPackReceiptBackup([observationJson, observationBytes], {
+  trace_id: 'prepare-local-history-backup',
+  binding: originalBinding,
+  format: 'volumes',
+  signal: controller.signal,
+});
+// prepared.data.contents holds complete canonical files; nothing has been saved.
+```
+
+输入与输出只覆盖调用方提供的观察，completeness固定supplied-observations-only，不能声明完整浏览器/服务器历史、共同存储快照或记录最新状态。空输入也只表示此次没有提供观察。身份及服务器/内容未认证或检查、保存未发送、storage_access=not-performed；不访问网络、凭据、文件、IndexedDB，不生成新观察时间。
+
+抽取SDK备份核验的有界字节复制和WebCrypto SHA-256为context-pack-backup-local内部helper，保留原inspect的输入及错误语义。新准备默认30秒整笔本地时限，可选timeout_ms/signal，覆盖复制解析、每观察摘要、分卷生成和最终输出规模计算；同步工作只能在检查点响应，异步摘要可停止等待，迟到结果不交付。固定错误区分输入/重复/绑定/摘要/能力不可用/取消/超时/构造预算失败，无部分输出。CLI批量构造/导出、更大或流式集合及运行证据仍待补；R-003未完成、evidence为空，仅源码人工审阅/格式文本检查，未编译、类型检查、测试、执行SDK/文件工作流/API/数据库或发布。

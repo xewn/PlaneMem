@@ -168,6 +168,11 @@ export {
   type WcpContextPackReceiptBackupContents,
   type WcpInspectedContextPackReceiptBackup,
 } from './context-pack-receipt-backup-inspection.js';
+export {
+  prepareContextPackReceiptBackup,
+  type WcpContextPackReceiptBackupPreparationOptions,
+  type WcpPreparedContextPackReceiptBackup,
+} from './context-pack-receipt-backup-preparation.js';
 export type {
   PackReceiptBackupDocument,
   PackReceiptBackupFile,

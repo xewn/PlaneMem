@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-05：新增独立`prepareContextPackReceiptBackup(observationFiles, { trace_id, binding, format, timeout_ms?, signal? })`，格式必填single或volumes，binding为原完整身份且空集合也必填。接受0–100/1000份已保存观察的JSON文本或UTF-8字节，逐份32 KiB及共享结构/摘要/绑定核验，重复摘要整批拒绝；按摘要排序，每100条一卷，保留同键不同观察，空分卷仍生成一空卷加清单。返回prepared-not-saved及完整规范文件/raw、根摘要、输入输出规模，文件与网页/CLI核验入口互通；只保证所提供观察范围，不推断全库历史。默认30秒可取消，无凭据/网络/文件读写/浏览器库访问，也不修改观察时间或触发原保存。详见[SDK历史备份构造](../../docs/design/01-contracts/context-pack-runtime.md#sdk历史备份构造2026-11-05源码增量)。仅源码文档，未编译、类型检查、测试、执行SDK或发布。
+
 2026-11-05：新增独立`inspectContextPackReceiptBackup(files, options)`离线入口。files为1–11个JSON文本或UTF-8 Uint8Array组成的数组；一份视为既有100条备份，多份必须恰好包含清单及其全部分卷（最多1000条/10卷）。共享contracts格式与网页互通，核验每层SHA-256、完整绑定、数量/连续卷号/跨卷严格顺序，返回完整规范候选。options必填trace_id，可选expected_binding、expected_document_sha256（单份document或分卷manifest document的摘要）、timeout_ms（默认30秒）、signal；不创建WcpClient，不需凭据，不访问网络/文件/IndexedDB。`data.contents.kind`为single或volumes；单份只证明提供文件的内部一致性，整套完整性仅相对提供清单；均不认证身份、确认服务器状态或执行恢复。详见[SDK历史备份离线核验](../../docs/design/01-contracts/context-pack-runtime.md#sdk历史备份离线核验2026-11-05源码增量)。仅源码文档，未编译、类型检查、测试、执行SDK/API或发布。
 
 2026-11-05：MockContextPackStore及原MockWcpServer的context_packs接线新增`getContextPackSaveReceipt`支持。须显式配置compilations，空数组表示可观察的空历史；未知键/pending返回not-observed，saved/已激活按原五字段身份、restricted桶和预算TTL核对后返回recorded。历史只读预先提取的标量，不读正文/hash、不检查包当前到期/来源、不激活保存；不完整或不可见记录仍拒绝。独立两笔容量/30秒/signal和完整16 KiB或较小响应限额。详见[原保存请求历史回执](../../docs/design/01-contracts/context-pack-mock-runtime.md#原保存请求历史回执2026-11-05源码增量)。仅源码文档，未编译、类型检查、测试、执行Mock/SDK/API或发布。
