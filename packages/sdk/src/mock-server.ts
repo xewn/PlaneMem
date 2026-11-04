@@ -1,6 +1,7 @@
 import { ContractError, type ProjectEntity, validateEntity } from '@planemem/contracts';
 import type { WcpRequest, WcpTransport } from './client.js';
 import type { MockWorkItemSession, MockWorkItemStore } from './mock-work-items.js';
+import { isMockAuditRequest, type MockAuditSession, type MockAuditStore } from './mock-audit.js';
 import {
   isMockContextPackPath,
   type MockContextPackSession,
@@ -32,6 +33,7 @@ export interface MockWcpServerOptions {
   work_items?: { store: MockWorkItemStore; session: MockWorkItemSession };
   context_history?: { store: MockContextHistoryStore; session: MockContextHistorySession };
   context_packs?: { store: MockContextPackStore; session: MockContextPackSession };
+  audit?: { store: MockAuditStore; session: MockAuditSession };
 }
 
 export class MockWcpServer implements WcpTransport {
@@ -42,6 +44,7 @@ export class MockWcpServer implements WcpTransport {
   private readonly workItems: WcpTransport | undefined;
   private readonly contextHistory: WcpTransport | undefined;
   private readonly contextPacks: WcpTransport | undefined;
+  private readonly audit: WcpTransport | undefined;
 
   constructor(private readonly options: MockWcpServerOptions = {}) {
     this.sync = options.sync?.store.connect(options.sync.session);
@@ -50,10 +53,12 @@ export class MockWcpServer implements WcpTransport {
     this.workItems = options.work_items?.store.connect(options.work_items.session);
     this.contextHistory = options.context_history?.store.connect(options.context_history.session);
     this.contextPacks = options.context_packs?.store.connect(options.context_packs.session);
+    this.audit = options.audit?.store.connect(options.audit.session);
   }
 
   async request<T = unknown>(request: WcpRequest): Promise<T> {
     this.options.onRequest?.(request);
+    if (this.audit && isMockAuditRequest(request)) return this.audit.request<T>(request);
     if (this.contextPacks && isMockContextPackPath(request.path))
       return this.contextPacks.request<T>(request);
     if (

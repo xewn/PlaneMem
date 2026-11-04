@@ -63,6 +63,12 @@ available 来源显示完整类型/ID/版本；只有 type=audit 且 ID 为合�
 
 原未接入的 Export JSON、Redact、Copy JSON 按钮已移除，Open trace 改为真实查询链接。后续增量已接入独立的 [单条审计视图导出](audit-export-runtime.md)：明确审阅、固定范围/摘要、重新授权与持久放行后准备 JSON，再独立请求保存；省略内容不补取。复制/脱敏、全量原文导出、稳定历史快照、观察 outbox/补偿和客户端回执仍待后续开发。
 
+## SDK 审计查询 Mock（2026-11-05 源码增量）
+
+新增独立 `MockAuditStore`，通过 `MockWcpServer` 可选 `audit` 配置接入原 `listAuditRecords`，覆盖本契约的精确筛选、ID 定位、微秒排序和游标分页。显式模拟数据集及可见范围，保留字段可用性和原字节数；完整输出仍经共享封套解析。此增量覆盖历史记录中的审计查询 Mock 缺口，导出放行 Mock 仍未提供。详见[审计 Mock 契约](audit-mock-runtime.md)。
+
+Mock 为满足现有解析器保留外层 `postgres/wcp_audit_records` 来源字面量，这只是模拟协议投影，不证明实际读取 PostgreSQL、完成真实认证或写入持久审计。游标绑定包含 store、完整身份、到期和显式可见集合，不能与生产游标互换。未编译、类型检查、测试、运行 Mock/SDK/HTTP/数据库或发布，R-007 不因此完成。
+
 ## 会话关联增量
 
 session_id 作为参数化 SQL 精确条件，在排序和 201 条预读之前与原项目/权限/其他条件取交集；完整响应解析逐行核对该字段。null 不匹配具体会话，没有“无会话”或模糊关联查询。SDK listAuditRecords、CLI audit list 和 MCP list_audit_records 使用同一字段；CLI/MCP get 仍只接受 audit_id。无需新增依赖或迁移，查询计划与大项目成本尚无运行证据。

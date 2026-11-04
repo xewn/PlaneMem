@@ -5264,6 +5264,27 @@ requirements:
     statement: "Tenant, workspace, project, work-item, client, and tool permissions are enforced and audited."
     design: ["governance-plane", "tool-capabilities"]
     subprojects: ["P6"]
+    audit_mock_development_increment:
+      date: "2026-11-05"
+      status: "Source-only SDK audit query Mock; no runtime evidence and R-007 remains incomplete."
+      artifacts:
+        - "packages/sdk/src/mock-audit.ts"
+        - "packages/sdk/src/mock-server.ts"
+        - "packages/sdk/src/index.ts"
+        - "packages/sdk/README.md"
+        - "docs/design/01-contracts/audit-mock-runtime.md"
+        - "docs/design/01-contracts/workbench-audit-runtime.md"
+      behavior: "Immutable single-project 1000-record/16 MiB seed and explicit simulated identity, expiry, project/audit/restricted permissions and visible IDs. Existing SDK exact audit filters and ID lookup; visibility before 200+1 pagination ordered by UTC microseconds and audit ID descending. Cursor binds store, identity, expiry, permissions, visible IDs and all filters. Complete bounded responses preserve too-large placeholders and original byte counts; two store-wide slots, 30-second local deadline and signal, retaining capacity until underlying hashing settles."
+      limitations: "The shared protocol requires postgres/wcp_audit_records source literals; these are simulated projections, not evidence of PostgreSQL reads or durable audit. Mock cursors are not production cursors, signatures or credentials. No audit export release, audit append, real authentication, HTTP server, database, schema or dependency changes."
+      remaining_scope: "Audit export Mock, real HTTP/authentication/durable persistence and compatibility/runtime evidence remain incomplete."
+      evidence: []
+      pending_evidence:
+        - "Immutable seed/session/output isolation, finite JSON boundaries and duplicate ID rejection"
+        - "Explicit scope, actor/client equality, expiry, audit capability and restricted/visible-ID intersection"
+        - "All five exact filters, empty exact-ID matches, 200+1 lookahead, microsecond/ID ordering and cross-context cursor rejection"
+        - "Too-large placeholders and original byte counts, full envelope limits, canceled late hashes retaining both slots"
+        - "Audit dispatch alongside work-items/context history and complete SDK listAuditRecords compatibility"
+        - "No build, typecheck, tests, SDK/Mock/HTTP/database execution or release performed"
     workbench_audit_development_increment:
       date: "2026-11-02"
       status: "Source-only exact audit lookup and linked record navigation; no runtime evidence."

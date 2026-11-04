@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [SDK 审计查询 Mock](docs/design/01-contracts/audit-mock-runtime.md)：显式配置审计记录及模拟权限后，可通过原 SDK 精确筛选、按审计 ID 定位和游标翻页；保留超大字段占位及原始字节数。仅源码文档，未编译、测试、运行 Mock 或发布。
+
 新增 [网页历史备份双侧比较](docs/design/01-contracts/context-pack-runtime.md#web历史备份双侧比较2026-11-05源码增量)：历史页可选择左右两套备份，查看共有/独有观察和原请求冲突，按请求键筛选、分页浏览并下载完整报告；失败或更换文件时保留先前报告。仅源码文档，未编译、测试、渲染、运行浏览器或发布。
 
 新增 [CLI历史备份双侧比较](docs/design/01-contracts/context-pack-runtime.md#cli历史备份双侧比较2026-11-05源码增量)：`context compare-backups` 可只读比较两套本地单份或分卷备份，输出完整差异、原请求冲突及两侧输入文件摘要，无需登录或联网。仅源码文档，未编译、测试、执行CLI或发布。
