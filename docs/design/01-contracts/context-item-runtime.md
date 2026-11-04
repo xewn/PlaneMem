@@ -1,5 +1,17 @@
 # ContextItem 录入与编辑开发说明
 
+## 2026-11-04 Web对比差异筛选增量
+
+/context/history/compare增加Display选择和Show all/Changes only切换链接，默认全部内容。URL仅增加单值show=all|changes；省略或显式all都规范为默认，空值、其他值及重复参数在读取前报错。此字段与history参数分开解析，不传给Gateway或共享比较查询，也不进入返回浏览页的过滤条件。历史页的比较选择表单也可直接选择显示模式。
+
+Changes only过滤未变的十项属性/九项历史记录字段，隐藏完全未变的正文、来源和确认区段；比较摘要、版本链接与读取信息始终保留。显示独立历史记录变化数，正文/属性/来源/确认均相同则明确说明历史信息仍可能不同，不将“无内容差异”误报成两个快照完全相同。字段组没有变化时显示提示，不输出空表；切回Show all可查看匹配值。变化标记始终取共享模型，文本空白、JSON对象键序、数组顺序/重复及缺省/null/空串语义保持，不做截断、模糊差异或推断来源状态。
+
+摘要提供只指向当前可见区段的本页跳转链接，历史信息始终可达；目标可接收键盘焦点，局部样式允许区段/版本/模式链接换行并标记当前显示方式，原完整值滚动和窄屏两列堆叠保持。切换模式、重新选择版本、反向及失败重试均保留原history before/version和已验证return链，原from/to只在明确反向或重新选择时改变。返回历史或结果使用原页面地址，不将比较显示字段带入其他页面。
+
+显示切换是显式GET导航，版本链接prefetch关闭；会按当前会话重新读取相同指定两版，仍沿既有总30秒/完整响应/SHA-256核对后再筛选呈现。区段锚点仅在当前页定位。失败不展示局部比较，重试保留显示模式；未完整选择版本时只预填表单，不隐式读取最新版本。没有新增客户端存储、外部来源访问、写操作、SDK/CLI/MCP/共享契约/Gateway/数据库/schema/依赖变化。
+
+仅源码文档人工审阅及格式文本检查，未编译、类型检查、测试、渲染、浏览器/API/数据库运行或发布。差异筛选、重复URL、返回/反向/重试、焦点与窄屏实际表现仍待运行证据；R-003未完成，evidence为空。
+
 ## 2026-11-04 SDK历史按需分页增量
 
 新增WcpClient.contextHistoryPages(itemId, query?, options?)，返回AsyncGenerator<WcpEnvelope<ContextItemHistoryPage>, void, unknown>；options为WcpContextHistoryPagesOptions，沿timeout_ms/signal并增加max_pages。创建时同步捕获合法普通平面字段及完整项目/actor/client上下文；actor与client均必填，在每页请求携带同一相等约束，服务端才负责验证实际身份。单页listContextItemHistory的可选身份规则保持。创建时输入/选项错误同步抛INVALID_INPUT，合法可选undefined仍省略；没有读取、计时器或后台预取。

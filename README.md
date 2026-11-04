@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [上下文对比差异筛选](docs/design/01-contracts/context-item-runtime.md)：网页可切换“只看变化”，快速跳转正文、来源、确认与记录信息，反向对比和重试保留显示方式与原版本。仅源码文档，未编译、测试、渲染或发布。
+
 新增 [SDK 上下文历史逐页浏览](docs/design/01-contracts/context-item-runtime.md)：按需读取下一页，固定原条目与身份，支持逐页超时、取消和页数上限，不预取或自动保存。仅源码文档，未编译、测试、运行或发布。
 
 新增 [上下文历史 Mock](docs/design/01-contracts/context-history-mock-runtime.md)：可配置固定历史快照与模拟读取权限，支持 SDK 历史分页、指定版本和双版本比较，保留版本缺口并核对保存摘要。仅源码文档，未编译、测试、运行或发布。

@@ -1977,6 +1977,22 @@ button:disabled {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
   gap: 16px;
 }
+.context-comparison-section {
+  margin-top: 16px;
+  scroll-margin-top: 16px;
+}
+.context-comparison-section .heading-actions {
+  flex-wrap: wrap;
+}
+.context-comparison-section a[aria-current='page'] {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.context-comparison-section:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 4px;
+}
 .context-comparison-values > div {
   min-width: 0;
 }

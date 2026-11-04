@@ -24,6 +24,8 @@ export interface ContextComparisonNavigation {
   history: ContextHistoryNavigation;
   from_version?: number;
   to_version?: number;
+  /** Omitted means show all fields and values. */
+  show?: 'changes';
 }
 
 const browseFields = [
@@ -192,8 +194,10 @@ export function contextHistoryHref(navigation: ContextHistoryNavigation): string
 export function parseContextComparisonParams(
   params: ContextSearchParams,
 ): ContextComparisonNavigation {
-  singleValues(params, ['item', 'before', 'version', 'return_to', 'from', 'to']);
-  const { from, to, ...historyParams } = params;
+  singleValues(params, ['item', 'before', 'version', 'return_to', 'from', 'to', 'show']);
+  const { from, to, show, ...historyParams } = params;
+  if (show !== undefined && show !== 'all' && show !== 'changes')
+    throw new Error('Choose all comparison fields or changes only.');
   const history = parseContextHistoryParams(historyParams);
   const from_version = positive(from);
   const to_version = positive(to);
@@ -201,6 +205,7 @@ export function parseContextComparisonParams(
     history,
     ...(from_version === undefined ? {} : { from_version }),
     ...(to_version === undefined ? {} : { to_version }),
+    ...(show === 'changes' ? { show: 'changes' as const } : {}),
   };
 }
 
@@ -214,6 +219,11 @@ export function contextComparisonHref(navigation: ContextComparisonNavigation): 
     if (!Number.isSafeInteger(value) || value < 1)
       throw new Error('Choose a positive history version.');
     search.set(field, String(value));
+  }
+  if (navigation.show !== undefined) {
+    if (navigation.show !== 'changes')
+      throw new Error('Choose all comparison fields or changes only.');
+    search.set('show', navigation.show);
   }
   return '/context/history/compare?' + search.toString();
 }

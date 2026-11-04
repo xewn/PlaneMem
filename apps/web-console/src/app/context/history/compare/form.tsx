@@ -65,6 +65,11 @@ export function ContextComparisonForm({
           required
         />
       )}
+      <label htmlFor="context-compare-show">Display</label>
+      <select id="context-compare-show" name="show" defaultValue={navigation.show ?? 'all'}>
+        <option value="all">All fields and content</option>
+        <option value="changes">Changes only</option>
+      </select>
       <p className="muted">
         Choose two different recorded versions. Their order is kept; neither selection changes to
         the latest version.
