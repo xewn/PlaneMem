@@ -11,6 +11,28 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    cli_mcp_artifact_project_registry_development_increment:
+      date: "2026-11-04"
+      status: "Source-only CLI and MCP project file directory; R-001 remains incomplete."
+      artifacts:
+        - "apps/workctx-cli/src/artifact-queries.ts"
+        - "apps/workctx-cli/src/main.ts"
+        - "apps/workctx-cli/src/cli.ts"
+        - "apps/api-gateway/src/mcp/artifact-registry.ts"
+        - "apps/api-gateway/src/mcp/catalog.ts"
+        - "apps/api-gateway/src/mcp/protocol.ts"
+        - "packages/sdk/src/artifact-reads.ts"
+        - "docs/design/01-contracts/artifact-registry-runtime.md"
+        - "docs/design/01-contracts/mcp-runtime.md"
+        - "docs/design/01-contracts/mcp-interface.md"
+      behavior: "Add artifacts list and list_artifacts using the existing name/classification query, default/max twenty and complete next_query. CLI network/embedded paths reuse SDK listArtifacts with 8 KiB input, 256 KiB success and the existing default 30-second deadline; retain stable file and bounded network stdin inputs, reject key/output/repeated flags, and validate embedded authority/path/headers/body/limits. MCP discovery, preparation and dedicated execution require verified unexpired actual artifact.read; restricted filters/items require restricted-read. Retain two active reads per gateway until underlying completion, bound local waiting to 30 seconds, success/errors to 256/16 KiB and escaped output separately, then validate full scope/trace/query/order/filter/continuation. Clear inherited write conditions and sanitize errors; add registry-specific SDK messages without changing other read kinds. No auto-pagination, content access, upload, receipt read or file write."
+      evidence: []
+      pending_evidence:
+        - "CLI network/embedded/direct routing, empty query, complete continuation, stable file/stdin bounds and invalid flags"
+        - "MCP discovery/direct permissions, restricted classification, expiry, retained capacity after timeout and bounded errors"
+        - "Full trace/scope/query/filter/order/next_query binding, escaped output and unchanged historical/metadata/receipt paths"
+      remaining_scope: "Mock registry integration, standalone schema/OpenAPI and runtime evidence. File/stdin waits precede the CLI read deadline; local timeout cannot stop underlying router/database work. Current pages are not a cross-page snapshot."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/MCP/SDK/API/database execution or release. No directory-server, dependency or database schema change."
     web_artifact_project_registry_development_increment:
       date: "2026-11-04"
       status: "Source-only workbench project file directory; R-001 remains incomplete."
@@ -28,7 +50,7 @@ requirements:
         - "URL duplicates/unknowns, filter normalization, invalid cursor recovery and complete next_query navigation"
         - "Explicit first-page reload, session/project changes, authorization and bounded response/deadline failures"
         - "Saved/current/history links, absence of prefetch, accessible responsive forms and browser rendering"
-      remaining_scope: "CLI/MCP/Mock registry integration, standalone schema/OpenAPI and runtime/browser evidence. Pages do not form a cross-page snapshot or establish content availability or write authorization."
+      remaining_scope: "Mock registry integration, standalone schema/OpenAPI and runtime/browser evidence; CLI/MCP source integration is recorded separately. Pages do not form a cross-page snapshot or establish content availability or write authorization."
       execution: "Source/docs and manual review only; no build, typecheck, tests, browser rendering, SDK/product/API/database execution or release. No server directory, dependency or database schema change."
     artifact_project_registry_development_increment:
       date: "2026-11-04"
@@ -51,7 +73,7 @@ requirements:
         - "Scoped SQL locks, bounded JSON projections, timestamp conversion, legacy/corrupt snapshots and lookahead validation"
         - "Literal Unicode/ASCII search, classification visibility, canonical cursor identity/filter/permission binding and concurrent changes"
         - "HTTP/SDK routing, explicit configuration, response bounds, cancellation and preserved historical/metadata behavior"
-      remaining_scope: "CLI/MCP/Mock registry integration, standalone schema/OpenAPI, performance and runtime/concurrency/storage evidence; workbench source integration is recorded separately. Current registry pages are not a cross-page snapshot, content verification or write authorization."
+      remaining_scope: "Mock registry integration, standalone schema/OpenAPI, performance and runtime/concurrency/storage evidence; workbench and CLI/MCP source integration are recorded separately. Current registry pages are not a cross-page snapshot, content verification or write authorization."
       execution: "Source/docs and manual review only; no build, typecheck, tests, SDK/product/API/SQL/database/migration execution or release. No dependency or database schema change."
     artifact_versions_schema_development_increment:
       date: "2026-11-04"

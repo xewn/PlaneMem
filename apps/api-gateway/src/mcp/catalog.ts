@@ -17,6 +17,7 @@ import { isCheckpointTool, prepareCheckpointTool } from './checkpoint.js';
 import { isResumeTool, prepareResumeTool } from './resume.js';
 import { isArtifactReadTool } from './artifact-read.js';
 import { canReadArtifactVersionsTool, prepareArtifactVersionsTool } from './artifact-versions.js';
+import { canReadArtifactRegistryTool, prepareArtifactRegistryTool } from './artifact-registry.js';
 import { isAuditTool, canUseAuditTool, prepareAuditTool } from './audit.js';
 import { canUseAdminSnapshot, prepareAdminSnapshot } from './admin.js';
 import { prepareSessionRegistry } from './session-registry.js';
@@ -563,6 +564,35 @@ const definitions: ToolDefinition[] = [
     '/v1/artifacts/{artifact_id}/versions/{version}',
     { artifact_id: ulid, version },
     ['artifact_id', 'version'],
+  ),
+  tool(
+    'list_artifacts',
+    'Find one page of current file metadata summaries in the authorized project, descending by file ID. Optional name query is a trimmed literal substring ignoring ASCII case only; classification is an exact filter. Defaults to 20, at most 20. Pass the complete next_query unchanged for another explicit call; restart without a cursor when filters, page size or identity change. Each page uses current visibility and is not a cross-page snapshot. Requires a verified unexpired client with actual artifact.read. Open a listed saved version with get_artifact_version. No automatic paging, content, storage addresses, upload receipt or write precondition; content remains not-checked.',
+    ['artifact.read'],
+    'GET',
+    '/v1/artifacts',
+    {
+      query: {
+        type: 'string',
+        maxLength: 255,
+        description:
+          'Literal name substring, trimmed; empty means no name filter. No wildcard expansion; controls and lone surrogates are rejected.',
+      },
+      classification: {
+        type: 'string',
+        enum: ['public', 'internal', 'confidential', 'restricted'],
+        description:
+          'Omit for all readable classifications; restricted requires data.restricted.read.',
+      },
+      limit: { type: 'integer', minimum: 1, maximum: 20, default: 20 },
+      cursor: {
+        type: 'string',
+        minLength: 1,
+        maxLength: 256,
+        pattern: '^[A-Za-z0-9_-]+$',
+        description: 'Use the complete next_query to retain the original filters and page size.',
+      },
+    },
   ),
   tool(
     'list_artifact_versions',
@@ -1668,6 +1698,7 @@ export function listMcpTools(context: RequestContext) {
         (entry.name !== 'download_artifact_version' || canDownloadArtifactTool(context)) &&
         (!isArtifactReadTool(entry.name) || context.capability.includes('artifact.read')) &&
         (entry.name !== 'list_artifact_versions' || canReadArtifactVersionsTool(context)) &&
+        (entry.name !== 'list_artifacts' || canReadArtifactRegistryTool(context)) &&
         (entry.name !== 'get_artifact_receipt' ||
           (context.authenticated_client === true &&
             context.capability.includes('artifact.write'))) &&
@@ -1732,6 +1763,7 @@ export function mcpToolRequiresClient(name: unknown): boolean {
     name === 'get_artifact_receipt' ||
     name === 'get_artifact_upload_context' ||
     name === 'list_artifact_versions' ||
+    name === 'list_artifacts' ||
     name === 'prepare_artifact_upload' ||
     name === 'get_conflict_receipt' ||
     name === 'get_proposal_create_receipt' ||
@@ -1754,6 +1786,7 @@ export function prepareMcpTool(
   if (isSyncReadTool(name)) return prepareSyncReadTool(name, raw, context);
   if (name === 'get_artifact_upload_context') return prepareArtifactUploadContextTool(raw, context);
   if (name === 'list_artifact_versions') return prepareArtifactVersionsTool(raw, context);
+  if (name === 'list_artifacts') return prepareArtifactRegistryTool(raw, context);
   if (name === 'prepare_artifact_upload') {
     if (!canReadArtifactUploadContext(context))
       throw new ContractError('DENIED', 'A verified unexpired artifact writer is required', {

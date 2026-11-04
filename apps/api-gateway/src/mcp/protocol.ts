@@ -15,6 +15,7 @@ import { conflictRegistryToolResult } from './conflict-registry.js';
 import { conflictReceiptToolResult } from './conflict-receipt.js';
 import { isArtifactReadTool, artifactReadToolResult } from './artifact-read.js';
 import { executeArtifactVersionsTool } from './artifact-versions.js';
+import { executeArtifactRegistryTool } from './artifact-registry.js';
 import { isAuditTool, executeAuditTool } from './audit.js';
 import { executeAdminSnapshot } from './admin.js';
 import { isSyncReadTool, executeSyncReadTool } from './sync-reads.js';
@@ -181,6 +182,10 @@ export async function dispatchMcp(
           }
           if (params.name === 'list_artifact_versions') {
             result = await executeArtifactVersionsTool(api, params.arguments ?? {}, context);
+            break;
+          }
+          if (params.name === 'list_artifacts') {
+            result = await executeArtifactRegistryTool(api, params.arguments ?? {}, context);
             break;
           }
           if (params.name === 'prepare_artifact_upload') {

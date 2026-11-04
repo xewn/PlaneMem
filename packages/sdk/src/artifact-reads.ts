@@ -55,8 +55,24 @@ const messages: Record<string, string> = {
   GATEWAY_UNAVAILABLE: 'Artifact metadata or receipt could not be read',
 };
 type ReadKind = 'metadata' | 'receipt' | 'versions' | 'registry';
+const registryMessages: Record<string, string> = {
+  INVALID_INPUT:
+    'Supply valid file filters, page settings and timeout/signal options. Preserve complete next_query for continuation, or restart without a cursor when scope, identity, permissions or filters change',
+  ARTIFACT_ACCESS_DENIED: 'The current account or client cannot read the selected project files',
+  ARTIFACT_NOT_FOUND: 'The project is unavailable to this account',
+  ARTIFACT_LEGACY_UNVERIFIED: 'The selected files lack a verified metadata snapshot',
+  ARTIFACT_STORED_INVALID: 'Stored project file directory records could not be verified',
+  ARTIFACT_STORAGE_UNAVAILABLE: 'Project file directory storage is unavailable',
+  GATEWAY_REQUEST_CANCELED: 'Stopped waiting for the project file directory',
+  GATEWAY_REQUEST_TIMEOUT: 'Project file directory reading exceeded the local deadline',
+  GATEWAY_UNAVAILABLE: 'The project file directory could not be read',
+};
 function failure(code: string, trace: string, kind: ReadKind) {
-  return new ContractError(code, messages[code]!, {
+  const message =
+    kind === 'registry' && Object.hasOwn(registryMessages, code)
+      ? registryMessages[code]!
+      : messages[code]!;
+  return new ContractError(code, message, {
     trace_id: trace,
     retryable: false,
     details: {

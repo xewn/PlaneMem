@@ -65,7 +65,7 @@ if (selected) {
 
 取消或本地超时丢弃迟到结果，不能保证底层数据库工作停止。目录不会保存本地文件、获取对象正文、查询上传结果或修改原写请求。
 
-CLI/MCP/Mock项目目录入口、独立Schema/OpenAPI、性能与权限/并发/错误运行证据后续补齐；工作台源码接入见下节。不新增依赖或数据库schema，不编译、测试、运行服务、执行SQL/迁移或发布。
+Mock项目目录入口、独立Schema/OpenAPI、性能与权限/并发/错误运行证据后续补齐；工作台及CLI/MCP源码接入见后续章节。不新增依赖或数据库schema，不编译、测试、运行服务、执行SQL/迁移或发布。
 
 ## 工作台目录（源码阶段）
 
@@ -78,3 +78,21 @@ CLI/MCP/Mock项目目录入口、独立Schema/OpenAPI、性能与权限/并发/�
 页面显示实际返回的项目和筛选、当页数量、名称/版本、分类、类型、字节数、来源数量及保存时间；数量不是项目总数。名称链接打开所见保存版本，另提供当前详情和截至所见版本的历史，均新标签页且关闭预取。元数据摘要不代表正文可用或可导出，内容需在详情页另行请求。明确说明按文件ID倒序、每页只反映当次可见记录，不能作为跨页快照；租户、工作区和本次trace收在读取信息中。
 
 该增量无新服务端目录协议、数据库schema、依赖或浏览器持久存储，不写文件/上传回执，也不修改任何原写请求。仅源码文档与人工审阅；未编译、类型检查、测试、浏览器渲染、执行SDK/产品/API/数据库或发布。R-001仍未完成，浏览器行为、无缓存重读、权限与错误呈现、响应边界及无预取行为尚无运行证据。
+
+## 命令行与 MCP（源码阶段）
+
+2026-11-04新增`workctx artifacts list --json-file QUERY.json [--timeout-ms 30000]`。也可用`--json '{}'`读取首屏，两种JSON来源必须且只能提供一种；没有隐式读取整个项目的模式。输入是共享`ArtifactRegistryQuery`，仅允许query/classification/limit/cursor，全部可选；名称去首尾空白、空串省略，分类必须为明确枚举值，不能传空分类。默认20最多20，输入最多8 KiB；未知字段、无效游标、重复参数、`--key`、`--output`及外层`--limit`均拒绝。
+
+文件读取沿既有稳定常规文件检查和严格UTF-8，网络`--json -`使用有界stdin；嵌入runWorkctx不读取进程stdin。文件与stdin读取在查询预算前完成，不宣称这些等待可取消。主命令入口、网络callGateway与嵌入均经artifact-queries复用SDK listArtifacts，完整成功响应256 KiB，HTTP错误16 KiB，默认30秒本地期限，可显式--timeout-ms 1..2147483647。registry失败现在有独立固定提示：项目不可见、目录存储/期限异常、保留完整next_query或去掉cursor重读；其他读取类别的错误文案和所有错误码保持。
+
+嵌入入口先复制可信上下文，清除继承的idempotency_key/expected_version/if_match，派发前后检查已验证、未过期且具有实际artifact.read。SDK产生的GET、规范URL、无正文、范围/trace头与256 KiB限制必须匹配预先捕获的查询，再调用artifact.registry.list；SDK最终核对完整scope/trace/query/排序/筛选/next_query。网络HTTP与嵌入使用相同返回契约，但本地超时不能保证路由或数据库操作停止。
+
+成功stdout为完整`ArtifactRegistryEnvelope`，不附本地保存包装。下一次将data.next_query完整对象作为查询，不只复制cursor或传整个响应；next_query=null表示当次条件下没有更多可见结果。变更原账号/客户端/范围/权限/筛选/页大小需移除cursor重新读取首屏。目录按ID倒序且各页反映当时当前记录，不能证明全项目一致快照。摘要里的artifact_id和version可交给`artifacts version`明确读取所见版本；目录自身不获取正文、保存文件或授予写条件。
+
+MCP新增`list_artifacts`，参数与共享查询相同，允许空对象首屏查询。目录schema说明名称长度、分类、页大小及游标形状，实际完整解析仍校验8 KiB输入和规范游标。工具发现、prepareMcpTool和专用执行器均检查schema_version=1、完整可信范围/账号/客户端、有效trace、authenticated_client=true、有效令牌及实际artifact.read；admin不替代。显式restricted分类还需data.restricted.read，返回项再核对该权限。最终工具名沿HTTP已验证客户端检查，普通MCP正文限额保持，无大正文扩容资格。
+
+专用执行器首次异步前捕获查询/身份，清除继承写条件；内部ApiGateway通过固定GET /v1/artifacts及body中的查询字段路由，公开HTTP仍使用URL参数。每个ApiGateway独立最多两笔项目目录读取，与历史目录各自计数；固定30秒单调本地等待，超时返回后底层工作继续占槽直到实际结束。没有自动重试、共享全进程容量或对底层数据库的取消保证。
+
+成功需200、JSON、原trace响应头且无ETag，完整封套256 KiB，错误16 KiB且trace一致；共享解析完整核对范围/查询/摘要/ID顺序/筛选/续页。返回前再次核对身份期限和本地期限；返回单项文本JSON，MCP转义后content整体再限512 KiB+4096字节。失败只保留有限代码与固定消息、retryable=false、read_kind=registry、content_state=not-checked、upload_dispatch_state=not-sent，沿协议isError=true输出，不泄露上游message/details或返回部分目录。
+
+CLI/MCP不会自动翻页、下载正文、上传、查询原回执、写本地文件或恢复旧版，也没有新增资源URI。无服务端目录、数据库schema、迁移或依赖变化；仅源码文档人工审阅，未编译、类型检查、测试、执行CLI/MCP/SDK/API/数据库或发布。Mock目录、独立Schema/OpenAPI及运行证据待补，R-001保持未完成，evidence为空。

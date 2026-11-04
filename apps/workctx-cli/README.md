@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+2026-11-04：新增 `artifacts list --json-file QUERY.json [--timeout-ms 30000]`，也可用 `--json '{}'` 读取首屏；网络入口支持有界 `--json -`，嵌入入口不读stdin。查询`{query?, classification?, limit?, cursor?}`最多8 KiB，名称按字面子串与ASCII大小写规则匹配，分类精确，默认20最多20条。下一页原样传入`data.next_query`；改变筛选/页大小/身份/权限后需去掉cursor重读。网络与嵌入均复用SDK listArtifacts的完整响应校验、256 KiB上限及默认30秒期限；拒绝key/output/重复参数，不自动翻页、下载或保存。文件ID倒序目录只反映各页当前可见性，选定记录后可用`artifacts version`读取所见版本，详见 [项目目录客户端](../../docs/design/01-contracts/artifact-registry-runtime.md#命令行与-mcp源码阶段)。仅源码文档人工审阅，未编译、测试、执行命令或发布。
+
 2026-11-04：新增 `artifacts versions --json-file QUERY.json [--timeout-ms 30000]`，也可用 `--json`（网络入口支持有界 `--json -`；嵌入入口不读stdin）。查询JSON为`{artifact_id, limit?, at_version?, before_version?}`，最多4 KiB；默认10最多20条，下一页原样使用返回的`data.next_query`，不把整个响应或单独before_version当查询。网络和嵌入复用SDK listArtifactVersions，完整成功256 KiB、默认30秒，嵌入要求有效已验证reader。拒绝`--key/--output`、重复/额外选项，不自动翻页或读取正文。选定版本后另行调用`artifacts version`或下载流程，详见 [版本目录客户端](../../docs/design/01-contracts/artifact-versions-runtime.md#命令行与-mcp源码阶段)。仅源码文档人工审阅，未编译、测试、执行命令或发布。
 
 2026-11-04：回执文件解析已与工作台及新增SDK `inspectArtifactReceipt`共用contracts的`parseSavedArtifactReceipt`和4 MiB上限；仍使用现有裸WCP封套、稳定文件读取与Node摘要，参数、输出和本地保存流程保持。独立SDK调用可额外约束实际/规范回执SHA-256，详见 [共享解析](../../docs/design/01-contracts/artifact-persistence-runtime.md#sdk-原回执离线核验与共享解析源码阶段)。仅源码文档人工审阅，未执行命令或测试。

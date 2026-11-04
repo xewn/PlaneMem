@@ -3,9 +3,11 @@ import { parseArgs } from 'node:util';
 import {
   ARTIFACT_UPLOAD_REQUEST_BYTES,
   ARTIFACT_VERSIONS_RESPONSE_BYTES,
+  ARTIFACT_REGISTRY_RESPONSE_BYTES,
   ContractError,
   assertArtifactReceiptIdentity,
   parseArtifactVersionsQuery,
+  parseArtifactRegistryQuery,
   syncJsonSnapshot,
   type ArtifactReadQuery,
   type ArtifactReceiptQuery,
@@ -22,6 +24,7 @@ type Scope = { tenant_id: string; workspace_id: string; project_id: string };
 type Query =
   | { kind: 'metadata'; query: ArtifactReadQuery }
   | { kind: 'versions'; query: ReturnType<typeof parseArtifactVersionsQuery> }
+  | { kind: 'registry'; query: ReturnType<typeof parseArtifactRegistryQuery> }
   | { kind: 'receipt'; query: ArtifactReceiptQuery };
 interface Options {
   base: string;
@@ -36,15 +39,23 @@ export function isArtifactQueryCommand(command: string) {
   return (
     isArtifactReadCommand(command) ||
     command === 'artifacts receipt' ||
+    command === 'artifacts list' ||
     command === 'artifacts versions'
   );
 }
 function invalid(trace: string) {
   return new ContractError(
     'USAGE_ERROR',
-    'Use artifacts get/version/versions/receipt with one --json or --json-file and optional --timeout-ms (1..2147483647). Only receipt accepts --output NEW_FILE; no --key or repeated options. Metadata/version query JSON is limited to 4 KiB and original receipt JSON to 1 MiB. Preserve the complete next_query for another version page and keep saved originals unchanged.',
+    'Use artifacts get/version/versions/list/receipt with one --json or --json-file and optional --timeout-ms (1..2147483647). Only receipt accepts --output NEW_FILE; no --key or repeated options. Metadata/version query JSON is limited to 4 KiB, file directory query JSON to 8 KiB and original receipt JSON to 1 MiB. Preserve the complete next_query for another directory page and keep saved originals unchanged.',
     { trace_id: trace, retryable: false },
   );
+}
+function queryBytes(command: string) {
+  return command === 'artifacts receipt'
+    ? ARTIFACT_UPLOAD_REQUEST_BYTES
+    : command === 'artifacts list'
+      ? 8192
+      : 4096;
 }
 function prepare(
   command: string,
@@ -55,12 +66,14 @@ function prepare(
 ): Query {
   try {
     if (!isArtifactQueryCommand(command) || key !== undefined) throw new TypeError();
-    const maximum = command === 'artifacts receipt' ? ARTIFACT_UPLOAD_REQUEST_BYTES : 4096;
+    const maximum = queryBytes(command);
     const snapshot: unknown = JSON.parse(syncJsonSnapshot(input, maximum));
     if (command === 'artifacts receipt')
       return { kind: 'receipt', query: prepareArtifactReceipt(snapshot, scope, trace) };
     if (command === 'artifacts versions')
       return { kind: 'versions', query: parseArtifactVersionsQuery(snapshot) };
+    if (command === 'artifacts list')
+      return { kind: 'registry', query: parseArtifactRegistryQuery(snapshot) };
     const query = prepareArtifactRead(command, snapshot, trace);
     if (!query) throw new TypeError();
     return { kind: 'metadata', query };
@@ -122,7 +135,7 @@ async function readArguments(argv: string[], scope: Scope, trace: string, allowS
       timeout_ms > 2147483647
     )
       throw new TypeError();
-    const maximum = command === 'artifacts receipt' ? ARTIFACT_UPLOAD_REQUEST_BYTES : 4096;
+    const maximum = queryBytes(command);
     let text: string;
     if (file !== undefined || raw === '-') {
       const bytes =
@@ -142,6 +155,7 @@ async function readArguments(argv: string[], scope: Scope, trace: string, allowS
 function execute(client: WcpClient, target: Query, timeout_ms: number) {
   if (target.kind === 'receipt') return client.getArtifactReceipt(target.query, { timeout_ms });
   if (target.kind === 'versions') return client.listArtifactVersions(target.query, { timeout_ms });
+  if (target.kind === 'registry') return client.listArtifacts(target.query, { timeout_ms });
   return target.query.version === undefined
     ? client.getArtifact(target.query.artifact_id, { timeout_ms })
     : client.getArtifactVersion(target.query.artifact_id, target.query.version, { timeout_ms });
@@ -271,9 +285,11 @@ export async function runArtifactQuery(
       ? '/v1/artifacts/receipt'
       : target.kind === 'versions'
         ? versionsPath(target.query)
-        : '/v1/artifacts/' +
-          encodeURIComponent(target.query.artifact_id) +
-          (target.query.version === undefined ? '' : '/versions/' + target.query.version);
+        : target.kind === 'registry'
+          ? registryPath(target.query)
+          : '/v1/artifacts/' +
+            encodeURIComponent(target.query.artifact_id) +
+            (target.query.version === undefined ? '' : '/versions/' + target.query.version);
   const body =
     target.kind === 'receipt'
       ? syncJsonSnapshot(target.query, ARTIFACT_UPLOAD_REQUEST_BYTES)
@@ -288,7 +304,9 @@ export async function runArtifactQuery(
         request.max_response_bytes !==
           (target.kind === 'versions'
             ? ARTIFACT_VERSIONS_RESPONSE_BYTES
-            : (target.kind === 'receipt' ? 4 : 2) * 1024 * 1024) ||
+            : target.kind === 'registry'
+              ? ARTIFACT_REGISTRY_RESPONSE_BYTES
+              : (target.kind === 'receipt' ? 4 : 2) * 1024 * 1024) ||
         Object.keys(request.headers).length !== Object.keys(headers).length ||
         Object.entries(headers).some(([key, value]) => request.headers[key] !== value) ||
         (body === undefined
@@ -306,11 +324,13 @@ export async function runArtifactQuery(
             ? 'artifact.receipt'
             : target.kind === 'versions'
               ? 'artifact.versions.list'
-              : target.query.version === undefined
-                ? 'artifact.read'
-                : 'artifact.version.read',
+              : target.kind === 'registry'
+                ? 'artifact.registry.list'
+                : target.query.version === undefined
+                  ? 'artifact.read'
+                  : 'artifact.version.read',
         input:
-          target.kind === 'versions'
+          target.kind === 'versions' || target.kind === 'registry'
             ? { ...target.query }
             : target.kind === 'metadata'
               ? {
@@ -343,4 +363,12 @@ function versionsPath(query: ReturnType<typeof parseArtifactVersionsQuery>) {
   return (
     '/v1/artifacts/' + encodeURIComponent(query.artifact_id) + '/versions?' + parameters.toString()
   );
+}
+
+function registryPath(query: ReturnType<typeof parseArtifactRegistryQuery>) {
+  const parameters = new URLSearchParams({ limit: String(query.limit) });
+  if (query.query !== undefined) parameters.set('query', query.query);
+  if (query.classification !== undefined) parameters.set('classification', query.classification);
+  if (query.cursor !== undefined) parameters.set('cursor', query.cursor);
+  return '/v1/artifacts?' + parameters.toString();
 }
