@@ -11,6 +11,22 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    mock_artifact_versions_development_increment:
+      date: "2026-11-04"
+      status: "Source-only Mock artifact version directory; R-001 remains incomplete."
+      artifacts:
+        - "packages/sdk/src/mock-artifacts.ts"
+        - "packages/sdk/README.md"
+        - "docs/design/01-contracts/artifact-mock-runtime.md"
+        - "docs/design/01-contracts/artifact-versions-runtime.md"
+      behavior: "Route GET artifact versions separately from POST append in the existing Mock store and automatically expose it through MockWcpServer. Only this GET accepts strict single-value limit/at_version/before_version parameters; default ten, maximum twenty, preserve complete anchored continuation. Require fixed simulated scope/identity, read/project/current visibility and selected/lookahead classification access. Bound and validate current and selected historical metadata before summary projection, validate the full shared envelope, honor the 256 KiB or smaller caller response bound, and recheck cancellation/expiry before returning detached data. Read no object bytes, compute no content hash and modify no versions, receipts or download release records."
+      evidence: []
+      pending_evidence:
+        - "SDK/Mock route parity, defaults and continuation during append, empty/final pages and malformed or duplicate query rejection"
+        - "Read-only sessions, scope/identity/project/classification denial, selected/lookahead metadata validation and response bounds"
+        - "Cancellation/expiry, detached return data, unchanged POST append and absence of content or state side effects"
+      remaining_scope: "Independent schema artifacts, runtime evidence, missing/corrupt history seeds, dynamic visibility/classification, persistent state, actual SQL locks, authentication and audit. Mock history remains limited to the existing bounded upload store."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, SDK/Mock/CLI/product/API/SQL/database execution or release. No production-server, dependency or database schema change."
     web_artifact_versions_development_increment:
       date: "2026-11-04"
       status: "Source-only workbench historical artifact directory; R-001 remains incomplete."
@@ -26,7 +42,7 @@ requirements:
         - "Strict duplicate/unknown/unsafe query rejection, empty and anchored pages, complete continuation and explicit latest refresh"
         - "Authenticated scope, trace/ETag/body limits, malformed/slow responses and fixed error states"
         - "Accessible history navigation and exact-version links without background reads or draft loss"
-      remaining_scope: "Mock directory integration, independent schema artifacts and runtime/browser evidence. A version ceiling is not a cross-page transaction, proof of complete history, content verification or a write precondition."
+      remaining_scope: "Independent schema artifacts and runtime/browser evidence; Mock source integration is recorded separately. A version ceiling is not a cross-page transaction, proof of complete history, content verification or a write precondition."
       execution: "Source/docs and manual review only; no builds, typechecks, tests, browser rendering, SDK/CLI/Mock/product/API/database execution or release. No server-directory, dependency or database schema change."
     artifact_versions_clients_development_increment:
       date: "2026-11-04"
@@ -45,7 +61,7 @@ requirements:
         - "CLI network/embedded routing, defaults/continuation, file/stdin bounds and invalid flags or incomplete pagination"
         - "MCP discovery/call authorization, expiry, capacity retention, deadline and fixed bounded errors"
         - "Complete trace/query/scope/order/continuation validation and unchanged old metadata/receipt commands"
-      remaining_scope: "Mock directory integration, schema generation and runtime evidence; workbench source integration is recorded separately. File/stdin waits precede the CLI read deadline; local timeout cannot cancel underlying router/database activity."
+      remaining_scope: "Schema generation and runtime evidence; workbench/Mock source integration is recorded separately. File/stdin waits precede the CLI read deadline; local timeout cannot cancel underlying router/database activity."
       execution: "Source/docs and manual review only; no build, typecheck, tests, CLI/MCP/SDK/API/database execution or release. No directory-server, database schema or dependency change."
     artifact_versions_directory_development_increment:
       date: "2026-11-04"
@@ -64,7 +80,7 @@ requirements:
         - "Current/historical visibility, classification denial, missing/oversized/corrupt snapshots and lookahead validation"
         - "Anchored continuation during append, sparse stored histories, empty pages, boundaries and malformed/duplicate HTTP parameters"
         - "Reader configuration, policy/audit, SDK deadlines/response bounds and no content or storage address exposure"
-      remaining_scope: "Mock directory integration, schema generation and runtime/concurrency/storage evidence; CLI/MCP/workbench source integration is recorded separately. The directory does not audit history completeness, read object content or provide a cross-page transaction snapshot."
+      remaining_scope: "Schema generation and runtime/concurrency/storage evidence; CLI/MCP/workbench/Mock source integration is recorded separately. The directory does not audit history completeness, read object content or provide a cross-page transaction snapshot."
       execution: "Source/docs and manual review only; no build, typecheck, tests, SDK/product/API/SQL/database/migration execution or release. No dependency or database schema change."
     sdk_artifact_receipt_inspection_development_increment:
       date: "2026-11-04"

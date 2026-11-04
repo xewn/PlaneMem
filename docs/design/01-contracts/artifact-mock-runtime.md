@@ -41,7 +41,7 @@ const client = new WcpClient(transport, {
 
 写入/回执/上传身份要求 write_artifacts；元数据读取要求 read_artifacts。实际记录操作还要求 project_readable；上传身份只描述会话，不证明项目存在或有未来写入资格。restricted 资料要求 read_restricted；创建时拒绝无权写入，读取/追加/重放时按当前可见资料核对。此版本不提供动态权限或删除模拟；来源引用只保存原文，不推导额外来源权限。
 
-## 七条路由
+## 八条路由
 
 | 路由 | 行为 |
 | --- | --- |
@@ -49,13 +49,37 @@ const client = new WcpClient(transport, {
 | POST /v1/artifacts | multipart 创建 version 1 |
 | POST /v1/artifacts/{id}/versions | 原 If-Match 版本一致时追加一版 |
 | GET /v1/artifacts/{id} | 当前元数据与当前 ETag |
+| GET /v1/artifacts/{id}/versions | 固定上界的历史摘要目录，显式分页 |
 | GET /v1/artifacts/{id}/versions/{version} | 不可变历史元数据，无外层 ETag |
 | POST /v1/artifacts/receipt | 核对完整原上传请求，返回 recorded/not-observed |
 | GET /v1/artifacts/{id}/versions/{version}/content | 固定版本二进制内容与模拟释放记录 ID |
 
-现有 `getArtifactUploadContext/createArtifact/putArtifactVersion/getArtifact/getArtifactVersion/getArtifactReceipt/downloadArtifactVersion` 可通过上述 transport 接线。上传身份专用方法默认30秒期限、支持取消、16 KiB响应限制，并核验完整身份/权限提示/到期时间，详见 [SDK上传身份读取](artifact-persistence-runtime.md#sdk-上传身份读取源码阶段)。下载只模拟进程内内容释放，不能用此实现宣称真实审计、网络传输或客户端收妥已完成。
+现有 `getArtifactUploadContext/createArtifact/putArtifactVersion/getArtifact/getArtifactVersion/listArtifactVersions/getArtifactReceipt/downloadArtifactVersion` 可通过上述 transport 接线。上传身份专用方法默认30秒期限、支持取消、16 KiB响应限制，并核验完整身份/权限提示/到期时间，详见 [SDK上传身份读取](artifact-persistence-runtime.md#sdk-上传身份读取源码阶段)。下载只模拟进程内内容释放，不能用此实现宣称真实审计、网络传输或客户端收妥已完成。
 
-所有路由拒绝查询参数、片段、错误方法及多余写条件。GET 不接收正文。元数据/回执支持 JSON/bounded-json 响应上限，内容路由必须使用 bytes；Mock 支持 AbortSignal，没有自动重试。
+只有历史目录GET接受下述分页查询参数，其余路由继续拒绝查询参数；所有路由拒绝片段、原始控制字符、错误方法及多余写条件。GET 不接收正文。元数据/回执/目录支持 JSON/bounded-json 响应上限，内容路由必须使用 bytes；Mock 支持 AbortSignal，没有自动重试。
+
+## 历史版本目录
+
+`GET /v1/artifacts/{id}/versions`读取同一store已保存的上传历史，与同一路径的POST追加分开。可省略参数，默认limit=10；URL只接受单值limit、at_version、before_version，解码后均为无前导零的正安全整数，limit最多20，before必须带原at且不超过它。未知/重复/空值/非规范数值和超过当前版本的上界拒绝；请求路径沿既有512字符上限。拒绝GET正文、写键/写版本/缓存/范围条件、transfer-encoding及非零content-length。SDK不需要新配置或新导出类型，已配置artifacts时既有MockWcpServer自动转给该store。
+
+目录要求固定会话的read_artifacts与project_readable，三项范围与已提供的预期账号/客户端头仍必须一致，当前资料不可见继续报ARTIFACT_NOT_FOUND。当前元数据及每条选中/探测历史均先在2 MiB内复制并用完整元数据契约验证范围、目标、版本、描述、来源、时间及分类权限；当前记录也必须对应版本Map中的同一个对象。全部保存版本仍受既有1000条上限，目录只扫描版本键，最多完整投影limit+1条历史；探测行同样检查，拒绝整页时不返回部分列表。
+
+首次上界取当前版本或调用方at_version，按降序及before的排他位置选页；完整ArtifactVersionsEnvelope共享校验后返回，并受256 KiB和调用方更低响应限额约束。摘要包含历史名称、类型、分类、hash/大小、时间、trace和来源计数；无正文、存储地址、外层ETag、上传回执或下载释放记录。返回结果与存储脱离，调用方修改页面不会改变历史。content_state固定not-checked；读目录不会计算内容摘要或观察实际下载可用性。
+
+```ts
+// 源码用法示例，未执行。artifactId来自同一store先前保存的上传结果。
+const page = await client.listArtifactVersions({ artifact_id: artifactId, limit: 10 });
+// 仅在用户明确选择较早页时执行，完整保留原上界和位置。
+if (page.data.next_query) {
+  const older = await client.listArtifactVersions(page.data.next_query);
+}
+// 重新读取最新目录时去掉旧上界/位置，不沿用旧next_query。
+const latest = await client.listArtifactVersions({ artifact_id: artifactId, limit: 10 });
+```
+
+目录处理同步读取当前和选中历史，返回前再检查取消/会话到期；新上传只能在这次同步读取结束后提交。跨页可以追加版本，但旧next_query保持原上界；这不是实际数据库锁或跨页事务。SDK另沿既有默认30秒本地等待与signal丢弃迟到结果。目录无状态写入、自动翻页/重试、对象访问、原回执查询或文件保存，也不消耗下载释放记录容量。
+
+store仍从空数据开始，只能通过现有上传生成历史；不新增历史种子/删除/损坏注入/动态分类与权限能力，故不能覆盖真实旧快照缺失、外部改库或来源可见性变化。独立schema、真实授权/持久存储/审计/并发及运行证据仍缺；仅源码文档人工审阅，未编译、类型检查、测试或调用Mock。
 
 ## 上传、并发与历史
 
@@ -71,7 +95,7 @@ SDK创建/追加入口现先固定原请求和非共享内容、独立核对原S
 
 ## 容量与失败
 
-默认单次上传上限 16 MiB，seed.max_upload_bytes 可设为 0 至 16 MiB；request JSON 最多 1 MiB；响应最多 2 MiB，并受调用方更低限制约束。最多两个在途上传，超过返回 ARTIFACT_UPLOAD_BUSY；finally 释放占用。Blob 读取和摘要不能被 AbortSignal 中断，但 await 返回后会检查取消/到期并拒绝提交。
+默认单次上传上限 16 MiB，seed.max_upload_bytes 可设为 0 至 16 MiB；request JSON 最多 1 MiB；普通JSON响应最多 2 MiB、历史目录最多256 KiB，均受调用方更低限制约束。最多两个在途上传，超过返回 ARTIFACT_UPLOAD_BUSY；finally 释放占用。Blob 读取和摘要不能被 AbortSignal 中断，但 await 返回后会检查取消/到期并拒绝提交。
 
 最多 1000 条成功命令，也就是最多 1000 个保存版本；全部内容加规范账本 JSON 的累计编码预算为 64 MiB，不是进程堆内存测量。同内容追加也计入新版本的存储预算。配置/头部各最多 16 KiB。纯 JSON 限制复用 syncJsonSnapshot 的深度、节点与普通属性约束。
 

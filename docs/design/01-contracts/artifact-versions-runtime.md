@@ -53,7 +53,7 @@ const detail = await client.getArtifactVersion(artifactId, selectedVersion);
 
 错误使用现有有限错误码与固定信息、retryable=false，details.read_kind=versions及upload_dispatch_state=not-sent；不回显底层响应、不自动下载/查回执/恢复/上传。SDK根入口导出上述四个契约类型。
 
-Mock目录接入、独立JSON Schema生成物及跨存储/并发/权限/分页运行证据仍待开发，R-001保持未完成且本增量evidence为空。CLI、MCP与工作台源码接入见后续章节；现有指定版本各客户端读取仍保留。无依赖或数据库schema变更。
+独立JSON Schema生成物及跨存储/并发/权限/分页运行证据仍待开发，R-001保持未完成且本增量evidence为空。CLI、MCP、工作台与Mock源码接入见后续章节；现有指定版本各客户端读取仍保留。无依赖或数据库schema变更。
 
 ## 命令行与 MCP（源码阶段）
 
@@ -69,7 +69,7 @@ MCP新增 `list_artifact_versions`，参数与共享查询相同；发现schema�
 
 成功必须是200、JSON、原trace响应头且没有ETag，完整封套256 KiB；错误封套16 KiB且trace必须一致。共享解析核对范围、原query、历史摘要、顺序、条数及完整next_query；无restricted权限的摘要再拒绝。返回前重查期限和身份有效期，MCP文本转义后的content整体另限512 KiB+4096字节；这不是网络传输完成或客户端收到的证明。失败仅保留有限错误码和固定消息、retryable=false、read_kind=versions、content_state=not-checked、upload_dispatch_state=not-sent，不回显底层message/details；调用结果沿标准isError=true输出。
 
-两个入口均不读取对象正文、授予下载/恢复/写入权限、查询原上传回执或更改历史状态。选定版本后需另行读取完整元数据/下载，历史目录上界不能当成当前写条件。Mock目录接入和运行证据仍缺，工作台源码接入见下节；无数据库schema、依赖或目录服务逻辑变化，仅源码文档人工审阅，未编译、类型检查、测试、执行CLI/MCP/SDK/API/SQL/数据库或发布。
+两个入口均不读取对象正文、授予下载/恢复/写入权限、查询原上传回执或更改历史状态。选定版本后需另行读取完整元数据/下载，历史目录上界不能当成当前写条件。运行证据仍缺，工作台与Mock源码接入见后续章节；无数据库schema、依赖或目录服务逻辑变化，仅源码文档人工审阅，未编译、类型检查、测试、执行CLI/MCP/SDK/API/SQL/数据库或发布。
 
 ## 工作台历史目录（源码阶段）
 
@@ -83,4 +83,14 @@ MCP新增 `list_artifact_versions`，参数与共享查询相同；发现schema�
 
 空页、缺可信旧快照、当前文件不存在、403拒绝与503未配置/不可用各沿独立提示，失败不会伪装为空目录。页面刷新或项目切换后重新沿当前会话授权；URL只有目标和分页参数，没有身份凭据。跨页仍不是一个数据库事务，目录读取也不确认上传请求结果。
 
-范围仅工作台源码、协调与契约文档；无依赖、数据库schema或服务端目录行为变化。未编译、类型检查、测试、渲染浏览器、执行SDK/CLI/Mock/产品/API/数据库或发布；R-001保持未完成，evidence为空，Mock目录、独立schema和运行证据仍待补齐。
+范围仅工作台源码、协调与契约文档；无依赖、数据库schema或服务端目录行为变化。未编译、类型检查、测试、渲染浏览器、执行SDK/CLI/Mock/产品/API/数据库或发布；R-001保持未完成，evidence为空，独立schema和运行证据仍待补齐。Mock目录源码接入见下节。
+
+## Mock目录接入（源码阶段）
+
+2026-11-04新增`MockArtifactStore`目录GET，与同路径POST追加分别识别。固定模拟会话、当前项目与资料可见性沿既有规则，目录要求read_artifacts，逐条核对历史分类读取权限；不从请求头或上传身份推导能力。仅目录GET允许limit/at_version/before_version，使用与HTTP一致的解码后单值正安全整数约束和共享查询解析；默认10、最多20，拒绝正文、写/缓存/范围条件、transfer-encoding及非零content-length。其余Mock路由继续拒绝查询参数。
+
+复用现有上传生成的不可变内存历史，当前记录和最多limit+1条选中/探测记录先在2 MiB内复制再完整核对，按原上界倒序投影摘要。当前记录还须对应同版本的历史对象，探测行的分类/内容描述同样有效才生成has_more；共享ArtifactVersionsEnvelope解析全部query/scope/trace/items/next_query，整页限256 KiB或调用方更低上限。返回前检查取消/会话到期，SDK仍有独立默认30秒本地期限；所有数据读取与投影同步完成，不发生状态写入。
+
+既有`MockWcpServer({artifacts:{store,session}})`自动接线`listArtifactVersions`，无新配置或导出类型。完整next_query用于显式续页；新版本追加不会改变旧查询上界。目录不读字节、不计算内容摘要、不查询上传回执、不产生下载释放记录，也不自动遍历或保存文件。详见[Mock历史版本目录](artifact-mock-runtime.md#历史版本目录)。
+
+模拟历史只能来自同一store中的既有上传，仍不提供历史损坏/缺失种子、动态权限/分类、SQL共享锁、持久事务或真实审计。此接入不能证明真实服务与Mock运行一致；独立schema及运行/并发/存储证据仍缺，R-001和P0-02不因此完成，evidence为空。仅源码文档人工审阅，未编译、类型检查、测试、执行SDK/Mock/产品/API/数据库或发布。

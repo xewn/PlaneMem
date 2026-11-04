@@ -1,6 +1,7 @@
 import {
   ARTIFACT_DOWNLOAD_MAX_BYTES,
   ARTIFACT_UPLOAD_REQUEST_BYTES,
+  ARTIFACT_VERSIONS_RESPONSE_BYTES,
   ContractError,
   assertArtifactReceiptIdentity,
   buildEtag,
@@ -17,11 +18,15 @@ import {
   parseArtifactReceiptQuery,
   parseArtifactUploadContextEnvelope,
   parseArtifactUploadEnvelope,
+  parseArtifactVersionsEnvelope,
+  parseArtifactVersionsQuery,
+  summarizeArtifactVersion,
   syncJsonSnapshot,
   type ArtifactCommandIdentity,
   type ArtifactDownloadQuery,
   type ArtifactMetadataView,
   type ArtifactReceiptQuery,
+  type ArtifactVersionsQuery,
 } from '@planemem/contracts';
 import type { WcpBinaryResponse, WcpRequest, WcpTransport } from './client.js';
 
@@ -366,6 +371,78 @@ export class MockArtifactStore {
     return receipt;
   }
 
+  private listVersions(
+    query: ArtifactVersionsQuery & { limit: number },
+    session: MockArtifactSession,
+    trace: string,
+  ) {
+    const history = this.current(query.artifact_id, session, trace);
+    const metadata = (stored: Version, version: number) => {
+      const artifact = checked('ARTIFACT_STORED_INVALID', trace, () => {
+        const value = parseArtifactMetadataView(snapshot(stored.metadata, RESPONSE_BYTES));
+        if (
+          value.artifact_id !== query.artifact_id ||
+          value.version !== version ||
+          value.tenant_id !== this.#scope.tenant_id ||
+          value.workspace_id !== this.#scope.workspace_id ||
+          value.project_id !== this.#scope.project_id
+        )
+          throw new TypeError();
+        return value;
+      });
+      if (artifact.classification === 'restricted' && !session.read_restricted)
+        fail('ARTIFACT_ACCESS_DENIED', trace);
+      return artifact;
+    };
+    const current = metadata(history.current, history.current.metadata.version);
+    if (history.versions.get(current.version) !== history.current)
+      fail('ARTIFACT_STORED_INVALID', trace);
+    const ceiling = query.at_version ?? current.version;
+    if (ceiling > current.version) fail('INVALID_INPUT', trace);
+    // The store already caps all saved versions at 1000; only selected metadata is copied.
+    const selected = Array.from(history.versions.keys())
+      .filter(
+        (version) =>
+          version <= ceiling &&
+          (query.before_version === undefined || version < query.before_version),
+      )
+      .sort((a, b) => b - a)
+      .slice(0, query.limit + 1)
+      .map((version) =>
+        summarizeArtifactVersion(metadata(history.versions.get(version)!, version)),
+      );
+    const hasMore = selected.length > query.limit;
+    const items = selected.slice(0, query.limit);
+    return checked('ARTIFACT_STORED_INVALID', trace, () =>
+      parseArtifactVersionsEnvelope(
+        {
+          schema_version: 1,
+          trace_id: trace,
+          source_refs: [{ type: 'artifact', id: query.artifact_id }],
+          data: {
+            ...this.#scope,
+            query,
+            snapshot_version: ceiling,
+            items,
+            has_more: hasMore,
+            next_query: hasMore
+              ? {
+                  artifact_id: query.artifact_id,
+                  limit: query.limit,
+                  at_version: ceiling,
+                  before_version: items[items.length - 1]!.version,
+                }
+              : null,
+            content_state: 'not-checked',
+          },
+        },
+        query,
+        this.#scope,
+        trace,
+      ),
+    );
+  }
+
   private async respond(raw: WcpRequest, session: MockArtifactSession): Promise<unknown> {
     // Capture every mutable request property before multipart parsing or hashing can yield.
     const { method, path, body, response_type, max_response_bytes, signal } = raw;
@@ -405,8 +482,35 @@ export class MockArtifactStore {
     ] as const)
       if (headers.has(header) && headers.get(header) !== session.identity[field])
         fail('ARTIFACT_ACCESS_DENIED', trace);
-    if (typeof path !== 'string' || path.length > 512 || /[?#]/.test(path))
+    if (
+      typeof path !== 'string' ||
+      path.length > 512 ||
+      path.includes('#') ||
+      /[\u0000-\u001f\u007f]/.test(path)
+    )
       fail('INVALID_INPUT', trace);
+    const directory =
+      method === 'GET'
+        ? /^\/v1\/artifacts\/([0-9A-HJKMNP-TV-Z]{26})\/versions(?:\?(.*))?$/.exec(path)
+        : null;
+    if (path.includes('?') && !directory) fail('INVALID_INPUT', trace);
+    const versionsQuery = directory
+      ? checked('INVALID_INPUT', trace, () => {
+          const params = new URLSearchParams(directory[2] ?? '');
+          const input: Record<string, unknown> = { artifact_id: directory[1] };
+          for (const [field, value] of params) {
+            if (
+              !['limit', 'at_version', 'before_version'].includes(field) ||
+              params.getAll(field).length !== 1 ||
+              !/^[1-9][0-9]{0,15}$/.test(value) ||
+              !Number.isSafeInteger(Number(value))
+            )
+              throw new TypeError();
+            input[field] = Number(value);
+          }
+          return parseArtifactVersionsQuery(input);
+        })
+      : undefined;
     const context = path === '/v1/artifacts/upload-context';
     const receiptRoute = path === '/v1/artifacts/receipt';
     const collection = path === '/v1/artifacts';
@@ -417,9 +521,9 @@ export class MockArtifactStore {
       /^\/v1\/artifacts\/([0-9A-HJKMNP-TV-Z]{26})\/versions\/([1-9][0-9]{0,15})\/content$/.exec(
         path,
       );
-    const upload = collection || !!append;
+    const upload = collection || (!!append && !directory);
     if (
-      (!context && !receiptRoute && !upload && !read && !download) ||
+      (!context && !receiptRoute && !upload && !read && !download && !directory) ||
       method !== (upload || receiptRoute ? 'POST' : 'GET')
     )
       fail('MOCK_ROUTE_NOT_FOUND', trace);
@@ -436,6 +540,12 @@ export class MockArtifactStore {
         'if-range',
         'content-encoding',
       ].some((key) => headers.has(key))
+    )
+      fail('INVALID_INPUT', trace);
+    if (
+      directory &&
+      (headers.has('transfer-encoding') ||
+        (headers.has('content-length') && headers.get('content-length') !== '0'))
     )
       fail('INVALID_INPUT', trace);
     if (download) {
@@ -475,7 +585,10 @@ export class MockArtifactStore {
       fail('INVALID_INPUT', trace);
     const finish = (value: unknown) => {
       const detached = checked('GATEWAY_RESPONSE_INVALID', trace, () =>
-        snapshot(value, Math.min(maximum, RESPONSE_BYTES)),
+        snapshot(
+          value,
+          Math.min(maximum, directory ? ARTIFACT_VERSIONS_RESPONSE_BYTES : RESPONSE_BYTES),
+        ),
       );
       live();
       return detached;
@@ -504,6 +617,7 @@ export class MockArtifactStore {
         ),
       );
     if (!session.project_readable) fail('ARTIFACT_NOT_FOUND', trace);
+    if (versionsQuery) return finish(this.listVersions(versionsQuery, session, trace));
     if (read) {
       const query = checked('INVALID_INPUT', trace, () =>
         parseArtifactReadQuery({

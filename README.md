@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [附件历史目录 Mock](docs/design/01-contracts/artifact-mock-runtime.md#历史版本目录)：现有内存附件存储可通过 `listArtifactVersions` 分页浏览已上传历史，保持原版本上界、权限与响应限制，返回完整续页查询。仅源码文档，未编译、测试、运行 Mock 或发布。
+
 新增 [工作台文件历史目录](docs/design/01-contracts/artifact-versions-runtime.md#工作台历史目录源码阶段)：`/artifacts/versions` 可按文件 ID 浏览历史摘要、固定原版本上界翻页，并在新标签页打开指定版本详情。目录不读取正文，支持明确重新读取最新历史。仅源码文档，未编译、测试、执行或发布。
 
 新增 [版本目录命令行与 MCP 入口](docs/design/01-contracts/artifact-versions-runtime.md#命令行与-mcp源码阶段)：`artifacts versions` 和 `list_artifact_versions` 可查询历史版本并保留完整续页参数，分别沿用有界 SDK 读取与独立 MCP 等待限制。仅源码文档，未编译、测试、执行或发布。
