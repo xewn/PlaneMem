@@ -4,6 +4,10 @@
 
 ## 当前基线
 
+- 执行约束（2026-11-05）：严格按本 TODO 的现有主项、完成条件及“推荐执行顺序”开发；每项新增工作明确关联 TODO 编号，源码进展与整项验收分开记录。仅开发源码和文档，每完成一个任务独立提交并推送 main；不编译、类型检查、测试、运行产品流程或发布。未覆盖全部完成条件的主项保持未勾选。
+
+- **P0-02 源码增量**：管理快照 Mock 已接入现有 SDK getAdminSnapshot，新增独立 MockAdminStore/Seed/Session 和 MockWcpServer 可选 admin。单项目固定 1–2 个 read_restricted 快照场景，保留原读取时间/版本/计数，显式客户端认证/管理员角色/admin.read/项目可见性/audit/context/restricted 权限；无 audit/context 能力时计数为 not-authorized/null 并同步移除来源，两个 context 计数共同授权，缺场景拒绝连接。严格有界配置/请求/完整响应、原身份与取消到期前后检查；来源及 read-succeeded 仅为模拟协议投影，外部检查全部 not-checked，不调用其他 Mock、真实服务或数据库。该增量覆盖 P0-02 的管理快照 Mock 入口，全部 WCP 覆盖与兼容运行证据仍未齐，P0-02/R-011 保持未完成。仅源码文档人工审阅及格式/Git 文本检查，未编译、类型检查、测试、执行 SDK/Mock/产品/API/数据库或发布。
+
 - P0/P6：审计 Mock 新增已审阅视图导出，通过可选 export_access 显式模拟普通/受限导出及策略决定，接入原 SDK exportAuditView。精确原项目/ID/摘要、有界规范视图、可见性与分类权限重查，独立两笔容量/75 秒/取消，返回完整 128 KiB 或更小限额；先完成响应/容量检查，再同步保存独立模拟放行。新增本地 getExportRelease 与带 simulation:true 的原身份/选择/分类/大小/省略状态/trace 元数据，最多 1000 条/16 MiB，不追加查询种子、保存正文或文件；重复成功准备产生独立记录，已记录后的停止等待不回滚。补齐审计导出 Mock 源码缺口，拒绝审计/动态数据与权限/HTTP/真实 Policy/持久化及运行证据仍缺，R-007 未完成且 evidence 为空。仅源码文档人工审阅及格式/Git 文本检查，未编译、类型检查、测试、执行 SDK/Mock/产品/API/数据库或发布。
 
 - P0/P6：SDK 新增独立审计只读 Mock，通过 MockWcpServer 可选 audit 配置接入现有 listAuditRecords。单项目最多 1000 条/16 MiB 的完整固定投影，显式模拟身份/到期/项目与审计权限/restricted/可见 ID，先过滤再取微秒时间与 ID 倒序 200+1 页；支持五项精确筛选和 ID 定位。游标绑定 store、身份、到期、权限、可见集合与条件；保留 too-large 占位及原字节数，完整响应有界复制，独立两笔容量/30 秒/取消。来源字面量遵循现有协议，仅为模拟投影，不证明真实 PostgreSQL 或持久审计。补齐审计查询 Mock 源码缺口，导出放行 Mock、真实 HTTP/认证/持久化与兼容运行证据仍缺；R-007 未完成、evidence 为空。仅源码文档人工审阅及格式/Git 文本检查，未编译、类型检查、测试、执行 SDK/Mock/产品/API/数据库或发布。

@@ -61,4 +61,10 @@ MCP 每个 ApiGateway 实例最多两笔管理快照准备，等待 30 秒，满
 
 这是同一路径的源码阶段响应替换：旧 data.release/services/audit_count/active_sessions/open_conflicts 与 workbench_health 来源不再返回，消费者需同步切换。旧 AdminHealth 的服务健康 fixture 也不再满足新模型；本轮没有修改或执行测试，相关契约/客户端证据仍待补齐。没有新增依赖或迁移，016–045 仍未执行。
 
-专用 SDK/CLI/MCP 入口已有源码；Mock、fixture 兼容与运行证据尚未补齐。外部服务主动探测、真实开关配置读取、发布清单验证、持续健康历史和事件延迟观测仍缺。R-011 和 T5.3 保持未完成，不把源码状态作为运行证据。
+专用 SDK/CLI/MCP 入口已有源码；后续管理快照 Mock 源码见下节，fixture 兼容与运行证据尚未补齐。外部服务主动探测、真实开关配置读取、发布清单验证、持续健康历史和事件延迟观测仍缺。R-011 和 T5.3 保持未完成，不把源码状态作为运行证据。
+
+## 管理快照 Mock（2026-11-05 源码增量）
+
+按 TODO P0-02 新增独立 `MockAdminStore`，通过 `MockWcpServer` 的 admin 配置承接原 `getAdminSnapshot`。显式单项目/受限读取场景提供完整固定快照，当前模拟会话独立决定管理员入口和各组计数权限；不从其他 Mock 数据集计算数量，不把缺能力改成零，不自动降级到另一受限场景。完整返回沿本契约及 expectedAccess 解析，详见[管理快照 Mock](admin-mock-runtime.md)。
+
+原种子时间/版本保持，外部 checks 全部 not-checked；协议固定的 read-succeeded 和 runtime/postgres 来源在此只是模拟投影，不证明真实数据库读取、认证、审计、健康或发布就绪。同步内存处理前后检查预算/会话/信号，无网络或异步探测。未编译、类型检查、测试、运行 SDK/Mock/SQL/HTTP 或发布；P0-02/R-011 保持未完成。

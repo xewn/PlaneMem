@@ -2,6 +2,7 @@ import { ContractError, type ProjectEntity, validateEntity } from '@planemem/con
 import type { WcpRequest, WcpTransport } from './client.js';
 import type { MockWorkItemSession, MockWorkItemStore } from './mock-work-items.js';
 import { isMockAuditRequest, type MockAuditSession, type MockAuditStore } from './mock-audit.js';
+import { isMockAdminRequest, type MockAdminSession, type MockAdminStore } from './mock-admin.js';
 import {
   isMockContextPackPath,
   type MockContextPackSession,
@@ -34,6 +35,7 @@ export interface MockWcpServerOptions {
   context_history?: { store: MockContextHistoryStore; session: MockContextHistorySession };
   context_packs?: { store: MockContextPackStore; session: MockContextPackSession };
   audit?: { store: MockAuditStore; session: MockAuditSession };
+  admin?: { store: MockAdminStore; session: MockAdminSession };
 }
 
 export class MockWcpServer implements WcpTransport {
@@ -45,6 +47,7 @@ export class MockWcpServer implements WcpTransport {
   private readonly contextHistory: WcpTransport | undefined;
   private readonly contextPacks: WcpTransport | undefined;
   private readonly audit: WcpTransport | undefined;
+  private readonly admin: WcpTransport | undefined;
 
   constructor(private readonly options: MockWcpServerOptions = {}) {
     this.sync = options.sync?.store.connect(options.sync.session);
@@ -54,11 +57,13 @@ export class MockWcpServer implements WcpTransport {
     this.contextHistory = options.context_history?.store.connect(options.context_history.session);
     this.contextPacks = options.context_packs?.store.connect(options.context_packs.session);
     this.audit = options.audit?.store.connect(options.audit.session);
+    this.admin = options.admin?.store.connect(options.admin.session);
   }
 
   async request<T = unknown>(request: WcpRequest): Promise<T> {
     this.options.onRequest?.(request);
     if (this.audit && isMockAuditRequest(request)) return this.audit.request<T>(request);
+    if (this.admin && isMockAdminRequest(request)) return this.admin.request<T>(request);
     if (this.contextPacks && isMockContextPackPath(request.path))
       return this.contextPacks.request<T>(request);
     if (

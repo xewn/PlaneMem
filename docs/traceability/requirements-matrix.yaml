@@ -7055,6 +7055,27 @@ requirements:
     statement: "Every important operation is observable with trace, metrics, logs, health, readiness, and version."
     design: ["observability-plane"]
     subprojects: ["P6", "P8"]
+    admin_snapshot_mock_development_increment:
+      date: "2026-11-05"
+      todo: "P0-02"
+      status: "Source-only management snapshot Mock; P0-02 and R-011 remain incomplete."
+      artifacts:
+        - "packages/sdk/src/mock-admin.ts"
+        - "packages/sdk/src/mock-server.ts"
+        - "packages/sdk/src/index.ts"
+        - "packages/sdk/README.md"
+        - "docs/design/01-contracts/admin-mock-runtime.md"
+        - "docs/design/01-contracts/workbench-admin-runtime.md"
+      behavior: "Immutable single-project seed with one or two explicit restricted-read scenarios and all counts supplied. Explicit simulated authentication, admin role and separate capabilities gate access; audit/context capabilities mask counts to not-authorized/null and remove corresponding sources. Original read time and versions remain, all external checks stay not-checked, missing scenarios reject connection. Existing SDK getAdminSnapshot and shared expectedAccess validation consume complete detached output."
+      boundaries: "64 KiB seed, 16 KiB session and headers, 4 KiB body, 16 KiB or caller-smaller full response. Synchronous memory processing checks a 30-second budget, signal and session before and after work; no asynchronous probes or concurrency simulation. Required read-succeeded/runtime/postgres literals describe only simulated projections, not authentication, database reads, durable audit or health."
+      evidence: []
+      remaining_scope: "Full WCP SDK/Mock coverage, fixture compatibility, live identity/Policy/database/HTTP behavior and external observability/readiness evidence remain incomplete."
+      pending_evidence:
+        - "Finite complete seed/session capture, duplicate or missing scenarios and unavailable seed counts rejected"
+        - "Authentication/admin-role/admin-read separation, project and identity constraints, expired sessions and pre-cancellation"
+        - "Audit/context/restricted capability combinations, context paired-count states and matching source references"
+        - "Original timestamps/versions preserved, no external health assertions, detached results and caller response limits"
+        - "Dispatch alongside audit/work-items/context operations and SDK compatibility; no build, typecheck, tests or runtime execution performed"
     admin_snapshot_clients_development_increment:
       date: "2026-11-02"
       status: "Source-only SDK, CLI and MCP administration snapshot clients; R-011 remains incomplete."

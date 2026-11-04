@@ -1,5 +1,7 @@
 # PlaneMem
 
+按 TODO **P0-02** 补充 [SDK 管理快照 Mock](docs/design/01-contracts/admin-mock-runtime.md)：显式管理员/能力配置、受限读取场景与计数权限屏蔽，接入原 getAdminSnapshot；模拟数据不证明数据库或外部服务健康。仅源码文档，未编译、测试、运行 Mock 或发布。
+
 新增 [SDK 审计视图导出 Mock](docs/design/01-contracts/audit-mock-runtime.md#已审阅视图导出2026-11-05源码增量)：显式开启模拟导出权限后，可导出与已审阅摘要一致的有界视图，并读取独立模拟放行记录；结果不代表持久审计或文件已保存。仅源码文档，未编译、测试、运行 Mock 或发布。
 
 新增 [SDK 审计查询 Mock](docs/design/01-contracts/audit-mock-runtime.md)：显式配置审计记录及模拟权限后，可通过原 SDK 精确筛选、按审计 ID 定位和游标翻页；保留超大字段占位及原始字节数。仅源码文档，未编译、测试、运行 Mock 或发布。

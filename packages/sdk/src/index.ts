@@ -1,5 +1,6 @@
 export * from './client.js';
 export * from './mock-server.js';
+export { MockAdminStore, type MockAdminSeed, type MockAdminSession } from './mock-admin.js';
 export {
   MockAuditStore,
   type MockAuditSeed,
