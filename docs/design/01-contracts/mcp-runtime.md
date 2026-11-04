@@ -1,5 +1,7 @@
 # MCP HTTP 运行时开发说明
 
+2026-11-04 保存包工具增补：`get_context_pack` 接入原上下文专用读取执行器，发现/prepare/调用要求可信未过期实际 context.read 与完整项目/账号/客户端，HTTP 调用也要求已认证客户端，admin 不替代。4 KiB 仅可选 pack_id（ULID）/format，默认 latest/json；完整成功 2 MiB、错误 16 KiB，HTTP 状态/type/trace/ETag 与共享完整封套/原范围/包/来源/预算/rendered 核验，再以 Node SHA-256 核对保存摘要及入选 restricted 分类。七类工具共用每 Gateway 两笔容量/30秒期限，超时底层完成才释放；包独立 MCP_CONTEXT_PACK_BUSY/TIMEOUT，摘要不可用/不一致明确失败。完整文本 JSON 包装限 4 MiB+4096，无自动换包/重试/编译/来源访问；prepareMcpTool 要求专用执行器。资源 URI 和发现目录的专用边界仍待后续，不声称工具期限涵盖 HTTP 发送。详见[保存包 MCP 工具](context-pack-runtime.md#mcp-保存包工具完整读取2026-11-04源码增量)。仅源码文档，未编译、类型检查、测试、执行 MCP/产品/API/数据库或发布。
+
 2026-11-04 上下文目录增补：list_context_items接入原上下文读取执行器，发现/prepare/调用要求可信未过期实际context.read与完整身份，admin不替代。目录严格8 KiB输入、完整2 MiB成功/16 KiB错误，HTTP状态/type/trace/无ETag和scope/query/来源/记录/归档/排序/续页/restricted核验；单文本包装限4 MiB+4096。六类上下文工具共用每Gateway两笔容量/30秒，目录新增MCP_CONTEXT_DIRECTORY_BUSY/TIMEOUT，底层未结束仍占槽，其他工具错误码保持。prepareMcpTool要求专用执行器，旧不完整替身需迁移；无自动分页/缩页/重试/写入，保留原筛选/视图/limit显式续页，旧游标重回首屏。资源及其他读取容量独立，详见[上下文目录MCP](context-item-runtime.md#2026-11-04-mcp上下文目录完整读取增量)。仅源码文档，未编译、类型检查、测试、执行MCP/产品/API/数据库或发布。
 
 2026-11-04 当前上下文资源增补：work://project/{project_id}/context-item/{item_id}的原mcp.resource路由接入专用完整读取。处理器要求可信未过期实际context.read，4 KiB仅uri输入、原项目/单次解码ID，保留父项目可见性和内层策略/审计；完整2 MiB详情校验，原contents文本/URI/MIME与source_refs保留，含转义文本及重复来源的包装封套限6 MiB+8192，错误限16 KiB后映射固定提示。每router独立两笔资源容量和处理器30秒，超时底层结束才释放，使用MCP_CONTEXT_RESOURCE_BUSY/TIMEOUT；工具容量独立。内层只核对JSON内ETag，处理器前外层审计与网络发送不在期限内，目录/模板/其他资源保持。详见[上下文资源读取](context-item-runtime.md#2026-11-04-mcp当前上下文资源读取增量)。仅源码文档，运行与兼容证据待补，未编译、测试、执行或发布。

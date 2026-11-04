@@ -1071,12 +1071,12 @@ const definitions: ToolDefinition[] = [
   ),
   tool(
     'get_context_pack',
-    'Read a saved context pack after checking expiry and current sources',
+    'Read a complete saved context pack, latest when pack_id is omitted. Requires a verified unexpired client with actual context.read and project visibility. Arguments accept only optional pack_id/format, limited to 4 KiB; complete business JSON 2 MiB, local waiting 30 seconds. Verify original scope, HTTP/body ETag, sources, budget, rendered content and saved SHA-256. Gateway checks expiry and current sources; matching hashes do not authenticate external references. No partial content, fallback pack, automatic retry, compilation or write.',
     ['context.read'],
     'GET',
     '/v1/context-pack',
     {
-      pack_id: identifier,
+      pack_id: ulid,
       format: { type: 'string', enum: ['json', 'markdown', 'mcp'] },
     },
   ),
@@ -1871,7 +1871,7 @@ export function prepareMcpTool(
       });
     throw new ContractError(
       'MCP_TOOL_EXECUTOR_REQUIRED',
-      'Context directory/detail/history reads and comparisons require dispatchMcp or the dedicated executor',
+      'Context pack/directory/detail/history reads and comparisons require dispatchMcp or the dedicated executor',
       { trace_id: context.trace_id },
     );
   }

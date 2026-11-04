@@ -83,7 +83,7 @@ MCP resources/list 已增加保存包发现：按 ID 顺序每页最多检查 8 
 - json 格式不接受额外 rendered；markdown/mcp 格式要求 rendered 存在，URI 必须为原项目和具体包 ID，文本必须完整匹配既有 Markdown 规则，空包对应空文本。
 - 固定错误提示不展示服务端任意错误文本；未找到/来源改变/过期代码还需分别匹配 404/409/410。包读取失败仍保留独立目录，异常响应提供保留原筛选、条目、页位置及包选择的显式重试。重试 latest 仍为 latest；指定包不自动改读其他包或重新编译。
 
-超限/不完整的旧返回将明确失败，不自动缩小包、隐藏条目或回退旧快照。SDK 与 CLI 专用适配见下文；Schema、MCP 与 Mock 的专用适配和运行兼容证据仍待后续任务。R-003 保持未完成，`evidence: []`；本轮仅源码文档人工审阅与格式/文本检查，未编译、类型检查、测试、运行产品/浏览器/API/数据库或发布。
+超限/不完整的旧返回将明确失败，不自动缩小包、隐藏条目或回退旧快照。SDK、CLI 与 MCP 工具专用适配见下文；Schema、MCP 资源与 Mock 的专用适配和运行兼容证据仍待后续任务。R-003 保持未完成，`evidence: []`；本轮仅源码文档人工审阅与格式/文本检查，未编译、类型检查、测试、运行产品/浏览器/API/数据库或发布。
 
 ## SDK 保存包完整读取（2026-11-04，源码增量）
 
@@ -109,7 +109,7 @@ const envelope = await pending;
 const receipt = envelope.data;
 ```
 
-摘要一致性不是来源真实性或持续有效性证明；Gateway 继续检查保存包和来源数据库快照。CLI 适配见下节，MCP/Mock/独立 Schema 及取消与旧调用兼容等运行证据仍缺，R-003 未完成、`evidence: []`。本轮只开发并人工审阅源码文档、格式及文本，不编译、类型检查、测试、执行 SDK/产品/API/数据库或发布。
+摘要一致性不是来源真实性或持续有效性证明；Gateway 继续检查保存包和来源数据库快照。CLI 与 MCP 工具适配见下文，MCP 资源/Mock/独立 Schema 及取消与旧调用兼容等运行证据仍缺，R-003 未完成、`evidence: []`。本轮只开发并人工审阅源码文档、格式及文本，不编译、类型检查、测试、执行 SDK/产品/API/数据库或发布。
 
 ## CLI 保存包完整读取（2026-11-04，源码增量）
 
@@ -122,7 +122,21 @@ const receipt = envelope.data;
 - 保存包、目录、当前/归档详情、历史、版本、比较共用每 router 两笔读取容量。SDK 超时只停止等待，底层 router 真正结束才释放；容量约束该嵌入 router 等待，不声称覆盖之后 SDK 的本地摘要计算、输出写入或网络服务端并发。
 - 通用 SDK 返回值不暴露 HTTP ETag 或实际状态，CLI 只核对 JSON 内版本/ETag；网络 Fetch 沿有界 JSON 媒体类型/字节/trace 处理。结构不完整、未知字段、超限或摘要错误均失败，不再接受旧的元数据占位封套。
 
-`context get` 默认 latest 的用法与 JSON 输出形状保持，默认格式请求会规范为 json。CLI/SDK 兼容、权限/容量/超时、输入边界与真实 Gateway 摘要运行证据待补；MCP、Mock、独立 Schema 仍待专用适配。R-003 未完成，`evidence: []`；仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行 CLI/SDK/产品/API/数据库或发布。
+`context get` 默认 latest 的用法与 JSON 输出形状保持，默认格式请求会规范为 json。CLI/SDK 兼容、权限/容量/超时、输入边界与真实 Gateway 摘要运行证据待补；MCP 工具适配见下节，MCP 资源、Mock、独立 Schema 仍待专用适配。R-003 未完成，`evidence: []`；仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行 CLI/SDK/产品/API/数据库或发布。
+
+## MCP 保存包工具完整读取（2026-11-04，源码增量）
+
+`get_context_pack` 通过 `dispatchMcp` 的上下文专用执行器读取；参数仍是可选 pack_id/format，省略 ID 表示 latest，省略格式表示 json。只接受完整普通 JSON，输入最多 4 KiB；工具 Schema 使用 ULID 定义，与实际查询解析一致。身份和项目仅从可信上下文复制，不接受参数里的身份或写条件。
+
+- 工具发现、prepare 与调用均要求已认证且未过期的客户端、实际 context.read、完整 scope/actor/client/trace，admin 不代替读取能力。HTTP 入口沿统一工具分类要求客户端认证。旧的直接 `prepareMcpTool` 调用会收到 `MCP_TOOL_EXECUTOR_REQUIRED`，须迁到 dispatchMcp 或专用执行器。
+- 清除继承写条件，固定原项目的内部 GET /v1/context-pack；内部 ApiGateway 按既有约定将查询放入 body（不是外部 HTTP GET 正文），仍通过原权限策略、项目可见性、来源检查和审计。
+- 完整成功 2 MiB、错误 16 KiB，普通 JSON 复制后核验 HTTP 状态/content-type/x-trace-id；成功 HTTP ETag 必须等于共享封套中的版本 ETag，错误不能携带 ETag。未找到/来源改变/过期错误代码还须分别匹配 404/409/410。错误只输出原 trace 的已知固定提示，原任意错误文本不透传。
+- 共享校验保留原包、项目、内容、来源、预算、版本/游标及记录 trace，并核对 json/markdown/mcp 格式；渲染 URI 与全文匹配具体保存包。额外检查入选 restricted 分类与可信读取能力；排除项的可见性仍由 Gateway 决定，不从只有 ID/理由的记录推断授权。
+- Node SHA-256 沿共享规范输入重算，仅排除包顶层 trace/hash，条目 trace 保留。摘要不可用或不一致分别报告 CONTEXT_PACK_INTEGRITY_UNAVAILABLE / CONTEXT_PACK_HASH_MISMATCH，不交付任何未核对包。摘要一致不代表外部来源真实性、当前写授权或未来有效性；保存内容仍是非可信引用资料。
+- 包、目录、当前/归档详情、历史、版本与比较共用每 ApiGateway 两笔读取容量。30 秒单调期限覆盖内部读取、校验、摘要与输出包装；保存包使用 MCP_CONTEXT_PACK_BUSY/TIMEOUT，原其他工具错误码保持。超时只结束等待，底层工作真正结束才释放名额；不保证能中断数据库或同步摘要，也不涵盖外部 HTTP 发送。
+- 返回仍为单条 content text，文本中是完整原 WCP 封套，业务上限 2 MiB，二次转义包装上限 4 MiB+4096。没有部分正文、自动换包、重试、编译、来源访问或写入。
+
+本增量只覆盖工具调用；保存包 resources/read 和 resources/list 仍走既有实现，其专用完整边界、Mock 和独立 Schema 留待后续。R-003 未完成，`evidence: []`，需要补调用/发现/权限、旧替身与生产返回兼容、摘要/格式、容量/超时等运行证据。本轮仅源码文档人工审阅与格式文本检查，未编译、类型检查、测试、执行 MCP/产品/API/数据库或发布。
 
 ## 后续范围
 

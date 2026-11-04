@@ -8,6 +8,11 @@ import {
   CONTEXT_ITEM_READ_ERROR_BYTES,
   CONTEXT_ITEM_DIRECTORY_RESPONSE_BYTES,
   CONTEXT_ITEM_DIRECTORY_ERROR_BYTES,
+  CONTEXT_PACK_READ_RESPONSE_BYTES,
+  CONTEXT_PACK_READ_ERROR_BYTES,
+  contextPackReadHashJson,
+  parseContextPackReadEnvelope,
+  parseContextPackReadQuery,
   compareContextSnapshots,
   contextRevisionSnapshotJson,
   isSyncIdentifier,
@@ -26,11 +31,14 @@ import {
   type ContextItemRevision,
   type ContextItemReadQuery,
   type ContextItemDirectoryQuery,
+  type ContextPackReadQuery,
+  type ContextPackReceipt,
 } from '@planemem/contracts';
 import type { ApiGateway } from '../http.js';
 import type { RequestContext } from '../router.js';
 
 type ToolName =
+  | 'get_context_pack'
   | 'list_context_items'
   | 'get_context_item'
   | 'get_archived_context_item'
@@ -40,18 +48,21 @@ type ToolName =
 type ReadQuery =
   | ContextHistoryReadQuery
   | ContextItemReadQuery
+  | { kind: 'pack'; query: ContextPackReadQuery }
   | { kind: 'list'; query: ContextItemDirectoryQuery };
 type Query = ReadQuery | { kind: 'compare'; query: ContextComparisonQuery };
 function isDetailQuery(query: Query): query is ContextItemReadQuery {
   return query.kind === 'current' || query.kind === 'archived';
 }
 function readPath(query: ReadQuery) {
+  if (query.kind === 'pack') return '/v1/context-pack';
   if (query.kind === 'list') return '/v1/workbench/query';
   const root = '/v1/context-items/' + encodeURIComponent(query.item_id);
   if (isDetailQuery(query)) return root + (query.kind === 'archived' ? '/archived' : '');
   return root + (query.kind === 'history' ? '/history' : '/versions/' + query.version);
 }
 function responseLimit(query: ReadQuery) {
+  if (query.kind === 'pack') return CONTEXT_PACK_READ_RESPONSE_BYTES;
   if (query.kind === 'list') return CONTEXT_ITEM_DIRECTORY_RESPONSE_BYTES;
   if (isDetailQuery(query)) return CONTEXT_ITEM_READ_RESPONSE_BYTES;
   return query.kind === 'history'
@@ -62,7 +73,7 @@ const comparisonBytes = 16 * 1024 * 1024;
 const activeReads = new WeakMap<ApiGateway, { active: number }>();
 const messages = {
   INVALID_INPUT:
-    'Supply valid directory filters and a current cursor, one local item_id for current/archived details, valid history positions or two different positive safe versions, without identity or write fields',
+    'Supply a saved pack selection (optional pack_id/format), valid directory filters and a current cursor, one local item_id for current/archived details, valid history positions or two different positive safe versions, without identity or write fields',
   DENIED:
     'Use a verified unexpired client with actual context.read and the required record visibility',
   UNAUTHENTICATED: 'Renew the intended session before reading context',
@@ -70,6 +81,13 @@ const messages = {
   CONTEXT_ITEM_NOT_FOUND: 'The selected item or recorded version is unavailable in this project',
   CONTEXT_ITEM_INVALID: 'The complete stored context response could not be validated',
   CONTEXT_ITEM_STORAGE_UNAVAILABLE: 'Context storage is unavailable',
+  CONTEXT_PACK_NOT_FOUND: 'The saved context pack is unavailable in this project and selection',
+  CONTEXT_PACK_STALE:
+    'The saved pack sources changed; review current knowledge and prepare a fresh pack',
+  CONTEXT_PACK_EXPIRED: 'The saved context pack expired; prepare a fresh pack',
+  CONTEXT_PACK_INVALID: 'The saved context pack could not be validated',
+  CONTEXT_PACK_STORAGE_UNAVAILABLE: 'Context pack storage is unavailable',
+  CONTEXT_SOURCE_LIMIT: 'The saved context pack source checks exceeded their limit',
   WORKBENCH_DATABASE_UNAVAILABLE: 'Context directory storage is unavailable',
   WORKBENCH_AUTH_UNAVAILABLE: 'Gateway authentication is unavailable',
   AUDIT_PERSISTENCE_UNAVAILABLE: 'The context read audit could not be persisted',
@@ -83,6 +101,12 @@ const messages = {
   MCP_CONTEXT_DIRECTORY_BUSY: 'MCP context read capacity is occupied',
   MCP_CONTEXT_DIRECTORY_TIMEOUT:
     'Stopped waiting for the context directory; the underlying read may still be running',
+  MCP_CONTEXT_PACK_BUSY: 'MCP context read capacity is occupied',
+  MCP_CONTEXT_PACK_TIMEOUT:
+    'Stopped waiting for the saved context pack; the underlying read may still be running',
+  CONTEXT_PACK_INTEGRITY_UNAVAILABLE:
+    'Context pack integrity checking is unavailable; no unchecked pack was returned',
+  CONTEXT_PACK_HASH_MISMATCH: 'The complete context pack differs from its saved hash',
   GATEWAY_RESPONSE_INVALID:
     'The complete context response or comparison did not match this read or exceeded its size limit',
   CONTEXT_HISTORY_INTEGRITY_UNAVAILABLE:
@@ -95,6 +119,7 @@ function fail(code: ErrorCode, trace: string) {
 }
 export function isContextReadTool(name: unknown): name is ToolName {
   return (
+    name === 'get_context_pack' ||
     name === 'list_context_items' ||
     name === 'get_context_item' ||
     name === 'get_archived_context_item' ||
@@ -132,6 +157,8 @@ function captureQuery(name: string, raw: unknown, trace: string): Query {
     );
     if (!value || typeof value !== 'object' || Array.isArray(value) || Object.hasOwn(value, 'kind'))
       throw new TypeError();
+    if (name === 'get_context_pack')
+      return { kind: 'pack', query: parseContextPackReadQuery(value) };
     if (name === 'list_context_items') {
       // Optional enum values must be omitted rather than bypassing the tool schema with ''.
       const fields = value as Record<string, unknown>;
@@ -165,11 +192,14 @@ export async function executeContextReadTool(
   const deadline = performance.now() + 30_000;
   const detail = name === 'get_context_item' || name === 'get_archived_context_item';
   const directory = name === 'list_context_items';
-  const timeoutCode = directory
-    ? 'MCP_CONTEXT_DIRECTORY_TIMEOUT'
-    : detail
-      ? 'MCP_CONTEXT_ITEM_TIMEOUT'
-      : 'MCP_CONTEXT_HISTORY_TIMEOUT';
+  const pack = name === 'get_context_pack';
+  const timeoutCode = pack
+    ? 'MCP_CONTEXT_PACK_TIMEOUT'
+    : directory
+      ? 'MCP_CONTEXT_DIRECTORY_TIMEOUT'
+      : detail
+        ? 'MCP_CONTEXT_ITEM_TIMEOUT'
+        : 'MCP_CONTEXT_HISTORY_TIMEOUT';
   const trace = isSyncIdentifier(original.trace_id) ? original.trace_id : 'trace_unknown';
   let context: RequestContext;
   try {
@@ -202,11 +232,13 @@ export async function executeContextReadTool(
   }
   if (gate.active >= 2)
     throw fail(
-      directory
-        ? 'MCP_CONTEXT_DIRECTORY_BUSY'
-        : detail
-          ? 'MCP_CONTEXT_ITEM_BUSY'
-          : 'MCP_CONTEXT_HISTORY_BUSY',
+      pack
+        ? 'MCP_CONTEXT_PACK_BUSY'
+        : directory
+          ? 'MCP_CONTEXT_DIRECTORY_BUSY'
+          : detail
+            ? 'MCP_CONTEXT_ITEM_BUSY'
+            : 'MCP_CONTEXT_HISTORY_BUSY',
       trace,
     );
   const lease = gate;
@@ -222,7 +254,11 @@ export async function executeContextReadTool(
           path: readPath(selected),
           headers: {},
           body:
-            selected.kind === 'list' ? { ...selected.query, operation: 'context' } : { ...input },
+            selected.kind === 'pack'
+              ? { ...selected.query }
+              : selected.kind === 'list'
+                ? { ...selected.query, operation: 'context' }
+                : { ...input },
           context: structuredClone(context),
         });
         active();
@@ -232,7 +268,7 @@ export async function executeContextReadTool(
               response.status < 400 ||
               response.status > 599)) ||
           response.headers['x-trace-id'] !== trace ||
-          ((!isDetailQuery(selected) || response.status !== 200) &&
+          (((!isDetailQuery(selected) && selected.kind !== 'pack') || response.status !== 200) &&
             response.headers.etag !== undefined) ||
           !/^application\/json(?:\s*;\s*charset\s*=\s*(?:utf-8|"utf-8"))?\s*$/i.test(
             response.headers['content-type'] ?? '',
@@ -243,17 +279,31 @@ export async function executeContextReadTool(
           syncJsonSnapshot(
             response.body,
             response.status >= 400
-              ? selected.kind === 'list'
-                ? CONTEXT_ITEM_DIRECTORY_ERROR_BYTES
-                : isDetailQuery(selected)
-                  ? CONTEXT_ITEM_READ_ERROR_BYTES
-                  : CONTEXT_HISTORY_ERROR_BYTES
+              ? selected.kind === 'pack'
+                ? CONTEXT_PACK_READ_ERROR_BYTES
+                : selected.kind === 'list'
+                  ? CONTEXT_ITEM_DIRECTORY_ERROR_BYTES
+                  : isDetailQuery(selected)
+                    ? CONTEXT_ITEM_READ_ERROR_BYTES
+                    : CONTEXT_HISTORY_ERROR_BYTES
               : responseLimit(selected),
           ),
         );
         if (response.status >= 400) {
           const error = validateErrorEnvelope(value);
           if (error.trace_id !== trace) throw fail('GATEWAY_RESPONSE_INVALID', trace);
+          if (selected.kind === 'pack') {
+            const expected = {
+              CONTEXT_PACK_NOT_FOUND: 404,
+              CONTEXT_PACK_STALE: 409,
+              CONTEXT_PACK_EXPIRED: 410,
+            };
+            if (
+              Object.hasOwn(expected, error.code) &&
+              response.status !== expected[error.code as keyof typeof expected]
+            )
+              throw fail('GATEWAY_RESPONSE_INVALID', trace);
+          }
           throw fail(
             Object.hasOwn(messages, error.code)
               ? (error.code as ErrorCode)
@@ -262,28 +312,43 @@ export async function executeContextReadTool(
           );
         }
         const envelope =
-          selected.kind === 'list'
-            ? parseContextItemDirectoryEnvelope(value, selected.query, identity, trace)
-            : isDetailQuery(selected)
-              ? parseContextItemReadEnvelope(value, selected, identity, trace)
-              : parseContextHistoryReadEnvelope(value, selected, identity, trace);
+          selected.kind === 'pack'
+            ? parseContextPackReadEnvelope(value, selected.query, identity, trace)
+            : selected.kind === 'list'
+              ? parseContextItemDirectoryEnvelope(value, selected.query, identity, trace)
+              : isDetailQuery(selected)
+                ? parseContextItemReadEnvelope(value, selected, identity, trace)
+                : parseContextHistoryReadEnvelope(value, selected, identity, trace);
         if (
-          isDetailQuery(selected) &&
+          (isDetailQuery(selected) || selected.kind === 'pack') &&
           (!('etag' in envelope) || response.headers.etag !== envelope.etag)
         )
           throw fail('GATEWAY_RESPONSE_INVALID', trace);
         const records = Array.isArray(envelope.data)
           ? envelope.data
-          : 'versions' in envelope.data
-            ? envelope.data.versions
-            : [envelope.data];
+          : 'pack' in envelope.data
+            ? envelope.data.pack.items.map((item) => ({ classification: item.sensitivity }))
+            : 'versions' in envelope.data
+              ? envelope.data.versions
+              : [envelope.data];
         if (
           !context.capability.includes('data.restricted.read') &&
           records.some((record) => record.classification === 'restricted')
         )
           throw fail('DENIED', trace);
         active();
-        if (kind === 'version') {
+        if (kind === 'pack') {
+          const receipt = envelope.data as ContextPackReceipt;
+          const snapshot = contextPackReadHashJson(receipt.pack);
+          active();
+          let hash: string;
+          try {
+            hash = 'sha256:' + createHash('sha256').update(snapshot, 'utf8').digest('hex');
+          } catch {
+            throw fail('CONTEXT_PACK_INTEGRITY_UNAVAILABLE', trace);
+          }
+          if (hash !== receipt.pack.pack_hash) throw fail('CONTEXT_PACK_HASH_MISMATCH', trace);
+        } else if (kind === 'version') {
           const revision = envelope.data as ContextItemRevision;
           const snapshot = contextRevisionSnapshotJson(revision);
           active();
