@@ -4,6 +4,7 @@ import { PageError } from '../../../components/page-state';
 import { Badge, EmptyState, Panel } from '../../../components/ui';
 import { getWorkbenchArtifactVersions, WorkbenchApiError } from '../../../lib/server-api';
 import { artifactPageHref, type ArtifactPageParams } from '../query';
+import { artifactComparisonHref } from '../compare/model';
 import { artifactVersionsPageHref, parseArtifactVersionsPageQuery } from './query';
 
 export const dynamic = 'force-dynamic';
@@ -143,6 +144,18 @@ async function History({ query }: { query: ArtifactVersionsQuery }) {
                         Version {item.version}: {item.name} ↗
                       </Link>
                     </h2>
+                    <Link
+                      className="panel-link"
+                      href={artifactComparisonHref({
+                        artifact_id: page.query.artifact_id,
+                        from_version: item.version,
+                      })}
+                      prefetch={false}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Compare using version {item.version} as the base ↗
+                    </Link>
                     <div className="artifact-badges">
                       <Badge
                         tone={
@@ -230,6 +243,56 @@ async function History({ query }: { query: ArtifactVersionsQuery }) {
                 Current file details in a new tab ↗
               </Link>
             </nav>
+            {page.items.length >= 2 && (
+              <form
+                key={JSON.stringify([
+                  page.query.artifact_id,
+                  page.items.map((item) => item.version),
+                ])}
+                className="artifact-lookup-form"
+                action="/artifacts/compare"
+                method="get"
+                target="_blank"
+              >
+                <input type="hidden" name="artifact" value={page.query.artifact_id} />
+                <label htmlFor="artifact-history-compare-from">Base version from this page</label>
+                <select
+                  id="artifact-history-compare-from"
+                  name="from_version"
+                  defaultValue=""
+                  required
+                >
+                  <option value="" disabled>
+                    Choose a base version
+                  </option>
+                  {page.items.map((item) => (
+                    <option key={item.version} value={item.version}>
+                      Version {item.version}
+                    </option>
+                  ))}
+                </select>
+                <label htmlFor="artifact-history-compare-to">
+                  Comparison version from this page
+                </label>
+                <select id="artifact-history-compare-to" name="to_version" defaultValue="" required>
+                  <option value="" disabled>
+                    Choose another version
+                  </option>
+                  {page.items.map((item) => (
+                    <option key={item.version} value={item.version}>
+                      Version {item.version}
+                    </option>
+                  ))}
+                </select>
+                <p className="muted">
+                  Select two different versions. Open a version’s comparison link to enter a number
+                  from another page.
+                </p>
+                <button type="submit" className="secondary-button">
+                  Compare in a new tab ↗
+                </button>
+              </form>
+            )}
             {!page.has_more && (
               <p className="muted">No older records were returned in this range.</p>
             )}

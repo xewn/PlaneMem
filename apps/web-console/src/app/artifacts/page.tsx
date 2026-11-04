@@ -7,6 +7,7 @@ import { ArtifactLookup } from './lookup';
 import { ArtifactDownload } from './download';
 import { artifactVersionsPageHref } from './versions/query';
 import { newArtifactUploadHref } from './upload/preparation-model';
+import { artifactComparisonHref } from './compare/model';
 import { artifactPageHref, parseArtifactPageQuery, type ArtifactPageParams } from './query';
 
 export const dynamic = 'force-dynamic';
@@ -113,6 +114,18 @@ async function ArtifactRecord({ query }: { query: ArtifactReadQuery }) {
     return (
       <>
         <nav className="heading-actions" aria-label="Compare file records">
+          <Link
+            className="panel-link"
+            href={artifactComparisonHref({
+              artifact_id: artifact.artifact_id,
+              from_version: artifact.version,
+            })}
+            prefetch={false}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Compare version {artifact.version} with another ↗
+          </Link>
           <Link
             className="panel-link"
             href={artifactVersionsPageHref({

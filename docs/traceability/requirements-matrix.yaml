@@ -11,6 +11,24 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    web_artifact_version_comparison_development_increment:
+      date: "2026-11-04"
+      status: "Source-only workbench saved artifact version comparison; R-001 remains incomplete."
+      artifacts:
+        - "apps/web-console/src/app/artifacts/compare/model.ts"
+        - "apps/web-console/src/app/artifacts/compare/page.tsx"
+        - "apps/web-console/src/lib/artifact-comparison-server.ts"
+        - "apps/web-console/src/app/artifacts/page.tsx"
+        - "apps/web-console/src/app/artifacts/versions/page.tsx"
+        - "docs/design/01-contracts/artifact-versions-runtime.md"
+      behavior: "Add strict artifact/from_version/to_version selection with partial prefill but no reads until two distinct safe positive versions are chosen. Detail/history links seed the base; history selectors use actual current-page records and reset when that set changes. Preserve direction and exact historical versions. Capture one authenticated session/scope/gateway and read both records sequentially within 30 seconds, each at 2 MiB with 16 KiB errors, complete header/envelope binding and expiry checks; no partial results or current-version fallback. Compare eight saved scalar fields and complete position-based source references, preserving duplicates, order and optional fields. Display saved hash/size matching separately from unchecked content, with fixed-version detail/reverse/history links."
+      evidence: []
+      pending_evidence:
+        - "Strict URL parsing, partial prefill, equal/reversed/unsafe versions and page-selection reset"
+        - "Same-session scope and historical binding, first/second-read failure, permissions/expiry and combined deadline/response limits"
+        - "Complete scalar/reference differences, duplicate/reordered/missing optional values, escaped text and browser navigation"
+      remaining_scope: "Runtime and browser evidence. Comparison does not verify content, reference availability, atomic cross-request state or permission to restore/upload."
+      execution: "Source/docs and manual review only; no build, typecheck, tests, browser rendering, SDK/Mock/CLI/product/API/database execution or release. No public protocol, schema or dependency change."
     web_artifact_lookup_bounds_development_increment:
       date: "2026-11-04"
       status: "Source-only bounded workbench artifact metadata and original receipt reads; R-001 remains incomplete."
