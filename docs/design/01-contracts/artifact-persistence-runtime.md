@@ -278,6 +278,27 @@ workctx artifacts receipt --json-file NEW_ORIGINAL.json
 
 上传结果不明时保留原文件、原键与版本，用原回执入口查询；不重新prepare以替换未知请求。当前增量没有SDK/MCP完整准备工具、专用本地恢复工具、新依赖或迁移；仅源码文档人工审阅，未编译、类型检查、测试、执行CLI/SDK/Mock/API/数据库或发布。文件系统兼容、失败恢复、身份变化与上传衔接均无运行证据，R-001仍未完成。
 
+## CLI 原请求离线核验（源码阶段）
+
+2026-11-04：新增 `workctx artifacts inspect-request --json-file ORIGINAL.json`，可选 `--file CONTENT`，有内容时才可指定 `--max-bytes N`。必填原文件，拒绝stdin、内联JSON、重复选项、未知参数和额外位置参数。HTTP CLI在项目/令牌读取前进入本地处理；嵌入CLI只取调用trace，不访问router或用当前身份改写文件。两入口共用处理函数；没有Gateway/API/MCP新路由，也没有数据库访问或文件写入。
+
+原文件按普通文件稳定读取规则核对同句柄长度/mtime/ctime及额外字节，最多1 MiB，严格UTF-8解码，完整解析 `{ identity, command }` 后再次限制规范结果大小。创建与追加均保留五项原身份、原键、内容描述符、全部创建元数据或原artifact_id/expected_version；prepare成功摘要、检查结果封套或回执响应不作为原文件接受。无效请求返回ARTIFACT_REQUEST_INVALID，不尝试修复字段或生成替代请求。
+
+提供内容时，按原command.size精确读取并核对SHA-256；内容默认最多64 MiB，`--max-bytes` 接受0至1 GiB十进制整数（含零字节）。长度/预算/读取期间变化按既有文件错误拒绝，摘要不符为ARTIFACT_HASH_MISMATCH。未提供内容时，不依据命令中的sha256/size推断内容已经核验；无内容的检查也不将默认内容预算施加到原描述符。所有文件I/O等待结束，没有隐藏后台读取或取消后继续写入。
+
+成功返回status=locally-valid、original_file/request_bytes、完整original，以及两个不同用途的SHA-256：request_sha256覆盖实际文件原字节（包括空白/BOM等），可与prepare保存摘要人工比对；canonical_request_sha256覆盖共享解析器规范化后请求的UTF-8 JSON，同一规范命令不因外层空白/字段排列不同而变化。两个摘要都不是签名、身份认证或持久回执。source_refs为空，不以用户文件伪造已确认服务器来源。
+
+content_state为not-checked或matches-original；仅后者返回本次选择的content_file。identity_state固定not-authenticated、server_outcome固定not-checked、upload_dispatch_state固定not-sent（仅指本次检查），不检查当前版本、会话有效期、权限、存储健康或历史上传结果。成功退出0只确认所选本地检查完成，文件/内容可能在检查后变化，也没有双文件原子快照。失败没有部分成功结果，保持原文件；参数用法错误退出2，其他错误退出1，既有文件上限/长度检查可能归为USAGE_ERROR。
+
+以下示例仅作使用说明，未执行：
+
+```text
+workctx artifacts inspect-request --json-file NEW_ORIGINAL.json
+workctx artifacts inspect-request --json-file NEW_ORIGINAL.json --file report.pdf --max-bytes 67108864
+```
+
+也可选择prepare报告的已发布文件或保留临时文件进行检查；检查通过不证明它就是预期来源，须核对原身份/命令及此前保存的摘要。检查结果中的original供审阅，整个stdout封套不能交上传入口；后续继续使用原JSON文件和完全相同内容。曾经上传而结果不明时，仍需用原文件查询artifacts receipt，不自动prepare、改版本或重新上传。本增量不恢复/移动/补存/清理文件，无新依赖或迁移；只有源码文档人工审阅，未编译、类型检查、测试、执行CLI/SDK/API/数据库或发布，运行证据仍待补。
+
 ## SDK 上传身份读取（源码阶段）
 
 2026-11-04：`WcpClient.getArtifactUploadContext({timeout_ms?,signal?})` 接入既有 GET /v1/artifacts/upload-context，导出 `WcpArtifactUploadContextOptions` 和 `ArtifactUploadContextEnvelope`。返回当前可信五项 identity、expires_at、max_bytes、can_read/can_read_restricted；不生成请求键、不选择文件、不预留版本，也不检查对象存储健康。调用方必须另行保存并审阅新上传的完整原请求；恢复旧请求时禁止用新身份替换原身份。

@@ -1,5 +1,7 @@
 # workctx 开发入口
 
+新增 `artifacts inspect-request --json-file ORIGINAL.json [--file CONTENT [--max-bytes N]]`，无需项目配置或令牌，离线完整核验原请求；可选核对内容长度和SHA-256。返回原身份/完整命令、实际文件摘要、规范请求摘要及content_state，保留原键/预期版本；不写文件、不调用Gateway或认证文件身份。未提供内容时明确not-checked，成功退出0只表示本次本地检查通过，不确认此前上传结果。请求文件最多1 MiB；内容默认64 MiB，可显式0至1 GiB，max-bytes仅随file允许。详见 [离线核验边界](../../docs/design/01-contracts/artifact-persistence-runtime.md#cli-原请求离线核验源码阶段)。仅源码文档，未执行命令、编译或测试。
+
 新增 `artifacts prepare --json-file DRAFT.json --file CONTENT --output NEW_ORIGINAL.json`：为新建或追加版本准备完整原上传请求；追加草稿须含已审阅的 `expected_version`，与当前版本不同即拒绝。读取当前可信上传身份并核对文件大小/摘要后，生成一次新键，独占保存 `{ identity, command }` 并完整读回；不发送上传。可选 `--max-bytes` 默认64 MiB，实际不超过身份返回上限；`--timeout-ms` 默认180秒，保存开始后等待保存与读回结束。新输出路径必须不存在，草稿和请求各最多1 MiB，拒绝旧身份、键、hash/size、stdin及重复参数。保存失败保留可检查路径；见 [草稿示例、后续上传与恢复边界](../../docs/design/01-contracts/artifact-persistence-runtime.md#cli-上传原请求准备源码阶段)。仅源码文档，未编译、测试或执行命令。
 
 新增 `artifacts identity [--timeout-ms 30000]`，只读当前可信上传账号、会话期限、上传大小上限和读取权限提示；要求实际artifact.write，admin不能代替。仅允许一次timeout-ms，不接JSON、请求键、文件或输出路径；HTTP复用SDK，内嵌router核对完整原可信身份/期限/能力，不创建请求或上传。见 [CLI/MCP上传身份](../../docs/design/01-contracts/artifact-persistence-runtime.md#cli-与-mcp-上传身份读取源码阶段)。仅源码文档，未编译、测试、调用或发布。

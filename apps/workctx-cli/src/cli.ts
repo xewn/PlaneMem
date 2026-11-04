@@ -21,6 +21,7 @@ import { prepareArtifactReceipt, artifactReceiptResult } from './artifact-receip
 import { runArtifactDownload } from './artifact-download.js';
 import { runArtifactUploadContext } from './artifact-upload-context.js';
 import { runArtifactPreparation } from './artifact-preparation.js';
+import { inspectArtifactRequestArguments } from './artifact-inspection.js';
 import { isAuditCommand, runAudit } from './audit.js';
 import { runAdminSnapshot } from './admin.js';
 import { runSessionCommandContext } from './session-command-context.js';
@@ -253,6 +254,7 @@ export async function runWorkctx(
     'artifacts get': 'artifact.read',
     'artifacts identity': 'artifact.upload-context',
     'artifacts prepare': 'artifact.upload-context',
+    'artifacts inspect-request': 'artifact.inspect-request',
     'artifacts version': 'artifact.version.read',
     'artifacts receipt': 'artifact.receipt',
     'artifacts create': 'artifact.create',
@@ -347,6 +349,10 @@ export async function runWorkctx(
       }),
     };
   try {
+    if (command === 'artifacts inspect-request') {
+      const result = await inspectArtifactRequestArguments(argv, context.trace_id);
+      return { exit_code: 0, stdout: JSON.stringify(result), stderr: '' };
+    }
     if (command && isOutboxRestoreRequeueImportCommand(command)) {
       const result = await runOutboxRestoreRequeueImportArguments(argv, context.trace_id, {
         tenant_id: context.tenant_id,

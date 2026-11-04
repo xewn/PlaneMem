@@ -18,6 +18,7 @@ import { isArtifactUploadCommand, parseArtifactUploadArguments } from './artifac
 import { callArtifactDownload, parseArtifactDownloadArguments } from './artifact-download.js';
 import { callArtifactUploadContext } from './artifact-upload-context.js';
 import { callArtifactPreparation } from './artifact-preparation.js';
+import { inspectArtifactRequestArguments } from './artifact-inspection.js';
 import { callAudit, isAuditCommand } from './audit.js';
 import { callAdminSnapshot } from './admin.js';
 import { callSessionCommandContext } from './session-command-context.js';
@@ -238,6 +239,8 @@ const help = `workctx <command> [--json OBJECT | --json-file PATH] [--key KEY]
   artifacts identity             Read current upload identity/limits; optional --timeout-ms, no JSON or --key
   artifacts prepare              Save a new original with --json-file DRAFT --file CONTENT --output NEW_ORIGINAL
                                  Optional --max-bytes and --timeout-ms; prepares only, never uploads
+  artifacts inspect-request      Inspect --json-file ORIGINAL offline; optional --file CONTENT and --max-bytes
+                                 No configuration or network; local validity does not confirm upload success
   artifacts version              Read historical metadata by artifact_id and positive version; no --key
   artifacts receipt              Query the original write with saved identity and command JSON; no --key
   artifacts create               Upload --json-file ORIGINAL.json --file CONTENT; no --json or --key
@@ -576,6 +579,7 @@ export async function main(args: string[]): Promise<number> {
       'artifacts get',
       'artifacts identity',
       'artifacts prepare',
+      'artifacts inspect-request',
       'artifacts version',
       'artifacts receipt',
       'artifacts create',
@@ -632,6 +636,10 @@ export async function main(args: string[]): Promise<number> {
         : positionals.length > 2)
     )
       usage('Unknown or incomplete command. Run workctx --help');
+    if (name === 'artifacts inspect-request') {
+      print(await inspectArtifactRequestArguments(args, trace));
+      return 0;
+    }
     if (isOutboxRestoreRequeueImportCommand(name)) {
       print(
         await runOutboxRestoreRequeueImportArguments(args, trace, {

@@ -1,5 +1,7 @@
 # PlaneMem
 
+新增 [附件原请求离线核验](docs/design/01-contracts/artifact-persistence-runtime.md#cli-原请求离线核验源码阶段)：`artifacts inspect-request` 检查已保存的完整原请求，可选核对内容文件，返回原身份、命令和文件摘要；无需登录、不改文件、不上传，本地核验不代表服务器上传成功。仅源码文档，未编译、测试、调用或发布。
+
 新增 [CLI上传原请求准备](docs/design/01-contracts/artifact-persistence-runtime.md#cli-上传原请求准备源码阶段)：`artifacts prepare` 根据草稿和本地文件生成完整原请求，读取可信上传身份、计算内容摘要，追加版本须匹配明确填写的版本号；保存到全新文件并完整读回，不发送上传。仅源码文档，未编译、测试、调用或发布。
 
 新增 [CLI/MCP上传身份读取](docs/design/01-contracts/artifact-persistence-runtime.md#cli-与-mcp-上传身份读取源码阶段)：命令行 `artifacts identity` 与工具 `get_artifact_upload_context` 可读取当前上传账号和限制，严格核对权限与期限；不创建或发送上传请求。仅源码文档，未编译、测试、调用或发布。
