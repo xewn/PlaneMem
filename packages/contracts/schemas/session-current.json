@@ -1,0 +1,237 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/session-current.json",
+  "title": "PlaneMem current session source observation",
+  "description": "Existing p02-session-current-v1 wire contract and complete decoded session projection. Standalone schema; root is the response envelope. Source-only TODO P0-01 increment.",
+  "$comment": "JSON Schema does not enforce UTF-8 byte budgets, UTF-16 string lengths, decoded duplicate keys, exact Date roundtrip, field equality, digest computation, current authorization or deadlines. contentSchema is an annotation: consumers must decode and check session_json separately without reserializing it before hashing. No validator, generator or runtime verification performed.",
+  "$ref": "#SessionCurrentEnvelope",
+  "$defs": {
+    "ulid": { "type": "string", "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$" },
+    "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "not": { "pattern": "[\\u0000-\\u001f\\u007f]" },
+      "$comment": "Runtime bounds use UTF-16 code units. Whitespace-only nonempty text and escaped lone surrogates are not independently forbidden by this helper."
+    },
+    "name": { "$ref": "#/$defs/text", "maxLength": 512 },
+    "time": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$",
+      "$comment": "Runtime additionally requires finite Date.parse and exact toISOString roundtrip, including calendar validity. No generic permissive date-time substitution."
+    },
+    "request": {
+      "$anchor": "SessionCurrentRequest",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol_version",
+        "endpoint_ref",
+        "configuration_digest",
+        "session_id",
+        "challenge"
+      ],
+      "properties": {
+        "protocol_version": { "const": "p02-session-current-v1" },
+        "endpoint_ref": { "$ref": "#/$defs/name" },
+        "configuration_digest": { "$ref": "#/$defs/digest" },
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "challenge": { "$ref": "#/$defs/digest" }
+      },
+      "x-raw-utf8-max-bytes": 4096,
+      "description": "Raw body is strict UTF-8 flat string-valued JSON with case-insensitively unique decoded keys, including escaped names. Endpoint and configuration must exactly equal explicit Gateway configuration. Generate a new challenge per observation; Gateway does not check nonce uniqueness or entropy and never caches a same-key success."
+    },
+    "targetFields": {
+      "type": "object",
+      "required": [
+        "protocol_version",
+        "endpoint_ref",
+        "configuration_digest",
+        "tenant_id",
+        "workspace_id",
+        "project_id",
+        "actor_id",
+        "client_id",
+        "session_id",
+        "challenge",
+        "trace_id"
+      ],
+      "properties": {
+        "protocol_version": { "const": "p02-session-current-v1" },
+        "endpoint_ref": { "$ref": "#/$defs/name" },
+        "configuration_digest": { "$ref": "#/$defs/digest" },
+        "tenant_id": { "$ref": "#/$defs/ulid" },
+        "workspace_id": { "$ref": "#/$defs/ulid" },
+        "project_id": { "$ref": "#/$defs/ulid" },
+        "actor_id": { "$ref": "#/$defs/name" },
+        "client_id": { "$ref": "#/$defs/name" },
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "challenge": { "$ref": "#/$defs/digest" },
+        "trace_id": { "$ref": "#/$defs/name" }
+      }
+    },
+    "target": {
+      "$anchor": "SessionCurrentTarget",
+      "$ref": "#/$defs/targetFields",
+      "unevaluatedProperties": false,
+      "description": "Complete internal authority target and public result binding. Scope/actor/client come from authenticated context; challenge/request and trace/configuration remain exact across both grants."
+    },
+    "authorization": {
+      "$anchor": "SessionCurrentAuthorization",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity_digest", "authorization_ref", "expires_at"],
+      "properties": {
+        "identity_digest": { "$ref": "#/$defs/digest" },
+        "authorization_ref": { "$ref": "#/$defs/name" },
+        "expires_at": { "$ref": "#/$defs/time" }
+      },
+      "description": "Earliest token/grant/optional owning-source expiry, checked before return. Current reader does not clamp this timestamp to its own 30s elapsed budget. OPA adapter uses planemem-session-current:<64 lowercase hex>; the generic authority port permits other bounded refs. No bearer or grant target is serialized here."
+    },
+    "grant": {
+      "$anchor": "SessionCurrentGrant",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target", "identity_digest", "authorization_ref", "expires_at"],
+      "properties": {
+        "target": { "$ref": "#SessionCurrentTarget" },
+        "identity_digest": { "$ref": "#/$defs/digest" },
+        "authorization_ref": { "$ref": "#/$defs/name" },
+        "expires_at": { "$ref": "#/$defs/time" }
+      },
+      "description": "Internal authority port, not an HTTP response or client-supplied approval. Exact target; future expiry. Reader normalizes field order and compares both complete grants with JSON.stringify, including original expiry, preventing renewal."
+    },
+    "source": {
+      "$anchor": "SessionCurrentSourceRef",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "$ref": "#/$defs/text", "maxLength": 128 },
+        "id": { "$ref": "#/$defs/text", "maxLength": 2048 },
+        "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "uri": { "$ref": "#/$defs/text", "maxLength": 4096 }
+      },
+      "description": "Saved business reference, no duplicate/type allowlist/visibility/URI syntax check. Unknown members and null optional fields fail; array may be empty."
+    },
+    "resumeOrigin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["handoff_id", "checkpoint_id", "require_claimed"],
+      "properties": {
+        "handoff_id": { "$ref": "#/$defs/ulid" },
+        "checkpoint_id": { "$ref": "#/$defs/ulid" },
+        "require_claimed": { "type": "boolean" }
+      }
+    },
+    "session": {
+      "$anchor": "SessionCurrentProjection",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "tenant_id",
+        "workspace_id",
+        "project_id",
+        "session_id",
+        "client_id",
+        "actor_id",
+        "status",
+        "version",
+        "started_at",
+        "trace_id",
+        "source_refs"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "tenant_id": { "$ref": "#/$defs/ulid" },
+        "workspace_id": { "$ref": "#/$defs/ulid" },
+        "project_id": { "$ref": "#/$defs/ulid" },
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "client_id": { "$ref": "#/$defs/name" },
+        "actor_id": { "$ref": "#/$defs/name" },
+        "parent_session_id": { "$ref": "#/$defs/ulid" },
+        "resume_origin": { "$ref": "#/$defs/resumeOrigin" },
+        "status": { "enum": ["running", "paused", "ended", "abandoned", "failed"] },
+        "version": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+        "started_at": { "$ref": "#/$defs/time" },
+        "ended_at": { "$ref": "#/$defs/time" },
+        "trace_id": { "$ref": "#/$defs/name" },
+        "source_refs": {
+          "type": "array",
+          "maxItems": 256,
+          "items": { "$ref": "#SessionCurrentSourceRef" }
+        }
+      },
+      "dependentRequired": { "resume_origin": ["parent_session_id"] },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "status": { "enum": ["running", "paused"] } },
+            "required": ["status"]
+          },
+          "then": { "not": { "required": ["ended_at"] } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "ended" } }, "required": ["status"] },
+          "then": { "required": ["ended_at"] }
+        }
+      ],
+      "description": "Decoded exact SQL business projection, not physical row bytes. Six owner/ID fields equal target. ended_at, if present, is >=started_at; failed/abandoned may omit it. Saved trace/sources remain historical and need not equal observation trace/sources. No parent-child inequality or graph read in direct store. SQL omits null parent/origin/ended only, refuses submillisecond timestamps. Origin bridge additionally requires its original lineage and no resume_origin."
+    },
+    "result": {
+      "$anchor": "SessionCurrentResult",
+      "allOf": [
+        { "$ref": "#/$defs/targetFields" },
+        {
+          "type": "object",
+          "required": ["observed_at", "session_json", "session_digest", "authorization"],
+          "properties": {
+            "observed_at": {
+              "$ref": "#/$defs/time",
+              "description": "Owning SELECT statement timestamp, not HTTP send time, last mutation time or returned-state lease."
+            },
+            "session_json": {
+              "type": "string",
+              "maxLength": 65536,
+              "contentMediaType": "application/json",
+              "contentSchema": { "$ref": "#SessionCurrentProjection" },
+              "x-utf8-max-bytes": 65536,
+              "description": "Exact owning-source projection text, preserving whitespace/key order. UTF-8<=65536, not the size of its escaped outer JSON representation. No contentEncoding/base64. Parse/validate separately; contentSchema alone does not assert its content."
+            },
+            "session_digest": {
+              "$ref": "#/$defs/digest",
+              "description": "SHA-256 of exact session_json UTF-8 bytes; do not canonicalize or reserialize first. Not an authenticity signature."
+            },
+            "authorization": { "$ref": "#SessionCurrentAuthorization" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false,
+      "description": "Public current-only observation. No original proof/selection, stops, runs, tools, checkpoints, authorization bearer or source_revalidate callback. Not an original creation receipt, execution permission or guarantee that row remains unchanged after observation."
+    },
+    "envelope": {
+      "$anchor": "SessionCurrentEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "#/$defs/name" },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "id"],
+            "properties": { "type": { "const": "session" }, "id": { "$ref": "#/$defs/ulid" } }
+          }
+        },
+        "data": { "$ref": "#SessionCurrentResult" }
+      },
+      "description": "Current request trace equals data.trace_id; sole source id equals data.session_id, unlike original start's client_id reference. No ETag/revision/cursor and no dedicated serialized full-envelope byte cap."
+    }
+  }
+}

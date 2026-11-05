@@ -1,5 +1,9 @@
 # P02 外部会话当前读取 v1
 
+2026-11-05，TODO P0-01 机器契约源码增量：新增 [session-current OpenAPI](../../../packages/contracts/openapi/session-current.json) 和 [完整 Schema](../../../packages/contracts/schemas/session-current.json)，描述本页已有 POST。完整会话投影单独定义为 contentSchema；它是注解，远端消费者仍须独立解码/验证，保留原文算 SHA-256。64 KiB 是嵌入的 session_json UTF-8 上限，不是外层转义后 HTTP 封套上限。当前读者30秒是异步边界的双时钟预算，既非硬取消 SLA，也不把返回的授权期限自动裁到30秒。结果解析 OPERATION_RESULT_INVALID 实际400；直接 SQL 失败与桥接缺原件/当前行503，普通直接缺行末次授权后404。新增文档不改实现，未编译、测试、运行校验器/生成器/API/数据库或发布。
+
+HTTP补充：当前入口认证前解析4KiB平面正文，签名身份后检查可选预期actor/client；查询、媒体/编码和条件头没有专门拒绝，版本/幂等头不进入 readPreconditions。缓存被绕过但没有 nonce 去重；早期错误可无 trace 头，private,no-store 与网关 no-store 均禁止存储。显式配置原来源桥接时以同一 REPEATABLE READ 事务关联旧原件/迁移清单和当前行，增加来源到期/最终批准核对且不回退；外层当前读取只返回当前投影，不返回原始证明。机器目录累计88路不构成 P0-01 或上级 TODO 验收，evidence 仍为空。
+
 2026-11-05。对应工厂 51 号 TODO 的 GAP-04 / T03.02–05、“首件岗位执行”。**源码已改，待统一验证**。本项只实现外部连续性基础设施的当前会话来源，不赋予 Node 服务任何 ABP 模块认证或工厂执行批准权。
 
 主线适配基于 `a4a05d23ae2e833d48063b352fb7751e3c77d946`，保留其独立开发的 OIDC、当前会话、项目可见性及已有完整网关。工厂旧分支候选 `7886438d9b4d2cfd2752c84a707aabe02a674133` 使用不同旧基线；此处只移植本项，未把旧分支全部历史或旧 continuity 写入协议并入 main。两个提交不是相同可重建输入；P02 后续必须明确选择目标完整版本并处理差异。主线使用显式 `session_current_configuration`，无环境默认端点或摘要。

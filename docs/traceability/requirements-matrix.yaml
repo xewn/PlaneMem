@@ -11,6 +11,29 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    session_current_openapi_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only current session source POST OpenAPI and complete schema; P0-01 and R-001 remain incomplete."
+      artifacts:
+        - "packages/contracts/openapi/session-current.json"
+        - "packages/contracts/schemas/session-current.json"
+        - "packages/contracts/package.json"
+        - "packages/contracts/openapi/README.md"
+        - "packages/contracts/schemas/README.md"
+        - "docs/design/03-integration/p02-session-current-v1.md"
+      behavior: "Exact flat request, bound target/current grants, complete raw session projection content and UTF8 digest, current observation envelope; separate historical row trace/sources from current request trace/session reference."
+      boundaries: "No runtime/SDK/Mock/dependency/database changes. Verified client/context.read and double policy/audit plus independent current authority; optional OPA private identity scope and owning-source bridge. Direct READ COMMITTED null404 versus bridge failure503. Raw request4KiB/source64KiB are not full-envelope limits. Exact dates/UTF16/bytes/hash/identity equality and contentSchema require separate runtime interpretation. Reader30s guarded window is not hard cancellation or response authorization expiry. Actual ignored headers/query, result-invalid400, source/current-authority failures and cache/trace differences documented."
+      evidence: []
+      remaining_scope: "Session-origin and remaining WCP/MCP machine contracts, event payloads, SDK/Mock machine-contract consumption, breaking-change CI and tool/runtime/release evidence. Production configuration/approval and external consumer integrity remain separate work."
+      pending_evidence:
+        - "Local references, complete request/target/grant/projection/result/envelope shapes"
+        - "Strict raw UTF8 flat unique decoded keys and actual media/query/precondition handling"
+        - "Exact signed identity and two current grants, final router policy and durable decision audit"
+        - "Direct owning-row visibility and bridge original/migration/current snapshot differences"
+        - "Exact source text/hash, lifecycle/date/reference interpretation and cross-field binding"
+        - "Guarded deadlines/expiry/cancellation and actual HTTP status/retryability/cache/trace"
+      execution: "Manual source/docs review and explicit formatting/Git text checks only; no build, typecheck, tests, validators, generators, product/API/database execution or release."
     audit_export_openapi_development_increment:
       date: "2026-11-05"
       todo: "P0-01"

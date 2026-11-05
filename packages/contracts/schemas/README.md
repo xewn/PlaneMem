@@ -1,5 +1,11 @@
 # 独立契约结构定义
 
+## 当前会话来源读取
+
+2026-11-05，TODO P0-01：[session-current.json](session-current.json) 为自包含 2020-12 Schema，对应 [session-current OpenAPI](../openapi/session-current.json)。根是 SessionCurrentEnvelope；公开锚点包含 SessionCurrentRequest、Target、Grant、Authorization、SourceRef、Projection、Result 和 Envelope。Grant 是内部权威端口结构，不是可由调用方提交的批准。投影定义全部归属/状态/安全版本/历史 trace 和有界引用，表达结束状态/时间字段关系以及 resume_origin 需要父会话；不复用更宽松的普通会话 wire 结构。
+
+session_json 的 contentMediaType/contentSchema 只是内容注解，消费方仍须独立解码验证完整 Projection 并对保留的原文 UTF-8 算摘要。字节预算、UTF-16 长度、解码后重复/大小写键、真实日期/先后关系、请求/身份/引用相等及授权期限不能只靠普通 Schema。64 KiB 不等于转义后的完整响应上限；通用授权引用不限定 OPA 专用前缀，读者期限不等于响应授权有效期。本轮仅源码定义/人工对照，未执行校验器、生成器、编译、测试或发布。
+
 ## 单条审计视图导出
 
 2026-11-05，TODO P0-01：新增 [audit-export.json](audit-export.json)，对应 [audit-export OpenAPI](../openapi/audit-export.json)。AuditExportRequest 是封闭 scope/audit_id/sha256；AuditExportRecord 完整建模有界记录、原始字节数、available/too-large 与 null/[] 组合；AuditExportDocument 固定 bounded-view；Result/Envelope 给出规范摘要/字节、不同目标的放行 ID、两条有序来源及 not-confirmed 送达状态。FailureState 仅用于处理器自建错误/SDK 规范错误详情，不冒称所有上游错误都有放行信息。

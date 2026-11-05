@@ -1,5 +1,7 @@
 # 公共契约目录
 
+- [当前会话来源读取 OpenAPI](../../../packages/contracts/openapi/README.md#当前会话来源读取) 与 [运行边界](../03-integration/p02-session-current-v1.md)：TODO P0-01，完整原请求/目标授权/会话原文与摘要封套，描述独立当前权威、双审计、直接存储/原来源桥接和实际错误/期限；仅源码，未运行校验。
+
 - [单条审计视图导出 OpenAPI](../../../packages/contracts/openapi/README.md#单条审计视图导出)：TODO P0-01，完整审阅选择/有界记录/document/持久放行封套，明确双读双授权、未知送达和实际大小/期限/SDK 边界；仅源码，未运行校验。
 
 - [旧记忆交接 OpenAPI](../../../packages/contracts/openapi/README.md#旧记忆交接) 与 [运行边界](memory-handoff-runtime.md)：TODO P0-01，旧创建/领取两路完整契约，记录原始头身份、内存/远端引用和进程幂等的实际限制；仅源码，未运行校验。

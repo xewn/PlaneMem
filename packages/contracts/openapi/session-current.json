@@ -1,0 +1,174 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem current session source read",
+    "version": "0.1.0",
+    "description": "Existing POST current-only observation, TODO P0-01 source increment. Load standalone session-current schema plus context-history HTTP components locally. No validators/generators/runtime/release evidence. Separate session-origin public proof route is outside this file."
+  },
+  "servers": [
+    { "url": "/", "description": "Relative Gateway base; configure deployment origin/base." }
+  ],
+  "security": [{ "GatewayBearer": [] }],
+  "tags": [{ "name": "Current session source" }],
+  "x-runtime-boundaries": {
+    "request": "Before authentication, read raw body<=4096 bytes, decode fatal UTF-8 (BOM preserved and therefore rejected by JSON.parse), require flat nonarray object with all values strings and case-insensitively unique decoded names. Then exact five fields/protocol/configuration/ULID/digest checked in reader. Unknown fields and target/configuration mismatch are INVALID_REQUEST_CONTEXT400. Duplicate/alias/invalid/empty/nested/oversized body is INVALID_JSON400, not413. No dedicated ingress body timeout.",
+    "headers": "Requires signed Bearer/OIDC, actual client and scope headers matching verified claims or configured complete Workbench scope. Raw actor/client/capability headers do not grant identity. Optional expected actor/client each checked against verified identity. Nonempty x-trace-id wins over traceparent, otherwise generated trace_http_<ULID>; no W3C traceparent parsing. Selected success trace must be bounded512/control-free. Query, Content-Type, Content-Encoding, Range/cache/write-condition headers have no dedicated rejection here; raw bytes are not decompressed. This path does not enter readPreconditions, so Idempotency-Key and version headers have no CAS/replay effect.",
+    "configuration": "Reader exists only with auditDb and explicit endpoint/configuration. Missing reader or authority503. Optional session_current_opa requires configuration, real OIDC and no alternate session_current_authority. Origin authority additionally requires DB/current OPA. No default allowing authority and no in-memory fallback. Deployment values/approval must be supplied separately.",
+    "authorization": "Entry and post-read router policy require authenticated_client=true, finite future token expiry and actual context.read; admin does not bypass these. PolicyService/configured policy and decision audit apply twice. Reader copies/fixes request context/input, independently authorizes exact target before storage and after second router authorization, comparing complete normalized grants including original expiry. Missing/null row still requires final authorization before404. Store exceptions collapse to OPERATION_UNAVAILABLE503; current-authority exceptions to DENIED403. Invalid decoded projection can fail before second authorization, but never returns source body.",
+    "opa": "Per-request private bearer scope; reread OIDC identity/capability and current object OPA decision on each call. Exact HTTPS /v1/data/planemem/session_current/decision and configured revision; no redirects/credentials/cache,5s abort signal per decision,8KiB strict UTF8 JSON, no content-encoding, case-insensitive unique known keys. Decision target/config/policy digest/future integer expiry must match and not extend token. identity_digest binds identity and bearer hash; authorization_ref binds URL/revision/policy digest/resource, while full grant separately binds challenge/trace. Identity/grant change denies. Generic alternate authority is an explicit embedded port, not production evidence.",
+    "direct-store": "READ COMMITTED read-only transaction, statement_timeout5s/lock_timeout2s. Exact session/tenant/workspace/project/actor/client row and existing undeleted project of public/internal/confidential classification in one SELECT. Restricted deliberately invisible even with extra capability. Missing/other owner/hidden project all null=>404 after final auth. Exact SQL-generated business JSON<=64KiB; safe version, complete strict projection, millisecond timestamps, <=256 references. Invalid/null oversized projection at store becomes503; malformed copied snapshot at reader becomes OPERATION_RESULT_INVALID400. No session-service Map/original-operation result/cache lookup; no lock keeping row unchanged.",
+    "origin-bridge": "When explicitly configured, replaces direct store with SessionOriginBridge using one REPEATABLE READ read-only transaction, no fallback. Requires current ABP-owned selection/approval, preserved legacy attempts/receipt/fingerprint, migration inventory and current row binding, matching start/parent and no resume_origin. Bridge read failure, including missing current/original row, yields503 instead of direct null404. Supplies source expiry and final revalidate callback after outer last current grant. Current-only HTTP output does not expose original records/selection or become original-proof endpoint; final revalidate checks approval, not another database row read.",
+    "deadline": "Per-reader Date.now plus performance.now30s budget starts after entry auth/body/policy/audit. Clock rollback or >=30s=>OPERATION_UNAVAILABLE503; token/source expiry or disconnect flag=>DENIED403 at guard. Guard order can make expiry/cancellation win. No current-reader timer/Promise.race or forced cancellation of pool queue/store/custom authority; waits finish then guard rejects. OPA adapter uses request signal; direct PostgreSQL adapter does not consume it. Response authorization expiry=min token/grant/optional source; not automatically capped to reader30s. No dedicated2-slot capacity; generic actor/path limiter only.",
+    "response": "Hash exact session_json UTF8, preserving source formatting; six row identity fields match target. Copy snapshot before asynchronous reauthorization. Preserve historical session trace/sources separately from current outer trace/session reference. All lifecycle states readable;200 is not execution permission. Generic success cache bypassed even with identical challenge/key; no nonce ledger or replay-proof guarantee. No dedicated outer response byte limit/ETag;64KiB limits embedded source text only.",
+    "audit": "Actual router decision audit before read and after valid snapshot/null read; configured durable sink failure prevents success. Generic audit sink errors503 retryable=true. Callback failures are not always wrapped. This read does not mint a durable export-release receipt or prove client delivery.",
+    "client": "No dedicated WcpClient/Mock machine-contract consumer added. External consumer must bind complete request/current identity/configuration/trace/challenge, independently bound/decode/validate response and session_json, recompute raw hash and enforce expiry/lifecycle policy. Existing internal projection parser trusts typed SQL JSON and is not an arbitrary remote raw-JSON duplicate-key parser. No original creation, factory approval or execution authority inferred."
+  },
+  "paths": {
+    "/v1/continuity/session-current": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "post": {
+        "operationId": "readCurrentSessionSource",
+        "tags": ["Current session source"],
+        "summary": "Observe one exact current session projection with current authority",
+        "x-wcp-operation": "session.current.read",
+        "x-policy-action": "context.read",
+        "x-read-only": true,
+        "x-request-max-bytes": 4096,
+        "x-session-json-max-bytes": 65536,
+        "x-reader-elapsed-budget-ms": 30000,
+        "x-success-cache": "bypass",
+        "description": "Exactly five flat string fields. Independently authenticated current scope/client and current authority required. Same key/challenge rereads; does not write a session or prove nonce freshness. Requested media type describes expected JSON bytes; Gateway does not enforce Content-Type on this route.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/session-current.json#SessionCurrentRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "400": { "$ref": "#/components/responses/BadInputOrSnapshot" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InternalError" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": { "GatewayBearer": { "type": "http", "scheme": "bearer" } },
+    "parameters": {
+      "TenantId": {
+        "name": "x-tenant-id",
+        "in": "header",
+        "required": true,
+        "schema": { "$ref": "../schemas/session-current.json#/$defs/ulid" },
+        "description": "Exact authorized scope. All three scope headers required; never identity grants."
+      },
+      "WorkspaceId": {
+        "name": "x-workspace-id",
+        "in": "header",
+        "required": true,
+        "schema": { "$ref": "../schemas/session-current.json#/$defs/ulid" }
+      },
+      "ProjectId": {
+        "name": "x-project-id",
+        "in": "header",
+        "required": true,
+        "schema": { "$ref": "../schemas/session-current.json#/$defs/ulid" }
+      },
+      "TraceId": {
+        "name": "x-trace-id",
+        "in": "header",
+        "schema": { "$ref": "../schemas/session-current.json#/$defs/name" },
+        "description": "Nonempty value has first priority on session-source paths. Exact returned observation trace; no comparison against also-supplied traceparent."
+      },
+      "TraceParent": {
+        "name": "traceparent",
+        "in": "header",
+        "schema": { "$ref": "../schemas/session-current.json#/$defs/name" },
+        "description": "Opaque fallback only if x-trace-id empty/absent; otherwise ignored. If both empty/absent, generate trace_http_<ULID>."
+      },
+      "ExpectedActorId": {
+        "$ref": "./context-history.json#/components/parameters/ExpectedActorId"
+      },
+      "ExpectedClientId": {
+        "$ref": "./context-history.json#/components/parameters/ExpectedClientId"
+      }
+    },
+    "responses": {
+      "Success": {
+        "description": "Complete current-only envelope, exact raw projection SHA256 and earliest authorization expiry. No ETag; source64KiB budget is not full response cap.",
+        "headers": {
+          "cache-control": { "schema": { "const": "no-store" } },
+          "x-trace-id": {
+            "schema": { "$ref": "../schemas/session-current.json#/$defs/name" },
+            "description": "Exact current request/data/envelope trace."
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/session-current.json#SessionCurrentEnvelope" }
+          }
+        }
+      },
+      "Error": {
+        "description": "Application error, no usable partial source. Parsed-body/auth/private-scope errors can omit x-trace-id and use private,no-store; ApiGateway responses include trace header and no-store. All are noncacheable. Disconnect can produce no response. No dedicated error byte cap.",
+        "headers": {
+          "cache-control": { "schema": { "enum": ["no-store", "private, no-store"] } },
+          "x-trace-id": {
+            "schema": { "type": "string" },
+            "description": "Optional on early errors; retain envelope trace. Invalid inbound traces may appear in errors."
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "./context-history.json#/components/schemas/ErrorEnvelope" }
+          }
+        }
+      },
+      "BadInputOrSnapshot": {
+        "$ref": "#/components/responses/Error",
+        "description": "INVALID_JSON400 false before authentication for raw UTF8/duplicate/flat-shape/4KiB failures. INVALID_REQUEST_CONTEXT400 false for fields/configuration/target. OPERATION_RESULT_INVALID400 false for invalid copied source/projection/source expiry; existing generic mapper does not map it500. SQL source oversize/nonmillisecond failure instead503. No413/422 guarantee."
+      },
+      "Unauthenticated": {
+        "$ref": "#/components/responses/Error",
+        "description": "UNAUTHENTICATED401 false for missing/invalid bearer; verifier configuration/availability instead503. No raw-header fallback."
+      },
+      "Denied": {
+        "$ref": "#/components/responses/Error",
+        "description": "DENIED403 false for scope/client/expected identity, entry/final policy, absent actual context.read/future expiry, independent current-authority error/changed grant, expired token/source or cancellation guard. Private identity scope outer catch also403; no provider token/error text exposed by authority."
+      },
+      "NotFound": {
+        "$ref": "#/components/responses/Error",
+        "description": "Direct store null (missing/wrong owner/hidden project) returns NOT_FOUND404 false only after final policy/audit/current authority. Explicit bridge failures instead503. Malformed provider snapshot is not mapped to a missing row."
+      },
+      "RateLimited": {
+        "$ref": "#/components/responses/Error",
+        "description": "Generic actor/path RATE_LIMITED429 true; no Retry-After or per-handler concurrency guarantee."
+      },
+      "InternalError": {
+        "$ref": "#/components/responses/Error",
+        "description": "Unexpected uncaught command/audit callback failure serializes INTERNAL_ERROR500 retryable=true. Reader's explicit invalid result uses400, not500."
+      },
+      "Unavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "OPERATION_UNAVAILABLE503 false: absent reader/authority, failed storage/bridge/final origin revalidation, backward clock or elapsed window. WORKBENCH_AUTH_UNAVAILABLE and configured decision AUDIT_PERSISTENCE_UNAVAILABLE503 true. No408/504 or universal retryable=true promise; repeated request is a new observation."
+      }
+    }
+  }
+}

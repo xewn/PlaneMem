@@ -1,5 +1,9 @@
 # 架构决策记录摘要
 
+2026-11-05 本轮源码落地：当前会话来源读取 OpenAPI、session-current 完整 Schema 与两项包子路径已补齐；原请求/目标授权/64KiB 原文内容与摘要封套、双授权审计、直接数据库/原来源桥接、真实 HTTP/错误/期限已人工对照。公共目录/WCP/既有运行说明、根 README/TODO/R001 同步，累计 88 路。P0-01/R001 未完成、evidence 为空；仅人工源码文档审阅、指定格式和 Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
+2026-11-05 P0-01 当前会话来源读取机器契约（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增 schemas/session-current.json 与 openapi/session-current.json，覆盖 POST /v1/continuity/session-current。定义平面原请求、完整目标/授权、64KiB 会话投影原文及其内容 Schema、摘要和完整响应；对照独立当前授权、双路由审计、直接数据库/原来源桥接、期限和真实 HTTP 边界。范围两新 JSON、两项包子路径、两 README、根 README/TODO、公共目录/WCP/既有当前来源运行说明、R001 和本 ADR/T0.3/T4.1；不改运行实现，session-origin 独立接口留后续。仅人工源码文档审阅、指定格式与 Git 文本检查，不编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。独立提交推送 main，P0-01/R001 未完成、evidence 为空。
+
 2026-11-05 本轮源码落地：单条审计视图导出 OpenAPI、audit-export 完整 Schema 与两项包子路径已补齐；原审阅选择/完整有界记录/规范文档和持久放行封套、双读双授权、容量/期限/未知送达及真实 SDK/错误边界已人工对照。公共目录/WCP/运行说明、根 README/TODO/R001 同步，累计 87 路。P0-01/R001 未完成、evidence 为空；仅人工源码文档审阅、指定格式和 Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 2026-11-05 P0-01 单条审计视图导出机器契约（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增 schemas/audit-export.json 与 openapi/audit-export.json，覆盖 POST /v1/audit/export。完整定义已审阅选择、有界审计记录/省略状态、规范 document/摘要/字节数、持久放行封套和未知送达状态；对照真实身份/双读双授权、容量/期限、错误与 SDK 边界。范围两新 JSON、两项包子路径、两 README、根 README/TODO、公共目录/WCP/既有审计导出运行说明、R001 和本 ADR/T0.3/T4.1；不改运行实现、依赖或数据库。仅人工源码文档审阅、指定格式和 Git 文本检查，不编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布；独立提交推送 main 带 [skip ci]，P0-01/R001 未完成、evidence 为空。
