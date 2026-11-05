@@ -2,6 +2,10 @@
 
 这里的文档描述已有 HTTP 实现，尚未经过校验器、生成器、编译、类型检查、测试或运行验证。文档版本不表示已发布或部署；当前覆盖保存包 5 路、文件 9 路、上下文条目 9 路、同步 6 路、冲突 5 路、建议 8 路、Plane 观察 4 路、搜索 2 路、旧索引 5 路、Plane 收件箱 6 路、会话状态/活动 5 路、检查点/交接读取 3 路、会话身份/启动/原回执 3 路、会话进度写入/原回执 6 路、检查点保存/原回执 2 路、交接创建/领取/原回执 4 路、会话续接/原回执 2 路、旧记忆交接创建/领取 2 路、单条审计视图导出 1 路、当前会话来源读取 1 路及原始会话来源取证 1 路，共 89 路，尚不是完整 WCP 接口目录。
 
+## 工作台统一查询的模型准备
+
+2026-11-05，TODO P0-01：已新增 [概览Schema](../schemas/workbench-overview.json) 和 [工作项Schema](../schemas/work-item-projection.json)，完整定义统一POST /v1/workbench/query的overview/work_items/work_item三操作。统一入口共11种操作；其余八种模型未齐，本轮只准备可组合Schema，不新增不完整路径或路由计数，累计仍89路。两种客户端预算/封套检查、真实筛选/原微秒位置和概览统计边界已在Schema及运行说明记录；没有执行校验器、生成器或接口。
+
 ## 原始会话来源取证
 
 2026-11-05，TODO **P0-01**：[session-origin OpenAPI](session-origin.json) 覆盖 POST /v1/continuity/session-origin，对应 [完整 session-origin Schema](../schemas/session-origin.json)。新增两项同名包子路径；本地加载 session-current Schema 和 session-current/context-history HTTP 组件。完整建模现有读取实现，未执行校验器、生成器或运行验证，不实现原操作写入、重试、关闭或迁移。

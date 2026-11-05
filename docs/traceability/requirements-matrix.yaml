@@ -11,6 +11,30 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    workbench_overview_work_item_schema_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only complete overview/work_items/work_item schemas; full workbench route pending other eight operation models. OpenAPI count remains89; P0-01 and R-001 incomplete."
+      artifacts:
+        - "packages/contracts/schemas/workbench-overview.json"
+        - "packages/contracts/schemas/work-item-projection.json"
+        - "packages/contracts/package.json"
+        - "packages/contracts/schemas/README.md"
+        - "packages/contracts/openapi/README.md"
+        - "docs/design/01-contracts/workbench-overview-runtime.md"
+        - "docs/design/01-contracts/work-item-projection-runtime.md"
+      behavior: "Complete overview counts/layers/brief/previews, full local work records, raw/normalized filtering and microsecond cursor content, built-in versus stricter work-item client envelopes. Each uses existing shared query POST."
+      boundaries: "No runtime/SDK/Mock/dependency/database changes. Single-statement visibility/statistics and saved-state semantics; count/date/identity/filter/cursor relationships need runtime interpretation. Arbitrary saved brief content and unbounded saved record text retained. Int64 version remains string. Default ID collation differs from explicit C deadline sort. Overview generic transport/envelope is weaker than dedicated work-item8KiB request/2MiB candidate/30s per-request path; none of these client limits become Gateway guarantees."
+      evidence: []
+      remaining_scope: "Remaining eight workbench operation models before complete OpenAPI composition; other WCP/MCP/event schemas, SDK/Mock machine-contract consumption, breaking-change CI and tool/runtime/release evidence."
+      pending_evidence:
+        - "Complete data/requests/normalized queries and correct scalar/nullable/source semantics"
+        - "Counts/layers/preview length and expiry relationships versus database visibility"
+        - "Raw/normalized empty fields, exact owner, real dates and conflicting combinations"
+        - "Int64 decimal preservation, original microsecond positions and query-key versions"
+        - "Different default/C sorting, canonical cursor binding and no cross-page snapshot"
+        - "Built-in table sources versus SDK/Mock source preservation and transport budgets"
+      execution: "Manual source/docs review and explicit formatting/Git text checks only; no build, typecheck, tests, validators, generators, product/SDK/API/database execution or release."
     session_origin_openapi_development_increment:
       date: "2026-11-05"
       todo: "P0-01"

@@ -1,5 +1,11 @@
 # 工作项投影详情（开发状态）
 
+## 2026-11-05 P0-01 完整机器模型
+
+新增[work-item-projection Schema](../../../packages/contracts/schemas/work-item-projection.json)和包子路径，完整描述统一查询work_items/work_item的原请求/规范筛选、本地保存记录/来源、两种游标内容及内置/SDK封套。版本保留正int64字符串；原ID不强制ULID，不新增保存文本/来源的控制字符或字节限制。规范原记录去扩展，SDK外层来源只验证并保留扩展，可接受Mock来源，不强行等于postgres表来源。
+
+人工源码对照澄清：默认SQL为updated_at DESC、id（数据库默认排序规则），仅due_asc明确id COLLATE C；两者都使用原微秒位置，不能用显示时间重建。共享完整页核对分类/owner/assignment/日期条件和重复ID/数量/续页，不独立核对搜索子串或排序。内置HTTP没有SDK8KiB请求、2MiB候选和30秒每次等待限制，也没有MCP/Mock的专用并发槽；输入/输出和不同消费边界在Schema分开记录。整条workbench入口其余操作仍需模型，不计新增OpenAPI路由；P0-01/R001未完成、evidence为空。仅人工源码文档审阅/指定格式/Git文本检查，未编译、测试、运行校验器/生成器/SDK/API/数据库或发布。
+
 ## 2026-11-04 保存截止日期排序增量
 
 工作项列表新增 `sort=updated_desc|due_asc`。省略、空串及显式updated_desc统一规范化为原默认，保持更新时间倒序/ID升序以及原v1–v4筛选绑定和位置编码。MCP未使用时省略或明确updated_desc，不接受空串。due_asc按保存due_at从早到晚，null统一放在最后；同一截止时刻按本地ID升序。排序不自动排除已完成/取消/无日期项目，不读取当前时间、不表示逾期或实时Plane状态。

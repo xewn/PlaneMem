@@ -1,0 +1,223 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/workbench-overview.json",
+  "title": "PlaneMem workbench project overview",
+  "description": "Complete overview operation model for POST /v1/workbench/query. Source-only prerequisite for the full multiplexed OpenAPI route; other operations are separate models. Standalone schema.",
+  "$comment": "Runtime additionally checks count sums, preview length=min(total,cap), unique IDs/layers, finite Date.parse and expiry comparisons. Does not impose ULIDs or canonical timestamps where the current parser only checks text/Date.parse. No server response-byte/depth cap or validator/generator/runtime evidence is claimed.",
+  "$ref": "#WorkbenchOverviewEnvelope",
+  "$defs": {
+    "count": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "time": {
+      "type": "string",
+      "description": "Finite Date.parse required; parser retains original text, including database submillisecond precision. Not necessarily canonical millisecond UTC."
+    },
+    "layer": { "enum": ["L0", "L1", "L2", "L3", "L4"] },
+    "contextStatus": { "enum": ["confirmed", "proposed", "expired", "excluded"] },
+    "query": {
+      "$anchor": "WorkbenchOverviewRequest",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation"],
+      "properties": { "operation": { "const": "overview" } }
+    },
+    "context": {
+      "$anchor": "WorkbenchOverviewContextPreview",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "item_type", "layer", "status", "expires_at"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string" },
+        "item_type": { "type": "string" },
+        "layer": { "$ref": "#/$defs/layer" },
+        "status": { "$ref": "#/$defs/contextStatus" },
+        "expires_at": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/time" }] },
+        "content": true
+      },
+      "description": "Normalized saved preview. Arbitrary JSON content is deliberately optional in the shared parser: SQL brief supplies it, ordinary previews omit it. Unknown row fields such as updated_at are stripped; known content is preserved without nested business parsing or byte cap. Saved expiry/status is not source-chain freshness."
+    },
+    "brief": {
+      "$anchor": "WorkbenchOverviewBrief",
+      "allOf": [
+        { "$ref": "#WorkbenchOverviewContextPreview" },
+        { "properties": { "layer": { "const": "L0" }, "status": { "const": "confirmed" } } }
+      ],
+      "description": "SQL chooses one unexpired confirmed L0 by High/Medium/other priority, updated_at descending then ID. Parser rejects expiry<read_at, tolerates equality after JS millisecond truncation; SQL requires actual future expiry. Null if none. No recursive source revalidation."
+    },
+    "layerSummary": {
+      "$anchor": "WorkbenchOverviewLayer",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["layer", "count", "proposed", "expired", "average_confidence"],
+      "properties": {
+        "layer": { "$ref": "#/$defs/layer" },
+        "count": { "$ref": "#/$defs/count" },
+        "proposed": { "$ref": "#/$defs/count" },
+        "expired": { "$ref": "#/$defs/count" },
+        "average_confidence": {
+          "anyOf": [{ "type": "null" }, { "type": "number", "minimum": 0, "maximum": 1 }]
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "count": { "const": 0 } }, "required": ["count"] },
+          "then": {
+            "properties": {
+              "proposed": { "const": 0 },
+              "expired": { "const": 0 },
+              "average_confidence": { "const": null }
+            }
+          },
+          "else": { "properties": { "average_confidence": { "type": "number" } } }
+        }
+      ],
+      "description": "Each proposed/expired<=count; they may overlap, so their sum may exceed count. Saved confidence mean covers all visible nonarchived statuses, including excluded/expired; no source-quality proof."
+    },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["session_id", "client_id", "status", "run_count", "tool_call_count"],
+      "properties": {
+        "session_id": { "type": "string", "minLength": 1 },
+        "client_id": { "type": "string" },
+        "status": { "const": "running" },
+        "run_count": { "$ref": "#/$defs/count" },
+        "tool_call_count": { "$ref": "#/$defs/count" }
+      },
+      "description": "SQL started_at used for ordering is stripped. Counts query runs/tools by session_id; summary does not include their content or evaluate tool execution permission."
+    },
+    "conflict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["conflict_id", "entity_type", "field", "status"],
+      "properties": {
+        "conflict_id": { "type": "string", "minLength": 1 },
+        "entity_type": { "type": "string" },
+        "field": { "type": "string" },
+        "status": { "const": "open" }
+      },
+      "description": "Visible open conflict metadata only; copied field values are not exposed in overview."
+    },
+    "data": {
+      "$anchor": "WorkbenchOverview",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_id",
+        "project_name",
+        "external_id",
+        "read_at",
+        "last_activity_at",
+        "total_work_items",
+        "todo_work_items",
+        "in_progress_work_items",
+        "in_review_work_items",
+        "cancelled_work_items",
+        "active_work_items",
+        "blocked_work_items",
+        "completed_work_items",
+        "active_sessions",
+        "open_conflicts",
+        "total_context_items",
+        "proposed_context_items",
+        "expired_context_items",
+        "context_layers",
+        "project_brief",
+        "proposed_context_preview",
+        "expired_context_preview",
+        "active_session_preview",
+        "open_conflict_preview"
+      ],
+      "properties": {
+        "project_id": { "type": "string" },
+        "project_name": { "type": "string" },
+        "external_id": { "type": "string" },
+        "read_at": { "$ref": "#/$defs/time" },
+        "last_activity_at": { "$ref": "#/$defs/time" },
+        "total_work_items": { "$ref": "#/$defs/count" },
+        "todo_work_items": { "$ref": "#/$defs/count" },
+        "in_progress_work_items": { "$ref": "#/$defs/count" },
+        "in_review_work_items": { "$ref": "#/$defs/count" },
+        "cancelled_work_items": { "$ref": "#/$defs/count" },
+        "active_work_items": { "$ref": "#/$defs/count" },
+        "blocked_work_items": { "$ref": "#/$defs/count" },
+        "completed_work_items": { "$ref": "#/$defs/count" },
+        "active_sessions": { "$ref": "#/$defs/count" },
+        "open_conflicts": { "$ref": "#/$defs/count" },
+        "total_context_items": { "$ref": "#/$defs/count" },
+        "proposed_context_items": { "$ref": "#/$defs/count" },
+        "expired_context_items": { "$ref": "#/$defs/count" },
+        "context_layers": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": { "$ref": "#WorkbenchOverviewLayer" },
+          "allOf": [
+            { "contains": { "properties": { "layer": { "const": "L0" } }, "required": ["layer"] } },
+            { "contains": { "properties": { "layer": { "const": "L1" } }, "required": ["layer"] } },
+            { "contains": { "properties": { "layer": { "const": "L2" } }, "required": ["layer"] } },
+            { "contains": { "properties": { "layer": { "const": "L3" } }, "required": ["layer"] } },
+            { "contains": { "properties": { "layer": { "const": "L4" } }, "required": ["layer"] } }
+          ]
+        },
+        "project_brief": { "anyOf": [{ "type": "null" }, { "$ref": "#WorkbenchOverviewBrief" }] },
+        "proposed_context_preview": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "allOf": [
+              { "$ref": "#WorkbenchOverviewContextPreview" },
+              { "properties": { "status": { "const": "proposed" } } }
+            ]
+          }
+        },
+        "expired_context_preview": {
+          "type": "array",
+          "maxItems": 2,
+          "items": { "$ref": "#WorkbenchOverviewContextPreview" }
+        },
+        "active_session_preview": {
+          "type": "array",
+          "maxItems": 4,
+          "items": { "$ref": "#/$defs/session" }
+        },
+        "open_conflict_preview": {
+          "type": "array",
+          "maxItems": 3,
+          "items": { "$ref": "#/$defs/conflict" }
+        }
+      },
+      "description": "Normalized complete data. project_id equals authenticated project at repository boundary. active_work_items=todo+in_progress+in_review+blocked; total=active+completed+cancelled. Sum each layer count/proposed/expired equals corresponding total. Each preview has unique nonempty IDs and exactly min(total,3/2/4/3) rows. Expired preview status=expired OR expires_at<=read_at; proposed/expired may overlap. read_at is one statement snapshot; last_activity_at=max visible work updated_at or project updated_at, not all-table activity. SQL layers sorted L0..L4; shared parser accepts any unique layer order."
+    },
+    "envelope": {
+      "$anchor": "WorkbenchOverviewEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "type": "string", "minLength": 1 },
+        "source_refs": {
+          "const": [
+            { "type": "postgres", "id": "wcp_projects" },
+            { "type": "postgres", "id": "wcp_work_items" },
+            { "type": "postgres", "id": "wcp_context_items" },
+            { "type": "postgres", "id": "wcp_sessions" },
+            { "type": "postgres", "id": "wcp_agent_runs" },
+            { "type": "postgres", "id": "wcp_tool_calls" },
+            { "type": "postgres", "id": "wcp_conflicts" }
+          ]
+        },
+        "data": { "$ref": "#WorkbenchOverview" }
+      },
+      "description": "Built-in repository HTTP envelope, selected current trace and seven ordered table sources. No ETag/cursor/write metadata or dedicated response byte cap. Generic getProjectOverview SDK is weaker on outer fields: permits extensions and any valid source refs/nonblank trace, compares present data scope, parses complete data, but does not require exact trace/source set. No dedicated bounded-json/client total deadline added here."
+    }
+  },
+  "x-runtime-boundaries": {
+    "http": "Body {operation:overview} only. Existing authenticated workbench POST, generic pre-auth1MiB JSON and traceparent before x-trace-id. Verified client not required for this read; actual Policy context.read and decision audit/generic rate limit apply. Expected actor/client headers, when supplied, match verified identity; raw identity headers do not grant access. No dedicated query/media/encoding/cache-condition rejection or write-header parse for this path; success cache bypassed.",
+    "query": "One SQL from scoped undeleted readable project. Missing/hidden project404, no synthetic zero summary. Excludes deleted/restricted work/context rows as capability permits. Conflict visibility follows extant source row and maximum sensitivity; null source hidden. Active sessions=running. Separate aggregates avoid multiplicative joins, but no cross-request snapshot. SQL ::int count overflow fails database query instead of returning a rounded count.",
+    "result": "Repository converts top-level Date values then shared parser strips known-object extensions and verifies totals/selection; malformed overview500 false. Brief content is preserved as arbitrary JSON, not independently bounded or freshness-checked. No response size, dedicated transaction timeout or two-slot handler cap; not the limits of later work-item SDK/MCP reads.",
+    "errors": "INVALID_JSON/INVALID_INPUT400 false; initial UNAUTHENTICATED401/DENIED403; hidden/missing project NOT_FOUND404 false; RATE_LIMITED429 true; WORKBENCH_OVERVIEW_INVALID500 false; unexpected INTERNAL_ERROR500 true; WORKBENCH_DATABASE_UNAVAILABLE/WORKBENCH_AUTH_UNAVAILABLE/AUDIT_PERSISTENCE_UNAVAILABLE503 true. Generic ApiGateway replaces trace_unknown from repository DB errors with request trace.",
+    "sdk": "getProjectOverview uses ordinary json transport/envelope then parseWorkbenchOverview. No per-call options or new total response limit. Fetch default30s abort begins after credential acquisition, ordinary JSON parse has no explicit byte/media/exact-trace gate; generic envelope does not require exact supplied trace or seven postgres refs. Full overview data parsing and present scope equality still apply. This schema documents built-in wire, not proof that SDK enforces every wire constraint."
+  }
+}

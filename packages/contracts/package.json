@@ -8,6 +8,8 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./schemas/workbench-overview.json": "./schemas/workbench-overview.json",
+    "./schemas/work-item-projection.json": "./schemas/work-item-projection.json",
     "./schemas/session-origin.json": "./schemas/session-origin.json",
     "./openapi/session-origin.json": "./openapi/session-origin.json",
     "./schemas/session-current.json": "./schemas/session-current.json",

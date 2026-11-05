@@ -1,0 +1,302 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/work-item-projection.json",
+  "title": "PlaneMem workbench local work item projections",
+  "description": "Complete list/detail models for workbench.query operations work_items/work_item; raw and normalized filters, local cursor contents, full records and separate built-in/client envelopes. Standalone source-only prerequisite; no full workbench OpenAPI route coverage claimed.",
+  "$comment": "Runtime additionally checks UTF-16 length/lone surrogates, finite Date.parse, real UTC dates, int64 decimal maximum, query normalization/equality, unique IDs, returned-filter membership and cursor binding/canonical base64url. Source references/record text are not all control-free. Byte/depth/client work budgets are not generic Gateway guarantees. No validators/generators/runtime verification performed.",
+  "oneOf": [{ "$ref": "#WorkItemListEnvelope" }, { "$ref": "#WorkItemDetailEnvelope" }],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "allOf": [
+        { "not": { "pattern": "^\\s|\\s$" } },
+        { "not": { "pattern": "[\\u0000-\\u001f\\u007f]" } }
+      ],
+      "$comment": "Runtime also rejects lone UTF-16 surrogates. Local projection ID, not necessarily ULID/Plane ID; '.' and '..' are not rejected by this parser."
+    },
+    "time": {
+      "type": "string",
+      "description": "Finite Date.parse; original text retained, not necessarily canonical UTC. No created<=updated chronology constraint."
+    },
+    "date": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "not": { "pattern": "^0000" },
+      "description": "Valid Gregorian date year0001..9999, checked by exact UTC-midnight toISOString roundtrip. due_from inclusive, due_before exclusive; from<before."
+    },
+    "positionTime": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+      "not": { "pattern": "^0000" },
+      "description": "Exact raw database microseconds; calendar checked using millisecond prefix. Never manufacture cursor from displayed milliseconds."
+    },
+    "cursor": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,2048}$" },
+    "queryText": {
+      "type": "string",
+      "maxLength": 500,
+      "not": { "pattern": "\\u0000" },
+      "description": "Raw <=500 UTF-16 units and no NUL/lone surrogate; trim to nonempty filter or omit. Other controls/whitespace are not categorically forbidden."
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "\\S",
+      "not": { "pattern": "[\\u0000-\\u001f\\u007f]" },
+      "description": "Exact nonblank owner text, no trimming/case folding; runtime rejects lone surrogates. Leading/trailing whitespace preserved if nonblank. Not an account-ID lookup."
+    },
+    "rawFields": {
+      "type": "object",
+      "properties": {
+        "query": { "$ref": "#/$defs/queryText" },
+        "sort": { "enum": ["", "updated_desc", "due_asc"] },
+        "status": {
+          "enum": ["", "todo", "in_progress", "in_review", "blocked", "done", "cancelled"]
+        },
+        "priority": { "enum": ["", "P0", "P1", "P2", "P3"] },
+        "owner": { "anyOf": [{ "const": "" }, { "$ref": "#/$defs/owner" }] },
+        "assignment": { "enum": ["", "assigned", "unassigned"] },
+        "due": { "enum": ["", "scheduled", "unscheduled"] },
+        "due_from": { "anyOf": [{ "const": "" }, { "$ref": "#/$defs/date" }] },
+        "due_before": { "anyOf": [{ "const": "" }, { "$ref": "#/$defs/date" }] },
+        "cursor": { "$ref": "#/$defs/cursor" },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 100 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["assignment"],
+            "properties": { "assignment": { "const": "unassigned" } }
+          },
+          "then": { "properties": { "owner": { "const": "" } } }
+        },
+        {
+          "if": { "required": ["due"], "properties": { "due": { "const": "unscheduled" } } },
+          "then": { "properties": { "due_from": { "const": "" }, "due_before": { "const": "" } } }
+        }
+      ]
+    },
+    "query": {
+      "$anchor": "WorkItemListQuery",
+      "$ref": "#/$defs/rawFields",
+      "unevaluatedProperties": false,
+      "description": "Raw shared parser query without operation. Empty optional enum/owner/date fields omitted; query trimmed/omitted; explicit updated_desc normalized to omission. Null rejected. limit defaults25 without insertion; cursor cannot be empty. Unsupplied JS undefined values are not JSON fields."
+    },
+    "normalized": {
+      "$anchor": "WorkItemNormalizedListQuery",
+      "allOf": [
+        { "$ref": "#/$defs/rawFields" },
+        {
+          "properties": {
+            "query": { "minLength": 1, "not": { "pattern": "^\\s|\\s$" } },
+            "sort": { "const": "due_asc" },
+            "status": { "minLength": 1 },
+            "priority": { "minLength": 1 },
+            "owner": { "$ref": "#/$defs/owner" },
+            "assignment": { "minLength": 1 },
+            "due": { "minLength": 1 },
+            "due_from": { "$ref": "#/$defs/date" },
+            "due_before": { "$ref": "#/$defs/date" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false,
+      "description": "Captured effective filters, with redundant default/empty values removed. Any nonempty date boundaries must satisfy from<before. Original raw form and this normalized form can share the same query binding."
+    },
+    "listRequest": {
+      "$anchor": "WorkItemListRequest",
+      "allOf": [
+        { "$ref": "#/$defs/rawFields" },
+        {
+          "type": "object",
+          "required": ["operation"],
+          "properties": { "operation": { "const": "work_items" } }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "detailQuery": {
+      "$anchor": "WorkItemDetailQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["item_id"],
+      "properties": { "item_id": { "$ref": "#/$defs/id" } }
+    },
+    "detailRequest": {
+      "$anchor": "WorkItemDetailRequest",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation", "item_id"],
+      "properties": { "operation": { "const": "work_item" }, "item_id": { "$ref": "#/$defs/id" } }
+    },
+    "sourceFields": {
+      "type": "object",
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "minLength": 1 },
+        "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "uri": { "type": "string", "minLength": 1 }
+      },
+      "description": "validateSourceRef requires nonempty strings and safe nonnegative revision; no URI syntax/type allowlist/byte/array cap, duplicate or source-existence check."
+    },
+    "source": {
+      "$anchor": "WorkItemProjectionSource",
+      "$ref": "#/$defs/sourceFields",
+      "unevaluatedProperties": false,
+      "description": "Normalized inner source reference; record parser strips extensions. Outer SDK source refs are only validated and preserve extensions."
+    },
+    "record": {
+      "$anchor": "WorkItemProjection",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "external_id",
+        "title",
+        "status",
+        "priority",
+        "owner",
+        "progress",
+        "description",
+        "due_at",
+        "classification",
+        "version",
+        "source_refs",
+        "trace_id",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "external_id": { "type": "string" },
+        "title": { "type": "string" },
+        "status": { "enum": ["todo", "in_progress", "in_review", "blocked", "done", "cancelled"] },
+        "priority": { "enum": ["P0", "P1", "P2", "P3"] },
+        "owner": { "type": "string" },
+        "progress": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "description": { "type": "string" },
+        "due_at": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/time" }] },
+        "classification": { "enum": ["public", "internal", "confidential", "restricted"] },
+        "version": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,18}$",
+          "x-decimal-maximum": "9223372036854775807",
+          "description": "Positive local int64 decimal string; runtime BigInt<=9223372036854775807. Not a numeric safe integer, Plane revision, ETag or write precondition."
+        },
+        "source_refs": { "type": "array", "items": { "$ref": "#WorkItemProjectionSource" } },
+        "trace_id": { "type": "string" },
+        "created_at": { "$ref": "#/$defs/time" },
+        "updated_at": { "$ref": "#/$defs/time" }
+      },
+      "description": "Complete normalized local saved row, no scope columns/page-position helper fields. Returned ID equals requested detail ID; no ULID requirement. Raw row/reference extensions stripped. Title/owner/description/trace may be empty and lack parser byte/control limits. Due date can be any finite Date.parse text unless range filtering requires explicit ISO timezone. Original record trace/sources differ from current outer trace/table source."
+    },
+    "envelopeFields": {
+      "type": "object",
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "type": "string", "minLength": 1 },
+        "source_refs": { "type": "array", "items": { "$ref": "#/$defs/sourceFields" } }
+      }
+    },
+    "listFields": {
+      "allOf": [
+        { "$ref": "#/$defs/envelopeFields" },
+        {
+          "properties": {
+            "data": {
+              "type": "array",
+              "maxItems": 100,
+              "items": { "$ref": "#WorkItemProjection" }
+            },
+            "next_cursor": { "$ref": "#/$defs/cursor" }
+          }
+        }
+      ],
+      "description": "Page length<=query.limit(default25), IDs unique, rows match status/priority/exact owner/assignment/due conditions. Shared parser does not independently verify text-search membership or sort order. Continuation only on full page and different from incoming cursor; no total count or cross-page snapshot guarantee."
+    },
+    "detailFields": {
+      "allOf": [
+        { "$ref": "#/$defs/envelopeFields" },
+        { "properties": { "data": { "$ref": "#WorkItemProjection" } } }
+      ]
+    },
+    "wireSources": { "const": [{ "type": "postgres", "id": "wcp_work_items" }] },
+    "listEnvelope": {
+      "$anchor": "WorkItemListEnvelope",
+      "$ref": "#/$defs/listFields",
+      "properties": { "source_refs": { "$ref": "#/$defs/wireSources" } },
+      "unevaluatedProperties": false,
+      "description": "Built-in Gateway wire. One table source and selected request trace; no dedicated HTTP response2MiB cap. Missing/hidden parent yields empty list200, unlike detail404."
+    },
+    "detailEnvelope": {
+      "$anchor": "WorkItemDetailEnvelope",
+      "$ref": "#/$defs/detailFields",
+      "properties": { "source_refs": { "$ref": "#/$defs/wireSources" } },
+      "unevaluatedProperties": false
+    },
+    "clientTrace": {
+      "type": "string",
+      "maxLength": 1024,
+      "pattern": "\\S",
+      "not": { "pattern": "[\\u0000-\\u001f\\u007f]" },
+      "description": "Exact captured SDK trace, nonblank<=1024 UTF-16/no lone surrogate; SDK does not trim it."
+    },
+    "clientList": {
+      "$anchor": "WorkItemClientListEnvelope",
+      "$ref": "#/$defs/listFields",
+      "properties": { "trace_id": { "$ref": "#/$defs/clientTrace" } },
+      "unevaluatedProperties": false,
+      "x-candidate-json-max-bytes": 2097152,
+      "description": "Normalized SDK result. Whole candidate<=2MiB/64depth/100000nodes finite ordinary JSON, exact current trace, closed outer keys. Arbitrary validated outer source refs/extensions preserved; no single postgres-source requirement. Present raw row scope fields must match captured context before stripping."
+    },
+    "clientDetail": {
+      "$anchor": "WorkItemClientDetailEnvelope",
+      "$ref": "#/$defs/detailFields",
+      "properties": { "trace_id": { "$ref": "#/$defs/clientTrace" } },
+      "unevaluatedProperties": false,
+      "x-candidate-json-max-bytes": 2097152,
+      "description": "Same strict SDK candidate/trace/closed outer gate; complete detail ID and any supplied raw scope checked. Outer sources may be mock/provider references, with extensions preserved. Does not authorize source URI access."
+    },
+    "updatedPosition": {
+      "$anchor": "WorkItemUpdatedCursorContent",
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "prefixItems": [
+        { "const": 1 },
+        { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        { "$ref": "#/$defs/positionTime" },
+        { "$ref": "#/$defs/id" }
+      ],
+      "description": "Decoded production cursor. UTF8 compact JSON canonical unpadded base64url; query hash equality required. Updated DESC, ID ascending using database default ID collation."
+    },
+    "duePosition": {
+      "$anchor": "WorkItemDueCursorContent",
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "prefixItems": [
+        { "const": 2 },
+        { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        { "const": "due_asc" },
+        { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/positionTime" }] },
+        { "$ref": "#/$defs/id" }
+      ],
+      "description": "Due ASC NULLS LAST, ID COLLATE C ascending; null position stays in null tail. Exact canonical base64url and bound query hash; not compatible with default position or Mock cursor."
+    }
+  },
+  "x-runtime-boundaries": {
+    "http": "Both operations use authenticated workbench POST, context.read Policy/audit and generic actor/path limiter; no dedicated verified-client gate. Optional expected actor/client headers checked. Pre-auth generic1MiB JSON, traceparent before x-trace-id. Unknown body keys400. URL query/media/encoding/cache conditions not specifically rejected; no write-header preconditions or cached original result. No dedicated2MiB server response cap or two-slot handler.",
+    "filter": "All scoped visible undeleted rows and parent project visibility filtered before LIMIT+1. Nonrestricted capability excludes restricted row and parent. query is case-insensitive literal substring over external_id/title/owner using strpos(lower(concat_ws)); '%'/'_' are literal, description excluded. Exact owner uses C equality. assigned means owner!='', including whitespace-only saved owners; unassigned means ''. Dates apply UTC inclusive lower/exclusive upper, no wall-clock overdue inference or automatic removal of terminal statuses.",
+    "paging": "Default updated_at DESC/id ASC uses original default DB collation; due_asc uses due_at ASC NULLS LAST/id COLLATE C. SQL raw microseconds form cursor, not displayed timestamps. SHA256 key binds scope/restricted visibility/normalized filters; v1 default query+status, v2 priority/owner, v3 assignment, v4 due/range, v5 due_asc. Limit/trace/actor/client absent from key, so limit may change; current auth always reapplied. New filter/sort requires first page. Cursor is opaque continuation, not signature/authority; no stable cross-request snapshot.",
+    "result": "Built-in Date objects converted toISOString for row fields; raw strings retained. Version bigint cast to text. Source extensions stripped, all saved fields validated, whole malformed page fails500 without client shrinking. Shared parser checks returned categorical/date filters but not query substring/order. Date range requires saved date with explicit Z/numeric offset; no local-time interpretation. Default encoder has less position validation than due encoder; incoming cursor always fully decoded/calendar/canonical checked.",
+    "sdk": "Dedicated readWorkItems/readWorkItem capture own data-property flat query/options and context, normalize before send, detach JSON request<=8KiB. Default30s per-request budget begins after capture and includes custom transport/full candidate parse; synchronous work checked afterwards. Fetch separately default30s includes credential/network/body; exact200/trace/media, fatal UTF8, decoded success2MiB/error16KiB and content-length rules. No automatic retry or writes; known same-trace errors become finite messages and retryable=false, others GATEWAY_UNAVAILABLE. Ordinary overview does not share these stronger transport rules.",
+    "iterator": "workItemPages captures query/context immediately, no timer/request until next(). One page per demand; default100/max1000 pages, separate budget per page, no total iteration deadline. Retains continuation privately before yielding mutable page; detects repeated cursor before yielding offending page. Limit reached only errors when further next requested with pending continuation. No prefetch/save/cross-page deduplication or snapshot.",
+    "errors": "INVALID_JSON/INVALID_INPUT400 false, initial auth401/403, detail WORK_ITEM_NOT_FOUND404 false; hidden parent list returns empty200. RATE_LIMITED429 true; WORK_ITEM_PROJECTION_INVALID500 false; unexpected INTERNAL_ERROR500 true; WORKBENCH_DATABASE_UNAVAILABLE/WORKBENCH_AUTH_UNAVAILABLE/AUDIT_PERSISTENCE_UNAVAILABLE503 true. SDK sanitizes trusted same-trace errors to retryable=false and does not expose original details.",
+    "mock": "MockWorkItemStore has explicit visible seed/authorization and independent cursor formats/ordering. Returns mock-work-item-store source, not postgres. SDK accepts that source shape; no production/Mock cursor interchangeability or machine-schema integration claimed."
+  }
+}

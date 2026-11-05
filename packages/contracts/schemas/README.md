@@ -1,5 +1,15 @@
 # 独立契约结构定义
 
+## 工作台概览与工作项投影
+
+2026-11-05，TODO P0-01：新增 [workbench-overview.json](workbench-overview.json) 和 [work-item-projection.json](work-item-projection.json)，分别有同名包子路径。两份自包含Schema覆盖POST /v1/workbench/query的overview/work_items/work_item三操作，为统一入口完整契约准备；其余八种操作尚需补齐，未把三操作计成三条路由，OpenAPI仍89路。
+
+概览提供WorkbenchOverviewRequest、ContextPreview、Brief、Layer、WorkbenchOverview和完整Envelope锚点。包括全部13项安全计数、五层唯一汇总、brief和四组有界预览；状态及空均值组合可由Schema表达，计数合计、各预览长度恰为min(total,cap)、唯一ID和读时过期条件仍需运行解析。brief的已保存content允许任意JSON，不假造统一正文结构。所有数据对象按现有解析器去掉扩展；built-in外层为七条有序postgres表来源，SDK普通概览封套检查更宽松，不能把它写成工作项严格客户端。
+
+工作项提供原ListQuery/NormalizedListQuery、两Request/DetailQuery、完整Projection及规范Source、两种内置Envelope与两种ClientEnvelope、两种CursorContent锚点。原空串条件可省略，query先限制原长再trim，owner保持完整原文；未分配与非空owner、无日期与非空日期区间互斥。版本是正int64十进制字符串，不是Plane版本或ETag。记录来源去扩展，SDK外层来源保留合法扩展且允许Mock来源；原记录trace和当前封套trace不同。
+
+日期日历、UTF-16/孤立代理项、十进制上界、完整返回筛选、原微秒游标/查询摘要及规范base64url不能只靠Schema。默认updated_desc保持数据库原ID排序；due_asc才显式使用C排序并保持null尾区。内置HTTP没有工作项SDK的8KiB请求/2MiB候选/30秒总等待保证；SDK严格客户端另外核对原trace/大小/完整页，概览仍用普通JSON运输。未执行校验器、生成器、编译、测试或发布。
+
 ## 原始会话来源取证
 
 2026-11-05，TODO P0-01：[session-origin.json](session-origin.json) 与 [session-origin OpenAPI](../openapi/session-origin.json) 定义现有公开取证读取，复用 session-current 基础文本/时间/目标/完整投影。根为 SessionOriginEnvelope；请求、十八字段Selection、内部OwningGrant、OriginalSources/Session/Envelope/Proof/Record/EffectRecord/Row、MigrationInventory、CurrentProjection/Snapshot、Observation、Authorization/Result 都有独立锚点。Proof按原ConfirmedNoEffect与ConfirmedEffect约束revision/result/source；原会话固定running/version1且无恢复origin，当前会话可处于终态。

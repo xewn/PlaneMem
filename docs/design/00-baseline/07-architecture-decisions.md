@@ -1,5 +1,9 @@
 # 架构决策记录摘要
 
+2026-11-05 本轮源码落地：概览和工作项两份完整Schema与两项包子路径已补齐，统一查询三操作的完整数据/统计预览/规范筛选/微秒游标、内置与客户端差异已人工对照；目录/WCP/两份运行说明、README/TODO/R001同步。其余八操作后续组合完整入口，OpenAPI仍89路。P0-01/R001未完成、evidence为空；仅人工源码文档审阅、指定格式/Git文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/SDK/API/数据库或发布。
+
+2026-11-05 P0-01 工作台概览/工作项查询完整 Schema（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增 schemas/workbench-overview.json 与 schemas/work-item-projection.json，覆盖统一 workbench.query 的 overview/work_items/work_item 三操作完整请求/数据/封套及严格客户端结果，记录筛选规范化、原微秒续页、概览统计和真实 HTTP/SDK/预算边界。统一入口另有八种操作，本轮不建立不完整 OpenAPI 或增加路由计数，累计仍89路；后续补齐其余模型再组合完整入口。范围两新 JSON、两项包子路径、schemas/openapi README、根 README/TODO、公共目录/WCP/两份既有运行说明、R001与本 ADR/T0.3/T4.1。不改运行实现；仅人工源码文档审阅、指定格式/Git文本检查，不编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。独立提交推送 main，P0-01/R001未完成、evidence为空。
+
 2026-11-05 本轮源码落地：原始会话来源取证 OpenAPI、session-origin 完整 Schema 与两项包子路径已补齐；获批选件/原证明/逐轮原文/迁移清单/当前来源与双权威封套、同库事务/三次来源批准/双OPA审计、不同摘要/20MiB及真实错误/期限已人工对照。公共目录/WCP/两份运行说明、根 README/TODO/R001 同步，累计 89 路。P0-01/R001 未完成、evidence 为空；仅人工源码文档审阅、指定格式和 Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 2026-11-05 P0-01 原始会话来源取证机器契约（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增 schemas/session-origin.json 与 openapi/session-origin.json，覆盖 POST /v1/continuity/session-origin。完整定义七字段选择请求、十八字段选件、原 NoEffect/Effect 证明与原启动封套、逐轮 SQL 原文/集合摘要、迁移清单、当前投影和双权威响应；对照拥有库事务/原幂等标记、三次来源批准、两次 OIDC/OPA、20MiB响应及真实错误/期限边界。范围两新 JSON、两项包子路径、两 README、根 README/TODO、公共目录/WCP/既有原来源 HTTP 和桥接说明、R001 与本 ADR/T0.3/T4.1。不改运行实现；仅人工源码文档审阅、指定格式与 Git 文本检查，不编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。独立提交推送 main，P0-01/R001 未完成、evidence 为空。
