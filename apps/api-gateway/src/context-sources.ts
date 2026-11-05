@@ -54,26 +54,42 @@ export interface ContextSourceInspection {
   reference_checks?: ContextSourceReferenceCheck[];
   confirmation_readiness?: ContextConfirmationReadiness;
 }
+export interface ContextSourceInspectionOptions {
+  lock?: boolean;
+  require_confirmed?: boolean;
+  reference_checks?: boolean;
+  /** Evaluate strict confirmation readiness against the same loaded graph and timestamp. */
+  confirmation_check?: boolean;
+}
+export interface ContextSourceGraphSnapshot {
+  checks: Map<string, ContextSourceInspection>;
+  /** Visible, valid, non-archived nodes actually used in the evaluated digests. */
+  revisions: ReadonlyMap<string, number>;
+}
+
+export async function inspectContextSources(
+  db: RuntimeSql,
+  context: RequestContext,
+  rootIds: string[],
+  options: ContextSourceInspectionOptions = {},
+): Promise<Map<string, ContextSourceInspection>> {
+  return (await inspectContextSourceGraph(db, context, rootIds, options)).checks;
+}
 
 /**
  * Use inside a repeatable-read transaction, or after the project's stream lock.
  * Locks must be requested only after the stream lock, matching item/proposal/pack writes.
  * Only authorized local rows enter the graph; diagnostics never reveal hidden IDs/content.
  */
-export async function inspectContextSources(
+export async function inspectContextSourceGraph(
   db: RuntimeSql,
   context: RequestContext,
   rootIds: string[],
-  options: {
-    lock?: boolean;
-    require_confirmed?: boolean;
-    reference_checks?: boolean;
-    /** Evaluate strict confirmation readiness against the same loaded graph and timestamp. */
-    confirmation_check?: boolean;
-  } = {},
-): Promise<Map<string, ContextSourceInspection>> {
+  options: ContextSourceInspectionOptions = {},
+): Promise<ContextSourceGraphSnapshot> {
   const roots = [...new Set(rootIds)].sort();
-  if (!roots.length) return new Map();
+  const revisions = new Map<string, number>();
+  if (!roots.length) return { checks: new Map(), revisions };
   const nodes = new Map<string, Node | null>();
   let frontier = roots;
   const restricted = context.capability.includes('data.restricted.read');
@@ -135,6 +151,7 @@ export async function inspectContextSources(
         if (node === undefined) return terminal(id, 'limit');
         if (node === null || node.archived) return terminal(id, 'unavailable');
         if (node.invalid) return terminal(id, 'invalid');
+        revisions.set(id, node.version);
         if (node.status === 'excluded') return terminal(id, 'excluded', node.hash);
         if (node.status === 'expired' || (node.expires !== null && node.expires <= now))
           return terminal(id, 'expired', node.hash);
@@ -231,7 +248,7 @@ export async function inspectContextSources(
       };
     }
   }
-  return results;
+  return { checks: results, revisions };
 }
 
 function terminal(id: string, state: ContextSourceState, hash?: string): Evaluation {

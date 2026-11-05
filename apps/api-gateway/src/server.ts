@@ -156,9 +156,10 @@ import { registerObservedDirectory } from './observed-directory.js';
 import { recallProjectMemory } from './memory-recall.js';
 import { PostgresEventBus, type PlatformEventBusOptions } from './event-bus.js';
 import { eventBusFromEnvironment } from './event-bus-config.js';
+import { contextPackInvalidationConsumer } from './context-pack-invalidation.js';
 
 export interface PlatformServerOptions {
-  /** Internal service credentials and trusted transactional consumers. Requires DATABASE_URL and migration 050. */
+  /** Internal credentials; custom consumers augment the built-in pack invalidator. Requires migrations 050/051. */
   event_bus?: PlatformEventBusOptions;
   host?: string;
   port?: number;
@@ -334,7 +335,12 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
     ? postgres(process.env.DATABASE_URL!, { max: 4, connect_timeout: 5 })
     : undefined;
   const eventBus =
-    eventBusDb && eventBusOptions ? new PostgresEventBus(eventBusDb, eventBusOptions) : undefined;
+    eventBusDb && eventBusOptions
+      ? new PostgresEventBus(eventBusDb, {
+          ...eventBusOptions,
+          consumers: [contextPackInvalidationConsumer(), ...(eventBusOptions.consumers ?? [])],
+        })
+      : undefined;
   // A slow aggregate scan must not monopolize the worker and audit connection.
   const planeMetricsDb = planeMetricsEnabled
     ? postgres(process.env.DATABASE_URL!, { max: 1, connect_timeout: 5 })

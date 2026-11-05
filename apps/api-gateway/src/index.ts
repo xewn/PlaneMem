@@ -3,6 +3,7 @@ export * from './http.js';
 export * from './server.js';
 export {
   PostgresEventBus,
+  EventBusDeliveryRejected,
   type PlatformEventBusOptions,
   type DurableEventConsumer,
 } from './event-bus.js';

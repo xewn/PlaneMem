@@ -13,6 +13,8 @@ import { syncJsonSnapshot } from '@planemem/contracts';
 import type { RuntimeSql } from './runtime-persistence.js';
 
 export interface DurableEventConsumer extends EventConsumerOptions {
+  /** Read-only schema preflight, before opening NATS. Must not apply migrations. */
+  checkStorage?(db: RuntimeSql): Promise<void>;
   /** Only database effects using tx belong here. The receipt commits with these effects. */
   handle(delivery: EventDelivery, tx: RuntimeSql, signal: AbortSignal): Promise<void>;
 }
@@ -29,7 +31,11 @@ type Sample = {
   oldest: number;
   bus: BusMetrics;
 };
-class ConflictingDelivery extends Error {}
+export class EventBusDeliveryRejected extends Error {
+  constructor(readonly code: 'EVENT_BUS_ID_CONFLICT' | 'EVENT_BUS_PAYLOAD_INVALID') {
+    super(code);
+  }
+}
 
 /** One independently pooled worker per gateway; PostgreSQL locks coordinate competing replicas. */
 export class PostgresEventBus {
@@ -55,6 +61,8 @@ export class PostgresEventBus {
     this.definitions = (options.consumers ?? []).map((entry) => {
       const name = eventBusName(entry.name);
       if (typeof entry.handle !== 'function') throw new TypeError('Invalid durable event handler');
+      if (entry.checkStorage !== undefined && typeof entry.checkStorage !== 'function')
+        throw new TypeError('Invalid consumer storage check');
       return { ...entry, name };
     });
     if (
@@ -85,6 +93,7 @@ export class PostgresEventBus {
       .db`SELECT consumer_name, event_id, event_body, stream_name, stream_sequence FROM wcp_event_bus_consumptions LIMIT 0`;
     await this
       .db`SELECT consumer_name, stream_name, stream_sequence, subject, body, body_sha256, body_bytes, reason FROM wcp_event_bus_rejections LIMIT 0`;
+    for (const definition of this.definitions) await definition.checkStorage?.(this.db);
     const bus = await JetStreamEventBus.open(this.options);
     try {
       const binding = await this
@@ -270,8 +279,8 @@ export class PostgresEventBus {
           try {
             await this.apply(definition, delivery);
           } catch (error) {
-            if (!(error instanceof ConflictingDelivery)) throw error;
-            await this.reject(definition.name, message, 'EVENT_BUS_ID_CONFLICT');
+            if (!(error instanceof EventBusDeliveryRejected)) throw error;
+            await this.reject(definition.name, message, error.code);
             message.term('Retained in the durable rejection ledger');
             this.consumerHealthy.set(definition.name, false);
             continue;
@@ -311,7 +320,7 @@ export class PostgresEventBus {
       const [receipt] = await tx<{ same: boolean }[]>`SELECT event_body = ${body}::jsonb AS same
         FROM wcp_event_bus_consumptions WHERE consumer_name = ${definition.name} AND event_id = ${original.event_id}`;
       if (receipt) {
-        if (!receipt.same) throw new ConflictingDelivery();
+        if (!receipt.same) throw new EventBusDeliveryRejected('EVENT_BUS_ID_CONFLICT');
         return;
       }
       await definition.handle(

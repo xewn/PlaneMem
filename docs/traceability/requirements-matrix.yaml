@@ -14,19 +14,20 @@ requirements:
     jetstream_development:
       date: "2026-11-05"
       todo: "P0-03"
-      status: "Production integration source added; disabled by default. Migration 050 not executed. P0-03 and R-001 incomplete."
+      status: "Production integration source with built-in ContextPack invalidation consumer; disabled by default. Migrations 050/051 not executed. P0-03 and R-001 incomplete."
       artifacts:
         - "packages/events/src/jetstream.ts"
         - "apps/api-gateway/src/event-bus.ts"
         - "apps/api-gateway/src/event-bus-outbox.ts"
         - "apps/api-gateway/src/event-bus-config.ts"
+        - "apps/api-gateway/src/context-pack-invalidation.ts"
         - "apps/api-gateway/src/sync-stream.ts"
         - "apps/api-gateway/src/runtime-persistence.ts"
         - "apps/api-gateway/src/server.ts"
         - "deploy/migrations/050_event_bus.sql"
         - "docs/design/01-contracts/jetstream-runtime.md"
       behavior: "Real JetStream transport, original event-ID publish acknowledgements, transactional outbox for existing sync/Plane writers, aggregate-order retries, durable pull consumption with same-transaction effect receipts, explicit replay starts, quarantine before termination, stream-creation binding and live backlog/readiness wiring. No memory fallback."
-      remaining_scope: "Other producers and concrete business projection handlers, historical backfill/recovery and retention, rejection administration, transport schemas and real compatibility/restart/failure evidence. Dependencies resolved with scripts disabled; no compilation, tests, service startup or migration execution."
+      remaining_scope: "Other producers and business projection handlers, historical backfill/recovery and retention, rejection administration, transport schemas and real compatibility/restart/failure evidence. Dependencies resolved with scripts disabled; no compilation, tests, service startup or migration execution."
       evidence: []
     search_sdk_mock_development:
       date: "2026-11-05"
@@ -1818,6 +1819,20 @@ requirements:
     design: ["context-l0-l4", "context-pack"]
     subprojects: ["P2"]
     tests: ["unit.context_determinism", "unit.context_budget", "unit.context_sources", "evaluation.golden_context"]
+    context_pack_invalidation_development:
+      date: "2026-11-05"
+      todo: ["P0-03", "P2-02"]
+      status: "Dependency revision snapshots and transactional JetStream invalidation consumer implemented in source; migration 051 not executed. Parent requirements incomplete."
+      artifacts:
+        - "apps/api-gateway/src/context-sources.ts"
+        - "apps/api-gateway/src/context-packs.ts"
+        - "apps/api-gateway/src/context-pack-invalidation.ts"
+        - "apps/api-gateway/src/event-bus.ts"
+        - "apps/api-gateway/src/server.ts"
+        - "deploy/migrations/051_context_pack_invalidation.sql"
+      behavior: "Pack and visible direct/transitive source revisions commit together; strictly newer scoped ContextItem events invalidate saved packs in the consumption receipt transaction. Original reason retained, delayed older events do not invalidate newer snapshots. Existing permission, expiry and live source checks remain enforced."
+      remaining_scope: "Historical dependency reconstruction, unavailable source recovery notifications, external sources, expiration scheduling, invalidation retention and real runtime/fanout/recovery evidence. No compilation, tests, service execution or deployment."
+      evidence: []
     context_pack_operations_openapi_development_increment:
       date: "2026-11-05"
       todo: "P0-01"

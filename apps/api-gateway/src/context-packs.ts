@@ -23,7 +23,8 @@ import type { CommandRequest, CommandRouter, RequestContext } from './router.js'
 import { commandReceipt } from './http.js';
 import { fingerprint } from './idempotency.js';
 import { appendSyncEvent, highWater, lockSyncStream } from './sync-stream.js';
-import { inspectContextSources } from './context-sources.js';
+import { inspectContextSourceGraph, inspectContextSources } from './context-sources.js';
+import { saveContextPackDependencies } from './context-pack-invalidation.js';
 
 interface SourceRow {
   id: string;
@@ -144,12 +145,13 @@ export function registerContextPacks(router: CommandRouter, database: RuntimeSql
             'CONTEXT_SOURCE_LIMIT',
             'This project exceeds the current 1000-item pack input limit',
           );
-        const sourceChecks = await inspectContextSources(
+        const sourceGraph = await inspectContextSourceGraph(
           tx,
           context,
           rows.map((row) => row.id),
           { lock: true },
         );
+        const sourceChecks = sourceGraph.checks;
         if ([...sourceChecks.values()].some((check) => check.check.state === 'limit'))
           throw failure(
             context,
@@ -207,6 +209,10 @@ export function registerContextPacks(router: CommandRouter, database: RuntimeSql
           ${context.trace_id}, ${pack.expires_at}, ${now}, ${JSON.stringify(pack)}::jsonb,
           ${JSON.stringify(rows.map((row) => ({ id: row.id, hash: sourceHash(row), dependency_hash: sourceChecks.get(row.id)!.hash })))}::jsonb,
           ${restricted}, ${receipt.key}, ${requestHash}, ${cursor})`;
+        // Include excluded direct inputs too: the immutable manifest covers all compiler inputs.
+        const dependencies = new Map(sourceGraph.revisions);
+        for (const row of rows) dependencies.set(row.id, Number(row.version));
+        await saveContextPackDependencies(tx, scope, packId, dependencies);
         const event: CanonicalEvent = {
           schema_version: 1,
           event_id: createUlid(),
@@ -401,6 +407,11 @@ async function checkedDocument(
       'CONTEXT_PACK_EXPIRED',
       'This context pack expired. Compile a new pack.',
     );
+  const invalidated = await tx`SELECT pack_id FROM wcp_context_pack_invalidations
+    WHERE tenant_id = ${context.tenant_id} AND workspace_id = ${context.workspace_id}
+      AND project_id = ${context.project_id} AND pack_id = ${row.pack_id}`;
+  if (invalidated.length)
+    throw failure(context, 'CONTEXT_PACK_STALE', 'Context sources changed. Compile a new pack.');
   const ids = [...pack.items.map((item) => item.id), ...pack.exclusions.map((item) => item.id)];
   const manifestIds = new Set(row.source_manifest.map((source) => source?.id));
   if (
