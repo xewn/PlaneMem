@@ -1,5 +1,9 @@
 # 单条交接当前状态读取
 
+2026-11-05，TODO P0-01：新增 [continuity-reads OpenAPI](../../../packages/contracts/openapi/continuity-reads.json) 与 [handoff-read Schema](../../../packages/contracts/schemas/handoff-read.json)，完整定义当前详情、可选可信身份、claim/write_sessions 提示和成功封套，复用 session-activity-read 身份定义。open 的 version=1 且无领取者，claimed/expired 至少 2；旧 claimed 可无 actor，expired 可保留领取者；状态不按当前时间推导。最多 200 个 type/id 唯一来源会移除扩展，仅保留四字段，并要求原检查点来源。
+
+本轮仅机器契约源码，不改运行实现。SDK getHandoff 完整校验当前 trace/范围/提示，但不传 expectedIdentity 固定账号客户端；没有专用总响应字节/整次期限或读取后身份到期复查，来源数量不能当作字节上限。读取不验证原检查点笔记/上下文包/外部记忆，也不代替原请求回执。P0-01/R-001 未完成、evidence 为空；未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
 2026-11-02：仅源码与文档开发；未编译、类型检查、测试、启动服务、执行迁移或发布。无新增迁移，既有 016–044 保持未执行。
 
 ## 接口与权限

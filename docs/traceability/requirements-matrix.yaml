@@ -11,6 +11,29 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    checkpoint_handoff_reads_openapi_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only three-route checkpoint/handoff OpenAPI and complete schemas; P0-01 and R-001 remain incomplete."
+      artifacts:
+        - "packages/contracts/openapi/continuity-reads.json"
+        - "packages/contracts/schemas/checkpoint-read.json"
+        - "packages/contracts/schemas/handoff-read.json"
+        - "packages/contracts/package.json"
+        - "packages/contracts/openapi/README.md"
+        - "packages/contracts/schemas/README.md"
+      behavior: "Complete checkpoint history/detail and current durable handoff detail, six note arrays, historical references, numeric pagination, ownership and current identity/permission hints. Saved content never proves original command success or current pack/memory validity."
+      boundaries: "No runtime/SDK/Mock/old-schema/dependency/database changes. Same-statement visible parent and scoped associations; no recursive source visibility. History checks eleven positions but only ten payloads/dates, fixed ten entries and raw exclusive revision without identity binding. Checkpoint candidate envelopes have 2/8 MiB limits before date normalization, SQL reserves 16 KiB; no final send-stage byte recheck or whole-handler deadline. Detail preserves source/memory extensions and checks membership, without recomputing hashes or fetching references. Handoff normalizes sources to four fields, permits legacy missing claimant actor, and provides hints without status/target authorization. Dedicated checkpoint SDK bounds bytes/time and sanitizes retryability; generic handoff SDK omits expected actor/client pinning."
+      evidence: []
+      remaining_scope: "Other WCP/MCP machine contracts, ordinary event payloads, SDK/Mock machine-contract consumption, breaking-change CI and tool/runtime/release evidence."
+      pending_evidence:
+        - "Local references, all three complete success shapes and exact request scope/target/current trace"
+        - "Full saved notes, source extension/uniqueness/membership, memory JSON bounds and legacy hash handling"
+        - "Fixed-page ordering, canonical database revisions, eleventh-position checks and continuation relationships"
+        - "SQL payload and candidate-envelope byte boundaries, date normalization and no partial oversized page"
+        - "Handoff status/version/claimant/time relationships, normalized sources and current identity hints"
+        - "Bearer/Policy/project visibility, actual HTTP errors/retryability and distinct SDK parsing/budget behavior"
+      execution: "Manual source/docs review and explicit formatting/Git text checks only; no build, typecheck, tests, validators, generators, product/API/database execution or release."
     session_activity_reads_openapi_development_increment:
       date: "2026-11-05"
       todo: "P0-01"

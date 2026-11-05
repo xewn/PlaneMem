@@ -1,0 +1,241 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/checkpoint-read.json",
+  "title": "PlaneMem historical checkpoint content reads",
+  "description": "Source-only public session checkpoint history and exact checkpoint detail. Saved notes and reference metadata are not an original save receipt or proof referenced ContextPack/memory remains readable or valid. Register session-activity-read.json alongside this resource.",
+  "$comment": "Closed shapes describe reconstructed server output, not all extensions tolerated by input parsers. Runtime additionally checks exact target/scope/trace, UTF-16 lengths, real dates, source membership/uniqueness, memory JSON depth and complete serialized candidate-envelope byte limits. No validator/generator/client machine-contract integration or execution evidence.",
+  "oneOf": [{ "$ref": "#CheckpointHistoryEnvelope" }, { "$ref": "#CheckpointReadEnvelope" }],
+  "$defs": {
+    "ulid": { "$ref": "./session-activity-read.json#/$defs/ulid" },
+    "positive": { "$ref": "./session-activity-read.json#/$defs/positive" },
+    "nonblank": { "type": "string", "pattern": "\\S" },
+    "text": {
+      "type": "string",
+      "pattern": "\\S",
+      "maxLength": 4096,
+      "$comment": "Existing saved-record parser checks <=4096 UTF-16 units, not Unicode scalar count. No extra control/DEL/lone-surrogate restriction; whitespace around nonblank text is retained."
+    },
+    "scopeText": { "type": "string", "minLength": 1 },
+    "time": {
+      "type": "string",
+      "pattern": "^(?:[0-9]{4}|[+-][0-9]{6})-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$",
+      "$comment": "Output normalized by toISOString, including extended years. Input parser accepts any <=128 UTF-16 date string with finite Date.parse, not only canonical UTC input. Pattern alone does not check calendar validity."
+    },
+    "hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Complete original array, including empty strings/whitespace/newlines, with order/duplicates preserved. No per-note/item count limit or trimming; bounded only as part of candidate full JSON."
+    },
+    "source": { "$ref": "./session-activity-read.json#SessionActivitySourceRef" },
+    "historyQuery": {
+      "$anchor": "CheckpointHistoryQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["session_id"],
+      "properties": {
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "before_revision": { "$ref": "#/$defs/positive" }
+      },
+      "description": "Path session plus optional exclusive positive safe numeric revision. Fixed page size10; limit is not accepted. HTTP numeric query digits only, leading zeros allowed. Raw boundary need not identify an existing revision and binds no identity/scope."
+    },
+    "detailQuery": {
+      "$anchor": "CheckpointReadQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["session_id", "checkpoint_id"],
+      "properties": {
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "checkpoint_id": { "$ref": "#/$defs/ulid" }
+      }
+    },
+    "memory": {
+      "$anchor": "CheckpointMemoryReference",
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "tenant_id",
+        "workspace_id",
+        "project_id",
+        "page_ref",
+        "revision",
+        "hash",
+        "source_refs"
+      ],
+      "properties": {
+        "tenant_id": { "$ref": "#/$defs/text" },
+        "workspace_id": { "$ref": "#/$defs/text" },
+        "project_id": { "$ref": "#/$defs/text" },
+        "page_ref": { "$ref": "#/$defs/text" },
+        "revision": { "$ref": "#/$defs/positive" },
+        "hash": { "$ref": "#/$defs/text" },
+        "source_refs": { "type": "array", "items": { "$ref": "#/$defs/source" } }
+      },
+      "description": "Full original memory reference including extensions, structured-cloned after JSON depth<=32/finite-number/plain-object checks. Scope equals current request/checkpoint. Hash is nonblank text, not necessarily sha256 and not recomputed. Every memory source type/id must occur in checkpoint sources; memory source duplicates and different revision/URI for same type/id are not independently rejected. No provider call or current validity check."
+    },
+    "record": {
+      "$anchor": "CheckpointSavedRecord",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "tenant_id",
+        "workspace_id",
+        "project_id",
+        "checkpoint_id",
+        "session_id",
+        "revision",
+        "state_hash",
+        "completed",
+        "in_progress",
+        "next_actions",
+        "decisions",
+        "risks",
+        "open_questions",
+        "trace_id",
+        "source_refs"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "tenant_id": { "$ref": "#/$defs/scopeText" },
+        "workspace_id": { "$ref": "#/$defs/scopeText" },
+        "project_id": { "$ref": "#/$defs/scopeText" },
+        "checkpoint_id": { "$ref": "#/$defs/ulid" },
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "revision": { "$ref": "#/$defs/positive" },
+        "state_hash": { "$ref": "#/$defs/text" },
+        "completed": { "$ref": "#/$defs/notes" },
+        "in_progress": { "$ref": "#/$defs/notes" },
+        "next_actions": { "$ref": "#/$defs/notes" },
+        "decisions": { "$ref": "#/$defs/notes" },
+        "risks": { "$ref": "#/$defs/notes" },
+        "open_questions": { "$ref": "#/$defs/notes" },
+        "trace_id": { "$ref": "#/$defs/text" },
+        "source_refs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/source" } },
+        "context_pack_id": { "$ref": "#/$defs/ulid" },
+        "context_pack_hash": { "$ref": "#/$defs/text" },
+        "memory_ref": { "$ref": "#CheckpointMemoryReference" }
+      },
+      "allOf": [
+        {
+          "if": { "required": ["context_pack_id"] },
+          "then": {
+            "required": ["context_pack_hash"],
+            "properties": { "context_pack_hash": { "$ref": "#/$defs/hash" } }
+          }
+        }
+      ],
+      "description": "Complete saved record with original trace independent of current outer trace. Runtime scope/IDs match request; source type/id pairs unique, contain requested session and bound pack when present. Source extensions survive. state_hash is nonblank<=4096 text, not recomputed; legacy hash without pack ID may be arbitrary nonblank<=4096 text. Optional SQL null pack/memory fields omitted. No current session version/status, original request key or created_at inside this record."
+    },
+    "historyEntry": {
+      "$anchor": "CheckpointHistoryEntry",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "checkpoint_id",
+        "session_id",
+        "revision",
+        "created_at",
+        "trace_id",
+        "completed",
+        "in_progress",
+        "next_actions",
+        "decisions",
+        "risks",
+        "open_questions"
+      ],
+      "properties": {
+        "checkpoint_id": { "$ref": "#/$defs/ulid" },
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "revision": { "$ref": "#/$defs/positive" },
+        "created_at": { "$ref": "#/$defs/time" },
+        "trace_id": { "$ref": "#/$defs/nonblank" },
+        "completed": { "$ref": "#/$defs/notes" },
+        "in_progress": { "$ref": "#/$defs/notes" },
+        "next_actions": { "$ref": "#/$defs/notes" },
+        "decisions": { "$ref": "#/$defs/notes" },
+        "risks": { "$ref": "#/$defs/notes" },
+        "open_questions": { "$ref": "#/$defs/notes" },
+        "context_pack_id": { "$ref": "#/$defs/ulid" },
+        "context_pack_hash": { "$ref": "#/$defs/nonblank" }
+      },
+      "allOf": [
+        {
+          "if": { "required": ["context_pack_id"] },
+          "then": {
+            "required": ["context_pack_hash"],
+            "properties": { "context_pack_hash": { "$ref": "#/$defs/hash" } }
+          }
+        }
+      ],
+      "description": "Historical note projection, deliberately omits state_hash/memory_ref/source_refs/schema_version/scope. Saved trace and hash-without-ID have no individual4096 length bound here, unlike full detail. Bound pack requires canonical sha256 shape but no digest/source/current validity check. No per-entry context_pack_state field."
+    },
+    "historyEnvelope": {
+      "$anchor": "CheckpointHistoryEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "session_id",
+        "tenant_id",
+        "workspace_id",
+        "project_id",
+        "trace_id",
+        "source_refs",
+        "data"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "tenant_id": { "$ref": "#/$defs/nonblank" },
+        "workspace_id": { "$ref": "#/$defs/nonblank" },
+        "project_id": { "$ref": "#/$defs/nonblank" },
+        "trace_id": { "$ref": "#/$defs/nonblank" },
+        "source_refs": { "const": [{ "type": "postgres", "id": "wcp_session_checkpoints" }] },
+        "data": { "type": "array", "maxItems": 10, "items": { "$ref": "#CheckpointHistoryEntry" } },
+        "next_before_revision": { "$ref": "#/$defs/positive", "minimum": 2 }
+      },
+      "allOf": [
+        {
+          "if": { "required": ["next_before_revision"] },
+          "then": { "properties": { "data": { "minItems": 10 } } }
+        }
+      ],
+      "x-candidate-json-max-bytes": 8388608,
+      "description": "Public GET shape, not workbench history with identity/permission hints. Exact current trace/scope/session. Runtime entries have same session, unique checkpoint IDs and strictly descending safe numeric revisions below incoming bound; continuation equals last revision of a full10 page and is>1. Server checks11th position ID/revision/order and null payload without parsing its notes/date. No total or current session version/identity/ETag. Candidate-envelope UTF-8 JSON.stringify budget8MiB checked before parser date normalization; no independent final wire check in this parser."
+    },
+    "detailEnvelope": {
+      "$anchor": "CheckpointReadEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "#/$defs/nonblank" },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "id"],
+            "properties": { "type": { "const": "checkpoint" }, "id": { "$ref": "#/$defs/ulid" } }
+          }
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["checkpoint", "created_at", "context_pack_state"],
+          "properties": {
+            "checkpoint": { "$ref": "#CheckpointSavedRecord" },
+            "created_at": { "$ref": "#/$defs/time" },
+            "context_pack_state": { "const": "not-checked" }
+          }
+        }
+      },
+      "x-candidate-json-max-bytes": 2097152,
+      "description": "Exact current trace/requested session+checkpoint/scope and sole outer checkpoint source. Scope exists inside checkpoint, not outer envelope. context_pack_state always not-checked even without bound pack. No ETag/identity/permissions/outer revision. Candidate-envelope UTF-8 JSON.stringify budget2MiB checked before date normalization; stored reference/hash presence does not establish validity."
+    }
+  }
+}

@@ -1,5 +1,13 @@
 # 独立契约结构定义
 
+2026-11-05，TODO **P0-01**：新增 [checkpoint-read.json](checkpoint-read.json) 与 [handoff-read.json](handoff-read.json)，HTTP 见 [continuity-reads OpenAPI](../openapi/continuity-reads.json)。前者覆盖公开会话检查点历史与指定详情，后者覆盖交接当前详情；包子路径对应文件名。本地同时注册 session-activity-read.json，复用 ULID/安全数字、来源结构和当前身份；不把 workbench 历史封套混作公开 GET。
+
+检查点提供 CheckpointHistoryQuery/ReadQuery、MemoryReference、SavedRecord、HistoryEntry/HistoryEnvelope、ReadEnvelope 锚点。六类完整笔记保留原字符串/顺序/重复；版本为正安全数字，历史固定十条。详情的 state_hash/保存 trace/无 ID 旧包 hash 只限非空白及 4096 个 UTF-16 单位，state_hash 不重算；历史保存 trace/旧 hash 没有该独立长度上限。有 pack ID 才要求配套 sha256 形状，不能推断包有效。详情来源扩展保留、type/id 唯一并包含会话及已绑定包；memory_ref 扩展保留、完整 JSON 深度最多 32，来源 type/id 必须包含在检查点来源中，不比较其 revision/URI。正文整体读取限制不能由 Schema 的数组长度代替。
+
+交接提供 HandoffReadQuery/Detail/Permissions/Envelope。open 必须 version=1 且无领取者，claimed/expired 至少 2；claimed 必有客户端，旧记录允许无 actor，expired 可以保留领取者。实际代码核对目标与领取者相同、时间顺序、原检查点来源及最多 200 个 type/id 唯一来源；来源扩展规范成四字段。当前身份与 claim/write_sessions 提示不代表原请求成功或未来授权。
+
+日期输出均规范成 UTC 毫秒并可含扩展年份；输入解析实际接受最多 128 个 UTF-16 单位且 Date.parse 有限的文本。原目标/范围/trace、动态来源关联、计数/排序/末条游标、真实时间、UTF-16/代理项和字节/JSON 深度由原代码检查。检查点候选封套在日期规范化前检查 2/8 MiB，发送阶段无独立再次核验；交接无专用总字节限额。P0-01/R-001 未完成、evidence 为空；未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
 2026-11-05，TODO **P0-01**：新增自包含 [session-activity-read.json](session-activity-read.json)，根为当前会话状态、运行目录/详情、工具调用目录/详情五种完整成功联合；HTTP 见 [session-reads OpenAPI](../openapi/session-reads.json)。包子路径对应文件名。
 
 提供 SessionCommandIdentity、SessionReadPermissions、SessionActivitySourceRef、SessionStateQuery、SessionRunReadQuery/ListQuery、SessionToolCallReadQuery/ListQuery、SessionActivitySession、SessionClosureState、SessionRunRecord/Page/Detail、SessionToolCallRecord/Page/Detail 和五个封套锚点。版本为正安全整数，运行序号另限正 int32；会话终止时间只接受四位年份规范 UTC 毫秒，活动摘要不含该字段。model 可为空字符串，工具名/保存 trace 只要求非空；来源扩展保留，无数量限制或来源权限证明。

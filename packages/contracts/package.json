@@ -8,6 +8,9 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./schemas/checkpoint-read.json": "./schemas/checkpoint-read.json",
+    "./schemas/handoff-read.json": "./schemas/handoff-read.json",
+    "./openapi/continuity-reads.json": "./openapi/continuity-reads.json",
     "./schemas/session-activity-read.json": "./schemas/session-activity-read.json",
     "./openapi/session-reads.json": "./openapi/session-reads.json",
     "./schemas/plane-inbox.json": "./schemas/plane-inbox.json",

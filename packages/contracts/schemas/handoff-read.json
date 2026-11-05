@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/handoff-read.json",
+  "title": "PlaneMem current durable handoff detail",
+  "description": "Source-only full current handoff detail and caller permission hints. Current ownership is not an original creation/claim/resume receipt. Register session-activity-read.json alongside this resource.",
+  "$comment": "Runtime additionally checks exact target/scope/trace, source type/id uniqueness and original checkpoint membership, target/claimant equality, real timestamp order and UTF-16/lone-surrogate bounds. No validator/generator/client machine-contract integration or execution evidence.",
+  "$ref": "#HandoffReadEnvelope",
+  "$defs": {
+    "ulid": { "$ref": "./session-activity-read.json#/$defs/ulid" },
+    "positive": { "$ref": "./session-activity-read.json#/$defs/positive" },
+    "name": { "$ref": "./session-activity-read.json#/$defs/identityText" },
+    "time": {
+      "type": "string",
+      "pattern": "^(?:[0-9]{4}|[+-][0-9]{6})-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$",
+      "$comment": "Normalized toISOString output including extended years. Input parser accepts <=128 UTF-16 finite Date.parse text and normalizes it; output pattern alone does not establish calendar validity or chronology."
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "minLength": 1 },
+        "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "uri": { "type": "string", "minLength": 1 }
+      },
+      "description": "Handoff parser normalizes sources to four public fields, dropping extensions. Strings only nonempty with no URI/type allowlist or individual length bound. No source existence/visibility/freshness checks."
+    },
+    "query": {
+      "$anchor": "HandoffReadQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["handoff_id"],
+      "properties": { "handoff_id": { "$ref": "#/$defs/ulid" } }
+    },
+    "detail": {
+      "$anchor": "HandoffReadDetail",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "tenant_id",
+        "workspace_id",
+        "project_id",
+        "handoff_id",
+        "session_id",
+        "checkpoint_id",
+        "from_client",
+        "status",
+        "version",
+        "created_at",
+        "updated_at",
+        "trace_id",
+        "source_refs"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "tenant_id": { "$ref": "#/$defs/name" },
+        "workspace_id": { "$ref": "#/$defs/name" },
+        "project_id": { "$ref": "#/$defs/name" },
+        "handoff_id": { "$ref": "#/$defs/ulid" },
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "checkpoint_id": { "$ref": "#/$defs/ulid" },
+        "from_client": { "$ref": "#/$defs/name" },
+        "target_client": { "$ref": "#/$defs/name" },
+        "status": { "enum": ["open", "claimed", "expired"] },
+        "claimed_by": { "$ref": "#/$defs/name" },
+        "claimed_by_actor": { "$ref": "#/$defs/name" },
+        "version": { "$ref": "#/$defs/positive" },
+        "created_at": { "$ref": "#/$defs/time" },
+        "updated_at": { "$ref": "#/$defs/time" },
+        "trace_id": { "$ref": "#/$defs/name" },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 200,
+          "items": { "$ref": "#/$defs/source" }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "open" } } },
+          "then": {
+            "properties": { "version": { "const": 1 } },
+            "not": {
+              "anyOf": [{ "required": ["claimed_by"] }, { "required": ["claimed_by_actor"] }]
+            }
+          },
+          "else": { "properties": { "version": { "minimum": 2 } } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "claimed" } } },
+          "then": { "required": ["claimed_by"] }
+        },
+        { "if": { "required": ["claimed_by_actor"] }, "then": { "required": ["claimed_by"] } }
+      ],
+      "description": "Durable wcp_session_handoffs record linked to original checkpoint/current parent session; no legacy wcp_handoffs projection substitution. Scope matches request, all name fields <=1024 UTF-16/no controls/DEL/lone surrogates, no ULID requirement for scope/names. open version1/no claimant; claimed or expired version>=2; claimed requires client but old records may omit actor. expired may retain or omit claimant. If target and claimant present they must match. updated_at>=created_at; no wall-clock expiry inference. Sources unique by type/id and contain original checkpoint ID. No notes, pack body, request key or embedded receipt."
+    },
+    "permissions": {
+      "$anchor": "HandoffReadPermissions",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claim", "write_sessions"],
+      "properties": { "claim": { "type": "boolean" }, "write_sessions": { "type": "boolean" } },
+      "allOf": [
+        {
+          "if": { "properties": { "write_sessions": { "const": true } } },
+          "then": { "properties": { "claim": { "const": true } } }
+        }
+      ],
+      "description": "write_sessions=verified identity AND (admin OR session.write); claim=write_sessions OR (verified identity AND handoff.claim). Hints ignore current target/status/ownership/version and future Policy/OPA. Either true requires outer identity; false/false allowed with or without identity."
+    },
+    "envelope": {
+      "$anchor": "HandoffReadEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data", "handoff_permissions"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "#/$defs/name" },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "id"],
+            "properties": { "type": { "const": "handoff" }, "id": { "$ref": "#/$defs/ulid" } }
+          }
+        },
+        "data": { "$ref": "#HandoffReadDetail" },
+        "session_identity": { "$ref": "./session-activity-read.json#SessionCommandIdentity" },
+        "handoff_permissions": { "$ref": "#HandoffReadPermissions" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "handoff_permissions": {
+                "anyOf": [
+                  { "properties": { "claim": { "const": true } } },
+                  { "properties": { "write_sessions": { "const": true } } }
+                ]
+              }
+            }
+          },
+          "then": { "required": ["session_identity"] }
+        }
+      ],
+      "description": "Current trace and sole requested handoff source, complete data, current optional verified identity and hints. Identity scope equals request/data; SDK getHandoff uses full parser without expectedIdentity so does not pin actor/client. No outer scope/version/ETag. Record trace is saved metadata and may differ from outer current trace. No dedicated full-response byte/deadline guarantee."
+    }
+  }
+}

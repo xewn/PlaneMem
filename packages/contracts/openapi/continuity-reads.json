@@ -1,0 +1,261 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem checkpoint history and durable handoff reads",
+    "version": "0.1.0",
+    "description": "Source-only three existing GET contracts: checkpoint history, exact checkpoint content and current handoff detail. Load this file, session-reads/search/context-history HTTP components and checkpoint-read/handoff-read/session-activity-read schemas locally, preserving relative paths and schema IDs. No validator/generator/runtime client integration or release evidence."
+  },
+  "servers": [
+    { "url": "/", "description": "Relative Gateway base; configure deployment origin/base." }
+  ],
+  "security": [{ "GatewayBearer": [] }],
+  "tags": [{ "name": "Continuity reads" }],
+  "x-todo": "P0-01",
+  "x-runtime-boundaries": {
+    "sources": [
+      "packages/contracts/src/checkpoint-history.ts",
+      "packages/contracts/src/checkpoint-read.ts",
+      "packages/contracts/src/checkpoint-clients.ts",
+      "packages/contracts/src/checkpoint-read-limits.ts",
+      "packages/contracts/src/handoff-read.ts",
+      "apps/api-gateway/src/checkpoint-history.ts",
+      "apps/api-gateway/src/checkpoint-read.ts",
+      "apps/api-gateway/src/handoff-read.ts",
+      "apps/api-gateway/src/workbench/repository.ts",
+      "apps/api-gateway/src/session-project-access.ts",
+      "apps/api-gateway/src/server.ts",
+      "apps/api-gateway/src/http.ts",
+      "packages/sdk/src/checkpoint-reads.ts",
+      "packages/sdk/src/request-budget.ts",
+      "packages/sdk/src/bounded-json.ts",
+      "packages/sdk/src/client.ts"
+    ],
+    "authorization": "All three require verified Bearer, exact authorized tenant/workspace/project and context.read Policy; entry decision audit and generic actor/path rate limit remain. Configured OPA replaces local Policy. No independent verified-client/session.write gate for reads. Scoped signed token without client claim may read but handoff has no session_identity and false permission hints. Expected actor/client headers independently optional and compare current context, not identity overrides.",
+    "visibility": "Actual data SQL checks scoped current parent session and current nondeleted project with valid classification. Restricted needs actual data.restricted.read; admin alone insufficient, invalid project classification excluded even for restricted readers. Checkpoint rows additionally match tenant/workspace/project/session; handoff joins same-scope original checkpoint and parent session. No separate saved-record classification or recursive source visibility check. Missing/hidden parents not empty successes: checkpoint routes SESSION_NOT_FOUND; handoff any missing/hidden/broken join HANDOFF_NOT_FOUND. Visible empty history is200.",
+    "history": "One statement materializes visible parent, selects11 revision-descending positions below optional bound, builds payload only for first10. SQL sum of payload text bytes limited to8388608-16384; oversized returns metadata/flag with all payloads null and no partial page. Parse all selected positions including11th IDs/revisions/order/uniqueness and require11th payload null; no11th note/date parsing. First10 six note arrays are preserved, not excerpts. Public output has scope/session and postgres table source; no state_hash/memory_ref/inner sources/identity hints. Raw revision boundary unsigned, no identity/scope binding or cross-page snapshot.",
+    "detail": "One SQL left-lateral query builds requested complete checkpoint payload only under visible parent, with revision decimal text. SQL octet_length(payload::text)<=2097152-16384 to return payload, otherwise marker only. Node checks payload bytes, canonical positive decimal revision and safe numeric conversion, then reconstructs schema/scope/notes/hash/trace/sources/optional pack/memory and parses candidate envelope. Scope in checkpoint only; created_at and context_pack_state:'not-checked' beside checkpoint. No current session version/status or original write key.",
+    "historical-integrity": "All six note arrays retain order/duplicates/empty strings without per-note count/length limits. Saved state_hash and memory hash are nonblank text<=4096 UTF-16, not necessarily sha256 and never recomputed here. Bound context_pack_id requires ULID plus sha256-shaped hash, but standalone legacy pack hash allowed without ID. Detail saved trace/hash-without-ID limited4096; history versions have no individual length bound. Detail sources preserve extensions, unique type/id and include session plus bound pack. Memory reference preserves extensions with JSON depth<=32, same scope and every source type/id included in checkpoint; no exact source revision/URI equality or memory source uniqueness requirement. Reads never fetch pack/memory or establish current validity.",
+    "handoff": "Read durable wcp_session_handoffs only, join original checkpoint and session, no legacy wcp_handoffs projection fallback. Full parser checks exact scope/target, normalized timestamps updated>=created, positive safe version and current ownership. open requires version1/no claimant; claimed/expired>=2; claimed requires client, legacy actor may be absent; expired may retain claimant. Target and claimant must agree if both present. Stored status is not inferred from current wall clock. Sources max200/unique type+id/include original checkpoint; normalize to four public fields, dropping extensions.",
+    "hints": "Only handoff response carries current session_identity when authenticated_client=true and handoff_permissions. write_sessions requires that identity plus admin/session.write; claim adds handoff.claim capability. write implies claim, either true requires identity. No check of status/target/claimant/current versions/future Policy from these hints. Scope/client/trace names bounded1024 UTF-16, no controls/DEL/lone surrogates, not ULIDs except resource IDs. SDK getHandoff validates full envelope/current trace/scope/sources/hints but omits expectedIdentity actor/client pinning.",
+    "http": "All GETs ignore body rather than parse JSON, with no dedicated body/framing/media/content-encoding/cache/Range rejection. Only history accepts single before_revision, digits including leading zeros then positive safe number; no limit. Details reject any query. Generic If-Match/If-Match-Version parsed for safe nonnegative agreement then ignored; valid version is not conditional read or CAS. Idempotency-Key copied without dedicated validation, all three bypass success caching. Success private,no-store/current x-trace-id, no ETag/outer revision/304/412.",
+    "budgets": "Checkpoint parser checks candidate JSON.stringify UTF-8 bytes: detail2MiB/history8MiB before its date normalization; SQL budgets reserve16KiB and can reject earlier due PostgreSQL text overhead. No truncation, partial page, synthetic continuation or automatic skip on413. No independent final send-stage byte recheck, two-slot gate, whole-handler deadline, DB cancellation or post-read token-expiry check. SQL construction/scanning, Node allocations and already-parsed custom transport objects are not globally memory-bounded. Handoff has no dedicated full-response byte/deadline budget; source count does not bound source-string lengths.",
+    "checkpoint-sdk": "getSessionCheckpoint/listSessionCheckpoints copy request context, parse original IDs/query and send optional actor/client preconditions from context, with no write headers. bounded-json response2/8MiB, default local30s timeout_ms1..2147483647 plus signal, complete shared parsing and after-parse deadline check. Fetch also applies its own configured deadline including credentials/network/body, success200/exact trace/JSON media/fatal UTF-8, decoded-byte and applicable Content-Length equality; errors16KiB except401 handled before body. No ETag-header check, generic transport lacks HTTP metadata. Known errors sanitized to finite messages/current trace/retryable=false, unknown become GATEWAY_UNAVAILABLE. This differs from raw HTTP retryability. Stop waiting does not prove SQL cancellation. listCheckpoints with session_id uses separate workbench history protocol, outside these three routes."
+  },
+  "paths": {
+    "/v1/sessions/{session_id}/checkpoints": {
+      "parameters": [
+        { "$ref": "./session-reads.json#/components/parameters/SessionId" },
+        { "$ref": "./session-reads.json#/components/parameters/TenantId" },
+        { "$ref": "./session-reads.json#/components/parameters/WorkspaceId" },
+        { "$ref": "./session-reads.json#/components/parameters/ProjectId" },
+        { "$ref": "./session-reads.json#/components/parameters/TraceParent" },
+        { "$ref": "./session-reads.json#/components/parameters/TraceId" },
+        { "$ref": "./session-reads.json#/components/parameters/ExpectedActorId" },
+        { "$ref": "./session-reads.json#/components/parameters/ExpectedClientId" },
+        { "$ref": "./session-reads.json#/components/parameters/IfMatch" },
+        { "$ref": "./session-reads.json#/components/parameters/IfMatchVersion" },
+        { "$ref": "./session-reads.json#/components/parameters/IdempotencyKey" }
+      ],
+      "get": {
+        "operationId": "listSessionCheckpoints",
+        "tags": ["Continuity reads"],
+        "summary": "Read one complete historical page of checkpoint notes",
+        "x-wcp-operation": "session.checkpoints.list",
+        "x-policy-action": "context.read",
+        "x-decoded-query-schema": {
+          "$ref": "../schemas/checkpoint-read.json#CheckpointHistoryQuery"
+        },
+        "description": "Fixed10 rows, optional exclusive positive safe before_revision (digits/leading zeros accepted). Revision boundary need not exist and is not an identity-bound opaque cursor. One statement returns parent and at most11 positions; parses11th position metadata but not its null payload or created_at. First10 complete note projections ordered revision DESC, unique IDs; next_before_revision equals last returned revision on full page and must be>1. Missing/hidden parent404, visible empty200. Outer scope/session/current trace and sole postgres wcp_session_checkpoints source; no identity/hints/state_hash/memory/source bodies. Full page too large413, never shorter notes or partial success.",
+        "parameters": [
+          {
+            "name": "before_revision",
+            "in": "query",
+            "description": "Exclusive safe positive numeric revision, no sign/fraction/exponent; leading zeros accepted. No limit parameter.",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 }
+          }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/HistorySuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "./search.json#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/HistoryNotFound" },
+          "413": { "$ref": "#/components/responses/TooLarge" },
+          "429": { "$ref": "./search.json#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidHistory" },
+          "503": { "$ref": "#/components/responses/HistoryUnavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/sessions/{session_id}/checkpoints/{checkpoint_id}": {
+      "parameters": [
+        { "$ref": "./session-reads.json#/components/parameters/SessionId" },
+        { "$ref": "#/components/parameters/CheckpointId" },
+        { "$ref": "./session-reads.json#/components/parameters/TenantId" },
+        { "$ref": "./session-reads.json#/components/parameters/WorkspaceId" },
+        { "$ref": "./session-reads.json#/components/parameters/ProjectId" },
+        { "$ref": "./session-reads.json#/components/parameters/TraceParent" },
+        { "$ref": "./session-reads.json#/components/parameters/TraceId" },
+        { "$ref": "./session-reads.json#/components/parameters/ExpectedActorId" },
+        { "$ref": "./session-reads.json#/components/parameters/ExpectedClientId" },
+        { "$ref": "./session-reads.json#/components/parameters/IfMatch" },
+        { "$ref": "./session-reads.json#/components/parameters/IfMatchVersion" },
+        { "$ref": "./session-reads.json#/components/parameters/IdempotencyKey" }
+      ],
+      "get": {
+        "operationId": "getSessionCheckpoint",
+        "tags": ["Continuity reads"],
+        "summary": "Read complete saved checkpoint notes and historical references",
+        "x-wcp-operation": "session.checkpoint.read",
+        "x-policy-action": "context.read",
+        "x-decoded-query-schema": { "$ref": "../schemas/checkpoint-read.json#CheckpointReadQuery" },
+        "description": "Exact session/checkpoint ULIDs, no query. Scoped left-lateral SQL distinguishes missing parent SESSION_NOT_FOUND from missing checkpoint CHECKPOINT_NOT_FOUND. Complete record six note arrays/state hash/saved trace/source extensions and optional pack/memory references; revision positive safe JSON integer. Detail data includes normalized created_at and context_pack_state='not-checked' even if no pack is bound. Unique outer checkpoint source differs from history's table source. No original request key, current session version/identity/hints or pack/memory fetch. SQL/parsed candidate byte checks can413 without partial data.",
+        "responses": {
+          "200": { "$ref": "#/components/responses/CheckpointSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "./search.json#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/CheckpointNotFound" },
+          "413": { "$ref": "#/components/responses/TooLarge" },
+          "429": { "$ref": "./search.json#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidDetail" },
+          "503": { "$ref": "#/components/responses/DetailUnavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/handoffs/{handoff_id}": {
+      "parameters": [
+        { "$ref": "#/components/parameters/HandoffId" },
+        { "$ref": "./session-reads.json#/components/parameters/TenantId" },
+        { "$ref": "./session-reads.json#/components/parameters/WorkspaceId" },
+        { "$ref": "./session-reads.json#/components/parameters/ProjectId" },
+        { "$ref": "./session-reads.json#/components/parameters/TraceParent" },
+        { "$ref": "./session-reads.json#/components/parameters/TraceId" },
+        { "$ref": "./session-reads.json#/components/parameters/ExpectedActorId" },
+        { "$ref": "./session-reads.json#/components/parameters/ExpectedClientId" },
+        { "$ref": "./session-reads.json#/components/parameters/IfMatch" },
+        { "$ref": "./session-reads.json#/components/parameters/IfMatchVersion" },
+        { "$ref": "./session-reads.json#/components/parameters/IdempotencyKey" }
+      ],
+      "get": {
+        "operationId": "getHandoff",
+        "tags": ["Continuity reads"],
+        "summary": "Read current durable handoff ownership and caller hints",
+        "x-wcp-operation": "session.handoff.read",
+        "x-policy-action": "context.read",
+        "x-decoded-query-schema": { "$ref": "../schemas/handoff-read.json#HandoffReadQuery" },
+        "description": "Exact handoff ULID, no query. One SQL joins durable handoff/checkpoint/session and current visible project. Any missing/broken/invisible join404 HANDOFF_NOT_FOUND; selected metadata inconsistency500. open version1/no claimant; claimed/expired>=2, claimed requires client and old actor may be absent, expired may keep claimant. Target must equal claimant when both present. Dates normalized and updated>=created, status not clock-derived. Sources<=200 unique type/id and include original checkpoint; extensions removed. Current identity/write/claim hints outside data cannot authorize claim/resume or prove original success. Reads no checkpoint notes/pack/memory and performs no business writes.",
+        "responses": {
+          "200": { "$ref": "#/components/responses/HandoffSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "./search.json#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/HandoffNotFound" },
+          "429": { "$ref": "./search.json#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidDetail" },
+          "503": { "$ref": "#/components/responses/DetailUnavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": { "GatewayBearer": { "type": "http", "scheme": "bearer" } },
+    "parameters": {
+      "CheckpointId": {
+        "name": "checkpoint_id",
+        "in": "path",
+        "required": true,
+        "schema": { "$ref": "../schemas/checkpoint-read.json#/$defs/ulid" }
+      },
+      "HandoffId": {
+        "name": "handoff_id",
+        "in": "path",
+        "required": true,
+        "schema": { "$ref": "../schemas/handoff-read.json#/$defs/ulid" }
+      }
+    },
+    "responses": {
+      "HistorySuccess": {
+        "description": "Full public history with exact scope/session/current trace/table source, <=10 complete entries and optional last-revision continuation. Candidate budget8MiB. No identity/hints/ETag.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/checkpoint-read.json#CheckpointHistoryEnvelope" }
+          }
+        }
+      },
+      "CheckpointSuccess": {
+        "description": "Full saved checkpoint plus created_at/not-checked, exact current trace and sole checkpoint source. Candidate budget2MiB. No outer scope/current version/ETag/identity hints.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/checkpoint-read.json#CheckpointReadEnvelope" }
+          }
+        }
+      },
+      "HandoffSuccess": {
+        "description": "Current durable handoff and optional current identity/permission hints; exact trace/target/scope and sole handoff source. Old claimed actor may be absent. No request receipt or ETag.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/handoff-read.json#HandoffReadEnvelope" }
+          }
+        }
+      },
+      "Error": { "$ref": "./search.json#/components/responses/Error" },
+      "BadInput": {
+        "$ref": "#/components/responses/Error",
+        "description": "INVALID_INPUT for path encoding/ULID, unknown/repeated URL fields or invalid before_revision. INVALID_REQUEST_CONTEXT for malformed/disagreeing generic version headers. retryable=false. No dedicated GET body/framing/media rejection."
+      },
+      "Denied": {
+        "$ref": "#/components/responses/Error",
+        "description": "DENIED for scope/expected identity/Policy refusal, retryable=false. Lack of verified client alone is not read refusal. Hidden parent/record uses404 instead."
+      },
+      "HistoryNotFound": {
+        "$ref": "#/components/responses/Error",
+        "description": "SESSION_NOT_FOUND for missing/hidden parent session or project; retryable=false. Visible empty history succeeds."
+      },
+      "CheckpointNotFound": {
+        "$ref": "#/components/responses/Error",
+        "description": "SESSION_NOT_FOUND for parent visibility; CHECKPOINT_NOT_FOUND for absent/cross-session/cross-scope checkpoint under visible parent. retryable=false."
+      },
+      "HandoffNotFound": {
+        "$ref": "#/components/responses/Error",
+        "description": "HANDOFF_NOT_FOUND for absent/scoped-out handoff, broken checkpoint/session link or hidden/deleted/invalid-classification project. retryable=false; no legacy projection fallback."
+      },
+      "TooLarge": {
+        "$ref": "#/components/responses/Error",
+        "description": "CHECKPOINT_READ_TOO_LARGE for SQL payload sum/single payload or serialized candidate-envelope limit; retryable=false. No partial success/truncated notes/reduced page/skip cursor; failure does not prove no saved checkpoint."
+      },
+      "InvalidHistory": {
+        "$ref": "#/components/responses/Error",
+        "description": "SESSION_ACTIVITY_INVALID for invalid positions/IDs/revisions/order, lookahead nonnull payload, selected notes/pack metadata/time/trace or final scope/envelope; retryable=false. History catches all non-limit failures in parsing stages; SQL read errors separately503."
+      },
+      "InvalidDetail": {
+        "$ref": "#/components/responses/Error",
+        "description": "SESSION_ACTIVITY_INVALID for TypeError/SyntaxError/RangeError while parsing selected checkpoint/handoff, source/identity/state/time/association metadata; retryable=false. Unexpected outer INTERNAL_ERROR500 defaults true. Other storage exceptions map503; size errors use dedicated413 only for checkpoints."
+      },
+      "HistoryUnavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "WORKBENCH_DATABASE_UNAVAILABLE for absent DB or query failure; WORKBENCH_AUTH_UNAVAILABLE/AUDIT_PERSISTENCE_UNAVAILABLE at outer boundaries. retryable=true. Generic Gateway replaces trace_unknown with current trace."
+      },
+      "DetailUnavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "SESSION_STORAGE_UNAVAILABLE for absent DB/SQL or other non-ContractError storage failures outside explicit invalid/size classes; WORKBENCH_AUTH_UNAVAILABLE/AUDIT_PERSISTENCE_UNAVAILABLE also503. retryable=true. Dedicated checkpoint SDK sanitizes returned errors to retryable=false."
+      }
+    }
+  }
+}

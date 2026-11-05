@@ -1,6 +1,24 @@
 # OpenAPI 源码契约
 
-这里的文档描述已有 HTTP 实现，尚未经过校验器、生成器、编译、类型检查、测试或运行验证。文档版本不表示已发布或部署；当前覆盖保存包 5 路、文件 9 路、上下文条目 9 路、同步 6 路、冲突 5 路、建议 8 路、Plane 观察 4 路、搜索 2 路、旧索引 5 路、Plane 收件箱 6 路及会话状态/活动 5 路，共 64 路，尚不是完整 WCP 接口目录。
+这里的文档描述已有 HTTP 实现，尚未经过校验器、生成器、编译、类型检查、测试或运行验证。文档版本不表示已发布或部署；当前覆盖保存包 5 路、文件 9 路、上下文条目 9 路、同步 6 路、冲突 5 路、建议 8 路、Plane 观察 4 路、搜索 2 路、旧索引 5 路、Plane 收件箱 6 路、会话状态/活动 5 路及检查点/交接读取 3 路，共 67 路，尚不是完整 WCP 接口目录。
+
+## 检查点历史与交接详情
+
+2026-11-05，TODO **P0-01**：[continuity-reads OpenAPI](continuity-reads.json) 覆盖 GET /v1/sessions/{session_id}/checkpoints、/checkpoints/{checkpoint_id} 和 GET /v1/handoffs/{handoff_id}。完整查询、笔记/引用、历史分页、交接状态/身份权限与成功封套见 [checkpoint-read Schema](../schemas/checkpoint-read.json) 和 [handoff-read Schema](../schemas/handoff-read.json)。包子路径对应文件名；本地加载 session-reads/search/context-history 公共 HTTP 组件及 session-activity-read 公共 Schema，保留相对路径和资源 ID。
+
+三路沿签名 Bearer、准确范围、context.read Policy/入口审计/通用限流，不独立要求写入客户端身份。SQL 同时检查当前可见未删除父项目，未知分类排除，restricted 需要实际能力；没有按保存来源递归授权。检查点缺父会话 404，详情缺目标另为 CHECKPOINT_NOT_FOUND；交接与原检查点/会话的任何缺失/隐藏联结均为 HANDOFF_NOT_FOUND。历史可见空会话才空 200。
+
+检查点历史固定十条完整原笔记，按安全数字修订降序，before_revision 是排他原值，HTTP 接受前导零、不接受 limit，位置不绑定身份/范围也不要求旧记录存在。SQL 取十一条位置，仅前十条构造六类笔记 JSON；第十一条 ID/修订/顺序仍核验，payload 必须 null，不解析其笔记/日期。返回外层范围/会话和单一 postgres 表来源，无 state_hash/memory_ref/内部来源或身份提示。续页等于满页最后修订且大于 1，无跨页快照。
+
+详情读取完整保存记录，原状态 hash 和记忆 hash 只作有界非空白文本，不重算摘要；有 pack ID 必须伴随 sha256 形状，但旧 hash 可以没有 ID。来源扩展保留且 type/id 唯一，须含原会话及绑定包；完整 memory_ref 扩展保留，检查 JSON 深度/范围及来源 type/id 被包含，不比来源的版本/URI。外层唯一 checkpoint 来源，data 旁有规范 created_at 与固定 not-checked，不查询上下文包或外部记忆。能读取笔记不证明原保存请求成功或包仍有效。
+
+检查点详情/历史候选封套分别检查 2/8 MiB，SQL 正文预算各预留 16 KiB；数据库文本开销可能更早超限。超限 413，不截断/缩页/伪造跳过游标。共享字节检查在日期规范化前，没有发送阶段独立再次检查；SQL 构造、扫描和已解析对象不因此有统一内存上限。服务器没有新增两容量/整次期限/数据库取消或读取后到期复查。SDK 检查点方法用 bounded-json、默认 30 秒本地预算及取消，完整解析后再次查期限；Fetch 另有凭据/网络/正文期限、200/trace/媒体/严格 UTF-8/解码字节及适用长度核对，错误 16 KiB。有限 SDK 错误统一 retryable=false，不同于 HTTP 原错误；无 ETag 头核验或自动翻页/重试。
+
+交接读持久 wcp_session_handoffs，不用旧投影补造；open 版本 1、无领取者，claimed/expired 版本至少 2，旧 claimed 允许缺 actor，expired 可保留领取者。目标与领取者须一致，时间规范后更新不早于创建；状态不按当前时钟推导。最多 200 个来源规范为四字段、type/id 唯一且含原检查点，未读取笔记/包/记忆。当前身份和 claim/write_sessions 只作提示；SDK 完整解析但未传 expectedIdentity 固定账号客户端。交接没有专用总响应字节/期限保证，来源数量不限制其文本总量。
+
+仅历史接受查询；GET 不解析正文，无媒体/编码/缓存/Range/framing 专用拒绝。三路解析版本头后忽略有效值，误带幂等键不缓存旧成功；成功 private,no-store、当前 trace、无 ETag。历史存储失败 WORKBENCH_DATABASE_UNAVAILABLE，详情存储失败 SESSION_STORAGE_UNAVAILABLE；坏记录 500，实际错误/重试边界已列出。
+
+本轮三路使 OpenAPI 累计 67 路；其他 WCP/MCP、事件 payload、SDK/Mock 机器契约接线与破坏性差异 CI 仍缺，P0-01/R-001 未完成、evidence 为空。仅人工源码文档审阅/指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 ## 会话状态与活动读取
 
@@ -16,7 +34,7 @@
 
 GET 不读取 JSON 正文，无正文/framing、媒体/编码/缓存/Range 专用拒绝；详情拒绝全部查询，目录只接受列出的单值字段。五路解析通用版本头但忽略有效值，不做条件读取；误带幂等键不复用旧响应。成功 private,no-store、当前 trace、无 ETag；无专用完整响应字节/两容量/整次期限或读取后到期复查。错误保留实际状态与 retryable 区别；来源扩展和无界文本不能用行数上限冒称字节有界。
 
-本轮五路使 OpenAPI 累计 64 路。其他 WCP/MCP、事件 payload、SDK/Mock 机器契约接线与破坏性差异 CI 仍缺，P0-01/R-001 未完成、evidence 为空。仅人工源码文档审阅/指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+该轮五路使 OpenAPI 累计六十四路。其他 WCP/MCP、事件 payload、SDK/Mock 机器契约接线与破坏性差异 CI 仍缺，P0-01/R-001 未完成、evidence 为空。仅人工源码文档审阅/指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 ## Plane 收件箱与原重试回执
 
