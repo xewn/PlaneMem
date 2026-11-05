@@ -93,3 +93,4 @@ export * from './context-pack-receipt-backup.js';
 export * from './context-pack-receipt-volumes.js';
 export * from './session-mutation-model.js';
 export * from './session-mutations.js';
+export * from './checkpoint-state-hash.js';

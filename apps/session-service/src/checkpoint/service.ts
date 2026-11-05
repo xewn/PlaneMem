@@ -1,6 +1,7 @@
 import {
   ContractError,
   createUlid,
+  checkpointStateHash,
   isUlid,
   validateSourceRef,
   parseHandoffClaimReceiptLookup,
@@ -300,21 +301,19 @@ export class ContinuationService {
       decisions: [...input.decisions],
       risks: [...input.risks],
       open_questions: [...input.open_questions],
-      state_hash: stableHash(
-        JSON.stringify({
-          completed: input.completed,
-          in_progress: input.in_progress,
-          next_actions: input.next_actions,
-          decisions: input.decisions,
-          risks: input.risks,
-          open_questions: input.open_questions,
-          context_pack_hash: input.context_pack?.pack_hash,
-          ...(input.context_pack_id === undefined
-            ? {}
-            : { context_pack_id: input.context_pack_id }),
-          memory_page_ref: input.memory_ref?.page_ref,
-        }),
-      ),
+      state_hash: checkpointStateHash({
+        completed: input.completed,
+        in_progress: input.in_progress,
+        next_actions: input.next_actions,
+        decisions: input.decisions,
+        risks: input.risks,
+        open_questions: input.open_questions,
+        ...(input.context_pack === undefined
+          ? {}
+          : { context_pack_hash: input.context_pack.pack_hash }),
+        ...(input.context_pack_id === undefined ? {} : { context_pack_id: input.context_pack_id }),
+        ...(input.memory_ref === undefined ? {} : { memory_page_ref: input.memory_ref.page_ref }),
+      }),
       ...(input.context_pack === undefined
         ? {}
         : { context_pack_hash: input.context_pack.pack_hash }),
@@ -816,10 +815,4 @@ function checkpointReceiptKey(input: CreateCheckpointInput, key: string): string
     input.session_id,
     key,
   ]);
-}
-
-function stableHash(value: string): string {
-  let hash = 2166136261;
-  for (const char of value) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
-  return `sha256:${(hash >>> 0).toString(16).padStart(8, '0')}`;
 }

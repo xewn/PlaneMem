@@ -1,6 +1,6 @@
 # WCP SDK
 
-2026-11-05（TODO P0-02）：新增 `MockSessionStore` 和 `MockWcpServer({ sessions: { store, session } })`，接通现有 SDK 的会话启动、运行/工具记录与收尾、会话结束、当前状态/活动分页和原回执查询。复用生产服务的状态转换，支持版本冲突、原请求重放及显式身份/权限/可见范围。配置和完整开发流程见[会话 Mock](../../docs/design/01-contracts/session-mock-runtime.md)。代码未编译、运行或测试；P0-02 尚未完成。
+2026-11-05（TODO P0-02）：`MockSessionStore` 已接通会话生命周期、状态/活动读取、检查点保存/历史/详情、交接创建/领取、另一客户端续接和各自原回执。可选 `context_packs` 接入已有保存包 Mock，保存或续接时核对同一身份/期限与完整包，异步后复查当前状态再原子提交。配置与客户端切换示例见[会话 Mock](../../docs/design/01-contracts/session-mock-runtime.md)。代码未编译、运行或测试；工作台目录及其余 WCP 覆盖仍待补齐，P0-02 尚未完成。
 
 2026-11-05（TODO P0-02）：新增 `MockAdminStore`、`MockAdminSeed`、`MockAdminSession` 与 `MockWcpServer({ admin: { store, session } })`，支持原 `getAdminSnapshot`。种子显式提供单项目 1–2 个 read_restricted 场景及完整固定快照，会话明确模拟客户端认证、管理员角色和独立读取能力。缺少 audit/context 读取能力分别返回 not-authorized/null，来源随计数权限匹配；缺少对应场景在连接时拒绝，不猜测受限计数。保留原时间与版本，外部检查全部 not-checked；read-succeeded 和 runtime/postgres 来源仅为模拟协议字段。64 KiB 种子、16 KiB 会话/头/完整响应、4 KiB 正文，响应还受调用方更小限额，30 秒/signal 前后检查。详见[管理快照 Mock](../../docs/design/01-contracts/admin-mock-runtime.md)。仅源码文档人工审阅及格式/Git 文本检查，未编译、类型检查、测试、执行 SDK/Mock/API 或发布。
 

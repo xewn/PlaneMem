@@ -5,6 +5,7 @@ import {
   createUlid,
   isUlid,
   parseEtag,
+  parseContextPackReadEnvelope,
   parseSessionActivityCreateCommand,
   parseSessionActivityCreateEnvelope,
   parseSessionCommandBinding,
@@ -27,7 +28,6 @@ import {
   parseSessionToolCallQuery,
   prepareSessionMutation,
   readSessionMutationReceipt,
-  syncJsonSnapshot,
   validateIdempotencyKey,
   type SessionCommandContextData,
   type SessionCommandReceiptQuery,
@@ -42,9 +42,17 @@ import {
 } from '@planemem/contracts';
 import type { WcpRequest, WcpTransport } from './client.js';
 import { createRequestBudget } from './request-budget.js';
+import { envelope, fail, fingerprint, object, snapshot } from './mock-session-json.js';
+import {
+  handleMockSessionContinuity,
+  isMockSessionContinuityPath,
+  type ContinuityStored,
+} from './mock-session-continuity.js';
+import type { MockContextPackStore, MockContextPackSession } from './mock-context-packs.js';
 
 export interface MockSessionStoreOptions {
   scope: { tenant_id: string; workspace_id: string; project_id: string };
+  context_packs?: MockContextPackStore;
 }
 
 /** Explicit simulated authority. No credentials or production identity checks are performed. */
@@ -52,58 +60,34 @@ export interface MockSessionAccess extends SessionCommandContextData {
   project_readable: boolean;
   /** New sessions created by this connection are also visible to this connection. */
   visible_session_ids: 'all' | string[];
+  /** Explicit saved-pack access; identity and expiry always come from this connection. */
+  context_packs?: Omit<MockContextPackSession, 'identity' | 'expires_at'>;
 }
 
-type Access = MockSessionAccess & { visible: 'all' | Set<string> };
-type Stored =
+type Access = MockSessionAccess & { visible: 'all' | Set<string>; packs?: WcpTransport };
+export type MockSessionStored =
+  | ContinuityStored
   | { kind: 'session'; value: SessionMutationSession }
   | { kind: 'run'; value: SessionMutationRun }
   | { kind: 'tool'; value: SessionMutationToolCall }
   | { kind: 'start'; fingerprint: string; receipt: SessionStartRecorded }
   | { kind: 'command'; fingerprint: string; result: SessionMutationResult };
-type Change = { key: string; value: Stored };
+type Stored = MockSessionStored;
+export type MockSessionChange = { key: string; value: Stored };
+type Change = MockSessionChange;
 type Request = WcpRequest & { headers: Record<string, string> };
 const MAX_REQUEST = 16 * 1024;
 const MAX_RESPONSE = 2 * 1024 * 1024;
+const CONTINUITY_REQUEST = 1024 * 1024;
+const CONTINUITY_RESPONSE = 8 * 1024 * 1024;
 const MAX_RECORDS = 10_000;
 const MAX_STORE_BYTES = 16 * 1024 * 1024;
 const configurationTrace = 'trace_mock_session_configuration';
 
-function fail(code: string, trace: string): never {
-  throw new ContractError(code, 'Simulated session request could not be completed: ' + code, {
-    trace_id: trace,
-    retryable: false,
-  });
-}
-function snapshot<T>(value: T, maximum: number): T {
-  return JSON.parse(syncJsonSnapshot(value, maximum)) as T;
-}
-function object(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError();
-  return value as Record<string, unknown>;
-}
-function fingerprint(value: Record<string, unknown>): string {
-  const sort = (item: unknown): unknown => {
-    if (Array.isArray(item)) return item.map(sort);
-    if (item && typeof item === 'object')
-      return Object.fromEntries(
-        Object.entries(item)
-          .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-          .map(([key, child]) => [key, sort(child)]),
-      );
-    return item;
-  };
-  // Match the gateway's effective body: the header key is not a business field.
-  const { idempotency_key: _key, ...body } = value;
-  return JSON.stringify(sort(body));
-}
 function scopeOf(identity: MockSessionAccess['identity']): SessionMutationScope {
   const { tenant_id, workspace_id, project_id } = identity;
   if (!isUlid(tenant_id) || !isUlid(workspace_id) || !isUlid(project_id)) throw new TypeError();
   return { tenant_id, workspace_id, project_id };
-}
-function envelope(data: unknown, trace: string, source_refs: unknown[] = []) {
-  return { schema_version: 1 as const, trace_id: trace, source_refs, data };
 }
 function commandResult(result: SessionMutationResult, trace: string) {
   const data =
@@ -197,18 +181,21 @@ function mutation(
 }
 
 export function isMockSessionPath(path: unknown): path is string {
-  return typeof path === 'string' && /^\/v1\/sessions(?:[/?#]|$)/.test(path);
+  return typeof path === 'string' && /^\/v1\/(?:sessions|handoffs)(?:[/?#]|$)/.test(path);
 }
 
 /** In-memory lifecycle and original receipts shared by explicitly connected simulated callers. */
 export class MockSessionStore {
   private readonly scope: SessionMutationScope;
+  private readonly contextPacks: MockContextPackStore | undefined;
   private readonly records = new Map<string, Stored>();
   private storedBytes = 0;
 
   constructor(options: MockSessionStoreOptions) {
     try {
-      const raw = object(snapshot(options, MAX_REQUEST));
+      const { context_packs, ...configuration } = options;
+      this.contextPacks = context_packs;
+      const raw = object(snapshot(configuration, MAX_REQUEST));
       if (Object.keys(raw).some((key) => key !== 'scope')) throw new TypeError();
       const scope = object(raw.scope);
       if (
@@ -236,6 +223,7 @@ export class MockSessionStore {
               'permissions',
               'project_readable',
               'visible_session_ids',
+              'context_packs',
             ].includes(key),
         )
       )
@@ -257,16 +245,37 @@ export class MockSessionStore {
             new Set(raw.visible_session_ids).size !== raw.visible_session_ids.length))
       )
         throw new TypeError();
+      if (raw.context_packs !== undefined && !this.contextPacks) throw new TypeError();
+      if (
+        raw.context_packs !== undefined &&
+        Object.keys(object(raw.context_packs)).some(
+          (field) =>
+            !['project_readable', 'read_context', 'read_restricted', 'visible_pack_ids'].includes(
+              field,
+            ),
+        )
+      )
+        throw new TypeError();
       access = {
         ...raw,
         ...data,
         visible: raw.visible_session_ids === 'all' ? 'all' : new Set(raw.visible_session_ids),
+        ...(raw.context_packs === undefined
+          ? {}
+          : {
+              packs: this.contextPacks!.connect({
+                ...raw.context_packs,
+                identity: data.identity,
+                expires_at: data.expires_at,
+              }),
+            }),
       };
     } catch {
       fail('MOCK_SESSION_CONFIGURATION_INVALID', configurationTrace);
     }
     return {
-      request: async <T>(request: WcpRequest): Promise<T> => this.request(request, access) as T,
+      request: async <T>(request: WcpRequest): Promise<T> =>
+        (await this.request(request, access)) as T,
     };
   }
 
@@ -285,7 +294,7 @@ export class MockSessionStore {
     return row.value;
   }
 
-  private request(original: WcpRequest, access: Access): unknown {
+  private async request(original: WcpRequest, access: Access): Promise<unknown> {
     let trace = 'trace_unknown';
     const budget = createRequestBudget(trace, 30_000, original.signal);
     try {
@@ -300,11 +309,16 @@ export class MockSessionStore {
       trace = headers.traceparent ?? headers['x-trace-id'] ?? trace;
       if (!trace.trim() || trace.length > 512 || /[\u0000-\u001f\u007f\p{Cs}]/u.test(trace))
         throw new TypeError();
+      const continuity =
+        typeof original.path === 'string' &&
+        isMockSessionContinuityPath(original.path.split('?')[0]!);
       const request: Request = {
         method: original.method,
         path: original.path,
         headers,
-        ...(original.body === undefined ? {} : { body: snapshot(original.body, MAX_REQUEST) }),
+        ...(original.body === undefined
+          ? {}
+          : { body: snapshot(original.body, continuity ? CONTINUITY_REQUEST : MAX_REQUEST) }),
         ...(original.response_type === undefined ? {} : { response_type: original.response_type }),
         ...(original.max_response_bytes === undefined
           ? {}
@@ -344,7 +358,10 @@ export class MockSessionStore {
         try {
           detached = snapshot(
             value,
-            Math.min(MAX_RESPONSE, request.max_response_bytes ?? MAX_RESPONSE),
+            Math.min(
+              continuity ? CONTINUITY_RESPONSE : MAX_RESPONSE,
+              request.max_response_bytes ?? (continuity ? CONTINUITY_RESPONSE : MAX_RESPONSE),
+            ),
           );
         } catch {
           return fail('GATEWAY_RESPONSE_INVALID', trace);
@@ -352,9 +369,12 @@ export class MockSessionStore {
         check();
         return detached;
       };
-      const write = (changes: Change[]) => {
+      const write = (changes: Change[], beforeCommit?: () => void) => {
         check();
-        this.commit(changes, trace, check);
+        this.commit(changes, trace, () => {
+          check();
+          beforeCommit?.();
+        });
       };
       if (request.method === 'GET' || url.pathname.endsWith('/receipt')) {
         if (
@@ -363,6 +383,52 @@ export class MockSessionStore {
           headers['if-match-version'] !== undefined
         )
           throw new TypeError();
+      }
+      if (isMockSessionContinuityPath(url.pathname)) {
+        return await budget.wait(() =>
+          handleMockSessionContinuity({
+            request,
+            url,
+            scope: this.scope,
+            access,
+            trace,
+            session: (id) => this.session(id, access, trace),
+            get: (key) => this.records.get(key),
+            values: () => this.records.values(),
+            output,
+            write,
+            check,
+            grant: (id) => {
+              if (access.visible !== 'all') access.visible.add(id);
+            },
+            readPack: async (id) => {
+              check();
+              if (!access.packs) fail('CONTEXT_PACK_STORAGE_UNAVAILABLE', trace);
+              const rawPack = await access.packs.request({
+                method: 'GET',
+                path: '/v1/context-pack?pack_id=' + encodeURIComponent(id) + '&format=json',
+                headers: {
+                  'x-trace-id': trace,
+                  'x-tenant-id': this.scope.tenant_id,
+                  'x-workspace-id': this.scope.workspace_id,
+                  'x-project-id': this.scope.project_id,
+                  'x-expected-actor-id': access.identity.actor_id,
+                  'x-expected-client-id': access.identity.client_id,
+                },
+                response_type: 'bounded-json',
+                max_response_bytes: MAX_RESPONSE,
+                signal: budget.signal,
+              });
+              check();
+              return parseContextPackReadEnvelope(
+                rawPack,
+                { pack_id: id, format: 'json' },
+                this.scope,
+                trace,
+              ).data;
+            },
+          }),
+        );
       }
       if (request.method === 'GET') {
         if (request.body !== undefined) throw new TypeError();
@@ -758,7 +824,7 @@ export class MockSessionStore {
     let count = this.records.size;
     const prepared = changes.map(({ key, value }) => ({
       key,
-      value: snapshot(value, MAX_RESPONSE),
+      value: snapshot(value, CONTINUITY_RESPONSE),
     }));
     const size = (key: string, value: Stored) =>
       new TextEncoder().encode(JSON.stringify([key, value])).byteLength;

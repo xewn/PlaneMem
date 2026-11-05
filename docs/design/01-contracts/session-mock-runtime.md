@@ -2,7 +2,7 @@
 
 开发状态：2026-11-05 已增加实现源码，未编译、运行或测试。P0-02 的完整 WCP 覆盖和契约证据仍未完成。
 
-`MockSessionStore` 从空项目开始，多个 `MockWcpServer` 或 `store.connect(access)` 可以共享同一份内存会话与回执。现有 `WcpClient` 可以完成普通会话启动、创建运行、记录工具调用、工具收尾、运行收尾和会话结束；读取身份、当前会话状态、运行/工具分页和详情，以及原启动/命令回执。
+`MockSessionStore` 从空项目开始，多个 `MockWcpServer` 或 `store.connect(access)` 可以共享同一份内存会话与回执。现有 `WcpClient` 可以完成普通会话启动、创建运行、记录工具调用、工具收尾、运行收尾和会话结束；读取身份、当前会话状态、运行/工具分页和详情，以及原启动/命令回执。现已继续接入检查点保存/历史/详情/原回执、交接创建/读取/领取/原回执及另一客户端续接/原回执，均为未执行的开发源码。
 
 ## 配置与流程示例
 
@@ -70,7 +70,69 @@ const originalTool = await client.getSessionCommandReceipt(sessionId, {
 });
 ```
 
-`visible_session_ids` 可设为明确的 ID 数组，或显式的 `'all'`。数组连接只读取所列会话及本连接新建会话；重新连接时需要重新声明可见范围。会话存在于同一个项目 store，不按调用者复制。读取权限与写入权限独立；原回执查询需要读取权限。`claim_handoffs` 是当前身份协议的权限字段，本次尚未实现交接操作。
+`visible_session_ids` 可设为明确的 ID 数组，或显式的 `'all'`。数组连接只读取所列会话及本连接新建会话；重新连接时需要重新声明可见范围。会话存在于同一个项目 store，不按调用者复制。读取权限与写入权限独立；原回执查询需要读取权限。`claim_handoffs` 控制领取，创建交接和续接需要 `write_sessions`；检查点和交接的可见性沿其原会话检查。
+
+## 客户端交接示例
+
+下面接着前面的 `client`、`store`、`identity` 配置，新开一个会话保存交接内容。示例同样没有执行。
+
+```ts
+const source = await client.startSession({}, { idempotency_key: 'example-handoff-source' });
+const notes = {
+  completed: ['确认当前需求'], in_progress: ['实现下一步功能'],
+  next_actions: ['继续查看待办'], decisions: [], risks: [], open_questions: [],
+};
+const checkpoint = await client.createCheckpoint(source.data.session_id, notes, {
+  idempotency_key: 'example-checkpoint', expected_version: source.data.version,
+});
+const handoff = await client.createHandoff(source.data.session_id, {
+  checkpoint_id: checkpoint.data.checkpoint_id, target_client: 'mock-cli',
+}, { idempotency_key: 'example-handoff' });
+
+const nextIdentity = { ...identity, client_id: 'mock-cli' };
+const nextClient = new WcpClient(store.connect({
+  identity: nextIdentity,
+  expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+  permissions: { read_sessions: true, write_sessions: true, claim_handoffs: true },
+  project_readable: true,
+  visible_session_ids: [source.data.session_id],
+}), { ...nextIdentity, trace_id: 'trace_mock_recipient' });
+
+const currentHandoff = await nextClient.getHandoff(handoff.data.handoff_id);
+await nextClient.claimHandoff(handoff.data.handoff_id, {
+  idempotency_key: 'example-claim', expected_version: currentHandoff.data.version,
+});
+const resumed = await nextClient.resumeSession(source.data.session_id, {
+  handoff_id: handoff.data.handoff_id, require_claimed: true,
+}, { idempotency_key: 'example-resume' });
+const child = await nextClient.getSessionState(resumed.data.session.session_id);
+const receipt = await nextClient.getResumeReceipt(source.data.session_id, {
+  request_key: 'example-resume', handoff_id: handoff.data.handoff_id, require_claimed: true,
+});
+```
+
+检查点保存只增加该会话下的检查点修订号，不推进会话版本。保存同一原请求只返回原检查点，原回执查询不加载 ContextPack。历史每页最多 10 条，使用 `next_before_revision`；详情和目录明确返回 `not-checked`，不是包的当前有效性证明。历史中的 `postgres/wcp_session_checkpoints` 是共享协议所需的模拟来源字面量，不表示访问过数据库。
+
+交接创建重放返回当前交接及版本 1 的原创建回执。领取以预期交接版本为前提，记录原领取结果；同一账号/客户端以新键重复领取当前版本时不推进版本，其他接收者被拒绝。`require_claimed: true` 要求当前已属于该账号/客户端；false 可以在续接时同时领取。Mock 按显式参数处理，不读取生产 Web Console 的客户端环境变量。
+
+续接把领取变化、新子会话、原键及固定来源一起提交，输出/容量失败不留下半次领取。普通启动与续接共用原键空间；旧普通子会话没有续接来源时返回 `legacy-unverified`，写入拒绝接管。正常续接重放复用同一子会话，保留其当前进度；原回执只读且 `context_pack_state` 为 `not-checked`，不重复领取或加载包。
+
+## 已保存 ContextPack
+
+构造 store 时可传入已有 `MockContextPackStore`：`new MockSessionStore({ scope, context_packs: packStore })`。每个连接另行显式配置：
+
+```ts
+context_packs: {
+  project_readable: true,
+  read_context: true,
+  read_restricted: false,
+  visible_pack_ids: [savedPackId],
+}
+```
+
+账号、客户端、项目和到期时间沿用会话连接，不能在该配置内改写。已有包 Mock 校验可见性、受限内容权限、模拟来源状态、有效期和完整 SHA-256；保存检查点和续接都加载指定包，重放写入也不绕过检查。等待包读取后重新读取当前会话、交接归属和原键；取消/超时后的迟到结果不得提交。未配置包 store 或该连接的包权限时，含 `context_pack_id` 的写入失败，不降级为无包成功。
+
+不绑定包的续接返回 `none`；旧内联包只保存原引用/摘要，续接返回 `legacy-unverified`；已保存包经上述读取校验后返回 `checked` 和完整包。这里的来源检查仍是显式 Mock 场景，不证明真实后端来源。检查点 `state_hash` 与生产服务共用旧 32 位摘要算法，保留历史 `sha256:` 前缀，不能当作密码学 SHA-256；保存包的摘要使用其原完整算法。
 
 ## 行为
 
@@ -79,6 +141,6 @@ const originalTool = await client.getSessionCommandReceipt(sessionId, {
 - 进度命令重放返回原成功结果和原记录 trace，外层使用本次请求 trace。启动重放返回当前会话和固定版本 1 的原启动回执；两者不能混作原请求时的状态。
 - 每次请求核对项目范围、可选预期账号/客户端、权限、到期和可见会话。数组形式的配置、请求及响应均复制，外部修改不能直接修改 store。原父会话在启动和启动回执查询时都必须可见。
 - 运行按 sequence 倒序，工具按 ID 倒序，默认每页 25、最多 100；支持原 SDK 的筛选/续页及单条详情。分页反映每次读取时的当前状态，不承诺跨页快照。
-- 请求正文和头分别最多 16 KiB；完整响应最多 2 MiB，或调用者声明的更低限制。保留共享解析器中的更低限制。单 store 最多 10,000 条内部记录、16 MiB 序列化账本；容量不足拒绝整个新命令，不驱逐原回执。响应解析、容量检查、取消/30 秒期限和身份到期检查均先于同步内存提交。
+- 普通会话请求正文和头分别最多 16 KiB；检查点/交接/续接正文最多 1 MiB，头仍为 16 KiB。普通响应最多 2 MiB，连续工作响应最多 8 MiB，另受共享解析器和调用者更低限制；检查点详情最多 2 MiB，历史最多 8 MiB。单 store 最多 10,000 条内部记录、16 MiB 序列化账本；容量不足拒绝整个新命令，不驱逐原回执。响应解析、容量检查、取消/30 秒期限和身份到期检查均先于同步内存提交；提交后的等待超时仍须按原键查询结果。
 
-这里只实现 SDK transport 级模拟，没有监听 HTTP、连接数据库、执行真实鉴权或持久审计，也没有崩溃恢复。当前不提供持久数据导入、会话目录工作台查询、检查点、交接或续接；这些仍属于 P0-02 的剩余范围。完整 OpenAPI/MCP 契约消费仍属于 P0-01。
+这里只实现 SDK transport 级模拟，没有监听 HTTP、连接数据库、执行真实鉴权或持久审计，也没有崩溃恢复。当前不提供持久数据导入、会话/交接/检查点目录工作台查询、历史异常数据种子或交接到期调度；其余公开 WCP 面和运行契约证据仍需完成。完整 OpenAPI/MCP 契约消费仍属于 P0-01。

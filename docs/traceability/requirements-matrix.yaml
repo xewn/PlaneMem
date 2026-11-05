@@ -17,11 +17,14 @@ requirements:
       status: "Implementation source added; not compiled or executed. P0-02 and R-001 remain incomplete."
       artifacts:
         - "packages/sdk/src/mock-sessions.ts"
+        - "packages/sdk/src/mock-session-continuity.ts"
+        - "packages/sdk/src/mock-session-json.ts"
+        - "packages/contracts/src/checkpoint-state-hash.ts"
         - "packages/contracts/src/session-mutation-model.ts"
         - "packages/contracts/src/session-mutations.ts"
         - "docs/design/01-contracts/session-mock-runtime.md"
-      behavior: "Stateful SDK mock for ordinary session start, runs, tool calls, finish/end, current reads and original receipts. Production and mock share the original transition implementation; explicit authority, CAS and immutable command replay."
-      remaining_scope: "Remaining WCP Mock coverage including checkpoint/handoff/resume and workbench session directories; machine-contract consumption and compatibility evidence."
+      behavior: "Stateful SDK mock for session lifecycle, checkpoints and their history, handoff creation/claim, cross-client resume and original receipts. Shared original session transitions and checkpoint summary algorithm. Optional saved-pack Mock checks use the same identity and expiry; reread mutable state after async pack access before atomic in-memory commit."
+      remaining_scope: "Remaining WCP Mock coverage including workbench session/handoff/checkpoint directories and exceptional historical fixtures; machine-contract consumption and compatibility evidence."
       evidence: []
     plane_webhook_openapi_development_increment:
       date: "2026-11-05"
