@@ -1,5 +1,11 @@
 # 独立契约结构定义
 
+2026-11-05，TODO **P0-01**：新增 `conflict-read.json`、`conflict-original.json`、`conflict-resolution.json`，与 sync-consumer 共四份Schema提供冲突五路完整机器结构。read根为目录/详情封套联合，original根为身份/原决定回执联合，resolution根为旧HTTP解决成功；另有更严格的专用客户端已检查响应及独立unconfirmed本地结果，避免混用传输与适配器返回。
+
+读取版本保留十进制字符串，最大9223372036854775807由原解析器比较，Schema长度/模式不独立表达该上限；提交expected_version为正且可安全加一的数字。详情JSONB文本只检查语法后原样返回，不把SQL NULL混同字符串null；open/recorded/legacy分支保留真实缺失。详情来源封闭，旧写入事件来源只要求type/id且允许扩展，客户端已检查响应才增加revision/uri/额外字段限制。目录筛选/规范base64url游标、权限提示、排序与跨请求绑定按实际解析器记录。
+
+原命令保留额外字段及merge值存在性，完整原identity/key与有效路径/版本相等仍需运行核对；只有merge允许且必须携带merged_value。原回执recorded绑定原版本+1、actor/client/选择/事件，not-observed不含receipt或来源。当前身份到期使用四位UTC毫秒；详情/历史回执时间沿原Date.parse有限值规则，不额外强加ISO格式；提交事件日期可含扩展年份。有限JSON、字节/复杂度、Unicode/UTF-16及跨字段相等不能由这些Schema独立证明。P0-01/R-001未完成、evidence为空；未运行校验器、生成器、编译、类型检查、测试、接口或数据库。
+
 2026-11-05，TODO **P0-01**：新增 `sync-upload.json` 和 `sync-original.json`。前者根是旧 HTTP 批次完整成功，分别提供 `SyncUploadHttpBody`、保留原字段的 `SyncUploadEvent`、有效客户端 `SyncUploadClientBatch`、字段建议 `FieldChangePayload`、逐项决定以及更严格的 `SyncUploadCheckedEnvelope`；后者根为发送身份/原投递完整成功互斥联合，提供空身份查询、精确 identity/event 查询、recorded/not-observed 及历史投递锚点。需本地注册这两份与 sync-consumer/sync-changes 共四份 Schema；OpenAPI 另引用相邻 context-history 的通用 HTTP 组件。
 
 原始批次条目保持开放，容纳旧服务端逐条校验失败；SDK 快照只接受有效事件且 ID 唯一，不把两者混成同一个输入保证。事件 source_refs/sensitivity 接受 null 或省略，按既有运行逻辑规范化；普通 payload 和历史来源扩展开放，FieldChangeProposed 另有字段白名单与正安全 base_version。完整结果按接受、版本冲突、游标间隙及普通拒绝分支封闭；旧非法事件拒绝可以有空 ID，严格客户端成功不能。请求对应、来源/身份相等、ID/位置唯一、字节/复杂度/Unicode/UTF-16 和规范指纹由运行解析器核对，Schema 不独立证明。

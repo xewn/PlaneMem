@@ -1,5 +1,7 @@
 # WCP API 契约 v1
 
+2026-11-05，TODO P0-01：[冲突读取与原决定 OpenAPI](../../../packages/contracts/openapi/README.md#冲突读取与原决定)补齐五路已有接口的机器描述，新增完整分页/详情、原命令/回执/身份、旧HTTP提交与专用客户端结果Schema。读取保留bigint字符串、JSONB文本及SQL NULL/legacy状态；提交/原回执分别描述真实重放、完整性与权限边界，不宣称源字段已应用。OpenAPI源码现三十四路；P0-01/R-001未完成、evidence为空。未改运行逻辑、未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
 2026-11-05，TODO P0-01：[同步上传与原投递 OpenAPI](../../../packages/contracts/openapi/README.md#同步上传与原投递)覆盖 events:batch、sync/commands/context、sync/events/receipt 三路，新增原始/有效批次、逐项拒绝、字段建议、发送身份与完整历史回执 Schema。区分批次原正文指纹与规范事件指纹、头键优先及重放早于新来源检查；原事件查询复查当前来源/历史权限，但不证明整个批次或源字段应用。仅描述既有实现，客户端256 KiB等限制不冒称旧上传服务端保证；OpenAPI 源码现覆盖二十九路。P0-01/R-001 未完成、evidence 为空，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 2026-11-05，TODO P0-01：[同步消费与确认 OpenAPI](../../../packages/contracts/openapi/README.md#同步消费与确认)覆盖已有 changes/cursor/ack 三路，新增完整分页、原身份、当前位点及确认成功 Schema。省略 cursor 读取已确认位置，读页不自动确认；分页权限过滤允许跳号，历史事件/来源扩展保持开放。当前位点区分无记录与确认到零；确认绑定原身份/目标、禁止回退，提交后到期拒绝仍可能已提交。变化路由缺独立父项目检查与读取后到期复查，客户端预算不冒称服务端保证。OpenAPI 源码现覆盖二十六路；P0-01/R-001 未完成、evidence 为空，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。

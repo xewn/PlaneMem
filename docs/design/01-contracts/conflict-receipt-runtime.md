@@ -1,5 +1,7 @@
 # 冲突决策原请求回执
 
+2026-11-05，TODO P0-01：新增 [冲突OpenAPI](../../../packages/contracts/openapi/conflicts.json) 和 [原决定Schema](../../../packages/contracts/schemas/conflict-original.json)，定义原身份/键/完整命令及recorded/not-observed。当前查询仅校验SQL选定元数据，未完整加载CanonicalEvent，未独立核对source_refs、payload的base/local/server版本或顶层actor；没有SQL后到期检查。两项差异不能套用更强的提交重放保证。认证前通用1 MiB正文与后续1,000,000字节查询界限分别保留，旧媒体/编码头检查不冒称严格。仅源码描述，不改运行实现；未编译、类型检查、测试、运行校验器/生成器/接口/数据库或发布，P0-01/R-001未完成、evidence为空。
+
 更新：2026-11-03。只开发源码与文档，未编译、类型检查、测试、调用接口、运行服务/浏览器、执行迁移、部署或发布。R-006 仍未完成。
 
 ## 原请求与绑定

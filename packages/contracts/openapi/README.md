@@ -1,6 +1,20 @@
 # OpenAPI 源码契约
 
-这里的文档描述已有HTTP实现，尚未经过OpenAPI校验器、生成器、编译、类型检查、测试或运行验证。文档中的版本不表示已发布或部署；目前覆盖五个保存包接口、九个文件接口、九个上下文条目接口（详情/历史四路、写入五路）及六个同步接口（消费三路、上传/原投递三路），共二十九个接口，尚不是完整WCP接口目录。
+这里的文档描述已有HTTP实现，尚未经过OpenAPI校验器、生成器、编译、类型检查、测试或运行验证。文档中的版本不表示已发布或部署；目前覆盖五个保存包接口、九个文件接口、九个上下文条目接口、六个同步接口及五个冲突接口，共三十四个接口，尚不是完整WCP接口目录。
+
+## 冲突读取与原决定
+
+2026-11-05，TODO **P0-01**：[conflicts.json](conflicts.json) 覆盖冲突列表、详情、解决身份、提交解决、原决定回执五路，包子路径为 `@planemem/contracts/openapi/conflicts.json`。本地加载本文件与相邻 context-history OpenAPI，以及 [conflict-read](../schemas/conflict-read.json)、[conflict-original](../schemas/conflict-original.json)、[conflict-resolution](../schemas/conflict-resolution.json)、sync-consumer 四份 Schema，按完整 ID 注册并保留相对路径；未运行生成或兼容校验。
+
+列表是完整元数据分页：默认25、最多100条，按 PostgreSQL C/Unicode标量顺序，过滤后读取limit+1，仅前limit构造16 KiB以内元数据。游标绑定范围、restricted标志、规范搜索/筛选/页大小，不绑定账号客户端，也不是签名或跨页快照。详情独立读取完整JSONB文本，并用 recorded/not-recorded 区分保存的 JSON null 与 SQL NULL；版本使用保留 bigint 精度的十进制字符串，不能自动变成提交数字。open/none、resolved/recorded、resolved/legacy 分别建模，旧记录缺项不补造。目录/详情皆有父项目及当前来源/保存分类检查；目录 resolve 权限只是提示，不授权未来写入。
+
+提交以当前可见父项目共享锁、冲突行更新锁保护，先检查已解决记录的原键/指纹，再处理新写版本。键摘要绑定actor/client/key，参数指纹包含有效路径ID/版本及额外原字段，移除外层idempotency_key。旧HTTP头键优先于正文且不核对二者相等，所选键仅检查非空；原回执/专用客户端却要求255长度内无空白/控制字符的键。路径会覆盖正文ID，所有版本前置值须一致；merge必须提供merged_value，其他选择禁止它。新写同事务保存决定、事件及原键绑定，重放重新核对当前可见性、历史事件/来源/值，均不应用源字段。
+
+原决定查询带完整identity/request_key/command，单条只读SQL核对当前可见性、键指纹与选定的事件元数据，输出最多16 KiB比较结果再组装完整回执。此查询没有完整CanonicalEvent校验，也未独立比对source_refs、payload三种基准版本或顶层actor，不能等同提交重放的完整核对；没有SQL后到期复查。干净open或另一个原键返回not-observed，缺失/隐藏冲突是404，旧resolved缺键/指纹/事件绑定是409。recorded只确认匹配原决定，source_application固定not-checked；未观察到不证明失败、回滚或可以换键重发。
+
+HTTP解决成功含数字revision/ETag/cursor和完整事件；专用submitConflictDecision在完整核对后丢弃复制值，返回独立unconfirmed/check-original-receipt，不能将此本地结果当作HTTP响应。旧resolveConflict仍是通用封套包装。读取完整2 MiB/身份16 KiB/原查询1,000,000字节是实际共享边界；两个POST仍在认证前读通用1 MiB正文，未严格检查媒体类型/UTF-8或增加整操作期限。新写完整2 MiB响应、客户端16 KiB错误及本地等待预算不冒称旧HTTP保证；重放只对存储事件执行2 MiB检查。具体权限、头名单及400/409/413/500/503差异见OpenAPI。
+
+仅机器契约源码及文档，不改运行实现、旧Schema、SDK/Mock、依赖或数据库。P0-01/R-001未完成、evidence为空；仅人工源码文档审阅/指定格式/Git文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 ## 同步上传与原投递
 

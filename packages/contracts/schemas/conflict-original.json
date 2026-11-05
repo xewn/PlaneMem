@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/conflict-original.json",
+  "title": "Conflict resolver identity and original decision receipt v1",
+  "description": "Current identity hints and read-only original-key lookup. Root is the two complete success envelopes, not the resolve HTTP response.",
+  "$comment": "Source-only; load conflict-read and sync-consumer schemas. Exact original command equality/fingerprint, request key, identity, scope/trace/source and expected+1 relationships require runtime checks. Query ordinary finite JSON limit1000000 bytes/depth64/nodes100000; receipt success2MiB and SQL comparison metadata16KiB.",
+  "oneOf": [{ "$ref": "#ConflictCommandContextEnvelope" }, { "$ref": "#ConflictReceiptEnvelope" }],
+  "$defs": {
+    "ConflictCommandIdentity": {
+      "$anchor": "ConflictCommandIdentity",
+      "$ref": "sync-consumer.json#SyncCommandIdentity",
+      "$comment": "Conflict identity uses the same five field lexical rules: scope identifiers exclude dots; actor/client nonblank <=1024 UTF-16 without controls/DEL/lone surrogates. Equality precondition only, never credentials."
+    },
+    "requestKey": {
+      "$ref": "conflict-read.json#/$defs/text",
+      "maxLength": 255,
+      "not": { "pattern": "\\s" },
+      "$comment": "Original receipt parser combines nonblank/control-free scalar text with validateIdempotencyKey. This is stricter than the legacy resolve HTTP handler's selected nonempty string key."
+    },
+    "expectedVersion": { "type": "integer", "minimum": 1, "maximum": 9007199254740990 },
+    "ConflictOriginalCommand": {
+      "$anchor": "ConflictOriginalCommand",
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["conflict_id", "expected_version", "resolution"],
+      "properties": {
+        "conflict_id": { "$ref": "conflict-read.json#/$defs/conflictId" },
+        "expected_version": { "$ref": "#/$defs/expectedVersion" },
+        "resolution": { "$ref": "conflict-read.json#/$defs/resolution" },
+        "merged_value": {},
+        "idempotency_key": { "$ref": "#/$defs/requestKey" },
+        "tenant_id": { "$ref": "sync-consumer.json#/$defs/scopeId" },
+        "workspace_id": { "$ref": "sync-consumer.json#/$defs/scopeId" },
+        "project_id": { "$ref": "sync-consumer.json#/$defs/scopeId" },
+        "actor_id": { "$ref": "conflict-read.json#/$defs/text" },
+        "client_id": { "$ref": "conflict-read.json#/$defs/text" },
+        "from_client": { "$ref": "conflict-read.json#/$defs/text" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "resolution": { "const": "merge" } } },
+          "then": { "required": ["merged_value"] },
+          "else": { "not": { "required": ["merged_value"] } }
+        }
+      ],
+      "$comment": "Preserve complete original body plus effective path conflict_id and header/body expected_version. Extras remain fingerprint-significant; do not trim them away. Provided command.idempotency_key equals outer request_key; all supplied identity fields/from_client equal identity. Merge value may be null or any finite JSON. This preparation/query profile is stricter than old raw resolve input."
+    },
+    "ConflictReceiptQuery": {
+      "$anchor": "ConflictReceiptQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "request_key", "command"],
+      "properties": {
+        "identity": { "$ref": "#ConflictCommandIdentity" },
+        "request_key": { "$ref": "#/$defs/requestKey" },
+        "command": { "$ref": "#ConflictOriginalCommand" }
+      },
+      "$comment": "Canonical sorted-key detached copy <=1000000 bytes. Arrays, supplied nulls and extra command fields preserved. Not an expected_identity alias or a command to write again."
+    },
+    "ConflictCommandContextQuery": {
+      "$anchor": "ConflictCommandContextQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Empty HTTP/command query. Original identity hints, if any, are independent expected actor/client headers."
+    },
+    "ConflictCommandContextEnvelope": {
+      "$anchor": "ConflictCommandContextEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "conflict-read.json#/$defs/text" },
+        "source_refs": { "type": "array", "maxItems": 0 },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["identity", "expires_at", "permissions"],
+          "properties": {
+            "identity": { "$ref": "#ConflictCommandIdentity" },
+            "expires_at": { "$ref": "sync-consumer.json#/$defs/timestamp" },
+            "permissions": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["resolve_conflicts"],
+              "properties": { "resolve_conflicts": { "const": true } }
+            }
+          }
+        }
+      },
+      "$comment": "Complete16KiB, actual shared finite JSON parser. Current verified unexpired resolver/admin metadata; no project/database/conflict read or future authorization. No revision/ETag/cursor. Unlike receipt recorded_at, expires_at requires exact four-digit UTC milliseconds."
+    },
+    "ConflictRecordedReceipt": {
+      "$anchor": "ConflictRecordedReceipt",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "conflict_id",
+        "version",
+        "resolution",
+        "event_id",
+        "server_cursor",
+        "actor_id",
+        "client_id",
+        "recorded_at",
+        "original_trace_id",
+        "source_application"
+      ],
+      "properties": {
+        "conflict_id": { "$ref": "conflict-read.json#/$defs/conflictId" },
+        "version": { "$ref": "conflict-read.json#/$defs/positiveDecimal" },
+        "resolution": { "$ref": "conflict-read.json#/$defs/resolution" },
+        "event_id": { "$ref": "conflict-read.json#/$defs/ulid" },
+        "server_cursor": { "$ref": "conflict-read.json#/$defs/positiveDecimal" },
+        "actor_id": { "$ref": "conflict-read.json#/$defs/text" },
+        "client_id": { "$ref": "conflict-read.json#/$defs/text" },
+        "recorded_at": { "$ref": "conflict-read.json#/$defs/parsedTime" },
+        "original_trace_id": { "$ref": "conflict-read.json#/$defs/text" },
+        "source_application": { "const": "not-checked" }
+      },
+      "$comment": "version=String(original expected_version+1); ID/resolution/actor/client equal original query, source event ID binds receipt.event_id. Cursor is bigint decimal string and need not fit safe JS number. Historical trace/time, no copied resolved value or current source state."
+    },
+    "ConflictReceiptView": {
+      "$anchor": "ConflictReceiptView",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "request_key", "command", "status"],
+      "properties": {
+        "identity": { "$ref": "#ConflictCommandIdentity" },
+        "request_key": { "$ref": "#/$defs/requestKey" },
+        "command": { "$ref": "#ConflictOriginalCommand" },
+        "status": { "enum": ["recorded", "not-observed"] },
+        "receipt": { "$ref": "#ConflictRecordedReceipt" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "recorded" } } },
+          "then": { "required": ["receipt"] },
+          "else": { "not": { "required": ["receipt"] } }
+        }
+      ],
+      "$comment": "Original identity/key/complete command echoed with exact canonical equality. not-observed covers clean open row or a resolved row bound to another original key, not missing/hidden conflict. Does not prove rollback, permanent absence or safe resubmission. A legacy resolved row lacking binding is a409 error."
+    },
+    "ConflictReceiptEnvelope": {
+      "$anchor": "ConflictReceiptEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "conflict-read.json#/$defs/text" },
+        "source_refs": {
+          "type": "array",
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "id"],
+            "properties": {
+              "type": { "const": "event" },
+              "id": { "$ref": "conflict-read.json#/$defs/ulid" }
+            }
+          }
+        },
+        "data": { "$ref": "#ConflictReceiptView" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "data": { "properties": { "status": { "const": "recorded" } } } }
+          },
+          "then": { "properties": { "source_refs": { "minItems": 1 } } },
+          "else": { "properties": { "source_refs": { "maxItems": 0 } } }
+        }
+      ],
+      "$comment": "Complete2MiB success. Outer trace=current request, original trace/time=stored decision. No outer scope/revision/ETag/server_cursor; historical cursor is only in receipt. No claim of source-field application."
+    }
+  }
+}

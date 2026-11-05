@@ -1,5 +1,7 @@
 # 冲突元数据目录分页
 
+2026-11-05，TODO P0-01：新增 [冲突OpenAPI](../../../packages/contracts/openapi/conflicts.json) 及 [目录/详情Schema](../../../packages/contracts/schemas/conflict-read.json)，定义六项筛选、完整目录封套及16 KiB元数据记录。游标绑定范围/restricted/规范条件/limit，不绑定actor/client或跨页快照；只对返回页构造元数据，额外位置只核对ID/顺序。resolve提示没有自身到期复查或未来授权效力，目录超限为500而详情为413。仅源码文档，未编译、类型检查、测试、运行校验器/生成器/接口/数据库或发布；P0-01/R-001未完成、evidence为空。
+
 更新：2026-11-03。仅源码与文档开发，未编译、类型检查、测试、调用接口、运行浏览器或服务、执行迁移、部署或发布。R-006 保持未完成。
 
 ## 接口与兼容性

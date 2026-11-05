@@ -1,5 +1,7 @@
 # 固定原冲突请求提交
 
+2026-11-05，TODO P0-01：新增 [冲突OpenAPI](../../../packages/contracts/openapi/conflicts.json) 及 [解决Schema](../../../packages/contracts/schemas/conflict-resolution.json)，分别定义旧HTTP成功、严格已检查响应和本地unconfirmed结果。旧服务端只检查非空所选键、头键覆盖正文、路径覆盖正文ID；专用原请求profile更严格，不可倒推服务端全量执行。CanonicalEvent来源只要求type/id，专用解析进一步封闭字段/检查revision和uri。客户端reviewed与完整2 MiB不冒称HTTP要求；解决只保存冲突决定，不应用源字段或自动查原回执。仅源码文档，未编译、类型检查、测试、运行校验器/生成器/接口/数据库或发布；P0-01/R-001未完成、evidence为空。
+
 更新：2026-11-03。仅源码与文档，未编译、类型检查、测试、执行示例、运行服务/浏览器、执行迁移、部署或发布。R-006 仍未完成。
 
 ## 原请求与写入

@@ -1,0 +1,307 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/conflict-read.json",
+  "title": "Conflict metadata pages and complete current detail v1",
+  "description": "Root is a directory/detail success union. Detail preserves JSONB text and decimal versions; neither representation is an original command receipt or source-application proof.",
+  "$comment": "Source-only; load sync-consumer.json for shared lexical primitives. Runtime checks UTF-16/Unicode, canonical decimal <=9223372036854775807, JSON text grammar, exact query/scope/trace/source, cursor binding/filter/order and serialized byte budgets. Do not convert read versions or JSON numeric tokens to JavaScript numbers for display.",
+  "oneOf": [{ "$ref": "#ConflictRegistryEnvelope" }, { "$ref": "#ConflictReadEnvelope" }],
+  "$defs": {
+    "identifier": { "$ref": "sync-consumer.json#/$defs/identifier" },
+    "conflictId": { "$ref": "sync-consumer.json#/$defs/scopeId" },
+    "text": { "$ref": "sync-consumer.json#/$defs/identityText" },
+    "nullableText": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/text" }] },
+    "ulid": { "type": "string", "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$" },
+    "decimalVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,18})$",
+      "$comment": "Canonical nonnegative decimal, maximum PostgreSQL bigint 9223372036854775807 checked lexicographically by runtime; length/pattern alone do not enforce that upper bound. Preserve the string."
+    },
+    "positiveDecimal": { "$ref": "#/$defs/decimalVersion", "not": { "const": "0" } },
+    "parsedTime": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "$comment": "Existing detail/receipt parser accepts any finite Date.parse result within128 UTF-16 units, not only canonical ISO UTC. No date-time format assertion is added."
+    },
+    "jsonText": {
+      "oneOf": [{ "type": "null" }, { "type": "string", "contentMediaType": "application/json" }],
+      "description": "JSONB text, kept verbatim after JSON.parse grammar check. JSON null is the string 'null'; SQL NULL is actual null with not-recorded. contentMediaType is an annotation, not a parser or precision guarantee."
+    },
+    "resolution": { "enum": ["local", "server", "merge"] },
+    "nullableResolution": { "enum": ["local", "server", "merge", null] },
+    "sourceRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "minLength": 1 },
+        "revision": { "$ref": "sync-consumer.json#/$defs/cursor" },
+        "uri": { "type": "string", "minLength": 1 }
+      },
+      "$comment": "Known strings are nonempty; no trim or URI validity rule. Conflict detail/submission reject extra source fields, unlike sync change pages."
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant_id", "workspace_id", "project_id"],
+      "properties": {
+        "tenant_id": { "$ref": "#/$defs/text" },
+        "workspace_id": { "$ref": "#/$defs/text" },
+        "project_id": { "$ref": "#/$defs/text" }
+      },
+      "$comment": "Read parser uses <=1024 text here, not the narrower command identity's scope-ID parser. Values must equal the original authorized request."
+    },
+    "ConflictReadQuery": {
+      "$anchor": "ConflictReadQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["conflict_id"],
+      "properties": { "conflict_id": { "$ref": "#/$defs/conflictId" } }
+    },
+    "ConflictReadRecord": {
+      "$anchor": "ConflictReadRecord",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "conflict_id",
+        "entity_type",
+        "entity_id",
+        "field",
+        "base_version",
+        "local_version",
+        "server_version",
+        "version",
+        "local_value_json",
+        "local_value_state",
+        "server_value_json",
+        "server_value_state",
+        "status",
+        "decision_state",
+        "resolution",
+        "resolved_value_json",
+        "resolved_value_state",
+        "actor_id",
+        "resolved_at",
+        "resolved_by_client",
+        "resolution_event_id",
+        "trace_id",
+        "source_refs"
+      ],
+      "properties": {
+        "conflict_id": { "$ref": "#/$defs/conflictId" },
+        "entity_type": { "$ref": "#/$defs/identifier" },
+        "entity_id": { "$ref": "#/$defs/identifier" },
+        "field": { "$ref": "#/$defs/identifier" },
+        "base_version": { "$ref": "#/$defs/decimalVersion" },
+        "local_version": { "$ref": "#/$defs/decimalVersion" },
+        "server_version": { "$ref": "#/$defs/decimalVersion" },
+        "version": { "$ref": "#/$defs/positiveDecimal" },
+        "local_value_json": { "$ref": "#/$defs/jsonText" },
+        "server_value_json": { "$ref": "#/$defs/jsonText" },
+        "resolved_value_json": { "$ref": "#/$defs/jsonText" },
+        "local_value_state": { "enum": ["recorded", "not-recorded"] },
+        "server_value_state": { "enum": ["recorded", "not-recorded"] },
+        "resolved_value_state": { "enum": ["recorded", "not-recorded"] },
+        "status": { "enum": ["open", "resolved"] },
+        "decision_state": { "enum": ["none", "recorded", "legacy"] },
+        "resolution": { "$ref": "#/$defs/nullableResolution" },
+        "actor_id": { "$ref": "#/$defs/nullableText" },
+        "resolved_by_client": { "$ref": "#/$defs/nullableText" },
+        "resolved_at": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/parsedTime" }] },
+        "resolution_event_id": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/ulid" }] },
+        "trace_id": { "$ref": "#/$defs/text" },
+        "source_refs": { "type": "array", "items": { "$ref": "#/$defs/sourceRef" } }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "local_value_state": { "const": "recorded" } } },
+          "then": { "properties": { "local_value_json": { "type": "string" } } },
+          "else": { "properties": { "local_value_json": { "type": "null" } } }
+        },
+        {
+          "if": { "properties": { "server_value_state": { "const": "recorded" } } },
+          "then": { "properties": { "server_value_json": { "type": "string" } } },
+          "else": { "properties": { "server_value_json": { "type": "null" } } }
+        },
+        {
+          "if": { "properties": { "resolved_value_state": { "const": "recorded" } } },
+          "then": { "properties": { "resolved_value_json": { "type": "string" } } },
+          "else": { "properties": { "resolved_value_json": { "type": "null" } } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "open" } } },
+          "then": {
+            "properties": {
+              "decision_state": { "const": "none" },
+              "resolution": { "type": "null" },
+              "resolution_event_id": { "type": "null" },
+              "resolved_at": { "type": "null" },
+              "resolved_by_client": { "type": "null" },
+              "resolved_value_state": { "const": "not-recorded" }
+            }
+          },
+          "else": {
+            "if": { "properties": { "resolution_event_id": { "type": "null" } } },
+            "then": { "properties": { "decision_state": { "const": "legacy" } } },
+            "else": {
+              "properties": {
+                "decision_state": { "const": "recorded" },
+                "resolution": { "$ref": "#/$defs/resolution" },
+                "actor_id": { "$ref": "#/$defs/text" },
+                "resolved_by_client": { "$ref": "#/$defs/text" },
+                "resolved_at": { "$ref": "#/$defs/parsedTime" },
+                "resolved_value_state": { "const": "recorded" }
+              }
+            }
+          }
+        }
+      ],
+      "$comment": "An open row can retain its reporting actor. Legacy resolved rows keep missing fields as null; no invented receipt/event/application state. Stored trace/source_refs are distinct from request trace and the outer single conflict source."
+    },
+    "ConflictReadEnvelope": {
+      "$anchor": "ConflictReadEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "scope", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "scope": { "$ref": "#/$defs/scope" },
+        "trace_id": { "$ref": "#/$defs/text" },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "id"],
+            "properties": {
+              "type": { "const": "conflict" },
+              "id": { "$ref": "#/$defs/conflictId" }
+            }
+          }
+        },
+        "data": { "$ref": "#ConflictReadRecord" }
+      },
+      "$comment": "Complete success <=2 MiB; SQL detail payload reserves16 KiB for envelope. Query conflict ID=data.conflict_id=outer source ID; current request scope/trace exact. No outer revision/ETag/server_cursor/permission hint or original-key proof."
+    },
+    "registryCursor": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048,
+      "pattern": "^[A-Za-z0-9_-]+$",
+      "$comment": "Runtime requires canonical unpadded base64url of UTF-8 JSON [1,64-lowercase-hex query key,last conflict ID], with exact re-encode. Gateway compares key bound to scope/restricted flag/ASCII-folded trimmed search/status/entity/exact-ID/defaulted limit. It is not signed, actor/client-bound or a snapshot token."
+    },
+    "ConflictRegistryQuery": {
+      "$anchor": "ConflictRegistryQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "query": {
+          "type": "string",
+          "maxLength": 500,
+          "not": { "pattern": "[\\u0000-\\u001f\\u007f]" },
+          "description": "Checked before trim; blank becomes absent. Search folds ASCII A-Z only. Runtime additionally rejects lone surrogates and counts UTF-16 units."
+        },
+        "status": { "enum": ["open", "resolved", ""] },
+        "entity_type": { "oneOf": [{ "const": "" }, { "$ref": "#/$defs/identifier" }] },
+        "conflict_id": { "$ref": "#/$defs/conflictId" },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 100, "default": 25 },
+        "cursor": { "$ref": "#/$defs/registryCursor" }
+      },
+      "$comment": "Empty status/entity_type become absent. Exact conflict_id can combine with other filters and cursor, but has_more must remain false. Each HTTP query name appears at most once; limit wire syntax is positive decimal without leading zeros."
+    },
+    "ConflictRegistryRecord": {
+      "$anchor": "ConflictRegistryRecord",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "conflict_id",
+        "entity_type",
+        "entity_id",
+        "field",
+        "base_version",
+        "local_version",
+        "server_version",
+        "version",
+        "status",
+        "resolution",
+        "actor_id",
+        "trace_id"
+      ],
+      "properties": {
+        "conflict_id": { "$ref": "#/$defs/conflictId" },
+        "entity_type": { "$ref": "#/$defs/identifier" },
+        "entity_id": { "$ref": "#/$defs/identifier" },
+        "field": { "$ref": "#/$defs/identifier" },
+        "base_version": { "$ref": "#/$defs/decimalVersion" },
+        "local_version": { "$ref": "#/$defs/decimalVersion" },
+        "server_version": { "$ref": "#/$defs/decimalVersion" },
+        "version": { "$ref": "#/$defs/positiveDecimal" },
+        "status": { "enum": ["open", "resolved"] },
+        "resolution": { "$ref": "#/$defs/nullableResolution" },
+        "actor_id": { "$ref": "#/$defs/nullableText" },
+        "trace_id": { "$ref": "#/$defs/text" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "open" } } },
+          "then": { "properties": { "resolution": { "type": "null" } } }
+        }
+      ],
+      "$comment": "Each metadata record <=16 KiB. Resolved legacy row may have null resolution. No copied values, stored source_refs, current decision completeness or key."
+    },
+    "ConflictRegistryEnvelope": {
+      "$anchor": "ConflictRegistryEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "scope",
+        "trace_id",
+        "source_refs",
+        "data",
+        "has_more",
+        "conflict_permissions"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "scope": { "$ref": "#/$defs/scope" },
+        "trace_id": { "$ref": "#/$defs/text" },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "id"],
+            "properties": { "type": { "const": "postgres" }, "id": { "const": "wcp_conflicts" } }
+          }
+        },
+        "data": {
+          "type": "array",
+          "maxItems": 100,
+          "items": { "$ref": "#ConflictRegistryRecord" }
+        },
+        "has_more": { "type": "boolean" },
+        "next_cursor": { "$ref": "#/$defs/registryCursor" },
+        "conflict_permissions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["resolve"],
+          "properties": { "resolve": { "type": "boolean" } }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "has_more": { "const": true } } },
+          "then": { "required": ["next_cursor"], "properties": { "data": { "minItems": 1 } } },
+          "else": { "not": { "required": ["next_cursor"] } }
+        }
+      ],
+      "$comment": "Complete2MiB result, array at top-level data. Runtime verifies matching filters, strict Unicode-scalar/C-order IDs beyond input cursor, count<=limit, full page and last-ID cursor iff has_more. Permission resolve is verified-client plus capability/admin hint, without its own expiry check; never future authorization. No global total, immutable multi-page snapshot or ETag."
+    }
+  }
+}

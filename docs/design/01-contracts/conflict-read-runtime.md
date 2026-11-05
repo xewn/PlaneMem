@@ -1,5 +1,7 @@
 # 冲突独立详情
 
+2026-11-05，TODO P0-01：新增 [冲突OpenAPI](../../../packages/contracts/openapi/conflicts.json) 和 [读取Schema](../../../packages/contracts/schemas/conflict-read.json)，完整定义原JSONB文本、SQL NULL/保存null、bigint字符串版本及open/recorded/legacy分支。来源封闭但字符串只沿原非空规则，历史时间不强制ISO；当前详情不证明原键或源应用。SQL预留16 KiB/完整2 MiB及413路径如实描述，客户端错误/等待预算不变成服务端期限。仅源码契约，未改运行实现或运行校验器/生成器/编译/测试/接口/数据库；P0-01/R-001未完成、evidence为空。
+
 更新：2026-11-03。只开发源码与文档，未编译、类型检查、测试、调用接口、启动浏览器或服务、执行迁移、部署或发布。R-006 保持未完成。
 
 ## 接口与访问

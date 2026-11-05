@@ -1,0 +1,257 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/conflict-resolution.json",
+  "title": "Conflict resolution HTTP response and separate checked submission v1",
+  "description": "Root is the existing resolve HTTP success. Client submitConflictDecision validates that response, then returns a different unconfirmed envelope; never substitute it for the HTTP representation.",
+  "$comment": "Source-only; load conflict-original, conflict-read and sync-consumer schemas. Runtime cross-checks original ID/version/identity/resolution/sources/merge value and historical replay. Legacy handler does not invoke complete shared submission parsing or enforce its2MiB whole-envelope budget.",
+  "$ref": "#ConflictResolutionEnvelope",
+  "$defs": {
+    "ConflictResolutionBody": {
+      "$anchor": "ConflictResolutionBody",
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["resolution"],
+      "properties": {
+        "resolution": { "$ref": "conflict-read.json#/$defs/resolution" },
+        "merged_value": {},
+        "expected_version": { "$ref": "conflict-original.json#/$defs/expectedVersion" },
+        "idempotency_key": {
+          "description": "Used only without header key. Legacy chosen key is merely a nonempty string; header wins without comparing this field."
+        },
+        "conflict_id": {
+          "description": "Legacy route overwrites a body conflict_id with the effective path ID; preserve the effective ID in original receipt query."
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "resolution": { "const": "merge" } } },
+          "then": { "required": ["merged_value"] },
+          "else": { "not": { "required": ["merged_value"] } }
+        }
+      ],
+      "$comment": "Positive safely incrementable expected_version is required in a header or body, with all supplied versions agreeing. Key required in header or body; raw handler does not validate <=255/no-whitespace receipt profile. Extra fields remain in fingerprint. Generic preauth JSON object body bound1MiB; no new finite-JSON/depth/strict media guarantees."
+    },
+    "safeNumber": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "safePositive": { "$ref": "#/$defs/safeNumber", "minimum": 1 },
+    "etag": {
+      "type": "string",
+      "pattern": "^W/\"version-[1-9][0-9]*\"$",
+      "$comment": "Canonical output W/\"version-N\" equals numeric revision; runtime requires a positive safe integer. Input generic parser also accepts leading zeros and zero before resolve's positive bound."
+    },
+    "canonicalTime": {
+      "type": "string",
+      "pattern": "^(?:[0-9]{4}|[+-][0-9]{6})-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$",
+      "$comment": "Submission parser requires a valid Date.parse value whose toISOString equals input; extended years are permitted, unlike identity expiry."
+    },
+    "eventSource": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "minLength": 1 }
+      },
+      "$comment": "Canonical event validator only checks nonempty type/id; it does not check optional revision/uri or forbid extras. Writer preserves copied source fields. Complete client submission separately narrows this to the closed conflict sourceRef profile and its optional-field rules."
+    },
+    "ConflictResolutionEvent": {
+      "$anchor": "ConflictResolutionEvent",
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "schema_version",
+        "event_id",
+        "event_type",
+        "tenant_id",
+        "workspace_id",
+        "project_id",
+        "aggregate_type",
+        "aggregate_id",
+        "aggregate_version",
+        "client_id",
+        "occurred_at",
+        "trace_id",
+        "source_refs",
+        "sensitivity",
+        "payload"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "event_id": { "$ref": "conflict-read.json#/$defs/ulid" },
+        "event_type": { "const": "ConflictResolved" },
+        "tenant_id": { "$ref": "conflict-read.json#/$defs/ulid" },
+        "workspace_id": { "$ref": "conflict-read.json#/$defs/ulid" },
+        "project_id": { "$ref": "conflict-read.json#/$defs/ulid" },
+        "aggregate_type": { "const": "Conflict" },
+        "aggregate_id": { "$ref": "conflict-read.json#/$defs/ulid" },
+        "aggregate_version": { "$ref": "#/$defs/safePositive" },
+        "actor_id": { "$ref": "conflict-read.json#/$defs/ulid" },
+        "client_id": { "type": "string", "minLength": 1 },
+        "occurred_at": { "$ref": "#/$defs/canonicalTime" },
+        "trace_id": { "type": "string", "minLength": 1 },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/eventSource" }
+        },
+        "sensitivity": { "enum": ["public", "internal", "confidential", "restricted"] },
+        "payload": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": [
+            "conflict_id",
+            "entity_type",
+            "entity_id",
+            "field",
+            "base_version",
+            "local_version",
+            "server_version",
+            "resolution",
+            "resolved_value",
+            "actor_id"
+          ],
+          "properties": {
+            "conflict_id": { "type": "string", "minLength": 1 },
+            "entity_type": { "type": "string" },
+            "entity_id": { "type": "string" },
+            "field": { "type": "string" },
+            "base_version": { "$ref": "#/$defs/safeNumber" },
+            "local_version": { "$ref": "#/$defs/safeNumber" },
+            "server_version": { "$ref": "#/$defs/safeNumber" },
+            "resolution": { "$ref": "conflict-read.json#/$defs/resolution" },
+            "resolved_value": {},
+            "actor_id": { "type": "string", "minLength": 1 }
+          }
+        }
+      },
+      "$comment": "Effective scope must be ULIDs for stored canonical events. Legacy non-ULID conflict IDs stay in payload/source; aggregate_id then uses event_id. actor_id appears at top only if original actor is a ULID; payload actor always equals original actor. First source is conflict/effective ID, then stored source_refs. Event and payload extras are not globally closed by legacy replay; checked client profile is closed."
+    },
+    "ConflictResolutionEnvelope": {
+      "$anchor": "ConflictResolutionEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "trace_id",
+        "source_refs",
+        "data",
+        "revision",
+        "etag",
+        "server_cursor"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "type": "string", "minLength": 1 },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/eventSource" }
+        },
+        "revision": { "$ref": "#/$defs/safePositive" },
+        "etag": { "$ref": "#/$defs/etag" },
+        "server_cursor": { "$ref": "#/$defs/safePositive" },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["conflict_id", "version", "resolution", "event"],
+          "properties": {
+            "conflict_id": { "type": "string", "minLength": 1 },
+            "version": { "$ref": "#/$defs/safePositive" },
+            "resolution": { "$ref": "conflict-read.json#/$defs/resolution" },
+            "event": { "$ref": "#ConflictResolutionEvent" }
+          }
+        }
+      },
+      "$comment": "Expected version+1=data.version=revision=event.aggregate_version; etag/HTTP ETag bind revision. Outer sources exactly equal event sources. Outer trace=current request; event trace/time and server_cursor remain historical on same-key replay. No original key/fingerprint echo, replay flag or proof source field was applied."
+    },
+    "ConflictSubmissionCheckedResponse": {
+      "$anchor": "ConflictSubmissionCheckedResponse",
+      "allOf": [
+        { "$ref": "#ConflictResolutionEnvelope" },
+        {
+          "properties": {
+            "trace_id": { "$ref": "conflict-read.json#/$defs/text" },
+            "source_refs": { "items": { "$ref": "conflict-read.json#/$defs/sourceRef" } },
+            "data": {
+              "properties": {
+                "conflict_id": { "$ref": "conflict-read.json#/$defs/conflictId" },
+                "event": {
+                  "propertyNames": {
+                    "enum": [
+                      "schema_version",
+                      "event_id",
+                      "event_type",
+                      "tenant_id",
+                      "workspace_id",
+                      "project_id",
+                      "aggregate_type",
+                      "aggregate_id",
+                      "aggregate_version",
+                      "actor_id",
+                      "client_id",
+                      "occurred_at",
+                      "trace_id",
+                      "source_refs",
+                      "sensitivity",
+                      "payload"
+                    ]
+                  },
+                  "properties": {
+                    "trace_id": { "$ref": "conflict-read.json#/$defs/text" },
+                    "client_id": { "$ref": "conflict-read.json#/$defs/text" },
+                    "source_refs": { "items": { "$ref": "conflict-read.json#/$defs/sourceRef" } },
+                    "payload": {
+                      "propertyNames": {
+                        "enum": [
+                          "conflict_id",
+                          "entity_type",
+                          "entity_id",
+                          "field",
+                          "base_version",
+                          "local_version",
+                          "server_version",
+                          "resolution",
+                          "resolved_value",
+                          "actor_id"
+                        ]
+                      },
+                      "properties": {
+                        "entity_type": { "$ref": "conflict-read.json#/$defs/text" },
+                        "entity_id": { "$ref": "conflict-read.json#/$defs/text" },
+                        "field": { "$ref": "conflict-read.json#/$defs/text" },
+                        "actor_id": { "$ref": "conflict-read.json#/$defs/text" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "$comment": "Dedicated client parser additionally uses2MiB/finite JSON/depth64/nodes100000, exact complete original query/identity/expected+1/trace/source, aggregate mapping, optional actor rule and merge JSON equality. HTTP server does not execute this complete parser. Even passing it does not prove saved original-key binding."
+    },
+    "ConflictSubmissionEnvelope": {
+      "$anchor": "ConflictSubmissionEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "conflict-read.json#/$defs/text" },
+        "source_refs": { "type": "array", "maxItems": 0 },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "original", "next_action", "source_application"],
+          "properties": {
+            "status": { "const": "unconfirmed" },
+            "original": { "$ref": "conflict-original.json#ConflictReceiptQuery" },
+            "next_action": { "const": "check-original-receipt" },
+            "source_application": { "const": "not-checked" }
+          }
+        }
+      },
+      "$comment": "Local dedicated SDK/MCP adapter result after complete wire validation, not an HTTP response. reviewed=true is local submission option, not a server body field. Preserve original query; no automatic receipt lookup/retry/key or version changes. The raw copied event values are discarded."
+    }
+  }
+}

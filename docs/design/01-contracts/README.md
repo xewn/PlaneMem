@@ -1,5 +1,7 @@
 # 公共契约目录
 
+- [冲突读取与原决定 OpenAPI](../../../packages/contracts/openapi/README.md#冲突读取与原决定)：TODO P0-01，目录/详情/身份/解决/原回执五路及完整Schema，区分HTTP事件与客户端unconfirmed、当前详情与原键决定；仅源码，未运行校验。
+
 - [同步上传与原投递 OpenAPI](../../../packages/contracts/openapi/README.md#同步上传与原投递)：TODO P0-01，上传/发送身份/原事件回执三路及完整 Schema；区分旧 HTTP 逐条拒绝、客户端完整批次与只读历史投递，仅源码，未运行校验。
 
 - [同步消费与确认 OpenAPI](../../../packages/contracts/openapi/README.md#同步消费与确认)：TODO P0-01，变化分页、当前位点与显式确认三路及完整 Schema；区分流高水位、消费者确认和本地持久化，仅描述现有实现，未执行运行校验。

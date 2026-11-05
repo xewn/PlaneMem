@@ -1,0 +1,453 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem conflict reads, decisions and original receipts",
+    "version": "0.1.0",
+    "description": "Source-only five-route contract. Load this and context-history OpenAPI, plus conflict-read/conflict-original/conflict-resolution/sync-consumer schemas locally under full IDs. No tool/runtime/release evidence; complete WCP/MCP and SDK/Mock machine-contract consumption remain incomplete."
+  },
+  "servers": [
+    { "url": "/", "description": "Relative Gateway base; configure actual origin/base path." }
+  ],
+  "security": [{ "GatewayBearer": [] }],
+  "tags": [{ "name": "Conflicts" }],
+  "x-todo": "P0-01",
+  "x-source-boundaries": {
+    "legacy-post-raw-body-bytes": 1048576,
+    "original-receipt-query-bytes": 1000000,
+    "receipt-sql-metadata-bytes": 16384,
+    "directory-record-bytes": 16384,
+    "directory-detail-receipt-complete-success-bytes": 2097152,
+    "detail-payload-reserved-metadata-bytes": 16384,
+    "command-context-success-bytes": 16384,
+    "client-submission-success-bytes": 2097152,
+    "client-error-bytes": 16384,
+    "description": "List/detail/identity/receipt actually invoke complete shared output parsers; detail SQL reserves16KiB from2MiB, directory outputs16KiB per selected record, receipt SQL emits16KiB comparison metadata. SQL constructs projections before size checks. Both POSTs use generic pre-auth1MiB raw JSON object parsing with nonfatal Buffer UTF-8 decoding; receipt later enforces1000000 decoded finite-JSON bytes/depth64/nodes100000. Resolve replays bound the stored event to2MiB, but fresh resolve/full wire response has no shared2MiB submission validation. Client complete parsing,16KiB errors/local waits and MCP wrapping/capacity are not HTTP whole-operation deadlines or SQL cancellation guarantees. No dedicated five-route two-slot/30-second server gate."
+  },
+  "paths": {
+    "/v1/conflicts": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "get": {
+        "operationId": "listConflicts",
+        "tags": ["Conflicts"],
+        "summary": "Read a bounded metadata directory with explicit continuation",
+        "x-wcp-operation": "conflict.list",
+        "x-policy-action": "context.read",
+        "x-decoded-query-schema": { "$ref": "../schemas/conflict-read.json#ConflictRegistryQuery" },
+        "description": "Authorize context.read and audit the decision. One SQL statement checks the visible nondeleted parent and current-source plus saved-conflict classification, then selects limit+1 IDs ascending under PostgreSQL COLLATE C. Only the first limit rows get metadata, never copied local/server/resolved values; validate lookahead ID/order but require its payload null. Hidden parent returns404, visible empty result returns200. ASCII-folded literal substring search covers ID/entity/field/actor/trace; status/entity/exact ID combine. Cursor binds scope, read_restricted, normalized filters and limit, not actor/client, signature or immutable snapshot. Each page is a fresh statement. resolve permission is a verified-client/capability-or-admin hint without its own expiry recheck, not authorization to submit.",
+        "x-http-input": "Each of query/status/entity_type/conflict_id/limit/cursor at most once. Limit wire syntax positive1..3 digits without leading zero, then shared1..100 bound/default25. Empty status/entity_type and blank trimmed query mean absent. Reject Transfer-Encoding and Content-Length except absent/exact0, plus Idempotency-Key, If-Match, If-Match-Version, Range, If-Range, If-None-Match, If-Modified-Since, If-Unmodified-Since. Content-Encoding and X-Expected-Version are not in explicit forbidden list. No conditional206/304 or ETag.",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "schema": {
+              "$ref": "../schemas/conflict-read.json#/$defs/ConflictRegistryQuery/properties/query"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "../schemas/conflict-read.json#/$defs/ConflictRegistryQuery/properties/status"
+            }
+          },
+          {
+            "name": "entity_type",
+            "in": "query",
+            "schema": {
+              "$ref": "../schemas/conflict-read.json#/$defs/ConflictRegistryQuery/properties/entity_type"
+            }
+          },
+          {
+            "name": "conflict_id",
+            "in": "query",
+            "schema": { "$ref": "../schemas/conflict-read.json#/$defs/conflictId" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 25 }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": { "$ref": "../schemas/conflict-read.json#/$defs/registryCursor" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Complete2MiB directory; top-level data array, matching scope/trace, one postgres/wcp_conflicts source, has_more and optional next_cursor. Continuation requires full requested page and last ID; no cursor on final page. Exact-ID lookup cannot have has_more. Versions are decimal bigint strings, not safe-number editing tokens. No total or copied field values.",
+            "headers": {
+              "cache-control": { "$ref": "context-history.json#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "context-history.json#/components/headers/SuccessTrace" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "../schemas/conflict-read.json#ConflictRegistryEnvelope" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/conflicts/{conflict_id}": {
+      "parameters": [
+        { "$ref": "#/components/parameters/ConflictId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "get": {
+        "operationId": "getConflict",
+        "tags": ["Conflicts"],
+        "summary": "Read a complete current conflict snapshot without rounding copied JSON values",
+        "x-wcp-operation": "conflict.read",
+        "x-policy-action": "context.read",
+        "x-local-query-schema": { "$ref": "../schemas/conflict-read.json#ConflictReadQuery" },
+        "description": "A single SQL statement checks exact scope, visible nondeleted parent and visibleConflicts against current source/saved sensitivity. Complete detail preserves local/server/resolved JSONB text and separates recorded JSON null from SQL NULL. Versions stay decimal strings through PostgreSQL bigint maximum. Open/none, resolved/recorded and resolved/legacy are distinct; legacy missing event/client/value fields are not invented. Stored actor on open row can identify reporter, not resolver. Current event link does not prove an original request key or source application.",
+        "x-http-input": "One encoded path segment, no query/body/write conditions. GET rejects Transfer-Encoding, Content-Length except absent/exact0 and the same key/version/range/cache headers listed on directory. Content-Encoding/X-Expected-Version are not explicitly forbidden. The route validates conflict ID with generic sync rules excluding dot/dotdot; not ULID-only. Generic router rejects a differing supplied body conflict_id. No ETag/revision or conditional response.",
+        "responses": {
+          "200": {
+            "description": "Full2MiB envelope with scope/current trace, one conflict/ID source and complete data. Stored trace/source_refs belong to snapshot. Each JSON text is grammar-checked but returned unchanged; JSONB formatting is already normalized storage text, not original submitted bytes. No partial/truncated values.",
+            "headers": {
+              "cache-control": { "$ref": "context-history.json#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "context-history.json#/components/headers/SuccessTrace" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "../schemas/conflict-read.json#ConflictReadEnvelope" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "413": { "$ref": "#/components/responses/DetailTooLarge" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/conflicts/commands/context": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "get": {
+        "operationId": "getConflictCommandContext",
+        "tags": ["Conflicts"],
+        "summary": "Read the verified current resolver identity before preparing an original decision",
+        "x-wcp-operation": "conflict.command-context",
+        "x-policy-action": "conflict.resolve",
+        "x-decoded-query-schema": {
+          "$ref": "../schemas/conflict-original.json#ConflictCommandContextQuery"
+        },
+        "description": "Require verified unexpired client and conflict.resolve/admin independently of Policy. Return cloned trusted identity, canonical expiry and resolve_conflicts=true through full16KiB finite-JSON parser. No database/project/conflict read, key allocation or reconstruction of earlier sender identity. Not proof of project existence, receipt availability or future authorization.",
+        "x-http-input": "Parameter-free GET. Reject Transfer-Encoding and Content-Length except absent/exact0; reject Idempotency-Key, If-Match, If-Match-Version, If-None-Match, If-Modified-Since, If-Unmodified-Since, Range and If-Range. Content-Encoding/X-Expected-Version are not explicitly rejected. Expected actor/client headers independently optional.",
+        "responses": {
+          "200": {
+            "description": "Complete16KiB current identity hint with empty sources. No cursor/revision/ETag.",
+            "headers": {
+              "cache-control": { "$ref": "context-history.json#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "context-history.json#/components/headers/SuccessTrace" }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../schemas/conflict-original.json#ConflictCommandContextEnvelope"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/conflicts/{conflict_id}/resolve": {
+      "parameters": [
+        { "$ref": "#/components/parameters/ResolvePathId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "post": {
+        "operationId": "resolveConflict",
+        "tags": ["Conflicts"],
+        "summary": "Persist an explicit conflict decision and its event under an original key",
+        "x-wcp-operation": "conflict.resolve",
+        "x-policy-action": "conflict.resolve",
+        "x-dedicated-client-checked-wire-schema": {
+          "$ref": "../schemas/conflict-resolution.json#ConflictSubmissionCheckedResponse"
+        },
+        "x-dedicated-client-return-schema": {
+          "$ref": "../schemas/conflict-resolution.json#ConflictSubmissionEnvelope"
+        },
+        "description": "Verify HTTP client and Policy. In one write transaction lock visible parent FOR SHARE, then current visible conflict FOR UPDATE. For an already-resolved row, compare original identity/key hash and full command fingerprint before new-write version checks; different key means CONFLICT_ALREADY_RESOLVED, same key/different body IDEMPOTENCY_KEY_REUSED. Matching replay validates saved event metadata, version, trace/time, sender, sources, selected values and historical sensitivity before returning it. For an open row compare current conflict version to expected; choose local/server stored value or supplied merge value, increment conflict version, append ConflictResolved under project stream lock and save decision/key/fingerprint atomically. It changes conflict decision state, not the underlying source field and not a download acknowledgement.",
+        "x-http-input": "Legacy JSON object POST is parsed before auth with1MiB bound. No explicit Content-Type, Content-Encoding, query/cache/range rejection at resolve; query ignored. Path overwrites body.conflict_id. Key selected from Idempotency-Key or body.idempotency_key, header wins without equality; handler only requires nonempty string, unlike stricter SDK/original-query <=255/control-free key rules. Effective positive safely incrementable expected_version from If-Match/If-Match-Version/body, all supplied version values must agree; generic headers allow leading zeros. Supplied outer body scope/actor/client/from_client must equal verified context. Extra original body fields remain fingerprint-significant. reviewed=true is only a dedicated client option, not an HTTP requirement.",
+        "x-replay-boundary": "commandReceipt hashes [actor_id,client_id,key] and sorted-key effective command with path/version, excluding idempotency_key. Decision is scoped to this conflict; current parent/source visibility is checked even on replay. Same-key replay keeps historical event trace/time/cursor, outer trace is current. There is no independent canReadConflictReceipt gate or postwrite expiry check in this handler beyond HTTP authentication/Policy, and no full fresh output parser. Stored replay inconsistency/unsafe stored versions become CONFLICT_STORAGE_UNAVAILABLE; fresh invalid canonical event/cursor can return SYNC_EVENT_INVALID.",
+        "x-client-boundary": "Legacy SDK resolveConflict remains a generic-envelope wrapper. Dedicated submitConflictDecision fixes full original identity/key/command, requires local reviewed=true and validates full2MiB response against original request; then discards copied values and returns unconfirmed/check-original-receipt. Neither result proves saved original-key binding until explicit receipt lookup. Timeout/errors do not prove rollback; preserve original query, never silently update version/key or substitute current identity.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": { "type": "string", "minLength": 1 },
+            "description": "Required here or in body; header wins. Use the stricter original-query requestKey profile for recoverable client originals; legacy handler itself only checks nonempty."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": { "type": "string", "pattern": "^W/\"version-[0-9]+\"$" },
+            "description": "Effective positive safe incrementable version required in this header, If-Match-Version or body. All supplied versions agree. Canonical client spelling W/\"version-N\"."
+          },
+          {
+            "name": "If-Match-Version",
+            "in": "header",
+            "schema": { "type": "string", "pattern": "^[0-9]+$" },
+            "description": "Legacy decimal version alternative; numeric safe bound and equality checked at runtime."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/conflict-resolution.json#ConflictResolutionBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Existing numeric revision/version/ETag/cursor plus full ConflictResolved event. Outer sources equal event sources. This is not the dedicated client's unconfirmed return and has no original key/fingerprint echo or replay flag. HTTP success follows commit; response delivery/client persistence may still fail.",
+            "headers": {
+              "cache-control": { "$ref": "context-history.json#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "context-history.json#/components/headers/SuccessTrace" },
+              "etag": {
+                "required": true,
+                "schema": { "$ref": "../schemas/conflict-resolution.json#/$defs/etag" },
+                "description": "Equals body.etag and binds body.revision."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../schemas/conflict-resolution.json#ConflictResolutionEnvelope"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/conflicts/receipt": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "post": {
+        "operationId": "getConflictReceipt",
+        "tags": ["Conflicts"],
+        "summary": "Read the saved original decision binding without resolving again",
+        "x-wcp-operation": "conflict.receipt",
+        "x-policy-action": "conflict.resolve",
+        "description": "Require verified unexpired resolver/admin independently of Policy, exact saved five-field identity and complete original key/command. One read-only SQL statement filters current parent/source/conflict and historical event sensitivity, emits only bounded16KiB comparison metadata, and compares identity-scoped key hash/full command fingerprint. Clean open row or complete resolved binding for another key yields not-observed. Same key/different fingerprint is409; resolved missing key/fingerprint/event ID is legacy-unverified409. Matching binding must satisfy selected stored event metadata, decision/version/actor/client/trace/time and value checks, then complete response parsing. No write, retry or source-application claim.",
+        "x-integrity-boundary": "This lookup checks selected SQL metadata, aggregate identity/version, scope/client, payload actor/entity/field/resolution/value and original merge equality. It does not load/validate the entire CanonicalEvent or independently compare its source_refs, base/local/server payload versions or optional top-level actor, unlike the stronger replay path. For another complete key, not-observed does not require matching-event integrity. No post-SQL expiry recheck in this handler; client checks do not create that guarantee.",
+        "x-http-input": "POST body is generic pre-auth1MiB JSON object, then decoded query limit1000000 bytes. No URL query or Idempotency-Key, If-Match, If-Match-Version, Range, If-Range, If-None-Match, If-Modified-Since, If-Unmodified-Since. This legacy guard does not enforce strict Content-Type or reject Content-Encoding/X-Expected-Version. Expected actor/client headers independently optional; body identity mandatory. Early raw parse failure is400 INVALID_JSON, later shape/budget error INVALID_INPUT. Do not copy the newer sync receipt's post-auth raw parser boundary here.",
+        "x-observation-boundary": "Missing/hidden conflict is404, never not-observed. A clean open record or another key can be observed while an original write is in flight; not-observed does not establish failure or safe replacement. Query echoes canonicalized caller originals, not saved raw JSON bytes. Receipt preserves historical version/cursor as decimal strings and source_application=not-checked; no outer ETag/revision/cursor/current source values.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/conflict-original.json#ConflictReceiptQuery" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Complete2MiB recorded/not-observed result. Recorded has one event/ULID source and exact original identity/key/command match, version=expected+1, original trace/time. Not-observed has no receipt/sources.",
+            "headers": {
+              "cache-control": { "$ref": "context-history.json#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "context-history.json#/components/headers/SuccessTrace" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "../schemas/conflict-original.json#ConflictReceiptEnvelope" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "GatewayBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "All routes authenticate Bearer and exact authorized scope. Identity GET and POST routes require verified client; list/detail GET do not independently require that flag and can use authenticated fallback-client context. Local Policy checks context.read for reads and conflict.resolve for other three; configured OPA supplies its decision instead. Only identity/receipt independently require future expiry plus resolver/admin. Restricted SQL needs actual data.restricted.read. Entry audit precedes handler dispatch and does not prove success/delivery."
+      }
+    },
+    "parameters": {
+      "ConflictId": {
+        "name": "conflict_id",
+        "in": "path",
+        "required": true,
+        "schema": { "$ref": "../schemas/conflict-read.json#/$defs/conflictId" },
+        "description": "Encode one segment. Read/original-query profile permits legacy non-ULID IDs but rejects dot/dotdot."
+      },
+      "ResolvePathId": {
+        "name": "conflict_id",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "minLength": 1 },
+        "description": "Legacy resolve only checks effective path ID nonempty; use the stricter conflictId profile for originals queryable by read/receipt. Route overwrites body ID."
+      },
+      "TenantId": {
+        "name": "x-tenant-id",
+        "in": "header",
+        "required": true,
+        "schema": { "type": "string", "minLength": 1 },
+        "description": "Exact authorized tenant. Read scope parser accepts bounded text; command identity uses sync identifier rules; fresh canonical resolution events require ULID scope. Authentication equality alone does not establish every parser constraint."
+      },
+      "WorkspaceId": {
+        "name": "x-workspace-id",
+        "in": "header",
+        "required": true,
+        "schema": { "type": "string", "minLength": 1 },
+        "description": "Exact authorized workspace, with the same parser distinctions as tenant."
+      },
+      "ProjectId": {
+        "name": "x-project-id",
+        "in": "header",
+        "required": true,
+        "schema": { "type": "string", "minLength": 1 },
+        "description": "Exact authorized project. Directory/detail/receipt/resolve check current parent visibility; command identity only returns metadata."
+      },
+      "TraceParent": {
+        "name": "traceparent",
+        "in": "header",
+        "schema": { "type": "string" },
+        "description": "Nonempty opaque value takes precedence over x-trace-id; generic boundary does not parse W3C or compare both. Shared complete parsers require bounded nonblank scalar text."
+      },
+      "TraceId": {
+        "name": "x-trace-id",
+        "in": "header",
+        "schema": { "type": "string" },
+        "description": "Used if traceparent empty/absent, else generate trace_http_<ULID> if both missing/empty. Outer request trace differs from saved detail/event/receipt historical trace."
+      },
+      "ExpectedActorId": {
+        "name": "x-expected-actor-id",
+        "in": "header",
+        "schema": { "type": "string" },
+        "description": "Independently optional exact precondition on verified/current actor. No pair rule for these conflict routes; mandatory original receipt identity remains in body."
+      },
+      "ExpectedClientId": {
+        "name": "x-expected-client-id",
+        "in": "header",
+        "schema": { "type": "string" },
+        "description": "Independently optional exact client precondition, never identity override."
+      }
+    },
+    "responses": {
+      "Error": {
+        "$ref": "context-history.json#/components/responses/Error",
+        "description": "Application error, no partial copied values or fabricated observation. Early proxy/parser/auth failures can differ and omit trace header. Preserve original decision after uncertain write outcome."
+      },
+      "BadInput": {
+        "$ref": "#/components/responses/Error",
+        "description": "INVALID_INPUT for input/filter/cursor/header conditions or receipt decoded budget; INVALID_REQUEST_CONTEXT for generic version parse/equality. Early POST malformed/nonobject/empty/over1MiB body is400 INVALID_JSON, not413. retryable=false."
+      },
+      "Unauthenticated": {
+        "$ref": "#/components/responses/Error",
+        "description": "UNAUTHENTICATED for absent/rejected Bearer token, retryable=false; no universal WWW-Authenticate/early trace-header guarantee."
+      },
+      "Denied": {
+        "$ref": "#/components/responses/Error",
+        "description": "DENIED for scope/expected identity, outer POST identity, Policy or identity/receipt independent eligibility; CONFLICT_ACCESS_DENIED can reject write scope. retryable=false."
+      },
+      "NotFound": {
+        "$ref": "#/components/responses/Error",
+        "description": "Directory uses NOT_FOUND for invisible parent, not empty visible page. Detail/resolve/receipt use CONFLICT_NOT_FOUND for absent or hidden parent/conflict/source/historical data. Identity does not query parent. retryable=false."
+      },
+      "Conflict": {
+        "$ref": "#/components/responses/Error",
+        "description": "CONFLICT_VERSION_MISMATCH for new-write CAS; CONFLICT_ALREADY_RESOLVED for another decision key; IDEMPOTENCY_KEY_REUSED for same key/different command; CONFLICT_RECEIPT_LEGACY_UNVERIFIED for resolved lookup lacking original binding. retryable=false. Preserve exact original rather than substituting current version/key."
+      },
+      "DetailTooLarge": {
+        "$ref": "#/components/responses/Error",
+        "description": "CONFLICT_READ_TOO_LARGE for complete detail SQL payload/envelope budget, retryable=false. No partial/truncated JSON values. Directory/receipt invalid-size paths instead use their500 invalid codes."
+      },
+      "RateLimited": {
+        "$ref": "#/components/responses/Error",
+        "description": "General actor/path RATE_LIMITED, retryable=true. No dedicated conflict HTTP concurrency error or Retry-After promise."
+      },
+      "InvalidStored": {
+        "$ref": "#/components/responses/Error",
+        "description": "CONFLICT_READ_INVALID, CONFLICT_REGISTRY_INVALID, CONFLICT_RECEIPT_INVALID, CONFLICT_COMMAND_CONTEXT_INVALID or fresh SYNC_EVENT_INVALID, retryable=false. Resolve replay validation errors are generally503 storage unavailable instead. Generic INTERNAL_ERROR defaults retryable=true."
+      },
+      "Unavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "Directory WORKBENCH_DATABASE_UNAVAILABLE; detail/receipt/resolve CONFLICT_STORAGE_UNAVAILABLE; common WORKBENCH_AUTH_UNAVAILABLE/AUDIT_PERSISTENCE_UNAVAILABLE. Storage helpers and audit/auth transient paths use retryable=true. Identity does not access conflict storage. Unknown write outcome must be retained despite retry hints."
+      }
+    }
+  }
+}

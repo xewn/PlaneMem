@@ -8,6 +8,10 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./schemas/conflict-read.json": "./schemas/conflict-read.json",
+    "./schemas/conflict-original.json": "./schemas/conflict-original.json",
+    "./schemas/conflict-resolution.json": "./schemas/conflict-resolution.json",
+    "./openapi/conflicts.json": "./openapi/conflicts.json",
     "./schemas/sync-upload.json": "./schemas/sync-upload.json",
     "./schemas/sync-original.json": "./schemas/sync-original.json",
     "./openapi/sync-upload.json": "./openapi/sync-upload.json",
