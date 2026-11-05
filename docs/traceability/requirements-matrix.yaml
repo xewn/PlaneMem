@@ -11,6 +11,29 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    audit_export_openapi_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only single reviewed audit view export OpenAPI and complete schema; P0-01 and R-001 remain incomplete."
+      artifacts:
+        - "packages/contracts/openapi/audit-export.json"
+        - "packages/contracts/schemas/audit-export.json"
+        - "packages/contracts/package.json"
+        - "packages/contracts/openapi/README.md"
+        - "packages/contracts/schemas/README.md"
+        - "docs/design/01-contracts/audit-export-runtime.md"
+      behavior: "Original reviewed selection, full bounded audit record/omission states, canonical document/hash/bytes and distinct durable release ID with client delivery not confirmed. Two exact reads and classification authorizations before release."
+      boundaries: "No runtime/SDK/Mock/dependency/database changes. Actual audit/export capabilities and finite token expiry; audit-row scope/restricted visibility without separate parent-project join. JSONB original byte counts differ from normalized serialization. Canonical96KiB/response128KiB and structural work limits; source extensions stripped. Handler2 slots/60s do not include outer phases or cancel in-flight work. Confirmed release may survive later failure; unconfirmed cannot prove absence. SDK90s and Fetch30s local budgets,128/16KiB decoded bodies, independent hash and actual error/retryable differences documented."
+      evidence: []
+      remaining_scope: "Other WCP/MCP machine contracts, event payloads, SDK/Mock machine-contract consumption, breaking-change CI and tool/runtime/release evidence; raw/bulk export, locked snapshot, original release recovery and client delivery confirmation remain outside this implemented path."
+      pending_evidence:
+        - "Local references and full selection/record/document/result/failure-state shapes"
+        - "Verified actual capabilities, scope equality, dual read/classification Policy checks"
+        - "Original field byte-count semantics, omission placeholders, safe canonical JSON and microseconds"
+        - "Exact reviewed digest/document equality, distinct release source and durable sink before content"
+        - "Capacity retention after timeout, uncertain sink acknowledgment and known release preservation"
+        - "Strict SDK transport/integrity/cancellation and actual Gateway error status/retryable mapping"
+      execution: "Manual source/docs review and explicit formatting/Git text checks only; no build, typecheck, tests, validators, generators, product/API/database/export execution or release."
     memory_handoff_openapi_development_increment:
       date: "2026-11-05"
       todo: "P0-01"

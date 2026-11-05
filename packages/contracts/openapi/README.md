@@ -1,6 +1,26 @@
 # OpenAPI 源码契约
 
-这里的文档描述已有 HTTP 实现，尚未经过校验器、生成器、编译、类型检查、测试或运行验证。文档版本不表示已发布或部署；当前覆盖保存包 5 路、文件 9 路、上下文条目 9 路、同步 6 路、冲突 5 路、建议 8 路、Plane 观察 4 路、搜索 2 路、旧索引 5 路、Plane 收件箱 6 路、会话状态/活动 5 路、检查点/交接读取 3 路、会话身份/启动/原回执 3 路、会话进度写入/原回执 6 路、检查点保存/原回执 2 路、交接创建/领取/原回执 4 路、会话续接/原回执 2 路及旧记忆交接创建/领取 2 路，共 86 路，尚不是完整 WCP 接口目录。
+这里的文档描述已有 HTTP 实现，尚未经过校验器、生成器、编译、类型检查、测试或运行验证。文档版本不表示已发布或部署；当前覆盖保存包 5 路、文件 9 路、上下文条目 9 路、同步 6 路、冲突 5 路、建议 8 路、Plane 观察 4 路、搜索 2 路、旧索引 5 路、Plane 收件箱 6 路、会话状态/活动 5 路、检查点/交接读取 3 路、会话身份/启动/原回执 3 路、会话进度写入/原回执 6 路、检查点保存/原回执 2 路、交接创建/领取/原回执 4 路、会话续接/原回执 2 路、旧记忆交接创建/领取 2 路及单条审计视图导出 1 路，共 87 路，尚不是完整 WCP 接口目录。
+
+## 单条审计视图导出
+
+2026-11-05，TODO **P0-01**：[audit-export OpenAPI](audit-export.json) 覆盖 POST /v1/audit/export，完整结构见 [audit-export Schema](../schemas/audit-export.json)。包子路径同名，本地加载 session-activity-read 及 session-reads/search/context-history 公共 HTTP 组件。当前只描述已有实现，未运行校验器或生成器。
+
+请求只有原审阅 scope、audit_id 和无前缀小写 64 位 SHA-256，不能发送待导出正文或身份能力。scope 为非空、最多 256 UTF-16、无控制/DEL/孤立代理项的文本，逐项等于可信范围。HTTP 先验证签名身份和客户端，再读最多 4 KiB JSON；处理器另检查 JSON.stringify 输入大小。禁止 URL 查询、内容编码、Range/条件缓存/写键/版本头；只接受 application/json 及可选不带引号的 charset=utf-8。入口解析坏正文/超限均400，不是413；Connection: close 和 trace 头在身份验证前设置。
+
+入口走 audit.read 策略/决策审计；处理器额外要求真实 audit.read、data.export 或 data.restricted.export 至少一种、可信客户端和有限未过期会话，admin 不能替代真实能力。按原 ID 从当前范围精确读审计表，受限行按 data.restricted.read 过滤，没有另外关联父项目存在/删除状态。无匹配行404；已有记录再同时检查 canRead/canExport、本地 Policy 和配置的 OPA export.audit。restricted 还需受限读取和导出；public 仍需入口真实导出能力。分类拒绝先持久写 denied 审计，写入无法确认则返回持久化失败。
+
+记录结构完整保留 audit_id、actor/client、可空 session_id、action/resource、结果/分类、原 trace/微秒时间、details/source_refs 及各自状态/原大小。原 SQL JSONB 文本详情超过 32 KiB 则 null、来源超过 16 KiB 则 []，状态 too-large，保留原字节数；16 KiB 元数据超限或损坏会失败。共享解析器另限制候选记录 68 KiB 与可用字段序列化大小，去掉来源扩展；session_id 只要求 null 或非空文本。原字节数不要求等于规范后 JavaScript JSON 的大小，不能据这些占位字段还原省略内容。
+
+服务端第一次读取并分类授权，将规范 document 摘要与原选择比较；第二次独立读取必须得到相同规范文本，再次分类授权。document 是 schema_version/content_state=bounded-view/scope/record，规范化重建已知字段、递归排序对象键后 JavaScript JSON.stringify，数组顺序保留；只接受有限 JSON、安全整数与普通对象，深度最多 64、节点 10000、规范 UTF-8 文本 96 KiB。这是项目约定，不声明标准 JCS 兼容。两读不构成锁定快照；被省略原文的变化若未改变可见投影不会被检测，最后检查后的数据/策略变化也不在承诺内。
+
+成功返回前必须确认 audit.export.release 持久化，放行 ID 为不同于目标的 ULID，记录目标来源/分类、1 行、有界视图、字节数/摘要、省略状态和 delivery_confirmed=false。已有分类脱敏仍作用于非 public 摘要字符串，不保证可从放行审计恢复原摘要；持久化后可选观察器报错不撤销已确认放行。成功封套最多 128 KiB，来源严格按目标审计、放行审计排序，无 ETag；audit_state=release-recorded 和 client_delivery_state=not-confirmed 明确区分服务端放行与客户端送达。document 摘要/字节只针对规范 document，不是整个封套或保存文件，也不是签名。
+
+每注册实例最多两笔处理器工作，期限从处理器入口算 60 秒，不覆盖之前的认证/正文/入口策略审计或之后发送。超时 Promise 结束等待，不能取消 SQL、OPA 或审计写入；名额保持至实际工作结束，后续检查阻止迟到成功。已知放行后的超时/解析失败在处理器错误中保留 release ID；写入确认未返回时只能 unconfirmed，即使持久化可能随后发生。没有自动重试、原回执恢复、幂等去重或文件送达确认；每次成功显式准备可新增放行。
+
+WcpClient.exportAuditView 接受已审阅完整 document，等待前同步固定规范副本，拒绝继承写条件；WebCrypto 计算请求摘要，返回后完整解析/复制、规范文本相等及重新计算摘要。方法默认总等待 90 秒，包含摘要和自定义 transport，可传 signal 和 1..2147483647 毫秒 timeout；不读取替代内容、不保存文件或重试。Fetch bounded-json 另有默认 30 秒凭据/网络/正文期限，先到者结束等待；成功/错误解码正文分别 128/16 KiB，严格 UTF-8/JSON 媒体类型、成功精确200和 trace 头。未压缩/identity 的声明长度须匹配，压缩仍限制解码字节；自定义 transport 不能被方法强制撤销，迟到结果不接纳。SDK 只返回有限错误说明、可信原 trace/已知放行，retryable=false。
+
+真实 Gateway 的 AUDIT_EXPORT_CONFLICT409、WORKBENCH_AUDIT_INVALID500 均 false；AUDIT_EXPORT_BUSY/TIMEOUT 是503 false，不是408，也不保证 Retry-After。处理器缺少或无法确认持久 sink 为 AUDIT_PERSISTENCE_UNAVAILABLE503 false，入口通用审计同码可能 true；数据库/身份服务不可用503 true。服务器错误没有独立 16 KiB 输出限制，SDK 的错误上限不可冒称为服务端保证。已有 Mock 可保存内存模拟放行，但不构成持久化/真实策略或双读竞态证据。P0-01/R-001 未完成、evidence 为空。
 
 ## 旧记忆交接
 

@@ -1,6 +1,8 @@
 # WCP API 契约 v1
 
-2026-11-05，TODO P0-01：[旧记忆交接 OpenAPI](../../../packages/contracts/openapi/README.md#旧记忆交接) 和 memory-handoff Schema 覆盖创建/领取两 POST。定义开放正文、领取客户端选择、完整返回和两种 provider 引用；明确旧原始头身份、当前范围/归属缺口、进程成功缓存保留原 trace、真实 MCP 调用/错误/期限。OpenAPI 累计 86 路，P0-01/R-001 未完成、evidence 为空；未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+2026-11-05，TODO P0-01：[单条审计视图导出 OpenAPI](../../../packages/contracts/openapi/README.md#单条审计视图导出) 和 audit-export Schema 覆盖现有 POST。完整描述审阅选择、有界审计记录/省略状态、规范 document 与放行封套；对照双读双授权、摘要/字节、持久放行和未确认送达、两笔容量/处理器期限与实际 SDK/错误。OpenAPI 累计 87 路，P0-01/R-001 未完成、evidence 为空；未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
+2026-11-05，TODO P0-01：[旧记忆交接 OpenAPI](../../../packages/contracts/openapi/README.md#旧记忆交接) 和 memory-handoff Schema 覆盖创建/领取两 POST。定义开放正文、领取客户端选择、完整返回和两种 provider 引用；明确旧原始头身份、当前范围/归属缺口、进程成功缓存保留原 trace、真实 MCP 调用/错误/期限。该轮使 OpenAPI 累计 86 路，P0-01/R-001 未完成、evidence 为空；未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 2026-11-05，TODO P0-01：[会话续接与原回执 OpenAPI](../../../packages/contracts/openapi/README.md#会话续接与原回执) 和 session-resume Schema 覆盖两 POST。完整定义原身份/父子会话/origin/交接、保存包三态及历史 recorded/not-observed/legacy-unverified；区分旧 HTTP 与 SDK、当前资格和包检查先于重放、同事务领取/子会话写入及只读历史绑定。该轮使 OpenAPI 累计 84 路，P0-01/R-001 未完成、evidence 为空；未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 

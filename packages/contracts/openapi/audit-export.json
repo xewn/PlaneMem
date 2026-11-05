@@ -1,0 +1,152 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem single reviewed audit view export",
+    "version": "0.1.0",
+    "description": "Source-only existing POST contract, TODO P0-01. Load audit-export/session-activity-read schemas and session-reads/search/context-history HTTP components locally. Complete bounded view/release result; no validator/generator/runtime/release evidence."
+  },
+  "servers": [
+    { "url": "/", "description": "Relative Gateway base; configure deployment origin/base." }
+  ],
+  "security": [{ "GatewayBearer": [] }],
+  "tags": [{ "name": "Audit export" }],
+  "x-runtime-boundaries": {
+    "http": "Signed context and verified client before reading body. Reject URL query, non-JSON media type, content-encoding and listed cache/range/write headers. Accepted Content-Type regex is application/json optionally ;charset=utf-8 (case-insensitive, unquoted); not arbitrary JSON suffix. JSON object raw read<=4096 bytes with nonfatal UTF8; invalid/empty/nonobject/oversized body=>INVALID_INPUT400, not413. Handler also limits JSON.stringify input4096. Connection close and selected x-trace-id set before authentication. Optional expected actor/client headers each bind signed claims; no top-level identity override in closed selection.",
+    "authorization": "Entry policy audit.read plus decision audit/generic rate limit. Handler independently requires authenticated_client=true, actual audit.read and at least one actual data.export/data.restricted.export, finite unexpired token time; admin cannot replace these. Selected scope exactly equals verified scope. For each read, canRead/canExport plus local PolicyService and configured OPA export.audit must allow. Restricted requires data.restricted.read and data.restricted.export; public still needs initial actual export capability. Captured authority rechecked for expiry/deadline after async steps, no token refresh/revocation polling.",
+    "selection": "Scope nonempty<=256 UTF16/no controls/DEL/lone surrogates, target ULID, lowercase64 SHA256 without prefix. Full reviewed document is not sent to Gateway, only original selection. Caller review is not proven by this wire request. No keys/version/CAS or automatic replacement with latest content.",
+    "read": "WorkbenchRepository.listAudit exact audit_id, scoped audit rows and restricted filter; no separate current project visibility/deletion join. Shared envelope validates scope/current trace/sole postgres source/unique exact target and complete bounded record; empty result404. SQL clips details>32KiB to null and sources>16KiB to[], preserving original JSONB text byte counts; oversized16KiB metadata or malformed rows fail. Parser strips record/source extensions, normalizes microsecond time, requires candidate record<=68KiB plus independent field budgets. session_id is nullable/nonempty text, not independently ULID validated. Source contents not recursively reauthorized.",
+    "prepare": "First read and classification authorization, canonical bounded document and actual Node SHA256 must equal selection. Second independent read must produce identical canonical document then classification authorization repeats. No transaction-wide locked snapshot; hidden omitted content changes with identical visible projection are not detected. Final-read or policy changes after checks are outside the promise. Existing classification redaction is retained; no raw details retrieval.",
+    "canonical": "Normalize scope/record then recursively sort JS object keys and JSON.stringify preserving arrays; finite JSON, integer numbers safe, plain/null-prototype objects,<=10000 nodes/depth64/canonical UTF8 document96KiB. Not a claim of standards-compatible JCS. SHA256/bytes cover canonical document only, not whole envelope/download file; digest is not signature or authenticity proof.",
+    "release": "Require durable sink before work. Successful classification checks and unchanged reviewed view lead to audit.export.release persistence before content return; sink ID ULID and different from target. Classification refusal writes audit.export.denied with0 bytes then denies; sink failure takes precedence. General entry decision audit is separate. Configured callback writes target classification/source,row_count1,bounded_view,document bytes/hash,omission flags,delivery_confirmed=false under a fresh key; normal redaction replaces nonpublic digest string. Post-persistence observer failure ignored. No receipt lookup/retry deduplication/delivery confirmation; every successful explicit request can create another release.",
+    "capacity-deadline": "At most2 admitted handler work items per registration,60s deadline from handler entry. Excludes prior auth/body/entry Policy/audit and later HTTP send. Promise race stops waiting but does not abort SQL/OPA/audit sink; slot remains held until work actually settles. assertActive prevents late successful return. Deadline can expire during sink: response may be unconfirmed even if release later persists. Known release recorded before timeout/validation failure appears in handler failure details; underlying ContractErrors may have other details.",
+    "response": "Complete normalized envelope<=128KiB, current trace, two ordered audit sources target then release, no ETag. parseAuditExportEnvelope checks original scope/ID/declared hash/canonical bytes/release inequality/states; it does not compute digest. audit_state=release-recorded with client_delivery_state=not-confirmed is not HTTP delivery or file-save proof. Generic idempotency cache bypassed; no original response reuse. Server error response has no dedicated16KiB serialization cap.",
+    "sdk": "WcpClient.exportAuditView(reviewedDocument,{timeout_ms?,signal?}) snapshots context and canonicalizes/clones reviewed document synchronously before waiting; configured context is validated by WcpClient (including ULID scope). Reject inherited idempotency_key/expected_version/if_match. Exact reviewed scope; WebCrypto SHA256 before send, full response parse/clone, canonical equality and recomputed hash before returning in-memory envelope. No replacement read, file save or automatic retry. Option timeout integer1..2147483647, default90000ms includes hashing and custom transport; synchronous work only checked after completion.",
+    "transport": "SDK requests bounded-json success128KiB; Fetch transport error16KiB, strict UTF8/media/JSON, success exact200 and exact trace header; any supplied error trace header and parsed error trace must match. 401 handled before body parsing. Optional content-length canonical safe digits, checked against decoded bytes only absent/identity encoding; compressed response still decoded-byte bounded. Redirect:error/no-store. Separate Fetch default30s includes credentials/network/body and races SDK90s; slower layer does not extend earlier deadline. Custom transport whole local wait bounded but cannot be forced to stop external work.",
+    "sdk-errors": "Known same-trace error codes mapped to finite local messages, others GATEWAY_UNAVAILABLE; original messages/details not exposed. After target known, preserves trusted valid distinct release ID from same-trace error or already parsed result, otherwise unconfirmed; always client_delivery_state not-confirmed and retryable=false. Unknown/late network outcomes do not prove rollback. No automatic recovery query.",
+    "mock": "Existing MockAuditStore/MockWcpServer supports this path with explicit export_access and isolated in-memory release records; it is not durable release evidence, live Policy/OPA or mutable double-read race simulation. No SDK/Mock machine-schema integration added here."
+  },
+  "paths": {
+    "/v1/audit/export": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "post": {
+        "operationId": "exportReviewedAuditView",
+        "tags": ["Audit export"],
+        "summary": "Prepare exactly one reviewed bounded audit view after durable release audit",
+        "x-wcp-operation": "audit.export",
+        "x-policy-action": "audit.read",
+        "x-resource-policy-action": "export.audit",
+        "x-idempotent": false,
+        "x-request-max-bytes": 4096,
+        "x-response-max-bytes": 131072,
+        "x-handler-concurrency": 2,
+        "x-handler-wait-ms": 60000,
+        "x-rejected-request-headers": [
+          "Idempotency-Key",
+          "If-Match",
+          "If-Match-Version",
+          "Range",
+          "If-Range",
+          "If-None-Match",
+          "If-Modified-Since",
+          "If-Unmodified-Since",
+          "Content-Encoding"
+        ],
+        "x-handler-failure-details-schema": {
+          "$ref": "../schemas/audit-export.json#AuditExportFailureState"
+        },
+        "description": "Reject URL query and write/cache/range conditions. Actual export capabilities, two exact reads/classification authorizations, unchanged canonical reviewed digest and durable release required. Historical omitted content stays omitted; success does not confirm client delivery.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/audit-export.json#AuditExportRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "429": { "$ref": "./search.json#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": { "GatewayBearer": { "type": "http", "scheme": "bearer" } },
+    "parameters": {
+      "TenantId": { "$ref": "./session-reads.json#/components/parameters/TenantId" },
+      "WorkspaceId": { "$ref": "./session-reads.json#/components/parameters/WorkspaceId" },
+      "ProjectId": { "$ref": "./session-reads.json#/components/parameters/ProjectId" },
+      "TraceParent": { "$ref": "./session-reads.json#/components/parameters/TraceParent" },
+      "TraceId": { "$ref": "./session-reads.json#/components/parameters/TraceId" },
+      "ExpectedActorId": { "$ref": "./session-reads.json#/components/parameters/ExpectedActorId" },
+      "ExpectedClientId": { "$ref": "./session-reads.json#/components/parameters/ExpectedClientId" }
+    },
+    "responses": {
+      "Success": {
+        "description": "Full bounded-view document with canonical document digest/length and confirmed release ID, ordered audit sources and not-confirmed client delivery. No ETag. Entire JSON<=128KiB.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" },
+          "connection": {
+            "schema": { "const": "close" },
+            "description": "Built-in Node HTTP response closes connection; intermediaries can alter hop-by-hop headers."
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/audit-export.json#AuditExportEnvelope" }
+          }
+        }
+      },
+      "Error": {
+        "$ref": "./search.json#/components/responses/Error",
+        "description": "Application error; handler fail errors include AuditExportFailureState, but outer auth/body/audit or propagated database errors may not. Known release does not imply delivery; unconfirmed does not prove no persistent release. No server error byte guarantee."
+      },
+      "BadInput": {
+        "$ref": "#/components/responses/Error",
+        "description": "INVALID_INPUT400 false for non-JSON media/query/prohibited conditions, invalid/empty/nonobject/oversized4KiB body or closed selection/key/version/handler JSON size. Body is read after verified authentication. Oversize is400, not413."
+      },
+      "Unauthenticated": {
+        "$ref": "#/components/responses/Error",
+        "description": "UNAUTHENTICATED401 false for signed token/client boundary; unavailable verifier may503. No raw-header compatibility fallback."
+      },
+      "Denied": {
+        "$ref": "#/components/responses/Error",
+        "description": "DENIED403 false for scope/expected identity/entry Policy or missing actual audit/export capabilities, invalid/expired session or classification/OPA refusal. Record-level refusal persists denied audit first; persistence failure instead503. OPA unavailable is policy denial."
+      },
+      "NotFound": {
+        "$ref": "#/components/responses/Error",
+        "description": "NOT_FOUND404 false for empty exact selected audit view in scoped/restricted-filtered read; not a replacement latest record. A restricted record filtered before read has no record-specific denied audit."
+      },
+      "Conflict": {
+        "$ref": "#/components/responses/Error",
+        "description": "AUDIT_EXPORT_CONFLICT409 false for original reviewed digest mismatch or changed canonical document between reads. Preserve original selection; reread/review explicitly, no automatic replacement."
+      },
+      "InvalidStored": {
+        "$ref": "#/components/responses/Error",
+        "description": "WORKBENCH_AUDIT_INVALID500 false for malformed/oversized bounded view, canonical complexity or non-contract work failure, including final envelope validation. Handler-created errors preserve known release state; repository ContractErrors retain original details. Uncaught outer INTERNAL_ERROR can500 true."
+      },
+      "Unavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "AUDIT_EXPORT_BUSY and AUDIT_EXPORT_TIMEOUT503 false, no Retry-After guarantee and no408 mapping. Handler missing/unconfirmed release sink AUDIT_PERSISTENCE_UNAVAILABLE503 false; generic entry audit same code503 true. WORKBENCH_DATABASE_UNAVAILABLE503 true; auth availability503 true. Timeout retains capacity until work settles and may race a committed release."
+      }
+    }
+  }
+}

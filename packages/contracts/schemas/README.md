@@ -1,5 +1,13 @@
 # 独立契约结构定义
 
+## 单条审计视图导出
+
+2026-11-05，TODO P0-01：新增 [audit-export.json](audit-export.json)，对应 [audit-export OpenAPI](../openapi/audit-export.json)。AuditExportRequest 是封闭 scope/audit_id/sha256；AuditExportRecord 完整建模有界记录、原始字节数、available/too-large 与 null/[] 组合；AuditExportDocument 固定 bounded-view；Result/Envelope 给出规范摘要/字节、不同目标的放行 ID、两条有序来源及 not-confirmed 送达状态。FailureState 仅用于处理器自建错误/SDK 规范错误详情，不冒称所有上游错误都有放行信息。
+
+记录源码解析可容忍部分扩展再重建，Schema 表示规范输出；来源扩展丢弃、历史时间规范为六位小数 UTC，session_id 可 null 或非空文本而非强制 ULID。原详情/来源大小是 SQL JSONB 文本计数，不要求与返回 JSON 字节相等；可用字段另有 32/16 KiB 序列化限制，候选记录/元数据限 68/16 KiB。details 可为任意允许的 JSON 值，导出规范化额外要求有限数、安全整数、普通对象和整个文档深度64/节点10000/96 KiB。
+
+静态结构不计算摘要/UTF-8 大小、有效日历、当前身份权限或 source/ID 跨对象等式；scope 的实际限制使用 UTF-16 且拒绝孤立代理项。Shared envelope parser 只核对声明摘要与原选择相等，不自行计算 SHA-256；Gateway/SDK 分别独立计算。成功总大小 128 KiB、原选择 4 KiB，放行不证明文件保存。复用 session-activity-read ULID 标量；未运行校验器/生成器/编译/测试，P0-01/R001 未完成、evidence 为空。
+
 ## 旧记忆交接
 
 2026-11-05，TODO P0-01：新增 [memory-handoff.json](memory-handoff.json)，对应 [两路 OpenAPI](../openapi/memory-handoff.json)。MemoryHandoffCreateBody/ClaimBody 描述开放旧正文、实际非空字符串提取、领取客户端优先级和全局版本头/正文相等条件；正文键不启用进程幂等。此路径不进入签名身份分支，Schema 也不把正文/请求头范围视为身份凭据。

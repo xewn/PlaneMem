@@ -1,5 +1,9 @@
 # 单条审计视图导出（2026-11-02，仅源码）
 
+2026-11-05 P0-01 机器契约增补：[audit-export OpenAPI](../../../packages/contracts/openapi/audit-export.json) 和 [完整 Schema](../../../packages/contracts/schemas/audit-export.json) 已覆盖现有 POST，累计 87 路。审阅选择、完整有界记录/省略状态、规范 document、持久放行封套和处理器错误状态已字段级建模；不改运行流程。
+
+本轮源码对照补充：精确读取按审计表范围/分类筛选，没有额外父项目存在/删除关联；session_id 只校验 null/非空文本。原字段字节数来自 SQL JSONB 文本，不要求等于规范输出的 JS JSON 大小。AUDIT_EXPORT_BUSY/TIMEOUT 实际503且 retryable=false；处理器 sink 失败同样503 false，入口通用审计故障同码可 true。60 秒只覆盖处理器、两笔名额在超时后仍保留至底层工作结束；服务端错误没有 SDK 所用16 KiB输出上限。完整差异见 [HTTP 说明](../../../packages/contracts/openapi/README.md#单条审计视图导出)。P0-01/R001 与本功能 R007 均未完成、evidence 为空；仅人工源码文档审阅、指定格式和 Git 文本检查，未编译、测试、运行校验器/生成器/导出/API/数据库或发布。
+
 工作台 `/audit` 可对选中且已审阅的记录准备 JSON 导出，再由用户独立请求浏览器保存。范围是 [有界审计读取](workbench-audit-runtime.md) 返回的单条视图；超限详情和来源继续保持 `too-large`、原大小及占位值，不请求被省略的原文。没有批量导出、跨页冻结快照、原始记录备份或脱敏写入。
 
 ## 请求与身份

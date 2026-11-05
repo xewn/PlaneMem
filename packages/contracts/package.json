@@ -8,6 +8,8 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./schemas/audit-export.json": "./schemas/audit-export.json",
+    "./openapi/audit-export.json": "./openapi/audit-export.json",
     "./schemas/memory-handoff.json": "./schemas/memory-handoff.json",
     "./openapi/memory-handoff.json": "./openapi/memory-handoff.json",
     "./schemas/session-resume.json": "./schemas/session-resume.json",

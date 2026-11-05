@@ -1,0 +1,224 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/audit-export.json",
+  "title": "PlaneMem reviewed bounded audit view export",
+  "description": "Source-only selection, normalized bounded audit record/document and release-confirmed envelope. Static shapes do not compute canonical UTF8 byte lengths/SHA256, authorize export or establish client delivery.",
+  "$comment": "Runtime also checks exact selected scope/audit/trace, distinct release ID, source ordering, valid dates and UTF16 scope bounds. Record parsers accept some extensions then reconstruct known fields; this schema describes normalized output. No validators, generators or runtime evidence.",
+  "oneOf": [
+    { "$ref": "#AuditExportRequest" },
+    { "$ref": "#AuditExportDocument" },
+    { "$ref": "#AuditExportEnvelope" }
+  ],
+  "$defs": {
+    "ulid": { "$ref": "./session-activity-read.json#/$defs/ulid" },
+    "nonempty": { "type": "string", "minLength": 1 },
+    "scopeText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "not": { "pattern": "[\\u0000-\\u001f\\u007f]" },
+      "$comment": "Actual <=256 UTF16 units, no controls/DEL/lone surrogates. Whitespace-only is permitted; not independently ULID. Scalar-count maxLength cannot fully express UTF16 rule."
+    },
+    "scope": {
+      "$anchor": "AuditExportScope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant_id", "workspace_id", "project_id"],
+      "properties": {
+        "tenant_id": { "$ref": "#/$defs/scopeText" },
+        "workspace_id": { "$ref": "#/$defs/scopeText" },
+        "project_id": { "$ref": "#/$defs/scopeText" }
+      }
+    },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "byteCount": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+    "jsonValue": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "boolean" },
+        { "type": "string" },
+        { "type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991 },
+        { "type": "number", "not": { "type": "integer" } },
+        { "type": "array", "items": { "$ref": "#/$defs/jsonValue" } },
+        { "type": "object", "additionalProperties": { "$ref": "#/$defs/jsonValue" } }
+      ],
+      "description": "Finite JSON values; integer values must be safe. Export canonicalization permits only plain/null-prototype objects,<=10000 nodes and depth<=64 over the whole normalized document. Details can be any such JSON value, including scalar/null, not only an object."
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "$ref": "#/$defs/nonempty" },
+        "id": { "$ref": "#/$defs/nonempty" },
+        "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "uri": { "$ref": "#/$defs/nonempty" }
+      },
+      "description": "Normalized original record source. Parser strips extensions; no type/URI allowlist, uniqueness or current-source proof. Source extension bytes count in raw candidate budgets before stripping."
+    },
+    "record": {
+      "$anchor": "AuditExportRecord",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "audit_id",
+        "actor_id",
+        "client_id",
+        "session_id",
+        "action",
+        "resource",
+        "result",
+        "classification",
+        "details",
+        "details_state",
+        "details_bytes",
+        "trace_id",
+        "source_refs",
+        "source_refs_state",
+        "source_refs_bytes",
+        "occurred_at"
+      ],
+      "properties": {
+        "audit_id": { "$ref": "#/$defs/ulid" },
+        "actor_id": { "$ref": "#/$defs/nonempty" },
+        "client_id": { "$ref": "#/$defs/nonempty" },
+        "session_id": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/nonempty" }] },
+        "action": { "$ref": "#/$defs/nonempty" },
+        "resource": { "$ref": "#/$defs/nonempty" },
+        "result": { "enum": ["allowed", "denied", "error"] },
+        "classification": { "enum": ["public", "internal", "confidential", "restricted"] },
+        "details": { "$ref": "#/$defs/jsonValue" },
+        "details_state": { "enum": ["available", "too-large"] },
+        "details_bytes": { "$ref": "#/$defs/byteCount" },
+        "trace_id": { "$ref": "#/$defs/nonempty" },
+        "source_refs": { "type": "array", "items": { "$ref": "#/$defs/source" } },
+        "source_refs_state": { "enum": ["available", "too-large"] },
+        "source_refs_bytes": { "$ref": "#/$defs/byteCount" },
+        "occurred_at": {
+          "type": "string",
+          "pattern": "^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+          "$comment": "Actual valid exact UTC calendar roundtrip for milliseconds, preserving microseconds. Parser accepts3 or6 fractional digits and normalizes3 to6. Not arbitrary Date.parse text."
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "details_state": { "const": "available" } } },
+          "then": { "properties": { "details_bytes": { "maximum": 32768 } } },
+          "else": {
+            "properties": { "details_bytes": { "minimum": 32769 }, "details": { "type": "null" } }
+          }
+        },
+        {
+          "if": { "properties": { "source_refs_state": { "const": "available" } } },
+          "then": { "properties": { "source_refs_bytes": { "maximum": 16384 } } },
+          "else": {
+            "properties": {
+              "source_refs_bytes": { "minimum": 16385 },
+              "source_refs": { "maxItems": 0 }
+            }
+          }
+        }
+      ],
+      "x-candidate-json-max-bytes": 69632,
+      "x-metadata-json-max-bytes": 16384,
+      "x-available-details-json-max-bytes": 32768,
+      "x-available-source-refs-json-max-bytes": 16384,
+      "description": "Complete normalized bounded view, not raw stored audit record. Nullable session_id otherwise only nonempty text, not ULID-enforced. Metadata budget covers audit/actor/client/session/action/resource/result/classification/trace/normalized time. PostgreSQL original JSONB text sizes remain as byte counts, not required to equal normalized JS JSON byte lengths. Available fields also independently satisfy JS serialization limits; omitted fields retain original size and null/[] placeholders. Historical record trace differs from request trace; no current-source inspection or restoration of omitted content."
+    },
+    "request": {
+      "$anchor": "AuditExportRequest",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "audit_id", "sha256"],
+      "properties": {
+        "scope": { "$ref": "#AuditExportScope" },
+        "audit_id": { "$ref": "#/$defs/ulid" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      },
+      "x-request-max-bytes": 4096,
+      "description": "Only original reviewed scope/ID/canonical-document SHA256, no supplied document/actor/capability/key/version. Header-authorized scope must equal each selected scope field. HTTP raw decoded body<=4096 bytes after auth; handler also checks JSON.stringify(input)<=4096. Shared request parser alone does not enforce bytes."
+    },
+    "document": {
+      "$anchor": "AuditExportDocument",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "content_state", "scope", "record"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "content_state": { "const": "bounded-view" },
+        "scope": { "$ref": "#AuditExportScope" },
+        "record": { "$ref": "#AuditExportRecord" }
+      },
+      "x-canonical-json-max-bytes": 98304,
+      "x-canonical-max-depth": 64,
+      "x-canonical-max-nodes": 10000,
+      "description": "Canonicalization reconstructs record/scope, recursively sorts object keys using JS sort then JSON.stringify (array order preserved). UTF8 canonical text<=96KiB; finite safe-integer JSON. This project convention is not a claimed standard JCS implementation. Digest covers bounded normalized view only, not hidden original data, whole envelope, signature or client file."
+    },
+    "auditSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": { "type": { "const": "audit" }, "id": { "$ref": "#/$defs/ulid" } }
+    },
+    "result": {
+      "$anchor": "AuditExportResult",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "document_sha256",
+        "document_bytes",
+        "release_audit_id",
+        "audit_state",
+        "client_delivery_state"
+      ],
+      "properties": {
+        "document": { "$ref": "#AuditExportDocument" },
+        "document_sha256": { "$ref": "#/$defs/sha256" },
+        "document_bytes": { "type": "integer", "minimum": 1, "maximum": 98304 },
+        "release_audit_id": { "$ref": "#/$defs/ulid" },
+        "audit_state": { "const": "release-recorded" },
+        "client_delivery_state": { "const": "not-confirmed" }
+      },
+      "description": "document scope/record ID match original selection; release ID differs from target. document_bytes equals canonical UTF8 document length, SHA256 equals original selection AND independently computed digest. Shared envelope parser checks declaration/length but does not itself hash; Gateway and SDK hash separately. Confirmed durable release authorizes this prepared view, not client receipt/file save."
+    },
+    "envelope": {
+      "$anchor": "AuditExportEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": {
+          "type": "string",
+          "description": "Exact current request trace; shared export parser adds equality, not a separate text-length validator."
+        },
+        "source_refs": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/auditSource" }
+        },
+        "data": { "$ref": "#AuditExportResult" }
+      },
+      "x-normalized-json-max-bytes": 131072,
+      "description": "Source order exactly target audit then release audit, IDs different. No ETag/revision/cursor/current identity/permissions. Complete normalized JSON<=128KiB; shared parser rejects unknown outer/data/document/scope/source fields and reconstructs record. Success is never a cached original result."
+    },
+    "failureState": {
+      "$anchor": "AuditExportFailureState",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["audit_state", "client_delivery_state"],
+      "properties": {
+        "audit_state": { "enum": ["unconfirmed", "release-recorded"] },
+        "release_audit_id": { "$ref": "#/$defs/ulid" },
+        "client_delivery_state": { "const": "not-confirmed" }
+      },
+      "if": { "properties": { "audit_state": { "const": "release-recorded" } } },
+      "then": { "required": ["release_audit_id"] },
+      "else": { "not": { "required": ["release_audit_id"] } },
+      "description": "Details of handler-created fail errors, not universal error details. Known release ID differs from target. Unconfirmed means no acknowledgment available, not proof of absent write; timeout can race an in-flight sink. SDK returns this normalized state once target known, preserves only trusted same-trace known release and sets retryable=false."
+    }
+  }
+}
