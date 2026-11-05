@@ -1,6 +1,6 @@
 # PlaneMem
 
-按 TODO **P0-01** 补充 [当前会话来源读取 OpenAPI](packages/contracts/openapi/README.md#当前会话来源读取) 和完整 session-current Schema。定义原请求、当前授权、完整会话投影原文/摘要和封套，明确双授权审计、数据库/原来源桥接与实际错误/期限边界；OpenAPI 累计 88 路。P0-01 仍未完成；未编译、测试、运行校验器/生成器/接口或发布。
+按 TODO **P0-01** 补充 [原始会话来源取证 OpenAPI](packages/contracts/openapi/README.md#原始会话来源取证) 和完整 session-origin Schema。定义获批选择、逐轮原证明/迁移清单/当前会话及双权威封套，明确同库快照、三次来源核准、原文摘要和真实错误/期限；OpenAPI 累计 89 路。P0-01 仍未完成；未编译、测试、运行校验器/生成器/接口或发布。
 
 按 TODO **P0-01** 补充 [会话启动与原回执 OpenAPI](packages/contracts/openapi/README.md#会话启动与原回执) 及完整 Schema，覆盖当前命令身份、普通启动和原回执查询三路。完整保留原可选字段与身份键，区分当前会话和固定版本 1 的原创建回执；明确持久重放、旧键冲突及真实 HTTP/SDK 边界。该轮使 OpenAPI 累计七十路，P0-01 仍未完成；未编译、测试、运行校验器/生成器/接口或发布。
 

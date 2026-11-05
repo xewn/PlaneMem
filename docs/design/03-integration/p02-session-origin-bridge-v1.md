@@ -1,5 +1,7 @@
 # P02 原创建证明与当前会话同库桥接
 
+2026-11-05，TODO P0-01 机器契约源码增量：[session-origin Schema](../../../packages/contracts/schemas/session-origin.json) 已完整描述选件、拥有端grant、逐轮原证明/原启动结果、完整迁移清单和当前来源；[公开OpenAPI](../../../packages/contracts/openapi/session-origin.json) 对照本桥接的真实HTTP使用。集合摘要original_records_digest使用返回行数组的JSON.stringify，不排序行对象键；选件摘要使用递归ordinal排序，单原文摘要使用SQL文本原UTF-8，三者不得混用。成功行record_json不能是SQL超限占位null；版本清单除大小/排序还需四个准确标记。原幂等标记内部检查但不公开；最终复核只重读批准，不重读SQL。仅源码/人工对照，未运行校验器、生成器、编译、测试、数据库或发布，生产批准及真实迁移仍开放。
+
 2026-11-05，工厂51号执行板 GAP-04 / T03.02–05、“首件岗位执行”的原操作桥接/数据库谱系后续。状态：**源码已改，待统一验证**。本项没有执行还原、编译、类型检查、静态契约检查、测试、应用、数据库、迁移或部署。
 
 ## 源码分叉事实

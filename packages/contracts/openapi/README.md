@@ -1,10 +1,28 @@
 # OpenAPI 源码契约
 
-这里的文档描述已有 HTTP 实现，尚未经过校验器、生成器、编译、类型检查、测试或运行验证。文档版本不表示已发布或部署；当前覆盖保存包 5 路、文件 9 路、上下文条目 9 路、同步 6 路、冲突 5 路、建议 8 路、Plane 观察 4 路、搜索 2 路、旧索引 5 路、Plane 收件箱 6 路、会话状态/活动 5 路、检查点/交接读取 3 路、会话身份/启动/原回执 3 路、会话进度写入/原回执 6 路、检查点保存/原回执 2 路、交接创建/领取/原回执 4 路、会话续接/原回执 2 路、旧记忆交接创建/领取 2 路、单条审计视图导出 1 路及当前会话来源读取 1 路，共 88 路，尚不是完整 WCP 接口目录。
+这里的文档描述已有 HTTP 实现，尚未经过校验器、生成器、编译、类型检查、测试或运行验证。文档版本不表示已发布或部署；当前覆盖保存包 5 路、文件 9 路、上下文条目 9 路、同步 6 路、冲突 5 路、建议 8 路、Plane 观察 4 路、搜索 2 路、旧索引 5 路、Plane 收件箱 6 路、会话状态/活动 5 路、检查点/交接读取 3 路、会话身份/启动/原回执 3 路、会话进度写入/原回执 6 路、检查点保存/原回执 2 路、交接创建/领取/原回执 4 路、会话续接/原回执 2 路、旧记忆交接创建/领取 2 路、单条审计视图导出 1 路、当前会话来源读取 1 路及原始会话来源取证 1 路，共 89 路，尚不是完整 WCP 接口目录。
+
+## 原始会话来源取证
+
+2026-11-05，TODO **P0-01**：[session-origin OpenAPI](session-origin.json) 覆盖 POST /v1/continuity/session-origin，对应 [完整 session-origin Schema](../schemas/session-origin.json)。新增两项同名包子路径；本地加载 session-current Schema 和 session-current/context-history HTTP 组件。完整建模现有读取实现，未执行校验器、生成器或运行验证，不实现原操作写入、重试、关闭或迁移。
+
+请求准确七个字符串，除原当前来源的端点/配置/session/challenge 外，携带独立批准提供的 selection_id/digest，协议为 p02-session-origin-v1。认证前4KiB严格UTF-8平面解析仍拒绝重复、转义重复、大小写别名、BOM和非字符串值。签名身份后检查scope和可选预期actor/client，x-trace-id优先；实际需要 context.read 与 context.origin.read、可信客户端及有效原令牌，admin不可替代。URL查询/媒体类型/编码/条件头没有专门拒绝，正文不解压，版本/幂等头不形成CAS或原结果重放。
+
+正常成功路径包含入口OIDC、两次专用OIDC/OPA、两次路由策略审计、三次拥有端来源批准和一个只读事务。OPA用途为session.origin.read，受控策略还需origin_read_enabled；授权引用必须为planemem-session-origin前缀并绑定所选ID/摘要，不能拿current授权替代。拥有端grant固定十八字段选件、准确目标、身份/批准摘要和原期限；第一次批准后先核对预期选件再查数据库，事务结束和外层策略/OPA之后分别再批准。OPA grant按JSON.stringify完整比较，拥有端grant按递归键排序后比较；不能靠再次批准续窗。来源identity_digest与外层OIDC identity_digest含义不同，不要求相同。
+
+Postgres来源在同一REPEATABLE READ READ ONLY事务读取当前可见精确归属会话、原操作全部轮次、完整迁移清单和原幂等标记。当前所属项目需未删除且public/internal/confidential，restricted不可见；标记必须为continuity:<operation_key>。尝试序列必须从1连续到批准轮次，每轮SQL列/JSONB原record/旧创建指纹一致，receipt_ref唯一。前轮仅允许ConfirmedNoEffect/null/null/空来源；末轮必须ConfirmedEffect/revision1/running的完整原创建结果。历史来源指client_id，当前外层来源指session_id；原trace与当前trace各自保留。当前owner/start/parent与原件一致，禁止新增resume_origin，允许当前已终止。
+
+原文record/inventory/session摘要覆盖SQL输出原文UTF-8；选件摘要覆盖递归ordinal键排序的紧凑JSON；original_records_digest覆盖原行数组的JSON.stringify，**不排序行对象键**，内置SQL列顺序为operation_key/dispatch_attempt/fingerprint/record_json。末轮原文在响应重复保留并与批准摘要绑定。SQL JSONB原文不是历史HTTP/ResultJson字节；contentSchema仅为注解，外部消费者必须独立解码与核验，不能先规范化原文再算摘要。
+
+迁移清单按完整ASCII version严格递增且唯一，成功必须含旧010/011与主线025/044四个准确标记及checksum；相同编号前缀不等于同一迁移。字段checksum是声明字符串，清单摘要不证明源码哈希、真实迁移执行、部署提交或旧写者已停止。单原件512KiB/总原文2MiB/最多1024轮，完整清单256KiB/最多512行，当前会话64KiB/最多256引用；外层完整序列化响应另限20MiB，包含转义和重复末轮，不截断。这些输出界限不是数据库内部运算内存界限。
+
+读者30秒双时钟窗口在入口步骤后开始，随原token/OPA/来源批准收紧，取消信号传给OPA和桥接；仍等待不合作提供者/池排队/语句结束，不承诺硬实时停止。与current-only不同，本响应外层授权到期也裁到读者剩余窗口；origin.approval_expires_at保存原批准期限，origin.expires_at保存桥接收紧期限。最后复核只重新批准，不重读数据库，无法承诺跨服务原子撤权。没有专用并发槽或nonce去重，重复键仍是新观察。
+
+错误需区分阶段：坏原始正文400 false，入口身份401/403及通用限流429 true；进入读者前的错误协议/选件格式由私有authorityFor拒绝403。其余封闭字段/配置/全零选件、错预期、缺原件/不可见、损坏/大小/期限/取消、后次OPA/策略/审计/来源复核失败都由读者统一为OPERATION_UNAVAILABLE503 false；入口认证/持久审计不可用仍503 true，未捕获入口异常可500 true。没有原来源404或从失败推断NoEffect的约定。早期错误可缺trace头，所有应用响应禁缓存。生产来源批准、P02独立消费者及SDK/Mock机器契约消费仍未由本轮实现。
 
 ## 当前会话来源读取
 
-2026-11-05，TODO **P0-01**：[session-current OpenAPI](session-current.json) 覆盖 POST /v1/continuity/session-current，完整定义见独立 [session-current Schema](../schemas/session-current.json)。两项同名包子路径可直接读取；Schema 自包含，OpenAPI 复用 context-history 的预期身份头与错误封套。只记录现有源码，未执行校验器、生成器或运行验证。session-origin 是另一条原始证明接口，留后续契约增量。
+2026-11-05，TODO **P0-01**：[session-current OpenAPI](session-current.json) 覆盖 POST /v1/continuity/session-current，完整定义见独立 [session-current Schema](../schemas/session-current.json)。两项同名包子路径可直接读取；Schema 自包含，OpenAPI 复用 context-history 的预期身份头与错误封套。只记录现有源码，未执行校验器、生成器或运行验证。session-origin 是另一条原始证明接口，其机器契约见上节独立增量。
 
 请求只有五个字符串：protocol_version、endpoint_ref、configuration_digest、session_id、challenge。认证前读最多 4 KiB 原始字节，严格 UTF-8、平面字符串对象、解码后键名大小写不重复；空正文、BOM、重复/别名、嵌套、坏编码和超限均 INVALID_JSON400。处理器另要求准确协议、受控配置/端点和规范标识；不接受范围/身份正文覆盖。HTTP 仍强制 Bearer/OIDC、可信 client 和完整授权范围，支持预期 actor/client 头。此入口 x-trace-id 优先于 traceparent；查询参数/媒体类型/编码/条件头没有专门拒绝，正文不解压，版本/幂等头也不进入 readPreconditions。
 

@@ -1,5 +1,11 @@
 # 独立契约结构定义
 
+## 原始会话来源取证
+
+2026-11-05，TODO P0-01：[session-origin.json](session-origin.json) 与 [session-origin OpenAPI](../openapi/session-origin.json) 定义现有公开取证读取，复用 session-current 基础文本/时间/目标/完整投影。根为 SessionOriginEnvelope；请求、十八字段Selection、内部OwningGrant、OriginalSources/Session/Envelope/Proof/Record/EffectRecord/Row、MigrationInventory、CurrentProjection/Snapshot、Observation、Authorization/Result 都有独立锚点。Proof按原ConfirmedNoEffect与ConfirmedEffect约束revision/result/source；原会话固定running/version1且无恢复origin，当前会话可处于终态。
+
+所有返回原文均以contentMediaType/contentSchema标注完整内容，不用开放object代替业务结构。contentSchema不自动验证内容；连续轮次/唯一receipt、排序迁移、精确归属/父会话/时间/原标记、真实UTF-8/UTF-16预算和摘要必须独立解释。选件使用排序JSON摘要，原件集合使用非排序JSON.stringify，单原文使用其原始UTF-8摘要；不得混用。20MiB是完整封套限制，单512KiB/总2MiB是原文记录限制。精确迁移标记不构成真实迁移证明，声明性的批准字段不构成独立授权。本轮未执行校验器、生成器、编译、测试或发布。
+
 ## 当前会话来源读取
 
 2026-11-05，TODO P0-01：[session-current.json](session-current.json) 为自包含 2020-12 Schema，对应 [session-current OpenAPI](../openapi/session-current.json)。根是 SessionCurrentEnvelope；公开锚点包含 SessionCurrentRequest、Target、Grant、Authorization、SourceRef、Projection、Result 和 Envelope。Grant 是内部权威端口结构，不是可由调用方提交的批准。投影定义全部归属/状态/安全版本/历史 trace 和有界引用，表达结束状态/时间字段关系以及 resume_origin 需要父会话；不复用更宽松的普通会话 wire 结构。

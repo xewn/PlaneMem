@@ -1,6 +1,8 @@
 # WCP API 契约 v1
 
-2026-11-05，TODO P0-01：[当前会话来源读取 OpenAPI](../../../packages/contracts/openapi/README.md#当前会话来源读取) 和 session-current Schema 覆盖现有只读 POST。完整建模平面请求、目标/授权、64KiB 会话投影原文内容/摘要和封套；对照独立当前权威、双路由策略审计、直接数据库/原来源桥接、缓存绕过与真实 HTTP/错误/期限。OpenAPI 累计 88 路，P0-01/R-001 未完成、evidence 为空；未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+2026-11-05，TODO P0-01：[原始会话来源取证 OpenAPI](../../../packages/contracts/openapi/README.md#原始会话来源取证) 和 session-origin Schema 覆盖现有只读 POST。完整建模七字段请求/十八字段选件/逐轮原证明与原启动/完整迁移清单/当前投影和双权威封套，明确同库事务/原标记、三次来源批准/双OPA审计、不同摘要、20MiB及实际错误/期限。OpenAPI 累计 89 路，P0-01/R-001 未完成、evidence 为空；未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
+2026-11-05，TODO P0-01：[当前会话来源读取 OpenAPI](../../../packages/contracts/openapi/README.md#当前会话来源读取) 和 session-current Schema 覆盖现有只读 POST。完整建模平面请求、目标/授权、64KiB 会话投影原文内容/摘要和封套；对照独立当前权威、双路由策略审计、直接数据库/原来源桥接、缓存绕过与真实 HTTP/错误/期限。该轮使 OpenAPI 累计 88 路，P0-01/R-001 未完成、evidence 为空；未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 2026-11-05，TODO P0-01：[单条审计视图导出 OpenAPI](../../../packages/contracts/openapi/README.md#单条审计视图导出) 和 audit-export Schema 覆盖现有 POST。完整描述审阅选择、有界审计记录/省略状态、规范 document 与放行封套；对照双读双授权、摘要/字节、持久放行和未确认送达、两笔容量/处理器期限与实际 SDK/错误。该轮使 OpenAPI 累计 87 路，P0-01/R-001 未完成、evidence 为空；未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 

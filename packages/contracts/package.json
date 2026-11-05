@@ -8,6 +8,8 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./schemas/session-origin.json": "./schemas/session-origin.json",
+    "./openapi/session-origin.json": "./openapi/session-origin.json",
     "./schemas/session-current.json": "./schemas/session-current.json",
     "./openapi/session-current.json": "./openapi/session-current.json",
     "./schemas/audit-export.json": "./schemas/audit-export.json",

@@ -1,0 +1,477 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/session-origin.json",
+  "title": "PlaneMem original session source and lineage observation",
+  "description": "Complete built-in p02-session-origin-v1 response, request, original record contents and owning-source approval shapes. Load session-current.json locally. Source-only TODO P0-01.",
+  "$comment": "Raw byte/UTF-16 bounds, date roundtrip/chronology, continuous attempts, sorted unique migration versions, cross-field binding, all digests and current authorization need independent runtime checks. contentSchema only annotates embedded JSON and does not validate or decode it. Preserve source text before hashing. This describes the built-in PostgreSQL wire, not arbitrary custom provider extensions or actual migration/deployment proof.",
+  "$ref": "#SessionOriginEnvelope",
+  "$defs": {
+    "ulid": { "$ref": "./session-current.json#/$defs/ulid" },
+    "digest": { "$ref": "./session-current.json#/$defs/digest" },
+    "text": { "$ref": "./session-current.json#/$defs/text" },
+    "name": { "$ref": "./session-current.json#/$defs/name" },
+    "shortText": { "$ref": "#/$defs/text", "maxLength": 256 },
+    "time": { "$ref": "./session-current.json#/$defs/time" },
+    "uuid": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$",
+      "not": { "const": "00000000-0000-0000-0000-000000000000" },
+      "description": "Lowercase D-form non-nil identifier; runtime does not constrain UUID version/variant."
+    },
+    "commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "key": { "type": "string", "pattern": "^p02:v1:[a-f0-9]{64}$" },
+    "attempt": { "type": "integer", "minimum": 1, "maximum": 1024 },
+    "receipt": {
+      "type": "string",
+      "pattern": "^planemem-operation:[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$",
+      "not": { "const": "planemem-operation:00000000-0000-0000-0000-000000000000" }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant_id", "workspace_id", "project_id"],
+      "properties": {
+        "tenant_id": { "$ref": "#/$defs/ulid" },
+        "workspace_id": { "$ref": "#/$defs/ulid" },
+        "project_id": { "$ref": "#/$defs/ulid" }
+      }
+    },
+    "request": {
+      "$anchor": "SessionOriginRequest",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol_version",
+        "endpoint_ref",
+        "configuration_digest",
+        "session_id",
+        "challenge",
+        "selection_id",
+        "selection_digest"
+      ],
+      "properties": {
+        "protocol_version": { "const": "p02-session-origin-v1" },
+        "endpoint_ref": { "$ref": "#/$defs/name" },
+        "configuration_digest": { "$ref": "#/$defs/digest" },
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "challenge": { "$ref": "#/$defs/digest" },
+        "selection_id": { "$ref": "#/$defs/uuid" },
+        "selection_digest": { "$ref": "#/$defs/digest" }
+      },
+      "x-raw-utf8-max-bytes": 4096,
+      "description": "Exactly seven flat strings, strict UTF8 and case-insensitively unique decoded names. Endpoint/configuration equal explicitly configured current target. Selection ID/digest must come from an independent approved expectation; Gateway compares with first owning grant before SQL. New challenge is caller duty; no server nonce history or entropy check."
+    },
+    "selection": {
+      "$anchor": "SessionOriginSelection",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "selection_id",
+        "original_source_commit",
+        "current_source_commit",
+        "original_endpoint_ref",
+        "original_configuration_digest",
+        "operation_key",
+        "specification_digest",
+        "dispatch_attempt",
+        "original_record_digest",
+        "original_trace_id",
+        "parent_session_id",
+        "database_lineage_ref",
+        "database_lineage_digest",
+        "protocol_bridge_ref",
+        "protocol_bridge_digest",
+        "writer_fence_ref",
+        "writer_fence_digest",
+        "migration_inventory_digest"
+      ],
+      "properties": {
+        "selection_id": { "$ref": "#/$defs/uuid" },
+        "original_source_commit": { "$ref": "#/$defs/commit" },
+        "current_source_commit": { "$ref": "#/$defs/commit" },
+        "original_endpoint_ref": { "$ref": "#/$defs/shortText" },
+        "original_configuration_digest": { "$ref": "#/$defs/digest" },
+        "operation_key": { "$ref": "#/$defs/key" },
+        "specification_digest": { "$ref": "#/$defs/digest" },
+        "dispatch_attempt": { "$ref": "#/$defs/attempt" },
+        "original_record_digest": { "$ref": "#/$defs/digest" },
+        "original_trace_id": { "$ref": "#/$defs/shortText" },
+        "parent_session_id": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/ulid" }] },
+        "database_lineage_ref": { "$ref": "#/$defs/name" },
+        "database_lineage_digest": { "$ref": "#/$defs/digest" },
+        "protocol_bridge_ref": { "$ref": "#/$defs/name" },
+        "protocol_bridge_digest": { "$ref": "#/$defs/digest" },
+        "writer_fence_ref": { "$ref": "#/$defs/name" },
+        "writer_fence_digest": { "$ref": "#/$defs/digest" },
+        "migration_inventory_digest": { "$ref": "#/$defs/digest" }
+      },
+      "description": "Exact approved selection. Non-null parent must differ from target.session_id; old/current commits need not differ. Strings are declarations, not independent evidence of source version, pool ownership, migration or writer isolation. SHA256 selection digest covers recursively ordinal-key-sorted compact JSON, array order preserved; no digest prefix."
+    },
+    "owningGrant": {
+      "$anchor": "SessionOriginOwningGrant",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target",
+        "selection",
+        "identity_digest",
+        "approval_ref",
+        "approval_digest",
+        "expires_at"
+      ],
+      "properties": {
+        "target": { "$ref": "./session-current.json#SessionCurrentTarget" },
+        "selection": { "$ref": "#SessionOriginSelection" },
+        "identity_digest": { "$ref": "#/$defs/digest" },
+        "approval_ref": { "$ref": "#/$defs/name" },
+        "approval_digest": { "$ref": "#/$defs/digest" },
+        "expires_at": { "$ref": "#/$defs/time" }
+      },
+      "description": "Internal SessionOriginAuthority output, not caller-submitted HTTP input. Three current grants must match after recursively sorted serialization, including original expiry. Independent from Gateway OIDC identity/OPA grant. Explicit production owning authority remains an external requirement."
+    },
+    "originalSources": {
+      "$anchor": "SessionOriginOriginalSources",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "id"],
+        "properties": { "type": { "const": "session" }, "id": { "$ref": "#/$defs/name" } }
+      },
+      "description": "Sole original source id is target.client_id, not session_id. Proof, original result and original session each carry this exact reference."
+    },
+    "originalSession": {
+      "$anchor": "SessionOriginOriginalSession",
+      "allOf": [
+        { "$ref": "./session-current.json#SessionCurrentProjection" },
+        {
+          "properties": {
+            "status": { "const": "running" },
+            "version": { "const": 1 },
+            "trace_id": { "$ref": "#/$defs/shortText" },
+            "source_refs": { "$ref": "#SessionOriginOriginalSources" }
+          },
+          "not": { "required": ["resume_origin"] }
+        }
+      ],
+      "description": "Original successful session.start business result: exact target owner/ID, original trace, version1/running. Parent present iff selected parent non-null and then equal; no ended_at/resume_origin. started_at<=final proof.observed_at and equals current started_at. It is not a current-status projection."
+    },
+    "originalEnvelope": {
+      "$anchor": "SessionOriginOriginalEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "#/$defs/shortText" },
+        "source_refs": { "$ref": "#SessionOriginOriginalSources" },
+        "data": { "$ref": "#SessionOriginOriginalSession" }
+      },
+      "description": "Original result, whose trace equals selection.original_trace_id. Distinct from present HTTP request trace; no ETag or receipt additions."
+    },
+    "proof": {
+      "$anchor": "SessionOriginOriginalProof",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol_version",
+        "operation_key",
+        "specification_digest",
+        "scope",
+        "action",
+        "actor_id",
+        "client_id",
+        "endpoint_ref",
+        "configuration_digest",
+        "dispatch_attempt",
+        "outcome",
+        "receipt_ref",
+        "revision",
+        "result",
+        "source_refs",
+        "observed_at"
+      ],
+      "properties": {
+        "protocol_version": { "const": "p02-continuity-v1" },
+        "operation_key": { "$ref": "#/$defs/key" },
+        "specification_digest": { "$ref": "#/$defs/digest" },
+        "scope": { "$ref": "#/$defs/scope" },
+        "action": { "const": "session.start" },
+        "actor_id": { "$ref": "#/$defs/name" },
+        "client_id": { "$ref": "#/$defs/name" },
+        "endpoint_ref": { "$ref": "#/$defs/shortText" },
+        "configuration_digest": { "$ref": "#/$defs/digest" },
+        "dispatch_attempt": { "$ref": "#/$defs/attempt" },
+        "outcome": { "enum": ["ConfirmedNoEffect", "ConfirmedEffect"] },
+        "receipt_ref": { "$ref": "#/$defs/receipt" },
+        "revision": { "enum": [null, 1] },
+        "result": { "anyOf": [{ "type": "null" }, { "$ref": "#SessionOriginOriginalEnvelope" }] },
+        "source_refs": {
+          "anyOf": [{ "const": [] }, { "$ref": "#SessionOriginOriginalSources" }]
+        },
+        "observed_at": { "$ref": "#/$defs/time" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "outcome": { "const": "ConfirmedNoEffect" } },
+            "required": ["outcome"]
+          },
+          "then": {
+            "properties": {
+              "revision": { "const": null },
+              "result": { "const": null },
+              "source_refs": { "const": [] }
+            }
+          },
+          "else": {
+            "properties": {
+              "revision": { "const": 1 },
+              "result": { "$ref": "#SessionOriginOriginalEnvelope" },
+              "source_refs": { "$ref": "#SessionOriginOriginalSources" }
+            }
+          }
+        }
+      ],
+      "description": "Every proof binds old operation/specification/endpoint/configuration to selection and owner/scope to current target; attempt equals SQL column. Receipt refs unique across all attempts. Only prefix records may be ConfirmedNoEffect; final record must be ConfirmedEffect. A new failed query does not create or prove NoEffect. No monotonic ordering check between separate proof observed_at timestamps is asserted."
+    },
+    "record": {
+      "$anchor": "SessionOriginOriginalRecord",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation_key", "dispatch_attempt", "fingerprint", "proof"],
+      "properties": {
+        "operation_key": { "$ref": "#/$defs/key" },
+        "dispatch_attempt": { "$ref": "#/$defs/attempt" },
+        "fingerprint": { "$ref": "#/$defs/digest" },
+        "proof": { "$ref": "#SessionOriginOriginalProof" }
+      },
+      "description": "Decoded SQL JSONB record. Top-level key/attempt/fingerprint equal row columns; fingerprint must equal recomputed legacyStartFingerprint, not a hash of this record. Embedded proof includes whole original result only on final successful attempt."
+    },
+    "effectRecord": {
+      "$anchor": "SessionOriginEffectRecord",
+      "allOf": [
+        { "$ref": "#SessionOriginOriginalRecord" },
+        {
+          "properties": { "proof": { "properties": { "outcome": { "const": "ConfirmedEffect" } } } }
+        }
+      ]
+    },
+    "row": {
+      "$anchor": "SessionOriginOriginalRow",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation_key", "dispatch_attempt", "fingerprint", "record_json"],
+      "properties": {
+        "operation_key": { "$ref": "#/$defs/key" },
+        "dispatch_attempt": { "$ref": "#/$defs/attempt" },
+        "fingerprint": { "$ref": "#/$defs/digest" },
+        "record_json": {
+          "type": "string",
+          "maxLength": 524288,
+          "contentMediaType": "application/json",
+          "contentSchema": { "$ref": "#SessionOriginOriginalRecord" },
+          "x-utf8-max-bytes": 524288
+        }
+      },
+      "description": "Successful public row preserves exact record::text. Internal SQL null placeholder for oversize cannot appear in successful observation. Built-in column insertion order is operation_key,dispatch_attempt,fingerprint,record_json; collection digest hashes JSON.stringify of this ordered row array WITHOUT sorting keys."
+    },
+    "inventory": {
+      "$anchor": "SessionOriginMigrationInventory",
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 512,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["version", "checksum"],
+        "properties": {
+          "version": { "$ref": "#/$defs/shortText", "pattern": "^[A-Za-z0-9_.-]+$" },
+          "checksum": { "$ref": "#/$defs/name" }
+        }
+      },
+      "allOf": [
+        {
+          "contains": {
+            "properties": {
+              "version": { "const": "010_session_continuity_persistence" },
+              "checksum": { "const": "sha256:planemem-p9-010" }
+            },
+            "required": ["version", "checksum"]
+          }
+        },
+        {
+          "contains": {
+            "properties": {
+              "version": { "const": "011_original_operations" },
+              "checksum": { "const": "sha256:planemem-p02-011" }
+            },
+            "required": ["version", "checksum"]
+          }
+        },
+        {
+          "contains": {
+            "properties": {
+              "version": { "const": "025_session_resume_origin" },
+              "checksum": { "const": "sha256:planemem-session-resume-origin-025" }
+            },
+            "required": ["version", "checksum"]
+          }
+        },
+        {
+          "contains": {
+            "properties": {
+              "version": { "const": "044_session_start_receipts" },
+              "checksum": { "const": "sha256:planemem-session-start-receipts-044" }
+            },
+            "required": ["version", "checksum"]
+          }
+        }
+      ],
+      "description": "Full decoded inventory, strict ascending unique complete version names (SQL C order and JS ordinal comparison). Parser accepts1..512 but successful bridge requires all four distinct markers. Other checksum strings are declarations, not necessarily SHA256. Exact required marker strings and full inventory hash do not prove files, actual migration execution, deployed commits or stopped writers."
+    },
+    "currentProjection": {
+      "$anchor": "SessionOriginCurrentProjection",
+      "allOf": [
+        { "$ref": "./session-current.json#SessionCurrentProjection" },
+        { "not": { "required": ["resume_origin"] } }
+      ],
+      "description": "Same current owner/session/started_at/optional parent as original result. Full lifecycle states permitted; old running is not restored. Parent differs from session by owning selection. No resume_origin enrichment of a legacy start."
+    },
+    "session": {
+      "$anchor": "SessionOriginCurrentSnapshot",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["session_json", "observed_at"],
+      "properties": {
+        "session_json": {
+          "type": "string",
+          "maxLength": 65536,
+          "contentMediaType": "application/json",
+          "contentSchema": { "$ref": "#SessionOriginCurrentProjection" },
+          "x-utf8-max-bytes": 65536
+        },
+        "observed_at": { "$ref": "#/$defs/time" }
+      },
+      "description": "Built-in owning SQL SELECT projection/time. Does not serialize current-reader source_expires_at/source_revalidate; observe() returns the original owning snapshot. Internal generic provider ports are not asserted to enforce this exact closed shape."
+    },
+    "observation": {
+      "$anchor": "SessionOriginObservation",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "selection",
+        "selection_digest",
+        "original_records",
+        "original_records_digest",
+        "original_record_json",
+        "original_record_digest",
+        "migration_inventory_json",
+        "migration_inventory_digest",
+        "session",
+        "session_digest",
+        "target",
+        "identity_digest",
+        "approval_ref",
+        "approval_digest",
+        "approval_expires_at",
+        "expires_at"
+      ],
+      "properties": {
+        "format": { "const": "p02-session-origin-bridge-v1" },
+        "selection": { "$ref": "#SessionOriginSelection" },
+        "selection_digest": { "$ref": "#/$defs/digest" },
+        "original_records": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1024,
+          "items": { "$ref": "#SessionOriginOriginalRow" },
+          "x-record-text-total-utf8-max-bytes": 2097152,
+          "description": "Count equals selection.dispatch_attempt, SQL attempts exactly1..N in order. Prefix proof outcomes NoEffect, last Effect; unique receipt refs. Limit sums raw record_json bytes, not row/array JSON serialization."
+        },
+        "original_records_digest": { "$ref": "#/$defs/digest" },
+        "original_record_json": {
+          "type": "string",
+          "maxLength": 524288,
+          "contentMediaType": "application/json",
+          "contentSchema": { "$ref": "#SessionOriginEffectRecord" },
+          "x-utf8-max-bytes": 524288,
+          "description": "Exact last original_records record_json duplicated for selection; not a newly synthesized result or historical HTTP body."
+        },
+        "original_record_digest": { "$ref": "#/$defs/digest" },
+        "migration_inventory_json": {
+          "type": "string",
+          "maxLength": 262144,
+          "contentMediaType": "application/json",
+          "contentSchema": { "$ref": "#SessionOriginMigrationInventory" },
+          "x-utf8-max-bytes": 262144
+        },
+        "migration_inventory_digest": { "$ref": "#/$defs/digest" },
+        "session": { "$ref": "#SessionOriginCurrentSnapshot" },
+        "session_digest": { "$ref": "#/$defs/digest" },
+        "target": { "$ref": "./session-current.json#SessionCurrentTarget" },
+        "identity_digest": { "$ref": "#/$defs/digest" },
+        "approval_ref": { "$ref": "#/$defs/name" },
+        "approval_digest": { "$ref": "#/$defs/digest" },
+        "approval_expires_at": { "$ref": "#/$defs/time" },
+        "expires_at": { "$ref": "#/$defs/time" }
+      },
+      "description": "Internal target protocol remains p02-session-current-v1. Selection id/hash equals echoed request; original_record and inventory hashes also equal approved selection. Source-text digests hash exact UTF8, collection hash uses unsorted JSON.stringify, selection uses sorted compact JSON. Owning identity/approval is independent of outer authorization. approval_expires_at preserves original grant; expires_at only tightens it with bridge30s clocks and is used for final revalidation. Raw session idempotency marker is checked internally but not returned."
+    },
+    "authorization": {
+      "$anchor": "SessionOriginAuthorization",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity_digest", "authorization_ref", "expires_at"],
+      "properties": {
+        "identity_digest": { "$ref": "#/$defs/digest" },
+        "authorization_ref": {
+          "type": "string",
+          "pattern": "^planemem-session-origin:[a-f0-9]{64}$"
+        },
+        "expires_at": { "$ref": "#/$defs/time" }
+      },
+      "description": "Outer Gateway OIDC/OPA identity and origin-purpose/selection-bound ref, distinct from owning origin.identity_digest/approval. Expiry=min token/first OPA/origin/reader wall and monotonic30s budgets. This origin reader clips expiry to elapsed budget, unlike current-only reader. No renewal or cross-service atomic revocation."
+    },
+    "result": {
+      "$anchor": "SessionOriginResult",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol_version", "request", "origin", "authorization"],
+      "properties": {
+        "protocol_version": { "const": "p02-session-origin-v1" },
+        "request": { "$ref": "#SessionOriginRequest" },
+        "origin": { "$ref": "#SessionOriginObservation" },
+        "authorization": { "$ref": "#SessionOriginAuthorization" }
+      },
+      "description": "Request is exact original seven-string input. Public protocol origin-v1 differs intentionally from nested current-v1 target and historical continuity-v1 proof; no silent protocol substitution."
+    },
+    "envelope": {
+      "$anchor": "SessionOriginEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "#/$defs/name" },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "id"],
+            "properties": { "type": { "const": "session" }, "id": { "$ref": "#/$defs/ulid" } }
+          }
+        },
+        "data": { "$ref": "#SessionOriginResult" }
+      },
+      "x-json-stringify-utf8-max-bytes": 20971520,
+      "description": "Whole JSON.stringify response<=20MiB, including escaped/repeated original text; no truncation. Current trace equals origin.target.trace_id and source id equals request.session_id/target.session_id; original historical sources instead name client_id. Not an execution permit, migration receipt, original-operation write/close/retry or delivery confirmation."
+    }
+  }
+}

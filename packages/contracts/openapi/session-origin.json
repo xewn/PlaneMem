@@ -1,0 +1,135 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem original session source observation",
+    "version": "0.1.0",
+    "description": "Existing read-only origin proof POST, TODO P0-01 source-only increment. Complete selection/legacy proof/record/inventory/current snapshot/dual-authority wire. Load session-origin and session-current schemas and session-current/context-history HTTP components locally. No validator/generator/runtime/release evidence."
+  },
+  "servers": [
+    { "url": "/", "description": "Relative Gateway base; configure deployment origin/base." }
+  ],
+  "security": [{ "GatewayBearer": [] }],
+  "tags": [{ "name": "Original session source" }],
+  "x-runtime-boundaries": {
+    "http": "Shares current-source raw parser: before auth, strict UTF8/BOM rejection, <=4096 bytes, flat string object, decoded case-insensitive unique names. Then seven exact fields, protocol and approved selection. Signed Bearer/OIDC, verified client and scope headers, optional exact expected actor/client. x-trace-id before traceparent then generated trace. No dedicated URL query/Content-Type/Content-Encoding/cache/write-condition rejection; raw body not decompressed. Idempotency/If-Match headers do not enter readPreconditions and have no replay/CAS effect.",
+    "configuration": "Reader requires explicit originBridge/current configuration and authorityFor; built-in bridge requires auditDb, session_current_origin_authority, OIDC verifier and session_current_opa. Current OPA excludes alternate current authority. No default allowing origin authority, no environment-selected proof fallback or synthetic source. Production ABP-owned approval and controlled deployment configuration remain external requirements.",
+    "policy": "Actual context.read plus context.origin.read, authenticated_client and finite future token expiry at entry and second router policy. Admin does not bypass actual capabilities. Generic context.read PolicyService/OPA and decision audit run twice on success; denied entry audited before rejection. Registered reader snapshots/fixes input/context. Entry audit errors retain generic503 true; post-read policy/audit failures inside reader collapse503 false.",
+    "opa": "HTTP entry OIDC plus two private-scope OIDC/OPA calls. forOriginRequest binds protocol/selection_id/digest before reader. Calls existing exact HTTPS current decision endpoint with action=session.origin.read and selection; configured Rego additionally needs origin_read_enabled=true, enabled/revision/endpoint/config/time/current revocation data. Private bearer never forwarded; token hash in policy input.5s abort signal/8KiB strict response and no content-encoding per decision. Grants must have origin-specific authorization_ref and exact current-protocol target; complete JSON.stringify equality (not sorted normalization) required before return, so custom property ordering can matter. Ref binds origin purpose/selection; current-only ref cannot substitute.",
+    "owning-approval": "First owning SessionOriginAuthority grant supplies complete18-field selection/identity/approval/original expiry. Compare requested selection id and sorted digest BEFORE DB work. Observe rechecks complete sorted grant after transaction closes; outer reader rechecks independent OIDC/OPA after final policy/audit, then bridge.revalidate checks owning grant a third time using original approval_expires_at, never clipped expiry as renewal. Only owning approval is reread at final revalidate, not SQL. No cross-service atomic revocation or guarantee that state cannot change later.",
+    "database": "One REPEATABLE READ READ ONLY transaction;5s statement/2s lock timeouts. Current exact session/scope/actor/client and undeleted public/internal/confidential project first; restricted invisible. Then original operation rows ordered by attempt LIMIT1025, migration inventory LIMIT513 with C-sort full version, same session original idempotency marker. Marker must equal continuity:<operation_key>. Missing table/record/current row/marker or invalid proof fails, no alternate database/current-only fallback. SQL row/output limits do not bound internal database compute memory.",
+    "proofs": "ExactlyN records for approved dispatch_attempt1..1024, consecutive1..N; SQL key/attempt/fingerprint match decoded JSONB record and legacyStartFingerprint. Proof old p02-continuity-v1/session.start binds original config/spec and current owner. Unique non-nil operation receipt refs. All prefix proofs ConfirmedNoEffect/null revision/null result/empty sources. Final ConfirmedEffect revision1/full running version1 result, original trace and sole session source named client_id at proof/result/session levels. Parent/start/owner match current row; started_at<=final proof observed_at; current resume_origin forbidden. Current lifecycle may be terminal. Absence/error never proves a new NoEffect.",
+    "fingerprint": "SHA256 UTF8 of recursively ordinal-key-sorted compact JSON containing protocol_version=p02-continuity-v1, operation_key,specification_digest,original endpoint/config,action=session.start,expected_revision:null,payload={} or {parent_session_id},scope=[tenant,workspace,project],actor_id,client_id. Not the original record hash. Original/current commit fields are approved declarations, not checked against running Git.",
+    "integrity": "Selection digest hashes recursively ordinal-key-sorted compact JSON, arrays unchanged. Raw record/inventory/session hashes cover exact SQL JSONB/public projection text UTF8; do not reserialize before hashing. original_records_digest hashes JSON.stringify of full returned row array WITHOUT key sorting (built-in SQL column order key,attempt,fingerprint,record_json). Last record text/hash duplicated and bound to selection; inventory hash bound to selection. JSONB text is not historical HTTP/ResultJson bytes. contentSchema annotations need separate decoding; local interpreter is not an untrusted HTTP duplicate-key scanner.",
+    "inventory": "Complete1..512 parsed rows, strict ascending unique ASCII version names; success needs exact010_session_continuity_persistence/sha256:planemem-p9-010,011_original_operations/sha256:planemem-p02-011,025_session_resume_origin/sha256:planemem-session-resume-origin-025,044_session_start_receipts/sha256:planemem-session-start-receipts-044. Same numeric prefixes are not equivalent. These checksum declarations and observed inventory do not prove source file hashes, actual migrations, writer isolation or deployment.",
+    "limits": "Raw record<=512KiB, sum raw record texts<=2MiB, <=1024 attempts; raw migration inventory<=256KiB and<=512 rows; raw current session<=64KiB and<=256 references. Whole JSON.stringify response<=20MiB, counting escaped text and duplicated last record; excess503 false, not413 or truncated200. Response has no dedicated error byte cap/ETag/streaming-export or release-receipt semantics.",
+    "deadline": "Reader30s wall+monotonic budget after entry phases; expiry only tightens with token/OPA/origin. Timer aborts linked signal, propagated to OPA/bridge; guard checks after async work and after full-response serialization. Bridge separately clips its30s owning approval window and final revalidation keeps original deadline. Returned outer authorization expiry is clipped to reader budget (unlike current-only). No Promise.race/detached work; noncooperative verifier/policy/authority/SQL pool waits complete before rejection, PostgreSQL statements not actively cancelled. No hard30s SLA or dedicated concurrency slots.",
+    "cache-and-client": "All application responses noncacheable; success cache bypass even same key/challenge, but no nonce ledger. Exact current outer trace and session source; historical trace/client source unchanged. External consumer must obtain independent selection expectation, check complete binding/limits/raw text/digests/authority expiry and original evidence. No WcpClient/Mock machine-contract integration or independent factory execution authority added."
+  },
+  "paths": {
+    "/v1/continuity/session-origin": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "post": {
+        "operationId": "readOriginalSessionSource",
+        "tags": ["Original session source"],
+        "summary": "Observe approved original attempts and current session from one owning snapshot",
+        "x-wcp-operation": "session.origin.read",
+        "x-policy-action": "context.read",
+        "x-required-capabilities": ["context.read", "context.origin.read"],
+        "x-read-only": true,
+        "x-request-max-bytes": 4096,
+        "x-response-max-bytes": 20971520,
+        "x-reader-elapsed-budget-ms": 30000,
+        "x-success-cache": "bypass",
+        "description": "Approved selection expectation before original-row read. Current identity/OPA and owning-source approval both required. Does not execute/retry/close original writes or infer NoEffect from failure. application/json describes expected bytes; media header not explicitly enforced.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/session-origin.json#SessionOriginRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/Success" },
+          "400": { "$ref": "#/components/responses/BadBody" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InternalError" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": { "GatewayBearer": { "type": "http", "scheme": "bearer" } },
+    "parameters": {
+      "TenantId": { "$ref": "./session-current.json#/components/parameters/TenantId" },
+      "WorkspaceId": { "$ref": "./session-current.json#/components/parameters/WorkspaceId" },
+      "ProjectId": { "$ref": "./session-current.json#/components/parameters/ProjectId" },
+      "TraceId": { "$ref": "./session-current.json#/components/parameters/TraceId" },
+      "TraceParent": { "$ref": "./session-current.json#/components/parameters/TraceParent" },
+      "ExpectedActorId": {
+        "$ref": "./session-current.json#/components/parameters/ExpectedActorId"
+      },
+      "ExpectedClientId": {
+        "$ref": "./session-current.json#/components/parameters/ExpectedClientId"
+      }
+    },
+    "responses": {
+      "Success": {
+        "description": "Exact original request, complete original/current observation and independent outer authorization; whole JSON<=20MiB. No ETag, partial evidence or delivery/release confirmation.",
+        "headers": {
+          "cache-control": { "schema": { "const": "no-store" } },
+          "x-trace-id": {
+            "schema": { "$ref": "../schemas/session-current.json#/$defs/name" },
+            "description": "Exact present request/envelope/target trace, not original trace."
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/session-origin.json#SessionOriginEnvelope" }
+          }
+        }
+      },
+      "Error": {
+        "$ref": "./session-current.json#/components/responses/Error",
+        "description": "Application error, no partial proof. Early body/auth/private-scope failures may omit trace header/private,no-store; routed responses no-store with trace. Inner reader errors sanitized to OPERATION_UNAVAILABLE503 false, never source text or provider exceptions. Transport/disconnect can yield no application body."
+      },
+      "BadBody": {
+        "$ref": "#/components/responses/Error",
+        "description": "INVALID_JSON400 false before auth for malformed/empty/BOM/non-UTF8/duplicate-case-alias/nonflat/oversized4KiB body. Semantically invalid string fields later may403 or503, not a universal400. No413 mapping."
+      },
+      "Unauthenticated": {
+        "$ref": "#/components/responses/Error",
+        "description": "UNAUTHENTICATED401 false for missing/invalid/expired initial bearer. Configured verifier unavailable503 true; later OIDC failures inside reader503 false."
+      },
+      "Denied": {
+        "$ref": "#/components/responses/Error",
+        "description": "DENIED403 false outside reader: scope/client/expected identity mismatch; initial router lacks context.read/context.origin.read/future expiry or Policy denies; private origin authorityFor has wrong protocol, missing/malformed selection ID/digest or invalid private scope. Validly shaped nil UUID passes authorityFor but fails reader503. Missing reader checked before authorityFor=>503."
+      },
+      "RateLimited": {
+        "$ref": "#/components/responses/Error",
+        "description": "Generic actor/path RATE_LIMITED429 retryable=true; no Retry-After or dedicated concurrent-work limit."
+      },
+      "InternalError": {
+        "$ref": "#/components/responses/Error",
+        "description": "Unexpected failure outside reader at command/entry policy/audit callback boundary can serialize INTERNAL_ERROR500 true. Reader catches internal failures and converts503 false."
+      },
+      "Unavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "OPERATION_UNAVAILABLE503 false: missing registration dependencies, reader exact-field/configuration/target/nil-selection failure, OPA or source rejection/change, selection mismatch, missing/hidden original/current source, invalid proof/marker/inventory/digest, any size/expiry/cancellation/clock limit, final router Policy/audit failure or final source revalidation. No source404/NoEffect or auto-retry promise. Outer initial WORKBENCH_AUTH_UNAVAILABLE/AUDIT_PERSISTENCE_UNAVAILABLE retain503 true, so identical status does not imply common retryability."
+      }
+    }
+  }
+}
