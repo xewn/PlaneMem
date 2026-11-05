@@ -154,8 +154,12 @@ import { registerContextIndexLifecycle } from './context-index-lifecycle.js';
 import { PostgresObservedState } from './observed-state.js';
 import { registerObservedDirectory } from './observed-directory.js';
 import { recallProjectMemory } from './memory-recall.js';
+import { PostgresEventBus, type PlatformEventBusOptions } from './event-bus.js';
+import { eventBusFromEnvironment } from './event-bus-config.js';
 
 export interface PlatformServerOptions {
+  /** Internal service credentials and trusted transactional consumers. Requires DATABASE_URL and migration 050. */
+  event_bus?: PlatformEventBusOptions;
   host?: string;
   port?: number;
   version?: string;
@@ -220,6 +224,7 @@ interface RuntimeBody {
 }
 
 interface RuntimeState {
+  event_bus: PostgresEventBus | undefined;
   session_current_identity: SessionCurrentIdentityScope | undefined;
   artifact_uploads: ArtifactUploadGate;
   artifact_downloads: ArtifactDownloadGate;
@@ -322,6 +327,14 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
     ? postgres(process.env.DATABASE_URL, { max: 1, connect_timeout: 5 })
     : undefined;
   const planeInbox = auditDb ? new PostgresPlaneInbox(auditDb) : undefined;
+  const eventBusOptions = options.event_bus ?? eventBusFromEnvironment(process.env);
+  if (eventBusOptions && !process.env.DATABASE_URL)
+    throw new TypeError('Event bus requires DATABASE_URL');
+  const eventBusDb = eventBusOptions
+    ? postgres(process.env.DATABASE_URL!, { max: 4, connect_timeout: 5 })
+    : undefined;
+  const eventBus =
+    eventBusDb && eventBusOptions ? new PostgresEventBus(eventBusDb, eventBusOptions) : undefined;
   // A slow aggregate scan must not monopolize the worker and audit connection.
   const planeMetricsDb = planeMetricsEnabled
     ? postgres(process.env.DATABASE_URL!, { max: 1, connect_timeout: 5 })
@@ -1672,6 +1685,7 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
       audit,
       plane_inbox: planeInbox,
       plane_inbox_metrics: planeMetrics,
+      event_bus: eventBus,
       persist_audit: persistAudit,
       memory_required: memoryRequired,
       sessions,
@@ -1690,6 +1704,7 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
         })();
         await runtimeInitialized;
       }
+      await eventBus?.initialize();
       return new Promise<string>((resolve, reject) => {
         if (server?.listening) {
           const address = server.address();
@@ -1709,6 +1724,7 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
           }
           planeInbox?.start();
           planeMetrics?.start();
+          eventBus?.start();
           resolve(`http://${host}:${address.port}`);
         });
       });
@@ -1732,8 +1748,12 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
   };
 
   async function closeStorage() {
-    await Promise.all([planeInbox?.stop(), planeMetrics?.stop()]);
-    await Promise.all([auditDb?.end({ timeout: 5 }), planeMetricsDb?.end({ timeout: 5 })]);
+    await Promise.all([planeInbox?.stop(), planeMetrics?.stop(), eventBus?.stop()]);
+    await Promise.all([
+      auditDb?.end({ timeout: 5 }),
+      planeMetricsDb?.end({ timeout: 5 }),
+      eventBusDb?.end({ timeout: 5 }),
+    ]);
   }
 }
 
@@ -1892,6 +1912,7 @@ async function handleRequest(
       version: runtime.version,
       status: 'ok',
       ...(runtime.plane_inbox ? { plane_ingestion: runtime.plane_inbox.health() } : {}),
+      ...(runtime.event_bus ? { event_bus: runtime.event_bus.health() } : {}),
       ...(runtime.memory_service ? { memory: runtime.memory_service.health() } : {}),
     };
     writeJson(response, 200, health);
@@ -1900,9 +1921,11 @@ async function handleRequest(
   if (request.method === 'GET' && url.pathname === '/health/ready') {
     const memoryHealth = runtime.memory_service?.health();
     const planeHealth = runtime.plane_inbox?.health();
+    const busHealth = runtime.event_bus?.health();
     const ready =
       (!runtime.memory_required || !memoryHealth || memoryHealth.ready) &&
-      planeHealth?.status !== 'degraded';
+      planeHealth?.status !== 'degraded' &&
+      (!busHealth || busHealth.ready);
     writeJson(response, ready ? 200 : 503, {
       service: 'planemem-platform',
       version: runtime.version,
@@ -1910,6 +1933,7 @@ async function handleRequest(
       ready,
       ...(memoryHealth ? { memory: memoryHealth } : {}),
       ...(planeHealth ? { plane_ingestion: planeHealth } : {}),
+      ...(busHealth ? { event_bus: busHealth } : {}),
     });
     return;
   }
@@ -1927,7 +1951,7 @@ async function handleRequest(
         ? runtime.plane_inbox_metrics.render(runtime.plane_inbox.monitoring())
         : '# HELP planemem_plane_inbox_metrics_enabled Whether database-wide inbox metrics are enabled.\n# TYPE planemem_plane_inbox_metrics_enabled gauge\nplanemem_plane_inbox_metrics_enabled 0\n';
     response.end(
-      `# planemem runtime\nplanemem_search_vector_enabled ${runtime.search.health().vector_enabled ? 1 : 0}\nplanemem_audit_records_total ${runtime.audit.health().metrics.records}\n${runtime.memory_service ? `planemem_memory_provider_ready ${runtime.memory_service.health().ready ? 1 : 0}\n` : ''}${planeMetrics}`,
+      `# planemem runtime\nplanemem_search_vector_enabled ${runtime.search.health().vector_enabled ? 1 : 0}\nplanemem_audit_records_total ${runtime.audit.health().metrics.records}\n${runtime.memory_service ? `planemem_memory_provider_ready ${runtime.memory_service.health().ready ? 1 : 0}\n` : ''}${planeMetrics}${runtime.event_bus?.render() ?? '# TYPE planemem_event_bus_enabled gauge\nplanemem_event_bus_enabled 0\n'}`,
     );
     return;
   }

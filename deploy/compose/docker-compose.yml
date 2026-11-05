@@ -20,6 +20,12 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-planemem}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-planemem}
       NATS_URL: nats://nats:4222
+      NATS_TOKEN: ${NATS_TOKEN:-}
+      EVENT_BUS_ENABLED: ${EVENT_BUS_ENABLED:-false}
+      EVENT_BUS_STREAM: ${EVENT_BUS_STREAM:-PLANEMEM_EVENTS_V1}
+      EVENT_BUS_SUBJECT_PREFIX: ${EVENT_BUS_SUBJECT_PREFIX:-planemem.events.v1}
+      EVENT_BUS_REPLICAS: ${EVENT_BUS_REPLICAS:-1}
+      EVENT_BUS_MAX_BYTES: ${EVENT_BUS_MAX_BYTES:-1073741824}
       KEYCLOAK_URL: http://keycloak:8080
       OBJECT_STORAGE_URL: http://minio:9000
       AI_MEMORY_URL: http://ai-memory:8787
@@ -91,7 +97,7 @@ services:
 
   nats:
     image: ${NATS_IMAGE:-nats:2.10.22-alpine}
-    command: ['-js', '--store_dir', '/data']
+    command: ['-js', '--store_dir', '/data', '-m', '8222']
     ports:
       - '${NATS_PORT:-4222}:4222'
       - '${NATS_MONITOR_PORT:-8222}:8222'

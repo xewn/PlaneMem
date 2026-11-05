@@ -1,6 +1,11 @@
 export * from './router.js';
 export * from './http.js';
 export * from './server.js';
+export {
+  PostgresEventBus,
+  type PlatformEventBusOptions,
+  type DurableEventConsumer,
+} from './event-bus.js';
 export * from './oidc.js';
 export * from './workbench/repository.js';
 export * from './artifact-persistence.js';

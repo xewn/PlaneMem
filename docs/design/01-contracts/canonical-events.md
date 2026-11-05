@@ -1,5 +1,7 @@
 # Canonical Event 契约 v1
 
+2026-11-05，TODO **P0-03**：新增 [JetStream 传输和持久队列接入源码](jetstream-runtime.md)，使用本页原始 CanonicalEvent JSON；公开 Node 子路径 `@planemem/events/jetstream`。保留完整事件/来源/分类，业务事务入队、显式发布确认、持久消费回执去重和消息范围核对已写入。未接入的事件生产者、业务消费者及真实运行证据仍缺；不把此项当作 CloudEvents 传输或完整 AsyncAPI 绑定完成，未运行或测试。
+
 2026-11-05，TODO P0-01：新增[默认 38 类事件的双格式 AsyncAPI 消息目录](../../../packages/events/asyncapi/README.md)及逐类 Schema 锚点、包子路径，复用原基础/枚举/删除/恢复资源。独立 [CloudEvents 结构化配置](canonical-cloudevents.md)及双向转换的 data 保留这里的完整自定义 CanonicalEvent；结构化目录逐类绑定外层 type 与内层 event_type。实际总线通道、结构化格式传输/消费者接线、完整业务 payload、机器契约接线和运行兼容证据待补。仅源码，未执行校验器、生成器、编译、类型检查、测试或发布。
 
 ## 封套

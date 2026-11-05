@@ -8,6 +8,7 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./jetstream": "./src/jetstream.ts",
     "./schemas/canonical-event.json": "./schemas/canonical-event.json",
     "./schemas/event-types.json": "./schemas/event-types.json",
     "./schemas/work-item-deleted.json": "./schemas/work-item-deleted.json",
@@ -23,6 +24,8 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@nats-io/jetstream": "3.4.0",
+    "@nats-io/transport-node": "3.4.0",
     "@planemem/contracts": "workspace:*"
   }
 }

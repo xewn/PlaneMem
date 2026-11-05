@@ -1,5 +1,7 @@
 # 公共契约目录
 
+- [JetStream 真实事件总线](jetstream-runtime.md)：原始 TODO P0-03，业务事务 outbox、发布确认、持久消费回执、重放起点和积压观察；默认关闭，迁移未执行，未运行或测试。
+
 - [搜索 SDK 与 Mock](search-sdk-mock-runtime.md)：原始 TODO P0-02，项目搜索/分页与旧索引写入、删除、恢复后的搜索联动；显式 FTS/记忆模拟，未运行或测试。
 
 - [旧上下文索引 SDK 与 Mock](legacy-context-mock-runtime.md)：TODO P0-02，新增内容写入 SDK 及五操作共享模拟索引，包含历史重放、版本/分类与删除/到期规则；仅开发源码，未运行或测试。

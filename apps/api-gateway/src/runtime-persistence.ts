@@ -4,6 +4,7 @@ import type { SearchHit } from '@planemem/search-service';
 import postgres from 'postgres';
 import { ContractError, parsePlaneRestoreReference } from '@planemem/contracts';
 import { fingerprint } from './idempotency.js';
+import { enqueueEventBus } from './event-bus-outbox.js';
 
 export type RuntimeSql = ReturnType<typeof postgres>;
 
@@ -209,4 +210,5 @@ export async function persistPlaneEventInTransaction(
       'Observation index is deleted, expired or has a conflicting revision',
       { trace_id: event.trace_id },
     );
+  await enqueueEventBus(transaction, event);
 }

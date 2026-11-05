@@ -1,6 +1,7 @@
 import { ContractError } from '@planemem/contracts';
 import { validateEvent, type CanonicalEvent } from '@planemem/events';
 import type { RuntimeSql } from './runtime-persistence.js';
+import { enqueueEventBus } from './event-bus-outbox.js';
 
 type Scope = { tenant_id: string; workspace_id: string; project_id: string };
 
@@ -35,4 +36,5 @@ export async function appendSyncEvent(
   await tx`INSERT INTO wcp_sync_events (event_id, tenant_id, workspace_id, project_id, server_cursor, event_type, payload, source_refs, trace_id)
     VALUES (${event.event_id}, ${event.tenant_id}, ${event.workspace_id}, ${event.project_id}, ${cursor},
       ${event.event_type}, ${JSON.stringify(event)}::jsonb, ${JSON.stringify(event.source_refs)}::jsonb, ${event.trace_id})`;
+  await enqueueEventBus(tx, event);
 }

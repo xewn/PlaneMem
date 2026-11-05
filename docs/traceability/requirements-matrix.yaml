@@ -11,6 +11,23 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    jetstream_development:
+      date: "2026-11-05"
+      todo: "P0-03"
+      status: "Production integration source added; disabled by default. Migration 050 not executed. P0-03 and R-001 incomplete."
+      artifacts:
+        - "packages/events/src/jetstream.ts"
+        - "apps/api-gateway/src/event-bus.ts"
+        - "apps/api-gateway/src/event-bus-outbox.ts"
+        - "apps/api-gateway/src/event-bus-config.ts"
+        - "apps/api-gateway/src/sync-stream.ts"
+        - "apps/api-gateway/src/runtime-persistence.ts"
+        - "apps/api-gateway/src/server.ts"
+        - "deploy/migrations/050_event_bus.sql"
+        - "docs/design/01-contracts/jetstream-runtime.md"
+      behavior: "Real JetStream transport, original event-ID publish acknowledgements, transactional outbox for existing sync/Plane writers, aggregate-order retries, durable pull consumption with same-transaction effect receipts, explicit replay starts, quarantine before termination, stream-creation binding and live backlog/readiness wiring. No memory fallback."
+      remaining_scope: "Other producers and concrete business projection handlers, historical backfill/recovery and retention, rejection administration, transport schemas and real compatibility/restart/failure evidence. Dependencies resolved with scripts disabled; no compilation, tests, service startup or migration execution."
+      evidence: []
     search_sdk_mock_development:
       date: "2026-11-05"
       todo: "P0-02"
