@@ -63,6 +63,10 @@ import { registerPlaneInboxReads } from './plane-inbox-reads.js';
 import { registerPlaneInboxRetries } from './plane-inbox-retry.js';
 import { PostgresPlaneInboxMetrics } from './plane-inbox-metrics.js';
 import { PostgresSessionStore, withSessionTransaction } from './session-persistence.js';
+import { PostgresSessionCurrentStore } from './session-current-persistence.js';
+import { parseSessionCurrentRequest, registerSessionCurrentRoute, SessionCurrentReader,
+  sessionCurrentOperation, sessionCurrentPath, type SessionCurrentAuthority,
+  type SessionCurrentConfiguration } from './session-current.js';
 import { persistConflictDecision } from './conflict-persistence.js';
 import { registerConflictRead } from './conflict-read.js';
 import { readConflictRegistry } from './conflict-registry.js';
@@ -182,6 +186,9 @@ export interface PlatformServerOptions {
   oidc_issuer?: string;
   oidc_audience?: string;
   oidc_fetch?: typeof fetch;
+  session_current_configuration?: SessionCurrentConfiguration;
+  /** Independent current-object authority in addition to the HTTP OIDC identity boundary. */
+  session_current_authority?: SessionCurrentAuthority;
   /** Optional long-term memory projection. Omit it to keep the offline context-only mode. */
   memory_service?: MemoryServiceAdapter;
   memory_provider_mode?: MemoryProviderMode;
@@ -462,6 +469,12 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
     : undefined;
   const router = new CommandRouter(
     async (request) => {
+      if (request.operation === sessionCurrentOperation &&
+          (request.context.authenticated_client !== true ||
+           !Number.isFinite(Date.parse(request.context.token_expires_at ?? '')) ||
+           Date.parse(request.context.token_expires_at!) <= Date.now() ||
+           !request.context.capability.includes('context.read')))
+        return { allowed: false as const, reason: 'current_session_read_context_required' };
       const authContext = {
         tenant_id: request.context.tenant_id,
         workspace_id: request.context.workspace_id,
@@ -1474,6 +1487,11 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
   registerContextIndexLifecycle(router, auditDb);
   registerMcpReads(router, resources, workbench, projection, legacySearch, workbenchDb);
   const api = new ApiGateway(router, options.rate_limit ?? 100);
+  registerSessionCurrentRoute(router, api,
+    auditDb && options.session_current_configuration
+      ? new SessionCurrentReader(new PostgresSessionCurrentStore(auditDb),
+          options.session_current_configuration, options.session_current_authority)
+      : undefined);
   // Internal dispatch paths are rejected by the public HTTP path router.
   api.route('POST', '/_mcp/catalog', 'mcp.catalog');
   api.route('POST', '/_mcp/resource', 'mcp.resource');
@@ -1698,6 +1716,7 @@ function toRouterDecision(
 }
 
 function policyAction(request: CommandRequest): string {
+  if (request.operation === sessionCurrentOperation) return 'context.read';
   if (request.operation === 'session.command-context') {
     if (request.context.capability.includes('context.read')) return 'context.read';
     if (
@@ -1838,6 +1857,7 @@ async function handleRequest(
   runtime: RuntimeState,
 ): Promise<void> {
   const url = new URL(request.url ?? '/', `http://${runtime.host}:${runtime.port}`);
+  if (url.pathname === sessionCurrentPath) response.setHeader('cache-control', 'no-store');
   if (request.method === 'GET' && url.pathname === '/health') {
     const health = {
       service: 'planemem-platform',
@@ -1943,6 +1963,7 @@ async function handleRequest(
   }
 
   const traceId =
+    (url.pathname === sessionCurrentPath ? header(request, 'x-trace-id') : undefined) ||
     header(request, 'traceparent') || header(request, 'x-trace-id') || `trace_http_${createUlid()}`;
   let body: RuntimeBody = {};
   const auditExportRoute = request.method === 'POST' && url.pathname === '/v1/audit/export';
@@ -1979,7 +2000,9 @@ async function handleRequest(
     !contextPackSaveReceiptRoute
   ) {
     try {
-      body = await readJson(request);
+      body = url.pathname === sessionCurrentPath
+        ? parseSessionCurrentRequest(await readCurrentSessionBody(request))
+        : await readJson(request);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Request body must be valid JSON';
       writeJson(response, 400, errorEnvelope('INVALID_JSON', message, request, traceId));
@@ -1989,6 +2012,7 @@ async function handleRequest(
 
   let context: RequestContext;
   try {
+    const currentSessionRoute = url.pathname === sessionCurrentPath;
     const continuityRoute = /^\/v1\/(?:sessions|handoffs)(?:\/|$)/.test(url.pathname);
     const sessionCommandContextRoute = url.pathname === '/v1/sessions/command-context';
     const conflictCommandContextRoute = url.pathname === '/v1/conflicts/commands/context';
@@ -2037,7 +2061,7 @@ async function handleRequest(
     const planeInboxRoute = /^\/v1\/plane\/events(?:\/|$)/.test(url.pathname);
     const authorization = header(request, 'authorization');
     if (
-      url.pathname === WORKBENCH_QUERY_PATH ||
+      currentSessionRoute || url.pathname === WORKBENCH_QUERY_PATH ||
       auditExportRoute ||
       url.pathname === '/v1/search' ||
       url.pathname === '/v1/context/search' ||
@@ -2064,7 +2088,7 @@ async function handleRequest(
         traceId,
         authorization,
         runtime.oidc_verify,
-        auditExportRoute ||
+        currentSessionRoute || auditExportRoute ||
           conflictCommandContextRoute ||
           sessionCommandContextRoute ||
           contextPackSaveContextRoute ||
@@ -2918,19 +2942,30 @@ async function handleRequest(
     return;
   }
   const method = request.method as HttpRequest['method'];
-  const result = await api.handle({
-    method,
-    path: url.pathname,
-    body,
-    headers: {
-      'content-type': header(request, 'content-type'),
-      'idempotency-key': header(request, 'idempotency-key'),
-      'x-expected-actor-id': header(request, 'x-expected-actor-id'),
-      'x-expected-client-id': header(request, 'x-expected-client-id'),
-    },
-    context,
-  });
-  writeJson(response, result.status, result.body, result.headers);
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  request.once('aborted', abort);
+  response.once('close', abort);
+  if (request.aborted || response.destroyed) abort();
+  try {
+    const result = await api.handle({
+      method,
+      path: url.pathname,
+      body,
+      headers: {
+        'content-type': header(request, 'content-type'),
+        'idempotency-key': header(request, 'idempotency-key'),
+        'x-expected-actor-id': header(request, 'x-expected-actor-id'),
+        'x-expected-client-id': header(request, 'x-expected-client-id'),
+      },
+      context,
+      signal: controller.signal,
+    });
+    if (!controller.signal.aborted) writeJson(response, result.status, result.body, result.headers);
+  } finally {
+    request.off('aborted', abort);
+    response.off('close', abort);
+  }
 }
 
 async function handlePlaneWebhook(
@@ -3426,6 +3461,18 @@ async function readJson(request: IncomingMessage, maximum = MAX_BODY_BYTES): Pro
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed))
     throw new Error('Request body must be a JSON object');
   return parsed as RuntimeBody;
+}
+
+async function readCurrentSessionBody(request: IncomingMessage): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of request) {
+    const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    size += bytes.byteLength;
+    if (size > 4096) throw new Error('Current session request exceeds 4 KiB');
+    chunks.push(bytes);
+  }
+  return Buffer.concat(chunks);
 }
 
 async function readRaw(request: IncomingMessage, maximum = MAX_BODY_BYTES): Promise<string> {

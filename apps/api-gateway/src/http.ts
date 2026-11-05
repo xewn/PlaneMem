@@ -15,6 +15,7 @@ export interface HttpRequest {
   body?: Record<string, unknown>;
   headers: Record<string, string | undefined>;
   context: RequestContext;
+  signal?: AbortSignal;
 }
 
 export interface HttpResponse {
@@ -24,6 +25,7 @@ export interface HttpResponse {
 }
 
 export class ApiGateway {
+  private readonly uncached = new Set<string>();
   private readonly routes = new Map<string, string>();
   private readonly routeTemplates: Array<{
     method: HttpRequest['method'];
@@ -46,6 +48,10 @@ export class ApiGateway {
     this.routes.set(`${method} ${path}`, operation);
   }
 
+  noStore(...operations: string[]): void {
+    for (const operation of operations) this.uncached.add(operation);
+  }
+
   routeTemplate(method: HttpRequest['method'], template: string, operation: string): void {
     const parameters: string[] = [];
     const pattern = new RegExp(
@@ -64,6 +70,13 @@ export class ApiGateway {
   }
 
   async handle(request: HttpRequest): Promise<HttpResponse> {
+    const response = await this.handleCore(request);
+    const operation = this.routes.get(`${request.method} ${request.path}`);
+    if (operation && this.uncached.has(operation)) response.headers['cache-control'] = 'no-store';
+    return response;
+  }
+
+  private async handleCore(request: HttpRequest): Promise<HttpResponse> {
     const trace_id = request.context.trace_id;
     const key = `${request.context.actor_id}:${request.path}`;
     const now = Date.now();
@@ -138,6 +151,7 @@ export class ApiGateway {
       operation: route.operation,
       input: { ...(request.body ?? {}), ...route.parameters },
       context: request.context,
+      ...(request.signal === undefined ? {} : { signal: request.signal }),
     };
     if (route.operation === 'context.pack.save-context') {
       try {
@@ -192,7 +206,7 @@ export class ApiGateway {
     try {
       const result = await this.router.execute(command, (run) =>
         // Durable stores recheck source visibility and freshness when replaying a receipt.
-        command.operation === 'audit.export' ||
+        this.uncached.has(command.operation) || command.operation === 'audit.export' ||
         command.operation.startsWith('conflict.') ||
         command.operation.startsWith('sync.') ||
         command.operation.startsWith('context.pack.') ||
@@ -392,7 +406,7 @@ export class ApiGateway {
                     serialized.code === 'PROPOSAL_INVALID' ||
                     serialized.code === 'WORKBENCH_ADMIN_INVALID'
                   ? 500
-                  : serialized.code === 'MEMORY_PROVIDER_OFF' ||
+                  : serialized.code === 'OPERATION_UNAVAILABLE' || serialized.code === 'MEMORY_PROVIDER_OFF' ||
                       serialized.code === 'ARTIFACT_STORAGE_UNAVAILABLE' ||
                       serialized.code === 'ARTIFACT_OBJECT_UNAVAILABLE' ||
                       serialized.code === 'ARTIFACT_OBJECT_MISSING' ||

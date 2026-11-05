@@ -21,6 +21,7 @@ export interface CommandRequest {
   operation: string;
   input: Record<string, unknown>;
   context: RequestContext;
+  signal?: AbortSignal;
 }
 
 export interface CommandResult {
