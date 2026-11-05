@@ -1,0 +1,409 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem current session state and recorded activity",
+    "version": "0.1.0",
+    "description": "Source-only five existing GET routes: current session state, run directory/detail and tool-call directory/detail. Load this file, search/context-history HTTP components and standalone session-activity-read schema locally, preserving relative paths and schema IDs. No runtime validation/generation/client integration or release evidence."
+  },
+  "servers": [
+    { "url": "/", "description": "Relative Gateway base; configure deployment origin/base." }
+  ],
+  "security": [{ "GatewayBearer": [] }],
+  "tags": [{ "name": "Session reads" }],
+  "x-todo": "P0-01",
+  "x-runtime-boundaries": {
+    "sources": [
+      "packages/contracts/src/session-state.ts",
+      "packages/contracts/src/session-activity.ts",
+      "packages/contracts/src/metadata.ts",
+      "apps/api-gateway/src/session-activity.ts",
+      "apps/api-gateway/src/session-project-access.ts",
+      "apps/api-gateway/src/authenticated-context.ts",
+      "apps/api-gateway/src/server.ts",
+      "apps/api-gateway/src/http.ts",
+      "packages/sdk/src/client.ts"
+    ],
+    "authorization": "All five use verified Bearer and exact tenant/workspace/project, context.read Policy, entry decision audit and generic actor/path rate limit. Configured OPA replaces local Policy. No independent authenticated_client or session.write gate for these reads: scoped signed token without a client claim can read, but receives no session_identity and false write hint. This is not unauthenticated offline access. Independently optional actor/client header preconditions compare current context, including fallback client where allowed.",
+    "visibility": "Each data query includes visibleSessionProject in the same SQL statement: matching scope, parent nondeleted, classification one of public/internal/confidential/restricted, restricted requires actual data.restricted.read. Invalid classification is excluded even for restricted readers. No actor ownership filter, no separate row classification or recursive source-reference authorization. Missing/hidden parent session gives SESSION_NOT_FOUND404 for lists as well as details; visible session with no selected child rows gives empty200. Parent terminal state does not block reading remaining activity.",
+    "snapshot": "One SQL statement per handler reads current session and selected child records, including optional run existence for tool directory. No update locks, write receipt lookup, reconstruction of historical session_version or cross-page snapshot. Tool list joins same-session run; detail left-joins run then parses it, so an existing tool with broken linked run is500 rather than404/empty.",
+    "pagination": "Run order sequence_no DESC, exclusive before_sequence1..2147483647. Tool order tool_call_id COLLATE C DESC, exclusive before_id ULID, optional run_id must exist in session. Default25/max100, query fields single-valued; numeric wire values digits only including leading zeros. Raw boundary is not opaque/signed and binds no scope/identity/filter/limit; callers retain original query deliberately. Boundary need not reference an existing record. Select limit+1, parse only selected limit; continuation only on a full page and equals last returned value. No total, has_more or automatic traversal.",
+    "representations": "Session/run/tool versions are positive safe JSON integers, run sequence additionally int32 positive. No bigint-string revisions in these outputs. Activity session summary omits ended_at; state includes null for running/paused or canonical four-digit-year UTC milliseconds for ended/abandoned/failed. No cross-status assertions: parent can end while a run/tool remains active. Run model may be any string, omitted for SQL null; tool name/saved trace only nonempty, no trim or length bound. Sources permit extension fields and are shallow-copied without source existence/visibility/freshness checks; no source array bound/deduplication.",
+    "hints": "State/run detail/tool detail include session_permissions.write_sessions = authenticated_client AND (admin OR session.write capability); session_identity present iff verified client. Identity is current five-field scope/actor/client, nonblank<=1024 UTF-16/no controls/DEL/lone surrogates, not restricted to ULIDs. Hint is not actual future Policy/OPA authorization, ownership/state/version eligibility or original command success. State alone also echoes outer scope. Both directories omit identity/permission hints.",
+    "http": "GET does not read JSON body; no dedicated body/framing/media/content-encoding/cache/Range rejection. State and details reject all URL queries; directories only accept listed fields. All five parse generic If-Match/If-Match-Version, require numeric agreement, then ignore valid values rather than conditional reads. Idempotency-Key is copied without dedicated validation and all five bypass in-process success caching. No ETag/outer revision/server_cursor/304/412. Success private,no-store and x-trace-id, outer sources exactly requested session; inner saved traces/sources remain independent.",
+    "budgets": "No dedicated complete-response byte limit, two-slot concurrency gate, query cancellation, whole-operation deadline or post-read token-expiry recheck in these handlers. Child row count does not bound unbounded model/tool name/trace/source metadata. Invalid selected records fail entire response; lookahead metadata is not independently parsed. No product/SQL/SDK execution was performed for this contract.",
+    "sdk": "getSessionState uses complete shared state-envelope parser: exact current trace/scope/sole session source, closure/identity/hint consistency and no etag. It does not pass expectedIdentity, so current actor/client are not pinned to SDK context. Four generic activity methods parse envelope and data/requested IDs/query, but do not require exact outer trace equality/sole session source or independently parse detail identity/permission extras. Generic transport provides no HTTP headers/status to these parsers. These methods add no dedicated byte/deadline bounds and no automatic paging/retry."
+  },
+  "paths": {
+    "/v1/sessions/{session_id}": {
+      "parameters": [
+        { "$ref": "#/components/parameters/SessionId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" },
+        { "$ref": "#/components/parameters/IfMatch" },
+        { "$ref": "#/components/parameters/IfMatchVersion" },
+        { "$ref": "#/components/parameters/IdempotencyKey" }
+      ],
+      "get": {
+        "operationId": "getSessionState",
+        "tags": ["Session reads"],
+        "summary": "Read the current session status, version and closure time",
+        "x-wcp-operation": "session.read",
+        "x-policy-action": "context.read",
+        "x-decoded-query-schema": {
+          "$ref": "../schemas/session-activity-read.json#SessionStateQuery"
+        },
+        "description": "No query parameters. One visible-parent SQL selects session_id/status/version/ended_at only, converts DB version to Number and Date to ISO, then applies full state envelope parser. Outer scope and sole session source checked, current trace retained. running/paused ended_at=null; ended/abandoned/failed require canonical four-digit-year UTC milliseconds. Identity optional for signed reads without verified client; writable hint requires identity. Current terminal state never proves an original end request committed. No session title, checkpoint/run/tool lists, ETag or command key returned.",
+        "responses": {
+          "200": { "$ref": "#/components/responses/StateSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/SessionNotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidState" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/sessions/{session_id}/runs": {
+      "parameters": [
+        { "$ref": "#/components/parameters/SessionId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" },
+        { "$ref": "#/components/parameters/IfMatch" },
+        { "$ref": "#/components/parameters/IfMatchVersion" },
+        { "$ref": "#/components/parameters/IdempotencyKey" }
+      ],
+      "get": {
+        "operationId": "listSessionRuns",
+        "tags": ["Session reads"],
+        "summary": "Read one descending page of run metadata",
+        "x-wcp-operation": "session.runs.list",
+        "x-policy-action": "context.read",
+        "x-decoded-query-schema": {
+          "$ref": "../schemas/session-activity-read.json#SessionRunListQuery"
+        },
+        "description": "Parent session plus LATERAL child page in one statement, sequence_no<before_sequence ORDER BY sequence_no DESC LIMIT limit+1. Defaults25/max100, before_sequence positive int32, incoming numeric strings may have leading zeros. Shared parser checks parent ID, unique run IDs, strictly descending sequence below bound, safe versions and source structures. If lookahead exists, data.next_before_sequence equals last selected sequence; only selected rows parsed. No child timestamp/order inference from ULID; no total, outer scope/identity/hints or automatic next request.",
+        "parameters": [
+          {
+            "name": "before_sequence",
+            "in": "query",
+            "description": "Exclusive raw sequence boundary, need not identify an existing row; digits including leading zeros accepted on HTTP.",
+            "schema": { "$ref": "../schemas/session-activity-read.json#/$defs/sequence" }
+          },
+          { "$ref": "#/components/parameters/Limit" }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/RunPageSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/SessionNotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidActivity" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/sessions/{session_id}/runs/{run_id}": {
+      "parameters": [
+        { "$ref": "#/components/parameters/SessionId" },
+        { "$ref": "#/components/parameters/RunId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" },
+        { "$ref": "#/components/parameters/IfMatch" },
+        { "$ref": "#/components/parameters/IfMatchVersion" },
+        { "$ref": "#/components/parameters/IdempotencyKey" }
+      ],
+      "get": {
+        "operationId": "getSessionRun",
+        "tags": ["Session reads"],
+        "summary": "Read one run and its current parent session",
+        "x-wcp-operation": "session.run.read",
+        "x-policy-action": "context.read",
+        "x-decoded-query-schema": {
+          "$ref": "../schemas/session-activity-read.json#SessionRunReadQuery"
+        },
+        "description": "No query. Address exact run independently of directory position. One SQL left join returns parent plus requested run; absent parent SESSION_NOT_FOUND, absent child RUN_NOT_FOUND. Shared parser checks exact target IDs and full run metadata. Optional model omitted for SQL null but empty string valid. Current identity and write hint are outer extras; no outer scope. Run/current parent versions differ in meaning; recorded inner trace need not equal current request. No original run.start/finish receipt or model execution output.",
+        "responses": {
+          "200": { "$ref": "#/components/responses/RunDetailSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/RunNotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidActivity" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/sessions/{session_id}/tool-calls": {
+      "parameters": [
+        { "$ref": "#/components/parameters/SessionId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" },
+        { "$ref": "#/components/parameters/IfMatch" },
+        { "$ref": "#/components/parameters/IfMatchVersion" },
+        { "$ref": "#/components/parameters/IdempotencyKey" }
+      ],
+      "get": {
+        "operationId": "listSessionToolCalls",
+        "tags": ["Session reads"],
+        "summary": "Read one descending page of tool-call metadata",
+        "x-wcp-operation": "session.tools.list",
+        "x-policy-action": "context.read",
+        "x-decoded-query-schema": {
+          "$ref": "../schemas/session-activity-read.json#SessionToolCallListQuery"
+        },
+        "description": "One SQL returns parent, optional run existence and LATERAL page joining tools to same-session runs. Optional run_id must exist in session even when selected page is empty; otherwise RUN_NOT_FOUND404. Filter before tool ID COLLATE C DESC limit+1. Broken run relationships are excluded by inner join; selected tool metadata parsed, not lookahead or full parent-run metadata. Parser checks strict decreasing IDs below bound, session and optional run filter, <=limit; next_before_id equals last ID on full page. data.run_id echoed iff supplied. No timestamp sorting or outer identity/permission hints.",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "query",
+            "description": "Optional existing run in requested session; echoed in data when supplied.",
+            "schema": { "$ref": "../schemas/session-activity-read.json#/$defs/ulid" }
+          },
+          {
+            "name": "before_id",
+            "in": "query",
+            "description": "Exclusive raw ULID boundary, need not identify a stored tool; unbound to identity/filter/page size.",
+            "schema": { "$ref": "../schemas/session-activity-read.json#/$defs/ulid" }
+          },
+          { "$ref": "#/components/parameters/Limit" }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/ToolPageSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/RunNotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidActivity" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/sessions/{session_id}/tool-calls/{tool_call_id}": {
+      "parameters": [
+        { "$ref": "#/components/parameters/SessionId" },
+        { "$ref": "#/components/parameters/ToolCallId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" },
+        { "$ref": "#/components/parameters/IfMatch" },
+        { "$ref": "#/components/parameters/IfMatchVersion" },
+        { "$ref": "#/components/parameters/IdempotencyKey" }
+      ],
+      "get": {
+        "operationId": "getSessionToolCall",
+        "tags": ["Session reads"],
+        "summary": "Read a tool-call record, linked run and current parent session",
+        "x-wcp-operation": "session.tool.read",
+        "x-policy-action": "context.read",
+        "x-decoded-query-schema": {
+          "$ref": "../schemas/session-activity-read.json#SessionToolCallReadQuery"
+        },
+        "description": "No query. One SQL left-joins requested tool and its same-session run. Missing parent SESSION_NOT_FOUND404, missing tool TOOL_CALL_NOT_FOUND404, existing tool with invalid/missing run fails complete parser with SESSION_ACTIVITY_INVALID500. Data validates exact target, shared session and linked run ID, safe independent versions and source structures. Outer identity/write hint for review only; parent/run terminal state does not prevent reading started tool. This does not execute the tool, return its input/output, verify actual result or identify an original tool.call/finish request.",
+        "responses": {
+          "200": { "$ref": "#/components/responses/ToolDetailSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/ToolNotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidActivity" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": { "GatewayBearer": { "type": "http", "scheme": "bearer" } },
+    "parameters": {
+      "TenantId": { "$ref": "./search.json#/components/parameters/TenantId" },
+      "WorkspaceId": { "$ref": "./search.json#/components/parameters/WorkspaceId" },
+      "ProjectId": { "$ref": "./search.json#/components/parameters/ProjectId" },
+      "TraceParent": { "$ref": "./search.json#/components/parameters/TraceParent" },
+      "TraceId": { "$ref": "./search.json#/components/parameters/TraceId" },
+      "ExpectedActorId": {
+        "$ref": "./context-history.json#/components/parameters/ExpectedActorId"
+      },
+      "ExpectedClientId": {
+        "$ref": "./context-history.json#/components/parameters/ExpectedClientId"
+      },
+      "SessionId": {
+        "name": "session_id",
+        "in": "path",
+        "required": true,
+        "schema": { "$ref": "../schemas/session-activity-read.json#/$defs/ulid" }
+      },
+      "RunId": {
+        "name": "run_id",
+        "in": "path",
+        "required": true,
+        "schema": { "$ref": "../schemas/session-activity-read.json#/$defs/ulid" }
+      },
+      "ToolCallId": {
+        "name": "tool_call_id",
+        "in": "path",
+        "required": true,
+        "schema": { "$ref": "../schemas/session-activity-read.json#/$defs/ulid" }
+      },
+      "Limit": {
+        "name": "limit",
+        "in": "query",
+        "description": "Single digits-only HTTP value, including leading zeros, converted to integer1..100. Omitted defaults25; zero/sign/fraction/exponent rejected.",
+        "schema": { "$ref": "../schemas/session-activity-read.json#/$defs/limit" }
+      },
+      "IfMatch": {
+        "name": "If-Match",
+        "in": "header",
+        "description": "Optional generic W/\"version-N\" with nonnegative safe integer, leading zeros allowed; must agree numerically with If-Match-Version. Parsed but not used for conditional read, CAS or returned ETag.",
+        "schema": { "type": "string", "pattern": "^W/\"version-[0-9]+\"$" }
+      },
+      "IfMatchVersion": {
+        "name": "If-Match-Version",
+        "in": "header",
+        "description": "Optional digits0..MAX_SAFE_INTEGER including leading zeros. Both version headers must agree; valid value ignored by read handler.",
+        "schema": { "type": "string", "pattern": "^[0-9]+$" }
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "description": "Optional legacy header copied by generic precondition parsing, without dedicated key validation here; never causes a read to reuse an earlier cached success. Not an original-receipt lookup.",
+        "schema": { "type": "string" }
+      }
+    },
+    "responses": {
+      "StateSuccess": {
+        "description": "Current session closure state with outer scope, current trace, sole session source, current optional identity and write hint; no ETag.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/session-activity-read.json#SessionStateEnvelope" }
+          }
+        }
+      },
+      "RunPageSuccess": {
+        "description": "One current parent/run page, optional last-sequence continuation, sole session source; no identity/hints/outer scope/ETag.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/session-activity-read.json#SessionRunPageEnvelope" }
+          }
+        }
+      },
+      "RunDetailSuccess": {
+        "description": "Current parent/run with independently versioned metadata and outer optional current identity/write hint; sole session source, no outer scope/ETag.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/session-activity-read.json#SessionRunDetailEnvelope" }
+          }
+        }
+      },
+      "ToolPageSuccess": {
+        "description": "Current parent/tool page with optional original run_id filter and last-ID continuation; sole session source, no identity/hints/outer scope/ETag.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../schemas/session-activity-read.json#SessionToolCallPageEnvelope"
+            }
+          }
+        }
+      },
+      "ToolDetailSuccess": {
+        "description": "Current parent/run/tool with independently versioned metadata and outer optional current identity/write hint; sole session source, no outer scope/ETag.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../schemas/session-activity-read.json#SessionToolCallDetailEnvelope"
+            }
+          }
+        }
+      },
+      "Error": { "$ref": "./search.json#/components/responses/Error" },
+      "BadInput": {
+        "$ref": "#/components/responses/Error",
+        "description": "INVALID_INPUT for invalid path encoding/ULID, unsupported/repeated query, malformed or out-of-range numeric bounds/limit and filter IDs. INVALID_REQUEST_CONTEXT for malformed/disagreeing generic version headers. retryable=false. GET body/framing/media headers have no dedicated rejection."
+      },
+      "Unauthenticated": { "$ref": "./search.json#/components/responses/Unauthenticated" },
+      "Denied": {
+        "$ref": "#/components/responses/Error",
+        "description": "DENIED for requested scope/expected identity/Policy refusal, retryable=false. Lack of authenticated client alone is not a read denial. Parent project hidden/deleted/invalid classification instead SESSION_NOT_FOUND404."
+      },
+      "SessionNotFound": {
+        "$ref": "#/components/responses/Error",
+        "description": "SESSION_NOT_FOUND for absent/scoped-out session or nonvisible/deleted/invalid-classification parent, retryable=false. Does not disguise missing parent as an empty page."
+      },
+      "RunNotFound": {
+        "$ref": "#/components/responses/Error",
+        "description": "SESSION_NOT_FOUND as parent error; RUN_NOT_FOUND when requested run is not in that session (including run_id filter on an otherwise empty tool page). retryable=false."
+      },
+      "ToolNotFound": {
+        "$ref": "#/components/responses/Error",
+        "description": "SESSION_NOT_FOUND as parent error; TOOL_CALL_NOT_FOUND when requested tool is absent from session. Existing tool with broken linked run instead500. retryable=false."
+      },
+      "RateLimited": { "$ref": "./search.json#/components/responses/RateLimited" },
+      "InvalidState": {
+        "$ref": "#/components/responses/Error",
+        "description": "SESSION_ACTIVITY_INVALID for TypeError/RangeError parsing stored session state, UTC closure date, scope/identity/hint/source envelope, retryable=false. Other unexpected command-boundary INTERNAL_ERROR500 defaults retryable=true."
+      },
+      "InvalidActivity": {
+        "$ref": "#/components/responses/Error",
+        "description": "SESSION_ACTIVITY_INVALID for TypeError/SyntaxError from selected run/tool/page/identity or JSON source refs, including unsafe numeric versions/sequence and broken tool-run link; retryable=false. Handlers catch these two classes; other non-ContractError storage failures map503, not universally500."
+      },
+      "Unavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "SESSION_STORAGE_UNAVAILABLE for missing DB/SQL failures and handler-caught non-ContractError outside their explicit invalid-data classes; WORKBENCH_AUTH_UNAVAILABLE/AUDIT_PERSISTENCE_UNAVAILABLE at outer boundaries. retryable=true. No in-memory replacement or stale success fallback."
+      }
+    }
+  }
+}

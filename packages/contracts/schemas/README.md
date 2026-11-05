@@ -1,5 +1,13 @@
 # 独立契约结构定义
 
+2026-11-05，TODO **P0-01**：新增自包含 [session-activity-read.json](session-activity-read.json)，根为当前会话状态、运行目录/详情、工具调用目录/详情五种完整成功联合；HTTP 见 [session-reads OpenAPI](../openapi/session-reads.json)。包子路径对应文件名。
+
+提供 SessionCommandIdentity、SessionReadPermissions、SessionActivitySourceRef、SessionStateQuery、SessionRunReadQuery/ListQuery、SessionToolCallReadQuery/ListQuery、SessionActivitySession、SessionClosureState、SessionRunRecord/Page/Detail、SessionToolCallRecord/Page/Detail 和五个封套锚点。版本为正安全整数，运行序号另限正 int32；会话终止时间只接受四位年份规范 UTC 毫秒，活动摘要不含该字段。model 可为空字符串，工具名/保存 trace 只要求非空；来源扩展保留，无数量限制或来源权限证明。
+
+目录无外层范围/身份/权限提示；状态有外层范围，状态与两类详情有权限提示和可选当前身份。五个身份字段均为有界非空白文本，不要求 ULID。封闭结构描述服务器重建输出，不表示现有解析器拒绝所有输入扩展。排序/唯一 ID、父子归属、筛选回显、满页/末条续页相等、原范围/当前 trace、UTF-16/孤立代理项与真实日期仍由现有代码核对。目录原始位置不绑定身份/筛选/页大小，没有跨页快照。
+
+SDK getSessionState 完整核对状态封套，但未传 expectedIdentity 固定账号客户端；四个活动方法只进行通用封套及完整 data 校验，没有独立核对详情提示、唯一外层 session 来源或原 trace 相等。新 Schema 未接为运行校验器。P0-01/R-001 未完成、evidence 为空；仅源码文档人工审阅/指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
 2026-11-05，TODO **P0-01**：新增 [plane-inbox.json](plane-inbox.json) 与 [plane-inbox-retry.json](plane-inbox-retry.json)。前者自包含，提供 PlaneInboxIdentity、RecordQuery/SummaryQuery/ListQuery、Record/Page/Summary/Diagnosis 及四个完整读取成功封套；后者引用前者，提供 PlaneInboxRetryBody/Command/Receipt/Lookup 及两个完整成功封套。包子路径对应文件名；本地注册两份完整资源并保留 ID/相对路径，HTTP 见 [Plane 收件箱 OpenAPI](../openapi/plane-inbox.json)。
 
 输出为处理元数据，不包含原事件正文/来源/指纹。事件版本为正安全整数十进制字符串，队列 revision 为正 bigint 字符串，attempts/计数为非负 bigint 字符串；重试 expected_revision 为可加一的正 bigint。规范 UTC 时间支持扩展年份，不擅自添加一般性的接收/更新/应用/检查先后约束。Schema 描述状态与 null、概览零计数与时间、诊断 baseline 数量/位置/候选和回执状态关系；数值上限、UTF-16/孤立代理项、真实日期、原范围/身份/命令绑定、计数/版本算术与时间排序仍由原解析器检查。

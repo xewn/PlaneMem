@@ -1,6 +1,8 @@
 # PlaneMem
 
-按 TODO **P0-01** 补充 [Plane 收件箱与原重试回执 OpenAPI](packages/contracts/openapi/README.md#plane-收件箱与原重试回执) 及两份完整 Schema，覆盖列表、概览、详情、版本诊断、重试调度和原回执查询六路。区分事件版本/队列修订、真实提交水位/可见回执及重新排队/实际应用；OpenAPI 累计五十九路。P0-01 仍未完成；未编译、测试、运行校验器/生成器/接口或发布。
+按 TODO **P0-01** 补充 [会话状态与活动读取 OpenAPI](packages/contracts/openapi/README.md#会话状态与活动读取) 及完整 Schema，覆盖当前会话状态、运行目录/详情和工具调用目录/详情五路。明确原始位置分页、单次查询快照、当前身份权限提示、保存来源与 SDK 实际解析范围；OpenAPI 累计 64 路。P0-01 仍未完成；未编译、测试、运行校验器/生成器/接口或发布。
+
+按 TODO **P0-01** 补充 [Plane 收件箱与原重试回执 OpenAPI](packages/contracts/openapi/README.md#plane-收件箱与原重试回执) 及两份完整 Schema，覆盖列表、概览、详情、版本诊断、重试调度和原回执查询六路。区分事件版本/队列修订、真实提交水位/可见回执及重新排队/实际应用；该轮使 OpenAPI 累计五十九路。P0-01 仍未完成；未编译、测试、运行校验器/生成器/接口或发布。
 
 按 TODO **P0-01** 补充[旧索引内容与管理 OpenAPI](packages/contracts/openapi/README.md#旧索引内容与管理)及context-index Schema，覆盖目录、状态、内容写入、删除和恢复五路，明确原请求重放、到期/分类、历史元数据与外部capture边界。该轮使OpenAPI累计五十三路，P0-01仍未完成；未编译、测试、运行校验器/生成器/接口或发布。
 

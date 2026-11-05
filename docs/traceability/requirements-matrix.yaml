@@ -11,6 +11,27 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    session_activity_reads_openapi_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only five-route session state/activity OpenAPI and complete schema; P0-01 and R-001 remain incomplete."
+      artifacts:
+        - "packages/contracts/openapi/session-reads.json"
+        - "packages/contracts/schemas/session-activity-read.json"
+        - "packages/contracts/package.json"
+        - "packages/contracts/openapi/README.md"
+        - "packages/contracts/schemas/README.md"
+      behavior: "Full current session closure state, run directory/detail and tool-call directory/detail, query/sequence/version models, preserved source extensions, current optional identity/write hint and five complete envelopes. Current records never prove original command success or actual model/tool output."
+      boundaries: "No runtime/SDK/Mock/old-schema/dependency/database changes. Every query uses same-statement parent visibility; invalid parent classification excluded even with restricted-read. Raw sequence/ID pagination binds no scope/identity/filter/limit, parses selected rows only and provides no cross-page snapshot. Tool directory joins existing run; broken run in tool detail invalid500. Inner versions/traces/sources independent from parent/current outer trace. Source extensions and unbounded text retained; no source visibility check. State SDK validates full envelope without expected actor/client pinning; four activity methods do not independently parse outer hints or exact trace/session source."
+      evidence: []
+      remaining_scope: "Other WCP/MCP machine contracts, ordinary event payloads, SDK/Mock machine-contract consumption, breaking-change CI and tool/runtime/release evidence."
+      pending_evidence:
+        - "Local reference resolution, all five complete success shapes and exact current identity/hint/scope rules"
+        - "Positive safe versions/int32 sequences, four-digit UTC closure timestamps, source extensions and unbounded string semantics"
+        - "Same-statement parent visibility and child relationships, terminal parent reads, missing target versus corrupt linked run"
+        - "Raw pagination order/bounds, leading-zero wire inputs, filter existence/echo, selected/lookahead behavior and continuation"
+        - "Actual Bearer/client/Policy gates, generic version/cache semantics, error classes/retryability and SDK parsing differences"
+      execution: "Manual source/docs review and explicit formatting/Git text checks only; no build, typecheck, tests, validators, generators, product/API/database execution or release."
     plane_inbox_openapi_development_increment:
       date: "2026-11-05"
       todo: "P0-01"

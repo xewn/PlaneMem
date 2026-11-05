@@ -1,6 +1,8 @@
 # WCP API 契约 v1
 
-2026-11-05，TODO P0-01：[Plane 收件箱六路 OpenAPI](../../../packages/contracts/openapi/README.md#plane-收件箱与原重试回执) 及 plane-inbox/plane-inbox-retry Schema 覆盖列表、概览、详情、版本诊断、调度及原调度回执查询。完整描述元数据/身份提示、游标计数/真实提交水位、规范命令及历史回执；明确可信管理员/人工调度、可见性与完整事件核对先于重放，查询也持事务锁，排队不代表应用。OpenAPI 累计五十九路；P0-01/R-001 未完成、evidence 为空。未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+2026-11-05，TODO P0-01：[会话状态与活动五路 OpenAPI](../../../packages/contracts/openapi/README.md#会话状态与活动读取) 与 session-activity-read Schema 覆盖当前会话状态、运行目录/详情、工具目录/详情。完整描述原查询/数字版本与序号/分页/来源扩展/当前身份提示/成功封套；明确可见父项目、同语句快照、原始位置不绑定身份及 SDK 实际解析差异，不把状态当作原请求回执。OpenAPI 累计 64 路，P0-01/R-001 未完成、evidence 为空；未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
+2026-11-05，TODO P0-01：[Plane 收件箱六路 OpenAPI](../../../packages/contracts/openapi/README.md#plane-收件箱与原重试回执) 及 plane-inbox/plane-inbox-retry Schema 覆盖列表、概览、详情、版本诊断、调度及原调度回执查询。完整描述元数据/身份提示、游标计数/真实提交水位、规范命令及历史回执；明确可信管理员/人工调度、可见性与完整事件核对先于重放，查询也持事务锁，排队不代表应用。该轮使 OpenAPI 累计五十九路；P0-01/R-001 未完成、evidence 为空。未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 2026-11-05，TODO P0-01：[旧索引五路 OpenAPI](../../../packages/contracts/openapi/README.md#旧索引内容与管理)及context-index Schema覆盖目录/状态GET与内容写入/删除/恢复POST，完整描述原始请求/规范命令/状态/身份权限/历史内容与元数据回执。明确游标可改页大小、重放先后、恢复不延长到期和capture非原子；修正搜索/观察MEMORY_PROVIDER_OFF未配置与disabled的retryable差别。该轮使OpenAPI累计五十三路；P0-01/R-001未完成、evidence为空，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 

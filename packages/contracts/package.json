@@ -8,6 +8,8 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./schemas/session-activity-read.json": "./schemas/session-activity-read.json",
+    "./openapi/session-reads.json": "./openapi/session-reads.json",
     "./schemas/plane-inbox.json": "./schemas/plane-inbox.json",
     "./schemas/plane-inbox-retry.json": "./schemas/plane-inbox-retry.json",
     "./openapi/plane-inbox.json": "./openapi/plane-inbox.json",

@@ -1,6 +1,22 @@
 # OpenAPI 源码契约
 
-这里的文档描述已有 HTTP 实现，尚未经过校验器、生成器、编译、类型检查、测试或运行验证。文档版本不表示已发布或部署；当前覆盖保存包 5 路、文件 9 路、上下文条目 9 路、同步 6 路、冲突 5 路、建议 8 路、Plane 观察 4 路、搜索 2 路、旧索引 5 路及 Plane 收件箱 6 路，共 59 路，尚不是完整 WCP 接口目录。
+这里的文档描述已有 HTTP 实现，尚未经过校验器、生成器、编译、类型检查、测试或运行验证。文档版本不表示已发布或部署；当前覆盖保存包 5 路、文件 9 路、上下文条目 9 路、同步 6 路、冲突 5 路、建议 8 路、Plane 观察 4 路、搜索 2 路、旧索引 5 路、Plane 收件箱 6 路及会话状态/活动 5 路，共 64 路，尚不是完整 WCP 接口目录。
+
+## 会话状态与活动读取
+
+2026-11-05，TODO **P0-01**：[session-reads OpenAPI](session-reads.json) 覆盖 GET /v1/sessions/{session_id}、/runs、/runs/{run_id}、/tool-calls、/tool-calls/{tool_call_id} 五路；[session-activity-read Schema](../schemas/session-activity-read.json) 完整定义查询、当前状态/活动元数据、分页、当前身份权限提示和五类成功封套。包子路径对应文件名；本地同时加载 search/context-history HTTP 公共组件，保留相对路径和完整 Schema ID。
+
+五路要求签名 Bearer、准确授权范围及 context.read Policy，沿入口审计/通用限流；不独立要求写入客户端身份。带范围的有效令牌没有可信客户端时可只读，但不返回 session_identity，写入提示 false。每条 SQL 同时检查当前未删除父项目和有效分类，restricted 需要实际读取能力，admin 不能替代；未知分类即使有 restricted 权限也排除。不存在/隐藏父会话一律 404；可见父会话没有匹配子项才空 200。
+
+会话状态含当前 session_id/status/version/ended_at 与外层范围，running/paused 的 ended_at 为 null，终态为四位年份规范 UTC 毫秒。运行/工具的父会话摘要只有 ID/状态/版本；版本为正安全整数，运行序号为正 int32。model 的数据库 null 省略，空字符串有效；工具名和保存 trace 只要求非空，来源扩展保留且无数量限制。外层来源仅请求的 session，不拼接内部来源；不检查来源可见性/新鲜度，不返回模型或工具输入输出。
+
+两个目录默认 25、最多 100，数字查询接受前导零。运行按序号降序、工具按 ID 的 C 顺序降序，翻页位置是排他原值，不绑定身份/范围/筛选/页大小，也不要求边界记录存在。同一语句用父会话加有限 LATERAL 子查询取 limit+1，只解析选中行；续页等于满页最后一项。工具目录先联结同会话运行，显式 run_id 不存在 404；工具详情已有工具但运行联结损坏 500。单条查询快照不延伸到后续页面，不要求父子状态同时结束。
+
+状态和两种详情有当前身份/写权限提示，目录没有。提示仅检查可信客户端及 session.write/admin，没有执行未来写入的 Policy/OPA、归属/状态/并发版本检查。SDK 状态读取使用完整封套解析并核对原 trace/范围/单一来源，但不固定账号客户端；四个活动方法解析完整 data，未独立检查额外提示/原 trace 相等/唯一外层来源。不能把当前终态或提示当作原请求成功回执。
+
+GET 不读取 JSON 正文，无正文/framing、媒体/编码/缓存/Range 专用拒绝；详情拒绝全部查询，目录只接受列出的单值字段。五路解析通用版本头但忽略有效值，不做条件读取；误带幂等键不复用旧响应。成功 private,no-store、当前 trace、无 ETag；无专用完整响应字节/两容量/整次期限或读取后到期复查。错误保留实际状态与 retryable 区别；来源扩展和无界文本不能用行数上限冒称字节有界。
+
+本轮五路使 OpenAPI 累计 64 路。其他 WCP/MCP、事件 payload、SDK/Mock 机器契约接线与破坏性差异 CI 仍缺，P0-01/R-001 未完成、evidence 为空。仅人工源码文档审阅/指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 ## Plane 收件箱与原重试回执
 
@@ -14,7 +30,7 @@
 
 两 POST 的原正文 event_id 被路径覆盖，reason 先检查原长度再 trim；正文 request_key 与头键必须相同。HTTP 身份条件分别可选，SDK 两者均要求；两 POST 拒绝版本头，四 GET 只解析有效版本头但不做条件读取。仅列表接受查询参数。POST 认证前通用 1 MiB JSON、非 fatal UTF-8，坏/超限 400；无媒体/编码/缓存/Range 或 GET 正文专用拒绝。成功 private,no-store、当前 trace、空来源、无 ETag；无专用完整响应字节/两容量/整次期限或读取提交后到期复查。事务的 3 秒锁/15 秒语句超时不等于整次期限；提交后连接失败也可能返回 503，应保留原键查询。
 
-本轮新增六路，OpenAPI 累计五十九路。其余 WCP/MCP、事件 payload、SDK/Mock 机器契约接线及破坏性差异 CI 仍缺；P0-01/R-001 未完成、evidence 为空。仅人工源码文档审阅/指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+该轮新增六路，使 OpenAPI 累计五十九路。其余 WCP/MCP、事件 payload、SDK/Mock 机器契约接线及破坏性差异 CI 仍缺；P0-01/R-001 未完成、evidence 为空。仅人工源码文档审阅/指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 ## 旧索引内容与管理
 
 2026-11-05，TODO **P0-01**：[context-index OpenAPI](context-index.json)覆盖目录/状态两个GET和索引写入/删除/恢复三个POST；[context-index Schema](../schemas/context-index.json)完整定义五类成功、目录筛选/状态、当前身份、原始索引正文、规范管理命令及历史回执。包子路径对应文件名；本地加载context-index/search两份Schema及本OpenAPI、search/context-history公共HTTP组件，保留相对路径与完整ID。未运行校验器或生成器。

@@ -1,5 +1,7 @@
 # 公共契约目录
 
+- [会话状态与活动读取 OpenAPI](../../../packages/contracts/openapi/README.md#会话状态与活动读取)：TODO P0-01，当前状态、运行/工具目录与详情五路完整契约，保留数字版本、原始翻页位置、当前身份提示和来源扩展；仅源码，未运行校验。
+
 - [Plane 收件箱与原重试回执 OpenAPI](../../../packages/contracts/openapi/README.md#plane-收件箱与原重试回执)：TODO P0-01，四类元数据读取与调度/原回执六路完整契约，区分队列版本、真实水位及历史排队回执；仅源码，未运行校验。
 
 - [旧索引内容与管理 OpenAPI](../../../packages/contracts/openapi/README.md#旧索引内容与管理)：TODO P0-01，目录/状态/写入/删除/恢复五路完整契约，区分当前身份权限提示、保存正文和历史元数据回执；仅源码，未运行校验。
