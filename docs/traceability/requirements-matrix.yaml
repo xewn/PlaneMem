@@ -11,6 +11,18 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    session_lifecycle_mock_development:
+      date: "2026-11-05"
+      todo: "P0-02"
+      status: "Implementation source added; not compiled or executed. P0-02 and R-001 remain incomplete."
+      artifacts:
+        - "packages/sdk/src/mock-sessions.ts"
+        - "packages/contracts/src/session-mutation-model.ts"
+        - "packages/contracts/src/session-mutations.ts"
+        - "docs/design/01-contracts/session-mock-runtime.md"
+      behavior: "Stateful SDK mock for ordinary session start, runs, tool calls, finish/end, current reads and original receipts. Production and mock share the original transition implementation; explicit authority, CAS and immutable command replay."
+      remaining_scope: "Remaining WCP Mock coverage including checkpoint/handoff/resume and workbench session directories; machine-contract consumption and compatibility evidence."
+      evidence: []
     plane_webhook_openapi_development_increment:
       date: "2026-11-05"
       todo: "P0-01"

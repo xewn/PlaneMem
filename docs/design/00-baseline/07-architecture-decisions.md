@@ -1,5 +1,9 @@
 # 架构决策记录摘要
 
+2026-11-05 P0-02 登记落实：会话生命周期 Mock 与 SDK 接线已写入源码；生产模型/状态转换统一移入 contracts，原 service 保留类型与函数兼容出口。人工对照确认状态转换及回执解释正文原样迁移。实现与用法见 `docs/design/01-contracts/session-mock-runtime.md`；未编译、执行或测试，P0-02/R-001 仍未完成。
+
+2026-11-05 P0-02 会话生命周期 Mock 开发登记：补齐现有 SDK 的会话启动、运行创建/收尾、工具记录/收尾、会话结束、当前状态/活动分页及原回执查询。将现有 session-service 的纯状态转换和回执解释移入 contracts，生产入口保留兼容导出，Mock 复用同一转换而非复制规则。Mock 使用显式项目、身份、期限、权限和可见会话配置；同一 store 内保存状态与原请求回执，隔离身份/操作/会话的幂等键，返回历史结果并拒绝异文重用，先检查完整响应再提交内存变更。范围 contracts 共享转换、session-service 兼容出口、SDK Mock 接线及必要 TODO/追踪说明；不增加 HTTP 路由。仅开发和人工源码审阅，不编译、测试或发布；完成后独立提交并 push main，P0-02 保留未完成。
+
 2026-11-05 本轮源码落地（P0-01 / ADR-015）：Plane Webhook完整Schema/OpenAPI及两项包子路径已补齐，七类观察按aggregate配对，复用原事件字段/删除恢复约束但保持实际开放顶层及client_id；完整四态回执/独立错误、解码文本签名与原时间/来源、持久接收/处理/后置审计事务及错误/期限已人工对照。目录/WCP/收件箱说明/README/TODO/R001同步，新增一条后91路。P0-01/R001未完成、evidence为空；仅人工源码文档审阅/指定格式/Git文本检查，未编译、类型检查、测试、执行校验器/生成器/产品/SDK/Mock/API/数据库或发布。
 
 2026-11-05 P0-01 Plane Webhook完整机器契约（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增schemas/plane-webhook.json及openapi/plane-webhook.json，描述现有签名Canonical观察接收入口、支持事件/payload与完整四态持久回执及独立错误，复用现有事件封套/删除恢复模型。对照原文验签/时间窗口/头事件绑定、规范事件指纹与交付ID、接收/处理/交付审计事务边界及真实HTTP状态/trace/限额；不改变生产实现、不调用Webhook、不执行SQL。范围两份JSON、两项包子路径、schemas/openapi README、根README/TODO、公共契约目录/WCP/plane-inbox运行说明、R001及本ADR/T0.3/T4.1；完整入口新增一条后OpenAPI91路。P0-01/R001未完成、evidence为空；仅人工源码文档审阅/指定格式/Git文本检查，不编译、类型检查、测试、执行校验器/生成器/产品/SDK/Mock/API/数据库或发布，独立提交push main。

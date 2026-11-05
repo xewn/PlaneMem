@@ -1,5 +1,10 @@
 import { ContractError, type ProjectEntity, validateEntity } from '@planemem/contracts';
 import type { WcpRequest, WcpTransport } from './client.js';
+import {
+  isMockSessionPath,
+  type MockSessionAccess,
+  type MockSessionStore,
+} from './mock-sessions.js';
 import type { MockWorkItemSession, MockWorkItemStore } from './mock-work-items.js';
 import { isMockAuditRequest, type MockAuditSession, type MockAuditStore } from './mock-audit.js';
 import { isMockAdminRequest, type MockAdminSession, type MockAdminStore } from './mock-admin.js';
@@ -27,6 +32,7 @@ import {
 } from './mock-proposals.js';
 
 export interface MockWcpServerOptions {
+  sessions?: { store: MockSessionStore; session: MockSessionAccess };
   onRequest?: (request: WcpRequest) => void;
   artifacts?: { store: MockArtifactStore; session: MockArtifactSession };
   sync?: { store: MockSyncStore; session: MockSyncSession };
@@ -39,6 +45,7 @@ export interface MockWcpServerOptions {
 }
 
 export class MockWcpServer implements WcpTransport {
+  private readonly sessions: WcpTransport | undefined;
   private readonly idempotentResponses = new Map<string, ProjectEntity>();
   private readonly sync: WcpTransport | undefined;
   private readonly proposals: WcpTransport | undefined;
@@ -50,6 +57,7 @@ export class MockWcpServer implements WcpTransport {
   private readonly admin: WcpTransport | undefined;
 
   constructor(private readonly options: MockWcpServerOptions = {}) {
+    this.sessions = options.sessions?.store.connect(options.sessions.session);
     this.sync = options.sync?.store.connect(options.sync.session);
     this.proposals = options.proposals?.store.connect(options.proposals.session);
     this.artifacts = options.artifacts?.store.connect(options.artifacts.session);
@@ -62,6 +70,7 @@ export class MockWcpServer implements WcpTransport {
 
   async request<T = unknown>(request: WcpRequest): Promise<T> {
     this.options.onRequest?.(request);
+    if (this.sessions && isMockSessionPath(request.path)) return this.sessions.request<T>(request);
     if (this.audit && isMockAuditRequest(request)) return this.audit.request<T>(request);
     if (this.admin && isMockAdminRequest(request)) return this.admin.request<T>(request);
     if (this.contextPacks && isMockContextPackPath(request.path))

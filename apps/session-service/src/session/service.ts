@@ -6,7 +6,10 @@ import {
   assertSessionStartCurrent,
   type SessionStartRecorded,
   type SessionResumeOrigin,
-  type SourceRef,
+  type SessionMutationScope as SessionScope,
+  type SessionMutationSession as Session,
+  type SessionMutationRun as AgentRun,
+  type SessionMutationToolCall as ToolCall,
   type Ulid,
 } from '@planemem/contracts';
 import {
@@ -22,55 +25,13 @@ import {
   type SessionMutationCommit,
 } from './mutations.js';
 
-export interface SessionScope {
-  tenant_id: Ulid;
-  workspace_id: Ulid;
-  project_id: Ulid;
-}
-
-export type SessionStatus = 'running' | 'paused' | 'ended' | 'abandoned' | 'failed';
-
-export interface Session extends SessionScope {
-  schema_version: 1;
-  session_id: Ulid;
-  client_id: string;
-  actor_id: string;
-  parent_session_id?: Ulid;
-  resume_origin?: SessionResumeOrigin;
-  status: SessionStatus;
-  version: number;
-  started_at: string;
-  ended_at?: string;
-  trace_id: string;
-  source_refs: SourceRef[];
-}
-
-export interface AgentRun {
-  schema_version: 1;
-  run_id: Ulid;
-  session_id: Ulid;
-  sequence: number;
-  model?: string;
-  status: 'running' | 'completed' | 'failed';
-  version: number;
-  /** Version of the session after the original command; not the current live version. */
-  session_version?: number;
-  trace_id: string;
-  source_refs: SourceRef[];
-}
-
-export interface ToolCall {
-  schema_version: 1;
-  tool_call_id: Ulid;
-  session_id: Ulid;
-  run_id: Ulid;
-  tool_name: string;
-  status: 'started' | 'succeeded' | 'failed';
-  version: number;
-  session_version?: number;
-  trace_id: string;
-  source_refs: SourceRef[];
-}
+export type {
+  SessionMutationScope as SessionScope,
+  SessionMutationStatus as SessionStatus,
+  SessionMutationSession as Session,
+  SessionMutationRun as AgentRun,
+  SessionMutationToolCall as ToolCall,
+} from '@planemem/contracts';
 
 export interface StartSessionInput extends SessionScope {
   client_id: string;

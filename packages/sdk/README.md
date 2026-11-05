@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-05（TODO P0-02）：新增 `MockSessionStore` 和 `MockWcpServer({ sessions: { store, session } })`，接通现有 SDK 的会话启动、运行/工具记录与收尾、会话结束、当前状态/活动分页和原回执查询。复用生产服务的状态转换，支持版本冲突、原请求重放及显式身份/权限/可见范围。配置和完整开发流程见[会话 Mock](../../docs/design/01-contracts/session-mock-runtime.md)。代码未编译、运行或测试；P0-02 尚未完成。
+
 2026-11-05（TODO P0-02）：新增 `MockAdminStore`、`MockAdminSeed`、`MockAdminSession` 与 `MockWcpServer({ admin: { store, session } })`，支持原 `getAdminSnapshot`。种子显式提供单项目 1–2 个 read_restricted 场景及完整固定快照，会话明确模拟客户端认证、管理员角色和独立读取能力。缺少 audit/context 读取能力分别返回 not-authorized/null，来源随计数权限匹配；缺少对应场景在连接时拒绝，不猜测受限计数。保留原时间与版本，外部检查全部 not-checked；read-succeeded 和 runtime/postgres 来源仅为模拟协议字段。64 KiB 种子、16 KiB 会话/头/完整响应、4 KiB 正文，响应还受调用方更小限额，30 秒/signal 前后检查。详见[管理快照 Mock](../../docs/design/01-contracts/admin-mock-runtime.md)。仅源码文档人工审阅及格式/Git 文本检查，未编译、类型检查、测试、执行 SDK/Mock/API 或发布。
 
 2026-11-05：`MockAuditSession` 新增可选 `export_access: { export_data, export_restricted, policy_allowed }`，经原 audit 配置支持 `exportAuditView`；省略时拒绝导出，原查询保持。核对 4 KiB 原项目/ID/摘要选择、当前可见性与分类权限，重算共享 96 KiB 规范视图摘要并重新检查后才返回完整 128 KiB 封套。导出独立两笔名额/75 秒/signal，取消后的在途摘要继续占位；所有响应与容量检查先于内存放行提交。每次成功保存独立 `MockAuditExportRelease`（最多 1000 条/16 MiB），可用 `store.getExportRelease(id)` 本地只读取得独立副本，含 simulation:true、原身份/选择/大小/省略状态/trace，不复制正文。协议 release-recorded 仅说明模拟内存记录存在，不能证明持久审计、交付或文件保存；无拒绝审计、真实 Policy 或数据库。详见[审计导出 Mock](../../docs/design/01-contracts/audit-mock-runtime.md#已审阅视图导出2026-11-05源码增量)。仅源码文档人工审阅与格式/Git 文本检查，未编译、类型检查、测试、执行 SDK/Mock/API 或发布。
