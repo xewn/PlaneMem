@@ -4,11 +4,24 @@ package planemem.session_current
 # exact endpoint/configuration, finite validity and current revocation lists independently.
 default allow := false
 
+permitted_action if {
+  input.action == "session.current.read"
+}
+
+permitted_action if {
+  input.action == "session.origin.read"
+  data.planemem.session_current_policy.origin_read_enabled == true
+  "context.origin.read" in input.context.capabilities
+  regex.match("^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$", input.selection_id)
+  input.selection_id != "00000000-0000-0000-0000-000000000000"
+  regex.match("^[a-f0-9]{64}$", input.selection_digest)
+}
+
 allow if {
   policy := data.planemem.session_current_policy
   policy.enabled == true
   regex.match("^[a-f0-9]{64}$", policy.revision)
-  input.action == "session.current.read"
+  permitted_action
   input.target.protocol_version == "p02-session-current-v1"
   input.target.endpoint_ref == policy.endpoint_ref
   input.target.configuration_digest == policy.configuration_digest

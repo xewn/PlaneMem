@@ -66,9 +66,10 @@ import { PostgresSessionStore, withSessionTransaction } from './session-persiste
 import { PostgresSessionCurrentStore } from './session-current-persistence.js';
 import { SessionOriginBridge, type SessionOriginAuthority } from './session-origin-bridge.js';
 import { PostgresSessionOriginStore } from './session-origin-persistence.js';
+import { isSessionSourcePath, registerSessionOriginRoute, SessionOriginReader, sessionOriginOperation } from './session-origin-http.js';
 import { SessionCurrentIdentityScope, type SessionCurrentOpaOptions } from './session-current-authority.js';
 import { parseSessionCurrentRequest, registerSessionCurrentRoute, SessionCurrentReader,
-  sessionCurrentOperation, sessionCurrentPath, type SessionCurrentAuthority,
+  sessionCurrentOperation, type SessionCurrentAuthority,
   type SessionCurrentConfiguration } from './session-current.js';
 import { persistConflictDecision } from './conflict-persistence.js';
 import { registerConflictRead } from './conflict-read.js';
@@ -487,12 +488,14 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
     : undefined;
   const router = new CommandRouter(
     async (request) => {
-      if (request.operation === sessionCurrentOperation &&
+      if ((request.operation === sessionCurrentOperation || request.operation === sessionOriginOperation) &&
           (request.context.authenticated_client !== true ||
            !Number.isFinite(Date.parse(request.context.token_expires_at ?? '')) ||
            Date.parse(request.context.token_expires_at!) <= Date.now() ||
            !request.context.capability.includes('context.read')))
         return { allowed: false as const, reason: 'current_session_read_context_required' };
+      if (request.operation === sessionOriginOperation && !request.context.capability.includes('context.origin.read'))
+        return { allowed: false as const, reason: 'original_session_read_capability_required' };
       const authContext = {
         tenant_id: request.context.tenant_id,
         workspace_id: request.context.workspace_id,
@@ -1505,14 +1508,17 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
   registerContextIndexLifecycle(router, auditDb);
   registerMcpReads(router, resources, workbench, projection, legacySearch, workbenchDb);
   const api = new ApiGateway(router, options.rate_limit ?? 100);
+  const originBridge = auditDb && options.session_current_origin_authority
+    ? new SessionOriginBridge(new PostgresSessionOriginStore(auditDb), options.session_current_origin_authority) : undefined;
   registerSessionCurrentRoute(router, api,
     auditDb && options.session_current_configuration
-      ? new SessionCurrentReader(options.session_current_origin_authority
-          ? new SessionOriginBridge(new PostgresSessionOriginStore(auditDb), options.session_current_origin_authority)
-          : new PostgresSessionCurrentStore(auditDb),
+      ? new SessionCurrentReader(originBridge ?? new PostgresSessionCurrentStore(auditDb),
           options.session_current_configuration, options.session_current_authority)
       : undefined,
     sessionCurrentIdentity ? request => sessionCurrentIdentity.forRequest(request) : undefined);
+  registerSessionOriginRoute(router, api,
+    originBridge && options.session_current_configuration ? new SessionOriginReader(originBridge, options.session_current_configuration) : undefined,
+    sessionCurrentIdentity ? request => sessionCurrentIdentity.forOriginRequest(request) : undefined);
   // Internal dispatch paths are rejected by the public HTTP path router.
   api.route('POST', '/_mcp/catalog', 'mcp.catalog');
   api.route('POST', '/_mcp/resource', 'mcp.resource');
@@ -1738,7 +1744,7 @@ function toRouterDecision(
 }
 
 function policyAction(request: CommandRequest): string {
-  if (request.operation === sessionCurrentOperation) return 'context.read';
+  if (request.operation === sessionCurrentOperation || request.operation === sessionOriginOperation) return 'context.read';
   if (request.operation === 'session.command-context') {
     if (request.context.capability.includes('context.read')) return 'context.read';
     if (
@@ -1879,7 +1885,7 @@ async function handleRequest(
   runtime: RuntimeState,
 ): Promise<void> {
   const url = new URL(request.url ?? '/', `http://${runtime.host}:${runtime.port}`);
-  if (url.pathname === sessionCurrentPath) response.setHeader('cache-control', 'no-store');
+  if (isSessionSourcePath(url.pathname)) response.setHeader('cache-control', 'no-store');
   if (request.method === 'GET' && url.pathname === '/health') {
     const health = {
       service: 'planemem-platform',
@@ -1985,7 +1991,7 @@ async function handleRequest(
   }
 
   const traceId =
-    (url.pathname === sessionCurrentPath ? header(request, 'x-trace-id') : undefined) ||
+    (isSessionSourcePath(url.pathname) ? header(request, 'x-trace-id') : undefined) ||
     header(request, 'traceparent') || header(request, 'x-trace-id') || `trace_http_${createUlid()}`;
   let body: RuntimeBody = {};
   const auditExportRoute = request.method === 'POST' && url.pathname === '/v1/audit/export';
@@ -2022,7 +2028,7 @@ async function handleRequest(
     !contextPackSaveReceiptRoute
   ) {
     try {
-      body = url.pathname === sessionCurrentPath
+      body = isSessionSourcePath(url.pathname)
         ? parseSessionCurrentRequest(await readCurrentSessionBody(request))
         : await readJson(request);
     } catch (error) {
@@ -2034,7 +2040,7 @@ async function handleRequest(
 
   let context: RequestContext;
   try {
-    const currentSessionRoute = url.pathname === sessionCurrentPath;
+    const currentSessionRoute = isSessionSourcePath(url.pathname);
     const continuityRoute = /^\/v1\/(?:sessions|handoffs)(?:\/|$)/.test(url.pathname);
     const sessionCommandContextRoute = url.pathname === '/v1/sessions/command-context';
     const conflictCommandContextRoute = url.pathname === '/v1/conflicts/commands/context';
@@ -2983,12 +2989,12 @@ async function handleRequest(
       context,
       signal: controller.signal,
     });
-    const result = url.pathname === sessionCurrentPath && runtime.session_current_identity
+    const result = isSessionSourcePath(url.pathname) && runtime.session_current_identity
       ? await runtime.session_current_identity.run(context, header(request, 'authorization'), dispatch)
       : await dispatch();
     if (!controller.signal.aborted) writeJson(response, result.status, result.body, result.headers);
   } catch (error) {
-    if (url.pathname !== sessionCurrentPath) throw error;
+    if (!isSessionSourcePath(url.pathname)) throw error;
     if (!controller.signal.aborted) writeJson(response, 403,
       errorEnvelope('DENIED', 'Current session authorization is unavailable', request, traceId));
   } finally {

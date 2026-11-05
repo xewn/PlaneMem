@@ -58,8 +58,25 @@ export class SessionCurrentIdentityScope {
     return { authorize: target => this.authorize(call, request.signal, target) };
   }
 
+  forOriginRequest(request: CommandRequest): SessionCurrentAuthority {
+    const call = this.calls.getStore();
+    const selectionId = request.input.selection_id; const selectionDigest = request.input.selection_digest;
+    if (!call || !call.active || identityImage(request.context) !== call.identity || request.operation !== 'session.origin.read' ||
+        request.input.protocol_version !== 'p02-session-origin-v1' || typeof selectionId !== 'string' ||
+        !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(selectionId) ||
+        typeof selectionDigest !== 'string' || !/^[a-f0-9]{64}$/.test(selectionDigest)) throw denied(request.context.trace_id);
+    const origin = Object.freeze({ selectionId, selectionDigest });
+    return { authorize: async (target, signal) => {
+      const controller = new AbortController(); const abort = () => controller.abort();
+      const signals = [request.signal, signal].filter((item): item is AbortSignal => item !== undefined);
+      for (const item of signals) { item.addEventListener('abort', abort, { once: true }); if (item.aborted) abort(); }
+      try { return await this.authorize(call, controller.signal, target, origin); }
+      finally { for (const item of signals) item.removeEventListener('abort', abort); }
+    } };
+  }
+
   private async authorize(call: CallIdentity, signal: AbortSignal | undefined,
-    target: Readonly<SessionCurrentTarget>): Promise<SessionCurrentGrant> {
+    target: Readonly<SessionCurrentTarget>, origin?: Readonly<{ selectionId: string; selectionDigest: string }>): Promise<SessionCurrentGrant> {
     const guard = () => {
       if (!call.active || signal?.aborted || this.calls.getStore() !== call ||
           !Number.isFinite(Date.parse(call.context.token_expires_at ?? '')) ||
@@ -71,11 +88,13 @@ export class SessionCurrentIdentityScope {
         if (target[key] !== call.context[key]) throw denied(target.trace_id);
       const current = await authenticatedContext(call.context, target.trace_id, call.authorization, this.verify, true);
       guard();
-      if (identityImage(current) !== call.identity || !current.capability.includes('context.read'))
+      if (identityImage(current) !== call.identity || !current.capability.includes('context.read') ||
+          (origin !== undefined && !current.capability.includes('context.origin.read')))
         throw denied(target.trace_id);
       const tokenDigest = hash(call.authorization);
       const input = {
-        action: 'session.current.read', target: { ...target },
+        action: origin === undefined ? 'session.current.read' : 'session.origin.read', target: { ...target },
+        ...(origin === undefined ? {} : { selection_id: origin.selectionId, selection_digest: origin.selectionDigest }),
         context: {
           tenant_id: current.tenant_id, workspace_id: current.workspace_id, project_id: current.project_id,
           actor_id: current.actor_id, client_id: current.client_id,
@@ -98,8 +117,10 @@ export class SessionCurrentIdentityScope {
       const { challenge: _challenge, trace_id: _trace, ...resource } = target;
       return {
         target: { ...target }, identity_digest: hash(JSON.stringify([identityImage(current, false), tokenDigest])),
-        authorization_ref: `planemem-session-current:${hash(JSON.stringify([
+        authorization_ref: origin === undefined ? `planemem-session-current:${hash(JSON.stringify([
           this.decisionUrl, this.revision, decision.policy_digest, resource,
+        ]))}` : `planemem-session-origin:${hash(JSON.stringify([
+          this.decisionUrl, this.revision, decision.policy_digest, resource, 'session.origin.read', origin,
         ]))}`,
         expires_at: new Date(decision.expires_at_epoch_seconds * 1000).toISOString(),
       };

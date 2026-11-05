@@ -66,3 +66,28 @@ test_changed_policy_contents_change_digest if {
   current.allow == true
   original.policy_digest != current.policy_digest
 }
+
+fixture_origin_input := object.union(fixture_input, {
+  "action": "session.origin.read",
+  "selection_id": "00000000-0000-0000-0000-000000000001",
+  "selection_digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "context": object.union(fixture_input.context, {"capabilities": ["context.read", "context.origin.read"]}),
+})
+
+test_origin_disabled_by_default if {
+  not allow with data.planemem.session_current_policy as fixture_policy with input as fixture_origin_input
+}
+test_origin_explicit_enable_and_capability if {
+  policy := object.union(fixture_policy, {"origin_read_enabled": true})
+  allow with data.planemem.session_current_policy as policy with input as fixture_origin_input
+}
+test_origin_current_permission_alone_denied if {
+  policy := object.union(fixture_policy, {"origin_read_enabled": true})
+  bad := object.union(fixture_origin_input, {"context": fixture_input.context})
+  not allow with data.planemem.session_current_policy as policy with input as bad
+}
+test_origin_wrong_selection_denied if {
+  policy := object.union(fixture_policy, {"origin_read_enabled": true})
+  bad := object.union(fixture_origin_input, {"selection_digest": "not-a-digest"})
+  not allow with data.planemem.session_current_policy as policy with input as bad
+}

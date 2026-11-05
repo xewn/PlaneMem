@@ -15,7 +15,7 @@ export const sessionCurrentPath = '/v1/continuity/session-current';
 const ulid = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
 const digest = /^[a-f0-9]{64}$/;
 
-/** Deliberately flat five-string request grammar; no general JSON parser or nested payload. */
+/** Bounded flat string-object grammar shared by current and origin requests; no nested payload. */
 export function parseSessionCurrentRequest(bytes: Uint8Array): Record<string, unknown> {
   try {
     if (bytes.byteLength > 4096) throw new Error();
@@ -60,7 +60,7 @@ export interface SessionCurrentGrant {
  * Header claims, a role string, historical operation proofs and configuration alone are not authority.
  * The HTTP server intentionally has no default allowing implementation of this port. */
 export interface SessionCurrentAuthority {
-  authorize(target: Readonly<SessionCurrentTarget>): Promise<SessionCurrentGrant>;
+  authorize(target: Readonly<SessionCurrentTarget>, signal?: AbortSignal): Promise<SessionCurrentGrant>;
 }
 
 export interface SessionCurrentSnapshot {
@@ -69,6 +69,8 @@ export interface SessionCurrentSnapshot {
   observed_at: string;
   /** Optional additional owning-source approval deadline, never a caller-provided extension. */
   source_expires_at?: string;
+  /** Trusted owning source callback only; never serialized into the HTTP result. */
+  source_revalidate?: () => Promise<void>;
 }
 
 export interface SessionCurrentStore {
@@ -123,6 +125,7 @@ export class SessionCurrentReader {
     guard();
     if (!authority) throw failure('OPERATION_UNAVAILABLE', target.trace_id);
     const first = await this.authorize(authority, target);
+    sourceExpiresAt = Math.min(sourceExpiresAt, Date.parse(first.expires_at));
     guard();
     let snapshot: SessionCurrentSnapshot | null;
     try {
@@ -145,6 +148,7 @@ export class SessionCurrentReader {
     guard();
     if (JSON.stringify(first) !== JSON.stringify(last) || Date.parse(first.expires_at) <= Date.now())
       throw failure('DENIED', target.trace_id);
+    if (frozen?.source_revalidate) { await frozen.source_revalidate(); guard(); }
     // Missing and wrong-owner rows are indistinguishable, and both require final authorization.
     if (!frozen || !session) throw failure('NOT_FOUND', target.trace_id);
     return {

@@ -76,6 +76,7 @@ export interface SessionOriginObservation {
   identity_digest: string;
   approval_ref: string;
   approval_digest: string;
+  approval_expires_at: string;
   expires_at: string;
 }
 
@@ -86,12 +87,40 @@ export class SessionOriginBridge implements SessionCurrentStore {
 
   async read(target: Readonly<SessionCurrentTarget>, signal?: AbortSignal): Promise<SessionCurrentSnapshot> {
     const observation = await this.observe(target, signal);
-    return { ...observation.session, source_expires_at: observation.expires_at };
+    return { ...observation.session, source_expires_at: observation.expires_at,
+      source_revalidate: () => this.revalidate(observation, signal) };
   }
 
-  async observe(input: Readonly<SessionCurrentTarget>, signal?: AbortSignal): Promise<SessionOriginObservation> {
+  /** Final source check after outer OIDC/OPA/policy awaits. Preserve the original approval window;
+   * the returned observation's budget-clipped expiry is not an authorization renewal. */
+  async revalidate(observation: SessionOriginObservation, signal?: AbortSignal): Promise<void> {
+    const frozen = structuredClone(observation);
+    const controller = new AbortController(); const abort = () => controller.abort();
+    signal?.addEventListener('abort', abort, { once: true });
+    if (signal?.aborted) abort();
+    const started = Date.now(); const elapsed = performance.now();
+    const deadline = Date.parse(frozen.expires_at);
+    const timer = setTimeout(abort, Math.max(0, Math.min(30_000, deadline - started)));
+    const guard = () => {
+      if (controller.signal.aborted || !Number.isFinite(deadline) || Date.now() < started || Date.now() >= deadline ||
+          performance.now() - elapsed >= Math.min(30_000, deadline - started)) throw unavailable(frozen.target.trace_id);
+    };
+    try {
+      guard();
+      const target = Object.freeze({ ...frozen.target });
+      const expected = freezeGrant({ target, selection: frozen.selection, identity_digest: frozen.identity_digest,
+        approval_ref: frozen.approval_ref, approval_digest: frozen.approval_digest, expires_at: frozen.approval_expires_at }, target);
+      const current = freezeGrant(await this.authority.authorize(target, controller.signal), target); guard();
+      if (JSON.stringify(stable(current)) !== JSON.stringify(stable(expected))) throw unavailable(target.trace_id);
+    } catch { throw unavailable(frozen.target.trace_id); }
+    finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); }
+  }
+
+  async observe(input: Readonly<SessionCurrentTarget>, signal?: AbortSignal,
+    expected?: Readonly<{ selection_id: string; selection_digest: string }>): Promise<SessionOriginObservation> {
     const started = Date.now(); const elapsed = performance.now();
     const target = Object.freeze(structuredClone(input));
+    const selected = expected === undefined ? undefined : Object.freeze({ ...expected });
     let expires = started + 30_000;
     const controller = new AbortController();
     const abort = () => controller.abort();
@@ -105,6 +134,8 @@ export class SessionOriginBridge implements SessionCurrentStore {
     try {
       validateTarget(target); guard();
       const grant = freezeGrant(await this.authority.authorize(target, controller.signal), target); guard();
+      if (selected && (grant.selection.selection_id !== selected.selection_id ||
+          sessionOriginSelectionDigest(grant.selection) !== selected.selection_digest)) throw unavailable(target.trace_id);
       expires = Math.min(expires, Date.parse(grant.expires_at)); guard();
       clearTimeout(timer);
       timer = setTimeout(abort, Math.max(0, Math.min(expires - Date.now(), 30_000 - (performance.now() - elapsed))));
@@ -115,7 +146,7 @@ export class SessionOriginBridge implements SessionCurrentStore {
       guard();
       // The store promise resolves only AFTER the database transaction is closed.
       const last = freezeGrant(await this.authority.authorize(target, controller.signal), target); guard();
-      if (JSON.stringify(grant) !== JSON.stringify(last)) throw unavailable(target.trace_id);
+      if (JSON.stringify(stable(grant)) !== JSON.stringify(stable(last))) throw unavailable(target.trace_id);
       return { ...observed, expires_at: new Date(Math.min(expires,
         Date.now() + 30_000 - (performance.now() - elapsed))).toISOString() };
     } catch {
@@ -196,13 +227,13 @@ export function inspectSessionOrigin(snapshot: SessionOriginSnapshot, grant: Ses
     const records = snapshot.records.map(row => Object.freeze({ ...row }));
     const record = records.at(-1)!;
     return {
-      format: sessionOriginBridgeFormat, selection: structuredClone(selection), selection_digest: hash(JSON.stringify(selection)),
+      format: sessionOriginBridgeFormat, selection: structuredClone(selection), selection_digest: sessionOriginSelectionDigest(selection),
       original_records: Object.freeze(records), original_records_digest: hash(JSON.stringify(records)),
       original_record_json: record.record_json!, original_record_digest: hash(record.record_json!),
       migration_inventory_json: snapshot.migration_inventory_json, migration_inventory_digest: selection.migration_inventory_digest,
       session: { ...snapshot.session }, session_digest: hash(snapshot.session.session_json), target: { ...target },
       identity_digest: fixed.identity_digest, approval_ref: fixed.approval_ref, approval_digest: fixed.approval_digest,
-      expires_at: fixed.expires_at,
+      approval_expires_at: fixed.expires_at, expires_at: fixed.expires_at,
     };
   } catch { throw unavailable(grant?.target?.trace_id ?? 'session-origin-unavailable'); }
 }
@@ -213,6 +244,10 @@ export function legacyStartFingerprint(target: SessionCurrentTarget, selection: 
     configuration_digest: selection.original_configuration_digest, action: 'session.start', expected_revision: null,
     payload: selection.parent_session_id === null ? {} : { parent_session_id: selection.parent_session_id },
     scope: [target.tenant_id, target.workspace_id, target.project_id], actor_id: target.actor_id, client_id: target.client_id })));
+}
+/** Versioned selection digest: recursively ordinal-sorted keys, compact JSON, SHA-256 of UTF-8. */
+export function sessionOriginSelectionDigest(selection: SessionOriginSelection): string {
+  return hash(JSON.stringify(stable(selection)));
 }
 function freezeGrant(value: SessionOriginGrant, target: Readonly<SessionCurrentTarget>): SessionOriginGrant {
   if (!exact(value, ['target', 'selection', 'identity_digest', 'approval_ref', 'approval_digest', 'expires_at']) ||
