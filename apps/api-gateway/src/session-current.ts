@@ -73,7 +73,8 @@ export interface SessionCurrentStore {
   read(target: Readonly<SessionCurrentTarget>): Promise<SessionCurrentSnapshot | null>;
 }
 
-export function registerSessionCurrentRoute(router: CommandRouter, api: ApiGateway, reader?: SessionCurrentReader): void {
+export function registerSessionCurrentRoute(router: CommandRouter, api: ApiGateway, reader?: SessionCurrentReader,
+  authorityFor?: (request: CommandRequest) => SessionCurrentAuthority): void {
   router.register(sessionCurrentOperation, async request => {
     if (!reader) throw failure('OPERATION_UNAVAILABLE', request.context.trace_id);
     // Freeze request data used by the second policy/audit pass; do not allow a provider to renew it.
@@ -85,7 +86,7 @@ export function registerSessionCurrentRoute(router: CommandRouter, api: ApiGatew
       context: Object.freeze(context),
       ...(request.signal === undefined ? {} : { signal: request.signal }),
     });
-    return reader.read(fixed, () => router.authorize(fixed));
+    return reader.read(fixed, () => router.authorize(fixed), authorityFor?.(request));
   });
   api.noStore(sessionCurrentOperation);
   api.route('POST', sessionCurrentPath, sessionCurrentOperation);
@@ -103,7 +104,8 @@ export class SessionCurrentReader {
     this.configuration = Object.freeze({ ...configuration });
   }
 
-  async read(request: CommandRequest, reauthorize: () => Promise<void>): Promise<CommandResult> {
+  async read(request: CommandRequest, reauthorize: () => Promise<void>,
+    authority: SessionCurrentAuthority | undefined = this.authority): Promise<CommandResult> {
     const started = Date.now();
     const elapsed = performance.now();
     const tokenExpiresAt = Date.parse(request.context.token_expires_at ?? '');
@@ -116,8 +118,8 @@ export class SessionCurrentReader {
         throw failure('OPERATION_UNAVAILABLE', target.trace_id);
     };
     guard();
-    if (!this.authority) throw failure('OPERATION_UNAVAILABLE', target.trace_id);
-    const first = await this.authorize(target);
+    if (!authority) throw failure('OPERATION_UNAVAILABLE', target.trace_id);
+    const first = await this.authorize(authority, target);
     guard();
     let snapshot: SessionCurrentSnapshot | null;
     try {
@@ -131,7 +133,7 @@ export class SessionCurrentReader {
     const session = frozen === null ? null : readSessionCurrentSnapshot(frozen, target);
     await reauthorize(); // Includes the actual router policy and its durable audit sink.
     guard();
-    const last = await this.authorize(target);
+    const last = await this.authorize(authority, target);
     guard();
     if (JSON.stringify(first) !== JSON.stringify(last) || Date.parse(first.expires_at) <= Date.now())
       throw failure('DENIED', target.trace_id);
@@ -155,9 +157,9 @@ export class SessionCurrentReader {
     };
   }
 
-  private async authorize(target: SessionCurrentTarget): Promise<SessionCurrentGrant> {
+  private async authorize(authority: SessionCurrentAuthority, target: SessionCurrentTarget): Promise<SessionCurrentGrant> {
     try {
-      return this.grant(await this.authority!.authorize(target), target);
+      return this.grant(await authority.authorize(target), target);
     } catch {
       throw failure('DENIED', target.trace_id);
     }

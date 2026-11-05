@@ -64,6 +64,7 @@ import { registerPlaneInboxRetries } from './plane-inbox-retry.js';
 import { PostgresPlaneInboxMetrics } from './plane-inbox-metrics.js';
 import { PostgresSessionStore, withSessionTransaction } from './session-persistence.js';
 import { PostgresSessionCurrentStore } from './session-current-persistence.js';
+import { SessionCurrentIdentityScope, type SessionCurrentOpaOptions } from './session-current-authority.js';
 import { parseSessionCurrentRequest, registerSessionCurrentRoute, SessionCurrentReader,
   sessionCurrentOperation, sessionCurrentPath, type SessionCurrentAuthority,
   type SessionCurrentConfiguration } from './session-current.js';
@@ -189,6 +190,8 @@ export interface PlatformServerOptions {
   session_current_configuration?: SessionCurrentConfiguration;
   /** Independent current-object authority in addition to the HTTP OIDC identity boundary. */
   session_current_authority?: SessionCurrentAuthority;
+  /** Explicit production current-authority source; mutually exclusive with an injected authority. */
+  session_current_opa?: SessionCurrentOpaOptions;
   /** Optional long-term memory projection. Omit it to keep the offline context-only mode. */
   memory_service?: MemoryServiceAdapter;
   memory_provider_mode?: MemoryProviderMode;
@@ -211,6 +214,7 @@ interface RuntimeBody {
 }
 
 interface RuntimeState {
+  session_current_identity: SessionCurrentIdentityScope | undefined;
   artifact_uploads: ArtifactUploadGate;
   artifact_downloads: ArtifactDownloadGate;
   observe_artifact_download: ArtifactDownloadObserver | undefined;
@@ -348,6 +352,12 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
         })
       : undefined;
   const verifyGatewayToken = options.oidc_verify ?? verifier?.verifyAuthorization.bind(verifier);
+  if (options.session_current_opa &&
+      (!options.session_current_configuration || !verifyGatewayToken || options.session_current_authority))
+    throw new Error('Current session OPA requires configuration, OIDC and no alternate authority');
+  const sessionCurrentIdentity = options.session_current_opa && verifyGatewayToken
+    ? new SessionCurrentIdentityScope(verifyGatewayToken, options.session_current_opa)
+    : undefined;
   const sessions = new SessionService(sessionStore);
   const continuation = new ContinuationService(sessions, sessionStore);
   const policy = new PolicyService({
@@ -1491,7 +1501,8 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
     auditDb && options.session_current_configuration
       ? new SessionCurrentReader(new PostgresSessionCurrentStore(auditDb),
           options.session_current_configuration, options.session_current_authority)
-      : undefined);
+      : undefined,
+    sessionCurrentIdentity ? request => sessionCurrentIdentity.forRequest(request) : undefined);
   // Internal dispatch paths are rejected by the public HTTP path router.
   api.route('POST', '/_mcp/catalog', 'mcp.catalog');
   api.route('POST', '/_mcp/resource', 'mcp.resource');
@@ -1634,6 +1645,7 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
       observe_artifact_download: observeArtifactDownload,
       artifact_writes_enabled: artifactWriter !== undefined,
       oidc_verify: verifyGatewayToken,
+      session_current_identity: sessionCurrentIdentity,
       host,
       port,
       version,
@@ -2948,7 +2960,7 @@ async function handleRequest(
   response.once('close', abort);
   if (request.aborted || response.destroyed) abort();
   try {
-    const result = await api.handle({
+    const dispatch = () => api.handle({
       method,
       path: url.pathname,
       body,
@@ -2961,7 +2973,14 @@ async function handleRequest(
       context,
       signal: controller.signal,
     });
+    const result = url.pathname === sessionCurrentPath && runtime.session_current_identity
+      ? await runtime.session_current_identity.run(context, header(request, 'authorization'), dispatch)
+      : await dispatch();
     if (!controller.signal.aborted) writeJson(response, result.status, result.body, result.headers);
+  } catch (error) {
+    if (url.pathname !== sessionCurrentPath) throw error;
+    if (!controller.signal.aborted) writeJson(response, 403,
+      errorEnvelope('DENIED', 'Current session authorization is unavailable', request, traceId));
   } finally {
     request.off('aborted', abort);
     response.off('close', abort);
