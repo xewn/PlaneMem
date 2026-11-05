@@ -7,6 +7,7 @@ export interface HttpRequest {
   body?: Record<string, unknown>;
   headers: Record<string, string | undefined>;
   context: RequestContext;
+  signal?: AbortSignal;
 }
 
 export interface HttpResponse {
@@ -17,6 +18,7 @@ export interface HttpResponse {
 
 export class ApiGateway {
   private readonly handlerIdempotency = new Set<string>();
+  private readonly uncached = new Set<string>();
   private readonly routes = new Map<string, string>();
   private readonly routeTemplates: Array<{
     method: HttpRequest['method'];
@@ -37,6 +39,14 @@ export class ApiGateway {
 
   route(method: HttpRequest['method'], path: string, operation: string): void {
     this.routes.set(`${method} ${path}`, operation);
+  }
+
+  /** Fresh observations must also prevent HTTP intermediaries from caching errors or successes. */
+  noStore(...operations: string[]): void {
+    for (const operation of operations) {
+      this.uncached.add(operation);
+      this.handlerIdempotency.add(operation);
+    }
   }
 
   handlerOwnsIdempotency(...operations: string[]): void {
@@ -61,6 +71,13 @@ export class ApiGateway {
   }
 
   async handle(request: HttpRequest): Promise<HttpResponse> {
+    const response = await this.handleCore(request);
+    const route = this.resolveRoute(request.method, request.path);
+    if (route && this.uncached.has(route.operation)) response.headers['cache-control'] = 'no-store';
+    return response;
+  }
+
+  private async handleCore(request: HttpRequest): Promise<HttpResponse> {
     const trace_id = request.context.trace_id;
     const route = this.resolveRoute(request.method, request.path);
     const idempotency =
@@ -111,6 +128,7 @@ export class ApiGateway {
       operation: route.operation,
       input: { ...(request.body ?? {}), ...route.parameters },
       context: request.context,
+      ...(request.signal === undefined ? {} : { signal: request.signal }),
     };
     try {
       const result = await this.router.execute(command);

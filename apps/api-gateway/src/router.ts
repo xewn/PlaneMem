@@ -19,6 +19,7 @@ export interface CommandRequest {
   operation: string;
   input: Record<string, unknown>;
   context: RequestContext;
+  signal?: AbortSignal;
 }
 
 export interface CommandResult {
@@ -54,7 +55,7 @@ export class CommandRouter {
     this.handlers.set(operation, handler);
   }
 
-  async execute(request: CommandRequest): Promise<CommandResult> {
+  async authorize(request: CommandRequest): Promise<void> {
     const decision = await this.policy(request);
     await this.observeDecision?.(request, decision);
     if (!decision.allowed)
@@ -63,6 +64,10 @@ export class CommandRouter {
         trace_id: request.context.trace_id,
         retryable: false,
       });
+  }
+
+  async execute(request: CommandRequest): Promise<CommandResult> {
+    await this.authorize(request);
     const handler = this.handlers.get(request.operation);
     if (!handler)
       throw new ContractError('COMMAND_NOT_FOUND', 'Command is not supported', {

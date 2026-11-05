@@ -33,6 +33,9 @@ import {
   persistPlaneEvent,
 } from './runtime-persistence.js';
 import { PostgresSessionStore } from './session-persistence.js';
+import { PostgresSessionCurrentStore } from './session-current-persistence.js';
+import { parseSessionCurrentRequest, registerSessionCurrentRoute, SessionCurrentReader, sessionCurrentOperation,
+  sessionCurrentPath, type SessionCurrentAuthority } from './session-current.js';
 import { createSessionCommands, sessionOperations } from './session-commands.js';
 import { PostgresOperationTransactions } from './continuity-persistence.js';
 import { PostgresPreparedMemoryStore } from './memory-continuity-persistence.js';
@@ -68,6 +71,9 @@ export interface PlatformServerOptions {
   memory_client_id?: string;
   continuity_endpoint_ref?: string;
   continuity_configuration_digest?: string;
+  /** Independent authenticated current-object authority; headers are only requested coordinates.
+   * No environment flag or header may install an allowing substitute. */
+  session_current_authority?: SessionCurrentAuthority;
 }
 
 export interface PlatformServer {
@@ -162,6 +168,12 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
   let auditSequence = 0;
   const router = new CommandRouter(
     async (request) => {
+      if (request.operation === sessionCurrentOperation &&
+          (!request.context.token_expires_at ||
+           !Number.isFinite(Date.parse(request.context.token_expires_at)) ||
+           Date.parse(request.context.token_expires_at) <= Date.now() ||
+           !request.context.capability.includes('context.read')))
+        return { allowed: false as const, reason: 'current_session_read_context_required' };
       const authContext = {
         tenant_id: request.context.tenant_id,
         workspace_id: request.context.workspace_id,
@@ -540,6 +552,12 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
     });
 
   const api = new ApiGateway(router, options.rate_limit ?? 100);
+  registerSessionCurrentRoute(router, api,
+    auditDb && continuityConfiguration.endpoint_ref &&
+      /^[a-f0-9]{64}$/.test(continuityConfiguration.configuration_digest)
+      ? new SessionCurrentReader(new PostgresSessionCurrentStore(auditDb),
+          continuityConfiguration, options.session_current_authority)
+      : undefined);
   api.handlerOwnsIdempotency(
     ...sessionOperations,
     ...['capabilities', 'execute', 'query', 'close'].map(
@@ -643,7 +661,7 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
 }
 
 export function operationPolicyAction(operation: string, input?: Record<string, unknown>): string {
-  return operation === 'session.continuity.capabilities'
+  return operation === 'session.continuity.capabilities' || operation === sessionCurrentOperation
     ? 'context.read'
     : operation.startsWith('session.continuity.') &&
         memoryContinuityActions.includes(input?.action as never)
@@ -718,6 +736,7 @@ async function handleRequest(
   runtime: RuntimeState,
 ): Promise<void> {
   const url = new URL(request.url ?? '/', `http://${runtime.host}:${runtime.port}`);
+  if (url.pathname === sessionCurrentPath) response.setHeader('cache-control', 'no-store');
   if (request.method === 'GET' && url.pathname === '/health') {
     const health = {
       service: 'planemem-platform',
@@ -771,7 +790,9 @@ async function handleRequest(
   let body: RuntimeBody = {};
   if (request.method === 'POST') {
     try {
-      body = await readJson(request);
+      body = url.pathname === sessionCurrentPath
+        ? parseSessionCurrentRequest(await readCurrentSessionBody(request))
+        : await readJson(request);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Request body must be valid JSON';
       writeJson(response, 400, errorEnvelope('INVALID_JSON', message, request, traceId));
@@ -788,17 +809,28 @@ async function handleRequest(
   }
 
   const method = request.method as HttpRequest['method'];
-  const result = await api.handle({
-    method,
-    path: url.pathname,
-    body,
-    headers: {
-      'content-type': header(request, 'content-type'),
-      'idempotency-key': header(request, 'idempotency-key'),
-    },
-    context,
-  });
-  writeJson(response, result.status, result.body, result.headers);
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  request.once('aborted', abort);
+  response.once('close', abort);
+  if (request.aborted || response.destroyed) abort();
+  try {
+    const result = await api.handle({
+      method,
+      path: url.pathname,
+      body,
+      headers: {
+        'content-type': header(request, 'content-type'),
+        'idempotency-key': header(request, 'idempotency-key'),
+      },
+      context,
+      signal: controller.signal,
+    });
+    if (!controller.signal.aborted) writeJson(response, result.status, result.body, result.headers);
+  } finally {
+    request.off('aborted', abort);
+    response.off('close', abort);
+  }
 }
 
 async function handlePlaneWebhook(
@@ -1261,6 +1293,18 @@ async function readJson(request: IncomingMessage): Promise<RuntimeBody> {
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed))
     throw new Error('Request body must be a JSON object');
   return parsed as RuntimeBody;
+}
+
+async function readCurrentSessionBody(request: IncomingMessage): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of request) {
+    const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    size += bytes.byteLength;
+    if (size > 4096) throw new Error('Current session request exceeds 4 KiB');
+    chunks.push(bytes);
+  }
+  return Buffer.concat(chunks);
 }
 
 async function readRaw(request: IncomingMessage): Promise<string> {
