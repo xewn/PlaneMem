@@ -28,6 +28,7 @@ import {
   parseResumeReceiptQuery,
   validateIdempotencyKey,
   type CheckpointContent,
+  type CheckpointHistoryQuery,
   type CheckpointMemoryReference,
   type CheckpointSavedRecord,
   type ContextPackReceipt,
@@ -645,33 +646,41 @@ function readContinuity(c: Context, match: RegExpExecArray | null) {
     input[name] = Number(value);
   }
   const query = parseCheckpointHistoryQuery(input);
+  return c.output(readMockCheckpointHistory(c.values(), query, c.scope, c.trace));
+}
+
+/** One history projection shared by the dedicated GET and workbench POST. */
+export function readMockCheckpointHistory(
+  rows: IterableIterator<MockSessionStored>,
+  query: CheckpointHistoryQuery,
+  scope: SessionMutationScope,
+  trace: string,
+) {
   const candidates: Extract<ContinuityStored, { kind: 'checkpoint' }>[] = [];
-  for (const row of c.values())
+  for (const row of rows)
     if (
       row.kind === 'checkpoint' &&
-      row.value.session_id === id &&
+      row.value.session_id === query.session_id &&
       (query.before_revision === undefined || row.value.revision < query.before_revision)
     )
       candidates.push(row);
   candidates.sort((a, b) => b.value.revision - a.value.revision);
   const page = candidates.slice(0, 10);
-  return c.output(
-    parseCheckpointHistoryEnvelope(
-      {
-        ...envelope(
-          page.map((row) => ({ ...row.value, created_at: row.created_at })),
-          c.trace,
-          [{ type: 'postgres', id: 'wcp_session_checkpoints' }],
-        ),
-        ...c.scope,
-        session_id: id,
-        ...(candidates.length > page.length
-          ? { next_before_revision: page.at(-1)!.value.revision }
-          : {}),
-      },
-      query,
-      c.scope,
-      c.trace,
-    ),
+  return parseCheckpointHistoryEnvelope(
+    {
+      ...envelope(
+        page.map((row) => ({ ...row.value, created_at: row.created_at })),
+        trace,
+        [{ type: 'postgres', id: 'wcp_session_checkpoints' }],
+      ),
+      ...scope,
+      session_id: query.session_id,
+      ...(candidates.length > page.length
+        ? { next_before_revision: page.at(-1)!.value.revision }
+        : {}),
+    },
+    query,
+    scope,
+    trace,
   );
 }

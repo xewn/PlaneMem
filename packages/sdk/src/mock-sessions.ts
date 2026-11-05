@@ -49,6 +49,7 @@ import {
   type ContinuityStored,
 } from './mock-session-continuity.js';
 import type { MockContextPackStore, MockContextPackSession } from './mock-context-packs.js';
+import { readMockSessionWorkbench } from './mock-session-workbench.js';
 
 export interface MockSessionStoreOptions {
   scope: { tenant_id: string; workspace_id: string; project_id: string };
@@ -186,6 +187,8 @@ export function isMockSessionPath(path: unknown): path is string {
 
 /** In-memory lifecycle and original receipts shared by explicitly connected simulated callers. */
 export class MockSessionStore {
+  private readonly storeId = createUlid();
+  private workbenchReads = 0;
   private readonly scope: SessionMutationScope;
   private readonly contextPacks: MockContextPackStore | undefined;
   private readonly records = new Map<string, Stored>();
@@ -312,13 +315,20 @@ export class MockSessionStore {
       const continuity =
         typeof original.path === 'string' &&
         isMockSessionContinuityPath(original.path.split('?')[0]!);
+      const workbench =
+        typeof original.path === 'string' && original.path.split('?')[0] === '/v1/workbench/query';
       const request: Request = {
         method: original.method,
         path: original.path,
         headers,
         ...(original.body === undefined
           ? {}
-          : { body: snapshot(original.body, continuity ? CONTINUITY_REQUEST : MAX_REQUEST) }),
+          : {
+              body: snapshot(
+                original.body,
+                workbench ? 8 * 1024 : continuity ? CONTINUITY_REQUEST : MAX_REQUEST,
+              ),
+            }),
         ...(original.response_type === undefined ? {} : { response_type: original.response_type }),
         ...(original.max_response_bytes === undefined
           ? {}
@@ -332,13 +342,20 @@ export class MockSessionStore {
       )
         throw new TypeError();
       if (
-        !isMockSessionPath(request.path) ||
+        (!isMockSessionPath(request.path) && !workbench) ||
         request.path.length > MAX_REQUEST ||
         /[\\#]/.test(request.path)
       )
         throw new TypeError();
       const url = new URL(request.path, 'https://mock.invalid');
       if (url.pathname !== request.path.split('?')[0]) throw new TypeError();
+      const maximumResponse =
+        continuity ||
+        (workbench &&
+          object(request.body).operation === 'checkpoints' &&
+          object(request.body).session_id !== undefined)
+          ? CONTINUITY_RESPONSE
+          : MAX_RESPONSE;
       for (const key of ['tenant_id', 'workspace_id', 'project_id'] as const)
         if (headers['x-' + key.replaceAll('_', '-')] !== this.scope[key]) fail('DENIED', trace);
       for (const key of ['actor_id', 'client_id'] as const)
@@ -358,10 +375,7 @@ export class MockSessionStore {
         try {
           detached = snapshot(
             value,
-            Math.min(
-              continuity ? CONTINUITY_RESPONSE : MAX_RESPONSE,
-              request.max_response_bytes ?? (continuity ? CONTINUITY_RESPONSE : MAX_RESPONSE),
-            ),
+            Math.min(maximumResponse, request.max_response_bytes ?? maximumResponse),
           );
         } catch {
           return fail('GATEWAY_RESPONSE_INVALID', trace);
@@ -383,6 +397,29 @@ export class MockSessionStore {
           headers['if-match-version'] !== undefined
         )
           throw new TypeError();
+      }
+      if (workbench) {
+        return await budget.wait(async () => {
+          if (this.workbenchReads >= 2) fail('RATE_LIMITED', trace);
+          this.workbenchReads++;
+          try {
+            return await readMockSessionWorkbench({
+              request,
+              store_id: this.storeId,
+              scope: this.scope,
+              access,
+              trace,
+              session: (id) => this.session(id, access, trace),
+              values: () => this.records.values(),
+              visibility: () => (access.visible === 'all' ? 'all' : [...access.visible].sort()),
+              output,
+              check,
+            });
+          } finally {
+            // Keep the slot until the underlying digest settles, even if the caller stopped waiting.
+            this.workbenchReads--;
+          }
+        });
       }
       if (isMockSessionContinuityPath(url.pathname)) {
         return await budget.wait(() =>

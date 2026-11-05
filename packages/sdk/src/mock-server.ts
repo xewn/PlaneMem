@@ -5,6 +5,7 @@ import {
   type MockSessionAccess,
   type MockSessionStore,
 } from './mock-sessions.js';
+import { isMockSessionWorkbenchRequest } from './mock-session-workbench.js';
 import type { MockWorkItemSession, MockWorkItemStore } from './mock-work-items.js';
 import { isMockAuditRequest, type MockAuditSession, type MockAuditStore } from './mock-audit.js';
 import { isMockAdminRequest, type MockAdminSession, type MockAdminStore } from './mock-admin.js';
@@ -70,7 +71,11 @@ export class MockWcpServer implements WcpTransport {
 
   async request<T = unknown>(request: WcpRequest): Promise<T> {
     this.options.onRequest?.(request);
-    if (this.sessions && isMockSessionPath(request.path)) return this.sessions.request<T>(request);
+    if (
+      this.sessions &&
+      (isMockSessionPath(request.path) || isMockSessionWorkbenchRequest(request))
+    )
+      return this.sessions.request<T>(request);
     if (this.audit && isMockAuditRequest(request)) return this.audit.request<T>(request);
     if (this.admin && isMockAdminRequest(request)) return this.admin.request<T>(request);
     if (this.contextPacks && isMockContextPackPath(request.path))

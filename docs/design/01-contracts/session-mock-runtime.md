@@ -134,6 +134,47 @@ context_packs: {
 
 不绑定包的续接返回 `none`；旧内联包只保存原引用/摘要，续接返回 `legacy-unverified`；已保存包经上述读取校验后返回 `checked` 和完整包。这里的来源检查仍是显式 Mock 场景，不证明真实后端来源。检查点 `state_hash` 与生产服务共用旧 32 位摘要算法，保留历史 `sha256:` 前缀，不能当作密码学 SHA-256；保存包的摘要使用其原完整算法。
 
+## 工作台查询
+
+同一个 store 现在同时接收 `/v1/workbench/query` 的下列只读操作。通过 `MockWcpServer({ sessions: { store, session } })` 或 `store.connect(access)` 都可访问，操作在工作项 Mock 的兜底分派前识别；其余工作台操作仍交给各自配置。
+
+| 操作 | 现有 SDK 用法 | 读取内容 |
+| --- | --- | --- |
+| `sessions` | `client.listSessions(query)` | 当前可见会话，含运行/工具计数、最新检查点、父会话与续接来源 |
+| `session` | transport 的显式 POST；SDK `getSessionState` 仍使用原 GET | 指定会话当前状态和写入权限提示 |
+| `handoffs` | `client.listHandoffs(query)` | 当前交接、接收方、领取归属与检查点摘要 |
+| `checkpoints`，不含 `session_id` | `client.listCheckpointRegistry(query)` 或 `listCheckpoints(query)` | 项目可见检查点目录和摘要 |
+| `checkpoints`，含 `session_id` | `client.listCheckpoints({ session_id, before_revision })` | 指定会话的完整历史笔记，与专用 GET 共用同一投影 |
+
+下例接前述跨客户端交接示例，仅为开发用法，未执行：
+
+```ts
+const filters = { status: 'running' as const, limit: 1 };
+const firstPage = await nextClient.listSessions(filters);
+if (firstPage.next_cursor) {
+  const nextPage = await nextClient.listSessions({
+    ...filters,
+    cursor: firstPage.next_cursor,
+  });
+}
+const claimed = await nextClient.listHandoffs({
+  session_id: source.data.session_id,
+  status: 'closed',
+});
+const checkpoints = await nextClient.listCheckpointRegistry({
+  checkpoint_id: checkpoint.data.checkpoint_id,
+});
+const history = await nextClient.listCheckpoints({ session_id: source.data.session_id });
+```
+
+目录从当前会话账本直接读取；启动、活动写入、保存检查点、领取交接和续接后，新查询可见其更新。先按连接的 `read_sessions`、项目和会话可见范围过滤，检查点/交接不能绕过父会话可见性；项目不可读时拒绝读取。活动计数包含所有状态，最新检查点按修订号选择。交接 `closed` 筛选包含已领取或已到期，不代表重新关闭了会话；接收方匹配与“当前账号已领取”按本次身份生成。
+
+三类目录默认每页 25、最多 100，分别按开始/更新时间/创建时间倒序、同时间 ID 升序。内部写入时间原为毫秒，目录仅补零到协议要求的六位小数。游标以 SHA-256 绑定当前 store、完整身份/期限/权限/可见集合、操作、规范筛选及页大小，跨 store、改变筛选或可见集合后须重开第一页；该摘要不是签名或授权凭据。摘要期间新增可见会话会使当前读取拒绝并要求重新开始，避免页与游标的范围不一致。每页在摘要结束后同步读取当前内存状态，跨页不保证快照，不自动去重或补页。
+
+文本筛选对生产目录对应字段做不区分大小写的字面子串匹配，保留 `%`、`_` 等字符本义；使用 JavaScript Unicode 转小写，不宣称与数据库所有语言排序规则完全等价。交接/检查点摘要取第一条 `next_actions`，其次 `in_progress`、`completed`，空字符串仍是有效摘要；缺失为 `missing`，超过 8 KiB 返回 `too-large` 和 `null`，筛选仍使用完整原摘要。当前只有由写入产生的 `origin=session` 交接，`origin=projection` 返回空页；尚未提供旧投影或异常历史数据种子。
+
+工作台正文最多 8 KiB、头最多 16 KiB；目录/状态完整响应最多 2 MiB，会话历史最多 8 MiB，调用者可声明更低限额。拒绝写入条件、缓存/范围/编码/长度请求头，沿 30 秒/取消和身份到期检查；每 store 最多两笔工作台读取在途，取消后待底层摘要真正结束才释放名额，第三笔返回 `RATE_LIMITED`。目录保留协议要求的 `postgres` 来源标签，仅指本地模拟投影，没有访问 PostgreSQL 或进行持久审计。
+
 ## 行为
 
 - 五类进度命令与生产服务共用 `prepareSessionMutation` 和 `readSessionMutationReceipt`。原入口仍从 session-service 导出相同函数和类型。会话、运行、工具版本不匹配时返回原冲突错误；同终态的新请求保留原 delta-zero 规则；不同终态拒绝覆盖。会话结束不会自动结束运行或工具，已有运行/工具允许独立收尾，与原服务一致。
@@ -143,4 +184,4 @@ context_packs: {
 - 运行按 sequence 倒序，工具按 ID 倒序，默认每页 25、最多 100；支持原 SDK 的筛选/续页及单条详情。分页反映每次读取时的当前状态，不承诺跨页快照。
 - 普通会话请求正文和头分别最多 16 KiB；检查点/交接/续接正文最多 1 MiB，头仍为 16 KiB。普通响应最多 2 MiB，连续工作响应最多 8 MiB，另受共享解析器和调用者更低限制；检查点详情最多 2 MiB，历史最多 8 MiB。单 store 最多 10,000 条内部记录、16 MiB 序列化账本；容量不足拒绝整个新命令，不驱逐原回执。响应解析、容量检查、取消/30 秒期限和身份到期检查均先于同步内存提交；提交后的等待超时仍须按原键查询结果。
 
-这里只实现 SDK transport 级模拟，没有监听 HTTP、连接数据库、执行真实鉴权或持久审计，也没有崩溃恢复。当前不提供持久数据导入、会话/交接/检查点目录工作台查询、历史异常数据种子或交接到期调度；其余公开 WCP 面和运行契约证据仍需完成。完整 OpenAPI/MCP 契约消费仍属于 P0-01。
+这里只实现 SDK transport 级模拟，没有监听 HTTP、连接数据库、执行真实鉴权或持久审计，也没有崩溃恢复。当前不提供持久数据导入、旧交接投影/历史异常数据种子或交接到期调度；其余公开 WCP 面和运行契约证据仍需完成。完整 OpenAPI/MCP 契约消费仍属于 P0-01。

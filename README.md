@@ -1,6 +1,6 @@
 # PlaneMem
 
-当前按 TODO **P0-02** 开发：[会话与客户端交接 Mock](docs/design/01-contracts/session-mock-runtime.md) 已增加会话生命周期、检查点、交接创建/领取、另一客户端续接和原回执实现，可选接入已有保存包 Mock。处理版本冲突、重复请求和共享状态的原子提交。未编译、运行或测试，P0-02 未验收完成。下方 OpenAPI 数量是已有接口描述覆盖，不代表新增功能或 TODO 完成数。
+当前按 TODO **P0-02** 开发：[会话与客户端交接 Mock](docs/design/01-contracts/session-mock-runtime.md) 已增加会话生命周期、检查点、交接创建/领取、另一客户端续接和原回执实现，可选接入已有保存包 Mock；工作台会话/交接/检查点目录与历史查询现已读取同一账本，支持筛选分页、活动计数和当前归属提示。未编译、运行或测试，P0-02 未验收完成。下方 OpenAPI 数量是已有接口描述覆盖，不代表新增功能或 TODO 完成数。
 
 按 TODO **P0-01** 补齐 [Plane Webhook OpenAPI](packages/contracts/openapi/README.md#plane-webhook) 及完整Schema，覆盖现有签名接收入口、七种Canonical观察和四态持久回执。明确原文本验签、接收/处理/交付审计不同事务及失败后的未知结果；OpenAPI源码累计91路。P0-01仍未完成，主TODO仍为0/36；未编译、测试、运行校验器/生成器/接口或发布。
 
