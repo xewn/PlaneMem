@@ -11,6 +11,30 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    session_commands_openapi_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only six-route session progress OpenAPI and full write/original-receipt schemas; P0-01 and R-001 remain incomplete."
+      artifacts:
+        - "packages/contracts/openapi/session-commands.json"
+        - "packages/contracts/schemas/session-command-write.json"
+        - "packages/contracts/schemas/session-command-receipt.json"
+        - "packages/contracts/package.json"
+        - "packages/contracts/openapi/README.md"
+        - "packages/contracts/schemas/README.md"
+      behavior: "Five complete historical write outputs and original operation-specific recorded/not-observed summary. Raw HTTP preserves unknown fields and effective header/path overrides for fingerprints; strict client commands remain distinct. Child and parent versions use separate values and shared delta0/1; a saved terminal result is not execution proof."
+      boundaries: "No runtime/SDK/Mock/old-schema/dependency/database changes. Visible project/session locks precede replay; new changes and full receipt commit atomically, unchanged terminal writes still save receipts. Replay checks current child identity/version/status but receipt-only lookup checks saved snapshot without current child read. Wire snapshots/source extensions and loose historical text/date/source rules differ from stricter SDK parsing. Configured-store failures reject; wholly absent store retains offline local fixture, while lookup requires database. Six POSTs retain generic pre-auth1MiB JSON parser and ignore URL query, with no dedicated response/time budgets; valid lookup write headers are ignored."
+      evidence: []
+      remaining_scope: "Other WCP/MCP machine contracts, ordinary event payloads, SDK/Mock machine-contract consumption, breaking-change CI and tool/runtime/release evidence."
+      pending_evidence:
+        - "Local references, five complete historical outputs, six minimal receipt variants and operation-discriminated queries"
+        - "Raw versus strict-client fields, path/header precedence, ignored model values and original extra-field fingerprint preservation"
+        - "Project/session/child locking, source visibility, atomic mutation/receipt and configured-store versus fixture semantics"
+        - "Original replay before fresh CAS, current child consistency and historical cache publication"
+        - "Paired delta0/1, maximum-safe no-change results, int32 run sequence and lifecycle/late result rules"
+        - "Lookup snapshot/absence/error behavior without current child read, repair or new command"
+        - "Wire extensions versus SDK source normalization, creator-versus-caller identity, date/trace/ETag and HTTP budget differences"
+      execution: "Manual source/docs review and explicit formatting/Git text checks only; no build, typecheck, tests, validators, generators, product/API/database execution or release."
     session_start_openapi_development_increment:
       date: "2026-11-05"
       todo: "P0-01"

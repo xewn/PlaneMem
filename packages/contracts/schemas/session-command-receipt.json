@@ -1,0 +1,223 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/session-command-receipt.json",
+  "title": "PlaneMem original session progress command lookup",
+  "description": "Complete original query and minimal historical observation for five operations. Register session-command-write.json, session-start.json and session-activity-read.json locally. not-observed is not proof of failure, rollback or permission to change key/version.",
+  "$comment": "Runtime checks exact target/original fingerprint, optional original body key/session equality, operation/IDs/status and safe version delta relationships. Historical command extensions are intentionally allowed. No machine-contract execution/integration evidence.",
+  "$ref": "#SessionCommandReceiptEnvelope",
+  "$defs": {
+    "ulid": { "$ref": "./session-command-write.json#/$defs/ulid" },
+    "positive": { "$ref": "./session-command-write.json#/$defs/positive" },
+    "key": { "$ref": "./session-command-write.json#/$defs/key" },
+    "operation": { "enum": ["run.start", "run.finish", "tool.call", "tool.finish", "end"] },
+    "command": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["expected_version"],
+      "properties": {
+        "expected_version": { "$ref": "#/$defs/positive" },
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "idempotency_key": { "$ref": "#/$defs/key" }
+      },
+      "description": "Exact original business/body fields plus effective original session version, including ignored unknown values. Optional session_id equals path and key equals request_key; original route child IDs must be restored for finish queries. Do not replace original fields with current metadata. No generic actor/client/model value validation here."
+    },
+    "queryFields": {
+      "type": "object",
+      "required": ["request_key", "operation", "command"],
+      "properties": {
+        "request_key": { "$ref": "#/$defs/key" },
+        "operation": { "$ref": "#/$defs/operation" },
+        "command": { "$ref": "#/$defs/command" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "operation": { "const": "run.finish" } } },
+          "then": {
+            "properties": {
+              "command": {
+                "required": ["run_id", "expected_run_version", "status"],
+                "properties": {
+                  "run_id": { "$ref": "#/$defs/ulid" },
+                  "expected_run_version": { "$ref": "#/$defs/positive" },
+                  "status": { "enum": ["completed", "failed"] }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "operation": { "const": "tool.call" } } },
+          "then": {
+            "properties": {
+              "command": {
+                "required": ["run_id", "tool_name", "status"],
+                "properties": {
+                  "run_id": { "$ref": "#/$defs/ulid" },
+                  "tool_name": { "type": "string", "pattern": "\\S" },
+                  "status": { "enum": ["started", "succeeded", "failed"] }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "operation": { "const": "tool.finish" } } },
+          "then": {
+            "properties": {
+              "command": {
+                "required": ["tool_call_id", "expected_tool_version", "status"],
+                "properties": {
+                  "tool_call_id": { "$ref": "#/$defs/ulid" },
+                  "expected_tool_version": { "$ref": "#/$defs/positive" },
+                  "status": { "enum": ["succeeded", "failed"] }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "operation": { "const": "end" } } },
+          "then": {
+            "properties": {
+              "command": {
+                "required": ["status"],
+                "properties": { "status": { "enum": ["ended", "abandoned", "failed"] } }
+              }
+            }
+          }
+        }
+      ],
+      "description": "Outer logical query only; actual HTTP optional outer session_id is overwritten by path then removed before this strict parser. run.start accepts any original model value and applies original nonempty-string normalization only for history comparison, without changing fingerprint. Positive maximum-safe version permitted even when no corresponding increment could succeed."
+    },
+    "query": {
+      "$anchor": "SessionCommandReceiptQuery",
+      "allOf": [{ "$ref": "#/$defs/queryFields" }],
+      "unevaluatedProperties": false
+    },
+    "body": {
+      "$anchor": "SessionCommandReceiptBody",
+      "allOf": [{ "$ref": "#/$defs/queryFields" }],
+      "properties": {
+        "session_id": {
+          "description": "Legacy raw outer field overwritten by path and removed before logical query parsing; nested command.session_id must still equal path."
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "binding": {
+      "$anchor": "SessionCommandBinding",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["session_id", "identity", "query"],
+      "properties": {
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "identity": { "$ref": "./session-activity-read.json#SessionCommandIdentity" },
+        "query": { "$ref": "#SessionCommandReceiptQuery" }
+      },
+      "description": "SDK/recovery binding, not HTTP body. Deep cloned original query; optional command session/actor/client exactly match bound original identity and scope. Gateway nested query actor/client are fingerprint content, not an independent original-identity gate."
+    },
+    "base": {
+      "type": "object",
+      "required": ["status", "session_id", "operation", "session_version"],
+      "properties": {
+        "status": { "const": "recorded" },
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "operation": { "$ref": "#/$defs/operation" },
+        "session_version": { "$ref": "#/$defs/positive" }
+      }
+    },
+    "runStart": {
+      "allOf": [{ "$ref": "#/$defs/base" }],
+      "unevaluatedProperties": false,
+      "required": ["run_id", "sequence"],
+      "properties": {
+        "operation": { "const": "run.start" },
+        "run_id": { "$ref": "#/$defs/ulid" },
+        "sequence": { "$ref": "./session-command-write.json#/$defs/sequence" }
+      },
+      "description": "session_version=original expected_version+1. No model/current run state/output."
+    },
+    "runFinish": {
+      "allOf": [{ "$ref": "#/$defs/base" }],
+      "unevaluatedProperties": false,
+      "required": ["run_id", "run_version", "run_status", "changed"],
+      "properties": {
+        "operation": { "const": "run.finish" },
+        "run_id": { "$ref": "#/$defs/ulid" },
+        "run_version": { "$ref": "#/$defs/positive" },
+        "run_status": { "enum": ["completed", "failed"] },
+        "changed": { "type": "boolean" }
+      },
+      "description": "Exact original run/status; child and session versions each equal respective original expected value+(changed?1:0)."
+    },
+    "toolCall": {
+      "allOf": [{ "$ref": "#/$defs/base" }],
+      "unevaluatedProperties": false,
+      "required": ["run_id", "tool_call_id"],
+      "properties": {
+        "operation": { "const": "tool.call" },
+        "run_id": { "$ref": "#/$defs/ulid" },
+        "tool_call_id": { "$ref": "#/$defs/ulid" }
+      },
+      "description": "Original run_id, new tool ID and session_version=original expected_version+1; no tool name/status/output."
+    },
+    "toolFinish": {
+      "allOf": [{ "$ref": "#/$defs/base" }],
+      "unevaluatedProperties": false,
+      "required": ["run_id", "tool_call_id", "tool_version", "tool_status", "changed"],
+      "properties": {
+        "operation": { "const": "tool.finish" },
+        "run_id": { "$ref": "#/$defs/ulid" },
+        "tool_call_id": { "$ref": "#/$defs/ulid" },
+        "tool_version": { "$ref": "#/$defs/positive" },
+        "tool_status": { "enum": ["succeeded", "failed"] },
+        "changed": { "type": "boolean" }
+      },
+      "description": "Exact original tool/status; run_id comes from saved tool. Child/session versions each use same changed delta0/1."
+    },
+    "end": {
+      "allOf": [{ "$ref": "#/$defs/base" }],
+      "unevaluatedProperties": false,
+      "required": ["ended_status"],
+      "properties": {
+        "operation": { "const": "end" },
+        "ended_status": { "enum": ["ended", "abandoned", "failed"] }
+      },
+      "description": "Exact original terminal status; session_version equals original expected or+1. No changed flag, creator identity or timestamps."
+    },
+    "lookup": {
+      "$anchor": "SessionCommandReceiptLookup",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "session_id", "operation"],
+          "properties": {
+            "status": { "const": "not-observed" },
+            "session_id": { "$ref": "#/$defs/ulid" },
+            "operation": { "$ref": "#/$defs/operation" }
+          }
+        },
+        { "$ref": "#/$defs/runStart" },
+        { "$ref": "#/$defs/runFinish" },
+        { "$ref": "#/$defs/toolCall" },
+        { "$ref": "#/$defs/toolFinish" },
+        { "$ref": "#/$defs/end" }
+      ],
+      "description": "Exact requested session/operation. Full stored snapshot checked before returning only this summary. Lookup does not independently reread current run/tool or compare current session to saved version; current record reads are separate."
+    },
+    "envelope": {
+      "$anchor": "SessionCommandReceiptEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "type": "string", "minLength": 1 },
+        "source_refs": { "const": [] },
+        "data": { "$ref": "#SessionCommandReceiptLookup" }
+      },
+      "description": "Current trace, empty sources and no ETag/current version/identity. Shared client additionally requires exact nonblank request trace. No dedicated request/response serialized-byte or whole-handler time budget."
+    }
+  }
+}

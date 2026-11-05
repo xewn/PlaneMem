@@ -1,5 +1,7 @@
 # 公共契约目录
 
+- [会话进度命令 OpenAPI](../../../packages/contracts/openapi/README.md#会话进度命令与原回执)：TODO P0-01，运行/工具创建与收尾、结束和原命令查询六路完整契约，区分原 HTTP、严格客户端、历史成功与当前状态；仅源码，未运行校验。
+
 - [会话启动与原回执 OpenAPI](../../../packages/contracts/openapi/README.md#会话启动与原回执)：TODO P0-01，当前命令身份、启动与原回执三路完整契约，区分当前会话和历史创建、原可选字段及真实读取预算；仅源码，未运行校验。
 
 - [检查点历史与交接详情 OpenAPI](../../../packages/contracts/openapi/README.md#检查点历史与交接详情)：TODO P0-01，三路完整历史笔记/引用与当前交接状态契约，明确读取预算、分页与原请求回执的区别；仅源码，未运行校验。

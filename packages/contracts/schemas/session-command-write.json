@@ -1,0 +1,366 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/session-command-write.json",
+  "title": "PlaneMem session progress write bodies and historical success records",
+  "description": "Source-only five write contracts. Raw HTTP bodies retain unknown fields for original fingerprints; strict client commands are separate. Returned activity/session records are original historical results on replay, not necessarily current state. Register session-activity-read.json and session-start.json.",
+  "$comment": "Wire records are open where stored receipt reconstruction preserves extensions. Runtime additionally checks scope/target/command relationships, safe arithmetic, source associations and finite dates. SDK parsers are stricter than legacy HTTP/persistence and normalize finish sources. No validator/generator or machine-contract consumption evidence.",
+  "anyOf": [
+    { "$ref": "#SessionRunStartEnvelope" },
+    { "$ref": "#SessionRunFinishEnvelope" },
+    { "$ref": "#SessionToolCallEnvelope" },
+    { "$ref": "#SessionToolFinishEnvelope" },
+    { "$ref": "#SessionEndEnvelope" }
+  ],
+  "$defs": {
+    "ulid": { "$ref": "./session-activity-read.json#/$defs/ulid" },
+    "positive": { "$ref": "./session-activity-read.json#/$defs/positive" },
+    "sequence": { "$ref": "./session-activity-read.json#/$defs/sequence" },
+    "name": { "$ref": "./session-activity-read.json#/$defs/identityText" },
+    "key": { "$ref": "./session-start.json#/$defs/key" },
+    "nonempty": { "type": "string", "minLength": 1 },
+    "nonblank": { "type": "string", "pattern": "\\S" },
+    "source": { "$ref": "./session-activity-read.json#SessionActivitySourceRef" },
+    "sources": { "type": "array", "items": { "$ref": "#/$defs/source" } },
+    "sessionSources": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "allOf": [
+          { "$ref": "#/$defs/source" },
+          { "properties": { "type": { "const": "session" } } }
+        ]
+      },
+      "description": "Exactly the original parent session ID. Receipt reader allows source extensions/revision/URI; strict create clients require only type/id."
+    },
+    "runSources": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "allOf": [
+          { "$ref": "#/$defs/source" },
+          { "properties": { "type": { "const": "agent-run" } } }
+        ]
+      },
+      "description": "Exactly the tool's run_id, extensions/revision/URI preserved on wire. Strict create client only permits type/id; finish client normalizes four fields."
+    },
+    "date": {
+      "type": "string",
+      "description": "Stored receipt requires finite Date.parse, not canonical ISO, a128-character bound or timestamp chronology. Fresh timestamps are ISO; stricter finish client checks length<=128 and end>=start but preserves text."
+    },
+    "rawBase": {
+      "type": "object",
+      "properties": {
+        "session_id": {
+          "description": "If present, overwritten by route before command execution/fingerprint; process raw-body cache still sees original value."
+        },
+        "expected_version": {
+          "description": "Effective header version wins; without header must be positive safe number for fresh mutation. Raw body may otherwise differ/be ignored; durable fingerprint uses effective value."
+        },
+        "idempotency_key": { "$ref": "#/$defs/key" },
+        "actor_id": { "type": "string" },
+        "client_id": { "type": "string" }
+      },
+      "description": "Legacy HTTP allows extra body fields and retains them in durable fingerprint after path overrides and effective version replacement, deleting idempotency_key. Key required in header or body; both must agree. Exact optional claimed identity must match verified caller. Fresh expected_version>=1, valid0 reaches service rejection; no silent version default."
+    },
+    "rawRunStart": {
+      "$anchor": "SessionRunStartBody",
+      "allOf": [{ "$ref": "#/$defs/rawBase" }],
+      "properties": {
+        "model": {
+          "description": "Any JSON accepted at HTTP field extraction: nonempty strings retained, empty/nonstring omitted for execution; original value still fingerprints. Whitespace-only retained string fails fresh transition. No1024 bound here."
+        }
+      }
+    },
+    "rawRunFinish": {
+      "$anchor": "SessionRunFinishBody",
+      "allOf": [{ "$ref": "#/$defs/rawBase" }],
+      "required": ["status", "expected_run_version"],
+      "properties": {
+        "run_id": { "description": "Overwritten by path before durable fingerprint." },
+        "status": { "enum": ["completed", "failed"] },
+        "expected_run_version": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+      },
+      "description": "Child version required in body, no separate child version header. Generic extractor accepts0; fresh transition requires>=1."
+    },
+    "rawToolCall": {
+      "$anchor": "SessionToolCallBody",
+      "allOf": [{ "$ref": "#/$defs/rawBase" }],
+      "required": ["run_id", "tool_name", "status"],
+      "properties": {
+        "run_id": { "$ref": "#/$defs/nonempty" },
+        "tool_name": { "$ref": "#/$defs/nonempty" },
+        "status": { "enum": ["started", "succeeded", "failed"] }
+      },
+      "description": "New record requires running parent session and same-session running run. Tool status may already be terminal; this records metadata without executing a tool. Fresh tool_name nonblank, no1024 bound."
+    },
+    "rawToolFinish": {
+      "$anchor": "SessionToolFinishBody",
+      "allOf": [{ "$ref": "#/$defs/rawBase" }],
+      "required": ["status", "expected_tool_version"],
+      "properties": {
+        "tool_call_id": { "description": "Overwritten by path before durable fingerprint." },
+        "status": { "enum": ["succeeded", "failed"] },
+        "expected_tool_version": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+      },
+      "description": "Child version required in body. Generic extractor accepts0, fresh transition requires>=1 and ULID tool target."
+    },
+    "rawEnd": {
+      "$anchor": "SessionEndBody",
+      "allOf": [{ "$ref": "#/$defs/rawBase" }],
+      "required": ["status"],
+      "properties": { "status": { "enum": ["ended", "abandoned", "failed"] } }
+    },
+    "clientBase": {
+      "type": "object",
+      "required": ["expected_version"],
+      "properties": {
+        "expected_version": { "$ref": "#/$defs/positive" },
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "actor_id": { "$ref": "#/$defs/name" },
+        "client_id": { "$ref": "#/$defs/name" },
+        "idempotency_key": { "$ref": "#/$defs/key" }
+      },
+      "description": "Shared strict new-command fields, not raw HTTP or historical query. Original session/actor/client and optional key bind to original context. SDK public methods have a smaller business-input/options surface."
+    },
+    "clientRunStart": {
+      "$anchor": "SessionRunStartClientCommand",
+      "allOf": [{ "$ref": "#/$defs/clientBase" }],
+      "unevaluatedProperties": false,
+      "properties": {
+        "expected_version": { "maximum": 9007199254740990 },
+        "model": { "$ref": "#/$defs/name" }
+      },
+      "description": "New client creation must leave room for session+1; optional model nonblank<=1024 UTF-16/no controls/DEL/lone surrogates and retained verbatim."
+    },
+    "clientRunFinish": {
+      "$anchor": "SessionRunFinishClientCommand",
+      "allOf": [{ "$ref": "#/$defs/clientBase" }],
+      "unevaluatedProperties": false,
+      "required": ["run_id", "status", "expected_run_version"],
+      "properties": {
+        "run_id": { "$ref": "#/$defs/ulid" },
+        "status": { "enum": ["completed", "failed"] },
+        "expected_run_version": { "$ref": "#/$defs/positive" }
+      },
+      "description": "Maximum safe session/child versions allowed for an unchanged terminal result; a changed result requires room for both+1."
+    },
+    "clientToolCall": {
+      "$anchor": "SessionToolCallClientCommand",
+      "allOf": [{ "$ref": "#/$defs/clientBase" }],
+      "unevaluatedProperties": false,
+      "required": ["run_id", "tool_name", "status"],
+      "properties": {
+        "expected_version": { "maximum": 9007199254740990 },
+        "run_id": { "$ref": "#/$defs/ulid" },
+        "tool_name": { "$ref": "#/$defs/name" },
+        "status": { "enum": ["started", "succeeded", "failed"] }
+      }
+    },
+    "clientToolFinish": {
+      "$anchor": "SessionToolFinishClientCommand",
+      "allOf": [{ "$ref": "#/$defs/clientBase" }],
+      "unevaluatedProperties": false,
+      "required": ["tool_call_id", "status", "expected_tool_version"],
+      "properties": {
+        "tool_call_id": { "$ref": "#/$defs/ulid" },
+        "status": { "enum": ["succeeded", "failed"] },
+        "expected_tool_version": { "$ref": "#/$defs/positive" }
+      }
+    },
+    "clientEnd": {
+      "$anchor": "SessionEndClientCommand",
+      "allOf": [{ "$ref": "#/$defs/clientBase" }],
+      "unevaluatedProperties": false,
+      "required": ["status"],
+      "properties": { "status": { "enum": ["ended", "abandoned", "failed"] } }
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "schema_version",
+        "run_id",
+        "session_id",
+        "sequence",
+        "status",
+        "version",
+        "session_version",
+        "trace_id",
+        "source_refs"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "run_id": { "$ref": "#/$defs/ulid" },
+        "session_id": { "$ref": "#/$defs/nonempty" },
+        "sequence": { "$ref": "#/$defs/sequence" },
+        "model": { "type": "string" },
+        "status": { "enum": ["running", "completed", "failed"] },
+        "version": { "$ref": "#/$defs/positive" },
+        "session_version": { "$ref": "#/$defs/positive" },
+        "trace_id": { "type": "string" },
+        "source_refs": { "$ref": "#/$defs/sources" }
+      },
+      "description": "Complete historical run on wire. session_version is historical parent version, version is child version. Persisted extensions survive; trace/model have no stored per-string1024 bound. No timestamps, execution output or live-state guarantee."
+    },
+    "runStart": {
+      "$anchor": "SessionCreatedRunWire",
+      "allOf": [{ "$ref": "#/$defs/run" }],
+      "properties": {
+        "status": { "const": "running" },
+        "version": { "const": 1 },
+        "source_refs": { "$ref": "#/$defs/sessionSources" }
+      },
+      "description": "session_version=original expected_version+1; sequence positive int32; model matches original execution normalization. Same saved run remains running/version1 in historical replay even if current run finished."
+    },
+    "runFinish": {
+      "$anchor": "SessionFinishedRunWire",
+      "allOf": [{ "$ref": "#/$defs/run" }],
+      "properties": { "status": { "enum": ["completed", "failed"] } },
+      "description": "Child and parent versions equal their original expected values plus same delta0/1. changed is internal/lookup metadata, not added by ordinary response. Wire saved sources can be empty/arbitrarily many; stricter finish client requires<=200 and matching session source."
+    },
+    "tool": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "schema_version",
+        "tool_call_id",
+        "session_id",
+        "run_id",
+        "tool_name",
+        "status",
+        "version",
+        "session_version",
+        "trace_id",
+        "source_refs"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "tool_call_id": { "$ref": "#/$defs/ulid" },
+        "session_id": { "$ref": "#/$defs/nonempty" },
+        "run_id": { "$ref": "#/$defs/nonempty" },
+        "tool_name": { "$ref": "#/$defs/nonempty" },
+        "status": { "enum": ["started", "succeeded", "failed"] },
+        "version": { "$ref": "#/$defs/positive" },
+        "session_version": { "$ref": "#/$defs/positive" },
+        "trace_id": { "type": "string" },
+        "source_refs": { "$ref": "#/$defs/runSources" }
+      },
+      "description": "Historical tool metadata only. Sources exactly original agent-run ID; source extensions survive. No actual tool execution/output/time/duration proof, no per-tool-name length bound on wire."
+    },
+    "toolCall": {
+      "$anchor": "SessionCreatedToolWire",
+      "allOf": [{ "$ref": "#/$defs/tool" }],
+      "properties": { "version": { "const": 1 } },
+      "description": "session_version=original expected_version+1; original run/name/status preserved, terminal-at-creation allowed. Does not increment the referenced run version."
+    },
+    "toolFinish": {
+      "$anchor": "SessionFinishedToolWire",
+      "allOf": [{ "$ref": "#/$defs/tool" }],
+      "properties": {
+        "status": { "enum": ["succeeded", "failed"] },
+        "run_id": { "$ref": "#/$defs/ulid" },
+        "tool_name": { "$ref": "#/$defs/nonblank" }
+      },
+      "description": "Child/parent versions share delta0/1 from their original expectations. Run version/status and parent status/ended_at unchanged; original current run relation must exist for fresh write and replay, not for receipt-only lookup."
+    },
+    "resume": {
+      "$anchor": "SessionCommandResumeOrigin",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["handoff_id", "checkpoint_id", "require_claimed"],
+      "properties": {
+        "handoff_id": { "$ref": "#/$defs/ulid" },
+        "checkpoint_id": { "$ref": "#/$defs/ulid" },
+        "require_claimed": { "type": "boolean" }
+      },
+      "description": "Stored origin structure only; no referenced record/current ownership/pack validation."
+    },
+    "end": {
+      "$anchor": "SessionEndedWire",
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "schema_version",
+        "tenant_id",
+        "workspace_id",
+        "project_id",
+        "session_id",
+        "actor_id",
+        "client_id",
+        "status",
+        "version",
+        "started_at",
+        "ended_at",
+        "trace_id",
+        "source_refs"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "tenant_id": { "$ref": "#/$defs/nonempty" },
+        "workspace_id": { "$ref": "#/$defs/nonempty" },
+        "project_id": { "$ref": "#/$defs/nonempty" },
+        "session_id": { "$ref": "#/$defs/nonempty" },
+        "actor_id": { "type": "string" },
+        "client_id": { "type": "string" },
+        "parent_session_id": { "$ref": "#/$defs/ulid" },
+        "resume_origin": { "$ref": "#SessionCommandResumeOrigin" },
+        "status": { "enum": ["ended", "abandoned", "failed"] },
+        "version": { "$ref": "#/$defs/positive" },
+        "started_at": { "$ref": "#/$defs/date" },
+        "ended_at": { "$ref": "#/$defs/date" },
+        "trace_id": { "type": "string" },
+        "source_refs": { "$ref": "#/$defs/sources" }
+      },
+      "dependentRequired": { "resume_origin": ["parent_session_id"] },
+      "description": "Historical full ended session; version=original expected_version or+1. actor/client are original session creator, may differ from closing caller. Wire reader does not enforce name bounds, source membership/count, parent!=self or end>=start; finish SDK additionally does. Source/session extensions survive historical wire replay; SDK reconstructs known fields."
+    },
+    "envelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "#/$defs/nonempty" },
+        "source_refs": { "$ref": "#/$defs/sources" },
+        "data": {}
+      },
+      "description": "Built-in HTTP commandResult: current outer trace, original saved record/sources inside and outside, no ETag/outer revision/changed. No full-response byte limit or whole-handler deadline. SDK accepts optional matching ETag as compatibility, not built-in output."
+    },
+    "runStartEnvelope": {
+      "$anchor": "SessionRunStartEnvelope",
+      "allOf": [{ "$ref": "#/$defs/envelope" }],
+      "properties": {
+        "data": { "$ref": "#SessionCreatedRunWire" },
+        "source_refs": { "$ref": "#/$defs/sessionSources" }
+      }
+    },
+    "runFinishEnvelope": {
+      "$anchor": "SessionRunFinishEnvelope",
+      "allOf": [{ "$ref": "#/$defs/envelope" }],
+      "properties": { "data": { "$ref": "#SessionFinishedRunWire" } }
+    },
+    "toolCallEnvelope": {
+      "$anchor": "SessionToolCallEnvelope",
+      "allOf": [{ "$ref": "#/$defs/envelope" }],
+      "properties": {
+        "data": { "$ref": "#SessionCreatedToolWire" },
+        "source_refs": { "$ref": "#/$defs/runSources" }
+      }
+    },
+    "toolFinishEnvelope": {
+      "$anchor": "SessionToolFinishEnvelope",
+      "allOf": [{ "$ref": "#/$defs/envelope" }],
+      "properties": {
+        "data": { "$ref": "#SessionFinishedToolWire" },
+        "source_refs": { "$ref": "#/$defs/runSources" }
+      }
+    },
+    "endEnvelope": {
+      "$anchor": "SessionEndEnvelope",
+      "allOf": [{ "$ref": "#/$defs/envelope" }],
+      "properties": { "data": { "$ref": "#SessionEndedWire" } }
+    }
+  }
+}

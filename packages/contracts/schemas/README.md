@@ -1,5 +1,13 @@
 # 独立契约结构定义
 
+2026-11-05，TODO **P0-01**：新增 [session-command-write.json](session-command-write.json)、[session-command-receipt.json](session-command-receipt.json)，HTTP 见 [session-commands OpenAPI](../openapi/session-commands.json)。覆盖运行创建/收尾、工具记录/收尾、会话结束及五种原命令查询；包子路径对应文件名，本地同时注册 session-start/session-activity-read 公共资源。
+
+写入 Schema 分别定义五类原 HTTP Body、严格 ClientCommand 和完整历史成功 Envelope。旧 HTTP 保留未知字段参与指纹，路径覆盖同名正文目标、有效版本头覆盖正文版本；model 非空字符串才用于执行，其余原值仍参与指纹。新客户端只接声明字段，创建须给父版本加一留空间且名称有界；收尾可在最大安全版本处无变化成功。普通成功中 run/tool 的 session_version 是原操作后的历史父版本，自身 version 是明细版本；changed 只在内部回执和收尾查询摘要中出现。
+
+历史写入返回开放记录/来源扩展，逐类约束实际持久读取器：创建和工具收尾为单一父来源，运行收尾只校验来源条目，不强加客户端的 200 项/会话成员条件。结束会话的创建者与操作者可以不同；存储日期只检查 Date.parse 有限，不冒称已核对客户端的 128 长度、先后关系或 parent!=self。SDK 创建要求精确两字段来源；收尾规范为四字段、限制数量并核对来源和历史版本关系，结束另核对创建者/时间。内置 HTTP 没有 ETag，客户端可选匹配 ETag 属兼容行为。
+
+回执 Schema 区分原 HTTP Body、去除外层路径字段后的严格 Query、本地 Binding 及五种 recorded/统一 not-observed。原 command 保持开放，补入原有效版本和原路径明细 ID，不按新客户端规则清洗；原可选键/会话须一致。动态原身份/指纹、同一 delta 的算术、来源关系和真实日期由现有代码核对。查询封套空来源、无 ETag，仅历史摘要，不证明当前记录或未提交；没有专用总响应字节/期限保证。P0-01/R-001 未完成、evidence 为空；未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
 2026-11-05，TODO **P0-01**：新增 [session-start.json](session-start.json)，HTTP 见 [session-start OpenAPI](../openapi/session-start.json)，完整覆盖当前命令身份、普通会话启动及原启动回执。包子路径对应文件名；本地注册 session-activity-read.json，复用身份、ULID、数字版本及开放来源定义。
 
 提供 SessionCommandContextPermissions/Envelope、SessionStartCommand/Body/ReceiptQuery/Binding、SessionStartRecorded/ReceiptLookup/Current、SessionStartEnvelope/ReceiptEnvelope 及独立 SessionStartClientEnvelope。原命令保留 parent/actor/client 是否存在及原值；正文键和头键并存须一致，原键只限 1–255 个非空白 UTF-16 单位，不收窄为 ASCII。原回执固定 session_version=1，当前会话允许更高版本与终态；原父会话、账号、客户端、开始时间及当前范围必须一致，无 resume_origin，终态结束时间不早于开始。当前 version=1 只能 running。

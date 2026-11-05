@@ -1,0 +1,494 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem session progress writes and original command receipts",
+    "version": "0.1.0",
+    "description": "Source-only six existing POST contracts: run start/finish, tool record/finish, session end and original receipt. Load session-command-write/session-command-receipt plus session-start/session-activity-read schemas and session-reads/search/context-history HTTP components locally. No tool execution, machine-contract consumption or release evidence."
+  },
+  "servers": [
+    { "url": "/", "description": "Relative Gateway base; configure deployment origin/base." }
+  ],
+  "security": [{ "GatewayBearer": [] }],
+  "tags": [{ "name": "Session progress" }],
+  "x-todo": "P0-01",
+  "x-runtime-boundaries": {
+    "sources": [
+      "apps/api-gateway/src/server.ts",
+      "apps/api-gateway/src/http.ts",
+      "apps/api-gateway/src/idempotency.ts",
+      "apps/api-gateway/src/session-persistence.ts",
+      "apps/api-gateway/src/session-command-receipts.ts",
+      "apps/api-gateway/src/session-project-access.ts",
+      "apps/session-service/src/session/service.ts",
+      "apps/session-service/src/session/mutations.ts",
+      "packages/contracts/src/session-command-receipts.ts",
+      "packages/contracts/src/session-command-clients.ts",
+      "packages/contracts/src/session-finish-clients.ts",
+      "packages/contracts/src/session-resume.ts",
+      "packages/sdk/src/client.ts",
+      "packages/sdk/src/fetch-transport.ts"
+    ],
+    "authority": "All six use session.write Policy, normal entry audit/actor-path rate limit and independent verified-client handler gate. Signed continuity boundary requires actor/client and authorized scope; unsigned compatibility cannot satisfy authenticated_client=true. Configured OPA replaces local Policy, not verified-client check. Expected actor/client headers independently optional exact preconditions. Body claimed actor/client must match current verified context; parent session creator need not equal writer. Restricted visibility requires actual data.restricted.read even for admin.",
+    "http": "All POSTs use generic1MiB raw JSON-object parser before authentication, nonfatal UTF-8 decode; malformed/empty/nonobject/oversize400 INVALID_JSON. No dedicated media/encoding/framing/cache/Range or URL-query rejection; URL query ignored. Route session/run/tool IDs overwrite same-named raw body fields before handler/durable fingerprint. HTTP writes only require nonempty path strings at extraction; mutation/lookup-specific checks and scoped storage resolve malformed IDs. Receipt path explicitly ULID. No dedicated full-response byte cap, whole-handler deadline, capacity gate, DB cancellation or post-read token-expiry check.",
+    "write-input": "Stable header/body key1..255 non-whitespace UTF-16 required, both agree. Generic If-Match and If-Match-Version parse safe nonnegative version and must agree with each other; selected header replaces body expected_version without a body/header equality check. Fresh mutation requires positive safe session version. Child expected_run/tool_version required body, generic extractor accepts0 then transition rejects. Unknown body fields retained for fingerprint, unlike strict new SDK/CLI/MCP command parsers. run.start nonempty string model retained, empty/nonstring ignored for execution but fingerprinted; fresh whitespace-only model/tool_name rejected, no1024 HTTP bound.",
+    "fingerprints": "Persistent key=SHA256 canonical [actor_id,client_id,rawKey], keyed with session_id/operation. Fingerprint sorted effective command including path IDs and effective expected_version, deleting body idempotency_key, preserving ignored fields and explicit identity presence. Process header-key fingerprint also includes raw body/authority and can reject changes before persistent replay; matching process entry re-enters handler. Body-only key skips process cache but retains durable receipt. Receipt-only query bypasses success caching and computes same fingerprint using original command version, not current request headers.",
+    "durable": "Configured Postgres transaction first locks current visible nondeleted valid-classification project FOR SHARE, then scoped session FOR UPDATE. Replay checks fingerprint and complete stored historical result before fresh lifecycle/version checks. Run/tool replay additionally locks current child, checks version not behind saved, same-version/status and immutable fields; terminal stored child must remain same terminal, tool must still join run. Current child/session metadata updates caches without changing historical response. No full current-session-versus-receipt consistency comparison or recursive source authorization is added by this contract.",
+    "fresh": "Without matching receipt, session expected version must match. New run/tool requires running session; tool also same-session running run. Run sequence=MAX(sequence_no)+1 bounded int32; creations child version1 and parent+1. Finish accepts all five valid parent states, including closed, preserves parent status/ended_at and run state/version for tool finish. Matching current terminal child plus matching two versions succeeds delta0; otherwise only running run/started tool may change, child/parent both+1. End allows running/paused to requested terminal+1 or same terminal at matching version delta0; no child cascade. Safe overflow rejected for changed writes; max-safe delta0 allowed.",
+    "commit": "Fresh path validates prepared historical result, conditionally updates session even for delta0, inserts/updates appropriate child when needed and saves full result receipt in same transaction. delta0 still saves a new command receipt and entry audit; it is not a side-effect-free query. No real model/tool invocation or output storage. Configured store lacking mutateSession rejects; completely absent store retains offline local fixture semantics, which do not establish durable/project-SQL guarantees. Receipt query always requires DB and never infers success from fixture cache.",
+    "lookup": "Strict outer logical request_key/operation/command, with original positive effective expected_version and operation-specific original child/status. Original command extensions retained; optional nested session_id/key must match. SDK additionally binds nested actor/client; HTTP handler does not independently compare these nested fields to caller, but they participate in original fingerprint. One scoped SQL snapshot checks current visible parent and dedicated receipt; absent parent404, visible no receipt200 not-observed. Full saved session/result validated before minimal summary. No current child lookup, current session version/state comparison, row lock, mutation, repair or replay. Historical source/creator/snapshot data omitted; not-observed cannot prove failure or safe new-key retry.",
+    "wire-output": "Five writes return full saved run/tool/session under current outer trace and saved inner trace/sources, no built-in ETag/outer revision/changed flag. session_version on run/tool is historical parent version; version is child version. Stored record/source extensions preserved because receipt reader clones original objects. Run-start/tool sources exactly one matching parent type/id; run-finish sources only validate entries with no count/membership bound; tool-finish exactly one agent-run. End creator fields are strings, timestamps finite Date.parse only, no reader chronology/count/name checks; optional resume origin structure parsed. SDK stricter checks may reject HTTP output.",
+    "sdk": "Five methods use strict known command/options fields, exact original identity/scope and instance key/version agreement. Creation requires expected+1 safe, nonblank<=1024 names/no controls/DEL/lone surrogates; finishes permit max-safe for delta0. Sends original key/If-Match/expected actor/client. Binding structured-clones original query. Full create parser requires exact type/id sources and original content, version1/session+1; full finish parser checks delta arithmetic, scope, trace<=1024, normalized sources<=200 and associations. End requires original creator names, parent!=self, length<=128 finite dates/end>=start and creator-client source, preserving timestamps. Finish sources normalize to four fields; create sources require no extras. Optional matching ETag accepted only as client compatibility. Receipt parser checks exact nonblank outer trace, empty sources/no ETag and minimal original summary. Generic JSON Fetch has no dedicated response byte/media/exact200/trace-header/length guarantees or whole custom-transport deadline; default30s Fetch timeout starts after credentials. No timeout/signal method options or automatic retry/new key."
+  },
+  "paths": {
+    "/v1/sessions/{session_id}/runs": {
+      "parameters": [
+        { "$ref": "#/components/parameters/SessionId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" },
+        { "$ref": "#/components/parameters/IdempotencyKey" },
+        { "$ref": "#/components/parameters/IfMatch" },
+        { "$ref": "#/components/parameters/IfMatchVersion" }
+      ],
+      "post": {
+        "operationId": "startAgentRun",
+        "tags": ["Session progress"],
+        "summary": "Record a new run under a running session",
+        "x-wcp-operation": "session.run.start",
+        "x-policy-action": "session.write",
+        "x-client-command-schema": {
+          "$ref": "../schemas/session-command-write.json#SessionRunStartClientCommand"
+        },
+        "description": "Optional raw model; unknown fields fingerprinted. Fresh run sequence=max+1, child version1, parent version+1, exact session source. Existing receipt returns original run even after current closure; does not start a model execution.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/session-command-write.json#SessionRunStartBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/RunStartSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "429": { "$ref": "./search.json#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/WriteUnavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/sessions/{session_id}/runs/{run_id}/finish": {
+      "parameters": [
+        { "$ref": "#/components/parameters/SessionId" },
+        { "$ref": "#/components/parameters/RunId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" },
+        { "$ref": "#/components/parameters/IdempotencyKey" },
+        { "$ref": "#/components/parameters/IfMatch" },
+        { "$ref": "#/components/parameters/IfMatchVersion" }
+      ],
+      "post": {
+        "operationId": "finishAgentRun",
+        "tags": ["Session progress"],
+        "summary": "Record an original run terminal result with paired versions",
+        "x-wcp-operation": "session.run.finish",
+        "x-policy-action": "session.write",
+        "x-client-command-schema": {
+          "$ref": "../schemas/session-command-write.json#SessionRunFinishClientCommand"
+        },
+        "description": "Original session/child versions and completed/failed required. Allows closed parent, does not reopen it or finish tools. Same terminal and both current versions match gives delta0; otherwise running-to-terminal increments both. Ordinary response has no changed field; original receipt summary does.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/session-command-write.json#SessionRunFinishBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/RunFinishSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "429": { "$ref": "./search.json#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/WriteUnavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/sessions/{session_id}/tool-calls": {
+      "parameters": [
+        { "$ref": "#/components/parameters/SessionId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" },
+        { "$ref": "#/components/parameters/IdempotencyKey" },
+        { "$ref": "#/components/parameters/IfMatch" },
+        { "$ref": "#/components/parameters/IfMatchVersion" }
+      ],
+      "post": {
+        "operationId": "recordToolCall",
+        "tags": ["Session progress"],
+        "summary": "Record tool-call metadata under a running run",
+        "x-wcp-operation": "session.tool.call",
+        "x-policy-action": "session.write",
+        "x-client-command-schema": {
+          "$ref": "../schemas/session-command-write.json#SessionToolCallClientCommand"
+        },
+        "description": "Fresh running session/run required; name retained untrimmed, status started/succeeded/failed. Creates child version1 and parent+1 without advancing run. No tool execution or output body; historical replay returns original metadata.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/session-command-write.json#SessionToolCallBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/ToolCallSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "429": { "$ref": "./search.json#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/WriteUnavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/sessions/{session_id}/tool-calls/{tool_call_id}/finish": {
+      "parameters": [
+        { "$ref": "#/components/parameters/SessionId" },
+        { "$ref": "#/components/parameters/ToolId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" },
+        { "$ref": "#/components/parameters/IdempotencyKey" },
+        { "$ref": "#/components/parameters/IfMatch" },
+        { "$ref": "#/components/parameters/IfMatchVersion" }
+      ],
+      "post": {
+        "operationId": "finishToolCall",
+        "tags": ["Session progress"],
+        "summary": "Record a terminal result for an existing tool call",
+        "x-wcp-operation": "session.tool.finish",
+        "x-policy-action": "session.write",
+        "x-client-command-schema": {
+          "$ref": "../schemas/session-command-write.json#SessionToolFinishClientCommand"
+        },
+        "description": "Original session/tool versions and succeeded/failed required. Tool must join a run in this session; run/parent may already be closed. Same terminal and matching versions delta0, otherwise started-to-terminal increments tool/session only. No actual tool cancellation/execution proof.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/session-command-write.json#SessionToolFinishBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/ToolFinishSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "429": { "$ref": "./search.json#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/WriteUnavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/sessions/{session_id}/end": {
+      "parameters": [
+        { "$ref": "#/components/parameters/SessionId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" },
+        { "$ref": "#/components/parameters/IdempotencyKey" },
+        { "$ref": "#/components/parameters/IfMatch" },
+        { "$ref": "#/components/parameters/IfMatchVersion" }
+      ],
+      "post": {
+        "operationId": "endSession",
+        "tags": ["Session progress"],
+        "summary": "Record session closure or a matching unchanged terminal result",
+        "x-wcp-operation": "session.end",
+        "x-policy-action": "session.write",
+        "x-client-command-schema": {
+          "$ref": "../schemas/session-command-write.json#SessionEndClientCommand"
+        },
+        "description": "Original version and ended/abandoned/failed. Fresh running/paused closure increments version and sets ended_at; matching terminal still requires exact current version but does not increment. Creator actor/client in response may differ from closing caller. Historical replay returns saved session, no child cascade.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/session-command-write.json#SessionEndBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/EndSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "429": { "$ref": "./search.json#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/WriteUnavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/sessions/{session_id}/commands/receipt": {
+      "parameters": [
+        { "$ref": "#/components/parameters/ReceiptSessionId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "post": {
+        "operationId": "getSessionCommandReceipt",
+        "tags": ["Session progress"],
+        "summary": "Observe an original progress-command result without replaying it",
+        "x-wcp-operation": "session.command.receipt",
+        "x-policy-action": "session.write",
+        "description": "Original request_key/operation/command with effective original parent version, plus original child path/version/status as applicable. Preserves ignored original fields. HTTP generic write headers are parsed but valid values ignored; no fresh-key/condition prohibition here. One visible-parent SQL snapshot and full stored-result check, then minimal historical summary; no current child check. not-observed is not proof of failure. Empty sources/no ETag.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "../schemas/session-command-receipt.json#SessionCommandReceiptBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/ReceiptSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/ReceiptConflict" },
+          "429": { "$ref": "./search.json#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/ReceiptUnavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": { "GatewayBearer": { "type": "http", "scheme": "bearer" } },
+    "parameters": {
+      "TenantId": { "$ref": "./session-reads.json#/components/parameters/TenantId" },
+      "WorkspaceId": { "$ref": "./session-reads.json#/components/parameters/WorkspaceId" },
+      "ProjectId": { "$ref": "./session-reads.json#/components/parameters/ProjectId" },
+      "TraceParent": { "$ref": "./session-reads.json#/components/parameters/TraceParent" },
+      "TraceId": { "$ref": "./session-reads.json#/components/parameters/TraceId" },
+      "ExpectedActorId": { "$ref": "./session-reads.json#/components/parameters/ExpectedActorId" },
+      "ExpectedClientId": {
+        "$ref": "./session-reads.json#/components/parameters/ExpectedClientId"
+      },
+      "SessionId": {
+        "name": "session_id",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "minLength": 1 },
+        "description": "Original session identifier; writes only require nonempty extraction before scoped storage/state checks. SDK and receipt query require ULID. Path overrides body session_id."
+      },
+      "ReceiptSessionId": {
+        "name": "session_id",
+        "in": "path",
+        "required": true,
+        "schema": { "$ref": "../schemas/session-command-write.json#/$defs/ulid" }
+      },
+      "RunId": {
+        "name": "run_id",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "minLength": 1 },
+        "description": "Original run target; nonempty HTTP extraction then scoped storage. SDK/receipt require ULID. Path overrides body run_id."
+      },
+      "ToolId": {
+        "name": "tool_call_id",
+        "in": "path",
+        "required": true,
+        "schema": { "$ref": "../schemas/session-command-write.json#/$defs/ulid" },
+        "description": "Original tool target; path overrides body. Fresh mutation checks ULID after parent version, so error precedence may reflect earlier checks."
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "schema": { "$ref": "../schemas/session-command-write.json#/$defs/key" },
+        "description": "Required unless original body key supplied, both must exactly agree. No automatic key replacement after uncertainty."
+      },
+      "IfMatch": {
+        "name": "If-Match",
+        "in": "header",
+        "schema": { "type": "string", "pattern": "^W/\"version-[0-9]+\"$" },
+        "description": "Original parent version, not child version. Safe nonnegative parse; must agree with If-Match-Version. Header wins over body without comparing them; fresh mutation requires>=1. Leading zeros accepted."
+      },
+      "IfMatchVersion": {
+        "name": "If-Match-Version",
+        "in": "header",
+        "schema": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "description": "Alternative digits-only parent version header, including leading zeros. If no header, body expected_version supplies original version; no default."
+      }
+    },
+    "responses": {
+      "RunStartSuccess": {
+        "description": "Full historical original created run, version1 and parent session_version=original+1; no built-in ETag.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/session-command-write.json#SessionRunStartEnvelope" }
+          }
+        }
+      },
+      "RunFinishSuccess": {
+        "description": "Full historical completed/failed run; original child/parent versions both delta0 or1, changed omitted in ordinary response.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/session-command-write.json#SessionRunFinishEnvelope" }
+          }
+        }
+      },
+      "ToolCallSuccess": {
+        "description": "Full historical original tool metadata, version1 and parent session_version=original+1, no execution/output proof.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/session-command-write.json#SessionToolCallEnvelope" }
+          }
+        }
+      },
+      "ToolFinishSuccess": {
+        "description": "Full historical succeeded/failed tool metadata; original tool/parent versions both delta0 or1.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/session-command-write.json#SessionToolFinishEnvelope" }
+          }
+        }
+      },
+      "EndSuccess": {
+        "description": "Full saved terminal session with creator identity and optional resume origin; version original or+1, no current-state guarantee.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/session-command-write.json#SessionEndEnvelope" }
+          }
+        }
+      },
+      "ReceiptSuccess": {
+        "description": "Minimal original historical recorded/not-observed; empty sources and no ETag/current version. No current child reread.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../schemas/session-command-receipt.json#SessionCommandReceiptEnvelope"
+            }
+          }
+        }
+      },
+      "Error": {
+        "$ref": "./search.json#/components/responses/Error",
+        "description": "Application error; early parser/auth/proxy may differ or lack trace header. Preserve original identity/key/command after uncertain writes; an error does not prove rollback."
+      },
+      "BadInput": {
+        "$ref": "#/components/responses/Error",
+        "description": "INVALID_INPUT for selected key, required fields/versions/status or original query; INVALID_REQUEST_CONTEXT for malformed/disagreeing version headers; pre-auth malformed/empty/nonobject/oversize body INVALID_JSON400. Lower-level SESSION_ACCESS_DENIED currently falls through400 (normal scoped missing parent404). retryable=false. Unknown raw write fields are not generically rejected."
+      },
+      "Unauthenticated": {
+        "$ref": "#/components/responses/Error",
+        "description": "UNAUTHENTICATED at signed Bearer boundary, retryable=false. Unsigned compatibility cannot satisfy verified writer/receipt gate."
+      },
+      "Denied": {
+        "$ref": "#/components/responses/Error",
+        "description": "DENIED for signed scope, expected identity, top-level claimed actor/client, Policy or verified-client gate; retryable=false. Hidden scoped project/session uses404."
+      },
+      "NotFound": {
+        "$ref": "#/components/responses/Error",
+        "description": "SESSION_NOT_FOUND for missing/hidden/deleted/invalid-classification project or session; RUN_NOT_FOUND for fresh absent run; TOOL_CALL_NOT_FOUND for fresh absent tool or broken same-session run join. retryable=false. Existing receipt with missing current child during write replay instead SESSION_RECEIPT_INVALID500; receipt-only lookup does not reread child."
+      },
+      "Conflict": {
+        "$ref": "#/components/responses/Error",
+        "description": "IDEMPOTENCY_KEY_REUSED for original fingerprint disagreement; SESSION_VERSION_CONFLICT/RUN_VERSION_CONFLICT/TOOL_VERSION_CONFLICT for current mismatch or overflow, SESSION_STATE_CONFLICT/RUN_STATE_CONFLICT/TOOL_STATE_CONFLICT for disallowed fresh lifecycle. Original receipt replay precedes fresh checks. retryable=false in this mutation path."
+      },
+      "ReceiptConflict": {
+        "$ref": "#/components/responses/Error",
+        "description": "IDEMPOTENCY_KEY_REUSED for stored original fingerprint mismatch; no fresh version/state checks. retryable=false."
+      },
+      "InvalidStored": {
+        "$ref": "#/components/responses/Error",
+        "description": "SESSION_RECEIPT_INVALID for invalid stored result/version/scope/operation/source/child association or original summary; retryable=false. Unexpected non-ContractError in write store maps503, not automatically this code. Generic INTERNAL_ERROR500 defaults true."
+      },
+      "WriteUnavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "SESSION_STORAGE_UNAVAILABLE503: configured adapter lacks atomic mutation defaults retryable=false; Postgres non-ContractError storage/parse exception retryable=true. Shared WORKBENCH_AUTH_UNAVAILABLE/AUDIT_PERSISTENCE_UNAVAILABLE503 true also possible. No fallback from a configured failing store; wholly absent store retains local fixture path."
+      },
+      "ReceiptUnavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "SESSION_RECEIPT_STORAGE_UNAVAILABLE503 for missing database/query error, retryable=true; auth/audit503 also possible. No local-memory receipt fallback, business mutation or current-child repair."
+      }
+    }
+  }
+}
