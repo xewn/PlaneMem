@@ -11,6 +11,26 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    context_item_reads_openapi_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only current/archived detail OpenAPI and full response schemas; P0-01 and R-001 remain incomplete."
+      artifacts:
+        - "packages/contracts/openapi/context-item-reads.json"
+        - "packages/contracts/schemas/context-item-read.json"
+        - "packages/contracts/package.json"
+        - "packages/contracts/openapi/README.md"
+        - "packages/contracts/schemas/README.md"
+      behavior: "Two existing GETs; full current/archived envelopes, version/ETag/source bindings, live local-source observations and diagnostics, historical confirmation and conditional readiness. Reuses individual historical fields and shared HTTP components without extending the closed snapshot."
+      boundaries: "No runtime/old-schema changes. Parent/item visibility and same-transaction source graph checks are documented. Readiness is a local human-review hint, not write Policy/OPA, reservation or authority. Graph budgets, shared-client JSON budgets and client wait deadlines do not imply server response/database limits or cancellation."
+      evidence: []
+      remaining_scope: "Other WCP/MCP machine contracts, SDK/Mock machine-contract consumption, breaking-change CI and tool/runtime/release evidence."
+      pending_evidence:
+        - "Relative OpenAPI references, field-level schema reuse and 2020-12 closed composition"
+        - "Current/archived selection, parent/item restricted visibility, exact ETag and original source order"
+        - "Local diagnostics, confirmation null/object, ordinary versus strict readiness and expiry relationships"
+        - "Source graph budgets, legacy Gateway versus shared-parser differences and error mappings"
+      execution: "Manual source/docs review plus explicit formatting/Git text checks only; no build, typecheck, tests, validators, generators, product/API/database execution or release."
     context_history_openapi_development_increment:
       date: "2026-11-05"
       todo: "P0-01"

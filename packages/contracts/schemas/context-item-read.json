@@ -1,0 +1,315 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/context-item-read.json",
+  "title": "Current and archived context item details v1",
+  "description": "Complete current or archived detail envelopes with version-derived ETag. Live source observations and confirmation hints never grant write authority.",
+  "$comment": "Source-only companion to context-item-read.ts. Load this resource and context-history.json under their full IDs. Reuse individual snapshot properties, not the closed historical document as an extensible base. Runtime checks ordinary finite JSON, UTF-16 lengths, Unicode scalars, valid calendar timestamps, exact request/scope/trace/version/ETag/source equality and diagnostic index/expiry relationships. Shared 4 KiB query, 2 MiB success and 16 KiB error limits are not uniform Gateway HTTP limits. No runtime or tooling evidence.",
+  "oneOf": [{ "$ref": "#ContextItemCurrentEnvelope" }, { "$ref": "#ContextItemArchivedEnvelope" }],
+  "$defs": {
+    "ContextItemReadQuery": {
+      "$anchor": "ContextItemReadQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "item_id"],
+      "properties": {
+        "kind": { "enum": ["current", "archived"] },
+        "item_id": { "$ref": "context-history.json#/$defs/itemId" }
+      },
+      "description": "Decoded shared query. kind chooses the HTTP path locally; neither kind nor item_id is a URL query field."
+    },
+    "ContextItemCurrentQuery": {
+      "$anchor": "ContextItemCurrentQuery",
+      "$ref": "#ContextItemReadQuery",
+      "properties": { "kind": { "const": "current" } }
+    },
+    "ContextItemArchivedQuery": {
+      "$anchor": "ContextItemArchivedQuery",
+      "$ref": "#ContextItemReadQuery",
+      "properties": { "kind": { "const": "archived" } }
+    },
+    "etag": {
+      "type": "string",
+      "pattern": "^W/\"version-[1-9][0-9]{0,15}\"$",
+      "$comment": "Runtime requires exactly buildEtag(data.version); numeric version must be a positive safe integer. This is a weak tag, not a source-freshness digest."
+    },
+    "itemFields": {
+      "type": "object",
+      "required": [
+        "id",
+        "tenant_id",
+        "workspace_id",
+        "project_id",
+        "title",
+        "content",
+        "source_refs",
+        "source_ref",
+        "item_type",
+        "layer",
+        "classification",
+        "status",
+        "priority",
+        "confidence",
+        "expires_at",
+        "version",
+        "trace_id",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": { "$ref": "context-history.json#/$defs/ContextSnapshotDocument/properties/id" },
+        "tenant_id": {
+          "$ref": "context-history.json#/$defs/ContextSnapshotDocument/properties/tenant_id"
+        },
+        "workspace_id": {
+          "$ref": "context-history.json#/$defs/ContextSnapshotDocument/properties/workspace_id"
+        },
+        "project_id": {
+          "$ref": "context-history.json#/$defs/ContextSnapshotDocument/properties/project_id"
+        },
+        "title": { "$ref": "context-history.json#/$defs/ContextSnapshotDocument/properties/title" },
+        "content": {
+          "$ref": "context-history.json#/$defs/ContextSnapshotDocument/properties/content"
+        },
+        "source_refs": {
+          "$ref": "context-history.json#/$defs/ContextSnapshotDocument/properties/source_refs"
+        },
+        "source_ref": {
+          "$ref": "context-history.json#/$defs/ContextSnapshotDocument/properties/source_ref"
+        },
+        "item_type": {
+          "$ref": "context-history.json#/$defs/ContextSnapshotDocument/properties/item_type"
+        },
+        "layer": { "$ref": "context-history.json#/$defs/ContextSnapshotDocument/properties/layer" },
+        "classification": {
+          "$ref": "context-history.json#/$defs/ContextSnapshotDocument/properties/classification"
+        },
+        "status": {
+          "$ref": "context-history.json#/$defs/ContextSnapshotDocument/properties/status"
+        },
+        "priority": {
+          "$ref": "context-history.json#/$defs/ContextSnapshotDocument/properties/priority"
+        },
+        "confidence": {
+          "$ref": "context-history.json#/$defs/ContextSnapshotDocument/properties/confidence"
+        },
+        "expires_at": {
+          "$ref": "context-history.json#/$defs/ContextSnapshotDocument/properties/expires_at"
+        },
+        "version": {
+          "$ref": "context-history.json#/$defs/ContextSnapshotDocument/properties/version"
+        },
+        "trace_id": {
+          "$ref": "context-history.json#/$defs/ContextSnapshotDocument/properties/trace_id"
+        },
+        "created_at": {
+          "$ref": "context-history.json#/$defs/ContextSnapshotDocument/properties/created_at"
+        },
+        "updated_at": {
+          "$ref": "context-history.json#/$defs/ContextSnapshotDocument/properties/updated_at"
+        }
+      },
+      "$comment": "Open internal field composition; both public document anchors close all properties. Preserve arbitrary legacy JSON content, original saved trace and source order. Data scope matches requested ULIDs; updated_at >= created_at."
+    },
+    "ContextSourceCheck": {
+      "$anchor": "ContextSourceCheck",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "checked_at", "scope"],
+      "properties": {
+        "state": {
+          "enum": [
+            "current",
+            "stale",
+            "unavailable",
+            "expired",
+            "excluded",
+            "cycle",
+            "limit",
+            "invalid"
+          ]
+        },
+        "checked_at": { "$ref": "context-history.json#/$defs/timestamp" },
+        "scope": { "const": "local-context-items" }
+      },
+      "description": "Observation of root lifecycle and recursively pinned local context-item sources. No external source verification, model correctness or approval proof."
+    },
+    "ContextSourceReferenceCheck": {
+      "$anchor": "ContextSourceReferenceCheck",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_index", "state"],
+      "properties": {
+        "source_index": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "state": {
+          "enum": [
+            "current",
+            "stale",
+            "unavailable",
+            "expired",
+            "excluded",
+            "cycle",
+            "limit",
+            "invalid",
+            "not-checked"
+          ]
+        },
+        "issue": {
+          "enum": ["reference", "revision", "confirmation", "classification", "dependency"]
+        },
+        "current_revision": { "$ref": "context-history.json#/$defs/positiveInteger" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "state": { "const": "current" } }, "required": ["state"] },
+          "then": { "required": ["current_revision"], "not": { "required": ["issue"] } }
+        }
+      ],
+      "$comment": "Index is into the original root source_refs, must be unique and identify an exact context-item type. current requires current_revision equal to the original pinned positive revision. No hidden descendant IDs/content are returned. Optional current_revision is an observation, not a replacement revision or write permission."
+    },
+    "observationFields": {
+      "type": "object",
+      "required": ["sources_current", "source_check"],
+      "properties": {
+        "sources_current": { "type": "boolean" },
+        "source_check": { "$ref": "#ContextSourceCheck" },
+        "source_checks": { "type": "array", "items": { "$ref": "#ContextSourceReferenceCheck" } }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "sources_current": { "const": true } },
+            "required": ["sources_current"]
+          },
+          "then": {
+            "properties": {
+              "source_check": { "properties": { "state": { "const": "current" } } },
+              "source_checks": { "items": { "properties": { "state": { "const": "current" } } } }
+            }
+          },
+          "else": {
+            "properties": {
+              "source_check": { "properties": { "state": { "not": { "const": "current" } } } }
+            }
+          }
+        }
+      ],
+      "$comment": "Internal open composition. sources_current is equivalent to source_check.state=current. If source_checks is supplied and aggregate is current, it covers every direct local reference once; index coverage and pin equality need runtime checks. Diagnostics remain optional for compatibility."
+    },
+    "ContextConfirmationReadiness": {
+      "$anchor": "ContextConfirmationReadiness",
+      "$ref": "#/$defs/observationFields",
+      "required": ["effective_expires_at"],
+      "properties": {
+        "effective_expires_at": {
+          "oneOf": [{ "$ref": "context-history.json#/$defs/timestamp" }, { "type": "null" }]
+        }
+      },
+      "unevaluatedProperties": false,
+      "$comment": "Strict observation using the same loaded graph and checked_at as the ordinary check. Passing requires all local descendants confirmed at pinned versions and root with at least one source (not necessarily local). effective_expires_at is meaningful when sources_current=true: null means no effective expiry; a timestamp must be after checked_at and cannot exceed a finite root expiry. A finite root expiry also forbids a null effective expiry when current. No reservation or Policy decision for a future write."
+    },
+    "ContextItemConfirmation": {
+      "$anchor": "ContextItemConfirmation",
+      "$ref": "context-history.json#ContextHistoricalConfirmation",
+      "$comment": "Reuses the closed historical confirmation shape. For current detail, confirmed_version=data.version and reviewed_version=data.version-1; data.status=confirmed. No summary actor/event/time exists in this envelope to match. Older confirmed records legitimately return null instead of an invented confirmation."
+    },
+    "ContextItemCurrentDocument": {
+      "$anchor": "ContextItemCurrentDocument",
+      "allOf": [
+        { "$ref": "#/$defs/itemFields" },
+        { "$ref": "#/$defs/observationFields" },
+        {
+          "if": {
+            "properties": { "confirmation": { "type": "object" } },
+            "required": ["confirmation"]
+          },
+          "then": {
+            "properties": { "status": { "const": "confirmed" }, "version": { "minimum": 2 } }
+          }
+        },
+        {
+          "if": { "required": ["confirmation_readiness"] },
+          "then": { "properties": { "status": { "const": "proposed" } } }
+        },
+        {
+          "if": {
+            "properties": { "status": { "enum": ["expired", "excluded"] } },
+            "required": ["status"]
+          },
+          "then": { "properties": { "sources_current": { "const": false } } }
+        },
+        {
+          "if": {
+            "properties": {
+              "confirmation_readiness": {
+                "properties": { "sources_current": { "const": true } },
+                "required": ["sources_current"]
+              }
+            },
+            "required": ["confirmation_readiness"]
+          },
+          "then": {
+            "properties": { "sources_current": { "const": true }, "source_refs": { "minItems": 1 } }
+          }
+        },
+        {
+          "if": {
+            "properties": { "confirm_allowed": { "const": true } },
+            "required": ["confirm_allowed"]
+          },
+          "then": {
+            "required": ["confirmation_readiness"],
+            "properties": {
+              "status": { "const": "proposed" },
+              "confirmation_readiness": { "properties": { "sources_current": { "const": true } } }
+            }
+          }
+        }
+      ],
+      "required": ["confirm_allowed", "confirmation"],
+      "properties": {
+        "confirm_allowed": { "type": "boolean" },
+        "confirmation": { "oneOf": [{ "$ref": "#ContextItemConfirmation" }, { "type": "null" }] },
+        "confirmation_readiness": { "$ref": "#ContextConfirmationReadiness" }
+      },
+      "unevaluatedProperties": false,
+      "$comment": "Current means nonarchived, not necessarily confirmed/fresh/unexpired. No archived_at. A current aggregate additionally requires root expiry null or later than checked_at. Readiness checked_at equals the ordinary check. Optional readiness is an authorized reviewer hint for proposed items. Runtime rechecks permission, expiry, version and sources when executing confirmation."
+    },
+    "ContextItemArchivedDocument": {
+      "$anchor": "ContextItemArchivedDocument",
+      "$ref": "#/$defs/itemFields",
+      "required": ["archived_at"],
+      "properties": {
+        "status": { "const": "excluded" },
+        "archived_at": { "$ref": "context-history.json#/$defs/timestamp" }
+      },
+      "unevaluatedProperties": false,
+      "description": "Currently archived saved document; no live source checks, confirmation metadata, review readiness or confirm_allowed. Not a selected historical version."
+    },
+    "envelopeFields": {
+      "type": "object",
+      "required": ["schema_version", "trace_id", "source_refs", "revision", "etag", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "context-history.json#/$defs/identifier" },
+        "source_refs": {
+          "$ref": "context-history.json#/$defs/ContextRevisionEnvelope/properties/source_refs"
+        },
+        "revision": { "$ref": "context-history.json#/$defs/positiveInteger" },
+        "etag": { "$ref": "#/$defs/etag" }
+      },
+      "$comment": "Open internal composition. Runtime requires data.id=request item, revision=data.version, etag=buildEtag(revision), outer trace=request trace, and source_refs=[{type:context-item,id,revision},...data.source_refs] exactly in original order. data.trace_id remains the saved trace. No server_cursor."
+    },
+    "ContextItemCurrentEnvelope": {
+      "$anchor": "ContextItemCurrentEnvelope",
+      "$ref": "#/$defs/envelopeFields",
+      "properties": { "data": { "$ref": "#ContextItemCurrentDocument" } },
+      "unevaluatedProperties": false
+    },
+    "ContextItemArchivedEnvelope": {
+      "$anchor": "ContextItemArchivedEnvelope",
+      "$ref": "#/$defs/envelopeFields",
+      "properties": { "data": { "$ref": "#ContextItemArchivedDocument" } },
+      "unevaluatedProperties": false
+    }
+  }
+}

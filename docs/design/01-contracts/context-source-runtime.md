@@ -1,5 +1,7 @@
 # 本地上下文来源链检查
 
+2026-11-05，TODO **P0-01**：当前详情的来源检查现有独立[机器 Schema](../../../packages/contracts/schemas/context-item-read.json)与[OpenAPI 描述](../../../packages/contracts/openapi/context-item-reads.json)，完整覆盖 aggregate state、直接引用位置诊断、可选严格确认准备及 confirm_allowed 关联。current 不代表外部证据或将来写权限；准备检查与普通检查使用同图/同时间且共享遍历工作预算。ETag 只绑定条目保存版本，来源或时间变化可在同 ETag 下改变提示。新 Schema 没有替换来源遍历或 Gateway 解析，不把图预算视作完整响应/数据库总限额；仅源码，未编译、测试、运行校验器/生成器/产品/API/数据库或发布。
+
 更新：2026-11-01。本文记录开发代码，未执行编译、类型检查、测试、服务启动、迁移、部署或发布。
 
 ## 检查范围

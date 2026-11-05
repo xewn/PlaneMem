@@ -1,7 +1,18 @@
 # OpenAPI 源码契约
 
-这里的文档描述已有HTTP实现，尚未经过OpenAPI校验器、生成器、编译、类型检查、测试或运行验证。文档中的版本不表示已发布或部署；目前覆盖五个保存包接口、九个文件接口（目录/详情四路、身份/回执两路、上传两路、下载一路）及两个上下文历史接口，共十六个接口，尚不是完整WCP接口目录。
+这里的文档描述已有HTTP实现，尚未经过OpenAPI校验器、生成器、编译、类型检查、测试或运行验证。文档中的版本不表示已发布或部署；目前覆盖五个保存包接口、九个文件接口（目录/详情四路、身份/回执两路、上传两路、下载一路）及四个上下文详情/历史接口，共十八个接口，尚不是完整WCP接口目录。
 
+## 当前与归档上下文详情
+
+2026-11-05，TODO **P0-01**：[context-item-reads.json](context-item-reads.json) 描述已有 `GET /v1/context-items/{item_id}` 和 `GET /v1/context-items/{item_id}/archived`，包子路径 `@planemem/contracts/openapi/context-item-reads.json`。成功引用独立 [context-item-read Schema](../schemas/context-item-read.json) 的 `ContextItemCurrentEnvelope` 与 `ContextItemArchivedEnvelope`；公共参数/鉴权/错误复用相邻 context-history OpenAPI，字段级快照/标量/确认复用 context-history Schema。本地加载两份 OpenAPI 和两份 Schema、保留相对路径并注册 Schema 完整 ID；不扩展已封闭的历史快照对象。
+
+两种详情均检查未删除且可见的父项目与条目，并返回与保存版本一致的外层 revision、弱 ETag 和来源列表；活动/归档路径不互相替代。当前详情在同一个只读一致事务中读取保存内容、确认记录和本地来源图；归档详情只返回保存内容与归档时间，不附当前来源检查或确认提示。外层 trace 是本次读取，data.trace_id 保留原保存 trace；ETag 只描述版本，不随来源新鲜度、权限或时间变化自动改变。
+
+当前详情完整描述 sources_current/source_check、直接引用位置诊断和可选 confirmation_readiness。普通检查允许 proposed 来源，但 confirmed 节点要求其本地后代保持确认；严格准备检查要求至少一条来源及所有本地后代已确认，外部来源不联网核验。准备提示仅对有 context.review 或管理员角色的可信人工客户端、且条目为 proposed 时产生。confirm_allowed 还检查有效到期时间，仅是当时提示，不是未来写入 Policy/OPA 决定、锁或预留。
+
+来源图最多加载 4096 节点，64 行一批，路径 32 条边、遍历 1000000 步；单节点超过 32 条来源为 invalid，遍历超限为 limit，普通/严格检查共享工作预算。失败检查通常仍是 HTTP 200 的完整详情，不能解释为来源通过；隐藏后代不通过诊断泄露。图限制不等于正文、数据库或响应大小限额。共享/客户端 4 KiB 查询、2 MiB 成功、16 KiB 错误及默认 30 秒等待也不是服务端总期限/两笔容量保证。旧 GET 不运行完整共享解析器、不严格拒绝正文/所有条件头、不在读取后复查会话；这些边界明确保留。
+
+只做源码文档人工审阅、指定格式和 Git 文本检查；未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。P0-01/R-001 仍未完成，完整 WCP/MCP、SDK/Mock 接线与破坏性差异 CI 继续待补。
 ## 上下文版本历史
 
 2026-11-05，TODO **P0-01**：新增 [context-history.json](context-history.json)，覆盖 `GET /v1/context-items/{item_id}/history` 和 `GET /v1/context-items/{item_id}/versions/{version}`。包子路径为 `@planemem/contracts/openapi/context-history.json`；完整成功分别引用 [context-history Schema](../schemas/context-history.json) 的 `ContextHistoryPageEnvelope` 和 `ContextRevisionEnvelope`，只需本地注册这一份独立 Schema 的完整 `$id`。`kind` 是共享查询对象的本地选择字段，不是 HTTP 查询参数。

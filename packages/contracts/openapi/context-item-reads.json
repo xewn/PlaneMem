@@ -1,0 +1,164 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem current and archived context item reads",
+    "version": "0.1.0",
+    "description": "Source-only description of two existing GETs. Load this OpenAPI and adjacent context-history OpenAPI plus schemas/context-item-read.json and schemas/context-history.json locally, preserving relative paths and schema IDs. Shared auth/header/error components are reused without changing history routes. No generated-client compatibility or runtime evidence."
+  },
+  "servers": [
+    { "url": "/", "description": "Relative Gateway base; configure actual origin and base path." }
+  ],
+  "security": [{ "GatewayBearer": [] }],
+  "tags": [{ "name": "Context item details" }],
+  "x-todo": "P0-01",
+  "x-source-boundaries": {
+    "shared-query-json-bytes": 4096,
+    "client-complete-success-bytes": 2097152,
+    "client-error-bytes": 16384,
+    "local-source-loaded-nodes": 4096,
+    "local-source-depth": 32,
+    "local-source-work": 1000000,
+    "description": "JSON size budgets and the SDK's default 30-second wait are client/shared-parser boundaries, not uniform HTTP response or total server request limits. Legacy GET handlers do not call the full shared parser or provide a dedicated two-slot gate, total deadline, post-read expiry check or guaranteed SQL cancellation. Current source traversal has separate graph budgets: loads in batches of 64, marks nodes with >32 sources invalid, and reports traversal exhaustion as limit. Strict and ordinary evaluations share the work budget. These do not bound complete row bytes, response serialization or database work."
+  },
+  "x-http-input": "Only item_id is accepted and comes from the decoded path. Both GETs reject all URL query parameters. GET bodies are not parsed or explicitly rejected by dedicated framing guards. Generic If-Match and If-Match-Version must parse and agree if supplied, but do not condition the read. Idempotency-Key does not cache/replay these reads. Range/cache conditions have no implemented 206/304 behavior; no strict blanket header rejection is claimed.",
+  "paths": {
+    "/v1/context-items/{item_id}": {
+      "parameters": [
+        { "$ref": "context-history.json#/components/parameters/ItemId" },
+        { "$ref": "context-history.json#/components/parameters/TenantId" },
+        { "$ref": "context-history.json#/components/parameters/WorkspaceId" },
+        { "$ref": "context-history.json#/components/parameters/ProjectId" },
+        { "$ref": "context-history.json#/components/parameters/TraceParent" },
+        { "$ref": "context-history.json#/components/parameters/TraceId" },
+        { "$ref": "context-history.json#/components/parameters/ExpectedActorId" },
+        { "$ref": "context-history.json#/components/parameters/ExpectedClientId" }
+      ],
+      "get": {
+        "operationId": "getContextItem",
+        "tags": ["Context item details"],
+        "summary": "Read the current nonarchived item with live local-source observations",
+        "description": "Authorize context.read through Policy, then read item, saved confirmation and local-source graph inside one repeatable-read read-only transaction. Require a nondeleted visible parent project and nonarchived visible item; both parent and item restricted classifications require actual data.restricted.read. Current means nonarchived, not necessarily fresh, confirmed or unexpired. Recursively follow only exact context-item sources in the authorized project, at pinned positive revisions; evaluate lifecycle, readability, classification ordering, cycles and dependency confirmation. Other source types cause no external fetch. Failed or exhausted source checks are successful detail observations with sources_current=false, not authorization failures or partial-source success. Per-source diagnostics identify root source positions, not hidden descendants. Confirmed items can have null confirmation when no confirm history exists; recorded confirmation is checked against the current version snapshot.",
+        "x-wcp-operation": "context.item.read",
+        "x-policy-action": "context.read",
+        "x-decoded-query-schema": {
+          "$ref": "../schemas/context-item-read.json#ContextItemCurrentQuery"
+        },
+        "x-confirmation-hint": "confirmation_readiness is produced only for proposed items and a verified human client with context.review or admin role. Passing it requires at least one source and all local descendants confirmed, using the same graph/check timestamp as ordinary inspection. External sources remain manual evidence. confirm_allowed additionally requires readiness.sources_current=true and effective expiry null or still in the future when constructing the response. This is a local hint, not a write Policy/OPA decision, lock, reservation or proof it will still be allowed at submission.",
+        "responses": {
+          "200": {
+            "description": "Complete current document and local-source observations, outer version-derived weak ETag/revision and exact sources. No archived_at or server_cursor. Optional source_checks/readiness remain optional in the shared schema for compatibility; the current Gateway requests direct diagnostics. Saved data.trace_id can differ from this read's outer trace.",
+            "headers": {
+              "cache-control": { "$ref": "context-history.json#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "context-history.json#/components/headers/SuccessTrace" },
+              "ETag": { "$ref": "#/components/headers/ItemEtag" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "../schemas/context-item-read.json#ContextItemCurrentEnvelope" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "context-history.json#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/context-items/{item_id}/archived": {
+      "parameters": [
+        { "$ref": "context-history.json#/components/parameters/ItemId" },
+        { "$ref": "context-history.json#/components/parameters/TenantId" },
+        { "$ref": "context-history.json#/components/parameters/WorkspaceId" },
+        { "$ref": "context-history.json#/components/parameters/ProjectId" },
+        { "$ref": "context-history.json#/components/parameters/TraceParent" },
+        { "$ref": "context-history.json#/components/parameters/TraceId" },
+        { "$ref": "context-history.json#/components/parameters/ExpectedActorId" },
+        { "$ref": "context-history.json#/components/parameters/ExpectedClientId" }
+      ],
+      "get": {
+        "operationId": "getArchivedContextItem",
+        "tags": ["Context item details"],
+        "summary": "Read the explicitly archived item",
+        "description": "Use context.read Policy plus the same visible nondeleted parent and item classification filters. The selected current row must have a nonnull archive timestamp; an active row is 404, with no fallback between views. Returns its saved excluded document and archive time, without local-source traversal, confirmation metadata or review hints. This is the currently archived row, not an arbitrary historical version. A repeatable-read read-only transaction covers the read. ETag describes this item version for explicit later version-bound workflows, not authorization to restore or proof of current sources.",
+        "x-wcp-operation": "context.item.archived.read",
+        "x-policy-action": "context.read",
+        "x-decoded-query-schema": {
+          "$ref": "../schemas/context-item-read.json#ContextItemArchivedQuery"
+        },
+        "responses": {
+          "200": {
+            "description": "Complete archived document, archived_at, outer revision/weak etag and exact original sources. No live checks, confirmation/readiness, confirm_allowed or server_cursor. The shared parser requires excluded status; Gateway retains its narrower stored-metadata checks.",
+            "headers": {
+              "cache-control": { "$ref": "context-history.json#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "context-history.json#/components/headers/SuccessTrace" },
+              "ETag": { "$ref": "#/components/headers/ItemEtag" }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../schemas/context-item-read.json#ContextItemArchivedEnvelope"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "context-history.json#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "GatewayBearer": { "$ref": "context-history.json#/components/securitySchemes/GatewayBearer" }
+    },
+    "headers": {
+      "ItemEtag": {
+        "description": "Exactly matches outer etag and buildEtag(data.version); outer revision=data.version. Weak version tag does not change solely because dependency freshness, permissions or wall-clock expiry change. No If-None-Match/304 support is implied.",
+        "required": true,
+        "schema": { "$ref": "../schemas/context-item-read.json#/$defs/etag" }
+      }
+    },
+    "responses": {
+      "Error": {
+        "$ref": "context-history.json#/components/responses/Error",
+        "description": "Complete application error with open details and no fallback to the other view. Early input/authentication errors may omit x-trace-id and WWW-Authenticate; parser/proxy errors before the application can use another representation."
+      },
+      "BadInput": {
+        "$ref": "#/components/responses/Error",
+        "description": "INVALID_INPUT for malformed item ID/path encoding or any URL query. INVALID_REQUEST_CONTEXT for malformed or inconsistent generic version headers. retryable=false. GET body framing is not explicitly rejected by these handlers."
+      },
+      "Denied": {
+        "$ref": "#/components/responses/Error",
+        "description": "DENIED for unauthorized scope, expected identity or Policy decision; retryable=false. Policy context.read allows its existing admin bypass, but restricted SQL filters require actual data.restricted.read. No separate verified-client requirement for either read; readiness has stronger requirements. Missing/invisible parent or item is 404."
+      },
+      "NotFound": {
+        "$ref": "#/components/responses/Error",
+        "description": "CONTEXT_ITEM_NOT_FOUND for missing/deleted/invisible parent, missing/invisible item, archived row on current path or active row on archived path; retryable=false. No silent view switching."
+      },
+      "RateLimited": {
+        "$ref": "#/components/responses/Error",
+        "description": "RATE_LIMITED from general actor/path limiter; retryable=true. No dedicated detail two-slot error or Retry-After guarantee."
+      },
+      "InvalidStored": {
+        "$ref": "#/components/responses/Error",
+        "description": "CONTEXT_ITEM_INVALID for stored metadata, version, confidence, source/date conversion, archive timestamp or recorded confirmation/hash checks; retryable=false. Dependency failure states normally remain observations inside HTTP 200. Gateway does not run the full shared response parser. Unexpected command-boundary INTERNAL_ERROR uses serializer default retryable=true."
+      },
+      "Unavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "CONTEXT_ITEM_STORAGE_UNAVAILABLE for absent database or non-ContractError read/transaction/source-inspection failures; WORKBENCH_AUTH_UNAVAILABLE or AUDIT_PERSISTENCE_UNAVAILABLE at outer boundaries. retryable=true. Read requests do not require a write key even though the legacy generic storage message mentions retrying with a request key."
+      }
+    }
+  }
+}

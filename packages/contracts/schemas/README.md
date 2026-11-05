@@ -1,5 +1,9 @@
 # 独立契约结构定义
 
+2026-11-05，TODO **P0-01**：新增 `context-item-read.json`（包子路径同名），根为当前/归档完整详情的互斥联合，公开 `ContextItemReadQuery`、当前/归档查询、两个文档和两个封套锚点。复用 context-history 的单字段快照定义、标量和完整确认结构；内部开放字段组合，公开结构以 `unevaluatedProperties:false` 关闭，未改变已有历史 Schema。需本地加载两份完整 Schema 并支持 2020-12 组合语义。
+
+新增完整来源检查、直接来源诊断和严格确认准备结构。约束 sources_current 与 state=current 等价、current 诊断必须有正版本且没有 issue、非空确认要求 confirmed/版本至少2、准备提示仅 proposed、允许确认必须有通过的准备提示；归档固定 excluded 且无实时提示。引用位置唯一/完整覆盖、固定版本相等、原来源顺序、scope/trace/ETag、时间/到期和确认版本关联仍由运行代码核对。当前正文保留旧任意 JSON，确认记录可为 null；Schema 不补造审核记录、不计算来源图或授予写入资格。详见[当前与归档详情 OpenAPI](../openapi/README.md#当前与归档上下文详情)。未执行校验器或生成器。
+
 2026-11-05，TODO **P0-01**：新增独立 `context-history.json`，包子路径 `@planemem/contracts/schemas/context-history.json`。根是完整历史目录/单版成功的互斥联合；公开锚点包含 `ContextHistoryQuery`、`ContextRevisionQuery`、`ContextRevisionSummary`、`ContextSnapshotDocument`、`ContextHistoricalConfirmation`、`ContextRevision`、`ContextHistoryPage` 和两个完整封套。摘要与完整版本通过开放的内部 summaryFields 组合，公开锚点用 `unevaluatedProperties:false` 关闭；消费工具须支持 2020-12 的该语义，尚未运行兼容验证。
 
 操作分支区分 baseline 的空归属、create 的版本 1/proposed、update/归档/恢复/确认的状态和最低版本。快照保留任意 JSON content、完整来源、原 trace 与时间，不混入当前读提示或 ETag。confirm 必须有完整确认对象，其他操作允许省略或 null（Gateway 实际输出 null）；归档布尔与时间空值配对。日期允许 Date.toISOString 的扩展年份；ID/文字的 UTF-16 长度、无孤立代理项、有效日历、版本/范围/来源/确认跨字段相等及摘要计算仍由原运行解析负责。Schema 不代替授权、完整性重算或运行证据，也不把客户端字节预算提升为 HTTP 服务端保证。详见[上下文版本历史 OpenAPI](../openapi/README.md#上下文版本历史)。

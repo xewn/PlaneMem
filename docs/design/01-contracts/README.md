@@ -1,5 +1,7 @@
 # 公共契约目录
 
+- [当前与归档上下文详情 OpenAPI](../../../packages/contracts/openapi/README.md#当前与归档上下文详情)：TODO P0-01，两路详情及完整来源检查/确认准备/ETag Schema；仅描述既有实现，未运行接口或校验器。
+
 - [上下文版本历史 OpenAPI](../../../packages/contracts/openapi/README.md#上下文版本历史)：TODO P0-01，历史目录与指定版本两路 GET、完整快照/确认/分页 Schema；只记录现有实现和共享解析边界，未执行运行校验。
 
 - [指定版本文件下载 OpenAPI](../../../packages/contracts/openapi/README.md#指定版本文件下载)：TODO P0-01，固定版本/摘要/长度请求、原始字节响应及放行审计头；只记录现有实现，没有运行下载或校验。

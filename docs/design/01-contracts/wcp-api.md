@@ -1,5 +1,7 @@
 # WCP API 契约 v1
 
+2026-11-05，TODO P0-01：[当前与归档上下文详情 OpenAPI](../../../packages/contracts/openapi/README.md#当前与归档上下文详情)描述两路已有 GET，复用历史字段与公共 HTTP 组件，新增完整实时检查/确认准备和归档详情 Schema。父项目/条目可见性、同事务来源图检查、版本/ETag和原来源绑定均明确；允许确认只是本地读取提示，旧 HTTP 边界和客户端预算不冒称服务端保证。未改运行实现、未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布；P0-01/R-001 未完成、evidence为空。
+
 2026-11-05，TODO P0-01：[上下文版本历史 OpenAPI](../../../packages/contracts/openapi/README.md#上下文版本历史)覆盖已有 GET 历史目录与指定版本。完整 Schema 约束 baseline 空归属、命令状态、原快照/确认、分页及无外层 ETag 的成功；明确 hash/来源/范围跨字段检查、当前/历史分类过滤、逐请求只读一致快照和客户端预算不等于服务端保证。未改变运行逻辑，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。P0-01/R-001 未完成，evidence 为空。
 
 2026-11-05，TODO P0-01：[指定版本文件下载 OpenAPI](../../../packages/contracts/openapi/README.md#指定版本文件下载)新增现有 GET /v1/artifacts/{artifact_id}/versions/{version}/content 的机器描述。新 Schema 根仅描述解码请求及绑定元数据/HTTP标量，成功明确为原始octet-stream；完整列出范围/版本/hash/长度/放行审计头、读取前后导出检查、两笔容量和仅发送阶段60秒期限。放行/发送结束不等于客户端收存。未改运行实现，未运行下载、校验器、生成器、编译、测试、数据库或发布；P0-01/R-001未完成、evidence为空。

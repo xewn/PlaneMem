@@ -1,5 +1,9 @@
 # ContextItem 录入与编辑开发说明
 
+2026-11-05，TODO **P0-01**：补充[当前与归档详情 OpenAPI](../../../packages/contracts/openapi/context-item-reads.json)及[完整读取 Schema](../../../packages/contracts/schemas/context-item-read.json)。当前与归档均返回版本/ETag，且读取未删除可见父项目；当前详情包括原确认及实时本地来源检查/准备提示，归档详情无这些字段。新 Schema 复用历史单字段快照而不扩展封闭历史文档，完整描述互斥结构及状态关联；跨字段版本/来源/范围/trace/到期检查仍由共享运行解析完成。
+
+confirm_allowed 基于 proposed、可信人工客户端、context.review 或管理员角色、严格来源准备及即时到期条件，未另执行确认写入的 Policy/OPA，不授予后续提交资格。来源检查失败通常仍返回完整详情；ETag 不编码来源图/时间/权限变化。Gateway 保留已有较窄存储检查，不调用完整共享解析器；2 MiB 等客户端限额、30秒等待和图节点/深度/工作预算各自独立。未改运行实现，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布；P0-01/R-001 未完成、evidence为空。
+
 2026-11-05，TODO **P0-01**：补充现有历史目录和指定版本读取的 [OpenAPI 源码](../../../packages/contracts/openapi/context-history.json)及[独立完整 Schema](../../../packages/contracts/schemas/context-history.json)。两份完整成功引用不同锚点，无外层 revision/etag/server_cursor；目录来源不带版本，单版来源先绑定请求版本再保留原快照来源顺序。共享 Schema 区分 baseline 与五种命令状态、confirm 完整记录、归档时间空值及原快照任意 JSON content。
 
 本增量记录实际边界：当前条目与历史分类分别过滤，归档不禁止历史读取，每次请求一个只读一致快照；没有独立父项目行查询、读取后会话复查或实时来源遍历。Policy 保留管理员对 context.read 的能力绕过，而 restricted SQL 仍需要真实读取能力；旧 GET 不要求独立可信客户端声明。Gateway 并未调用完整共享历史解析器，只有既有存储/确认/hash 检查；共享解析器和专用客户端的 4 KiB/256 KiB/2 MiB/16 KiB 预算不代表服务端容量、期限或响应限额。GET 正文/条件头没有统一严格拒绝；通用版本头解析不产生条件读取。摘要只覆盖 `{item, archived_at}`，目录不核对各版正文，任何历史结果不成为当前编辑/确认授权。完整说明见 [OpenAPI 入口](../../../packages/contracts/openapi/README.md#上下文版本历史)。

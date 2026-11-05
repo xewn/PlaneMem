@@ -1,6 +1,8 @@
 # PlaneMem
 
-按 TODO **P0-01** 补充[上下文版本历史 OpenAPI](packages/contracts/openapi/README.md#上下文版本历史)及完整 Schema，覆盖历史目录和指定版本两路 GET，明确分页、原快照/确认、权限和无当前编辑 ETag。现有 OpenAPI 源码覆盖十六个接口（保存包五路、文件九路、条目历史两路）；完整 WCP/MCP、SDK/Mock 机器契约接线和验收证据仍待补。未编译、测试、运行校验器/生成器、接口或发布。
+按 TODO **P0-01** 补充[当前与归档上下文详情 OpenAPI](packages/contracts/openapi/README.md#当前与归档上下文详情)及完整 Schema，覆盖两路详情、实时来源诊断/确认准备和版本 ETag。现有 OpenAPI 源码覆盖十八个接口（保存包五路、文件九路、条目详情/历史四路）；完整 WCP/MCP、SDK/Mock 机器契约接线与验收证据仍待补。未编译、测试、运行接口/校验器/生成器或发布。
+
+按 TODO **P0-01** 补充[上下文版本历史 OpenAPI](packages/contracts/openapi/README.md#上下文版本历史)及完整 Schema，覆盖历史目录和指定版本两路 GET，明确分页、原快照/确认、权限和无当前编辑 ETag。该轮使 OpenAPI 源码覆盖十六个接口（保存包五路、文件九路、条目历史两路）；完整 WCP/MCP、SDK/Mock 机器契约接线和验收证据仍待补。未编译、测试、运行校验器/生成器、接口或发布。
 
 按 TODO **P0-01** 补充[指定版本文件下载 OpenAPI](packages/contracts/openapi/README.md#指定版本文件下载)，覆盖固定版本/hash/长度、二进制响应和放行审计头，区分授权放行与客户端收存。该轮使OpenAPI源码覆盖十四个接口，包括九个文件接口；完整WCP/MCP、SDK/Mock机器契约接线与验收证据仍待补。未编译、测试、执行下载、校验器/生成器或发布。
 
