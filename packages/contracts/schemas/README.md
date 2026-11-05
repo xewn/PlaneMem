@@ -1,5 +1,11 @@
 # 独立契约结构定义
 
+2026-11-05，TODO **P0-01**：新增 `context-item-write.json`，根为创建/编辑/归档/恢复/确认五类完整成功封套互斥联合；每类提供 `Context*Body` 与 `Context*Envelope` 锚点，另有完整 `ContextItemMutationReceipt`。请求定义原HTTP正文，不冒充规范化后的存储对象；头/正文至少一处原键、非创建至少一处版本及多处一致须运行时检查。默认值仅注解，trim、confidence舍入、日期规范和跨请求指纹仍由原实现完成。
+
+编辑必须提供实际字段而非仅控制值，创建禁止自定ID/状态，恢复/归档只接受控制值，确认需要原理由。原写来源使用1–32条及各自文字限额，保留未固定/零revision的结构兼容；人工确认才检查本地固定正版本。仅非创建正文的可选 item_id 被旧路由无条件覆盖，因此刻意用任意JSON描述这个忽略字段；它不是来源或正文的泛化空模型。原键校验沿既有非空/无空白/255 UTF-16限制，不冒称额外控制字符防护。
+
+成功封套要求单个条目来源、revision、ETag、server_cursor和完整六字段命令回执，create固定ULID/版本1，其余版本至少2；事件/时间/版本/游标在重放中保持。复用 context-history 标量与 context-item-read 的ETag，两者也须本地加载。原身份/请求/版本/来源/ETag相等、真实提交/回放与当前权限不由Schema证明；没有增加SDK或Gateway完整回执校验。详见[上下文条目写入 OpenAPI](../openapi/README.md#上下文条目写入)。
+
 2026-11-05，TODO **P0-01**：新增 `context-item-read.json`（包子路径同名），根为当前/归档完整详情的互斥联合，公开 `ContextItemReadQuery`、当前/归档查询、两个文档和两个封套锚点。复用 context-history 的单字段快照定义、标量和完整确认结构；内部开放字段组合，公开结构以 `unevaluatedProperties:false` 关闭，未改变已有历史 Schema。需本地加载两份完整 Schema 并支持 2020-12 组合语义。
 
 新增完整来源检查、直接来源诊断和严格确认准备结构。约束 sources_current 与 state=current 等价、current 诊断必须有正版本且没有 issue、非空确认要求 confirmed/版本至少2、准备提示仅 proposed、允许确认必须有通过的准备提示；归档固定 excluded 且无实时提示。引用位置唯一/完整覆盖、固定版本相等、原来源顺序、scope/trace/ETag、时间/到期和确认版本关联仍由运行代码核对。当前正文保留旧任意 JSON，确认记录可为 null；Schema 不补造审核记录、不计算来源图或授予写入资格。详见[当前与归档详情 OpenAPI](../openapi/README.md#当前与归档上下文详情)。未执行校验器或生成器。

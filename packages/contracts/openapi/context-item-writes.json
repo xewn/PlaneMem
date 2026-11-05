@@ -1,0 +1,394 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem context item lifecycle commands",
+    "version": "0.1.0",
+    "description": "Source-only contract for five existing POST operations. Load this and adjacent context-history OpenAPI, plus context-item-write, context-item-read and context-history schemas with original relative paths and IDs. No runtime, generated-client or release evidence. Successful replies are complete historical command receipts, not item documents."
+  },
+  "servers": [
+    { "url": "/", "description": "Relative Gateway base; configure actual origin and base path." }
+  ],
+  "security": [{ "GatewayBearer": [] }],
+  "tags": [{ "name": "Context item commands" }],
+  "x-todo": "P0-01",
+  "x-http-input": "All five POSTs require a JSON object body, including {} for header-only archive/restore controls, and reject URL query parameters. Legacy generic readJson runs before authentication with a 1 MiB raw-body limit; malformed, empty, non-object or oversized JSON maps to 400 INVALID_JSON, not 413. Content-Type is not independently enforced as application/json; the contract advertises the intended JSON media type without claiming a 415 guard or strict fatal UTF-8 decoder. There is no dedicated write two-slot gate, total request/body deadline or uniform bounded success/error response. Idempotency-Key may instead be in the body; both must match exactly. For non-create writes, a positive safe expected version must be supplied by body.expected_version, If-Match or If-Match-Version; all supplied values must agree numerically. Generic version headers on create are parsed but do not provide a create precondition. Optional body.item_id on non-create paths is overwritten by the decoded route parameter before parsing, even if different; new clients should omit it. Identity fields never override verified claims and are not supported body fields.",
+  "x-normalization-and-replay": "The persistent key bucket is project scope plus a hash of verified actor/client/exact key, shared across these five operations. Command fingerprint includes operation, path item ID, expected version and normalized create/update/reason fields. Title/item_type/reason trim, create defaults, UTC milliseconds and rounded confidence can make distinct raw bodies the same normalized command; content/source text and source array order are preserved. After authentication, Policy, shape/key/version parsing and the project stream advisory lock, the original command receipt is looked up before a new write's current-version/lifecycle/source checks. Same key with different normalized command is 409. Replay rechecks stored classification plus current item and parent visibility, including archived items, and preserves original version/event/time/cursor. It does not require the current version or sources to equal the original precondition. Current authorization and human-review eligibility for confirm are still required. There is no separate read-only receipt endpoint in this contract: retrying the original POST can execute it if it was never committed.",
+  "x-transaction": "New commands update/insert the item, preserve missing pre-change baseline history where applicable, append the local durable sync event, record post-change version history and save the command receipt in one database transaction after the project stream advisory lock. Transaction-body errors abort the attempted write; loss of commit acknowledgement or connection can leave the caller's outcome unknown. The Policy decision observer runs before the transaction and is not a committed-command receipt. The reply follows transaction completion but delivery can fail afterward. Keep original identity/key/path/expected version/body when outcome is unknown; do not invent a replacement key. No NATS delivery, client receipt, cross-instance runtime evidence or post-audit continuous permission/session-expiry recheck is claimed. The advisory stream lock is not a locked parent-project row.",
+  "paths": {
+    "/v1/context-items": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "context-history.json#/components/parameters/TraceParent" },
+        { "$ref": "context-history.json#/components/parameters/TraceId" },
+        { "$ref": "context-history.json#/components/parameters/ExpectedActorId" },
+        { "$ref": "context-history.json#/components/parameters/ExpectedClientId" },
+        { "$ref": "#/components/parameters/IdempotencyKey" }
+      ],
+      "post": {
+        "operationId": "createContextItem",
+        "tags": ["Context item commands"],
+        "summary": "Create a proposed context item",
+        "description": "Requires verified client and context.write Policy. Assign a new ULID, version 1 and proposed status; caller cannot choose item ID or confirmed status. Require nonblank title/content and 1..32 structurally valid sources. Defaults are note/L4/internal/Medium/0.5/null expiry; source_ref uses the first source URI or type:id. Explicit restricted creation requires actual data.restricted.read before receipt lookup. Ordinary creation does not traverse/verify sources or require future expiry. Existing create SQL has no explicit parent visibility/deleted-state query; the database project-ID foreign key only establishes an existing project ID, not matching visible parent scope/classification. Do not infer the stronger parent check used by updates/replays or silently claim this gap is fixed.",
+        "x-wcp-operation": "context.item.create",
+        "x-policy-action": "context.write",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/context-item-write.json#ContextCreateBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/CreateSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "context-history.json#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/context-items/{item_id}/update": {
+      "parameters": [
+        { "$ref": "context-history.json#/components/parameters/ItemId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "context-history.json#/components/parameters/TraceParent" },
+        { "$ref": "context-history.json#/components/parameters/TraceId" },
+        { "$ref": "context-history.json#/components/parameters/ExpectedActorId" },
+        { "$ref": "context-history.json#/components/parameters/ExpectedClientId" },
+        { "$ref": "#/components/parameters/IdempotencyKey" },
+        { "$ref": "#/components/parameters/IfMatch" },
+        { "$ref": "#/components/parameters/IfMatchVersion" }
+      ],
+      "post": {
+        "operationId": "updateContextItem",
+        "tags": ["Context item commands"],
+        "summary": "Edit an explicitly reviewed item version",
+        "description": "For a new command, require visible nondeleted parent and active visible item, lock item and match expected version. At least one editable field or status must be supplied. Classification is immutable; status may only be proposed/excluded. Omitted status preserves excluded, otherwise becomes proposed, invalidating prior approval even when editing confirmed/expired items. Every accepted new patch increments version, including unchanged values. Replacing source_refs updates source_ref from its first entry; otherwise preserve the existing label. Ordinary editing only validates supplied field/source structure, not source freshness or external truth, and can save past expiry. Replay uses the original receipt before these new-write checks.",
+        "x-wcp-operation": "context.item.update",
+        "x-policy-action": "context.write",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/context-item-write.json#ContextUpdateBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/UpdateSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "context-history.json#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/context-items/{item_id}/archive": {
+      "parameters": [
+        { "$ref": "context-history.json#/components/parameters/ItemId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "context-history.json#/components/parameters/TraceParent" },
+        { "$ref": "context-history.json#/components/parameters/TraceId" },
+        { "$ref": "context-history.json#/components/parameters/ExpectedActorId" },
+        { "$ref": "context-history.json#/components/parameters/ExpectedClientId" },
+        { "$ref": "#/components/parameters/IdempotencyKey" },
+        { "$ref": "#/components/parameters/IfMatch" },
+        { "$ref": "#/components/parameters/IfMatchVersion" }
+      ],
+      "post": {
+        "operationId": "archiveContextItem",
+        "tags": ["Context item commands"],
+        "summary": "Archive one active item version",
+        "description": "New command requires visible nondeleted parent, active visible item and matching expected version. Preserve saved fields, set excluded, record archive time and increment version. No content patch or source traversal. New key against an already archived item returns 404; same original command can replay its receipt after archive or later restore when currently visible. No deletion of history or prior events.",
+        "x-wcp-operation": "context.item.archive",
+        "x-policy-action": "context.write",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/context-item-write.json#ContextArchiveBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/ArchiveSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "context-history.json#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/context-items/{item_id}/restore": {
+      "parameters": [
+        { "$ref": "context-history.json#/components/parameters/ItemId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "context-history.json#/components/parameters/TraceParent" },
+        { "$ref": "context-history.json#/components/parameters/TraceId" },
+        { "$ref": "context-history.json#/components/parameters/ExpectedActorId" },
+        { "$ref": "context-history.json#/components/parameters/ExpectedClientId" },
+        { "$ref": "#/components/parameters/IdempotencyKey" },
+        { "$ref": "#/components/parameters/IfMatch" },
+        { "$ref": "#/components/parameters/IfMatchVersion" }
+      ],
+      "post": {
+        "operationId": "restoreContextItem",
+        "tags": ["Context item commands"],
+        "summary": "Restore the explicitly archived item as excluded",
+        "description": "New command requires visible nondeleted parent and visible item; compare current version before requiring archived state. With matching version an active row returns CONTEXT_ITEM_NOT_ARCHIVED, while a mismatched version returns version conflict first. Clear archive time, preserve content/classification/expiry, keep excluded and increment version. Restore does not restore approval, repair sources, confirm content or select an older snapshot. Explicit later edit/review is needed before confirmed use. Same-key receipt replay is independent of later lifecycle state when currently visible.",
+        "x-wcp-operation": "context.item.restore",
+        "x-policy-action": "context.write",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/context-item-write.json#ContextRestoreBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/RestoreSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "context-history.json#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/context-items/{item_id}/confirm": {
+      "parameters": [
+        { "$ref": "context-history.json#/components/parameters/ItemId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "context-history.json#/components/parameters/TraceParent" },
+        { "$ref": "context-history.json#/components/parameters/TraceId" },
+        { "$ref": "context-history.json#/components/parameters/ExpectedActorId" },
+        { "$ref": "context-history.json#/components/parameters/ExpectedClientId" },
+        { "$ref": "#/components/parameters/IdempotencyKey" },
+        { "$ref": "#/components/parameters/IfMatch" },
+        { "$ref": "#/components/parameters/IfMatchVersion" }
+      ],
+      "post": {
+        "operationId": "confirmContextItem",
+        "tags": ["Context item commands"],
+        "summary": "Record human confirmation of a pinned proposed version",
+        "description": "Require verified human client, context.review or admin role, plus Policy context.review. New command requires visible parent, active item and matching expected version, then proposed status and unexpired root. Require 1..32 sources and inspect the local context-item closure under shared row locks after the stream lock. All local descendants must be readable, active, at pinned positive versions, appropriately classified and confirmed; cycle/limit/failure never passes. External references are not fetched. Recheck root and effective local expiry after inspection. Preserve content, set confirmed, increment version and save trimmed reason/actor/client/event/time with the version snapshot. A read's confirm_allowed hint is not accepted as authorization. Replay checks current eligibility/visibility but returns the original receipt without re-confirming the now-current content or rerunning old source checks.",
+        "x-wcp-operation": "context.item.confirm",
+        "x-policy-action": "context.review",
+        "x-source-budgets": "Existing source walker: 4096 loaded nodes, 64-row batches, depth 32, 1000000 work steps and <=32 source refs per valid node. Limits do not establish total operation time, row-byte/database budgets or external evidence verification.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/context-item-write.json#ContextConfirmBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/ConfirmSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "context-history.json#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "410": { "$ref": "#/components/responses/Expired" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "GatewayBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Verified issuer token; all writes require nonblank authenticated client claim and exact authorized scope headers, with handler-enforced ULID scope. Local Policy requires context.write or its admin bypass for create/update/archive/restore, context.review or admin for confirm. If OPA is configured, authorizeWithOpa uses its decision rather than adding a separate local capability check. Confirm additionally enforces verified human plus context.review/admin inside the handler, regardless of OPA. Actual data.restricted.read is required by explicit restricted-create and current/stored visibility checks. No caller-supplied actor/client/role overrides. Decision audit precedes transaction; persisted audit is only available when its sink is configured."
+      }
+    },
+    "parameters": {
+      "TenantId": {
+        "name": "x-tenant-id",
+        "in": "header",
+        "required": true,
+        "schema": { "$ref": "../schemas/context-history.json#/$defs/ulid" },
+        "description": "Exact authorized tenant ULID; write handler rejects non-ULID scope."
+      },
+      "WorkspaceId": {
+        "name": "x-workspace-id",
+        "in": "header",
+        "required": true,
+        "schema": { "$ref": "../schemas/context-history.json#/$defs/ulid" },
+        "description": "Exact authorized workspace ULID."
+      },
+      "ProjectId": {
+        "name": "x-project-id",
+        "in": "header",
+        "required": true,
+        "schema": { "$ref": "../schemas/context-history.json#/$defs/ulid" },
+        "description": "Exact authorized project ULID. Scope authentication does not substitute for a parent-project visibility query."
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "description": "Required in this header or body.idempotency_key; both must match byte-for-byte as strings. Preserve original key under the original actor/client/project. Header optional only because body fallback exists. No automatic replacement after an uncertain outcome.",
+        "schema": { "$ref": "../schemas/context-item-write.json#/$defs/idempotencyKey" }
+      },
+      "IfMatch": {
+        "name": "If-Match",
+        "in": "header",
+        "description": "Expected positive safe version using W/\"version-N\"; alternatively body.expected_version or If-Match-Version. All supplied versions must agree numerically. Generic parser permits leading zeros and decodes numerically; SDK sends canonical form. No wildcard or tag list. This is an application CAS precondition, not a 412 response contract.",
+        "schema": { "type": "string", "pattern": "^W/\"version-[0-9]+\"$" }
+      },
+      "IfMatchVersion": {
+        "name": "If-Match-Version",
+        "in": "header",
+        "description": "Legacy decimal alternative; digits only, leading zeros allowed, Number(value) must be a positive safe integer for these non-create writes. No sign/fraction/exponent. Must match body and If-Match when supplied. Generic parser accepts zero but command validation rejects it.",
+        "schema": { "type": "string", "pattern": "^[0-9]+$" }
+      }
+    },
+    "headers": {
+      "ReceiptEtag": {
+        "description": "Matches body.etag and the historical receipt version. On replay it may be older than current state; re-read before starting a different command.",
+        "required": true,
+        "schema": { "$ref": "../schemas/context-item-read.json#/$defs/etag" }
+      }
+    },
+    "responses": {
+      "CreateSuccess": {
+        "description": "HTTP 200 for new create or replay, never implied 201. Generated item/version-1 receipt; no Location or item document. Original cursor/version/event/time are preserved on replay.",
+        "headers": {
+          "cache-control": { "$ref": "context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "context-history.json#/components/headers/SuccessTrace" },
+          "ETag": { "$ref": "#/components/headers/ReceiptEtag" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/context-item-write.json#ContextCreateEnvelope" }
+          }
+        }
+      },
+      "UpdateSuccess": {
+        "description": "Complete update command receipt, new version=expected+1 or original receipt on replay. Not current content/status. No extra event or history is appended on replay.",
+        "headers": {
+          "cache-control": { "$ref": "context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "context-history.json#/components/headers/SuccessTrace" },
+          "ETag": { "$ref": "#/components/headers/ReceiptEtag" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/context-item-write.json#ContextUpdateEnvelope" }
+          }
+        }
+      },
+      "ArchiveSuccess": {
+        "description": "Complete archive command receipt, new version=expected+1 or original historical receipt on replay. Does not prove the item is still archived now.",
+        "headers": {
+          "cache-control": { "$ref": "context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "context-history.json#/components/headers/SuccessTrace" },
+          "ETag": { "$ref": "#/components/headers/ReceiptEtag" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/context-item-write.json#ContextArchiveEnvelope" }
+          }
+        }
+      },
+      "RestoreSuccess": {
+        "description": "Complete restore command receipt, new version=expected+1 or original historical receipt on replay. New restore remains excluded; receipt does not prove current active or confirmed state.",
+        "headers": {
+          "cache-control": { "$ref": "context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "context-history.json#/components/headers/SuccessTrace" },
+          "ETag": { "$ref": "#/components/headers/ReceiptEtag" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/context-item-write.json#ContextRestoreEnvelope" }
+          }
+        }
+      },
+      "ConfirmSuccess": {
+        "description": "Complete confirm command receipt, new version=expected+1 or original historical receipt on replay. Reason/attribution are stored in history, not included in this receipt. Does not prove current content remains confirmed/fresh.",
+        "headers": {
+          "cache-control": { "$ref": "context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "context-history.json#/components/headers/SuccessTrace" },
+          "ETag": { "$ref": "#/components/headers/ReceiptEtag" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/context-item-write.json#ContextConfirmEnvelope" }
+          }
+        }
+      },
+      "Error": {
+        "$ref": "context-history.json#/components/responses/Error",
+        "description": "Application error with code/message/details/trace_id/retryable. Early body/authentication errors can omit x-trace-id; pre-application proxy/parser errors may differ. Delivery failure/timeout does not prove rollback or authorize a new key."
+      },
+      "BadInput": {
+        "$ref": "#/components/responses/Error",
+        "description": "INVALID_JSON for generic body parse, non-object/empty/oversized body (1 MiB); INVALID_INPUT for scope ULID, path, query, fields, key or missing/invalid command version; INVALID_REQUEST_CONTEXT for header parsing or header/body version disagreement. retryable=false. Body parse occurs before authentication; no 413/415 guarantee."
+      },
+      "Denied": {
+        "$ref": "#/components/responses/Error",
+        "description": "DENIED for scope/identity, missing verified client, Policy/OPA or human reviewer eligibility, or explicit restricted create without data.restricted.read; retryable=false. Missing/invisible existing parent/item or original stored restricted receipt uses 404 instead."
+      },
+      "NotFound": {
+        "$ref": "#/components/responses/Error",
+        "description": "CONTEXT_ITEM_NOT_FOUND for inaccessible original stored receipt classification or missing/invisible existing parent/item; active-only new commands hide archived items. retryable=false. New create lacks the explicit parent visibility query; missing parent foreign key failures are storage-unavailable, not an invented create 404."
+      },
+      "Conflict": {
+        "$ref": "#/components/responses/Error",
+        "description": "IDEMPOTENCY_KEY_REUSED, CONTEXT_ITEM_VERSION_CONFLICT, CONTEXT_ITEM_HISTORY_CONFLICT, CONTEXT_ITEM_NOT_ARCHIVED, CONTEXT_ITEM_NOT_PROPOSED, CONTEXT_ITEM_SOURCE_STALE or CONTEXT_ITEM_SOURCE_UNAVAILABLE; retryable=false. Version conflict details include expected_version/current_version. Unavailable/invalid source states map to SOURCE_UNAVAILABLE; other failed states or effective local expiry map to SOURCE_STALE. Do not silently update the original version/key."
+      },
+      "Expired": {
+        "$ref": "#/components/responses/Error",
+        "description": "CONTEXT_ITEM_EXPIRED when new confirmation sees root expiry before or after inspection; retryable=false. Ordinary create/update can save past expiry. Replay is not a fresh confirmation."
+      },
+      "RateLimited": {
+        "$ref": "#/components/responses/Error",
+        "description": "RATE_LIMITED from general actor/path limiter; retryable=true, no Retry-After or dedicated write-capacity promise."
+      },
+      "InvalidStored": {
+        "$ref": "#/components/responses/Error",
+        "description": "CONTEXT_ITEM_INVALID for stored metadata or version/cursor overflow, SYNC_EVENT_INVALID for invalid event projection; retryable=false. Unexpected command-boundary INTERNAL_ERROR defaults retryable=true. Schema does not add missing complete receipt checks to the legacy handler or SDK."
+      },
+      "Unavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "CONTEXT_ITEM_STORAGE_UNAVAILABLE for missing database or non-ContractError transactional failure; WORKBENCH_AUTH_UNAVAILABLE/AUDIT_PERSISTENCE_UNAVAILABLE at outer boundaries. retryable=true. Preserve the original request after uncertain commit/delivery; this contract provides no standalone read-only receipt query."
+      }
+    }
+  }
+}

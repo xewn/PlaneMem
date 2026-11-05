@@ -1,0 +1,252 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/context-item-write.json",
+  "title": "Context item write bodies and command receipts v1",
+  "description": "Five existing write operations. Root is the complete success receipt union; HTTP bodies use the operation-specific request anchors. A receipt is historical command metadata, not the current item or a read-only lookup result.",
+  "$comment": "Source-only. Load this resource, context-history.json and context-item-read.json locally under their IDs. Runtime remains authoritative for UTF-16 lengths, lone surrogates, calendar validity, input normalization, cross-header/body equality, original identity/key/fingerprint, exact path/version/ETag/source bindings and transactional authorization. No validator, generator or runtime evidence. Existing SDK commands use generic envelope checks rather than this complete receipt schema.",
+  "oneOf": [
+    { "$ref": "#ContextCreateEnvelope" },
+    { "$ref": "#ContextUpdateEnvelope" },
+    { "$ref": "#ContextArchiveEnvelope" },
+    { "$ref": "#ContextRestoreEnvelope" },
+    { "$ref": "#ContextConfirmEnvelope" }
+  ],
+  "$defs": {
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S",
+      "not": { "pattern": "\\u0000" },
+      "$comment": "Runtime rejects NUL and lone surrogates and measures UTF-16 length. Other control characters are not blanket-rejected by boundedText; do not substitute the narrower sync identifier rules."
+    },
+    "idempotencyKey": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "not": { "pattern": "\\s" },
+      "$comment": "Existing validateIdempotencyKey checks nonempty, <=255 UTF-16 units and no whitespace. It does not independently reject every control or lone surrogate in a JSON-body key; downstream HTTP/database constraints can be narrower. Preserve the exact original key."
+    },
+    "inputExpiry": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "string",
+          "minLength": 20,
+          "maxLength": 24,
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,3})?Z$",
+          "not": { "pattern": "\\s" }
+        }
+      ],
+      "$comment": "Raw input accepts four-digit UTC years, optional 1..3 fractional digits or null. Runtime checks valid calendar seconds and normalizes to millisecond Date.toISOString. It does not require future expiry for ordinary create/update."
+    },
+    "writeSourceRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "$ref": "#/$defs/text", "maxLength": 64 },
+        "id": { "$ref": "#/$defs/text", "maxLength": 255 },
+        "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "uri": { "$ref": "#/$defs/text", "maxLength": 2048 }
+      },
+      "$comment": "Fields are preserved without trimming, URI syntax validation, source deduplication or fetching. Create/update accept revision omitted or zero, even for a context-item source; live use/confirmation imposes stricter local pin rules later."
+    },
+    "editableFields": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "$ref": "#/$defs/text",
+          "maxLength": 300,
+          "description": "Runtime checks raw length then trims outer whitespace."
+        },
+        "content": {
+          "$ref": "#/$defs/text",
+          "maxLength": 131072,
+          "description": "Nonblank text; preserve whitespace exactly. Unlike legacy read snapshots, write input is a string."
+        },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": { "$ref": "#/$defs/writeSourceRef" }
+        },
+        "item_type": {
+          "$ref": "#/$defs/text",
+          "maxLength": 64,
+          "description": "Runtime checks raw length then trims outer whitespace."
+        },
+        "layer": { "enum": ["L0", "L1", "L2", "L3", "L4"] },
+        "priority": { "enum": ["High", "Medium", "Low"] },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Any finite input in range; normalized with Math.round(value*1000)/1000, not rejected for extra decimals."
+        },
+        "expires_at": { "$ref": "#/$defs/inputExpiry" }
+      },
+      "$comment": "Internal open input fields. Public body anchors close unknown fields. Defaults apply only to create; update omission preserves values except its documented status reset."
+    },
+    "versionedControlFields": {
+      "type": "object",
+      "properties": {
+        "expected_version": { "$ref": "context-history.json#/$defs/positiveInteger" },
+        "idempotency_key": { "$ref": "#/$defs/idempotencyKey" },
+        "item_id": {
+          "description": "Legacy HTTP compatibility only: route parameters overwrite this optional body's value before the handler, even if it differs or is not a string. Omit it in new requests; it cannot bind or redirect the path. No type restriction describes the actual ignored JSON field."
+        }
+      },
+      "$comment": "Versioned operations need a positive expected version from this body or If-Match/If-Match-Version. Idempotency key must appear in body or header. All simultaneously supplied values must agree. JSON Schema alone cannot enforce alternatives involving HTTP headers."
+    },
+    "ContextCreateBody": {
+      "$anchor": "ContextCreateBody",
+      "$ref": "#/$defs/editableFields",
+      "required": ["title", "content", "source_refs"],
+      "properties": {
+        "classification": {
+          "$ref": "context-history.json#/$defs/classification",
+          "default": "internal"
+        },
+        "idempotency_key": { "$ref": "#/$defs/idempotencyKey" },
+        "item_type": { "default": "note" },
+        "layer": { "default": "L4" },
+        "priority": { "default": "Medium" },
+        "confidence": { "default": 0.5 },
+        "expires_at": { "default": null }
+      },
+      "unevaluatedProperties": false,
+      "description": "Raw create HTTP object. Body key optional only when supplied by Idempotency-Key header; both must match. No caller item ID, expected_version or status. Runtime assigns ULID/version 1/proposed. Defaults are annotations here, actually applied by parseCreateContextItem."
+    },
+    "ContextUpdateBody": {
+      "$anchor": "ContextUpdateBody",
+      "allOf": [{ "$ref": "#/$defs/editableFields" }, { "$ref": "#/$defs/versionedControlFields" }],
+      "properties": { "status": { "enum": ["proposed", "excluded"] } },
+      "anyOf": [
+        { "required": ["title"] },
+        { "required": ["content"] },
+        { "required": ["source_refs"] },
+        { "required": ["item_type"] },
+        { "required": ["layer"] },
+        { "required": ["priority"] },
+        { "required": ["confidence"] },
+        { "required": ["expires_at"] },
+        { "required": ["status"] }
+      ],
+      "unevaluatedProperties": false,
+      "description": "At least one real patch field; controls alone are insufficient. Classification cannot change. Omitted status preserves excluded, otherwise resets to proposed, including edits of confirmed/expired records. An accepted no-op patch still increments the version."
+    },
+    "ContextArchiveBody": {
+      "$anchor": "ContextArchiveBody",
+      "$ref": "#/$defs/versionedControlFields",
+      "unevaluatedProperties": false,
+      "description": "Object required, including {} when both key and expected version are supplied in headers. New command requires an active item and records excluded plus archive time."
+    },
+    "ContextRestoreBody": {
+      "$anchor": "ContextRestoreBody",
+      "$ref": "#/$defs/versionedControlFields",
+      "unevaluatedProperties": false,
+      "description": "Object required, including {} with header controls. New command requires an archived item, clears archive time and remains excluded. It does not restore prior approval or source freshness."
+    },
+    "ContextConfirmBody": {
+      "$anchor": "ContextConfirmBody",
+      "$ref": "#/$defs/versionedControlFields",
+      "required": ["reason"],
+      "properties": { "reason": { "$ref": "#/$defs/text", "maxLength": 2000 } },
+      "unevaluatedProperties": false,
+      "description": "Raw reason is length-checked then trimmed. New confirmation requires a verified human reviewer, proposed unexpired item and current strict local-source closure. External evidence is not fetched or authenticated."
+    },
+    "ContextItemMutationReceipt": {
+      "$anchor": "ContextItemMutationReceipt",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["item_id", "operation", "version", "event_id", "occurred_at", "replayed"],
+      "properties": {
+        "item_id": { "$ref": "context-history.json#/$defs/itemId" },
+        "operation": { "enum": ["create", "update", "archive", "restore", "confirm"] },
+        "version": { "$ref": "context-history.json#/$defs/positiveInteger" },
+        "event_id": { "$ref": "context-history.json#/$defs/ulid" },
+        "occurred_at": { "$ref": "context-history.json#/$defs/timestamp" },
+        "replayed": { "type": "boolean" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "operation": { "const": "create" } }, "required": ["operation"] },
+          "then": {
+            "properties": {
+              "item_id": { "$ref": "context-history.json#/$defs/ulid" },
+              "version": { "const": 1 }
+            }
+          },
+          "else": { "properties": { "version": { "minimum": 2 } } }
+        }
+      ],
+      "$comment": "Historical operation metadata only, without content, current status, actor/client/key echo or confirmation reason. replayed=false is a newly persisted command; true preserves original version/event/time. No dedicated complete runtime receipt parser is added by this schema."
+    },
+    "mutationEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "trace_id",
+        "source_refs",
+        "revision",
+        "etag",
+        "server_cursor",
+        "data"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "This attempt's request trace, including replay. The event trace remains the original stored trace and is not returned in this receipt."
+        },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "id", "revision"],
+            "properties": {
+              "type": { "const": "context-item" },
+              "id": { "$ref": "context-history.json#/$defs/itemId" },
+              "revision": { "$ref": "context-history.json#/$defs/positiveInteger" }
+            }
+          }
+        },
+        "revision": { "$ref": "context-history.json#/$defs/positiveInteger" },
+        "etag": { "$ref": "context-item-read.json#/$defs/etag" },
+        "server_cursor": { "$ref": "context-history.json#/$defs/positiveInteger" },
+        "data": { "$ref": "#ContextItemMutationReceipt" }
+      },
+      "$comment": "Outer revision=data.version=sole source revision and source ID=data.item_id; ETag=buildEtag(data.version), also sent as HTTP ETag. server_cursor is the original command event's cursor, not a new stream watermark. Replay may return an older ETag/version than the current item. Request operation/path and all cross-field equality need runtime/client checks."
+    },
+    "ContextCreateEnvelope": {
+      "$anchor": "ContextCreateEnvelope",
+      "$ref": "#/$defs/mutationEnvelope",
+      "properties": { "data": { "properties": { "operation": { "const": "create" } } } }
+    },
+    "ContextUpdateEnvelope": {
+      "$anchor": "ContextUpdateEnvelope",
+      "$ref": "#/$defs/mutationEnvelope",
+      "properties": { "data": { "properties": { "operation": { "const": "update" } } } }
+    },
+    "ContextArchiveEnvelope": {
+      "$anchor": "ContextArchiveEnvelope",
+      "$ref": "#/$defs/mutationEnvelope",
+      "properties": { "data": { "properties": { "operation": { "const": "archive" } } } }
+    },
+    "ContextRestoreEnvelope": {
+      "$anchor": "ContextRestoreEnvelope",
+      "$ref": "#/$defs/mutationEnvelope",
+      "properties": { "data": { "properties": { "operation": { "const": "restore" } } } }
+    },
+    "ContextConfirmEnvelope": {
+      "$anchor": "ContextConfirmEnvelope",
+      "$ref": "#/$defs/mutationEnvelope",
+      "properties": { "data": { "properties": { "operation": { "const": "confirm" } } } }
+    }
+  }
+}

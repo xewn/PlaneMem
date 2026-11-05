@@ -11,6 +11,26 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    context_item_writes_openapi_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only create/update/archive/restore/confirm OpenAPI, raw body schemas and full receipts; P0-01 and R-001 remain incomplete."
+      artifacts:
+        - "packages/contracts/openapi/context-item-writes.json"
+        - "packages/contracts/schemas/context-item-write.json"
+        - "packages/contracts/package.json"
+        - "packages/contracts/openapi/README.md"
+        - "packages/contracts/schemas/README.md"
+      behavior: "Five existing POSTs, field normalization, cross-header/body key/version requirements, identity-scoped normalized replay, lookup before new-write CAS/lifecycle/source checks and original receipt metadata. Item/history/event/receipt persistence shares a transaction; restore stays excluded and confirm checks human eligibility/local source closure."
+      boundaries: "No runtime/old-schema changes. New create lacks explicit parent visibility/deletion checks; optional body item_id is overwritten by non-create route. Ordinary create/update only validate source structure. Legacy pre-auth 1 MiB JSON parse returns 400, with no dedicated whole-operation/capacity/response budgets. SDK remains generic-envelope validation; no independent read-only receipt route."
+      evidence: []
+      remaining_scope: "Other WCP/MCP machine contracts, SDK/Mock machine-contract consumption, breaking-change CI and tool/runtime/release evidence."
+      pending_evidence:
+        - "Local references, closed request composition, raw versus normalized fields and operation-specific receipts"
+        - "Original identity/key/expected version, same-normalized-command replay, new-key conflicts and later lifecycle changes"
+        - "Human confirmation, local source locks/expiry/budgets and transactional item/history/event/receipt consistency"
+        - "Create parent gap, path/body ID behavior, generic POST/SDK boundaries and complete error mapping"
+      execution: "Manual source/docs review plus explicit formatting/Git text checks only; no build, typecheck, tests, validators, generators, product/API/database execution or release."
     context_item_reads_openapi_development_increment:
       date: "2026-11-05"
       todo: "P0-01"

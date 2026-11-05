@@ -8,6 +8,8 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./schemas/context-item-write.json": "./schemas/context-item-write.json",
+    "./openapi/context-item-writes.json": "./openapi/context-item-writes.json",
     "./schemas/context-item-read.json": "./schemas/context-item-read.json",
     "./openapi/context-item-reads.json": "./openapi/context-item-reads.json",
     "./schemas/context-history.json": "./schemas/context-history.json",
