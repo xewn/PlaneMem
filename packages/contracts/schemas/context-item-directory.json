@@ -1,0 +1,283 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/context-item-directory.json",
+  "title": "PlaneMem complete workbench context directory",
+  "description": "Full context operation model for POST /v1/workbench/query, including active or archived records, normalized echoed filters, complete saved content, scope and permission hints. Standalone schema; source-only prerequisite for the complete multiplexed OpenAPI route.",
+  "$comment": "Runtime additionally checks UTF-16 length/lone surrogates, finite ordinary JSON budgets, real microsecond UTC timestamps, exact query/scope/trace, unique IDs, strict order and canonical cursor binding. JSON Schema defaults do not normalize input. No validator/generator or runtime evidence claimed.",
+  "$ref": "#ContextItemDirectoryEnvelope",
+  "$defs": {
+    "ulid": { "type": "string", "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$" },
+    "positive": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+    "text": {
+      "type": "string",
+      "not": { "pattern": "\\u0000" },
+      "description": "No NUL/lone surrogate; other controls, DEL and whitespace allowed. Saved title/item_type/source_ref lack independent length or nonblank limits."
+    },
+    "identifier": {
+      "type": "string",
+      "pattern": "\\S",
+      "maxLength": 255,
+      "not": { "pattern": "[\\u0000-\\u001f]" },
+      "description": "isSyncIdentifier: nonblank<=255 UTF-16 units, no controls U+0000..001F or lone surrogate. Leading/trailing whitespace and DEL are not rejected or trimmed."
+    },
+    "recordIdentifier": {
+      "$ref": "#/$defs/identifier",
+      "not": { "enum": [".", ".."] },
+      "description": "Saved item ID and saved trace additionally reject exact dot/double-dot. IDs are not required to be ULIDs."
+    },
+    "time": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+      "not": { "pattern": "^0000" },
+      "description": "Exact six-digit UTC microseconds, real calendar validated by millisecond prefix roundtrip. Original final three digits retained; no invented chronology requirement."
+    },
+    "nullableTime": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/time" }] },
+    "layer": { "enum": ["L0", "L1", "L2", "L3", "L4"] },
+    "classification": { "enum": ["public", "internal", "confidential", "restricted"] },
+    "status": { "enum": ["confirmed", "proposed", "expired", "excluded"] },
+    "cursor": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,2048}$",
+      "description": "Canonical UTF8 JSON base64url v2 cursor; complete tuple must parse and re-encode identically. Legacy v1 rejected."
+    },
+    "queryText": { "$ref": "#/$defs/text", "maxLength": 500 },
+    "rawFields": {
+      "type": "object",
+      "properties": {
+        "query": { "$ref": "#/$defs/queryText" },
+        "layer": { "anyOf": [{ "const": "" }, { "$ref": "#/$defs/layer" }] },
+        "classification": { "anyOf": [{ "const": "" }, { "$ref": "#/$defs/classification" }] },
+        "status": { "anyOf": [{ "const": "" }, { "$ref": "#/$defs/status" }] },
+        "item_type": { "$ref": "#/$defs/queryText" },
+        "archived": { "type": "boolean", "default": false },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 100, "default": 25 },
+        "cursor": { "$ref": "#/$defs/cursor" }
+      }
+    },
+    "query": {
+      "$anchor": "ContextItemDirectoryQuery",
+      "$ref": "#/$defs/rawFields",
+      "unevaluatedProperties": false,
+      "x-candidate-json-max-bytes": 8192,
+      "description": "Raw fields without operation. Whole query must be finite ordinary JSON<=8KiB/depth64/nodes100000 before normalization. Empty enums omitted; query/item_type trimmed and omitted if blank. Null rejected; archived is a JSON boolean."
+    },
+    "request": {
+      "$anchor": "ContextItemDirectoryRequest",
+      "allOf": [
+        { "$ref": "#/$defs/rawFields" },
+        { "required": ["operation"], "properties": { "operation": { "const": "context" } } }
+      ],
+      "unevaluatedProperties": false,
+      "description": "Gateway body; generic pre-auth body limit is1MiB, then query excluding operation is bounded to8KiB by the shared parser."
+    },
+    "normalizedQuery": {
+      "$anchor": "ContextItemDirectoryNormalizedQuery",
+      "allOf": [
+        { "$ref": "#/$defs/rawFields" },
+        {
+          "required": ["archived", "limit"],
+          "properties": {
+            "query": { "minLength": 1, "not": { "pattern": "^\\s|\\s$" } },
+            "item_type": { "minLength": 1, "not": { "pattern": "^\\s|\\s$" } },
+            "layer": { "$ref": "#/$defs/layer" },
+            "classification": { "$ref": "#/$defs/classification" },
+            "status": { "$ref": "#/$defs/status" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false,
+      "description": "Echo equals the exact normalized input including incoming cursor when present. archived and limit are inserted; no empty filters remain."
+    },
+    "source": {
+      "$anchor": "ContextItemDirectorySource",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "$ref": "#/$defs/text", "minLength": 1 },
+        "id": { "$ref": "#/$defs/text", "minLength": 1 },
+        "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "uri": { "$ref": "#/$defs/text", "minLength": 1 }
+      },
+      "description": "Unknown fields rejected, not stripped. Whitespace/control text other than NUL and lone surrogates allowed; no URI syntax/type allowlist or independent array count limit. Saved references are not reauthorized or recursively checked."
+    },
+    "record": {
+      "$anchor": "ContextItemDirectoryRecord",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "item_type",
+        "layer",
+        "classification",
+        "status",
+        "source_ref",
+        "expires_at",
+        "confidence",
+        "priority",
+        "content",
+        "source_refs",
+        "trace_id",
+        "updated_at",
+        "version",
+        "archived_at"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/recordIdentifier" },
+        "title": { "$ref": "#/$defs/text" },
+        "item_type": { "$ref": "#/$defs/text" },
+        "layer": { "$ref": "#/$defs/layer" },
+        "classification": { "$ref": "#/$defs/classification" },
+        "status": { "$ref": "#/$defs/status" },
+        "source_ref": { "$ref": "#/$defs/text" },
+        "expires_at": { "$ref": "#/$defs/nullableTime" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "priority": { "enum": ["High", "Medium", "Low"] },
+        "content": true,
+        "source_refs": { "type": "array", "items": { "$ref": "#ContextItemDirectorySource" } },
+        "trace_id": { "$ref": "#/$defs/recordIdentifier" },
+        "updated_at": { "$ref": "#/$defs/time" },
+        "version": { "$ref": "#/$defs/positive" },
+        "archived_at": { "$ref": "#/$defs/nullableTime" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "archived_at": { "type": "string" } } },
+          "then": { "properties": { "status": { "const": "excluded" } } }
+        }
+      ],
+      "description": "Complete16-field saved projection, including arbitrary finite JSON content subject to whole-envelope budgets. No created_at/scope/current-source diagnostic fields. version is numeric safe integer, not the work-item int64 string. Saved status/expiry do not prove current source freshness."
+    },
+    "scope": {
+      "$anchor": "ContextItemDirectoryScope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant_id", "workspace_id", "project_id"],
+      "properties": {
+        "tenant_id": { "$ref": "#/$defs/ulid" },
+        "workspace_id": { "$ref": "#/$defs/ulid" },
+        "project_id": { "$ref": "#/$defs/ulid" }
+      }
+    },
+    "permissions": {
+      "$anchor": "ContextItemDirectoryPermissions",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["compile", "write", "restricted", "propose"],
+      "properties": {
+        "compile": { "type": "boolean" },
+        "write": { "type": "boolean" },
+        "restricted": { "type": "boolean" },
+        "propose": { "type": "boolean" }
+      },
+      "description": "Current hints, not write approval. compile uses authenticated_client!==false plus admin/context.read; write and propose need authenticated_client===true plus their capability/admin. restricted is actual data.restricted.read capability."
+    },
+    "envelope": {
+      "$anchor": "ContextItemDirectoryEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "trace_id",
+        "source_refs",
+        "scope",
+        "query",
+        "data",
+        "context_permissions"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "#/$defs/identifier" },
+        "source_refs": { "const": [{ "type": "postgres", "id": "wcp_context_items" }] },
+        "scope": { "$ref": "#ContextItemDirectoryScope" },
+        "query": { "$ref": "#ContextItemDirectoryNormalizedQuery" },
+        "data": {
+          "type": "array",
+          "maxItems": 100,
+          "items": { "$ref": "#ContextItemDirectoryRecord" }
+        },
+        "next_cursor": { "$ref": "#/$defs/cursor" },
+        "context_permissions": { "$ref": "#ContextItemDirectoryPermissions" }
+      },
+      "allOf": [
+        {
+          "if": { "required": ["next_cursor"] },
+          "then": { "properties": { "data": { "minItems": 1 } } }
+        },
+        {
+          "if": { "properties": { "query": { "properties": { "archived": { "const": true } } } } },
+          "then": {
+            "properties": {
+              "data": {
+                "items": {
+                  "properties": {
+                    "archived_at": { "type": "string" },
+                    "status": { "const": "excluded" }
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "data": { "items": { "properties": { "archived_at": { "type": "null" } } } }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "context_permissions": { "properties": { "restricted": { "const": false } } }
+            }
+          },
+          "then": {
+            "properties": {
+              "data": {
+                "items": {
+                  "properties": { "classification": { "not": { "const": "restricted" } } }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-candidate-json-max-bytes": 2097152,
+      "description": "Gateway and SDK parse full detached finite ordinary JSON<=2MiB/depth64/nodes100000, exact trace/scope/query and fixed source. Unique IDs, <=query.limit, exact categorical filters and strict priority/updated DESC/C-ID order checked, including every row after input cursor. Next cursor only on full page, at last position and same input binding. Text search membership not independently recomputed. No has_more, total, ETag or outer revision."
+    },
+    "position": {
+      "$anchor": "ContextItemDirectoryPosition",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rank", "updated", "id"],
+      "properties": {
+        "rank": { "enum": [0, 1, 2] },
+        "updated": { "$ref": "#/$defs/time" },
+        "id": { "$ref": "#/$defs/recordIdentifier" }
+      }
+    },
+    "cursorContent": {
+      "$anchor": "ContextItemDirectoryCursorContent",
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "prefixItems": [
+        { "const": 2 },
+        { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        { "enum": [0, 1, 2] },
+        { "$ref": "#/$defs/time" },
+        { "$ref": "#/$defs/recordIdentifier" }
+      ],
+      "description": "Decoded compact JSON tuple [2,key,rank,updated,id], canonical unpadded UTF8 base64url. Production key hashes context-list-v2/scope/restricted/query/layer/classification/status/item_type/archived/limit. Trace/actor/client are not bound. Priority High/Medium/Low maps to0/1/2; Unicode code-point comparison matches UTF8 PostgreSQL C ordering."
+    }
+  },
+  "x-runtime-boundaries": {
+    "http": "Authenticated generic workbench POST with context.read Policy/audit and optional expected actor/client checks, no verified-client requirement for this read. Generic pre-auth1MiB JSON and actor/path limiter, traceparent before x-trace-id. No dedicated URL-query/media/encoding/cache-condition rejection or write preconditions; workbench bypasses generic success cache. No dedicated two-slot handler or total database deadline.",
+    "database": "Single SELECT applies exact scope, visible undeleted parent, active/archived state, restricted visibility, filters and cursor before LIMIT+1. Missing/hidden parent returns empty200. Exact categorical filters use C collation; query uses PostgreSQL lower/strpos over title/source_ref/JSONB content, not SQL wildcards or source_refs. Only first limit rows fully parsed; lookahead used only for existence. Unknown priority/invalid saved rows fail entire page, not skipped. No wall-clock expiry inference, source-chain revalidation or cross-page snapshot.",
+    "numeric": "Database version text becomes Number and must be positive safe integer; confidence numeric text becomes finite0..1. Full content and source lists retained, no truncation or auto page shrinking.2MiB object check occurs after database materialization and JSON traversal, so it does not bound earlier allocation or query cost.",
+    "sdk": "readContextDirectory captures own-data ordinary options/context; scope and supplied actor are ULIDs, client/trace use isSyncIdentifier. Query finite snapshot<=8KiB. Default30s local budget starts after capture and includes transport/whole result parsing with deadline rechecks. Fetch bounded-json separately bounds credentials/network/body, success2MiB/error16KiB, exact200/trace/media/fatalUTF8/content-length. Known same-trace errors sanitized and retryable=false; WORKBENCH_DATABASE_UNAVAILABLE is absent from this helper's whitelist and becomes GATEWAY_UNAVAILABLE.",
+    "iterator": "contextItemPages captures query/context/settings immediately and requires both actor/client constraints. Lazy next starts one page with separate budget; default100/max1000 pages, no prefetch/save/cross-page dedup or whole-iteration timeout. Saves next cursor before mutable yield; after a continued final allowed page, further next raises CONTEXT_DIRECTORY_PAGE_LIMIT. Strict shared ordering/binding supplies continuation checks.",
+    "errors": "Malformed query/cursor INVALID_INPUT400 false; bad/oversize complete page CONTEXT_ITEM_INVALID500 false. Generic authentication/policy401/403, RATE_LIMITED429 true, WORKBENCH_DATABASE_UNAVAILABLE/WORKBENCH_AUTH_UNAVAILABLE/AUDIT_PERSISTENCE_UNAVAILABLE503 true and unexpected INTERNAL_ERROR500 true remain. These server codes differ from the SDK finite error allowlist.",
+    "mock": "Configured MockContextHistoryStore uses explicit complete text-query hit sets and mock-specific identity/store/permission/limit bindings; it does not simulate PostgreSQL text rendering. Same complete envelope and postgres table label model the protocol only, not database access. Production and Mock cursors cannot be interchanged; no machine-schema consumption or run evidence claimed."
+  }
+}

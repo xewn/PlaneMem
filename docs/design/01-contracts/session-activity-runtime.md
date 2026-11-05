@@ -1,5 +1,7 @@
 # 会话运行与工具调用明细
 
+2026-11-05，TODO P0-01：[session-registry Schema](../../../packages/contracts/schemas/session-registry.json)新增统一POST的sessions/session模型，复用本文件对应的SessionClosureState/SessionCommandIdentity/权限定义。注意operation=session返回WorkbenchSessionEnvelope，无独立GET SessionStateEnvelope要求的外层tenant_id/workspace_id/project_id；SDK getSessionState仍走下述GET。新Schema不改变处理器或读取限制，未编译、测试、执行校验器/生成器/接口或发布。
+
 2026-11-05，TODO P0-01：新增 [session-reads OpenAPI](../../../packages/contracts/openapi/session-reads.json) 和独立 [session-activity-read Schema](../../../packages/contracts/schemas/session-activity-read.json)，完整覆盖下列五个读取接口，包子路径对应文件名。只新增机器契约源码与说明；不修改当前处理器或 SDK，不作为运行证据，P0-01/R-001 仍未完成。
 
 机器契约边界补充：运行/工具版本为正安全整数，序号上限 2147483647；状态终止时间不接受扩展年份。目录数字查询允许前导零，翻页位置不绑定原身份/筛选/页大小，也不要求边界记录存在。仅选中的 limit 条数据被解析，lookahead 只用于续页判断；工具目录关联同会话运行但不完整解析运行元数据。source_refs 扩展保留，无数量限制或当前来源权限检查；model 可为空字符串，工具名/trace 只要求非空。父会话/运行终态不要求子项同时终态。

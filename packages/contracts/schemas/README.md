@@ -1,8 +1,20 @@
 # 独立契约结构定义
 
+## 工作台上下文与会话查询
+
+2026-11-05，TODO P0-01：新增 [context-item-directory.json](context-item-directory.json) 和 [session-registry.json](session-registry.json)，各有同名包子路径，补齐统一查询的 context/sessions/session 三操作。连同此前 overview/work_items/work_item，已有六种操作的完整模型；handoffs/checkpoints/conflicts/audit/admin 五种仍待补齐后组合一个完整入口，OpenAPI保持89路，不按操作数虚增HTTP路径。
+
+上下文Schema自包含，公开 ContextItemDirectoryQuery/Request/NormalizedQuery、Source/Record/Scope/Permissions/Envelope、Position/CursorContent 锚点。请求空枚举省略，query/item_type原长最多500个UTF-16单位、trim后非空才保留，archived/limit规范为false/25。完整16字段记录保留任意有限JSON正文、原来源与归档时间；版本为数字安全整数，所有日期为六位UTC微秒。记录ID/保存trace沿非ULID本地规则，允许首尾空白和DEL、拒绝精确点路径；外层trace不增加点路径限制，scope三字段必须ULID。来源拒绝未知字段，但不套用写入端更窄的数量/长度规则。
+
+完整上下文封套闭合并回显准确scope/query，固定一条表来源与四种权限提示；归档必须excluded、restricted=false不得含受限条目。Schema表达这些条件，运行解析另外检查2MiB/64层/100000节点、查询8KiB、严格顺序/唯一ID/有效limit/末条续页位置及绑定。游标解码为[2,key,rank,updated,id]，绑定全部规范筛选和limit。SQL搜索依赖PostgreSQL lower和JSONB内容文本，客户端不重算命中；Mock使用显式完整命中集合及独立绑定，固定postgres标签不是实际数据库证据。
+
+会话Schema公开 SessionRegistryQuery/NormalizedQuery/Request、Record/Scope/Page/Envelope、Position/CursorContent 和 WorkbenchSessionRequest/Envelope。加载 session-activity-read、session-resume 及其本地依赖；记录复用原会话状态标量/终止条件和续接来源，不能直接扩展闭合的SessionClosureState对象。完整14字段记录保留旧null来源、父会话、状态结束时间、活动计数及成对最新检查点；started_at为微秒，ended_at为毫秒或null，版本/计数是安全整数。目录scope是有界非空文本且必须匹配当前请求，共享解析器不独立要求ULID；write_sessions=true需要身份，身份scope需一致。
+
+会话目录有has_more/可选next_cursor、四条有序来源，无query回显；单会话POST只有当前状态、session来源和身份权限提示，没有独立GET响应的外层范围字段，也没有目录2MiB解析入口。两种目录均绑定页大小、按原微秒续页且没有跨页快照。上下文用有限普通JSON快照，当前会话目录共享解析器只计完整JSON.stringify字节，不具备前者的通用深度/节点/自定义对象限制。两类SDK专用目录读取均有默认30秒和有界Fetch；getSessionState仍走独立GET。未运行校验器、生成器、编译、测试或发布，机器契约消费接线和运行证据仍缺。
+
 ## 工作台概览与工作项投影
 
-2026-11-05，TODO P0-01：新增 [workbench-overview.json](workbench-overview.json) 和 [work-item-projection.json](work-item-projection.json)，分别有同名包子路径。两份自包含Schema覆盖POST /v1/workbench/query的overview/work_items/work_item三操作，为统一入口完整契约准备；其余八种操作尚需补齐，未把三操作计成三条路由，OpenAPI仍89路。
+2026-11-05，TODO P0-01：新增 [workbench-overview.json](workbench-overview.json) 和 [work-item-projection.json](work-item-projection.json)，分别有同名包子路径。两份自包含Schema覆盖POST /v1/workbench/query的overview/work_items/work_item三操作，为统一入口完整契约准备；后续上下文与会话三操作见上节，当前其余五种操作尚需补齐，未把三操作计成三条路由，OpenAPI仍89路。
 
 概览提供WorkbenchOverviewRequest、ContextPreview、Brief、Layer、WorkbenchOverview和完整Envelope锚点。包括全部13项安全计数、五层唯一汇总、brief和四组有界预览；状态及空均值组合可由Schema表达，计数合计、各预览长度恰为min(total,cap)、唯一ID和读时过期条件仍需运行解析。brief的已保存content允许任意JSON，不假造统一正文结构。所有数据对象按现有解析器去掉扩展；built-in外层为七条有序postgres表来源，SDK普通概览封套检查更宽松，不能把它写成工作项严格客户端。
 

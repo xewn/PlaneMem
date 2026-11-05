@@ -11,6 +11,31 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    workbench_context_session_schema_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only complete context/sessions/session schemas; six of eleven workbench operation models prepared, remaining five before full OpenAPI composition. OpenAPI stays89; P0-01/R-001 incomplete."
+      artifacts:
+        - "packages/contracts/schemas/context-item-directory.json"
+        - "packages/contracts/schemas/session-registry.json"
+        - "packages/contracts/package.json"
+        - "packages/contracts/schemas/README.md"
+        - "packages/contracts/openapi/README.md"
+        - "docs/design/01-contracts/context-item-runtime.md"
+        - "docs/design/01-contracts/session-registry-runtime.md"
+        - "docs/design/01-contracts/session-activity-runtime.md"
+      behavior: "Complete raw/normalized queries, saved context content/sources/archive, session closure/parent/origin/counts/checkpoint pair, scope and permission envelopes, original microsecond cursor contents and page-size binding; separate POST current-state envelope."
+      boundaries: "No runtime/SDK/Mock/database/dependency changes. Context finite ordinary-JSON8KiB query/2MiB envelope differs from registry JSON.stringify size gate; limits do not bound prior database allocation. Context IDs and session scope have distinct actual text rules. Built-in source tags do not prove source freshness. Current POST and dedicated GET state envelopes differ; exact query/trace/scope/order/identity and canonical cursor relationships still require runtime parsing."
+      evidence: []
+      remaining_scope: "handoffs/checkpoints/conflicts/audit/admin workbench models and complete unified OpenAPI; other WCP/MCP/event payload schemas, SDK/Mock machine-contract consumption, breaking-change CI and runtime/release evidence."
+      pending_evidence:
+        - "Raw/normalized empty filters, default insertion, exact client_id and page-size binding"
+        - "Full content/sources/archive state and restricted visibility without truncation"
+        - "Real microsecond timestamps, strict unique order and last-position canonical continuation"
+        - "Safe numeric versions/counts, closure state, parent inequality and checkpoint pairing"
+        - "Exact scope/trace/source/permission/identity relationships and GET/POST difference"
+        - "Separate SDK object/Fetch/error/budget behavior and actual consumer compatibility"
+      execution: "Manual source/docs review, explicit formatting and Git text checks only; no build, typecheck, tests, validators, generators, product/SDK/Mock/API/database execution or release."
     workbench_overview_work_item_schema_development_increment:
       date: "2026-11-05"
       todo: "P0-01"

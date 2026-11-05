@@ -1,0 +1,261 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/session-registry.json",
+  "title": "PlaneMem workbench session registry and current state",
+  "description": "Full sessions/session operation models for POST /v1/workbench/query. Registry and current-state envelopes differ; current state is not an original command receipt. Load session-activity-read and session-resume resources and their local dependencies.",
+  "$comment": "Runtime additionally checks UTF-16/lone-surrogate limits, real dates, exact scope/trace, parent inequality, unique and strictly ordered rows, query/continuation relationships and serialized byte budget. Closed schemas model normalized wire outputs; generic JS parser inputs are not universally ordinary-JSON snapshots. No validator/generator/runtime evidence.",
+  "oneOf": [{ "$ref": "#SessionRegistryEnvelope" }, { "$ref": "#WorkbenchSessionEnvelope" }],
+  "$defs": {
+    "ulid": { "$ref": "./session-activity-read.json#/$defs/ulid" },
+    "positive": { "$ref": "./session-activity-read.json#/$defs/positive" },
+    "count": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "identityText": { "$ref": "./session-activity-read.json#/$defs/identityText" },
+    "trace": { "$ref": "#/$defs/identityText", "maxLength": 512 },
+    "status": { "$ref": "./session-activity-read.json#/$defs/state/properties/status" },
+    "queryText": {
+      "type": "string",
+      "maxLength": 500,
+      "not": { "pattern": "[\\u0000-\\u001f\\u007f]" },
+      "description": "Raw<=500 UTF-16 units, no controls/DEL/lone surrogate; trim and omit if blank. Client_id instead preserves leading/trailing whitespace when nonblank."
+    },
+    "cursor": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,1024}$" },
+    "time": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+      "not": { "pattern": "^0000" },
+      "description": "Exact six-digit UTC microseconds, real calendar checked by millisecond prefix roundtrip. Never rebuild from displayed milliseconds."
+    },
+    "rawFields": {
+      "type": "object",
+      "properties": {
+        "query": { "$ref": "#/$defs/queryText" },
+        "status": { "anyOf": [{ "const": "" }, { "$ref": "#/$defs/status" }] },
+        "client_id": { "anyOf": [{ "const": "" }, { "$ref": "#/$defs/identityText" }] },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 100, "default": 25 },
+        "cursor": { "$ref": "#/$defs/cursor" }
+      }
+    },
+    "query": {
+      "$anchor": "SessionRegistryQuery",
+      "$ref": "#/$defs/rawFields",
+      "unevaluatedProperties": false,
+      "description": "Raw fields without operation; null rejected. Empty status/client_id omitted, query trimmed/omitted, limit defaults25 at read time without inserting a field. Cursor fully parsed/canonically re-encoded even before dispatch. No dedicated8KiB query snapshot in this parser."
+    },
+    "normalizedQuery": {
+      "$anchor": "SessionRegistryNormalizedQuery",
+      "allOf": [
+        { "$ref": "#/$defs/rawFields" },
+        {
+          "properties": {
+            "query": { "minLength": 1, "not": { "pattern": "^\\s|\\s$" } },
+            "status": { "$ref": "#/$defs/status" },
+            "client_id": { "$ref": "#/$defs/identityText" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false,
+      "description": "Effective captured query; optional limit remains absent when omitted. Not echoed in the registry envelope."
+    },
+    "request": {
+      "$anchor": "SessionRegistryRequest",
+      "allOf": [
+        { "$ref": "#/$defs/rawFields" },
+        { "required": ["operation"], "properties": { "operation": { "const": "sessions" } } }
+      ],
+      "unevaluatedProperties": false
+    },
+    "stateRequest": {
+      "$anchor": "WorkbenchSessionRequest",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation", "session_id"],
+      "properties": {
+        "operation": { "const": "session" },
+        "session_id": { "$ref": "#/$defs/ulid" }
+      }
+    },
+    "record": {
+      "$anchor": "SessionRegistryRecord",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_id",
+        "client_id",
+        "actor_id",
+        "parent_session_id",
+        "resume_origin",
+        "status",
+        "version",
+        "started_at",
+        "ended_at",
+        "trace_id",
+        "run_count",
+        "tool_call_count",
+        "checkpoint_id",
+        "checkpoint_revision"
+      ],
+      "properties": {
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "client_id": { "$ref": "#/$defs/identityText" },
+        "actor_id": { "$ref": "#/$defs/identityText" },
+        "parent_session_id": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/ulid" }] },
+        "resume_origin": {
+          "anyOf": [{ "type": "null" }, { "$ref": "./session-resume.json#SessionResumeOrigin" }]
+        },
+        "status": { "$ref": "#/$defs/status" },
+        "version": { "$ref": "#/$defs/positive" },
+        "started_at": { "$ref": "#/$defs/time" },
+        "ended_at": { "$ref": "./session-activity-read.json#/$defs/state/properties/ended_at" },
+        "trace_id": { "$ref": "#/$defs/trace" },
+        "run_count": { "$ref": "#/$defs/count" },
+        "tool_call_count": { "$ref": "#/$defs/count" },
+        "checkpoint_id": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/ulid" }] },
+        "checkpoint_revision": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/positive" }] }
+      },
+      "allOf": [
+        { "$ref": "./session-activity-read.json#/$defs/state/allOf/0" },
+        {
+          "if": { "properties": { "resume_origin": { "type": "object" } } },
+          "then": { "properties": { "parent_session_id": { "$ref": "#/$defs/ulid" } } }
+        },
+        {
+          "if": { "properties": { "checkpoint_id": { "type": "null" } } },
+          "then": { "properties": { "checkpoint_revision": { "type": "null" } } },
+          "else": { "properties": { "checkpoint_revision": { "$ref": "#/$defs/positive" } } }
+        }
+      ],
+      "description": "Complete 14-field normalized record. Parent must differ from own session_id, but can be nonnull without resume_origin; no invented legacy origin. Ended/abandoned/failed require canonical millisecond ended_at; running/paused require null. No started<=ended rule. Current latest checkpoint is independent of the original resume checkpoint; IDs may coincide or differ. Saved actor/client/trace are not current caller identity."
+    },
+    "scope": {
+      "$anchor": "SessionRegistryScope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant_id", "workspace_id", "project_id"],
+      "properties": {
+        "tenant_id": { "$ref": "#/$defs/identityText" },
+        "workspace_id": { "$ref": "#/$defs/identityText" },
+        "project_id": { "$ref": "#/$defs/identityText" }
+      },
+      "description": "Registry parser requires nonblank bounded text and exact captured scope; does not independently require ULIDs."
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["session_permissions"],
+      "properties": {
+        "session_permissions": { "$ref": "./session-activity-read.json#SessionReadPermissions" },
+        "session_identity": { "$ref": "./session-activity-read.json#SessionCommandIdentity" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "session_permissions": { "properties": { "write_sessions": { "const": true } } }
+            }
+          },
+          "then": { "required": ["session_identity"] }
+        }
+      ],
+      "description": "Gateway identity present iff authenticated_client===true, even when write_sessions=false. write_sessions additionally requires admin/session.write; hints do not grant subsequent mutation authority. Registry parser compares identity scope, not actor/client against original SDK context."
+    },
+    "pageFields": {
+      "type": "object",
+      "required": ["data", "has_more"],
+      "properties": {
+        "data": { "type": "array", "maxItems": 100, "items": { "$ref": "#SessionRegistryRecord" } },
+        "has_more": { "type": "boolean" },
+        "next_cursor": { "$ref": "#/$defs/cursor" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "has_more": { "const": true } } },
+          "then": { "required": ["next_cursor"], "properties": { "data": { "minItems": 1 } } },
+          "else": { "not": { "required": ["next_cursor"] } }
+        }
+      ],
+      "description": "Unique session IDs, data.length<=effective limit; strict started_at DESC/session_id ASC after input cursor. status/client_id membership checked, text query not independently recomputed. has_more=true requires full page and next position==last row with unchanged input key; false forbids continuation. No total or frozen snapshot."
+    },
+    "page": {
+      "$anchor": "SessionRegistryPage",
+      "$ref": "#/$defs/pageFields",
+      "unevaluatedProperties": false,
+      "x-serialized-json-max-bytes": 2097152,
+      "description": "Normalized page. Shared JS page parser also tolerates other input properties before reconstructing this shape, but counts the complete supplied object's serialized bytes."
+    },
+    "envelope": {
+      "$anchor": "SessionRegistryEnvelope",
+      "allOf": [
+        { "$ref": "#/$defs/pageFields" },
+        { "$ref": "#/$defs/metadata" },
+        {
+          "required": ["schema_version", "trace_id", "scope", "source_refs"],
+          "properties": {
+            "schema_version": { "const": 1 },
+            "trace_id": { "$ref": "#/$defs/trace" },
+            "scope": { "$ref": "#SessionRegistryScope" },
+            "source_refs": {
+              "const": [
+                { "type": "postgres", "id": "wcp_sessions" },
+                { "type": "postgres", "id": "wcp_agent_runs" },
+                { "type": "postgres", "id": "wcp_tool_calls" },
+                { "type": "postgres", "id": "wcp_session_checkpoints" }
+              ]
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false,
+      "x-serialized-json-max-bytes": 2097152,
+      "description": "Complete normalized Gateway/SDK envelope; current trace/scope exactly checked. Four sources ordered and closed; identity scope matches scope. Full JSON.stringify/UTF8 size<=2MiB is checked by page parser on the whole envelope after metadata reads. Unlike context directory, no common finite ordinary-JSON/depth/node snapshot is used for a custom transport."
+    },
+    "stateEnvelope": {
+      "$anchor": "WorkbenchSessionEnvelope",
+      "allOf": [
+        { "$ref": "#/$defs/metadata" },
+        {
+          "type": "object",
+          "required": ["schema_version", "trace_id", "source_refs", "data"],
+          "properties": {
+            "schema_version": { "const": 1 },
+            "trace_id": { "type": "string", "minLength": 1 },
+            "source_refs": { "$ref": "./session-activity-read.json#/$defs/sessionSource" },
+            "data": { "$ref": "./session-activity-read.json#SessionClosureState" }
+          }
+        }
+      ],
+      "unevaluatedProperties": false,
+      "description": "Actual POST operation=session output; no outer tenant/workspace/project or scope/query echo, no dedicated registry2MiB parser. source_refs[0].id and data.session_id equal requested session. The separate GET /v1/sessions/{id} adds outer scope and uses SessionStateEnvelope, so the two envelopes are not interchangeable."
+    },
+    "position": {
+      "$anchor": "SessionRegistryPosition",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["started_at", "session_id"],
+      "properties": {
+        "started_at": { "$ref": "#/$defs/time" },
+        "session_id": { "$ref": "#/$defs/ulid" }
+      }
+    },
+    "cursorContent": {
+      "$anchor": "SessionRegistryCursorContent",
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "prefixItems": [
+        { "const": 1 },
+        { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        { "$ref": "#/$defs/time" },
+        { "$ref": "#/$defs/ulid" }
+      ],
+      "description": "Canonical compact ASCII JSON unpadded base64url [1,key,started_at,session_id]. SHA256 key hashes session-registry-v1/scope/restricted/query/status/client_id/limit. Changing limit requires restart; trace/actor/client caller identity not bound. Current authorization still reapplied."
+    }
+  },
+  "x-runtime-boundaries": {
+    "http": "Authenticated generic workbench POST, context.read Policy/audit, optional expected actor/client header checks, no mandatory verified-client gate for these reads. Pre-auth1MiB JSON, traceparent before x-trace-id, generic actor/path limiter. No dedicated URL-query/media/encoding/cache-condition rejection or write preconditions; generic success cache bypassed. No dedicated two-slot handler or whole server response deadline.",
+    "registryDatabase": "Single statement selects scoped visible-parent sessions with all filters/position before MATERIALIZED LIMIT+1; hidden/missing parent yields empty200. Order started_at DESC/session_id COLLATE C. Query literal PostgreSQL lower/strpos across session/client/actor/trace, '%'/'_' not wildcards. Status/client equality uses SQL default equality, not an explicit C clause. Count runs/tools only for candidates by global session foreign key; latest checkpoint also checks full scope and revision DESC. Only selected limit records fully parsed, lookahead indicates existence.",
+    "numericAndTime": "Registry version/count/checkpoint revision read as canonical nonnegative decimal text and converted only if safe integer; version/checkpoint revision further positive. started_at uses six-digit UTC microseconds, ended_at three-digit UTC milliseconds. Does not infer elapsed duration or verify resume origin against live handoff/checkpoint.2MiB JSON check after database/materialization does not bound earlier allocation, query duration or count cost.",
+    "currentState": "Single scoped visible-parent state query, absent/hidden session404 SESSION_NOT_FOUND; malformed state500 SESSION_ACTIVITY_INVALID. Converts version with Number then positive-safe validation, unlike registry canonical decimal check. Metadata added by workbench handler with no full registry-envelope parse. Current state does not prove original finish/resume success; no original receipt lookup or writes.",
+    "sdk": "listSessions normalizes query and copies request context before default30s per-request budget; finite captured query returned but no own-data/8KiB snapshot requirement in this helper. Custom transport receives complete envelope parsing and post-parse deadline check, with plain JSON.stringify byte bound but no generalized depth/node/prototype/getter rejection. Fetch bounded-json separately includes credentials/network/body, success2MiB/error16KiB, exact200/trace/media/fatalUTF8/content-length. No automatic pagination/retry/save. getSessionState instead uses the dedicated GET and its existing ordinary JSON envelope path, not this POST session model.",
+    "errors": "INVALID_INPUT400 false, SESSION_NOT_FOUND404 false, SESSION_REGISTRY_INVALID/SESSION_ACTIVITY_INVALID500 false; generic authentication/policy401/403, RATE_LIMITED429 true, WORKBENCH_DATABASE_UNAVAILABLE/WORKBENCH_AUTH_UNAVAILABLE/AUDIT_PERSISTENCE_UNAVAILABLE503 true and INTERNAL_ERROR500 true. SDK registry sanitizes only known same-trace codes to retryable=false; WORKBENCH_AUTH_UNAVAILABLE is absent from its whitelist and becomes GATEWAY_UNAVAILABLE.",
+    "remaining": "Schema resources are development artifacts. Existing SDK/CLI/MCP/Web consumers use hand-written parsers; no machine-schema integration, generated clients, Mock registry migration, database index execution or runtime compatibility evidence claimed."
+  }
+}

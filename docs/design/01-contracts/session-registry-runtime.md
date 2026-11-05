@@ -1,5 +1,11 @@
 # 会话目录筛选与分页（源码阶段）
 
+2026-11-05，TODO P0-01：新增[session-registry完整Schema](../../../packages/contracts/schemas/session-registry.json)及包子路径，覆盖sessions目录与session当前状态两个统一查询操作；复用session-activity-read的状态/身份和session-resume的原续接来源。目录原/规范筛选、完整14字段记录、成对最新检查点、四表来源/范围/身份权限、has_more/微秒位置与页大小绑定均有机器模型；完整HTTP入口尚待其余五种操作，不计新增OpenAPI路由。
+
+源码对照补充：目录scope/保存actor/client为有界非空文本，共享解析器不独立要求ULID；保存trace与外层trace各限512个UTF-16单位，末三位微秒完整保留。SQL的session_id排序显式C，但status/client_id等值条件没有显式C；客户端独立核对精确status/client_id，不重算文本命中。目录完整候选按JSON.stringify的UTF-8字节限2MiB，未采用上下文目录的通用有限普通JSON/深度/节点快照，不能将其对自定义transport的保证写成相同。SDK固定同trace白名单不含WORKBENCH_AUTH_UNAVAILABLE，此代码归为GATEWAY_UNAVAILABLE。
+
+单会话operation=session只返回四字段当前状态、session来源、trace和session_identity/session_permissions，没有目录scope/query，也没有独立GET的外层tenant_id/workspace_id/project_id。不存在或不可见时404，状态损坏500；不经过目录2MiB全封套解析。SDK getSessionState继续使用独立GET，两个机器封套不可互换。仅契约和文档，未编译、类型检查、测试、执行校验器/生成器/产品/SDK/API/数据库或发布；P0-01/R001未完成、evidence为空。
+
 更新：2026-11-02。仅源码和文档；未编译、类型检查、测试、执行 SQL/迁移/CLI/MCP、运行浏览器/服务或发布。
 
 ## 请求与权限

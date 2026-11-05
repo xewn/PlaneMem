@@ -1,6 +1,6 @@
 # WCP API 契约 v1
 
-2026-11-05，TODO P0-01：[概览与工作项完整 Schema](../../../packages/contracts/schemas/README.md#工作台概览与工作项投影) 补齐统一查询overview/work_items/work_item三操作的完整请求/统计预览/保存投影/原与规范筛选/微秒分页/内置及客户端封套。其余八种操作模型后续补齐再组合入口，OpenAPI保持89路；P0-01/R-001未完成、evidence为空。仅人工源码文档审阅、指定格式/Git文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+2026-11-05，TODO P0-01：[上下文与会话完整 Schema](../../../packages/contracts/schemas/README.md#工作台上下文与会话查询) 新增context/sessions/session模型，完整表达正文/来源/归档、状态/续接来源/活动计数/检查点、原与规范筛选、微秒位置和严格封套。单会话POST不含独立GET的外层范围字段；两目录游标均绑定limit，普通JSON读取与有限JSON快照的边界如实区分。连同此前概览和工作项三操作，共六种模型，其余handoffs/checkpoints/conflicts/audit/admin五种后续组合入口，OpenAPI仍89路。P0-01/R-001未完成、evidence为空；仅人工源码文档审阅、指定格式/Git文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/SDK/API/数据库或发布。
 
 2026-11-05，TODO P0-01：[原始会话来源取证 OpenAPI](../../../packages/contracts/openapi/README.md#原始会话来源取证) 和 session-origin Schema 覆盖现有只读 POST。完整建模七字段请求/十八字段选件/逐轮原证明与原启动/完整迁移清单/当前投影和双权威封套，明确同库事务/原标记、三次来源批准/双OPA审计、不同摘要、20MiB及实际错误/期限。OpenAPI 累计 89 路，P0-01/R-001 未完成、evidence 为空；未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 

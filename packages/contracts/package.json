@@ -8,6 +8,8 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./schemas/context-item-directory.json": "./schemas/context-item-directory.json",
+    "./schemas/session-registry.json": "./schemas/session-registry.json",
     "./schemas/workbench-overview.json": "./schemas/workbench-overview.json",
     "./schemas/work-item-projection.json": "./schemas/work-item-projection.json",
     "./schemas/session-origin.json": "./schemas/session-origin.json",

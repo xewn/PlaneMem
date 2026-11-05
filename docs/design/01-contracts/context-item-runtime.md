@@ -1,5 +1,9 @@
 # ContextItem 录入与编辑开发说明
 
+2026-11-05，TODO P0-01：新增统一查询context操作的[完整目录Schema](../../../packages/contracts/schemas/context-item-directory.json)及包子路径，覆盖原/规范筛选、16字段记录、完整封套和v2游标内容。规范query必须回显archived/limit，归档行必须excluded，非受限权限不允许restricted行；其余精确筛选/顺序/唯一ID/末行续页和绑定由既有共享解析器核对。完整正文/来源保留，来源扩展拒绝；记录ID/保存trace允许首尾空白与DEL、拒绝精确点路径，外层trace仅沿isSyncIdentifier，scope必须ULID。不能把写入端更窄的正文/来源规则套给保存目录。
+
+目录机器模型按源码区分有限普通JSON查询8KiB、完整封套2MiB/64层/100000节点和通用HTTP认证前1MiB；对象预算不保证数据库提前分配或查询耗时。SDK单页默认30秒包含运输/完整解析，迭代要求账号/客户端条件、逐页单独预算、保存续页后才交付。目录SDK错误白名单没有WORKBENCH_DATABASE_UNAVAILABLE，此类实际数据库故障被转为GATEWAY_UNAVAILABLE；未将白名单中的CONTEXT_ITEM_STORAGE_UNAVAILABLE写成目录实际数据库错误。只改契约和说明，未运行校验器/生成器/SDK/API/数据库、编译、测试或发布；统一查询仍待其余模型，P0-01/R001未完成、evidence为空。
+
 2026-11-05，TODO **P0-01**：五类已有写入新增 [OpenAPI](../../../packages/contracts/openapi/context-item-writes.json)和[原正文/完整回执 Schema](../../../packages/contracts/schemas/context-item-write.json)。明确跨头正文原键/版本、规范参数、原身份键桶、回执优先及事务顺序；五类成功均200，仅返回历史命令元数据，重放保留原事件/时间/版本/游标及旧版本ETag，外层trace属于本次尝试。没有独立只读回执路由，重试原POST仍可能在未提交时执行，未知结果须保留原请求。
 
 本轮按源码补充边界：新建缺显式父项目可见性/删除状态查询，仅有项目ID外键；其他修改和回放检查可见父项目/条目，流锁不等于父项目行锁。普通新建/编辑仅校验来源结构，可保存过去的到期时间和未固定本地revision；确认才在同事务检查严格本地链、人工资格和到期，外部来源不联网核验。非创建正文item_id由路由参数覆盖，不校验原值相等；新客户端应省略。原POST在认证前通用1MiB解析，超限400；无统一总期限/两容量/响应预算，SDK仍只执行通用封套检查。完整字段及实际错误见OpenAPI入口；未改变这些运行边界。

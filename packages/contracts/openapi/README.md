@@ -4,7 +4,7 @@
 
 ## 工作台统一查询的模型准备
 
-2026-11-05，TODO P0-01：已新增 [概览Schema](../schemas/workbench-overview.json) 和 [工作项Schema](../schemas/work-item-projection.json)，完整定义统一POST /v1/workbench/query的overview/work_items/work_item三操作。统一入口共11种操作；其余八种模型未齐，本轮只准备可组合Schema，不新增不完整路径或路由计数，累计仍89路。两种客户端预算/封套检查、真实筛选/原微秒位置和概览统计边界已在Schema及运行说明记录；没有执行校验器、生成器或接口。
+2026-11-05，TODO P0-01：已有 [概览Schema](../schemas/workbench-overview.json)、[工作项Schema](../schemas/work-item-projection.json)、[上下文目录Schema](../schemas/context-item-directory.json)和[会话目录/状态Schema](../schemas/session-registry.json)，完整定义统一POST /v1/workbench/query的overview/work_items/work_item/context/sessions/session六操作。统一入口共11种操作；handoffs/checkpoints/conflicts/audit/admin五种模型未齐，只准备可组合Schema，不新增不完整路径或路由计数，累计仍89路。记录原与规范筛选、完整数据、微秒位置/页大小绑定、权限提示及各客户端真实预算；单会话POST与独立GET封套差异单独建模。没有执行校验器、生成器或接口。
 
 ## 原始会话来源取证
 

@@ -1,6 +1,8 @@
 # 公共契约目录
 
-- [工作台概览与工作项完整 Schema](../../../packages/contracts/schemas/README.md#工作台概览与工作项投影)：TODO P0-01，统一查询的三种完整模型，记录统计/预览/规范筛选/原微秒游标及实际客户端差异；其余八种操作后续组合，不计新增OpenAPI路由。
+- [工作台上下文与会话完整 Schema](../../../packages/contracts/schemas/README.md#工作台上下文与会话查询)：TODO P0-01，新增context/sessions/session完整查询、记录、分页和身份权限封套；明确页大小绑定、原微秒/归档/保存来源及目录与单会话差别。统一查询累计六种操作模型，其余五种待组合，OpenAPI保持89路，仅源码。
+
+- [工作台概览与工作项完整 Schema](../../../packages/contracts/schemas/README.md#工作台概览与工作项投影)：TODO P0-01，统一查询的三种完整模型，记录统计/预览/规范筛选/原微秒游标及实际客户端差异；完整统一入口进度见上项，不计新增OpenAPI路由。
 
 - [原始会话来源取证 OpenAPI](../../../packages/contracts/openapi/README.md#原始会话来源取证) 与 [公开运行边界](../03-integration/p02-session-origin-http-v1.md)：TODO P0-01，完整选件/原证明/迁移清单/当前投影及双权威封套，记录同库快照、三次来源批准、三种摘要和实际错误/期限；仅源码，未运行校验。
 
