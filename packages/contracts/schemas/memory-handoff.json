@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/memory-handoff.json",
+  "title": "PlaneMem legacy memory handoff creation and claim",
+  "description": "Source-only nominal built-in MemoryServiceAdapter results and actual open HTTP input. These references are distinct from durable session handoff/checkpoint/resume records. No generated client, validator or runtime verification.",
+  "$comment": "Static shapes cannot bind source id to result.page_ref, identify the configured provider or authenticate a supplied reference. Custom external providers are delegated to without complete result validation. The legacy Gateway route reads raw context headers, not verified bearer claims.",
+  "oneOf": [{ "$ref": "#MemoryHandoffCreateEnvelope" }, { "$ref": "#MemoryHandoffClaimEnvelope" }],
+  "$defs": {
+    "nonempty": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Nonempty string only, no trimming, nonblank/length/ULID/URI restriction at the legacy HTTP handler."
+    },
+    "createBody": {
+      "$anchor": "MemoryHandoffCreateBody",
+      "type": "object",
+      "required": ["page_ref"],
+      "properties": {
+        "page_ref": { "$ref": "#/$defs/nonempty" },
+        "idempotency_key": {
+          "description": "Ignored business field; only a truthy Idempotency-Key header enables process response caching."
+        },
+        "expected_version": {
+          "description": "Not a business CAS. If a version header is present, the global pre-dispatch guard requires exact equality of a supplied body value to the parsed numeric header version."
+        }
+      },
+      "additionalProperties": true,
+      "description": "Unknown fields retained in process fingerprint but otherwise ignored. Scope comes from raw required headers, not body. No original identity or verified-client gate at this route; expected actor/client headers and top-level body identity equality checks belong to other routes."
+    },
+    "claimBody": {
+      "$anchor": "MemoryHandoffClaimBody",
+      "type": "object",
+      "required": ["handoff_ref"],
+      "properties": {
+        "handoff_ref": { "$ref": "#/$defs/nonempty" },
+        "claim_client_id": { "$ref": "#/$defs/nonempty" },
+        "client_id": {
+          "description": "Selected only if claim_client_id is absent, and then must be a nonempty string. Ignored, including its type, when claim_client_id is supplied. Neither field is compared to the header client."
+        },
+        "idempotency_key": {
+          "description": "Ignored business field. Does not enable caching or propagate a stable key to the provider."
+        },
+        "expected_version": {
+          "description": "No handoff version check. Global body/header version equality still applies if both supplied."
+        }
+      },
+      "if": {
+        "not": { "required": ["claim_client_id"] }
+      },
+      "then": {
+        "properties": { "client_id": { "$ref": "#/$defs/nonempty" } }
+      },
+      "additionalProperties": true,
+      "description": "Selected client = claim_client_id, otherwise body client_id, otherwise raw x-client-id. Adapter claim receives no tenant/workspace/project/current actor or request trace. Built-in remote provider ignores the selected client entirely; local fallback does not compare an existing claimant."
+    },
+    "createResult": {
+      "$anchor": "MemoryHandoffCreateResult",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "handoff_ref", "page_ref", "trace_id"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "handoff_ref": { "$ref": "#/$defs/nonempty" },
+        "page_ref": { "$ref": "#/$defs/nonempty" },
+        "trace_id": { "$ref": "#/$defs/nonempty" }
+      },
+      "description": "Complete built-in nominal result. Original page_ref text preserved; fresh inner trace equals request trace. No scope, actor, claimant, revision, hash, expiry, durable receipt or session/checkpoint ID. Custom external providers are not parsed into this schema by Gateway."
+    },
+    "localCreateResult": {
+      "$anchor": "MemoryHandoffLocalCreateResult",
+      "allOf": [{ "$ref": "#MemoryHandoffCreateResult" }],
+      "properties": {
+        "handoff_ref": { "type": "string", "pattern": "^handoff://[0-9A-HJKMNP-TV-Z]{26}$" }
+      },
+      "description": "Fallback for providers lacking either external handoff method: calls read_page with requested scope, then creates ULID and stores page_ref/optional claimant only in this adapter instance. No persistent ledger or cross-instance recovery."
+    },
+    "remoteCreateResult": {
+      "$anchor": "MemoryHandoffMcpCreateResult",
+      "allOf": [{ "$ref": "#MemoryHandoffCreateResult" }],
+      "properties": {
+        "handoff_ref": {
+          "type": "string",
+          "pattern": "^ai-memory-handoff://[^/]+/[^/]+/[^?]+\\?page_ref=.+$"
+        }
+      },
+      "description": "Built-in MCP provider constructs encoded workspace/project/handoff_id and encodeURIComponent(original page_ref). External handoff_id must only be a nonempty string, not ULID. Create page_ref prefix must equal ai-memory://encoded workspace/encoded project/; path before first ? decoded, remaining query ignored, tenant not encoded. Shape alone does not prove relation or scope."
+    },
+    "claimResult": {
+      "$anchor": "MemoryHandoffClaimResult",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "status", "page_ref"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "status": { "enum": ["claimed", "already_claimed"] },
+        "page_ref": { "$ref": "#/$defs/nonempty" }
+      },
+      "description": "Local already_claimed means some truthy claimant was saved; no comparison to requesting client or returned owner. Remote only exact upstream status='claimed' maps to claimed, every other status/missing field on a non-null decoded result maps to already_claimed. Remote page_ref is decoded from the caller's reference, not checked against returned provider data. No origin ownership or current page-readability proof."
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "id"],
+        "properties": {
+          "type": { "const": "ai-memory" },
+          "id": { "$ref": "#/$defs/nonempty" }
+        }
+      },
+      "description": "One constructed source whose id equals result.page_ref verbatim. Not a source-currentness, authorization or content-hash check."
+    },
+    "envelopeFields": {
+      "type": "object",
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "#/$defs/nonempty" },
+        "source_refs": { "$ref": "#/$defs/sources" },
+        "data": {}
+      }
+    },
+    "createEnvelope": {
+      "$anchor": "MemoryHandoffCreateEnvelope",
+      "allOf": [{ "$ref": "#/$defs/envelopeFields" }],
+      "properties": { "data": { "$ref": "#MemoryHandoffCreateResult" } },
+      "unevaluatedProperties": false,
+      "description": "Fresh outer/inner request trace; no ETag/revision/receipt. Matching process cache returns original whole envelope, including original trace, even with a different current trace. Cache hit skips provider/page check after current policy/audit."
+    },
+    "claimEnvelope": {
+      "$anchor": "MemoryHandoffClaimEnvelope",
+      "allOf": [{ "$ref": "#/$defs/envelopeFields" }],
+      "properties": { "data": { "$ref": "#MemoryHandoffClaimResult" } },
+      "unevaluatedProperties": false,
+      "description": "Fresh current outer trace, no trace inside result/no ETag. Cache hit can replay original claimed status and trace without re-running claim; a new uncached local claim would instead observe already_claimed."
+    }
+  }
+}

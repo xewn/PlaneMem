@@ -1,6 +1,26 @@
 # OpenAPI 源码契约
 
-这里的文档描述已有 HTTP 实现，尚未经过校验器、生成器、编译、类型检查、测试或运行验证。文档版本不表示已发布或部署；当前覆盖保存包 5 路、文件 9 路、上下文条目 9 路、同步 6 路、冲突 5 路、建议 8 路、Plane 观察 4 路、搜索 2 路、旧索引 5 路、Plane 收件箱 6 路、会话状态/活动 5 路、检查点/交接读取 3 路、会话身份/启动/原回执 3 路、会话进度写入/原回执 6 路、检查点保存/原回执 2 路、交接创建/领取/原回执 4 路及会话续接/原回执 2 路，共 84 路，尚不是完整 WCP 接口目录。
+这里的文档描述已有 HTTP 实现，尚未经过校验器、生成器、编译、类型检查、测试或运行验证。文档版本不表示已发布或部署；当前覆盖保存包 5 路、文件 9 路、上下文条目 9 路、同步 6 路、冲突 5 路、建议 8 路、Plane 观察 4 路、搜索 2 路、旧索引 5 路、Plane 收件箱 6 路、会话状态/活动 5 路、检查点/交接读取 3 路、会话身份/启动/原回执 3 路、会话进度写入/原回执 6 路、检查点保存/原回执 2 路、交接创建/领取/原回执 4 路、会话续接/原回执 2 路及旧记忆交接创建/领取 2 路，共 86 路，尚不是完整 WCP 接口目录。
+
+## 旧记忆交接
+
+2026-11-05，TODO **P0-01**：[memory-handoff OpenAPI](memory-handoff.json) 覆盖 POST /v1/context/handoff 和 /v1/context/handoff/claim；完整结构见 [memory-handoff Schema](../schemas/memory-handoff.json)，包子路径同名。本地保留 openapi/schemas 相邻布局，错误封套引用 search/context-history；仅人工源码对照，未运行校验器或生成器。
+
+这两个旧路径未进入 authenticatedContext，即使已配置 OIDC 或提供 Authorization，也仍通过 requestContext 读取必填 x-tenant-id/x-workspace-id/x-project-id/x-actor-id/x-client-id 和可选 capability/role/expiry。没有独立可信客户端门槛，expected actor/client 头及正文身份相等检查也不在这条分支；OpenAPI 的 security=[] 如实表示当前代码。两路仍走 context.write 策略/OPA、决策审计和通用限流，但策略资源范围来自这些请求头，没有独立父项目存在/分类数据库查询，不能据此声明身份或引用范围已受签名保护。
+
+创建正文只要求非空 page_ref；领取只要求非空 handoff_ref，并按 claim_client_id、正文 client_id、请求头 client_id 顺序选择领取客户端。选中字符串不裁剪、无长度/ULID/URI 限制；claim_client_id 存在时未选中的 client_id 连类型也不检查。正文额外字段允许，范围/账号不从正文接入。通用版本头要求安全非负且彼此一致；若正文 expected_version 同时存在，入口要求与解析后的数字严格相等，但这些接口并不做版本并发控制。
+
+只有非空 Idempotency-Key **请求头**启用进程内 Promise 缓存，正文键不启用。键桶为范围/账号/客户端/方法/路径/原键，指纹含完整原正文、权限和有效版本，不含 trace/角色/到期时间。命中先重新经过当前策略/审计，再直接返回原成功封套，不重查 provider 或页面，原 trace、x-trace-id 和领取状态均保留。失败移除缓存，成功没有显式过期/容量/持久保存；原键不传给远端，没有跨实例/重启幂等、原回执查询或恰好一次保证。远端已写入后网络或结果解析失败仍可能返回错误。
+
+MemoryServiceAdapter 只有在 provider 同时提供 create_handoff/claim_handoff 时才委托外部实现；否则先用 provider.read_page 读取当前范围页面，再保存 handoff://ULID 和 page_ref 到进程 Map。内置内存页面读取核对三层范围，但领取方法不接收范围、账号或当前 trace，只按引用查 Map，不重新读页面；首次保存选中客户端，之后只要已有 claimant 就返回 already_claimed，不比较领取者是否一致。不存在持久回执、版本、有效期、会话或检查点副作用。
+
+内置 MCP 创建检查 page_ref 的 ai-memory://编码 workspace/编码 project/ 前缀，解码第一个 ? 之前的路径，忽略 page_id 等查询且不编码 tenant；先 memory_read_page，再 memory_handoff_begin，传入范围、含页面正文前 2000 UTF-16 字符的摘要和路径 next_steps。上游非空 handoff_id 编码到 ai-memory-handoff://workspace/project/id?page_ref=原引用，原 page_ref 文本保留，不绑定页面版本/哈希。
+
+MCP 领取从调用方引用解码 workspace/project/handoff_id/page_ref，没有与当前请求头范围比较，也不重读页面或核验 page_ref 与交接的关系；忽略选中的领取客户端，以固定 trace_handoff_claim 调用 memory_handoff_accept。上游 status 只有精确 claimed 才返回 claimed，其他值或缺字段会变成 already_claimed；返回页面引用来自调用方字符串，不是经 provider 认证的归属或页面结果。外部请求身份是配置的服务 token/actor/client，并未转发当前请求账号。
+
+provider 每个 RPC 默认 10 秒 AbortController（含读取响应文本），没有整次创建/领取期限或响应字节上限；首次调用还需共享 initialize，创建再读页面和发 begin。解析器只取最后一个非空 data: 行或整个文本，再取 tools/call 第一条 text JSON，不做完整响应/协商/工具结果模型校验。自定义 fetch 也可能不遵守取消，处理器没有传递请求断开信号。这里只记录已有实现，不新增 SDK/Mock 接线；WcpClient 的 createHandoff/claimHandoff 是持久会话接口，不能作为本接口的客户端保证。
+
+完整成功为创建 schema_version/handoff_ref/page_ref/trace_id 或领取 schema_version/status/page_ref；外层单个 ai-memory 来源 ID 精确为 page_ref，没有 ETag、版本、领取人或持久回执。未配置/关闭 provider 为 MEMORY_PROVIDER_OFF503 true；远端 RPC/工具错误503 false，网络/超时或上游 >=500 的 unavailable503 true，上游其他非成功状态的 unavailable503 false。MEMORY_PAGE_NOT_FOUND 和 MCP 空/无效结果实际为400；缺失交接或远端引用格式不符为404，URI 解码或其他未捕获异常500 true。旧固定 trace 可能保留在错误中。正文仍是入口前通用 1 MiB JSON、超限400，不具有专用完整响应预算。P0-01/R-001 未完成、evidence 为空。
 
 ## 会话续接与原回执
 

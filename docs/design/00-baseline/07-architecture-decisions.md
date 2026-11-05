@@ -1,5 +1,9 @@
 # 架构决策记录摘要
 
+2026-11-05 本轮源码落地：旧记忆交接创建/领取两路 OpenAPI、memory-handoff 完整 Schema 与两项包子路径已补齐；开放原请求/完整返回、内存与远端引用、旧原始头身份和领取范围/归属缺口、进程缓存原 trace 与实际错误/期限已人工对照。公共目录/WCP/新运行说明、根 README/TODO/R001 同步，OpenAPI 累计 86 路。P0-01/R001 未完成、evidence 为空；仅人工源码文档审阅、指定格式和 Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
+2026-11-05 P0-01 旧记忆交接两路机器契约（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增 schemas/memory-handoff.json 与 openapi/memory-handoff.json，覆盖 /v1/context/handoff 和 /claim 两 POST。依据现有 Gateway/MemoryAdapter/MCP provider 描述请求、完整返回、内存与远端分支、进程幂等、范围/领取归属及实际错误和期限边界；不把旧记忆交接当作持久会话交接。范围两新 JSON、两项包子路径、两 README、根 README/TODO、公共目录/WCP、新记忆交接运行说明、R001 和本 ADR/T0.3/T4.1；不改运行实现、依赖或数据库。仅人工源码文档审阅、指定格式和 Git 文本检查，不编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。独立提交推送 main 带 [skip ci]，P0-01/R001 未完成、evidence 为空。
+
 2026-11-05 本轮源码落地：会话续接/原回执两路 OpenAPI、session-resume 完整 Schema 和两项包子路径已补齐；原身份/父子/origin/交接、保存包三态和三态历史查询、当前检查先于重放与旧 HTTP/SDK 差异已人工对照。公共目录/WCP/运行说明、根 README/TODO 与 R001 同步，OpenAPI 累计 84 路。P0-01/R001 未完成、evidence 为空；仅人工源码文档审阅、指定格式和 Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 2026-11-05 P0-01 会话续接与原回执两路机器契约（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增 schemas/session-resume.json 与 openapi/session-resume.json，覆盖续接和原续接查询两 POST。定义原身份/父子会话/交接绑定、完整续接与三态原查询、保存包检查和旧领取/幂等边界；区分旧 HTTP 与严格 SDK 输出。范围两新 JSON、两项包子路径、两 README、根 README/TODO、公共目录/WCP/checkpoint-context 运行说明、R001 及本 ADR/T0.3/T4.1；不改运行实现、依赖或数据库。仅人工源码文档审阅、指定格式和 Git 文本检查，不编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布；独立提交推送 main 带 [skip ci]，P0-01/R001 未完成、evidence 为空。

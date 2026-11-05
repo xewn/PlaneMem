@@ -1,5 +1,7 @@
 # 公共契约目录
 
+- [旧记忆交接 OpenAPI](../../../packages/contracts/openapi/README.md#旧记忆交接) 与 [运行边界](memory-handoff-runtime.md)：TODO P0-01，旧创建/领取两路完整契约，记录原始头身份、内存/远端引用和进程幂等的实际限制；仅源码，未运行校验。
+
 - [会话续接与原回执 OpenAPI](../../../packages/contracts/openapi/README.md#会话续接与原回执)：TODO P0-01，两路完整父子会话/交接/保存包及历史绑定契约，区分旧 HTTP、严格 SDK 和三态原查询；仅源码，未运行校验。
 
 - [交接创建领取与原回执 OpenAPI](../../../packages/contracts/openapi/README.md#交接创建领取与原回执)：TODO P0-01，四路原命令/当前交接/历史回执完整契约，区分旧无键领取、原身份键、当前记录核对和真实 SDK 边界；仅源码，未运行校验。

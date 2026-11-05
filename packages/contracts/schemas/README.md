@@ -1,5 +1,13 @@
 # 独立契约结构定义
 
+## 旧记忆交接
+
+2026-11-05，TODO P0-01：新增 [memory-handoff.json](memory-handoff.json)，对应 [两路 OpenAPI](../openapi/memory-handoff.json)。MemoryHandoffCreateBody/ClaimBody 描述开放旧正文、实际非空字符串提取、领取客户端优先级和全局版本头/正文相等条件；正文键不启用进程幂等。此路径不进入签名身份分支，Schema 也不把正文/请求头范围视为身份凭据。
+
+MemoryHandoffCreateResult/ClaimResult 和两类 Envelope 给出内置实现的完整名义返回；LocalCreateResult/McpCreateResult 进一步区分进程 handoff://ULID 与远端编码引用。两种引用不代表会话交接记录，创建只读页面/创建 provider 交接，领取没有父子会话、检查点、版本或原回执。外层唯一来源等于 page_ref，无 ETag；进程缓存命中保留整份原成功及原 trace。自定义外部 provider 返回未经过这些 Schema 解析。
+
+静态结构不能检查编码引用和实际页面/当前身份范围之间的绑定；旧领取没有当前范围入参，本地 already_claimed 不比较旧领取者，远端未严格解析的 status 会归并为 already_claimed，不能用返回状态证明原账号归属。完整限制见 OpenAPI 说明。新 Schema 无外部结构引用；未运行校验器、生成器、编译或测试，P0-01/R001 未完成、evidence 为空。
+
 ## 会话续接与原回执
 
 2026-11-05，TODO P0-01：新增 [session-resume.json](session-resume.json)，配套 [两路 OpenAPI](../openapi/session-resume.json)。Body 描述开放旧 HTTP；Command/ReceiptQuery 为严格原参数；ReceiptBody 允许路径覆盖的外层 session_id；Binding 固定原身份/父会话/有效要求，可选 expected_checkpoint_id 仅约束结果。SessionResumeOrigin 是精确 handoff_id/checkpoint_id/require_claimed。

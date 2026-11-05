@@ -11,6 +11,29 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    memory_handoff_openapi_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only two-route legacy memory handoff OpenAPI and complete nominal schema; P0-01 and R-001 remain incomplete."
+      artifacts:
+        - "packages/contracts/openapi/memory-handoff.json"
+        - "packages/contracts/schemas/memory-handoff.json"
+        - "packages/contracts/package.json"
+        - "packages/contracts/openapi/README.md"
+        - "packages/contracts/schemas/README.md"
+        - "docs/design/01-contracts/memory-handoff-runtime.md"
+      behavior: "Open legacy create/claim bodies, selected claim client precedence, full built-in results and local/remote reference shapes. Distinct from durable session handoff, checkpoint and resume."
+      boundaries: "No runtime/SDK/Mock/dependency/database changes. Current route uses raw context headers, not authenticatedContext, verified-client or expected-identity gates. Policy/audit still apply. Claim has no current scope binding; local existing claimant not compared, remote client ignored and unknown status normalized. Header-key process cache preserves original whole success/trace; no upstream key, durable receipt or cross-instance guarantee. Actual RPC/HTTP parsing, per-call timeout and error/trace mappings documented."
+      evidence: []
+      remaining_scope: "Other WCP/MCP machine contracts, event payloads, SDK/Mock machine-contract consumption, breaking-change CI and tool/runtime/release evidence; legacy verified identity/scope/ownership/provider-result/durable-idempotency gaps remain."
+      pending_evidence:
+        - "Local references, complete open inputs and nominal local/remote results"
+        - "Actual raw-header context branch versus signed route guarantees"
+        - "Claim client precedence, missing scope argument and provider-specific ownership semantics"
+        - "Process cache key/fingerprint, original success trace/status and failed-entry removal"
+        - "External reference parsing, selected status normalization and unverified returned page_ref"
+        - "Configured service identity, per-RPC cancellation and actual error status/retryable/trace"
+      execution: "Manual source/docs review and explicit formatting/Git text checks only; no build, typecheck, tests, validators, generators, product/API/database execution or release."
     session_resume_openapi_development_increment:
       date: "2026-11-05"
       todo: "P0-01"

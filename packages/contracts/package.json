@@ -8,6 +8,8 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./schemas/memory-handoff.json": "./schemas/memory-handoff.json",
+    "./openapi/memory-handoff.json": "./openapi/memory-handoff.json",
     "./schemas/session-resume.json": "./schemas/session-resume.json",
     "./openapi/session-resume.json": "./openapi/session-resume.json",
     "./schemas/handoff-create.json": "./schemas/handoff-create.json",
