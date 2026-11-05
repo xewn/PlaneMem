@@ -1,5 +1,7 @@
 # 架构决策记录摘要
 
+2026-11-05 P0-01 Plane观察读取机器契约（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增 schemas/observed-read.json 与 openapi/observed-reads.json，覆盖项目状态、工作项状态、工作项上下文和观察目录四个GET。定义活动/删除/恢复快照、完整搜索摘要与可选记忆命中、目录筛选/分页/分类及成功封套；区分观察版本与本地版本、删除状态读取与上下文410、目录/单条分类差异、来源扩展与SDK规范化、真实HTTP/存储/记忆降级边界。范围两新JSON、exports、两README、根README/TODO、公共目录/WCP/observed-state运行文档、R001及ADR/T0.3/T4.1；不改运行实现、旧Schema、SDK/Mock、依赖或数据库。仅人工源码文档审阅/指定格式/Git文本检查，不编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布；独立提交push main带[skip ci]，P0-01/R001未完成、evidence为空。
+
 2026-11-05 P0-01 建议写入与原回执机器契约（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增 schemas/proposal-write.json、schemas/proposal-original.json 与 openapi/proposal-operations.json，覆盖创建、确认、拒绝、原创建回执、原审核回执五个已有POST。区分原HTTP草稿/审核正文与严格规范原查询，定义完整写入回执及recorded/not-observed；记录规范指纹/原身份键、重放先于新版本与新鲜度检查、派生分类/来源绑定、human审核及确认/拒绝差异、原回执持久事件核对和实际HTTP预算/错误。范围三新JSON、exports、两README、根README/TODO、公共目录/WCP、建议主运行/创建历史/审核回执文档、R001及ADR/T0.3/T4.1；复用上一轮proposal-read的标量，不改运行实现、既有Schema、SDK/Mock、依赖或数据库。仅人工源码文档审阅/指定格式/Git文本检查，不编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布；独立提交push main带[skip ci]，P0-01/R001未完成、evidence为空。
 
 2026-11-05 P0-01 建议读取与提交身份机器契约（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增 schemas/proposal-read.json 与 openapi/proposal-reads.json，覆盖建议目录、完整详情和 submission-context 三个已有 GET。定义摘要/完整建议/来源及派生归属、数字版本/ETag、目录续页与权限提示、独立身份成功；准确描述父项目/来源/派生链可见性、详情来源新鲜度、旧读取没有完整响应解析和身份路由绕过命令Policy/审计/限流的实际边界。范围两新JSON、exports、两README、根README/TODO、公共目录/WCP/建议运行文档、R001及本ADR/T0.3/T4.1；不改运行实现、SDK/Mock、旧Schema、依赖或数据库。仅人工源码文档审阅/指定格式/Git文本检查，不编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布；独立提交push main带[skip ci]，P0-01/R001未完成、evidence为空。

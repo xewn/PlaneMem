@@ -1,5 +1,9 @@
 # 独立契约结构定义
 
+2026-11-05，TODO **P0-01**：新增独立 observed-read.json，根为项目/工作项状态、工作项上下文及观察目录四类完整成功联合。提供ObservedSnapshot、PlaneRestoreReference、ObservedWorkItemContext、ObservedWorkItemEntry/Page/ListQuery及两个共享本地ID输入锚点。包子路径为 @planemem/contracts/schemas/observed-read.json；只需注册这一份Schema，HTTP路径/权限/错误由observed-reads OpenAPI描述。
+
+快照活动v1/删除v2/恢复引用分支明确，外层始终v1，无ETag/cursor；fields保留原事件任意业务字段，删除只含external_id。状态来源规范化为四字段，记忆来源在HTTP可保留扩展。上下文首条来自快照，随后最多19条memory/restricted命中；legacy context_pack只是临时摘要。目录含范围/checked_at/元数据和可选续页，无has_more或总数，标题/状态按Unicode标量限长。运行实现另核对UTF-16/孤立代理、真实日历、原身份/版本/来源/游标/排序关系；服务器未调用完整上下文解析，新Schema不冒称修复此边界。P0-01/R-001未完成、evidence为空；未编译、测试、运行校验器/生成器、接口或数据库。
+
 2026-11-05，TODO **P0-01**：新增 proposal-write.json 与 proposal-original.json，复用 proposal-read 的标量/派生/来源。前者提供 ProposalCreateBody、ProposalReviewBody、NormalizedProposalDraft、完整通用写回执及创建/确认/拒绝三个成功锚点；后者提供严格原五身份、完整创建/审核查询、已记录历史元数据与两类recorded/not-observed封套。包子路径对应两个文件名，需一起注册三份Schema。
 
 旧写正文与规范原查询分开：创建可省默认值并trim指定字段，原查询必须已规范化；原键/actor/client采用更严格可见ASCII。文本检查UTF-16长度、非空白、NUL/孤立代理，其他控制字符不统一禁止；content/来源不trim。本地来源必须正pin，数组顺序保留。HTTP正文路径ID可被路由覆盖，头/正文键和版本跨字段相等由运行实现处理。写成功日期可用扩展年份，原回执只接受四位年份UTC毫秒。完整有限JSON、实际字节、日历、指纹、来源/版本/ETag和原查询相等不是Schema独立证明；新Schema不代替现有运行校验。P0-01/R-001未完成、evidence为空，未运行校验器、生成器、编译、类型检查、测试、接口或数据库。

@@ -1,5 +1,7 @@
 # Plane 观察状态持久读取（开发状态）
 
+2026-11-05，TODO P0-01：新增[四路OpenAPI](../../../packages/contracts/openapi/observed-reads.json)和[完整观察Schema](../../../packages/contracts/schemas/observed-read.json)。状态、上下文及目录分别建模，不把目录较高分类规则套到单条索引分类。游标绑定trim后query原大小写，搜索相同的大小写变体仍需重新分页；lookahead仅用于存在性，未独立解析其元数据。状态/目录已用共享解析，HTTP完整上下文仍拼装，SDK另核对；记忆来源扩展在HTTP保留、客户端规范化。四路不进入通用版本头解析分支，无独立verified-client/完整字节预算/总期限或读取后到期保证。详见OpenAPI错误及记忆降级说明；未改运行代码，P0-01/R-001未完成、evidence为空，未编译、测试、运行校验器/生成器、接口或数据库。
+
 2026-11-02：仅修改源码、文档与迁移文件，未编译、类型检查、测试、启动服务、执行迁移或发布。读取依赖已有 009 运行时表及 032 可见性字段，删除观察新增 040 列与约束；016–040 均未执行。后续 Webhook 持久接收与重试边界见 [接收与重试](plane-inbox-runtime.md)。
 
 ## 工作项删除观察

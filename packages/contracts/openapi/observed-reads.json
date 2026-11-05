@@ -1,0 +1,326 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem persisted Plane observation reads",
+    "version": "0.1.0",
+    "description": "Source-only four-GET contract. Load this file, proposal-reads/context-history OpenAPI and the independent observed-read schema locally with paths/IDs preserved. These endpoints observe stored projections, not live upstream Plane facts, local work-item records or saved ContextPacks. No generated/tool/runtime/release evidence."
+  },
+  "servers": [
+    { "url": "/", "description": "Relative Gateway base; configure actual origin/base path." }
+  ],
+  "security": [{ "GatewayBearer": [] }],
+  "tags": [{ "name": "Plane observations" }],
+  "x-todo": "P0-01",
+  "x-runtime-boundaries": {
+    "sources": [
+      "apps/api-gateway/src/observed-state.ts",
+      "apps/api-gateway/src/observed-directory.ts",
+      "apps/api-gateway/src/server.ts",
+      "apps/api-gateway/src/http.ts",
+      "apps/api-gateway/src/memory-recall.ts",
+      "packages/contracts/src/observed-state.ts",
+      "packages/contracts/src/observed-directory.ts",
+      "packages/sdk/src/client.ts"
+    ],
+    "authorization": "All four require Bearer and authorized tenant/workspace/project. context.read Policy/OPA and entry decision audit precede handlers; configured OPA replaces local Policy. No independent verified-client gate: authenticated-context fallback client can read. Expected actor/client headers are independently optional exact preconditions. Actual data.restricted.read, not admin alone, permits restricted SQL rows and configured memory recall. No post-read/recall session-expiry or visibility recheck.",
+    "http": "GET bodies/framing, media/encoding, Idempotency-Key, version/range/cache conditions are not specifically rejected. These observed routes are outside the generic readPreconditions block, so If-Match/If-Match-Version are not parsed or applied. No conditional206/304/412 behavior, ETag or outer revision/cursor. All four bypass in-process idempotent response caching, but still use the generic actor/path rate limiter. Application successes return private,no-store and current x-trace-id.",
+    "budgets": "No dedicated complete-success byte limit, two-slot gate or whole-operation deadline. Directory count1..100; memory adapter return at most1000 entries is validated before selecting19, with snippet65536 UTF-16 units and64 sources per memory hit. Snapshot fields/source arrays have no dedicated complete-response budget here. Provider-specific request timeouts do not establish an end-to-end HTTP deadline or cancellation.",
+    "state-storage": "One SQL statement joins saved projection, source event, same-version index and visible nondeleted parent. Event scope/type/aggregate version/payload/time must match; active index must be nondeleted/unexpired, deletion requires matching deletion event/time/index and does not require unexpired index. Restrict both parent/index classification unless actual restricted-read capability. No matching join yields404; two matching external/aggregate aliases yield500 ambiguity. Normalize selected snapshot with shared parser, without loading a full canonical-event envelope. State returns index classification; directory separately computes parent/index maximum.",
+    "context-memory": "Context first reads saved active state, then may recall configured memory using its display title. It does not hold one database snapshot through recall and never creates/saves a ContextPack. Optional provider absence, denial, failure or malformed whole batch yields local-only degraded200; required provider absence/failure/denial yields error. All memory content treated restricted, unique page_ref first occurrence retained, provider order kept. Full context is assembled without shared context parsing; SDK applies that parser and exact outer trace/source comparisons. Memory source extensions can survive HTTP and are removed by SDK normalization."
+  },
+  "paths": {
+    "/v1/projects/{project_id}/state": {
+      "parameters": [
+        { "$ref": "#/components/parameters/ProjectPathId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "get": {
+        "operationId": "getObservedProjectState",
+        "tags": ["Plane observations"],
+        "summary": "Read the current project's saved Plane observation",
+        "x-wcp-operation": "project.state",
+        "x-policy-action": "context.read",
+        "description": "No URL query fields. Decode path ID once and require trimmed valid record ID; it must equal authorized project_id, otherwise404. Read source ProjectCreated/ProjectUpdated joined to saved projection/index/current parent. Return active inner schema_version1 with original event ID, Plane version/time, public source references and saved fields. It is not a live Plane request or proof of latest upstream version. No synthetic fallback when joins/visibility fail and no memory recall.",
+        "responses": {
+          "200": { "$ref": "#/components/responses/ProjectSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/work-items/{work_item_id}/state": {
+      "parameters": [
+        { "$ref": "#/components/parameters/WorkItemId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "get": {
+        "operationId": "getObservedWorkItemState",
+        "tags": ["Plane observations"],
+        "summary": "Read a saved active, deleted or restored work-item observation",
+        "x-wcp-operation": "workitem.state",
+        "x-policy-action": "context.read",
+        "description": "No query fields. Path may be external Plane ID or canonical source aggregate ID, within current project; local work-item IDs are not universal aliases. Inner schema_version1 represents active state, including optional restored_from only for current WorkItemRestored source event. Restoration reference must equal fields.restored_from, name a different event ID and preceding plane_version-1; restored fields include external ID/nonblank title/status. Inner schema_version2 is deletion: fields only external_id, deleted_at=observed_at, no status or restoration marker. Outer envelope remains1. Expired index may still expose matching deletion metadata, never its old title/content. Deleted/invisible parent or inconsistent/missing join404; ambiguity or malformed selected snapshot500. Later ordinary updates may retain arbitrary fields.restored_from but do not acquire a top-level restore marker.",
+        "responses": {
+          "200": { "$ref": "#/components/responses/WorkItemSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/work-items/{work_item_id}/context": {
+      "parameters": [
+        { "$ref": "#/components/parameters/WorkItemId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "get": {
+        "operationId": "getObservedWorkItemContext",
+        "tags": ["Plane observations"],
+        "summary": "Build a transient context summary from saved work-item state and optional memory",
+        "x-wcp-operation": "workitem.context",
+        "x-policy-action": "context.read",
+        "description": "No query fields. Same state read first; visible deletion produces410 before memory recall. Local title uses nonblank saved fields.title else external_id, sliced to1000 UTF-16 units; query equals this title. First synthesized hit has plane:WorkItem:external_id, same version/classification/sources, score1 and rank_source=fts; this is not a fresh FTS search. Append at most19 unique memory hits, each title ai-memory, rank_source memory, classification restricted and score1/(memory index+1). Validate the entire at-most1000 provider batch for scope, ID, snippet, safe revision and source bounds before deduplication/selection. Aggregated sources deduplicate by type/id, first full source retained; source version/URI/extension differences do not replace the first. backend=postgres, vector_used=false. memory_used=true may have zero external hits; absent optional provider still makes outer degraded=true. Required memory needs actual restricted-read capability even for admin. No full shared context parser at server output: pathological whitespace-prefix titles can be emitted then rejected by SDK's stricter nonblank query/title checks. This result neither saves a ContextPack nor changes the projection or upstream record.",
+        "responses": {
+          "200": { "$ref": "#/components/responses/ContextSuccess" },
+          "400": { "$ref": "#/components/responses/BadContext" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "410": { "$ref": "#/components/responses/Deleted" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidContext" },
+          "503": { "$ref": "#/components/responses/ContextUnavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/plane/work-items": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "get": {
+        "operationId": "listObservedWorkItems",
+        "tags": ["Plane observations"],
+        "summary": "Page current saved observation metadata without payload or memory recall",
+        "x-wcp-operation": "workitem.observed.list",
+        "x-policy-action": "context.read",
+        "x-decoded-query-schema": {
+          "$ref": "../schemas/observed-read.json#ObservedWorkItemListQuery"
+        },
+        "description": "One SQL statement requires visible nondeleted parent and event/projection/index coherence, then filters state and ASCII-insensitive literal substring over external/aggregate ID and active display title. Unlike state read, directory explicitly checks source event schema_version1 and identity/status payload consistency in SQL; failed joins/conditions are omitted. Title/status are SQL LEFT2000/255 Unicode scalars, deleted metadata retains neither. Classification is maximum of parent and index with unknown values conservatively restricted. Sort external_id COLLATE C ascending, limit+1; normalize/validate first limit and build continuation from last returned ID. Lookahead contributes existence only and its metadata is not separately parsed. Missing/hidden parent404, visible empty directory200. checked_at is statement timestamp; no cross-page snapshot, total, has_more, source body or history. v2 cursor binds exact scope, actor/client (including fallback), restricted flag, trimmed query preserving case, state and limit; changed case invalidates key despite equivalent matching. It is neither signed nor an authorization token, and incoming base64url encoding is not roundtrip-canonicalized.",
+        "x-http-query": "Only query/state/limit/cursor, each once. limit requires1..3 ASCII digits without leading zero then1..100. Query raw<=500 UTF-16, no controls/DEL/lone surrogates, trimmed; blank becomes empty. Empty state/cursor invalid. Defaults query empty/state active/limit25.",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "schema": {
+              "$ref": "../schemas/observed-read.json#/$defs/directoryQuery/properties/query"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "schema": {
+              "$ref": "../schemas/observed-read.json#/$defs/directoryQuery/properties/state"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Canonical positive decimal1..100, absent defaults25.",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 25 }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": { "$ref": "../schemas/observed-read.json#/$defs/cursor" }
+          }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/DirectorySuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": { "GatewayBearer": { "type": "http", "scheme": "bearer" } },
+    "parameters": {
+      "ProjectPathId": {
+        "name": "project_id",
+        "in": "path",
+        "required": true,
+        "description": "Decoded ID must exactly equal current authorized project.",
+        "schema": { "$ref": "../schemas/observed-read.json#/$defs/recordId" }
+      },
+      "WorkItemId": {
+        "name": "work_item_id",
+        "in": "path",
+        "required": true,
+        "description": "Decoded external Plane or source aggregate ID in the authorized project.",
+        "schema": { "$ref": "../schemas/observed-read.json#/$defs/recordId" }
+      },
+      "TenantId": { "$ref": "./proposal-reads.json#/components/parameters/TenantId" },
+      "WorkspaceId": { "$ref": "./proposal-reads.json#/components/parameters/WorkspaceId" },
+      "ProjectId": { "$ref": "./proposal-reads.json#/components/parameters/ProjectId" },
+      "TraceParent": { "$ref": "./proposal-reads.json#/components/parameters/TraceParent" },
+      "TraceId": { "$ref": "./proposal-reads.json#/components/parameters/TraceId" },
+      "ExpectedActorId": { "$ref": "./proposal-reads.json#/components/parameters/ExpectedActorId" },
+      "ExpectedClientId": {
+        "$ref": "./proposal-reads.json#/components/parameters/ExpectedClientId"
+      }
+    },
+    "headers": {
+      "NoStore": { "$ref": "./context-history.json#/components/headers/NoStore" },
+      "SuccessTrace": { "$ref": "./context-history.json#/components/headers/SuccessTrace" },
+      "ErrorTrace": { "$ref": "./context-history.json#/components/headers/ErrorTrace" }
+    },
+    "schemas": {
+      "ErrorEnvelope": { "$ref": "./context-history.json#/components/schemas/ErrorEnvelope" }
+    },
+    "responses": {
+      "ProjectSuccess": {
+        "description": "Complete project observation; outer sources exactly match normalized data sources. No ETag or live Plane fetch.",
+        "headers": {
+          "cache-control": { "$ref": "#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/observed-read.json#ObservedProjectEnvelope" }
+          }
+        }
+      },
+      "WorkItemSuccess": {
+        "description": "Complete active/deleted/restored observation. Deleted inner schema2 still uses outer schema1 and returns200; outer sources equal normalized snapshot sources.",
+        "headers": {
+          "cache-control": { "$ref": "#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/observed-read.json#ObservedWorkItemEnvelope" }
+          }
+        }
+      },
+      "ContextSuccess": {
+        "description": "Saved active work_item and transient context_pack search summary. Outer sources equal summary's deduplicated sources; optional recall failure can yield degraded local-only success. No saved pack ID/hash/TTL/ETag.",
+        "headers": {
+          "cache-control": { "$ref": "#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/observed-read.json#ObservedContextEnvelope" }
+          }
+        }
+      },
+      "DirectorySuccess": {
+        "description": "Current metadata page with empty outer source_refs, scope and SQL checked_at, optional explicit next_cursor. No total/has_more/history or payload copies.",
+        "headers": {
+          "cache-control": { "$ref": "#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/observed-read.json#ObservedDirectoryEnvelope" }
+          }
+        }
+      },
+      "Error": {
+        "description": "Application error; transport/proxy failures can use another representation. No automatic retries or partial usable state.",
+        "headers": {
+          "cache-control": { "$ref": "#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "#/components/headers/ErrorTrace" }
+        },
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } }
+        }
+      },
+      "BadInput": {
+        "$ref": "#/components/responses/Error",
+        "description": "INVALID_INPUT for malformed encoding/record ID, query on single-record routes, unsupported/repeated/bad directory filters or mismatched/invalid continuation. retryable=false. No generic version-header parse error is introduced on these four routes."
+      },
+      "BadContext": {
+        "$ref": "#/components/responses/Error",
+        "description": "INVALID_INPUT as state route; required recall MEMORY_SCOPE_MISMATCH for malformed/cross-scope batch, or MEMORY_MCP_EMPTY_RESULT/MEMORY_MCP_INVALID_RESULT from configured provider currently map400. retryable=false for these explicit codes. Optional recall failures instead degrade to local-only200."
+      },
+      "Unauthenticated": { "$ref": "./proposal-reads.json#/components/responses/Unauthenticated" },
+      "Denied": {
+        "$ref": "#/components/responses/Error",
+        "description": "DENIED for scope/expected-identity/Policy denial or required memory without actual restricted-read capability; retryable=false. Admin does not replace restricted-read. Hidden SQL records/parent use404."
+      },
+      "NotFound": {
+        "$ref": "#/components/responses/Error",
+        "description": "NOT_FOUND for different project path ID, missing/invisible parent or state, expired active index, or absent/inconsistent event/projection/index join. Directory hidden/missing parent404; visible parent with no eligible rows200. retryable=false."
+      },
+      "Deleted": {
+        "$ref": "#/components/responses/Error",
+        "description": "OBSERVED_RECORD_DELETED when context read observes valid visible deletion; retryable=false. Stops before memory recall. Explicit state read can return the deletion marker, but no automatic fallback is performed."
+      },
+      "RateLimited": {
+        "$ref": "#/components/responses/Error",
+        "description": "RATE_LIMITED by generic actor/path limiter; retryable=true. No dedicated observed-read concurrency limit or Retry-After promise."
+      },
+      "InvalidStored": {
+        "$ref": "#/components/responses/Error",
+        "description": "OBSERVED_STATE_INVALID for ambiguous state identity or malformed selected snapshot/directory metadata; retryable=false. Invalid scope discovered during output parsing can also map here. Unexpected command-boundary INTERNAL_ERROR defaults retryable=true."
+      },
+      "InvalidContext": {
+        "$ref": "#/components/responses/Error",
+        "description": "OBSERVED_STATE_INVALID as state route; required recall MEMORY_RESULT_INVALID for invalid source references, retryable=false. Unexpected command-boundary INTERNAL_ERROR defaults retryable=true; optional recall failure is degraded200."
+      },
+      "Unavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "OBSERVED_STATE_UNAVAILABLE for missing database or SQL read failure; WORKBENCH_AUTH_UNAVAILABLE/AUDIT_PERSISTENCE_UNAVAILABLE at outer boundaries. retryable=true. No in-memory substitute observation."
+      },
+      "ContextUnavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "Same storage/auth/audit503 plus required recall: MEMORY_PROVIDER_OFF retryable=false; non-ContractError MEMORY_UNAVAILABLE retryable=true; MEMORY_MCP_ERROR/TOOL_ERROR retryable=false; MEMORY_MCP_UNAVAILABLE retains provider retryability (HTTP>=500 or request failure true, other non-OK HTTP false). No common retryability is inferred from503. Optional recall failures degrade to local-only200."
+      }
+    }
+  }
+}

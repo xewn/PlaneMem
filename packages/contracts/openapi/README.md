@@ -1,6 +1,20 @@
 # OpenAPI 源码契约
 
-这里的文档描述已有HTTP实现，尚未经过OpenAPI校验器、生成器、编译、类型检查、测试或运行验证。文档中的版本不表示已发布或部署；目前覆盖五个保存包接口、九个文件接口、九个上下文条目接口、六个同步接口、五个冲突接口及八个建议接口，共四十二个接口，尚不是完整WCP接口目录。
+这里的文档描述已有HTTP实现，尚未经过OpenAPI校验器、生成器、编译、类型检查、测试或运行验证。文档中的版本不表示已发布或部署；目前覆盖五个保存包接口、九个文件接口、九个上下文条目接口、六个同步接口、五个冲突接口、八个建议接口及四个Plane观察接口，共四十六个接口，尚不是完整WCP接口目录。
+
+## Plane观察读取
+
+2026-11-05，TODO **P0-01**：[observed-reads.json](observed-reads.json) 覆盖项目状态、工作项状态、工作项上下文和观察目录四个GET；独立 [observed-read Schema](../schemas/observed-read.json) 提供四类完整成功与查询/快照/恢复引用/目录锚点。包子路径对应文件名；本地加载该OpenAPI、proposal-reads/context-history公共HTTP组件和这一份独立Schema，保留相对路径及完整ID。未执行生成或兼容校验。
+
+这些接口读取持久Plane观察，不联网刷新Plane、不改本地工作项或确认消费游标。单条状态在一条SQL中联结快照、源事件、同版本索引及当前可见父项目；关联不一致/不可见为404，两个外部ID/聚合ID别名同时命中或选中快照损坏为500。项目路径必须等于授权项目；工作项可按external_id或aggregate_id查找。内层活动v1、删除v2，外层始终v1；删除仅保留external_id与等于observed_at的deleted_at，无旧标题/status。恢复仍为v1，顶层restored_from只在源事件为WorkItemRestored时生成，并核对紧邻删除版本及fields中的相同引用。
+
+目录先过滤可见父项目及一致关联行，按external_id的C/Unicode标量顺序升序取limit+1，仅前limit条规范化/解析；未独立解析lookahead元数据。默认25、最多100，缺父项目404、可见空目录200。query按原500个UTF-16单位和字符约束检查再trim，匹配ID和活动显示标题的字面子串，仅忽略ASCII大小写。游标v2绑定范围、actor/client、restricted能力、保留大小写的trim后query、state和limit；只改变查询大小写也会失效，不是签名或跨页快照。目录title/status按2000/255个Unicode标量截断，删除项为null；输出分类为父项目/索引较高等级，单条状态则输出索引分类，不能混为同一规则。
+
+上下文先读活动状态，删除时在记忆调用前返回410。context_pack是临时搜索摘要，首条fts命中直接由观察状态构造，再追加最多19条去重记忆命中；配置的记忆返回最多1000条需整批验证范围/ID/摘要/来源后才取子集。全部记忆按restricted处理，admin也不能替代实际restricted读取能力。可选记忆未配置/无权/失败/坏结果返回degraded本地摘要，必需记忆则返回错误；成功空召回仍可memory_used=true。来源按type/id保留首次完整引用，HTTP记忆来源扩展保留，SDK会规范化成公开四字段。没有跨状态SQL与记忆召回的一致快照，也不保存ContextPack。
+
+状态/目录调用已有共享解析；完整上下文由服务器拼装，SDK另做完整解析和外层trace/来源核对。保存标题前1000个UTF-16单位若全为空白，旧服务端仍可能输出而被SDK拒绝。四路GET未专门拒绝正文/framing/编码/范围/缓存条件，且不在通用readPreconditions分支内，版本头不会解析或条件读取。Bearer/范围/Policy/审计/通用限流仍生效，但不独立要求verified-client；读取后不复查到期/可见性。没有专用完整响应字节限额、两容量或总期限，提供方局部超时不等同HTTP总预算。记忆失败400/500/503及retryable按当前映射分别记录，不统一解释为可重试503。
+
+仅机器契约与文档，OpenAPI累计四十六路。未改运行实现、SDK/Mock、旧Schema、依赖或数据库；其余WCP/MCP、事件payload、机器契约接线及破坏性差异CI仍缺，P0-01/R-001未完成、evidence为空。仅人工源码文档审阅/指定格式/Git文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 ## 建议写入与原回执
 
@@ -16,7 +30,7 @@
 
 三个旧写POST在认证前读取1MiB，坏/超限正文为400 INVALID_JSON，没有专用媒体/编码/缓存/范围拒绝。两个回执认证后读取，要求JSON/可选UTF-8 charset并拒绝编码、写/缓存/范围头；审核回执额外拒绝X-Expected-Version。原创建请求/成功1MiB/2MiB，原审核32KiB/64KiB，实际有限JSON还限制深度64/节点100000；通用Buffer解码不是fatal UTF-8。没有专用两容量/总期限。审核成功trace要求可见ASCII1–255；旧HTTP选trace更宽，导致不兼容trace在未观察分支可能503、已记录分支500。已记录核对块内非ContractError事件SQL失败也被包装为500，不笼统承诺所有数据库故障都是503。
 
-仅机器契约及文档，不改运行实现/SDK/Mock/旧Schema/依赖/数据库。建议八路源码目录已覆盖，OpenAPI累计四十二路；其余WCP/MCP、普通事件payload、SDK/Mock机器契约接线和破坏性差异CI仍缺，P0-01/R-001未完成、evidence为空。未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+仅机器契约及文档，不改运行实现/SDK/Mock/旧Schema/依赖/数据库。建议八路源码目录已覆盖，该轮使OpenAPI累计四十二路；其余WCP/MCP、普通事件payload、SDK/Mock机器契约接线和破坏性差异CI仍缺，P0-01/R-001未完成、evidence为空。未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 ## 建议读取与提交身份
 
