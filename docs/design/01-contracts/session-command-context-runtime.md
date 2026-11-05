@@ -1,5 +1,9 @@
 # 独立会话身份与请求恢复（源码阶段）
 
+2026-11-05，TODO P0-01：新增 [session-start OpenAPI](../../../packages/contracts/openapi/session-start.json) 与 [session-start Schema](../../../packages/contracts/schemas/session-start.json)，完整定义命令身份 GET 的可信身份、规范到期、三项权限关系与 16 KiB 封套，和普通启动/原启动回执一并索引。身份 trace 最多 512 个 UTF-16 单位，身份字段最多 1024，禁控制符/DEL/孤立代理项；规范到期不接受 0000 年。write 蕴含 claim 但不蕴含 read，至少一个提示为真；策略动作按显式 context.read、session.write/admin、handoff.claim 顺序选择。
+
+本契约不声明项目存在或记录可读，也不增加整次服务端期限、容量门或数据库取消。HTTP 拒绝正文声明/Transfer-Encoding/条件缓存与写条件，但没有独立 Content-Type/Content-Encoding 禁令或完整重复头白名单；SDK 专用有界路径才对响应媒体/UTF-8/长度/身份/有效期及本地期限核对。P0-01/R-001 未完成、evidence 为空；仅源码契约与文档，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
 更新：2026-11-03。仅源码和文档；未编译、类型检查、测试、执行 CLI/MCP/HTTP/SQL、运行浏览器/服务或发布。
 
 ## 缺口与只读入口

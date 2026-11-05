@@ -1,6 +1,22 @@
 # OpenAPI 源码契约
 
-这里的文档描述已有 HTTP 实现，尚未经过校验器、生成器、编译、类型检查、测试或运行验证。文档版本不表示已发布或部署；当前覆盖保存包 5 路、文件 9 路、上下文条目 9 路、同步 6 路、冲突 5 路、建议 8 路、Plane 观察 4 路、搜索 2 路、旧索引 5 路、Plane 收件箱 6 路、会话状态/活动 5 路及检查点/交接读取 3 路，共 67 路，尚不是完整 WCP 接口目录。
+这里的文档描述已有 HTTP 实现，尚未经过校验器、生成器、编译、类型检查、测试或运行验证。文档版本不表示已发布或部署；当前覆盖保存包 5 路、文件 9 路、上下文条目 9 路、同步 6 路、冲突 5 路、建议 8 路、Plane 观察 4 路、搜索 2 路、旧索引 5 路、Plane 收件箱 6 路、会话状态/活动 5 路、检查点/交接读取 3 路及会话身份/启动/原回执 3 路，共 70 路，尚不是完整 WCP 接口目录。
+
+## 会话启动与原回执
+
+2026-11-05，TODO **P0-01**：[session-start OpenAPI](session-start.json) 覆盖 GET /v1/sessions/command-context、POST /v1/sessions 和 POST /v1/sessions/start/receipt；[session-start Schema](../schemas/session-start.json) 完整定义身份/权限/有效期、原业务正文/键/绑定、当前会话和历史回执，以及独立 SDK 规范输出。包子路径对应文件名，复用 session-activity-read Schema 与 session-reads/search/context-history HTTP 组件。
+
+命令身份 GET 必须签名、可信客户端、未过期且至少有 read/write/claim 提示，策略动作按显式 context.read、session.write/admin、handoff.claim 顺序选择，仍有入口审计和通用限流。只描述当前授权范围，未查询项目/目录/业务记录；write 提示蕴含 claim、不蕴含 read。完整封套 16 KiB、trace 最多 512 个 UTF-16 单位、身份最多 1024，规范 UTC 毫秒到期不接受 0000 年。拒绝查询、正文声明、Transfer-Encoding、写条件和条件缓存/范围头；没有额外媒体/编码/重复头白名单保证。
+
+普通启动和原回执都要求可信原身份与 session.write Policy。启动业务正文只允许原 parent/actor/client 可选字段，是否提供也参与指纹；稳定原键在头或正文中，二者并存必须相同，拒绝版本和 resume_origin。事务先共享锁定当前可见项目，再锁定范围/账号/客户端/原键和可选父会话，才核对已有回执。父会话没有额外运行状态或归属要求。新建 running/version=1 会话与最小回执同事务；同键旧会话没有专门回执或插入碰撞为 SESSION_START_LEGACY_UNVERIFIED，不补造历史。未配置持久存储不会降级为内存成功。
+
+原键重试返回当前会话与原创建回执；原回执 session_version 恒为 1，当前版本可以更高且已终止。范围、账号/客户端、父会话和开始时间须一致，无 resume_origin；当前版本 1 只能 running，终态结束不能早于开始。最多 200 项来源须含 type=session、id=原 client_id，未去重或递归授权；服务端保留扩展，SDK 仅返回四个字段并逐序比较内外来源。内置成功无 ETag；客户端另兼容与当前版本一致的可选 ETag，不冒充服务端输出。
+
+头键请求还受进程原正文/能力指纹约束，持久指纹则去除正文 idempotency_key、保留原可选身份；键摆放或能力变化可能更早冲突。进程命中仍重新执行持久处理器，正文键路径不使用该进程缓存。原回执查询以单条 SQL 快照复查项目/父会话和原回执/当前会话，不持事务锁或执行原写入；没有专门回执为 not-observed，可能包含旧同键会话或并发提交。启动缺父会话 404，查询缺项目/父会话 403；都不是可安全换键的证据。
+
+两个 POST 沿认证前通用 1 MiB JSON-object 解析，空/非对象/畸形/超大正文均 400 INVALID_JSON；没有专门媒体/编码/范围/查询字段拒绝，URL 查询被忽略。有效版本头也被处理器拒绝，查询另禁新写键。成功均 200、private,no-store 和当前 trace；回执查询空来源，未返回当前会话。普通 SDK 开始/查询固定原身份、完整解析，但通用 JSON transport 没有专用响应字节、严格响应头或整次期限/取消选项。身份 SDK 才使用 16 KiB 有界正文、默认 30 秒本地期限、取消、完整响应/有效期及结束前期限检查；Fetch 自己的期限独立生效。有限身份 SDK 错误净化为 retryable=false，不同于 HTTP 原存储错误。
+
+本轮三路使 OpenAPI 累计 70 路；其余 WCP/MCP、事件 payload、SDK/Mock 机器契约接线与破坏性差异 CI 仍缺。P0-01/R-001 未完成、evidence 为空；仅人工源码文档审阅/指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 ## 检查点历史与交接详情
 
@@ -18,7 +34,7 @@
 
 仅历史接受查询；GET 不解析正文，无媒体/编码/缓存/Range/framing 专用拒绝。三路解析版本头后忽略有效值，误带幂等键不缓存旧成功；成功 private,no-store、当前 trace、无 ETag。历史存储失败 WORKBENCH_DATABASE_UNAVAILABLE，详情存储失败 SESSION_STORAGE_UNAVAILABLE；坏记录 500，实际错误/重试边界已列出。
 
-本轮三路使 OpenAPI 累计 67 路；其他 WCP/MCP、事件 payload、SDK/Mock 机器契约接线与破坏性差异 CI 仍缺，P0-01/R-001 未完成、evidence 为空。仅人工源码文档审阅/指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+该轮三路使 OpenAPI 累计六十七路；其他 WCP/MCP、事件 payload、SDK/Mock 机器契约接线与破坏性差异 CI 仍缺，P0-01/R-001 未完成、evidence 为空。仅人工源码文档审阅/指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 ## 会话状态与活动读取
 

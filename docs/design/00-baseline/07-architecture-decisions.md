@@ -1,5 +1,9 @@
 # 架构决策记录摘要
 
+2026-11-05 本轮源码落地：会话命令身份/普通启动/原启动回执三路 OpenAPI、完整 session-start Schema 和两项包子路径已补齐；原可选字段/身份键、当前会话与历史版本 1、事务/可见性/旧键边界、来源扩展及实际 HTTP/SDK 预算已人工对照。公共目录/WCP/两份运行说明、根 README/TODO 与 R001 同步，OpenAPI 累计 70 路。P0-01/R001 未完成、evidence 为空；仅人工源码文档审阅/指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
+2026-11-05 P0-01 会话启动与原回执三路机器契约（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增 schemas/session-start.json 与 openapi/session-start.json，覆盖会话命令身份 GET、启动 POST 和原启动回执 POST。完整定义当前身份/权限/到期、原启动命令与身份绑定、当前会话和历史回执、recorded/not-observed；核对项目/父会话可见性、原键指纹、重放顺序、存储完整性及实际 HTTP/SDK/预算边界。范围两新 JSON、两项包子路径、两 README、根 README/TODO、公共目录/WCP、session-start/session-command-context 运行文档、R001 与 ADR/T0.3/T4.1；可复用已有会话身份/状态/来源标量，不改旧 Schema、运行实现、SDK/Mock、依赖或数据库。仅人工源码文档审阅/指定格式/Git 文本检查，不编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布；独立提交 push main 带 [skip ci]，P0-01/R001 未完成、evidence 为空。
+
 2026-11-05 本轮源码落地：检查点历史/指定详情与交接详情三路 OpenAPI、两份完整 Schema 及三项包子路径已补齐；六类笔记、历史引用、十条分页与第十一条位置检查、候选封套字节预算、旧领取归属和当前身份提示已人工对照。公共目录/WCP/运行说明、根 README/TODO 与 R001 同步，OpenAPI 累计 67 路。P0-01/R001 未完成、evidence 为空；仅人工源码文档审阅/指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 2026-11-05 P0-01 检查点与交接读取三路机器契约（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增 schemas/checkpoint-read.json、schemas/handoff-read.json 与 openapi/continuity-reads.json，覆盖会话检查点历史/指定详情和交接详情三个 GET。完整描述六类原笔记、保存来源/记忆引用、历史分页/范围、包未检查标记、交接状态/领取归属与当前身份权限提示；明确 SQL 输出预算、选中页与前瞻差别、历史内容不证明原请求/包有效、实际 HTTP/SDK/错误与期限边界。范围三新 JSON、三项包子路径、两 README、根 README/TODO、公共目录/WCP、checkpoint-read/handoff-read 运行文档、R001 和 ADR/T0.3/T4.1；可复用 session-activity-read 公共标量/来源/身份，不改旧 Schema 或运行实现/SDK/Mock/依赖/数据库。仅人工源码文档审阅/指定格式/Git 文本检查，不编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布；独立提交 push main 带 [skip ci]，P0-01/R001 未完成、evidence 为空。

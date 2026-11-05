@@ -11,6 +11,29 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    session_start_openapi_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only three-route command identity/start/original receipt OpenAPI and complete schema; P0-01 and R-001 remain incomplete."
+      artifacts:
+        - "packages/contracts/openapi/session-start.json"
+        - "packages/contracts/schemas/session-start.json"
+        - "packages/contracts/package.json"
+        - "packages/contracts/openapi/README.md"
+        - "packages/contracts/schemas/README.md"
+      behavior: "Current verified identity/expiry/permission hints, exact optional original start fields and raw key, complete current session with immutable version1 receipt, historical recorded/not-observed and separate normalized SDK success. Replay does not rewind current session; current identity or absent receipt never reconstructs an original request."
+      boundaries: "No runtime/SDK/Mock/old-schema/dependency/database changes. Project/parent locks and raw identity/key serialization precede durable replay; current session and receipt consistency checked, legacy same-key sessions rejected without repair, fresh session+receipt atomic. Lookup uses one unlocked SQL snapshot and may report not-observed for legacy starts; missing project/parent denied. Process raw-body/authority fingerprint differs from durable canonical business fingerprint. Wire preserves source extensions while SDK normalizes four fields. Identity16KiB/bounded SDK differs from generic start/receipt JSON path, whose pre-auth1MiB parser ignores URL query and lacks dedicated media/response byte/deadline protections."
+      evidence: []
+      remaining_scope: "Other WCP/MCP machine contracts, ordinary event payloads, SDK/Mock machine-contract consumption, breaking-change CI and tool/runtime/release evidence."
+      pending_evidence:
+        - "Local references, complete three success shapes, raw body versus canonical command and original optional field presence"
+        - "Current identity permission/expiry/trace limits, policy selection and no project-existence guarantee"
+        - "Original identity/key fingerprints, process-versus-durable replay differences and same-key concurrency"
+        - "Project/parent visibility before replay, atomic new receipt, legacy collision and uncertain commit behavior"
+        - "One-snapshot lookup, full current/receipt consistency, terminal timestamps and not-observed limitations"
+        - "Wire versus normalized client source extensions, current trace/ETag differences and original binding"
+        - "Actual HTTP parser/auth/error boundaries and identity-specific versus generic SDK budgets"
+      execution: "Manual source/docs review and explicit formatting/Git text checks only; no build, typecheck, tests, validators, generators, product/API/database execution or release."
     checkpoint_handoff_reads_openapi_development_increment:
       date: "2026-11-05"
       todo: "P0-01"

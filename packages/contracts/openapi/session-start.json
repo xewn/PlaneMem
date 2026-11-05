@@ -1,0 +1,261 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem session command identity and ordinary session start",
+    "version": "0.1.0",
+    "description": "Source-only three existing routes. Load session-start/session-activity-read schemas and session-reads/search/context-history HTTP components locally, preserving relative paths and resource IDs. No validator/generator/SDK/Mock machine-contract integration or release evidence."
+  },
+  "servers": [
+    { "url": "/", "description": "Relative Gateway base; configure deployment origin/base." }
+  ],
+  "security": [{ "GatewayBearer": [] }],
+  "tags": [{ "name": "Session start" }],
+  "x-todo": "P0-01",
+  "x-runtime-boundaries": {
+    "sources": [
+      "packages/contracts/src/session-start.ts",
+      "packages/contracts/src/session-command-context.ts",
+      "packages/contracts/src/session-activity.ts",
+      "packages/contracts/src/metadata.ts",
+      "apps/api-gateway/src/session-command-context.ts",
+      "apps/api-gateway/src/session-start-receipts.ts",
+      "apps/api-gateway/src/session-persistence.ts",
+      "apps/session-service/src/session/service.ts",
+      "apps/api-gateway/src/server.ts",
+      "apps/api-gateway/src/http.ts",
+      "apps/api-gateway/src/idempotency.ts",
+      "packages/sdk/src/client.ts",
+      "packages/sdk/src/session-command-context.ts",
+      "packages/sdk/src/fetch-transport.ts",
+      "packages/sdk/src/bounded-json.ts"
+    ],
+    "authorization": "Identity GET always verifies signed Bearer and requires verified client, finite future token expiry and at least one admin/context.read/session.write/handoff.claim-derived flag. Policy chooses explicit context.read first, then session.write/admin, then handoff.claim. Start and receipt use session.write Policy and independent authenticated_client=true handler check; signed boundary requires client when verifier/Authorization is configured. Compatibility unsigned continuity path is not successful start/receipt authorization because it cannot satisfy verified-client gate. Configured OPA replaces local Policy but not independent gates. All routes retain entry audit and generic actor/path rate limit; expected actor/client headers are independently optional exact preconditions.",
+    "identity": "Read current authorized claims only, never projects/sessions/receipts; audit can still require storage. Full envelope<=16KiB JSON.stringify UTF-8, trace<=512 UTF-16, identity names<=1024, canonical four-digit UTC millisecond expiry excluding year0000. Write hint implies claim, not read; at least one true. Handler checks expiry before representing data; SDK rechecks after response. No new whole-handler timeout, SQL cancellation, capacity gate or future authorization guarantee.",
+    "start-input": "JSON object can be empty if key header supplied. Only optional parent_session_id/actor_id/client_id and body idempotency_key allowed. Stable non-whitespace key1..255 UTF-16 required; header selected first and body must equal if present. No version conditions, resume_origin or other fields. Actor/client optional fields must equal verified context, and their original presence/value remains part of the durable fingerprint; omission and explicitly supplied current identity are different requests.",
+    "fingerprints": "Durable request_key is SHA256 of canonical JSON [actor_id,client_id,rawKey], scoped by tenant/workspace/project. Fingerprint hashes sorted original input without idempotency_key; absent expected_version omitted by JSON. Header-based start also uses in-process raw-body/authority fingerprint; changed body key placement or capabilities may conflict before persistent replay even when canonical durable command is equivalent. Matching process entry re-enters durable handler instead of serving stale success. Body-only keys bypass that process cache, not persistent locking.",
+    "start-transaction": "Require durable store, never infer ordinary start from legacy memory. One transaction first locks current nondeleted valid-classification project FOR SHARE, requiring actual restricted-read capability for restricted. Then scoped actor/client/raw-key advisory lock and optional same-project parent FOR SHARE. Parent may be terminal; no independent parent ownership/state check. Project/parent access precedes receipt replay. Matching receipt fingerprint and full original receipt/current-session consistency return current session plus original version1 receipt; current session FOR SHARE. No dedicated receipt but existing raw identity/key session or concurrent insert collision yields409 SESSION_START_LEGACY_UNVERIFIED. Fresh running/version1 session and minimal receipt insert atomically. No event/outbox record is inserted by this start path.",
+    "lookup": "One SQL snapshot checks visible project, optional original parent, dedicated scoped digest-key receipt and associated current session. No row means403 DENIED, not not-observed; unlike start, unavailable parent here is403. Missing dedicated receipt yields200 not-observed without checking legacy raw-key sessions. Present receipt must match fingerprint, receipt session ID, raw key and full immutable/current session consistency. No repair/write/version advance or original mutation replay. Lookup is not locked against a concurrent later commit and cannot prove failure or safe new-key retry.",
+    "integrity": "Original receipt is closed recorded/session/optional parent/actor/client/started_at/session_version1. Current session must match original immutable fields and scope, have no resume_origin, positive safe version and valid closure; version1 only running, terminal ended_at>=started_at. Four-digit canonical timestamps, not extended years. Current sources<=200 include type=session with id=original client_id (not session_id), no deduplication. Built-in wire keeps saved source extensions and returns same array outside; SDK normalizes to four fields and compares arrays in order. No source visibility check. Current inner trace can differ from current request trace.",
+    "http": "Identity GET rejects all query fields, Transfer-Encoding, Content-Length except absent/exact0, Idempotency-Key, If-Match/If-Match-Version and conditional cache/range headers. No explicit content-type/content-encoding prohibition or full duplicate-header allowlist there; GET body is not consumed. Start/receipt POST use generic JSON-object parser before authentication: raw body1MiB, nonfatal UTF-8, malformed/empty/nonobject/oversize400 INVALID_JSON. No dedicated JSON media/encoding/framing/cache/Range guard for these POSTs; URL query fields are ignored. Generic version headers parsed for safe nonnegative agreement then both operations reject any valid supplied version; receipt also rejects write key. Success200 private,no-store/current trace; built-in three handlers emit no ETag/outer revision.",
+    "sdk": "startSession(session,{idempotency_key},expectedIdentity?) and getSessionStartReceipt({request_key,session},expectedIdentity?) bind exact original scope/actor/client. Without explicit identity require complete instance identity; explicit identity must agree with supplied instance actor/client. Start rejects options beyond key and instance version/if_match. Both send expected actor/client; lookup does not inherit write conditions. Full shared parse checks original receipt/current state/trace and normalized sources; optional ETag compatibility is client-only and not server output. Generic JSON Fetch has no response byte/media/exact200/trace-header/length checks; its configured timeout defaults30s and begins after credential acquisition, not a full custom-transport deadline. No start/receipt timeout/signal options or after-parse deadline. No automatic save/retry/new key.",
+    "identity-sdk": "getSessionCommandContext accepts timeout_ms/signal only, default local30s, max2147483647; copies context, sends optional expected actor/client, no write headers. bounded-json success/error16KiB,200/current trace/JSON media/fatal UTF-8/decoded byte cap and applicable Content-Length equality;401 may be handled without reading body. Independent Fetch deadline includes credential/network/body. Shared full parser, actor/client and expiry check then local deadline check. Finite sanitized messages/current trace/retryable=false; unknown failures GATEWAY_UNAVAILABLE. Cancellation only stops waiting, not proof of audit rollback."
+  },
+  "paths": {
+    "/v1/sessions/command-context": {
+      "parameters": [
+        { "$ref": "./session-reads.json#/components/parameters/TenantId" },
+        { "$ref": "./session-reads.json#/components/parameters/WorkspaceId" },
+        { "$ref": "./session-reads.json#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "./session-reads.json#/components/parameters/ExpectedActorId" },
+        { "$ref": "./session-reads.json#/components/parameters/ExpectedClientId" }
+      ],
+      "get": {
+        "operationId": "getSessionCommandContext",
+        "tags": ["Session start"],
+        "summary": "Read current verified session command identity and permission hints",
+        "x-wcp-operation": "session.command-context",
+        "x-policy-action": ["context.read", "session.write", "handoff.claim"],
+        "description": "Parameter-free GET, verified unexpired client and at least one read/write/claim hint. Policy action chosen in stated priority; normal audit/rate limiting remain. No project existence or business visibility lookup, no original request reconstruction. Full identity/expiry/permissions with empty sources and no ETag, bounded16KiB. Flags only describe current claims.",
+        "responses": {
+          "200": { "$ref": "#/components/responses/IdentitySuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "429": { "$ref": "./search.json#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidIdentity" },
+          "503": { "$ref": "#/components/responses/AuthorityUnavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/sessions": {
+      "parameters": [
+        { "$ref": "./session-reads.json#/components/parameters/TenantId" },
+        { "$ref": "./session-reads.json#/components/parameters/WorkspaceId" },
+        { "$ref": "./session-reads.json#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "./session-reads.json#/components/parameters/ExpectedActorId" },
+        { "$ref": "./session-reads.json#/components/parameters/ExpectedClientId" }
+      ],
+      "post": {
+        "operationId": "startSession",
+        "tags": ["Session start"],
+        "summary": "Start an ordinary session with an immutable original receipt",
+        "x-wcp-operation": "session.start",
+        "x-policy-action": "session.write",
+        "description": "Stable key in header/body (both must match), exact optional original actor/client/parent, no version or resume fields. Current project/parent visibility checked before persistent replay. Fresh session+receipt atomic; exact replay returns original receipt plus current session, including a possible later terminal state. Legacy same-key session without dedicated receipt409 rather than inferred success. Built-in response has no ETag; historical receipt version1 is not current version.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": { "$ref": "../schemas/session-start.json#/$defs/key" },
+            "description": "Required unless body idempotency_key supplied. If both present they must exactly agree. Retain original identity/business-field presence/key after uncertainty."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "JSON object required, including {} for no optional business fields. Generic parser accepts other Content-Type labels but still parses JSON;1MiB raw bytes. URL query fields are ignored.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/session-start.json#SessionStartBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/StartSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/ParentNotFound" },
+          "409": { "$ref": "#/components/responses/StartConflict" },
+          "429": { "$ref": "./search.json#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidReceipt" },
+          "503": { "$ref": "#/components/responses/StorageUnavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/sessions/start/receipt": {
+      "parameters": [
+        { "$ref": "./session-reads.json#/components/parameters/TenantId" },
+        { "$ref": "./session-reads.json#/components/parameters/WorkspaceId" },
+        { "$ref": "./session-reads.json#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "./session-reads.json#/components/parameters/ExpectedActorId" },
+        { "$ref": "./session-reads.json#/components/parameters/ExpectedClientId" }
+      ],
+      "post": {
+        "operationId": "getSessionStartReceipt",
+        "tags": ["Session start"],
+        "summary": "Observe an original ordinary-start receipt without starting a session",
+        "x-wcp-operation": "session.start.receipt",
+        "x-policy-action": "session.write",
+        "description": "Original raw key and exact original optional business fields under current verified original identity. No new key/version headers. Single snapshot checks current project/original parent and, when receipt exists, its full original/current-session consistency. Missing dedicated row yields not-observed, including possible legacy starts; missing/hidden project or parent403. No lock against later commit, repair or new session. Empty sources/no ETag; historical receipt only.",
+        "requestBody": {
+          "required": true,
+          "description": "Complete original query in JSON object; generic1MiB parser before authentication. No dedicated JSON media/encoding/query prohibition; URL query is ignored.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/session-start.json#SessionStartReceiptQuery" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/ReceiptSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "409": { "$ref": "#/components/responses/LookupConflict" },
+          "429": { "$ref": "./search.json#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidReceipt" },
+          "503": { "$ref": "#/components/responses/StorageUnavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": { "GatewayBearer": { "type": "http", "scheme": "bearer" } },
+    "parameters": {
+      "TraceParent": {
+        "name": "traceparent",
+        "in": "header",
+        "schema": { "type": "string" },
+        "description": "Generic nonempty value wins over x-trace-id; no W3C syntax/agreement requirement. Identity output parser limits512 UTF-16/no controls/DEL/lone surrogates; saved session trace and shared start client parser limit1024. Outer start/lookup builder has no separate stricter trace parser."
+      },
+      "TraceId": {
+        "name": "x-trace-id",
+        "in": "header",
+        "schema": { "type": "string" },
+        "description": "Used when traceparent empty/absent; otherwise generated trace_http_<ULID>. Success header and outer trace current; current stored session trace may differ."
+      }
+    },
+    "responses": {
+      "IdentitySuccess": {
+        "description": "Current verified identity, expiry and permission hints, empty sources, <=16KiB; no business existence/visibility proof or ETag.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/session-start.json#SessionCommandContextEnvelope" }
+          }
+        }
+      },
+      "StartSuccess": {
+        "description": "Current session plus complete immutable start_receipt, including on replay. Current sources and trace remain distinct from current request trace; no ETag or outer revision. Not an original version1 session snapshot.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/session-start.json#SessionStartEnvelope" }
+          }
+        }
+      },
+      "ReceiptSuccess": {
+        "description": "Historical recorded or not-observed, empty sources/current trace/no ETag. not-observed does not prove failure, legacy absence or permit a new key.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/session-start.json#SessionStartReceiptEnvelope" }
+          }
+        }
+      },
+      "Error": {
+        "$ref": "./search.json#/components/responses/Error",
+        "description": "Application error. Early parser/auth/proxy representations may differ and need not provide x-trace-id header. Error/lost response never establishes that an original write rolled back; retain original identity/key/optional business fields."
+      },
+      "BadInput": {
+        "$ref": "#/components/responses/Error",
+        "description": "INVALID_INPUT for command/query/key/forbidden version, nested original actor/client mismatch or identity GET shape; INVALID_REQUEST_CONTEXT for malformed/disagreeing generic version headers; early POST parse/empty/nonobject/oversize INVALID_JSON400, not413. retryable=false. Top-level claimed actor/client mismatch at authenticated HTTP boundary instead403."
+      },
+      "Unauthenticated": {
+        "$ref": "#/components/responses/Error",
+        "description": "UNAUTHENTICATED for rejected/missing Bearer at signed boundary, retryable=false. Identity always takes this boundary; unsigned compatibility start/receipt cannot satisfy verified-client requirement and is denied."
+      },
+      "Denied": {
+        "$ref": "#/components/responses/Error",
+        "description": "DENIED for scope/expected identity/body identity/Policy or verified-client gate. Identity requires finite unexpired authority and some read/write/claim access. Start project visibility denied; lookup project/original parent unavailable denied. Restricted requires actual data.restricted.read; admin alone insufficient. retryable=false."
+      },
+      "ParentNotFound": {
+        "$ref": "#/components/responses/Error",
+        "description": "SESSION_NOT_FOUND404 when start's original parent is absent or outside scope after visible project lock. Lookup instead403 for unavailable original parent. retryable=false."
+      },
+      "StartConflict": {
+        "$ref": "#/components/responses/Error",
+        "description": "IDEMPOTENCY_KEY_REUSED for process or durable fingerprint disagreement; SESSION_START_LEGACY_UNVERIFIED for same raw identity/key session without dedicated receipt or concurrent insert collision. retryable=false; no auto-new-key, inferred success or legacy repair."
+      },
+      "LookupConflict": {
+        "$ref": "#/components/responses/Error",
+        "description": "IDEMPOTENCY_KEY_REUSED for existing dedicated receipt with different original command fingerprint, retryable=false. Missing dedicated receipt may yield not-observed even when legacy same-key session exists."
+      },
+      "InvalidIdentity": {
+        "$ref": "#/components/responses/Error",
+        "description": "SESSION_COMMAND_CONTEXT_INVALID500 for unrepresentable verified identity/expiry/trace/flags or full envelope>16KiB; retryable=false. Generic INTERNAL_ERROR defaults true."
+      },
+      "InvalidReceipt": {
+        "$ref": "#/components/responses/Error",
+        "description": "SESSION_RECEIPT_INVALID500 for malformed/inconsistent original receipt or current session linkage/key/state/time/sources, including TypeError/SyntaxError/RangeError in durable processing. retryable=false; generic INTERNAL_ERROR defaults true."
+      },
+      "AuthorityUnavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "WORKBENCH_AUTH_UNAVAILABLE or AUDIT_PERSISTENCE_UNAVAILABLE503 at shared boundaries, retryable=true. Identity does not require business session storage but is not an audit/auth bypass."
+      },
+      "StorageUnavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "SESSION_RECEIPT_STORAGE_UNAVAILABLE503 for unavailable durable store or non-contract/non-parse storage exceptions; retryable=true. Shared auth/audit503 also possible. No memory fallback; error cannot resolve an uncertain commit."
+      }
+    }
+  }
+}

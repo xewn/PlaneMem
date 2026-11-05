@@ -8,6 +8,8 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./schemas/session-start.json": "./schemas/session-start.json",
+    "./openapi/session-start.json": "./openapi/session-start.json",
     "./schemas/checkpoint-read.json": "./schemas/checkpoint-read.json",
     "./schemas/handoff-read.json": "./schemas/handoff-read.json",
     "./openapi/continuity-reads.json": "./openapi/continuity-reads.json",

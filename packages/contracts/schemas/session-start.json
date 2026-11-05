@@ -1,0 +1,292 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/session-start.json",
+  "title": "PlaneMem session command identity, ordinary start and original start receipt",
+  "description": "Source-only complete public success contracts. Ordinary start returns current session plus immutable original receipt; lookup returns only historical observation. Command identity describes current verified claims, not project existence or future authorization. Register session-activity-read.json locally.",
+  "$comment": "Runtime additionally checks exact original field presence/values, scope/actor/client/trace, real dates, current-versus-receipt relationships and source equality. UTF-16 bounds differ from JSON Schema scalar lengths. No validator/generator, SDK/Mock machine-contract integration or execution evidence.",
+  "oneOf": [
+    { "$ref": "#SessionCommandContextEnvelope" },
+    { "$ref": "#SessionStartEnvelope" },
+    { "$ref": "#SessionStartReceiptEnvelope" }
+  ],
+  "$defs": {
+    "ulid": { "$ref": "./session-activity-read.json#/$defs/ulid" },
+    "positive": { "$ref": "./session-activity-read.json#/$defs/positive" },
+    "name": { "$ref": "./session-activity-read.json#/$defs/identityText" },
+    "scope": { "type": "string", "minLength": 1 },
+    "identity": { "$ref": "./session-activity-read.json#SessionCommandIdentity" },
+    "key": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "not": { "pattern": "\\s" },
+      "$comment": "validateIdempotencyKey accepts 1..255 UTF-16 non-whitespace units, not ASCII-only. No additional control/DEL/lone-surrogate restriction in this key parser."
+    },
+    "time": {
+      "type": "string",
+      "minLength": 24,
+      "maxLength": 24,
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$",
+      "$comment": "Runtime requires finite Date.parse and exact toISOString roundtrip. Original start/closure may use year0000; command identity expiry separately excludes it. No extended years."
+    },
+    "source": { "$ref": "./session-activity-read.json#SessionActivitySourceRef" },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 200,
+      "items": { "$ref": "#/$defs/source" },
+      "contains": { "required": ["type"], "properties": { "type": { "const": "session" } } },
+      "description": "Wire start preserves stored source extensions. Runtime requires at least one {type:'session',id:original client_id}, not new session_id. No duplicate rejection or source visibility/existence/length checks. Outer and inner sources are the same saved array."
+    },
+    "clientSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "minLength": 1 },
+        "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "uri": { "type": "string", "minLength": 1 }
+      },
+      "description": "SDK parseSessionStartEnvelope strips source extensions and compares normalized outer/inner arrays in order; does not deduplicate."
+    },
+    "contextPermissions": {
+      "$anchor": "SessionCommandContextPermissions",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["read_sessions", "write_sessions", "claim_handoffs"],
+      "properties": {
+        "read_sessions": { "type": "boolean" },
+        "write_sessions": { "type": "boolean" },
+        "claim_handoffs": { "type": "boolean" }
+      },
+      "anyOf": [
+        { "properties": { "read_sessions": { "const": true } } },
+        { "properties": { "write_sessions": { "const": true } } },
+        { "properties": { "claim_handoffs": { "const": true } } }
+      ],
+      "allOf": [
+        {
+          "if": { "properties": { "write_sessions": { "const": true } } },
+          "then": { "properties": { "claim_handoffs": { "const": true } } }
+        }
+      ],
+      "description": "read=admin or context.read; write=admin or session.write; claim=write or handoff.claim. At least one true and write implies claim; write need not imply read. Flags do not evaluate project visibility, future Policy/OPA or record state."
+    },
+    "contextEnvelope": {
+      "$anchor": "SessionCommandContextEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "#/$defs/name", "maxLength": 512 },
+        "source_refs": { "const": [] },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["identity", "expires_at", "permissions"],
+          "properties": {
+            "identity": { "$ref": "#/$defs/identity" },
+            "expires_at": { "$ref": "#/$defs/time", "not": { "pattern": "^0000" } },
+            "permissions": { "$ref": "#SessionCommandContextPermissions" }
+          }
+        }
+      },
+      "x-candidate-json-max-bytes": 16384,
+      "description": "Exact current trace (<=512 UTF-16, no controls/DEL/lone surrogates) and scope. Full candidate JSON.stringify UTF-8<=16KiB. Handler requires verified client with finite future token expiry; shared parser alone checks representation, not Date.now. SDK checks expiry and optional actor/client after reading. No business record lookup, ETag or original request key."
+    },
+    "command": {
+      "$anchor": "SessionStartCommand",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "parent_session_id": { "$ref": "#/$defs/ulid" },
+        "actor_id": { "$ref": "#/$defs/name" },
+        "client_id": { "$ref": "#/$defs/name" }
+      },
+      "description": "Original optional fields, including whether each was supplied, must be retained. Explicit actor/client must equal verified identity; empty object is valid. Never inject current IDs into an originally absent field."
+    },
+    "body": {
+      "$anchor": "SessionStartBody",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "parent_session_id": { "$ref": "#/$defs/ulid" },
+        "actor_id": { "$ref": "#/$defs/name" },
+        "client_id": { "$ref": "#/$defs/name" },
+        "idempotency_key": { "$ref": "#/$defs/key" }
+      },
+      "description": "Raw JSON object. Stable key required in Idempotency-Key header or this body field; if both supplied they must match. Business command excludes the key. All versions/resume_origin/other fields rejected; no implicit parent default."
+    },
+    "query": {
+      "$anchor": "SessionStartReceiptQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request_key", "session"],
+      "properties": {
+        "request_key": { "$ref": "#/$defs/key" },
+        "session": { "$ref": "#SessionStartCommand" }
+      },
+      "description": "Original raw key and exact original optional business fields, not current session metadata or a new request. Current verified actor/client/scope bind the lookup; no write headers."
+    },
+    "binding": {
+      "$anchor": "SessionStartBinding",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["query", "identity"],
+      "properties": {
+        "query": { "$ref": "#SessionStartReceiptQuery" },
+        "identity": { "$ref": "#/$defs/identity" }
+      },
+      "description": "Local SDK/recovery binding, not an HTTP body. Identity exactly matches original scope and explicit optional actor/client; supplied instance actor/client must agree."
+    },
+    "recorded": {
+      "$anchor": "SessionStartRecorded",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "session_id",
+        "actor_id",
+        "client_id",
+        "started_at",
+        "session_version"
+      ],
+      "properties": {
+        "status": { "const": "recorded" },
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "parent_session_id": { "$ref": "#/$defs/ulid" },
+        "actor_id": { "$ref": "#/$defs/name" },
+        "client_id": { "$ref": "#/$defs/name" },
+        "started_at": { "$ref": "#/$defs/time" },
+        "session_version": { "const": 1 }
+      },
+      "description": "Immutable minimal original start receipt. Exact original parent presence/value and actor/client; new session_id differs from parent. session_version always1 even after current session advances. No trace/scope/key/fingerprint/source fields inside receipt."
+    },
+    "lookup": {
+      "$anchor": "SessionStartReceiptLookup",
+      "oneOf": [
+        { "$ref": "#SessionStartRecorded" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status"],
+          "properties": { "status": { "const": "not-observed" } }
+        }
+      ],
+      "description": "not-observed describes no matching dedicated receipt in the authorized SQL snapshot; may include legacy records without this receipt. Does not prove failure/rollback or permit new-key retry."
+    },
+    "current": {
+      "$anchor": "SessionStartCurrent",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "tenant_id",
+        "workspace_id",
+        "project_id",
+        "session_id",
+        "actor_id",
+        "client_id",
+        "status",
+        "version",
+        "started_at",
+        "trace_id",
+        "source_refs",
+        "start_receipt"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "tenant_id": { "$ref": "#/$defs/scope" },
+        "workspace_id": { "$ref": "#/$defs/scope" },
+        "project_id": { "$ref": "#/$defs/scope" },
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "parent_session_id": { "$ref": "#/$defs/ulid" },
+        "actor_id": { "$ref": "#/$defs/name" },
+        "client_id": { "$ref": "#/$defs/name" },
+        "status": { "enum": ["running", "paused", "ended", "abandoned", "failed"] },
+        "version": { "$ref": "#/$defs/positive" },
+        "started_at": { "$ref": "#/$defs/time" },
+        "ended_at": { "$ref": "#/$defs/time" },
+        "trace_id": { "$ref": "#/$defs/name" },
+        "source_refs": { "$ref": "#/$defs/sources" },
+        "start_receipt": { "$ref": "#SessionStartRecorded" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "enum": ["running", "paused"] } } },
+          "then": { "not": { "required": ["ended_at"] } },
+          "else": { "required": ["ended_at"] }
+        },
+        {
+          "if": { "properties": { "version": { "const": 1 } } },
+          "then": { "properties": { "status": { "const": "running" } } }
+        }
+      ],
+      "description": "Current durable session plus original receipt, not a historical version1 snapshot. Runtime enforces matching receipt/session ID, parent presence/value, actor/client and started_at, exact scope, no resume_origin and terminal ended_at>=started_at. Current trace can differ from outer request trace and original creation trace after later writes. Wire source extensions retained. No total response byte bound."
+    },
+    "startEnvelope": {
+      "$anchor": "SessionStartEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "#/$defs/scope" },
+        "source_refs": { "$ref": "#/$defs/sources" },
+        "data": { "$ref": "#SessionStartCurrent" }
+      },
+      "description": "Built-in HTTP commandResult output has current outer trace and saved inner sources; no ETag/outer revision/identity hints. Outer trace uses generic request selection without the SDK's stricter <=1024 name check. Server source arrays preserve extensions. Only complete durable result is successful, but an error after commit does not establish rollback."
+    },
+    "receiptEnvelope": {
+      "$anchor": "SessionStartReceiptEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "#/$defs/scope" },
+        "source_refs": { "const": [] },
+        "data": { "$ref": "#SessionStartReceiptLookup" }
+      },
+      "description": "Read-only HTTP result: current trace, empty sources and no ETag/current session body. Shared SDK parser additionally validates trace as <=1024 UTF-16 name; server command route does not apply that full envelope parser."
+    },
+    "clientEnvelope": {
+      "$anchor": "SessionStartClientEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "#/$defs/name" },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 200,
+          "items": { "$ref": "#/$defs/clientSource" },
+          "contains": { "required": ["type"], "properties": { "type": { "const": "session" } } }
+        },
+        "etag": {
+          "type": "string",
+          "pattern": "^W/\"version-[0-9]+\"$",
+          "description": "Optional parser compatibility only; built-in start handler emits no ETag. If supplied, decoded version must be a safe integer equal to current data.version; leading zeros accepted."
+        },
+        "data": {
+          "allOf": [
+            { "$ref": "#SessionStartCurrent" },
+            {
+              "properties": {
+                "tenant_id": { "$ref": "#/$defs/name" },
+                "workspace_id": { "$ref": "#/$defs/name" },
+                "project_id": { "$ref": "#/$defs/name" },
+                "source_refs": { "items": { "$ref": "#/$defs/clientSource" } }
+              }
+            }
+          ]
+        }
+      },
+      "description": "Separate normalized SDK success shape; exact current trace/original binding and normalized source equality, strips extensions/unknown fields. No independent bounded transport or timeout/signal option for start/receipt methods."
+    }
+  }
+}

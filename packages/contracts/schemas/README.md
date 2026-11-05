@@ -1,5 +1,13 @@
 # 独立契约结构定义
 
+2026-11-05，TODO **P0-01**：新增 [session-start.json](session-start.json)，HTTP 见 [session-start OpenAPI](../openapi/session-start.json)，完整覆盖当前命令身份、普通会话启动及原启动回执。包子路径对应文件名；本地注册 session-activity-read.json，复用身份、ULID、数字版本及开放来源定义。
+
+提供 SessionCommandContextPermissions/Envelope、SessionStartCommand/Body/ReceiptQuery/Binding、SessionStartRecorded/ReceiptLookup/Current、SessionStartEnvelope/ReceiptEnvelope 及独立 SessionStartClientEnvelope。原命令保留 parent/actor/client 是否存在及原值；正文键和头键并存须一致，原键只限 1–255 个非空白 UTF-16 单位，不收窄为 ASCII。原回执固定 session_version=1，当前会话允许更高版本与终态；原父会话、账号、客户端、开始时间及当前范围必须一致，无 resume_origin，终态结束时间不早于开始。当前 version=1 只能 running。
+
+当前身份封套限 16 KiB、trace 最多 512 个 UTF-16 单位，身份字段最多 1024；规范四位年份 UTC 毫秒到期时间排除 0000，处理器和专用 SDK 各检查当前有效期。write 提示蕴含 claim、不蕴含 read，至少一个提示为真。没有项目或业务记录存在性保证。普通启动/回执使用通用 HTTP 外层 trace；SDK 另按最多 1024 的身份文本校验。服务端启动保留来源扩展，最多 200 项且含 type=session、id=原 client_id；不要求来源唯一。SDK 清除扩展并逐序比较内外来源；可选 ETag 兼容仅在独立客户端形状中描述，内置处理器不返回 ETag。
+
+Schema 不替代动态身份/原字段/时间/来源关系、UTF-16 或字节核验。普通启动与回执没有专用总响应字节/客户端整次期限保证；not-observed 不证明失败或允许换键。P0-01/R-001 未完成、evidence 为空；仅人工审阅与指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
 2026-11-05，TODO **P0-01**：新增 [checkpoint-read.json](checkpoint-read.json) 与 [handoff-read.json](handoff-read.json)，HTTP 见 [continuity-reads OpenAPI](../openapi/continuity-reads.json)。前者覆盖公开会话检查点历史与指定详情，后者覆盖交接当前详情；包子路径对应文件名。本地同时注册 session-activity-read.json，复用 ULID/安全数字、来源结构和当前身份；不把 workbench 历史封套混作公开 GET。
 
 检查点提供 CheckpointHistoryQuery/ReadQuery、MemoryReference、SavedRecord、HistoryEntry/HistoryEnvelope、ReadEnvelope 锚点。六类完整笔记保留原字符串/顺序/重复；版本为正安全数字，历史固定十条。详情的 state_hash/保存 trace/无 ID 旧包 hash 只限非空白及 4096 个 UTF-16 单位，state_hash 不重算；历史保存 trace/旧 hash 没有该独立长度上限。有 pack ID 才要求配套 sha256 形状，不能推断包有效。详情来源扩展保留、type/id 唯一并包含会话及已绑定包；memory_ref 扩展保留、完整 JSON 深度最多 32，来源 type/id 必须包含在检查点来源中，不比较其 revision/URI。正文整体读取限制不能由 Schema 的数组长度代替。

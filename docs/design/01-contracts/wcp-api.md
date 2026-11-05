@@ -1,6 +1,8 @@
 # WCP API 契约 v1
 
-2026-11-05，TODO P0-01：[检查点与交接三路 OpenAPI](../../../packages/contracts/openapi/README.md#检查点历史与交接详情) 及 checkpoint-read/handoff-read Schema 覆盖历史、指定检查点和当前交接详情。完整定义六类笔记/引用/十条分页、候选封套字节限制、旧领取归属与当前身份权限提示；明确父项目可见性、前瞻位置核对、保存内容不代表原请求成功/包有效及实际 SDK/HTTP 边界。OpenAPI 累计 67 路，P0-01/R-001 未完成、evidence 为空；未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+2026-11-05，TODO P0-01：[会话启动与原回执三路 OpenAPI](../../../packages/contracts/openapi/README.md#会话启动与原回执) 与 session-start Schema 覆盖当前命令身份、普通启动及原启动查询。完整定义原业务字段/身份键、当前会话/历史回执及 SDK 规范封套，明确事务锁与可见性先于重放、旧记录未知、单快照查询和实际 HTTP/SDK 预算差异。OpenAPI 累计 70 路；P0-01/R-001 未完成、evidence 为空，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
+2026-11-05，TODO P0-01：[检查点与交接三路 OpenAPI](../../../packages/contracts/openapi/README.md#检查点历史与交接详情) 及 checkpoint-read/handoff-read Schema 覆盖历史、指定检查点和当前交接详情。完整定义六类笔记/引用/十条分页、候选封套字节限制、旧领取归属与当前身份权限提示；明确父项目可见性、前瞻位置核对、保存内容不代表原请求成功/包有效及实际 SDK/HTTP 边界。该轮使 OpenAPI 累计六十七路，P0-01/R-001 未完成、evidence 为空；未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 2026-11-05，TODO P0-01：[会话状态与活动五路 OpenAPI](../../../packages/contracts/openapi/README.md#会话状态与活动读取) 与 session-activity-read Schema 覆盖当前会话状态、运行目录/详情、工具目录/详情。完整描述原查询/数字版本与序号/分页/来源扩展/当前身份提示/成功封套；明确可见父项目、同语句快照、原始位置不绑定身份及 SDK 实际解析差异，不把状态当作原请求回执。该轮使 OpenAPI 累计六十四路，P0-01/R-001 未完成、evidence 为空；未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 

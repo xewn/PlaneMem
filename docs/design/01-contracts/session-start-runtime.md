@@ -1,5 +1,9 @@
 # 会话开始的持久回执与恢复
 
+2026-11-05，TODO P0-01：新增 [session-start OpenAPI](../../../packages/contracts/openapi/session-start.json) 与 [session-start Schema](../../../packages/contracts/schemas/session-start.json)，完整描述普通启动、原请求查询和独立当前身份。启动返回当前会话与固定 version1 原回执；HTTP 保留来源扩展，SDK 规范为四字段，来源需包含原 client_id 而非新 session_id，不要求去重。内置启动响应无 ETag；共享客户端允许并核对可选 ETag，独立形状保留这项兼容。
+
+补充实际边界：头键请求的进程指纹包含原正文及能力，持久指纹去除 idempotency_key 但保留原 actor/client 是否提供；键摆放或能力变化可能先触发进程冲突。项目/原父会话可见性先于持久重放；启动缺父会话 404，原回执查询缺项目/父会话 403。查询没有专门回执时返回 not-observed，即使存在旧同键会话，也不推断失败。两个 POST 沿认证前 1 MiB JSON-object 解析，空/坏/超大正文均 400 INVALID_JSON；没有独立媒体/编码/查询字段拒绝，URL 查询被忽略。普通 SDK 方法完整解析但使用通用 JSON transport，缺少专用响应字节/整次期限/取消选项；不把身份 GET 的限制套用过来。P0-01/R-001 未完成、evidence 为空；本轮未改运行实现，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
 更新：2026-11-02。仅开发源码与文档，未编译、类型检查、测试、启动服务、执行迁移或发布。016–044 迁移均未执行。
 
 ## 普通开始与重试
