@@ -11,6 +11,31 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    handoff_commands_openapi_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only four-route handoff creation/claim/original receipts OpenAPI and complete schemas; P0-01 and R-001 remain incomplete."
+      artifacts:
+        - "packages/contracts/openapi/handoff-commands.json"
+        - "packages/contracts/schemas/handoff-create.json"
+        - "packages/contracts/schemas/handoff-claim.json"
+        - "packages/contracts/package.json"
+        - "packages/contracts/openapi/README.md"
+        - "packages/contracts/schemas/README.md"
+      behavior: "Complete original commands/bindings, current handoff plus immutable creation version1 or claim delta0/1 receipt, minimal recorded/not-observed and separate legacy unkeyed claim. Parent session/checkpoint unchanged; historical ownership does not prove current resumability."
+      boundaries: "No runtime/SDK/Mock/dependency/database changes. Visible graph/transaction/advisory locks and original fingerprint precede fresh changes; legacy client/raw-key creation uniqueness cannot be adopted by another actor. Creation write/lookup checks full current handoff; claim replay/lookup checks selected current ownership/version/parent graph, not full sender/target/trace/sources. Legacy unkeyed claim has optional version, same-owner return before CAS, no original receipt and no safe increment guard. Header/path/lookup differences and actual SDK option checks documented. Generic pre-auth1MiB POST and JSON SDK have no dedicated full-response/time budgets."
+      evidence: []
+      remaining_scope: "Other WCP/MCP machine contracts, ordinary event payloads, SDK/Mock machine-contract consumption, breaking-change CI and tool/runtime/release evidence."
+      pending_evidence:
+        - "Local references and all full command/current/receipt/client/legacy shapes"
+        - "Original optional field preservation, key/version equality and different raw path precedence"
+        - "Visible parent graph locks, actor-bound receipts and legacy cross-actor key rejection"
+        - "Atomic creation/claim and changed=false receipts, replay before new eligibility checks"
+        - "Creation full current consistency versus claim selected metadata checks and source extensions"
+        - "Legacy no-key behavior, missing actor, overflow and lack of durable command evidence"
+        - "Lookup write-header differences, valid absence, no package checks or ownership repair"
+        - "SDK normalized source/trace/target/current ETag, actual option checks and generic HTTP budgets"
+      execution: "Manual source/docs review and explicit formatting/Git text checks only; no build, typecheck, tests, validators, generators, product/API/database execution or release."
     checkpoint_commands_openapi_development_increment:
       date: "2026-11-05"
       todo: "P0-01"

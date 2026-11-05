@@ -1,0 +1,277 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/handoff-claim.json",
+  "title": "PlaneMem durable and legacy handoff claims",
+  "description": "Source-only keyed claim/current result/original receipt plus unkeyed HTTP compatibility. Register handoff-create.json, handoff-read.json, session-activity-read.json and session-start.json locally.",
+  "$comment": "Static schemas do not select a branch from external headers or enforce identity/path/target binding, paired-version arithmetic and current-versus-receipt relationships. Wire claim records are less strictly checked than SDK output. No validator/generator/runtime evidence.",
+  "oneOf": [
+    { "$ref": "#HandoffClaimEnvelope" },
+    { "$ref": "#HandoffLegacyClaimEnvelope" },
+    { "$ref": "#HandoffClaimReceiptEnvelope" }
+  ],
+  "$defs": {
+    "ulid": { "$ref": "./session-activity-read.json#/$defs/ulid" },
+    "positive": { "$ref": "./session-activity-read.json#/$defs/positive" },
+    "originalVersion": { "type": "integer", "minimum": 1, "maximum": 9007199254740990 },
+    "name": { "$ref": "./session-activity-read.json#/$defs/identityText" },
+    "key": { "$ref": "./session-start.json#/$defs/key" },
+    "text": { "type": "string" },
+    "unparsedSources": {
+      "type": "array",
+      "description": "Wire claim store maps/clones saved source_refs without validating entries, count, uniqueness or checkpoint membership. SDK separately requires valid normalized sources<=200 and checkpoint membership."
+    },
+    "clientSources": { "$ref": "./handoff-create.json#/$defs/clientSources" },
+    "commandFields": {
+      "type": "object",
+      "properties": {
+        "expected_version": { "$ref": "#/$defs/originalVersion" },
+        "handoff_id": { "$ref": "#/$defs/ulid" },
+        "client_id": { "$ref": "#/$defs/name" }
+      }
+    },
+    "command": {
+      "$anchor": "HandoffClaimCommand",
+      "allOf": [{ "$ref": "#/$defs/commandFields" }],
+      "required": ["expected_version"],
+      "unevaluatedProperties": false,
+      "description": "Exact original effective version1..MAX_SAFE-1 even for unchanged result, plus optional original path/client fields. No actor/require_claimed/key/unknown fields. Optional path/client must equal requested handoff and verified original client."
+    },
+    "durableBody": {
+      "$anchor": "HandoffClaimDurableBody",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "expected_version": { "$ref": "#/$defs/originalVersion" },
+        "handoff_id": {
+          "description": "Raw same-named body value is overwritten by route before strict command parsing/fingerprinting; unlike create session_id no raw equality check."
+        },
+        "client_id": { "$ref": "#/$defs/name" },
+        "idempotency_key": { "$ref": "#/$defs/key" }
+      },
+      "description": "Selected when key exists in header OR body. Original positive version required in header/body; if both present they must agree, as must header/body keys. Version header can supply missing body version. Unknown fields rejected after path override/key extraction."
+    },
+    "legacyBody": {
+      "$anchor": "HandoffClaimLegacyBody",
+      "type": "object",
+      "not": { "required": ["idempotency_key"] },
+      "properties": {
+        "handoff_id": { "description": "Overwritten by path." },
+        "expected_version": {
+          "description": "Optional; effective header wins. Without header supplied body must be safe nonnegative number. Legacy already-claimed same-owner return occurs before version comparison."
+        },
+        "client_id": { "type": "string" },
+        "actor_id": { "type": "string" }
+      },
+      "description": "Only when BOTH header and body key absent. Unknown fields allowed/ignored after signed top-level identity checks. Version optional; generic headers still must agree. No durable command receipt, no original-key lookup proof."
+    },
+    "body": {
+      "$anchor": "HandoffClaimBody",
+      "anyOf": [{ "$ref": "#HandoffClaimDurableBody" }, { "$ref": "#HandoffClaimLegacyBody" }],
+      "description": "Header-dependent union: a header key requires DurableBody even if body lacks key. Schema alone cannot enforce this external-header branch selection."
+    },
+    "queryFields": {
+      "type": "object",
+      "required": ["request_key", "claim"],
+      "properties": {
+        "request_key": { "$ref": "#/$defs/key" },
+        "claim": { "$ref": "#HandoffClaimCommand" }
+      }
+    },
+    "query": {
+      "$anchor": "HandoffClaimReceiptQuery",
+      "allOf": [{ "$ref": "#/$defs/queryFields" }],
+      "unevaluatedProperties": false
+    },
+    "receiptBody": {
+      "$anchor": "HandoffClaimReceiptBody",
+      "allOf": [{ "$ref": "#/$defs/queryFields" }],
+      "properties": {
+        "handoff_id": {
+          "description": "Raw outer field overwritten by path then removed before query parse; optional nested claim.handoff_id must match path."
+        }
+      },
+      "unevaluatedProperties": false,
+      "description": "Original version in claim determines fingerprint. New header key/version are parsed then ignored, unlike creation receipt which rejects them."
+    },
+    "binding": {
+      "$anchor": "HandoffClaimBinding",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["handoff_id", "identity", "query"],
+      "properties": {
+        "handoff_id": { "$ref": "#/$defs/ulid" },
+        "identity": { "$ref": "./session-activity-read.json#SessionCommandIdentity" },
+        "query": { "$ref": "#HandoffClaimReceiptQuery" }
+      },
+      "description": "Copied scalar original query plus fixed complete identity/scope/handoff. Not credentials, not an HTTP body."
+    },
+    "recorded": {
+      "$anchor": "HandoffClaimRecorded",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "handoff_id",
+        "session_id",
+        "checkpoint_id",
+        "expected_version",
+        "handoff_version",
+        "claimed_by",
+        "claimed_by_actor",
+        "changed"
+      ],
+      "properties": {
+        "status": { "const": "recorded" },
+        "handoff_id": { "$ref": "#/$defs/ulid" },
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "checkpoint_id": { "$ref": "#/$defs/ulid" },
+        "expected_version": { "$ref": "#/$defs/originalVersion" },
+        "handoff_version": { "$ref": "#/$defs/positive" },
+        "claimed_by": { "$ref": "#/$defs/name" },
+        "claimed_by_actor": { "$ref": "#/$defs/name" },
+        "changed": { "type": "boolean" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "changed": { "const": true } } },
+          "then": { "properties": { "handoff_version": { "minimum": 2 } } },
+          "else": { "properties": { "handoff_version": { "maximum": 9007199254740990 } } }
+        }
+      ],
+      "description": "Exact original handoff/version/verified actor+client, linked parent/checkpoint. handoff_version=expected_version+(changed?1:0). changed=false confirms this command made no ownership change; it does not attribute a previous claim. No current state, times, notes or pack metadata."
+    },
+    "lookup": {
+      "$anchor": "HandoffClaimReceiptLookup",
+      "oneOf": [
+        { "$ref": "#HandoffClaimRecorded" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "handoff_id"],
+          "properties": {
+            "status": { "const": "not-observed" },
+            "handoff_id": { "$ref": "#/$defs/ulid" }
+          }
+        }
+      ]
+    },
+    "wireFields": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "tenant_id",
+        "workspace_id",
+        "project_id",
+        "handoff_id",
+        "checkpoint_id",
+        "from_client",
+        "status",
+        "version",
+        "trace_id",
+        "source_refs",
+        "claimed_by"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "tenant_id": { "$ref": "#/$defs/text" },
+        "workspace_id": { "$ref": "#/$defs/text" },
+        "project_id": { "$ref": "#/$defs/text" },
+        "handoff_id": { "$ref": "#/$defs/ulid" },
+        "checkpoint_id": { "$ref": "#/$defs/ulid" },
+        "from_client": { "$ref": "#/$defs/text" },
+        "target_client": { "$ref": "#/$defs/text" },
+        "status": { "enum": ["claimed", "expired"] },
+        "version": { "type": "integer", "minimum": 1 },
+        "trace_id": { "$ref": "#/$defs/text" },
+        "source_refs": { "$ref": "#/$defs/unparsedSources" },
+        "claimed_by": { "$ref": "#/$defs/text" },
+        "claimed_by_actor": { "$ref": "#/$defs/text" }
+      },
+      "description": "Complete nominal current handoff mapping; no parent session_id/created_at/updated_at/current permissions. Raw store does not apply full client name/source/target checks. Legacy fields can be weaker than durable receipt identity; no blanket use of current-read schema."
+    },
+    "result": {
+      "$anchor": "HandoffClaimResult",
+      "allOf": [{ "$ref": "#/$defs/wireFields" }],
+      "required": ["claim_receipt", "claimed_by_actor"],
+      "properties": {
+        "version": { "$ref": "#/$defs/positive" },
+        "claimed_by": { "$ref": "#/$defs/name" },
+        "claimed_by_actor": { "$ref": "#/$defs/name" },
+        "claim_receipt": { "$ref": "#HandoffClaimRecorded" }
+      },
+      "unevaluatedProperties": false,
+      "description": "Current version>=historical receipt version; equal version requires claimed, expired only allowed at greater version. Current owner/parent/checkpoint must match receipt. Current trace can be from later transition; raw sources/names are not fully revalidated on replay. Parent session/checkpoint versions unchanged."
+    },
+    "clientResult": {
+      "$anchor": "HandoffClaimClientResult",
+      "allOf": [{ "$ref": "#HandoffClaimResult" }],
+      "properties": {
+        "from_client": { "$ref": "#/$defs/name" },
+        "target_client": { "$ref": "#/$defs/name" },
+        "trace_id": { "$ref": "#/$defs/name" },
+        "source_refs": { "$ref": "#/$defs/clientSources" }
+      },
+      "description": "Normalized full SDK result, complete original identity/version and current consistency checks. Optional target must equal original claiming client; sources<=200, include exact checkpoint and match normalized outer sources. Drops extra source/top-level properties, retains ordering/duplicates."
+    },
+    "legacyResult": {
+      "$anchor": "HandoffLegacyClaimResult",
+      "allOf": [{ "$ref": "#/$defs/wireFields" }],
+      "properties": { "status": { "const": "claimed" } },
+      "unevaluatedProperties": false,
+      "description": "Unkeyed legacy result has no claim_receipt and may lack claimed_by_actor on an older same-client claim. Fresh open->claimed stores current verified actor/client and increments version without a safe overflow guard; already claimed returns unchanged before optional version check. Nominal shape, not complete stored-row validation."
+    },
+    "envelopeFields": {
+      "type": "object",
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "type": "string" },
+        "source_refs": { "$ref": "#/$defs/unparsedSources" },
+        "data": { "$ref": "#HandoffClaimResult" }
+      }
+    },
+    "envelope": {
+      "$anchor": "HandoffClaimEnvelope",
+      "allOf": [{ "$ref": "#/$defs/envelopeFields" }],
+      "unevaluatedProperties": false,
+      "description": "Current handoff and original claim receipt, matching raw inner/outer sources/current outer trace. No built-in ETag/outer revision."
+    },
+    "clientEnvelope": {
+      "$anchor": "HandoffClaimClientEnvelope",
+      "allOf": [{ "$ref": "#/$defs/envelopeFields" }],
+      "properties": {
+        "trace_id": { "$ref": "#/$defs/name" },
+        "source_refs": { "$ref": "#/$defs/clientSources" },
+        "data": { "$ref": "#HandoffClaimClientResult" },
+        "etag": { "type": "string", "pattern": "^W/\"version-[0-9]+\"$" }
+      },
+      "unevaluatedProperties": false,
+      "description": "Optional compatible ETag must equal CURRENT version, not original expected/historical receipt version. Exact current trace checked. Generic SDK transport supplies no dedicated response-byte or whole-call bound."
+    },
+    "legacyEnvelope": {
+      "$anchor": "HandoffLegacyClaimEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "type": "string" },
+        "source_refs": { "$ref": "#/$defs/unparsedSources" },
+        "data": { "$ref": "#HandoffLegacyClaimResult" }
+      }
+    },
+    "receiptEnvelope": {
+      "$anchor": "HandoffClaimReceiptEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "type": "string" },
+        "source_refs": { "type": "array", "maxItems": 0 },
+        "data": { "$ref": "#HandoffClaimReceiptLookup" }
+      },
+      "description": "Minimal historical result after selected current ownership/version/parent/checkpoint checks; does not read current source/trace/sender/target fields or pack. SDK requires exact name-bounded trace and no ETag. not-observed cannot establish failure or attribute legacy ownership."
+    }
+  }
+}

@@ -1,5 +1,13 @@
 # 独立契约结构定义
 
+2026-11-05，TODO **P0-01**：新增 [handoff-create.json](handoff-create.json) 与 [handoff-claim.json](handoff-claim.json)，HTTP 见 [handoff-commands OpenAPI](../openapi/handoff-commands.json)。完整定义创建/领取原命令、HTTP Body、严格 Query、固定原身份 Binding、历史 Recorded/Lookup 和普通/回执封套，包子路径对应文件名。本地注册 session-activity-read/session-start/handoff-read，复用标量、原键及规范来源。
+
+创建无版本条件，Body 可有原传输键，逻辑 Command 不含键；原可选 session_id/from_client/target_client 保留。创建原外层 session_id 必须与路径一致；领取原外层 handoff_id 则被覆盖。领取 Body 区分有键 DurableBody 和无键 LegacyBody，头键决定分支的关系必须由运行入口检查，静态正文 union 无法单独保证。带键原版本最高 MAX_SAFE−1；查询必须包含原有效版本。创建回执拒绝新写入头，领取回执忽略合法新头，两者保留原可选字段而非从当前状态补造。
+
+创建 Result 是当前交接和固定创建版本 1 回执；open/version=1 无领取字段，claimed 必须有账号和客户端，expired 可以没有或只有旧客户端，账号存在则需客户端。来源最多 200 项且有原检查点，不去重，原 HTTP 保留扩展。领取 Result 是当前交接及 changed/delta0或1 的历史回执，当前版本不落后，同版本须 claimed、后续 expired 保留原归属；仅此静态结构不能验证跨对象数值或身份等式。旧 LegacyResult 没有回执，可能没有历史账号且版本无安全加一保护。
+
+领取原 HTTP 的来源数组未完整逐项检查，Schema 保留该边界，不套用详情 GET 的完整解析；单独 ClientResult/ClientEnvelope 要求完整规范来源、发送者/目标/trace、原身份与版本关系。两个客户端封套支持匹配当前版本的可选兼容 ETag，内置服务器不发送。Query 结果空来源、无 ETag，创建查询还检查完整当前记录，领取查询只核对选定归属/版本/父关系；均不检查包或证明当前可续接。UTF-16/代理项、来源成员、原字段是否存在、数字运算及真实权限仍由现有代码负责。P0-01/R-001 未完成、evidence 为空；未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
 2026-11-05，TODO **P0-01**：新增 [checkpoint-write.json](checkpoint-write.json)，HTTP 见 [checkpoint-commands OpenAPI](../openapi/checkpoint-commands.json)。覆盖检查点保存及原请求回执，包子路径对应文件名；本地注册 checkpoint-read/session-activity-read/session-start，复用原记录/记忆、身份/来源/版本和严格原键。
 
 CheckpointSaveBody 保留未知字段、头优先的原键/版本与路径覆盖规则，旧内联包和原记忆引用按服务端较宽规则建模；CheckpointSaveClientCommand 关闭未知新字段、要求正安全原会话版本，引用文本非空白且限 4096 UTF-16，结构深度等仍由共享代码检查。CheckpointOriginalCommand 保留旧未知字段和未经重新验证的原引用；CheckpointReceiptQuery 为严格两字段，ReceiptBody 另允许被路径覆盖/移除的原外层 session_id，Binding 是固定原身份和深拷贝查询的本地对象。

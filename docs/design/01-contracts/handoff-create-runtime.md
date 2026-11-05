@@ -1,5 +1,9 @@
 # 交接创建的持久回执与恢复
 
+2026-11-05 P0-01 机器契约增补：[handoff-commands OpenAPI](../../../packages/contracts/openapi/handoff-commands.json) 和 [handoff-create Schema](../../../packages/contracts/schemas/handoff-create.json) 完整描述创建/原回执两 POST；本组另含领取两路，OpenAPI 累计 82 路。创建保持原字段及键、拒绝版本，响应含当前交接与固定版本 1 历史回执；创建查询仍检查当前完整交接、原明文键和可见父关系，旧无账号回执只作 not-observed，不补认。
+
+来源扩展在原 HTTP 保留、SDK 规范为四字段后比较，最多 200 项且允许重复；当前 expired 可保留旧单客户端归属，claimed 则需账号/客户端齐全。内置 HTTP 无 ETag，客户端可选兼容 ETag 对应当前版本。四路沿通用认证前 1 MiB JSON-object/通用 SDK JSON，无专用响应字节或整次期限；createHandoff 拒绝构造版本但未比较构造键，详见 [HTTP/SDK 边界](../../../packages/contracts/openapi/README.md#交接创建领取与原回执)。不改运行实现；P0-01/R001 未完成、evidence 为空，仅人工源码文档审阅/指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
 更新：2026-11-02。仅开发源码与文档，未编译、类型检查、测试、启动服务、执行迁移或发布；016–043 迁移保持未执行。
 
 ## 创建与重试

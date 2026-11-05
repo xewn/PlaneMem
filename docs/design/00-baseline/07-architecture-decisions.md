@@ -1,5 +1,9 @@
 # 架构决策记录摘要
 
+2026-11-05 本轮源码落地：交接创建/领取及原回执四路 OpenAPI、handoff-create/handoff-claim 完整 Schema 与三项包子路径已补齐；原字段/键/版本、当前与历史回执、旧无键兼容、事务/旧账本与真实 HTTP/SDK 差异已人工对照。公共目录/WCP/两份运行说明、根 README/TODO 与 R001 同步，OpenAPI 累计 82 路。P0-01/R001 未完成、evidence 为空；仅人工源码文档审阅/指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
+2026-11-05 P0-01 交接创建/领取与原回执四路机器契约（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增 schemas/handoff-create.json、schemas/handoff-claim.json 与 openapi/handoff-commands.json，覆盖创建、领取及各自原回执四 POST。定义原字段/身份键/版本、完整当前交接与历史回执、旧无键领取和 recorded/not-observed，明确可见性/事务/当前记录一致性、旧账本边界及真实 HTTP/SDK 约束。范围三新 JSON、三项包子路径、两 README、根 README/TODO、公共目录/WCP/两份 handoff 运行文档、R001 与 ADR/T0.3/T4.1；不改运行实现、依赖或数据库。仅人工源码文档审阅/指定格式/Git 文本检查，不编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布；独立提交 push main 带 [skip ci]，P0-01/R001 未完成、evidence 为空。
+
 2026-11-05 本轮源码落地：检查点保存/原回执两路 OpenAPI、完整 checkpoint-write Schema 与两项包子路径已补齐；原 HTTP/严格客户端、六类笔记/引用、独立修订、包检查与元数据回执差别及真实错误/预算已人工对照。旧键兼容、无安全溢出防护和 32 位状态哈希按源码记录。公共目录/WCP/运行说明、根 README/TODO 与 R001 同步，OpenAPI 累计 78 路。P0-01/R001 未完成、evidence 为空；仅人工源码文档审阅/指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 2026-11-05 P0-01 检查点保存与原回执两路机器契约（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增 schemas/checkpoint-write.json 与 openapi/checkpoint-commands.json，覆盖 checkpoint 保存及原请求回执两 POST。定义六类笔记、旧内联包/保存包绑定、记忆引用、原 HTTP 与严格客户端命令、完整保存结果及历史摘要；依据当前实现记录版本、幂等、项目/包来源可见性与真实读取/重放边界。范围两新 JSON、两项包子路径、两 README、根 README/TODO、公共目录/WCP/checkpoint-context 运行说明、R001 与本 ADR/T0.3/T4.1；不改运行实现、依赖或数据库。仅人工源码文档审阅/指定格式/Git 文本检查，不编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布；独立提交 push main 带 [skip ci]，P0-01/R001 未完成、evidence 为空。

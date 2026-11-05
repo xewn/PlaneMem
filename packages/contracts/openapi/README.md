@@ -1,6 +1,26 @@
 # OpenAPI 源码契约
 
-这里的文档描述已有 HTTP 实现，尚未经过校验器、生成器、编译、类型检查、测试或运行验证。文档版本不表示已发布或部署；当前覆盖保存包 5 路、文件 9 路、上下文条目 9 路、同步 6 路、冲突 5 路、建议 8 路、Plane 观察 4 路、搜索 2 路、旧索引 5 路、Plane 收件箱 6 路、会话状态/活动 5 路、检查点/交接读取 3 路、会话身份/启动/原回执 3 路、会话进度写入/原回执 6 路及检查点保存/原回执 2 路，共 78 路，尚不是完整 WCP 接口目录。
+这里的文档描述已有 HTTP 实现，尚未经过校验器、生成器、编译、类型检查、测试或运行验证。文档版本不表示已发布或部署；当前覆盖保存包 5 路、文件 9 路、上下文条目 9 路、同步 6 路、冲突 5 路、建议 8 路、Plane 观察 4 路、搜索 2 路、旧索引 5 路、Plane 收件箱 6 路、会话状态/活动 5 路、检查点/交接读取 3 路、会话身份/启动/原回执 3 路、会话进度写入/原回执 6 路、检查点保存/原回执 2 路及交接创建/领取/原回执 4 路，共 82 路，尚不是完整 WCP 接口目录。
+
+## 交接创建领取与原回执
+
+2026-11-05，TODO **P0-01**：[handoff-commands OpenAPI](handoff-commands.json) 覆盖 POST /v1/sessions/{session_id}/handoff、/handoff/receipt 和 POST /v1/handoffs/{handoff_id}/claim、/claim/receipt。完整结构见 [handoff-create Schema](../schemas/handoff-create.json) 与 [handoff-claim Schema](../schemas/handoff-claim.json)。包子路径对应文件名，本地注册 session-activity-read/session-start/handoff-read，保留 openapi/schemas 相邻目录解析公共 HTTP 组件；未执行解析器或生成器验证。
+
+四路都要求可信客户端及入口策略/审计/通用限流。创建与创建回执使用 session.write；领取与领取回执在实际能力包含 handoff.claim 时选择该策略动作，否则选择 session.write，OPA 决定仍需通过。restricted 项目检查实际 data.restricted.read；当前操作者不必是原会话创建者。创建只接受 checkpoint_id、原可选 session_id/from_client/target_client 及传输键，原字段不裁剪；session_id 若提供必须先与路径一致。键须非空白且最多 255 UTF-16，头体一致；创建拒绝版本条件。带键领取只接受原 expected_version、可选 handoff_id/client_id 及传输键，头体版本也须一致，原版本为 1 至 MAX_SAFE−1，即使无变化也不能用最大安全整数。领取路径覆盖原外层 handoff_id，不做创建那样的路径相等检查。
+
+创建事务锁可见有效分类项目、项目/client/原键及指定检查点/父会话；原账号键回执命中则核对指纹、原父记录和当前交接。旧 client/原键已有交接却没有当前账号回执时拒绝为 HANDOFF_CREATE_LEGACY_UNVERIFIED，不补认也不另建；新 open/version=1 交接与回执同时写入。当前 version=1 只能未领取的 open，claimed 必须有账号和客户端，expired 可保留旧单客户端归属；当前目标须与原目标一致，来源须含原检查点，trace 须满足格式约束。返回当前交接和固定 handoff_version=1 的 create_receipt，后续领取者可与创建者不同；提交后缓存只发布当前状态，不退回历史快照。
+
+带键领取事务锁可见项目、原身份键和关联到同范围检查点/父会话的交接。原回执先于新写条件检查，核对当前版本不落后、同版本仍 claimed、更高版本 claimed/expired 且归属与历史一致。新请求先比原版本，旧 claimed 无账号拒绝补认，再检查目标/归属/expired；open 领取版本加一，同账号客户端已领取且版本一致则 changed=false。无变化也保存新回执；有变化的更新及回执同事务。父会话/检查点不改版本，无包或记忆读取。现有重放不完整检查当前 sender/target/trace/来源，SDK 完整解析额外检查这些字段，可能拒绝 HTTP 200。
+
+旧无键领取保留独立规则：没有头键和正文键时，未知业务字段可忽略，版本可省略；同客户端已领取且已记录账号相符时，在版本比较前直接返回，旧缺账号不补填。新领取才增加版本，未加安全溢出保护，不生成 claim_receipt。持久创建/带键领取缺少专用存储方法时拒绝，不退回内存；旧无键的本地 fixture/自定义适配器退路不能证明持久原命令归属。
+
+创建回执拒绝新的键/版本头，正文原 request_key/handoff 固定原可选字段；领取回执则解析后忽略合法的新写入头，以原 claim.expected_version 计算指纹。两者都用单条 SQL 检查当前可见关联图，缺失为 404、可见但无该回执为 not-observed。创建 recorded 另核对原明文键及完整当前交接（含目标、trace、来源）；领取 recorded 只核对当前父/检查点、版本、状态和归属，不读取当前来源/trace/发送者/目标。查询不加锁、不重放/修复/新领取、不检查包，返回空来源、无 ETag 的最小历史结果；不存在不证明失败，recorded 不证明当前可续接。
+
+普通写入外层 trace 属于本次请求，内部 trace 属于当前交接保存状态；内置 HTTP 无 ETag。SDK 四方法固定原身份、完整解析当前记录与历史回执，将来源规范为四字段后逐序比较，最多 200 项且含原检查点，允许重复；可选兼容 ETag 必须等于当前交接版本。createHandoff 只允许键选项并拒绝构造上下文的版本，但不比较构造键；claimHandoff 直接用调用选项键/版本、发送空正文，不比较构造键/版本，也未拒绝额外选项属性。不能把其他写方法更严格的预检当作本组已有保证。
+
+四路仍是认证前 1 MiB JSON-object 解析，畸形/空/非对象/超大正文为 400 INVALID_JSON，URL 查询忽略，无专用媒体/响应字节/整次期限/容量/数据库取消保证。SDK 用通用 JSON transport，Fetch 默认 30 秒从凭据获取后开始，无方法 timeout/signal 或自动重试。HANDOFF_EXPIRED 为 409；持久处理器/查询内 TypeError/SyntaxError 通常为 500 SESSION_RECEIPT_INVALID（retryable=false），其他存储失败为 503 SESSION_RECEIPT_STORAGE_UNAVAILABLE（true），未捕获服务异常/旧无键存储错误可为 500 INTERNAL_ERROR（true）。提交后确认失败不证明回滚。
+
+本轮四路使 OpenAPI 累计 82 路；其余 WCP/MCP、事件 payload、SDK/Mock 机器契约接线和破坏性差异 CI 仍缺。P0-01/R-001 未完成、evidence 为空；仅人工源码文档审阅/指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 ## 检查点保存与原回执
 
@@ -18,7 +38,7 @@
 
 两个 POST 沿认证前 1 MiB JSON-object 解析，畸形/空/非对象/超大正文为 400 INVALID_JSON；URL 查询忽略，没有专用媒体/总响应字节/整次期限/容量/数据库取消保证，历史 GET 的 2/8 MiB 限制不适用。SDK 两方法使用通用 JSON transport，默认 Fetch 30 秒从凭据获取后开始，无方法级 timeout/signal；不自动重试或换键。未绑定包的 Postgres 非契约异常通常为 500 INTERNAL_ERROR；绑定包事务的同类异常经包装变为 503 CONTEXT_PACK_STORAGE_UNAVAILABLE，原查询缺库/查询失败为 503 SESSION_RECEIPT_STORAGE_UNAVAILABLE，三者 retryable=true。无存储的本地 fixture、缺 appendCheckpoint 的自定义适配器退路不证明持久原键账本，查询仍必须有数据库。
 
-本轮两路使 OpenAPI 累计 78 路；其余 WCP/MCP、事件 payload、SDK/Mock 机器契约接线和破坏性差异 CI 仍缺。P0-01/R-001 未完成、evidence 为空；仅人工源码文档审阅/指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+该轮两路使 OpenAPI 累计 78 路；其余 WCP/MCP、事件 payload、SDK/Mock 机器契约接线和破坏性差异 CI 仍缺。P0-01/R-001 未完成、evidence 为空；仅人工源码文档审阅/指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 ## 会话进度命令与原回执
 

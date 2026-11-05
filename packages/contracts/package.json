@@ -8,6 +8,9 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./schemas/handoff-create.json": "./schemas/handoff-create.json",
+    "./schemas/handoff-claim.json": "./schemas/handoff-claim.json",
+    "./openapi/handoff-commands.json": "./openapi/handoff-commands.json",
     "./schemas/checkpoint-write.json": "./schemas/checkpoint-write.json",
     "./openapi/checkpoint-commands.json": "./openapi/checkpoint-commands.json",
     "./schemas/session-command-write.json": "./schemas/session-command-write.json",

@@ -1,5 +1,9 @@
 # 交接领取的持久回执与恢复
 
+2026-11-05 P0-01 机器契约增补：[handoff-commands OpenAPI](../../../packages/contracts/openapi/handoff-commands.json) 与 [handoff-claim Schema](../../../packages/contracts/schemas/handoff-claim.json) 完整描述有键/旧无键领取与原回执两 POST；本组另含创建两路，OpenAPI 累计 82 路。带键原版本为 1 至 MAX_SAFE−1，头体键/版本相等，原回执先于新写条件；普通结果为当前交接与原 changed/版本回执，父会话/检查点版本不变。
+
+原回执查询仅核对当前归属、版本、状态及父会话/检查点，不检查当前来源、trace、发送者或目标；持久领取重放也未完整校验这些字段，SDK 完整响应解析更严格。合法的新写入头会被查询忽略，不能套用创建回执的拒绝规则。旧无键同客户端已领取会在版本检查前返回，历史缺账号不补填；无原回执、无安全加一保护，仍保留本地 fixture/适配器兼容路径。SDK claimHandoff 用本次选项键/版本发空正文，不核对构造键/版本或拒绝额外选项。通用 POST/SDK 的预算和错误边界见 [HTTP 说明](../../../packages/contracts/openapi/README.md#交接创建领取与原回执)。不改运行实现；P0-01/R001 未完成、evidence 为空，仅人工源码文档审阅/指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
 更新：2026-11-02。只开发源码与文档；未编译、类型检查、测试、启动服务、执行迁移或发布。
 
 ## 带键领取

@@ -1,0 +1,230 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/handoff-create.json",
+  "title": "PlaneMem handoff creation and original creation receipt",
+  "description": "Source-only existing handoff creation contract. Current handoff plus immutable original version1 receipt differs from lookup-only history. Register session-activity-read.json, session-start.json and handoff-read.json locally.",
+  "$comment": "Runtime checks exact scope/path/identity, original optional field presence, target/claimant relationships, source membership/equality, UTF-16/surrogate rules and database history. No machine-contract-consumption or execution evidence.",
+  "oneOf": [{ "$ref": "#HandoffCreateEnvelope" }, { "$ref": "#HandoffCreateReceiptEnvelope" }],
+  "$defs": {
+    "ulid": { "$ref": "./session-activity-read.json#/$defs/ulid" },
+    "positive": { "$ref": "./session-activity-read.json#/$defs/positive" },
+    "name": { "$ref": "./session-activity-read.json#/$defs/identityText" },
+    "key": { "$ref": "./session-start.json#/$defs/key" },
+    "scopeText": { "type": "string", "minLength": 1 },
+    "source": { "$ref": "./session-activity-read.json#SessionActivitySourceRef" },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 200,
+      "items": { "$ref": "#/$defs/source" },
+      "contains": {
+        "type": "object",
+        "required": ["type", "id"],
+        "properties": { "type": { "const": "checkpoint" }, "id": { "$ref": "#/$defs/ulid" } }
+      },
+      "description": "At least one checkpoint source must have the original checkpoint_id. Duplicates permitted; no source visibility checks. Wire preserves extensions; SDK normalizes to four fields."
+    },
+    "clientSources": {
+      "allOf": [{ "$ref": "#/$defs/sources" }],
+      "items": { "$ref": "./handoff-read.json#/$defs/source" }
+    },
+    "commandFields": {
+      "type": "object",
+      "required": ["checkpoint_id"],
+      "properties": {
+        "checkpoint_id": { "$ref": "#/$defs/ulid" },
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "from_client": { "$ref": "#/$defs/name" },
+        "target_client": { "$ref": "#/$defs/name" }
+      }
+    },
+    "command": {
+      "$anchor": "HandoffCreateCommand",
+      "allOf": [{ "$ref": "#/$defs/commandFields" }],
+      "unevaluatedProperties": false,
+      "description": "Original optional fields preserved without trimming/defaulting. Optional session_id must equal path, from_client must equal verified sender. No version, actor, scope or key inside logical command."
+    },
+    "body": {
+      "$anchor": "HandoffCreateBody",
+      "allOf": [{ "$ref": "#/$defs/commandFields" }],
+      "properties": { "idempotency_key": { "$ref": "#/$defs/key" } },
+      "unevaluatedProperties": false,
+      "description": "HTTP transport body. Stable key required in header or body, both must agree. Any version header/body condition rejected. Same-named session_id must equal path before route override; path supplies omitted session_id."
+    },
+    "queryFields": {
+      "type": "object",
+      "required": ["request_key", "handoff"],
+      "properties": {
+        "request_key": { "$ref": "#/$defs/key" },
+        "handoff": { "$ref": "#HandoffCreateCommand" }
+      }
+    },
+    "query": {
+      "$anchor": "HandoffCreateReceiptQuery",
+      "allOf": [{ "$ref": "#/$defs/queryFields" }],
+      "unevaluatedProperties": false
+    },
+    "receiptBody": {
+      "$anchor": "HandoffCreateReceiptBody",
+      "allOf": [{ "$ref": "#/$defs/queryFields" }],
+      "properties": { "session_id": { "$ref": "#/$defs/ulid" } },
+      "unevaluatedProperties": false,
+      "description": "Optional outer session_id must equal path; handler removes it before logical query parsing. Optional nested session_id/from_client also bound. New Idempotency-Key/If-Match/If-Match-Version headers rejected."
+    },
+    "binding": {
+      "$anchor": "HandoffCreateBinding",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["session_id", "identity", "query"],
+      "properties": {
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "identity": { "$ref": "./session-activity-read.json#SessionCommandIdentity" },
+        "query": { "$ref": "#HandoffCreateReceiptQuery" }
+      },
+      "description": "Local fixed original scope/actor/client, parent session and copied scalar original command; not an HTTP body or authorization credential."
+    },
+    "recorded": {
+      "$anchor": "HandoffCreateRecorded",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "handoff_id",
+        "session_id",
+        "checkpoint_id",
+        "from_client",
+        "created_by_actor",
+        "handoff_version"
+      ],
+      "properties": {
+        "status": { "const": "recorded" },
+        "handoff_id": { "$ref": "#/$defs/ulid" },
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "checkpoint_id": { "$ref": "#/$defs/ulid" },
+        "from_client": { "$ref": "#/$defs/name" },
+        "created_by_actor": { "$ref": "#/$defs/name" },
+        "target_client": { "$ref": "#/$defs/name" },
+        "handoff_version": { "const": 1 }
+      },
+      "description": "Original sender/actor and exact original optional target, including absence. handoff_version is immutable1, not current handoff.version. No pack-state/notes/time/source fields."
+    },
+    "notObserved": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "session_id", "checkpoint_id"],
+      "properties": {
+        "status": { "const": "not-observed" },
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "checkpoint_id": { "$ref": "#/$defs/ulid" }
+      }
+    },
+    "lookup": {
+      "$anchor": "HandoffCreateReceiptLookup",
+      "oneOf": [{ "$ref": "#HandoffCreateRecorded" }, { "$ref": "#/$defs/notObserved" }]
+    },
+    "currentFields": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "tenant_id",
+        "workspace_id",
+        "project_id",
+        "handoff_id",
+        "checkpoint_id",
+        "from_client",
+        "status",
+        "version",
+        "trace_id",
+        "source_refs"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "tenant_id": { "$ref": "#/$defs/scopeText" },
+        "workspace_id": { "$ref": "#/$defs/scopeText" },
+        "project_id": { "$ref": "#/$defs/scopeText" },
+        "handoff_id": { "$ref": "#/$defs/ulid" },
+        "checkpoint_id": { "$ref": "#/$defs/ulid" },
+        "from_client": { "$ref": "#/$defs/name" },
+        "target_client": { "$ref": "#/$defs/name" },
+        "status": { "enum": ["open", "claimed", "expired"] },
+        "claimed_by": { "$ref": "#/$defs/name" },
+        "claimed_by_actor": { "$ref": "#/$defs/name" },
+        "version": { "$ref": "#/$defs/positive" },
+        "trace_id": { "$ref": "#/$defs/name" },
+        "source_refs": { "$ref": "#/$defs/sources" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "open" } } },
+          "then": {
+            "properties": { "version": { "const": 1 } },
+            "not": {
+              "anyOf": [{ "required": ["claimed_by"] }, { "required": ["claimed_by_actor"] }]
+            }
+          },
+          "else": { "properties": { "version": { "minimum": 2 } } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "claimed" } } },
+          "then": { "required": ["claimed_by", "claimed_by_actor"] }
+        }
+      ],
+      "dependentRequired": { "claimed_by_actor": ["claimed_by"] },
+      "description": "Current committed handoff, not a forced historical open snapshot. Exact scope/IDs/sender/optional target match receipt. Claimed requires both owner fields; expired may omit both or actor (legacy client-only ownership allowed). Present target and claimant must agree. No parent session_id, timestamps or permission hints in current record; parent ID only in receipt."
+    },
+    "result": {
+      "$anchor": "HandoffCreateResult",
+      "allOf": [{ "$ref": "#/$defs/currentFields" }],
+      "required": ["create_receipt"],
+      "properties": { "create_receipt": { "$ref": "#HandoffCreateRecorded" } },
+      "unevaluatedProperties": false
+    },
+    "clientResult": {
+      "$anchor": "HandoffCreateClientResult",
+      "allOf": [{ "$ref": "#HandoffCreateResult" }],
+      "properties": { "source_refs": { "$ref": "#/$defs/clientSources" } },
+      "description": "Normalized client result drops unknown top-level fields and source extensions. Source order and duplicates retained."
+    },
+    "envelopeFields": {
+      "type": "object",
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "type": "string" },
+        "source_refs": { "$ref": "#/$defs/sources" },
+        "data": { "$ref": "#HandoffCreateResult" }
+      }
+    },
+    "envelope": {
+      "$anchor": "HandoffCreateEnvelope",
+      "allOf": [{ "$ref": "#/$defs/envelopeFields" }],
+      "unevaluatedProperties": false,
+      "description": "Current outer trace, current saved handoff trace inside; matching inner/outer source list. Built-in server emits no ETag or outer revision."
+    },
+    "clientEnvelope": {
+      "$anchor": "HandoffCreateClientEnvelope",
+      "allOf": [{ "$ref": "#/$defs/envelopeFields" }],
+      "properties": {
+        "trace_id": { "$ref": "#/$defs/name" },
+        "source_refs": { "$ref": "#/$defs/clientSources" },
+        "data": { "$ref": "#HandoffCreateClientResult" },
+        "etag": { "type": "string", "pattern": "^W/\"version-[0-9]+\"$" }
+      },
+      "unevaluatedProperties": false,
+      "description": "SDK compares normalized inner/outer source arrays and exact original trace. Optional compatible ETag equals CURRENT handoff version, not receipt version1."
+    },
+    "receiptEnvelope": {
+      "$anchor": "HandoffCreateReceiptEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "type": "string" },
+        "source_refs": { "type": "array", "maxItems": 0 },
+        "data": { "$ref": "#HandoffCreateReceiptLookup" }
+      },
+      "description": "Historical summary only after current handoff consistency checks. Empty sources/no ETag. SDK additionally validates exact name-bounded current trace; not-observed is not failure proof or safe new-key permission."
+    }
+  }
+}

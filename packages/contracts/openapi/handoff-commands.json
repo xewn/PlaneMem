@@ -1,0 +1,372 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem handoff creation, claim and original receipts",
+    "version": "0.1.0",
+    "description": "Source-only four existing POST contracts including legacy unkeyed claim branch. Register handoff-create/handoff-claim/session-activity-read/session-start/handoff-read schemas; resolve shared HTTP components locally. No runtime/SDK/Mock behavior change, validator/generator execution or release evidence."
+  },
+  "servers": [
+    { "url": "/", "description": "Relative Gateway base; configure deployment origin/base." }
+  ],
+  "security": [{ "GatewayBearer": [] }],
+  "tags": [{ "name": "Handoff commands" }],
+  "x-todo": "P0-01",
+  "x-runtime-boundaries": {
+    "sources": [
+      "apps/api-gateway/src/server.ts",
+      "apps/api-gateway/src/http.ts",
+      "apps/api-gateway/src/idempotency.ts",
+      "apps/api-gateway/src/session-persistence.ts",
+      "apps/api-gateway/src/session-project-access.ts",
+      "apps/api-gateway/src/handoff-create-receipts.ts",
+      "apps/api-gateway/src/handoff-claim-receipts.ts",
+      "apps/session-service/src/checkpoint/service.ts",
+      "packages/contracts/src/handoff-create.ts",
+      "packages/contracts/src/handoff-claim.ts",
+      "packages/sdk/src/client.ts",
+      "packages/sdk/src/fetch-transport.ts"
+    ],
+    "authority": "All four require independent authenticated_client=true and verified scope/actor/client at signed continuity boundary, plus normal Policy/audit/actor-path rate limit. Creation/write+receipt Policy=session.write. Claim/write+receipt Policy=handoff.claim when caller has that capability, otherwise session.write; configured OPA controls actual decision, local admin behavior is not an unconditional OPA bypass. Actual data.restricted.read required for restricted project even for admin. Optional expected actor/client headers independently compare signed claims; top-level identity/scope claims must match. Creation sender need not own parent session; claimant may differ from creator.",
+    "http": "All POSTs retain generic pre-auth1MiB JSON-object parser, nonfatal UTF-8; empty/malformed/nonobject/oversize400 INVALID_JSON. No dedicated media/encoding/framing/cache/Range/duplicate-header rejection; generic Node handling applies. URL query ignored. All application success200/private,no-store/current outer trace, no built-in ETag/outer revision. No dedicated response byte cap, whole-handler deadline, concurrency capacity, SQL cancellation or post-read token-expiry check. Entry audit is not an atomic business-success receipt.",
+    "create-input": "Closed checkpoint_id and optional original session_id/from_client/target_client; all IDs ULID, client text nonblank<=1024 UTF-16 without controls/DEL/lone surrogates, no trimming. Path session supplied and optional body session must agree before route override; optional from_client equals trusted client. Stable header/body key1..255 non-whitespace UTF-16 required and both agree. Creation rejects any body expected_version or selected version header; no parent version/lifecycle requirement. Unknown fields rejected, including actor/scope fields even if identity precheck accepted their equality.",
+    "claim-input": "Presence of header OR body key selects durable branch; key strict and both locations agree. Effective expected_version1..MAX_SAFE-1 mandatory, header/body agree when both exist; both version headers agree. Closed command only expected_version, optional handoff_id/client_id after removing key. Raw body handoff_id is overwritten by path without equality check; optional client equals trusted client. Version must leave room for+1 even if result unchanged. With no key anywhere legacy branch allows unknown fields, optional version0..MAX_SAFE with header precedence, and nonempty path extraction; no original receipt is produced.",
+    "fingerprint": "Per-operation create/claim tables use scope plus SHA256 canonical [actor_id,client_id,rawKey]. Fingerprint canonical effective input, route ID overrides, effective version replacement, deleting body idempotency_key. Optional from_client/target_client/client_id presence matters; path/effective version normalize missing versus matching transport fields. Header-key process cache additionally checks raw body/current authority and version; matching entries re-enter handler, not cached success body. Query bypasses success cache. No automatic key replacement.",
+    "create-transaction": "Current visible nondeleted valid-classification project FOR SHARE, then advisory lock on scope/from_client/rawKey preserving legacy cross-actor uniqueness, then requested checkpoint+parent same-scope join FOR SHARE OF c,s. Existing actor-bound receipt checks original fingerprint/session/checkpoint, parses recorded version1, reads current handoff FOR SHARE, verifies raw stored key and complete current-vs-create consistency. Fresh creation refuses legacy client/key row without actor receipt or concurrent insert collision as HANDOFF_CREATE_LEGACY_UNVERIFIED; never repairs ownership. New open/version1 handoff+creation receipt commit together. No checkpoint note/pack read, parent/ checkpoint version or lifecycle change.",
+    "create-current": "Current handoff ID/checkpoint/sender/optional target match original; safe version>=1. Open only version1/no claimant, claimed requires client+actor and version>1, expired version>1 may have no claimant or legacy client-only claimant. Actor implies client; target must match claimant when present. Current trace name-bounded;<=200 valid source entries including exact checkpoint, duplicates allowed and extensions preserved on wire. Owner can differ from original creator. Post-commit service checks result and caches only current data, never rewinds to historical version1 or adds actor receipt to legacy key cache.",
+    "claim-transaction": "Visible valid-classification project FOR SHARE, identity-bound scope/key advisory lock and same-scope handoff/checkpoint/session join FOR UPDATE OF h. Existing receipt checked before fresh CAS/ownership/expiry: original fingerprint/ID/expected version/actor/client, saved parent/checkpoint, current safe version not behind, same-version claimed, later claimed or expired and same owner. Replay does not fully validate current sender/target/trace/source fields. Fresh path requires exact current version, rejects old claimed-without-actor as HANDOFF_CLAIM_LEGACY_UNVERIFIED, then target/current ownership/expired-state rules. Open->claimed increments1 and records verified actor/client; already claimed by same actor/client at exact version saves changed=false. Conditional row update only when changed; receipt always inserted atomically, parent/checkpoint unchanged. Cache publishes current committed handoff.",
+    "legacy-claim": "No key means existing unkeyed claim flow, no durable receipt ledger. Postgres locks visible project then current handoff through same-scope parent/checkpoint joins. Expired state and different target fail; already claimed returns unchanged for same client and matching actor when actor exists, BEFORE optional version comparison; legacy missing actor is not filled. Otherwise optional current-version match then claimed/version+1 with verified actor, no safe-overflow guard. No store retains local fixture; custom store without updateHandoff retains serialized local fallback. Durable creation/keyed claim require dedicated store methods and never silently fall back.",
+    "lookups": "Creation receipt rejects new header key/version, checks optional outer session path equality and closed request_key/handoff with original optional fields. Claim receipt parses then ignores valid new header key/version; raw outer handoff_id overwritten/removed, nested optional handoff/client checked. Both single SQL snapshots require current visible project and existing requested checkpoint+session or handoff+checkpoint+session. Missing graph404; visible no operation receipt200 not-observed, including unrecorded legacy operations. Creation recorded checks raw stored key and full current-vs-create shape including trace/sources/target. Claim recorded checks selected current owner/version/status and linked session/checkpoint only, not sender/target/trace/sources. No locks, package/memory calls, fresh claim/expiry eligibility check, repair, mutation or auto retry. Historical recorded cannot prove present resumability; absence cannot prove failure.",
+    "sdk": "Four methods bind complete fixed scope/actor/client (explicit or configured), preserving scalar original fields. createHandoff options permits only key and rejects configured expected_version/if_match; configured idempotency_key is not compared. claimHandoff takes key/version from options, sends empty body plus If-Match and key, does not compare inherited context key/version/if_match or reject extra option properties. Receipt methods send original query and expected identity headers without inherited write conditions. Full create/claim parser checks current-vs-receipt and original identity/trace, normalizes sources to four fields<=200, compares outer/inner and checkpoint membership; no uniqueness requirement. Claim SDK additionally checks sender/trace/target unlike stored replay/lookup. Optional compatible ETag equals CURRENT handoff version, built-in server has none.",
+    "sdk-budget": "Generic JSON transport for all four methods, not dedicated bounded-json; no method timeout/signal options, response byte/content-type/exact200/trace-header/length guarantees or custom-transport whole-call deadline. Fetch default30s starts after credential acquisition. No automatic persistence, receipt lookup, new key or retry. No schema loading/generation integration is added."
+  },
+  "paths": {
+    "/v1/sessions/{session_id}/handoff": {
+      "parameters": [
+        { "$ref": "#/components/parameters/SessionId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" },
+        { "$ref": "#/components/parameters/OriginalKey" }
+      ],
+      "post": {
+        "operationId": "createHandoff",
+        "tags": ["Handoff commands"],
+        "summary": "Create a durable handoff with immutable original creation receipt",
+        "x-wcp-operation": "session.handoff",
+        "x-policy-action": "session.write",
+        "x-rejected-request-headers": ["If-Match", "If-Match-Version"],
+        "x-client-result-schema": {
+          "$ref": "../schemas/handoff-create.json#HandoffCreateClientEnvelope"
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/handoff-create.json#HandoffCreateBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/CreateSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/CreateNotFound" },
+          "409": { "$ref": "#/components/responses/CreateConflict" },
+          "429": { "$ref": "./search.json#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/sessions/{session_id}/handoff/receipt": {
+      "parameters": [
+        { "$ref": "#/components/parameters/SessionId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "post": {
+        "operationId": "getHandoffCreateReceipt",
+        "tags": ["Handoff commands"],
+        "summary": "Observe original creation with current handoff consistency checks",
+        "x-wcp-operation": "session.handoff.receipt",
+        "x-policy-action": "session.write",
+        "x-read-only": true,
+        "x-rejected-request-headers": ["Idempotency-Key", "If-Match", "If-Match-Version"],
+        "description": "No new key/version headers; original key only in request_key. Requires requested checkpoint still visible in original parent session. Legacy handoff without this actor-bound receipt remains not-observed.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/handoff-create.json#HandoffCreateReceiptBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/CreateReceiptSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/CreateNotFound" },
+          "409": { "$ref": "#/components/responses/ReceiptConflict" },
+          "429": { "$ref": "./search.json#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/handoffs/{handoff_id}/claim": {
+      "parameters": [
+        { "$ref": "#/components/parameters/HandoffId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" },
+        { "$ref": "#/components/parameters/OriginalKey" },
+        { "$ref": "#/components/parameters/ClaimIfMatch" },
+        { "$ref": "#/components/parameters/ClaimVersion" }
+      ],
+      "post": {
+        "operationId": "claimHandoff",
+        "tags": ["Handoff commands"],
+        "summary": "Claim with original key/version, or use legacy unkeyed compatibility",
+        "x-wcp-operation": "session.handoff.claim",
+        "x-policy-action": "handoff.claim when present in capabilities; otherwise session.write",
+        "x-client-result-schema": {
+          "$ref": "../schemas/handoff-claim.json#HandoffClaimClientEnvelope"
+        },
+        "description": "Any supplied key selects durable strict branch, with original effective version1..MAX_SAFE-1; no-key legacy branch has no receipt and weaker optional-version behavior. Never create a key implicitly to reinterpret an unknown legacy result.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/handoff-claim.json#HandoffClaimBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/ClaimSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/ClaimNotFound" },
+          "409": { "$ref": "#/components/responses/ClaimConflict" },
+          "429": { "$ref": "./search.json#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/handoffs/{handoff_id}/claim/receipt": {
+      "parameters": [
+        { "$ref": "#/components/parameters/ReceiptHandoffId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" },
+        { "$ref": "./session-reads.json#/components/parameters/IdempotencyKey" },
+        { "$ref": "./session-reads.json#/components/parameters/IfMatch" },
+        { "$ref": "./session-reads.json#/components/parameters/IfMatchVersion" }
+      ],
+      "post": {
+        "operationId": "getHandoffClaimReceipt",
+        "tags": ["Handoff commands"],
+        "summary": "Observe original claim without claiming again",
+        "x-wcp-operation": "session.handoff.claim.receipt",
+        "x-policy-action": "handoff.claim when present in capabilities; otherwise session.write",
+        "x-read-only": true,
+        "description": "Original version and optional client/path fields remain in claim. Valid new key/version headers ignored, malformed generic version headers still400. Current selected metadata must agree with stored receipt; no full current source/target/trace checks or original ownership inference.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/handoff-claim.json#HandoffClaimReceiptBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/ClaimReceiptSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/ClaimNotFound" },
+          "409": { "$ref": "#/components/responses/ReceiptConflict" },
+          "429": { "$ref": "./search.json#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": { "GatewayBearer": { "type": "http", "scheme": "bearer" } },
+    "parameters": {
+      "TenantId": { "$ref": "./session-reads.json#/components/parameters/TenantId" },
+      "WorkspaceId": { "$ref": "./session-reads.json#/components/parameters/WorkspaceId" },
+      "ProjectId": { "$ref": "./session-reads.json#/components/parameters/ProjectId" },
+      "TraceParent": { "$ref": "./session-reads.json#/components/parameters/TraceParent" },
+      "TraceId": { "$ref": "./session-reads.json#/components/parameters/TraceId" },
+      "ExpectedActorId": { "$ref": "./session-reads.json#/components/parameters/ExpectedActorId" },
+      "ExpectedClientId": {
+        "$ref": "./session-reads.json#/components/parameters/ExpectedClientId"
+      },
+      "SessionId": {
+        "name": "session_id",
+        "in": "path",
+        "required": true,
+        "schema": { "$ref": "../schemas/handoff-create.json#/$defs/ulid" },
+        "description": "Original parent session; any same-named raw outer body field must agree before override. Creation query nested handoff.session_id, if present, must also agree."
+      },
+      "HandoffId": {
+        "name": "handoff_id",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "minLength": 1 },
+        "description": "Keyed claim requires ULID after route override; unkeyed legacy only extracts nonempty before scoped storage. Same-named raw body field overwritten, not compared. SDK requires ULID."
+      },
+      "ReceiptHandoffId": {
+        "name": "handoff_id",
+        "in": "path",
+        "required": true,
+        "schema": { "$ref": "../schemas/handoff-claim.json#/$defs/ulid" }
+      },
+      "OriginalKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "schema": { "$ref": "../schemas/handoff-create.json#/$defs/key" },
+        "description": "Original key1..255 non-whitespace UTF-16, header/body must agree. Required for creation unless body key; on claim, absence in both locations selects legacy no-receipt branch."
+      },
+      "ClaimIfMatch": {
+        "name": "If-Match",
+        "in": "header",
+        "schema": { "type": "string", "pattern": "^W/\"version-[0-9]+\"$" },
+        "description": "Original HANDOFF version. Generic parser safe/nonnegative, leading zeros allowed, agrees with If-Match-Version. Keyed branch requires1..MAX_SAFE-1 and equality with supplied body expected_version. Legacy header overrides body and may be omitted."
+      },
+      "ClaimVersion": {
+        "name": "If-Match-Version",
+        "in": "header",
+        "schema": { "type": "string", "pattern": "^[0-9]+$" },
+        "description": "Alternative digits-only original handoff version; same constraints as If-Match. Without headers keyed body expected_version required; legacy version optional."
+      }
+    },
+    "responses": {
+      "CreateSuccess": {
+        "description": "Complete CURRENT handoff plus original version1 create_receipt. Current can be claimed/expired; no built-in ETag or timestamps.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/handoff-create.json#HandoffCreateEnvelope" }
+          }
+        }
+      },
+      "CreateReceiptSuccess": {
+        "description": "Minimal historical creation recorded/not-observed, current consistency checked before recorded. Empty sources/no ETag; no resumability proof.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/handoff-create.json#HandoffCreateReceiptEnvelope" }
+          }
+        }
+      },
+      "ClaimSuccess": {
+        "description": "Keyed: current handoff+original claim_receipt with historical changed/version. Unkeyed: complete legacy claimed handoff without receipt. Built-in output has no ETag; keyed SDK will reject legacy/malformed current output.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "oneOf": [
+                { "$ref": "../schemas/handoff-claim.json#HandoffClaimEnvelope" },
+                { "$ref": "../schemas/handoff-claim.json#HandoffLegacyClaimEnvelope" }
+              ]
+            }
+          }
+        }
+      },
+      "ClaimReceiptSuccess": {
+        "description": "Minimal original recorded/not-observed after current owner/version/graph check. Empty sources/no ETag. Legacy claimed status cannot establish original request success.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/handoff-claim.json#HandoffClaimReceiptEnvelope" }
+          }
+        }
+      },
+      "Error": {
+        "$ref": "./search.json#/components/responses/Error",
+        "description": "Application error envelope; early parser/auth/proxy may differ or lack trace header. An error after commit may leave original result unknown; preserve original key/identity/parameters. Error list not exhaustive."
+      },
+      "BadInput": {
+        "$ref": "#/components/responses/Error",
+        "description": "INVALID_INPUT for selected key, fields/IDs/version/original identity binding or prohibited creation write options; INVALID_REQUEST_CONTEXT for malformed/disagreeing version headers. Generic pre-auth empty/malformed/nonobject/oversize body INVALID_JSON400, not413. retryable=false."
+      },
+      "Unauthenticated": {
+        "$ref": "#/components/responses/Error",
+        "description": "Signed boundary UNAUTHENTICATED401, retryable=false; unsigned compatibility cannot satisfy independent verified-client gate."
+      },
+      "Denied": {
+        "$ref": "#/components/responses/Error",
+        "description": "DENIED403 for Policy/scope/expected identity/verified-client; HANDOFF_ACCESS_DENIED403 for target-client or lower scope mismatch. retryable=false. Missing/hidden graph normally404."
+      },
+      "CreateNotFound": {
+        "$ref": "#/components/responses/Error",
+        "description": "CHECKPOINT_NOT_FOUND404 for missing/hidden/deleted/invalid-classification project, missing parent or requested checkpoint not in original session; retryable=false. Visible checkpoint without creation receipt is200 not-observed."
+      },
+      "ClaimNotFound": {
+        "$ref": "#/components/responses/Error",
+        "description": "HANDOFF_NOT_FOUND404 for missing/hidden handoff graph/project on keyed write/query. Unkeyed project lock uses SESSION_NOT_FOUND404. retryable=false. Visible handoff without claim receipt is200 not-observed."
+      },
+      "CreateConflict": {
+        "$ref": "#/components/responses/Error",
+        "description": "IDEMPOTENCY_KEY_REUSED409 for process/original fingerprint or parent/checkpoint mismatch. HANDOFF_CREATE_LEGACY_UNVERIFIED409 for client/raw-key row without this actor receipt or concurrent insert collision; no attribution repair. retryable=false."
+      },
+      "ClaimConflict": {
+        "$ref": "#/components/responses/Error",
+        "description": "IDEMPOTENCY_KEY_REUSED, HANDOFF_VERSION_CONFLICT, HANDOFF_CLAIM_CONFLICT, HANDOFF_CLAIM_LEGACY_UNVERIFIED or HANDOFF_EXPIRED409; expired is409, not410. retryable=false. Existing matching receipt checked before fresh state/target/expiry eligibility; late expiry consistent with history may still replay."
+      },
+      "ReceiptConflict": {
+        "$ref": "#/components/responses/Error",
+        "description": "IDEMPOTENCY_KEY_REUSED409 for stored fingerprint/operation-target mismatch; retryable=false. No fresh claim/creation transition or legacy-ownership repair."
+      },
+      "InvalidStored": {
+        "$ref": "#/components/responses/Error",
+        "description": "SESSION_RECEIPT_INVALID500 for malformed stored receipt/current history; Postgres durable methods and lookup catch TypeError/SyntaxError as this code, retryable=false. Generic uncaught service/parser errors and unkeyed storage errors may be INTERNAL_ERROR500 retryable=true. Post-commit creation result confirmation may fail without undoing commit."
+      },
+      "Unavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "SESSION_RECEIPT_STORAGE_UNAVAILABLE503 true for missing dedicated durable method/database or other durable store/query failure. WORKBENCH_AUTH_UNAVAILABLE/AUDIT_PERSISTENCE_UNAVAILABLE503 true also possible. No durable-to-local fallback; unkeyed compatibility has separate storage semantics."
+      }
+    }
+  }
+}
