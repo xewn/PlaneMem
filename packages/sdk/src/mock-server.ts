@@ -1,6 +1,11 @@
 import { ContractError, type ProjectEntity, validateEntity } from '@planemem/contracts';
 import type { WcpRequest, WcpTransport } from './client.js';
 import {
+  isMockLegacyContextPath,
+  type MockLegacyContextStore,
+  type MockLegacyContextSession,
+} from './mock-legacy-context.js';
+import {
   isMockPlaneInboxPath,
   type MockPlaneInboxStore,
   type MockPlaneInboxSession,
@@ -43,6 +48,7 @@ import {
 } from './mock-proposals.js';
 
 export interface MockWcpServerOptions {
+  legacy_context?: { store: MockLegacyContextStore; session: MockLegacyContextSession };
   plane_inbox?: { store: MockPlaneInboxStore; session: MockPlaneInboxSession };
   observed?: { store: MockObservedStore; session: MockObservedSession };
   sessions?: { store: MockSessionStore; session: MockSessionAccess };
@@ -58,6 +64,7 @@ export interface MockWcpServerOptions {
 }
 
 export class MockWcpServer implements WcpTransport {
+  private readonly legacyContext: WcpTransport | undefined;
   private readonly planeInbox: WcpTransport | undefined;
   private readonly observed: WcpTransport | undefined;
   private readonly sessions: WcpTransport | undefined;
@@ -72,6 +79,7 @@ export class MockWcpServer implements WcpTransport {
   private readonly admin: WcpTransport | undefined;
 
   constructor(private readonly options: MockWcpServerOptions = {}) {
+    this.legacyContext = options.legacy_context?.store.connect(options.legacy_context.session);
     this.planeInbox = options.plane_inbox?.store.connect(options.plane_inbox.session);
     this.observed = options.observed?.store.connect(options.observed.session);
     this.sessions = options.sessions?.store.connect(options.sessions.session);
@@ -87,6 +95,8 @@ export class MockWcpServer implements WcpTransport {
 
   async request<T = unknown>(request: WcpRequest): Promise<T> {
     this.options.onRequest?.(request);
+    if (this.legacyContext && isMockLegacyContextPath(request.path))
+      return this.legacyContext.request<T>(request);
     if (this.planeInbox && isMockPlaneInboxPath(request.path))
       return this.planeInbox.request<T>(request);
     if (this.observed && isMockObservedPath(request.path)) return this.observed.request<T>(request);

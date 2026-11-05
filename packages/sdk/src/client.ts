@@ -47,6 +47,7 @@ import {
   type LegacyContextMutation,
   type LegacyContextStatus,
   type LegacyContextMutationReceipt,
+  type IndexedContextWriteRequest,
   parseWorkbenchOverview,
   type WorkbenchOverview,
   parseProjectSearchQuery,
@@ -151,6 +152,10 @@ import type {
 } from './continuity.js';
 
 import { readAuditRecords, exportReviewedAuditView, type WcpAuditOptions } from './audit.js';
+import {
+  writeLegacyContextIndex,
+  type WcpLegacyContextIndexOptions,
+} from './legacy-index-write.js';
 import { readAdminSnapshot, type WcpAdminOptions } from './admin.js';
 import {
   readArtifactUploadContext,
@@ -1320,6 +1325,11 @@ export class WcpClient {
     } catch {
       throw this.invalidResponse();
     }
+  }
+
+  /** Write manual index content; retry only with the same original body and key. */
+  indexLegacyContext(input: IndexedContextWriteRequest, options: WcpLegacyContextIndexOptions) {
+    return writeLegacyContextIndex(this.transport, this.context, input, options);
   }
 
   async getLegacyContextIndexStatus(id: string) {

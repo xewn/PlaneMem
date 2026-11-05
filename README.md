@@ -1,6 +1,8 @@
 # PlaneMem
 
-当前按 TODO **P0-02** 开发：本轮新增 [Plane 收件箱 Mock](docs/design/01-contracts/plane-inbox-mock-runtime.md)，接通列表/统计/详情/版本诊断、重试调度和原回执六个现有 SDK 操作。重试实际修改模拟队列，保持原 Plane 版本和尝试次数；原键重放不重复修改，版本诊断使用独立已提交流。[观察读取](docs/design/01-contracts/observed-mock-runtime.md) 与 [会话交接](docs/design/01-contracts/session-mock-runtime.md) 模拟实现仍可独立配置。均未编译、运行或测试，P0-02 未验收完成。下方 OpenAPI 数量是已有接口描述覆盖，不代表新增功能或 TODO 完成数。
+当前按 TODO **P0-02** 补功能：新增 [旧上下文索引 SDK 与 Mock](docs/design/01-contracts/legacy-context-mock-runtime.md)，补齐类型化内容写入，并把内容写入、目录、状态、删除和恢复接到同一模拟索引。支持单调版本/分类、删除保护、恢复保留到期及原请求历史回执；未编译、运行或测试，P0-02 整项仍未完成。
+
+此前按 TODO **P0-02** 开发：[Plane 收件箱 Mock](docs/design/01-contracts/plane-inbox-mock-runtime.md)，接通列表/统计/详情/版本诊断、重试调度和原回执六个现有 SDK 操作。重试实际修改模拟队列，保持原 Plane 版本和尝试次数；原键重放不重复修改，版本诊断使用独立已提交流。[观察读取](docs/design/01-contracts/observed-mock-runtime.md) 与 [会话交接](docs/design/01-contracts/session-mock-runtime.md) 模拟实现仍可独立配置。均未编译、运行或测试，P0-02 未验收完成。下方 OpenAPI 数量是已有接口描述覆盖，不代表新增功能或 TODO 完成数。
 
 按 TODO **P0-01** 补齐 [Plane Webhook OpenAPI](packages/contracts/openapi/README.md#plane-webhook) 及完整Schema，覆盖现有签名接收入口、七种Canonical观察和四态持久回执。明确原文本验签、接收/处理/交付审计不同事务及失败后的未知结果；OpenAPI源码累计91路。P0-01仍未完成，主TODO仍为0/36；未编译、测试、运行校验器/生成器/接口或发布。
 

@@ -1,5 +1,7 @@
 # 旧上下文索引持久读取（开发状态）
 
+2026-11-05，TODO **P0-02**：新增类型化 `WcpClient.indexLegacyContext`，共享完整原正文写入回执解析；Mock 覆盖内容写入、目录、状态、删除和恢复，沿生产的单调版本/分类、删除保护及不同历史重放规则。用法与差异见 [旧索引 SDK 与 Mock](legacy-context-mock-runtime.md)。不改生产存储或 capture 协议，未编译、运行或测试，P0-02 未完成。
+
 2026-11-05，TODO **P0-01**：补充 [context-index OpenAPI/Schema](../../../packages/contracts/openapi/README.md#旧索引内容与管理)，描述旧内容写入及目录/状态/删除/恢复五路。内容写入规范指纹与历史元数据回执的重放限制不同，当前删除/过期会拒绝旧正文重放；首次输入允许已经过期。capture在持锁事务内调用但不与外部原子提交，内置提供方trace路径create_only不等同原请求键幂等；可选失败没有degraded标志，配置provider仍须预留来源槽位。人工核对还区分MEMORY_PROVIDER_OFF未配置retryable=false与已配置但adapter disabled的true，已修正搜索/观察OpenAPI。仅源码契约文档，P0-01/R-001未完成、evidence为空；未编译、测试、运行校验器/生成器/接口/SQL或发布。
 
 2026-11-05，TODO **P0-01**：新增 [search OpenAPI](../../../packages/contracts/openapi/search.json)和独立 [search Schema](../../../packages/contracts/schemas/search.json)，完整描述本接口query/budget/use_vector、fts与memory不同命中及完整封套，详见[机器契约边界](../../../packages/contracts/openapi/README.md#项目与旧索引搜索)。记忆未配置且可选时不降级，use_vector或配置记忆无权/失败才降级；内外来源按最终命中顺序拼接并保留重复，memory_used=true可无返回记忆条目。配置记忆且有restricted能力时独立父项目重查会拒绝隐藏项目或传播SQL错误，发生在可选记忆降级捕获之外。没有跨SQL/记忆的一致事务或完整结果共享解析，不改运行实现。P0-01/R-001未完成、evidence为空，未编译、测试、运行校验器/生成器/接口/SQL或发布。

@@ -11,6 +11,20 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    legacy_context_mock_development:
+      date: "2026-11-05"
+      todo: "P0-02"
+      status: "Implementation source added; not compiled or executed. P0-02 and R-001 remain incomplete."
+      artifacts:
+        - "packages/contracts/src/legacy-index-write.ts"
+        - "packages/sdk/src/legacy-index-write.ts"
+        - "packages/sdk/src/mock-legacy-context.ts"
+        - "packages/sdk/src/client.ts"
+        - "packages/sdk/src/mock-server.ts"
+        - "docs/design/01-contracts/legacy-context-mock-runtime.md"
+      behavior: "Typed SDK manual index write verifies original content, scope, trace and capture-only appended sources. Five Mock operations share one index with monotonic versions/classification, deletion protection, expiry-preserving restore and operation/identity-bound historical receipts. Explicit capture scenarios, bounded copies and synchronous response-preflight commits."
+      remaining_scope: "Project and legacy searches and other WCP Mock operations, dynamic Plane updates, real provider/compensation and persistent audit evidence, machine-contract consumption and compatibility validation."
+      evidence: []
     plane_inbox_mock_development:
       date: "2026-11-05"
       todo: "P0-02"

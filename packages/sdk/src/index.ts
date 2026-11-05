@@ -1,6 +1,19 @@
 export * from './client.js';
 export * from './mock-server.js';
 export {
+  MockLegacyContextStore,
+  type MockLegacyContextSeed,
+  type MockLegacyContextSession,
+  type MockLegacyContextCapture,
+} from './mock-legacy-context.js';
+export type { WcpLegacyContextIndexOptions } from './legacy-index-write.js';
+export type {
+  IndexedContextInput,
+  IndexedContextWriteRequest,
+  IndexedContextRecord,
+  IndexedContextWriteEnvelope,
+} from '@planemem/contracts';
+export {
   MockPlaneInboxStore,
   type MockPlaneInboxSeed,
   type MockPlaneInboxSession,

@@ -55,6 +55,7 @@ export * from './workbench-audit.js';
 export * from './audit-export.js';
 export * from './project-search.js';
 export * from './legacy-search.js';
+export * from './legacy-index-write.js';
 export * from './legacy-context-lifecycle.js';
 export * from './observed-state.js';
 export * from './observed-directory.js';
