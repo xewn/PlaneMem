@@ -1,0 +1,425 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem Plane inbox metadata and original retry receipts",
+    "version": "0.1.0",
+    "description": "Source-only six-route contract for existing directory, summary, detail, diagnosis, retry scheduling and original retry lookup. Load this file, search/context-history HTTP components and plane-inbox/plane-inbox-retry schemas locally with relative paths and schema IDs preserved. No generated clients, validator integration or execution evidence."
+  },
+  "servers": [
+    { "url": "/", "description": "Relative Gateway base; configure deployment origin/base." }
+  ],
+  "security": [{ "GatewayBearer": [] }],
+  "tags": [{ "name": "Plane inbox" }],
+  "x-todo": "P0-01",
+  "x-runtime-boundaries": {
+    "sources": [
+      "packages/contracts/src/plane-inbox.ts",
+      "packages/contracts/src/plane-inbox-diagnosis.ts",
+      "apps/api-gateway/src/plane-inbox-reads.ts",
+      "apps/api-gateway/src/plane-inbox-retry.ts",
+      "apps/api-gateway/src/plane-inbox.ts",
+      "apps/api-gateway/src/idempotency.ts",
+      "apps/api-gateway/src/server.ts",
+      "apps/plane-connector/src/project-sync/projection.ts",
+      "packages/sdk/src/client.ts"
+    ],
+    "authorization": "All six require authenticated_client===true and admin role, independently in server policy and handlers. Retry scheduling additionally requires signed actor_type human and plane.retry Policy; other five use admin.read. Configured OPA replaces local Policy; local admin override does not waive trusted-client/human gates. Exact scope and independently optional actor/client precondition headers apply. Entry decision audit and generic actor/path rate limiting remain. Actual data.restricted.read is required for restricted data; admin role alone is insufficient.",
+    "http": "POST raw JSON object is read before authentication, maximum1MiB; malformed/empty/nonobject/overlimit gives400 INVALID_JSON, decoding is nonfatal UTF-8. GET body/framing is not specifically rejected. No dedicated media/encoding/cache/range rejection. Only list accepts supported single-valued query names; other five reject any URL query. All six parse generic version headers; GET ignores valid parsed values, both POST reject any expected_version. All six bypass in-process idempotent-response caching. Success private,no-store plus current x-trace-id, empty source_refs, no ETag/outer revision/server cursor.",
+    "visibility": "Scope inbox rows and join current nondeleted parent. Effective classification=max(event sensitivity,parent,current matching Plane index), unknown levels conservatively restricted; absent index contributes public. Index key uses plane:Project/WorkItem plus payload.external_id or aggregate_id fallback. Deleted/expired index still contributes classification. Metadata reads select no full payload, event fingerprint, signature, original trace or source refs. Unsupported/mismatched event type becomes null. Missing/hidden parent is empty200 only for list; summary/detail/diagnosis/retry/lookup use404.",
+    "scalars": "All IDs/scope are ULIDs. aggregate_version is a canonical positive decimal string<=9007199254740991. Queue revision is positive bigint string<=9223372036854775807; attempts/counts are nonnegative bigint strings with that same upper bound. Retry expected_revision<=9223372036854775806. Dates normalize to UTC milliseconds; exact finite Date.parse/toISOString roundtrip permits extended years. No generic received/updated/applied/checked chronology is imposed.",
+    "retry-locks": "Both POST operations use the same transaction and locks, including lookup: local lock_timeout3s/statement_timeout15s, scope/actor/client/key advisory lock, inbox FOR UPDATE, visible metadata check before decoding stored event, scoped context-index advisory lock, parent FOR SHARE, then another visible metadata check before saved receipt lookup. Lookup is not a READ ONLY transaction. These per-statement limits are not a whole-operation deadline.",
+    "stored-event": "Before receipt lookup, readStoredPlaneInboxEvent normalizes/validates the immutable full event and Plane observed payload, checks event ID/scope/aggregate ID/type/version against inbox columns and stable event fingerprint. Original occurrence time is preserved; source refs normalize to four public fields. No webhook HMAC/signature is rechecked. Invalid event cannot be bypassed by not-observed lookup. Metadata GET/diagnosis does not perform this full event validation.",
+    "original-retry": "Original key namespace is scope/actor/client/key. Request fingerprint=SHA256(stable-key-sorted JSON of {operation:'plane.inbox.retry',identity,command}); raw body reason is trimmed before binding. Saved event ID/fingerprint/command must match. Verify saved receipt, unchanged event fingerprint, current revision>=saved revision, attempts>=original attempts, same aggregate ID/type/version/event type/received_at, plus current and historical classification. Replay precedes fresh revision/state checks and can return the original pending receipt after current event is applied/rejected.",
+    "fresh-retry": "With no saved receipt, schedule requires exact current queue revision and pending/rejected state. Update status pending, last_error_code/applied_at null, next_attempt_at=updated_at at one statement timestamp, revision+1. Event, received_at and attempts remain unchanged. Store complete historical receipt and plane.inbox.retry.scheduled audit in same transaction. No direct event application or worker trigger; normal polling decides processing later. Lookup without saved receipt returns not-observed without fresh CAS/state checks or queue/receipt/scheduling-audit writes. Generic entry audit still applies.",
+    "budgets": "No dedicated complete-success byte budget, two-slot concurrency gate, whole-operation deadline or post-read/post-commit token-expiry recheck. A connection failure after commit may return503, which does not prove retry was not scheduled. Schema length/date/decimal shapes do not replace existing UTF-16/surrogate/finite-date/arithmetic checks.",
+    "clients": "SDK reads validate complete generic envelope, exact current trace, empty sources and shared data/scope parser; detail identity/permissions extras are not independently parsed. Retry SDK requires original expected_actor_id and expected_client_id plus idempotency_key options, sends both identity headers and body request_key; schedule additionally sends Idempotency-Key, lookup does not. Returned receipt/lookup is checked against exact original identity/normalized command/key. No new machine-contract runtime consumption or SDK byte/deadline guarantee."
+  },
+  "paths": {
+    "/v1/plane/events": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" },
+        { "$ref": "#/components/parameters/IfMatch" },
+        { "$ref": "#/components/parameters/IfMatchVersion" }
+      ],
+      "get": {
+        "operationId": "listPlaneInbox",
+        "tags": ["Plane inbox"],
+        "summary": "List visible processing metadata",
+        "x-wcp-operation": "plane.inbox.list",
+        "x-policy-action": "admin.read",
+        "x-decoded-query-schema": { "$ref": "../schemas/plane-inbox.json#PlaneInboxListQuery" },
+        "description": "Default all status/pending_state and25 rows, maximum100. Non-all pending_state only with status all/pending and selects pending records. Filter scope/parent/classification/status/pending state/aggregate before event_id COLLATE C DESC limit+1, not received time order. Only returned rows are parsed, not lookahead. Cursor canonical base64url JSON [1,queryKey,lastReturnedEventId]; queryKey=SHA256(stable JSON ['plane-inbox-v2',tenant,workspace,project,restricted,status,pending_state,aggregate_id-or-null,limit]). Binds limit, not actor/client; unsigned, no cross-page snapshot. Due uses next_attempt_at<=statement_timestamp, delayed>; normalized milliseconds may coincide. version_gap reflects stored last_error_code=AGGREGATE_VERSION_GAP, not live predecessor absence. Hidden/missing parent returns empty200.",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "enum": ["all", "pending", "applied", "rejected"], "default": "all" }
+          },
+          {
+            "name": "pending_state",
+            "in": "query",
+            "schema": { "enum": ["all", "due", "delayed", "version_gap"], "default": "all" }
+          },
+          {
+            "name": "aggregate_id",
+            "in": "query",
+            "schema": { "$ref": "../schemas/plane-inbox.json#/$defs/ulid" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Wire1..3 digits with no leading zero, then integer1..100.",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 25 }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,2048}$" }
+          }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/ListSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/plane/events/summary": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" },
+        { "$ref": "#/components/parameters/IfMatch" },
+        { "$ref": "#/components/parameters/IfMatchVersion" }
+      ],
+      "get": {
+        "operationId": "getPlaneInboxSummary",
+        "tags": ["Plane inbox"],
+        "summary": "Read visible queue counts and scheduling times in one SQL snapshot",
+        "x-wcp-operation": "plane.inbox.summary",
+        "x-policy-action": "admin.read",
+        "x-decoded-query-schema": { "$ref": "../schemas/plane-inbox.json#PlaneInboxSummaryQuery" },
+        "description": "No query parameters, independent of list filters. Counts total/pending/applied/rejected/due/delayed/version_gap as bigint strings. total=pending+applied+rejected; pending=due+delayed; version_gap<=pending. Null timestamps exactly correspond to zero relevant counts. Oldest pending<=oldest due<=latest where present; earliest attempt<=checked with any due, otherwise>=checked, allowing equal milliseconds. Parent visibility checked explicitly even for empty aggregate: hidden/missing404, visible empty all zero. Does not establish worker health, upstream completeness or full immutable event integrity.",
+        "responses": {
+          "200": { "$ref": "#/components/responses/SummarySuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/plane/events/{event_id}": {
+      "parameters": [
+        { "$ref": "#/components/parameters/EventId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" },
+        { "$ref": "#/components/parameters/IfMatch" },
+        { "$ref": "#/components/parameters/IfMatchVersion" }
+      ],
+      "get": {
+        "operationId": "getPlaneInboxEvent",
+        "tags": ["Plane inbox"],
+        "summary": "Read current event metadata and caller retry hint",
+        "x-wcp-operation": "plane.inbox.read",
+        "x-policy-action": "admin.read",
+        "x-decoded-query-schema": { "$ref": "../schemas/plane-inbox.json#PlaneInboxRecordQuery" },
+        "description": "No URL query. data is current metadata; plane_inbox_identity and plane_inbox_permissions are outer siblings. retry hint only reflects current actor_type human after trusted-admin gates; it is not plane.retry Policy authorization or proof current status/revision permits scheduling. Identity is validated with same scope, actor/client nonblank<=1024 UTF-16, no controls/DEL/lone surrogates; outer whitespace preserved. Bad identity output is PLANE_INBOX_INVALID500. No payload/source/trace/fingerprint from original event returned.",
+        "responses": {
+          "200": { "$ref": "#/components/responses/DetailSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/plane/events/{event_id}/diagnosis": {
+      "parameters": [
+        { "$ref": "#/components/parameters/EventId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" },
+        { "$ref": "#/components/parameters/IfMatch" },
+        { "$ref": "#/components/parameters/IfMatchVersion" }
+      ],
+      "get": {
+        "operationId": "getPlaneInboxDiagnosis",
+        "tags": ["Plane inbox"],
+        "summary": "Compare a visible event with the actual committed stream tip",
+        "x-wcp-operation": "plane.inbox.diagnosis",
+        "x-policy-action": "admin.read",
+        "x-decoded-query-schema": { "$ref": "../schemas/plane-inbox.json#PlaneInboxRecordQuery" },
+        "description": "Single SQL snapshot, no processing locks/repair. Read highest two supported committed stream rows ordered version DESC,event_id COLLATE C ASC, retain selected maximum-version tip; baseline only if every selected tip has a visible applied inbox receipt matching event ID/version/type. Do not substitute an older visible row. At most two tips inspected, so ambiguous baseline size2 is not total fork count. Compare precedence: empty baseline_unavailable, two ambiguous_stream, same target already_recorded, target<=tip at_or_behind, newer non-delete/non-restore after deletion deleted_stream, otherwise tip+1 gives next_version or gap through target-1. Next/same-version groups each select11 for10 visible items ascending ID; lookahead not parsed, has_more has no cursor, same group excludes target. Related metadata must share stream/checked_at; repeated target must be identical. No full canonical-event validation or guarantee retry will apply.",
+        "responses": {
+          "200": { "$ref": "#/components/responses/DiagnosisSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/plane/events/{event_id}/retry": {
+      "parameters": [
+        { "$ref": "#/components/parameters/EventId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" },
+        { "$ref": "#/components/parameters/IdempotencyKey" }
+      ],
+      "post": {
+        "operationId": "retryPlaneInboxEvent",
+        "tags": ["Plane inbox"],
+        "summary": "Schedule an immutable event again or return its original scheduling receipt",
+        "x-wcp-operation": "plane.inbox.retry",
+        "x-policy-action": "plane.retry",
+        "description": "Trusted human admin only. No URL query or version headers. Decoded path overwrites raw body event_id, without equality/type check. request_key in body or Idempotency-Key header, both must agree. Original identity/key/trimmed command bind durable receipt. Saved receipt precedes new CAS/state checks after current visibility/event integrity; fresh schedule needs original expected_revision and pending/rejected current state. Revision increments1, attempts/event unchanged, pending scheduled now; receipt/audit atomic. HTTP200 only proves scheduling was recorded, never that worker applied event. An uncertain response must retain the original key/identity/command.",
+        "requestBody": { "$ref": "#/components/requestBodies/Retry" },
+        "responses": {
+          "200": { "$ref": "#/components/responses/RetrySuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/RetryConflict" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/plane/events/{event_id}/retry/receipt": {
+      "parameters": [
+        { "$ref": "#/components/parameters/EventId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" },
+        { "$ref": "#/components/parameters/IdempotencyKey" }
+      ],
+      "post": {
+        "operationId": "getPlaneInboxRetryReceipt",
+        "tags": ["Plane inbox"],
+        "summary": "Observe the original scheduling receipt without scheduling again",
+        "x-wcp-operation": "plane.inbox.retry.receipt",
+        "x-policy-action": "admin.read",
+        "description": "Same original normalized command/body/path/key and expected-identity constraints as scheduling, but trusted admin need not be human. No query/version headers. Uses the same transaction/update/advisory locks and full stored-event/visibility checks. Saved matching receipt returns recorded, missing returns not-observed without fresh CAS or applied-state rejection. Not-observed is not proof the request failed; current target must still exist/be readable/valid. Does not change queue or add a scheduling receipt/audit; generic entry audit remains. Key reused for another command gives409 even on lookup.",
+        "requestBody": { "$ref": "#/components/requestBodies/Retry" },
+        "responses": {
+          "200": { "$ref": "#/components/responses/LookupSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/LookupConflict" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": { "GatewayBearer": { "type": "http", "scheme": "bearer" } },
+    "parameters": {
+      "TenantId": { "$ref": "./search.json#/components/parameters/TenantId" },
+      "WorkspaceId": { "$ref": "./search.json#/components/parameters/WorkspaceId" },
+      "ProjectId": { "$ref": "./search.json#/components/parameters/ProjectId" },
+      "TraceParent": { "$ref": "./search.json#/components/parameters/TraceParent" },
+      "TraceId": { "$ref": "./search.json#/components/parameters/TraceId" },
+      "ExpectedActorId": {
+        "$ref": "./context-history.json#/components/parameters/ExpectedActorId"
+      },
+      "ExpectedClientId": {
+        "$ref": "./context-history.json#/components/parameters/ExpectedClientId"
+      },
+      "EventId": {
+        "name": "event_id",
+        "in": "path",
+        "required": true,
+        "schema": { "$ref": "../schemas/plane-inbox.json#/$defs/ulid" }
+      },
+      "IfMatch": {
+        "name": "If-Match",
+        "in": "header",
+        "description": "GET parses W/\"version-N\" as nonnegative safe integer; both version headers must agree numerically. Leading zeros allowed. No conditional read behavior. Both retry POSTs reject version headers after generic parsing.",
+        "schema": { "type": "string", "pattern": "^W/\"version-[0-9]+\"$" }
+      },
+      "IfMatchVersion": {
+        "name": "If-Match-Version",
+        "in": "header",
+        "description": "GET parses digits0..MAX_SAFE_INTEGER with leading zeros allowed, without conditional read behavior. Both retry POSTs require expected_revision in body instead and reject this header.",
+        "schema": { "type": "string", "pattern": "^[0-9]+$" }
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "description": "Required here or body.request_key, both must match. Preserve original identity/key/normalized command. Lookup shares scheduling key namespace; body.idempotency_key is not accepted.",
+        "schema": { "$ref": "../schemas/plane-inbox-retry.json#/$defs/key" }
+      }
+    },
+    "requestBodies": {
+      "Retry": {
+        "required": true,
+        "description": "Strict body expected_revision/reason/request_key plus optional path-overwritten event_id. Reason checked before trim. No identity/scope/expected_version override.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/plane-inbox-retry.json#PlaneInboxRetryBody" }
+          }
+        }
+      }
+    },
+    "responses": {
+      "ListSuccess": {
+        "description": "Complete current visible metadata page with optional data.next_cursor and empty sources. Hidden/missing parent empty200.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/plane-inbox.json#PlaneInboxListEnvelope" }
+          }
+        }
+      },
+      "SummarySuccess": {
+        "description": "Complete single-snapshot visible queue summary with bigint counts and canonical UTC dates/nulls; empty sources.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/plane-inbox.json#PlaneInboxSummaryEnvelope" }
+          }
+        }
+      },
+      "DetailSuccess": {
+        "description": "Current metadata plus outer plane_inbox_identity and plane_inbox_permissions.retry; no original event body or ETag.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/plane-inbox.json#PlaneInboxDetailEnvelope" }
+          }
+        }
+      },
+      "DiagnosisSuccess": {
+        "description": "Current target, at most two actual-tip baseline receipts and two bounded candidate groups, all at same checked_at. No repair/application guarantee.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/plane-inbox.json#PlaneInboxDiagnosisEnvelope" }
+          }
+        }
+      },
+      "RetrySuccess": {
+        "description": "Original scheduling receipt, same shape for fresh scheduling and replay; historical pending metadata with revision=expected_revision+1, current outer trace, empty sources. No replayed flag or application proof.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/plane-inbox-retry.json#PlaneInboxRetryEnvelope" }
+          }
+        }
+      },
+      "LookupSuccess": {
+        "description": "Original identity/key/command with recorded plus full historical receipt, or not-observed with receipt absent. Current trace and empty sources.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/plane-inbox-retry.json#PlaneInboxRetryLookupEnvelope" }
+          }
+        }
+      },
+      "Error": { "$ref": "./search.json#/components/responses/Error" },
+      "BadInput": {
+        "$ref": "#/components/responses/Error",
+        "description": "INVALID_JSON for POST raw body/shape/size before auth; INVALID_INPUT for unsupported/repeated/invalid query/path/filter/cursor/body/reason/key/revision, any retry version header or invalid retry identity. INVALID_REQUEST_CONTEXT for malformed/disagreeing generic version headers. retryable=false."
+      },
+      "Unauthenticated": { "$ref": "./search.json#/components/responses/Unauthenticated" },
+      "Denied": {
+        "$ref": "#/components/responses/Error",
+        "description": "DENIED for scope/expected identity/Policy, absent trusted admin or scheduling by nonhuman. retryable=false. Hidden restricted row/parent instead404 (list empty200)."
+      },
+      "NotFound": {
+        "$ref": "#/components/responses/Error",
+        "description": "NOT_FOUND for missing/hidden parent or target; original receipt with unreadable historical restricted classification also404. retryable=false. Summary visible empty is200; list hidden parent empty200."
+      },
+      "RetryConflict": {
+        "$ref": "#/components/responses/Error",
+        "description": "IDEMPOTENCY_KEY_REUSED for key bound to another normalized command/event; PLANE_INBOX_REVISION_CONFLICT for changed queue revision/update race; PLANE_INBOX_STATE_CONFLICT for fresh applied event. retryable=false. Matching historical replay precedes fresh CAS/state checks."
+      },
+      "LookupConflict": {
+        "$ref": "#/components/responses/Error",
+        "description": "IDEMPOTENCY_KEY_REUSED for key bound to another normalized command/event; retryable=false. Missing key does not require current revision equality and does not give state conflict."
+      },
+      "RateLimited": { "$ref": "./search.json#/components/responses/RateLimited" },
+      "InvalidStored": {
+        "$ref": "#/components/responses/Error",
+        "description": "PLANE_INBOX_INVALID for malformed selected metadata/summary/diagnosis, detail output identity, retry stored event or historical receipt/current monotonic integrity, retryable=false. Unexpected command INTERNAL_ERROR500 defaults retryable=true."
+      },
+      "Unavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "PLANE_INBOX_UNAVAILABLE for missing DB/SQL/transaction/lock timeout or non-ContractError storage failure; WORKBENCH_AUTH_UNAVAILABLE/AUDIT_PERSISTENCE_UNAVAILABLE at outer boundaries. retryable=true. Error after commit does not prove no schedule; retain original command/key for lookup."
+      }
+    }
+  }
+}

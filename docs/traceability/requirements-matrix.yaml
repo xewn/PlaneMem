@@ -11,6 +11,30 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    plane_inbox_openapi_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only six-route inbox OpenAPI and complete read/retry schemas; P0-01 and R-001 remain incomplete."
+      artifacts:
+        - "packages/contracts/openapi/plane-inbox.json"
+        - "packages/contracts/schemas/plane-inbox.json"
+        - "packages/contracts/schemas/plane-inbox-retry.json"
+        - "packages/contracts/package.json"
+        - "packages/contracts/openapi/README.md"
+        - "packages/contracts/schemas/README.md"
+      behavior: "Complete directory/summary/detail/diagnosis and scheduling/original lookup; distinguish aggregate version, queue revision, attempts/counts, current identity hints and historical scheduling receipts. Metadata is not the immutable event or application proof."
+      boundaries: "No runtime/SDK/Mock/old-schema/dependency/database changes. Effective classification includes event/parent/index even for deleted/expired index; admin does not replace restricted-read. Directory cursor binds page size but not actor/client. Diagnosis selects actual committed tip and requires every selected receipt visible/applied, never substitutes older visible baseline. Both retry POSTs lock and validate immutable event/current visibility before original key lookup; replay before fresh CAS/state checks, lookup not-observed without scheduling. New retry changes revision/scheduling metadata only; event/attempts unchanged, receipt/audit atomic. Generic HTTP and SDK limits retained."
+      evidence: []
+      remaining_scope: "Other WCP/MCP machine contracts, ordinary event payloads, SDK/Mock machine-contract consumption, breaking-change CI and tool/runtime/release evidence."
+      pending_evidence:
+        - "Local references, six full success envelopes, raw versus normalized commands and original identity/key binding"
+        - "Bigint and safe event-version limits, status/null/summary arithmetic and canonical millisecond time relationships"
+        - "Directory visibility/order/cursor/filter binding, summary snapshot and selected versus lookahead parsing"
+        - "Actual stream tip visibility, ambiguous/deleted/gap precedence and bounded diagnosis candidates"
+        - "Immutable stored-event validation, shared transaction locks, replay ordering and current/historical receipt integrity"
+        - "Fresh scheduling CAS/atomic receipt/audit, no application guarantee, lookup absence and ambiguous commit recovery"
+        - "Trusted-admin/human policy gates, actual HTTP/version/body/identity errors and SDK parsing boundaries"
+      execution: "Manual source/docs review and explicit formatting/Git text checks only; no build, typecheck, tests, validators, generators, product/API/database execution or release."
     context_index_openapi_development_increment:
       date: "2026-11-05"
       todo: "P0-01"

@@ -1,5 +1,13 @@
 # 独立契约结构定义
 
+2026-11-05，TODO **P0-01**：新增 [plane-inbox.json](plane-inbox.json) 与 [plane-inbox-retry.json](plane-inbox-retry.json)。前者自包含，提供 PlaneInboxIdentity、RecordQuery/SummaryQuery/ListQuery、Record/Page/Summary/Diagnosis 及四个完整读取成功封套；后者引用前者，提供 PlaneInboxRetryBody/Command/Receipt/Lookup 及两个完整成功封套。包子路径对应文件名；本地注册两份完整资源并保留 ID/相对路径，HTTP 见 [Plane 收件箱 OpenAPI](../openapi/plane-inbox.json)。
+
+输出为处理元数据，不包含原事件正文/来源/指纹。事件版本为正安全整数十进制字符串，队列 revision 为正 bigint 字符串，attempts/计数为非负 bigint 字符串；重试 expected_revision 为可加一的正 bigint。规范 UTC 时间支持扩展年份，不擅自添加一般性的接收/更新/应用/检查先后约束。Schema 描述状态与 null、概览零计数与时间、诊断 baseline 数量/位置/候选和回执状态关系；数值上限、UTF-16/孤立代理项、真实日期、原范围/身份/命令绑定、计数/版本算术与时间排序仍由原解析器检查。
+
+列表游标绑定范围、restricted 权限、筛选及页大小，不绑定账号客户端；诊断只公开真实提交最高版本的可见 applied 回执，最多两个基线、每组十个候选，不能替换成较旧的可见水位。详情外层身份和 retry 提示属于完整输出形状，现有 SDK 不独立解析这两个额外字段。
+
+重试原正文的 event_id 由路径覆盖；reason 先检查原长度再 trim，请求键可来自正文 request_key 或头，两者必须相同。回执的 pending 状态/原 checked_at 是历史调度记录；重放时即使当前已 applied 也不改写。lookup 的 recorded 必须带完整原回执，not-observed 必须无 receipt；它仍检查当前目标和不可变事件并加事务锁，不代表原命令失败。所有结构定义不替代完整事件/权限/锁/持久性核对。P0-01/R-001 未完成、evidence 为空；未编译、测试、运行校验器/生成器/API/数据库或发布。
+
 2026-11-05，TODO **P0-01**：新增 [context-index.json](context-index.json)，复用search Schema标量；根为目录/状态/内容写入/删除/恢复五类完整成功联合。提供 ContextIndexIdentity/Status/StatusQuery/ListQuery/ListPage、原始WriteBody/WrittenHit、原始MutationBody/规范Mutation/MutationReceipt和五成功锚点。包子路径 @planemem/contracts/schemas/context-index.json；本地同时注册search.json，HTTP见context-index OpenAPI。
 
 元数据时间限定四位年UTC毫秒，内容写入到期时间允许原解析器支持的扩展年；版本为非负安全整数，管理expected_revision上限少一。状态含删除/过期/plane前缀关系；原始管理正文id被路径覆盖，理由检查后trim。内容写入文本不trim，来源规范化为四字段，可附一条capture来源。状态身份/权限位于封套外层，正文写入与历史元数据回执不能混用；后者恢复仍可expired。运行另核对UTF-16/日历/同范围/原请求/版本算术/游标和来源相等，Schema不替代这些检查。P0-01/R-001未完成、evidence为空；未执行编译/测试/校验器/生成器/接口/数据库或发布。

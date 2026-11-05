@@ -1,6 +1,8 @@
 # WCP API 契约 v1
 
-2026-11-05，TODO P0-01：[旧索引五路 OpenAPI](../../../packages/contracts/openapi/README.md#旧索引内容与管理)及context-index Schema覆盖目录/状态GET与内容写入/删除/恢复POST，完整描述原始请求/规范命令/状态/身份权限/历史内容与元数据回执。明确游标可改页大小、重放先后、恢复不延长到期和capture非原子；修正搜索/观察MEMORY_PROVIDER_OFF未配置与disabled的retryable差别。OpenAPI累计五十三路；P0-01/R-001未完成、evidence为空，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+2026-11-05，TODO P0-01：[Plane 收件箱六路 OpenAPI](../../../packages/contracts/openapi/README.md#plane-收件箱与原重试回执) 及 plane-inbox/plane-inbox-retry Schema 覆盖列表、概览、详情、版本诊断、调度及原调度回执查询。完整描述元数据/身份提示、游标计数/真实提交水位、规范命令及历史回执；明确可信管理员/人工调度、可见性与完整事件核对先于重放，查询也持事务锁，排队不代表应用。OpenAPI 累计五十九路；P0-01/R-001 未完成、evidence 为空。未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
+2026-11-05，TODO P0-01：[旧索引五路 OpenAPI](../../../packages/contracts/openapi/README.md#旧索引内容与管理)及context-index Schema覆盖目录/状态GET与内容写入/删除/恢复POST，完整描述原始请求/规范命令/状态/身份权限/历史内容与元数据回执。明确游标可改页大小、重放先后、恢复不延长到期和capture非原子；修正搜索/观察MEMORY_PROVIDER_OFF未配置与disabled的retryable差别。该轮使OpenAPI累计五十三路；P0-01/R-001未完成、evidence为空，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 2026-11-05，TODO P0-01：[双搜索 OpenAPI](../../../packages/contracts/openapi/README.md#项目与旧索引搜索)及独立search Schema覆盖POST /v1/search和POST /v1/context/search。完整定义请求/项目分页/bigint版本及旧索引安全数字revision/记忆命中/完整封套，明确游标可改页大小、数据库排序、来源与记忆降级/HTTP边界。该轮使OpenAPI累计四十八路；其余WCP/MCP等仍缺，P0-01/R-001未完成、evidence为空。未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 

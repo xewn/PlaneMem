@@ -1,5 +1,9 @@
 # Plane Webhook 持久接收与重试（开发状态）
 
+2026-11-05，TODO P0-01：新增 [六路 OpenAPI](../../../packages/contracts/openapi/plane-inbox.json)、[读取 Schema](../../../packages/contracts/schemas/plane-inbox.json) 与 [原重试 Schema](../../../packages/contracts/schemas/plane-inbox-retry.json)，对应四类元数据读取及重试/原回执两个 POST；Webhook 不在本轮机器契约范围。见 [完整加载与运行边界](../../../packages/contracts/openapi/README.md#plane-收件箱与原重试回执)。仅新增契约源码，不改变下述运行实现，不构成运行证据。
+
+补充边界：列表按事件 ID 降序，游标绑定 limit；概览不继承列表筛选。诊断只公开实际最高提交版本中选中的可见 applied 回执，最多两个基线不能当作完整分叉数量；读取不解析原事件全文。重试与查询均先检查完整不可变事件/指纹和当前可见性并持有更新/咨询/父项目共享锁，查询不是数据库 READ ONLY 事务。原回执重放在新版本/状态检查之前，保留历史 pending 状态；新调度仅 revision 加一、不增加 attempts，不直接驱动应用。3 秒锁/15 秒语句超时不是整次期限；无完整响应字节/并发槽或提交后身份到期复查保证。P0-01/R-001 未完成、evidence 为空；未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
 2026-11-02：仅修改源码、文档和新增 `037_plane_event_inbox.sql`、`038_plane_inbox_directory.sql`、`039_plane_inbox_retry.sql`、`040_plane_observation_deletion.sql` 文件。未编译、类型检查、测试、启动服务、执行迁移或发布；016–040 迁移均未执行。以下是当前源码行为，尚无运行证据。
 
 ## 接收和响应

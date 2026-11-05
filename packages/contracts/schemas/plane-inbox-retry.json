@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/plane-inbox-retry.json",
+  "title": "PlaneMem original Plane retry scheduling receipts",
+  "description": "Source-only original command, scheduling receipt and recorded/not-observed lookup. Scheduling is not application of the event. Register plane-inbox.json alongside this schema.",
+  "$comment": "Runtime additionally checks UTF-16/lone surrogate bounds, decimal bigint arithmetic, original normalized command/identity/key binding and record relationships. Existing server verifies immutable stored event/current visibility before saved-receipt lookup. No new runtime/schema-validator integration.",
+  "oneOf": [{ "$ref": "#PlaneInboxRetryEnvelope" }, { "$ref": "#PlaneInboxRetryLookupEnvelope" }],
+  "$defs": {
+    "expectedRevision": {
+      "$ref": "./plane-inbox.json#/$defs/revision",
+      "not": { "const": "9223372036854775807" },
+      "description": "Positive canonical bigint string up to9223372036854775806; numeric versions and leading zeros rejected."
+    },
+    "reason": {
+      "type": "string",
+      "maxLength": 2000,
+      "pattern": "\\S",
+      "not": { "pattern": "\\u0000" },
+      "$comment": "Raw <=2000 UTF-16 units/no NUL/no lone surrogates then trim. Other control characters are not independently rejected."
+    },
+    "normalizedReason": { "$ref": "#/$defs/reason", "not": { "pattern": "^\\s|\\s$" } },
+    "key": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "not": { "pattern": "[\\s\\u0000-\\u001f\\u007f]" },
+      "$comment": "Runtime length<=255 UTF-16 units and no lone surrogates. Unicode non-whitespace characters allowed; not restricted to ASCII."
+    },
+    "body": {
+      "$anchor": "PlaneInboxRetryBody",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expected_revision", "reason"],
+      "properties": {
+        "event_id": {
+          "description": "Optional raw body field overwritten by decoded route event_id, without equality/type check."
+        },
+        "expected_revision": { "$ref": "#/$defs/expectedRevision" },
+        "reason": { "$ref": "#/$defs/reason" },
+        "request_key": { "$ref": "#/$defs/key" }
+      },
+      "description": "Same body for schedule and lookup. request_key required here or Idempotency-Key header; both must agree. No body idempotency_key, identity, expected_version or confirmation field. Version headers forbidden after generic parsing. Actor/client precondition headers independently optional on HTTP; SDK requires both original identities."
+    },
+    "command": {
+      "$anchor": "PlaneInboxRetryCommand",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "expected_revision", "reason"],
+      "properties": {
+        "event_id": { "$ref": "./plane-inbox.json#/$defs/ulid" },
+        "expected_revision": { "$ref": "#/$defs/expectedRevision" },
+        "reason": { "$ref": "#/$defs/normalizedReason" }
+      },
+      "description": "Original normalized command. Request fingerprint=SHA256(stable-key-sorted JSON of {operation:'plane.inbox.retry',identity,command}); key is separate. Replay does not replace original revision or reason."
+    },
+    "receipt": {
+      "$anchor": "PlaneInboxRetryReceipt",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation",
+        "identity",
+        "request_key",
+        "command",
+        "previous_status",
+        "previous_error_code",
+        "previous_attempts",
+        "record"
+      ],
+      "properties": {
+        "operation": { "const": "plane.inbox.retry" },
+        "identity": { "$ref": "./plane-inbox.json#PlaneInboxIdentity" },
+        "request_key": { "$ref": "#/$defs/key" },
+        "command": { "$ref": "#PlaneInboxRetryCommand" },
+        "previous_status": { "enum": ["pending", "rejected"] },
+        "previous_error_code": { "$ref": "./plane-inbox.json#/$defs/nullableError" },
+        "previous_attempts": { "$ref": "./plane-inbox.json#/$defs/decimal" },
+        "record": {
+          "$ref": "./plane-inbox.json#PlaneInboxRecord",
+          "properties": {
+            "status": { "const": "pending" },
+            "last_error_code": { "type": "null" },
+            "applied_at": { "type": "null" },
+            "event_type": { "type": "string" },
+            "revision": { "not": { "const": "1" } }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "previous_status": { "const": "rejected" } } },
+          "then": {
+            "properties": {
+              "previous_error_code": { "$ref": "./plane-inbox.json#/$defs/errorCode" },
+              "previous_attempts": { "not": { "const": "0" } }
+            }
+          }
+        }
+      ],
+      "description": "Original full identity/key/normalized command. record event_id/scope match command/identity, revision=expected_revision+1, attempts=previous_attempts, updated_at=next_attempt_at. Event and attempts are not changed by scheduling. Historical checked_at/status remain unchanged on replay, even after worker applies/rejects/defer. Does not include event payload/fingerprint/original trace or a replayed flag. Current server additionally verifies immutable event fingerprint and monotonic current revision/attempts plus stable aggregate/version/type/received_at before returning saved receipt."
+    },
+    "lookup": {
+      "$anchor": "PlaneInboxRetryLookup",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "request_key", "command", "status"],
+      "properties": {
+        "identity": { "$ref": "./plane-inbox.json#PlaneInboxIdentity" },
+        "request_key": { "$ref": "#/$defs/key" },
+        "command": { "$ref": "#PlaneInboxRetryCommand" },
+        "status": { "enum": ["recorded", "not-observed"] },
+        "receipt": { "$ref": "#PlaneInboxRetryReceipt" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "recorded" } } },
+          "then": { "required": ["receipt"] },
+          "else": { "not": { "required": ["receipt"] } }
+        }
+      ],
+      "description": "Returned identity/key/command match original request; recorded receipt repeats the same values. not-observed only means no matching scoped original key was observed after current target visibility and immutable-event verification, not command failure or permission to replace the key. Lookup takes transaction/update/advisory locks but does not reschedule or add a scheduling receipt/audit."
+    },
+    "retryEnvelope": {
+      "$anchor": "PlaneInboxRetryEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "type": "string", "minLength": 1 },
+        "source_refs": { "const": [] },
+        "data": { "$ref": "#PlaneInboxRetryReceipt" }
+      },
+      "description": "Current trace with original scheduling receipt. HTTP200 means scheduling only; no outer revision/etag/server_cursor, ETag or application proof."
+    },
+    "lookupEnvelope": {
+      "$anchor": "PlaneInboxRetryLookupEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "type": "string", "minLength": 1 },
+        "source_refs": { "const": [] },
+        "data": { "$ref": "#PlaneInboxRetryLookup" }
+      }
+    }
+  }
+}

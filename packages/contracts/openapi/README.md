@@ -1,7 +1,20 @@
 # OpenAPI 源码契约
 
-这里的文档描述已有HTTP实现，尚未经过OpenAPI校验器、生成器、编译、类型检查、测试或运行验证。文档中的版本不表示已发布或部署；目前覆盖五个保存包接口、九个文件接口、九个上下文条目接口、六个同步接口、五个冲突接口、八个建议接口、四个Plane观察接口、两个搜索接口及五个旧索引接口，共五十三个接口，尚不是完整WCP接口目录。
+这里的文档描述已有 HTTP 实现，尚未经过校验器、生成器、编译、类型检查、测试或运行验证。文档版本不表示已发布或部署；当前覆盖保存包 5 路、文件 9 路、上下文条目 9 路、同步 6 路、冲突 5 路、建议 8 路、Plane 观察 4 路、搜索 2 路、旧索引 5 路及 Plane 收件箱 6 路，共 59 路，尚不是完整 WCP 接口目录。
 
+## Plane 收件箱与原重试回执
+
+2026-11-05，TODO **P0-01**：[plane-inbox OpenAPI](plane-inbox.json) 覆盖 GET /v1/plane/events、/summary、/{event_id}、/{event_id}/diagnosis 与 POST /{event_id}/retry、/{event_id}/retry/receipt 六路。完整元数据/查询/概览/诊断/身份提示见 [plane-inbox Schema](../schemas/plane-inbox.json)，原正文/规范命令/历史回执/recorded 与 not-observed 见 [plane-inbox-retry Schema](../schemas/plane-inbox-retry.json)。包子路径对应文件名；同时本地加载 search/context-history 公共 HTTP 组件和两份 Schema，保留完整 ID 与相对路径。
+
+六路均要求可信管理员，调度额外要求人工身份和 plane.retry Policy，其他五路为 admin.read；实际 restricted 读取能力不由 admin 替代。有效分类取原事件、当前父项目和匹配 Plane 索引的最大值；未知等级保守按 restricted，已删除/到期索引仍参与。列表先过滤再按事件 ID 的 C 顺序降序分页，默认 25、最多 100；游标绑定页大小但不绑定账号客户端，无签名或跨页快照。缺失/隐藏父项目列表空 200，其余读取 404。due/delayed 按数据库时间比较，规范到毫秒后允许相等；version_gap 是保存的错误标记。
+
+概览在同一 SQL 快照读取全部可见队列，与列表筛选无关；计数均为 bigint 字符串，明确总数/待处理分解和 null 时间关系。诊断读取真实提交最高两行并只保留最高版本，全部选中水位都有可见匹配 applied 回执才公开基线，不能替换较旧可见水位。七种位置按当前比较顺序判定；两类候选最多各十条、升序、has_more 无续页，且不验证完整事件或保证能应用。详情 retry 提示仅表示人工身份，不是完整调度授权。
+
+重试和回执查询共用原范围/账号/客户端/键的锁及 inbox 更新锁、索引锁和父项目共享锁；查询并非 READ ONLY 事务。先检查可见性、完整不可变事件和指纹，再查原回执。已有回执必须核对原命令/事件、当前 revision/attempts 单调不减和稳定元数据，早于新请求的版本/状态检查，返回原 pending 历史回执。无回执时，查询只返回 not-observed；新调度才要求相同队列 revision 与 pending/rejected，更新 pending、清空错误、时间设为本次语句时间、revision 加一，保留原事件与 attempts，并同事务保存回执和调度审计。没有直接调用 worker，成功不证明事件已应用。
+
+两 POST 的原正文 event_id 被路径覆盖，reason 先检查原长度再 trim；正文 request_key 与头键必须相同。HTTP 身份条件分别可选，SDK 两者均要求；两 POST 拒绝版本头，四 GET 只解析有效版本头但不做条件读取。仅列表接受查询参数。POST 认证前通用 1 MiB JSON、非 fatal UTF-8，坏/超限 400；无媒体/编码/缓存/Range 或 GET 正文专用拒绝。成功 private,no-store、当前 trace、空来源、无 ETag；无专用完整响应字节/两容量/整次期限或读取提交后到期复查。事务的 3 秒锁/15 秒语句超时不等于整次期限；提交后连接失败也可能返回 503，应保留原键查询。
+
+本轮新增六路，OpenAPI 累计五十九路。其余 WCP/MCP、事件 payload、SDK/Mock 机器契约接线及破坏性差异 CI 仍缺；P0-01/R-001 未完成、evidence 为空。仅人工源码文档审阅/指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 ## 旧索引内容与管理
 
 2026-11-05，TODO **P0-01**：[context-index OpenAPI](context-index.json)覆盖目录/状态两个GET和索引写入/删除/恢复三个POST；[context-index Schema](../schemas/context-index.json)完整定义五类成功、目录筛选/状态、当前身份、原始索引正文、规范管理命令及历史回执。包子路径对应文件名；本地加载context-index/search两份Schema及本OpenAPI、search/context-history公共HTTP组件，保留相对路径与完整ID。未运行校验器或生成器。
@@ -18,7 +31,7 @@
 
 五路沿Bearer/范围/Policy/审计/限流，POST独立要求可信客户端；实际restricted权限不由admin替代。POST认证前读1MiB通用JSON，坏/超限400，非fatal UTF-8；GET不专门拒绝正文/framing，未提供媒体/编码/缓存/Range专用门禁。仅目录接受URL查询；所有路由解析版本头，但读取和内容写入不按版本头条件读取/CAS。无ETag、完整响应总字节预算、两容量或整次期限，也无读取/提交后到期复查。错误后不能推断外部capture未发生。
 
-OpenAPI累计五十三路；其余WCP/MCP、事件payload、SDK/Mock机器契约接线及破坏性差异CI仍缺。P0-01/R-001未完成、evidence为空；仅人工源码文档审阅/指定格式/Git文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+该轮使OpenAPI累计五十三路；其余WCP/MCP、事件payload、SDK/Mock机器契约接线及破坏性差异CI仍缺。P0-01/R-001未完成、evidence为空；仅人工源码文档审阅/指定格式/Git文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 ## 项目与旧索引搜索
 

@@ -1,5 +1,9 @@
 # 架构决策记录摘要
 
+2026-11-05 本轮源码落地：Plane 收件箱六路 OpenAPI、读取/原重试两份完整 Schema 与三项包子路径已补齐；列表/概览/详情/诊断及历史调度回执边界与现有处理器逐项人工对照，公共目录/WCP/运行说明、根 README/TODO 和 R001 已同步，OpenAPI 累计 59 路。P0-01/R001 仍未完成，evidence 保持为空；无运行实现或旧 Schema 改动。仅人工源码文档审阅/指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
+2026-11-05 P0-01 Plane收件箱六路机器契约（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增 schemas/plane-inbox.json、schemas/plane-inbox-retry.json 及 openapi/plane-inbox.json，覆盖目录/概览/详情/版本诊断四GET与重试调度/原回执两POST。完整定义元数据、三类十进制数字、筛选游标/计数与时间关系、真实提交水位诊断、当前身份权限提示、规范原命令/历史调度回执及recorded/not-observed；明确可信管理员/人工调度、有效分类、事件完整性/锁/重放顺序和调度不代表应用。范围三新JSON、exports、两README、根README/TODO、公共目录/WCP/plane-inbox运行文档、R001及ADR/T0.3/T4.1；不改运行实现、旧Schema、SDK/Mock、依赖或数据库。仅人工源码文档审阅/指定格式/Git文本检查，不编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布；独立提交push main带[skip ci]，P0-01/R001未完成、evidence为空。
+
 2026-11-05 本轮范围补充：人工核对MemoryServiceAdapter发现MEMORY_PROVIDER_OFF的未配置分支retryable=false、已配置但disabled分支retryable=true；同步更正search/observed-reads两份OpenAPI对应说明，加入本轮R001记录。仅契约文字修正，不改旧Schema或运行代码。
 
 2026-11-05 P0-01 旧索引五路机器契约（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增 schemas/context-index.json 与 openapi/context-index.json，覆盖目录/状态GET、索引写入/删除/恢复POST五路。完整定义目录筛选/状态/当前身份权限提示、原索引正文与返回命中、规范管理命令与历史回执；明确原身份键/规范指纹、重放前可见性与元数据/正文不同边界、外部capture非原子及恢复不延长到期时间。范围两新JSON、exports、两README、根README/TODO、公共目录/WCP、旧索引搜索/管理运行文档、R001和ADR/T0.3/T4.1；复用search Schema标量，不改运行实现、旧Schema、SDK/Mock、依赖或数据库。仅人工源码文档审阅/指定格式/Git文本检查，不编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布；独立提交push main带[skip ci]，P0-01/R001未完成、evidence为空。
