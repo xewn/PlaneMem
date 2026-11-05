@@ -1,0 +1,224 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/workbench-admin.json",
+  "title": "PlaneMem scoped administration snapshot",
+  "description": "Complete admin operation request and closed observation envelope for the existing workbench query route. Not a service-health or release-readiness certificate.",
+  "$comment": "Source-only. Runtime additionally enforces UTF-16 lengths, rejects lone surrogates, checks calendar roundtrip, exact trusted scope/current trace, optional trusted capability-state matching and whole candidate JSON.stringify UTF-8<=16384 bytes. No validator/runtime evidence.",
+  "$ref": "#WorkbenchAdminEnvelope",
+  "$defs": {
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "not": { "pattern": "[\\u0000-\\u001f\\u007f]" },
+      "description": "Nonempty untrimmed text, whitespace-only valid. Runtime also rejects lone surrogates and counts UTF-16 units."
+    },
+    "scopeText": { "$ref": "#/$defs/text", "maxLength": 256 },
+    "versionText": { "$ref": "#/$defs/text", "maxLength": 128 },
+    "request": {
+      "$anchor": "WorkbenchAdminRequest",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation"],
+      "properties": { "operation": { "const": "admin" } }
+    },
+    "availableCount": {
+      "$anchor": "WorkbenchAdminAvailableCount",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "value"],
+      "properties": {
+        "state": { "const": "available" },
+        "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+      }
+    },
+    "unavailableCount": {
+      "$anchor": "WorkbenchAdminUnauthorizedCount",
+      "const": { "state": "not-authorized", "value": null }
+    },
+    "count": {
+      "$anchor": "WorkbenchAdminCount",
+      "oneOf": [
+        { "$ref": "#WorkbenchAdminAvailableCount" },
+        { "$ref": "#WorkbenchAdminUnauthorizedCount" }
+      ]
+    },
+    "counts": {
+      "$anchor": "WorkbenchAdminCounts",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["audit_records", "running_sessions", "open_conflicts"],
+      "properties": {
+        "audit_records": { "$ref": "#WorkbenchAdminCount" },
+        "running_sessions": { "$ref": "#WorkbenchAdminCount" },
+        "open_conflicts": { "$ref": "#WorkbenchAdminCount" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "running_sessions": { "$ref": "#WorkbenchAdminAvailableCount" } },
+            "required": ["running_sessions"]
+          },
+          "then": {
+            "properties": { "open_conflicts": { "$ref": "#WorkbenchAdminAvailableCount" } }
+          },
+          "else": {
+            "properties": { "open_conflicts": { "$ref": "#WorkbenchAdminUnauthorizedCount" } }
+          }
+        }
+      ],
+      "description": "Actual audit.read controls audit_records; actual context.read controls both context counts. Not-authorized is null, never zero. SQL parses canonical decimal COUNT text to safe integer, no count::int narrowing."
+    },
+    "snapshot": {
+      "$anchor": "WorkbenchAdminSnapshot",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["read_at", "gateway_version", "database", "counts", "checks"],
+      "properties": {
+        "read_at": {
+          "type": "string",
+          "minLength": 24,
+          "maxLength": 24,
+          "pattern": "^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$",
+          "description": "Statement timestamp normalized to exact UTC milliseconds; runtime checks real calendar roundtrip."
+        },
+        "gateway_version": { "$ref": "#/$defs/versionText" },
+        "database": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "version"],
+          "properties": {
+            "state": { "const": "read-succeeded" },
+            "version": { "$ref": "#/$defs/versionText" }
+          }
+        },
+        "counts": { "$ref": "#WorkbenchAdminCounts" },
+        "checks": {
+          "const": {
+            "audit_write": "not-checked",
+            "identity_provider": "not-checked",
+            "policy_service": "not-checked",
+            "plane_connector": "not-checked",
+            "telemetry": "not-checked",
+            "release_readiness": "not-checked"
+          }
+        }
+      },
+      "description": "One scoped SQL observation requires readable undeleted parent project. Counts only visible audit rows/running sessions/open source-visible conflicts. database.version is actual current_setting(server_version); gateway_version is configured text. No external health probes; Mock sources/read-succeeded are simulated protocol fields."
+    },
+    "envelope": {
+      "$anchor": "WorkbenchAdminEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "scope", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "#/$defs/text", "maxLength": 512 },
+        "scope": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["tenant_id", "workspace_id", "project_id"],
+          "properties": {
+            "tenant_id": { "$ref": "#/$defs/scopeText" },
+            "workspace_id": { "$ref": "#/$defs/scopeText" },
+            "project_id": { "$ref": "#/$defs/scopeText" }
+          }
+        },
+        "source_refs": { "type": "array", "minItems": 3, "maxItems": 6 },
+        "data": { "$ref": "#WorkbenchAdminSnapshot" }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "data": {
+              "properties": {
+                "counts": {
+                  "properties": {
+                    "audit_records": { "$ref": "#WorkbenchAdminUnauthorizedCount" },
+                    "running_sessions": { "$ref": "#WorkbenchAdminUnauthorizedCount" }
+                  }
+                }
+              }
+            },
+            "source_refs": {
+              "const": [
+                { "type": "runtime", "id": "api-gateway" },
+                { "type": "postgres", "id": "pg_settings" },
+                { "type": "postgres", "id": "wcp_projects" }
+              ]
+            }
+          }
+        },
+        {
+          "properties": {
+            "data": {
+              "properties": {
+                "counts": {
+                  "properties": {
+                    "audit_records": { "$ref": "#WorkbenchAdminAvailableCount" },
+                    "running_sessions": { "$ref": "#WorkbenchAdminUnauthorizedCount" }
+                  }
+                }
+              }
+            },
+            "source_refs": {
+              "const": [
+                { "type": "runtime", "id": "api-gateway" },
+                { "type": "postgres", "id": "pg_settings" },
+                { "type": "postgres", "id": "wcp_projects" },
+                { "type": "postgres", "id": "wcp_audit_records" }
+              ]
+            }
+          }
+        },
+        {
+          "properties": {
+            "data": {
+              "properties": {
+                "counts": {
+                  "properties": {
+                    "audit_records": { "$ref": "#WorkbenchAdminUnauthorizedCount" },
+                    "running_sessions": { "$ref": "#WorkbenchAdminAvailableCount" }
+                  }
+                }
+              }
+            },
+            "source_refs": {
+              "const": [
+                { "type": "runtime", "id": "api-gateway" },
+                { "type": "postgres", "id": "pg_settings" },
+                { "type": "postgres", "id": "wcp_projects" },
+                { "type": "postgres", "id": "wcp_sessions" },
+                { "type": "postgres", "id": "wcp_conflicts" }
+              ]
+            }
+          }
+        },
+        {
+          "properties": {
+            "data": {
+              "properties": {
+                "counts": {
+                  "properties": {
+                    "audit_records": { "$ref": "#WorkbenchAdminAvailableCount" },
+                    "running_sessions": { "$ref": "#WorkbenchAdminAvailableCount" }
+                  }
+                }
+              }
+            },
+            "source_refs": {
+              "const": [
+                { "type": "runtime", "id": "api-gateway" },
+                { "type": "postgres", "id": "pg_settings" },
+                { "type": "postgres", "id": "wcp_projects" },
+                { "type": "postgres", "id": "wcp_audit_records" },
+                { "type": "postgres", "id": "wcp_sessions" },
+                { "type": "postgres", "id": "wcp_conflicts" }
+              ]
+            }
+          }
+        }
+      ],
+      "description": "Exact closed keys at every object, ordered sources paired with capability-dependent count states. Current trusted scope and trace must match. Entry policy and handler require verified client, admin role, actual admin.read and finite unexpired token; handler rechecks after await. Network SDK cannot independently attest capabilities; embedded trusted consumers can pass expectedAccess."
+    }
+  }
+}

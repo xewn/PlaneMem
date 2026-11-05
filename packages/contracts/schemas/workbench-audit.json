@@ -1,0 +1,207 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/workbench-audit.json",
+  "title": "PlaneMem workbench audit read",
+  "description": "Complete normalized audit page and exact-filter request for POST /v1/workbench/query. Independent of the stricter export document canonicalizer.",
+  "$comment": "Source-only. Runtime enforces UTF-16 lengths, real calendar times, canonical cursor re-encoding/key binding, exact request/response matching, strict order, unique IDs and JSON.stringify UTF-8 budgets. Schema cannot establish authorization, byte limits or snapshot consistency. Parser accepts extra response fields then strips them; this schema describes the normalized output.",
+  "$ref": "#WorkbenchAuditEnvelope",
+  "$defs": {
+    "text": { "type": "string", "minLength": 1 },
+    "ulid": {
+      "type": "string",
+      "minLength": 26,
+      "maxLength": 26,
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "filterText": {
+      "type": "string",
+      "minLength": 1,
+      "not": { "pattern": "[\\u0000-\\u001f\\u007f]" },
+      "description": "Exact, untrimmed, case-sensitive string; whitespace-only allowed. Runtime limits UTF-16 units; ordinary filters do not reject lone surrogates."
+    },
+    "resourceFilter": { "$ref": "#/$defs/filterText", "maxLength": 2048 },
+    "traceFilter": { "$ref": "#/$defs/filterText", "maxLength": 512 },
+    "actionFilter": { "$ref": "#/$defs/filterText", "maxLength": 256 },
+    "cursor": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,1024}$",
+      "not": { "pattern": "[^A-Za-z0-9_-]" },
+      "description": "Canonical unpadded base64url of compact ASCII JSON [1,key,occurred_at,audit_id]. Runtime decodes, normalizes time and re-encodes exactly; a millisecond-only cursor is noncanonical. Query key is SHA-256 of scope/restricted access/exact filters, including session_id when supplied; no actor/client binding, signature or snapshot."
+    },
+    "query": {
+      "$anchor": "WorkbenchAuditQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "resource": { "$ref": "#/$defs/resourceFilter" },
+        "trace_id": { "$ref": "#/$defs/traceFilter" },
+        "action": { "$ref": "#/$defs/actionFilter" },
+        "audit_id": { "$ref": "#/$defs/ulid" },
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "cursor": { "$ref": "#/$defs/cursor" }
+      },
+      "not": { "required": ["audit_id", "cursor"] },
+      "description": "Fixed page size200, no limit field. trace_id filters the saved record trace independently of the current request trace."
+    },
+    "request": {
+      "$anchor": "WorkbenchAuditRequest",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation"],
+      "properties": {
+        "operation": { "const": "audit" },
+        "resource": { "$ref": "#/$defs/resourceFilter" },
+        "trace_id": { "$ref": "#/$defs/traceFilter" },
+        "action": { "$ref": "#/$defs/actionFilter" },
+        "audit_id": { "$ref": "#/$defs/ulid" },
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "cursor": { "$ref": "#/$defs/cursor" }
+      },
+      "not": { "required": ["audit_id", "cursor"] }
+    },
+    "time": {
+      "type": "string",
+      "minLength": 27,
+      "maxLength": 27,
+      "pattern": "^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+      "description": "Normalized UTC microseconds, valid calendar year0001..9999. Parser also accepts exact3 fractional digits and appends000; output always has6. Runtime Date roundtrip rejects impossible dates."
+    },
+    "position": {
+      "$anchor": "WorkbenchAuditPosition",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["occurred_at", "audit_id"],
+      "properties": {
+        "occurred_at": { "$ref": "#/$defs/time" },
+        "audit_id": { "$ref": "#/$defs/ulid" }
+      }
+    },
+    "cursorContent": {
+      "$anchor": "WorkbenchAuditCursorContent",
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "prefixItems": [
+        { "const": 1 },
+        { "type": "string", "minLength": 64, "maxLength": 64, "pattern": "^[a-f0-9]{64}$" },
+        { "$ref": "#/$defs/time" },
+        { "$ref": "#/$defs/ulid" }
+      ],
+      "items": false
+    },
+    "byteCount": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "$ref": "#/$defs/text" },
+        "id": { "$ref": "#/$defs/text" },
+        "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "uri": { "$ref": "#/$defs/text" }
+      },
+      "description": "Normalized saved source; nonempty strings only, no URI/type allowlist or freshness proof. Extensions counted in raw source bytes then stripped."
+    },
+    "record": {
+      "$anchor": "WorkbenchAuditRecord",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "audit_id",
+        "actor_id",
+        "client_id",
+        "session_id",
+        "action",
+        "resource",
+        "result",
+        "classification",
+        "details",
+        "details_state",
+        "details_bytes",
+        "trace_id",
+        "source_refs",
+        "source_refs_state",
+        "source_refs_bytes",
+        "occurred_at"
+      ],
+      "properties": {
+        "audit_id": { "$ref": "#/$defs/ulid" },
+        "actor_id": { "$ref": "#/$defs/text" },
+        "client_id": { "$ref": "#/$defs/text" },
+        "session_id": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/text" }] },
+        "action": { "$ref": "#/$defs/text" },
+        "resource": { "$ref": "#/$defs/text" },
+        "result": { "enum": ["allowed", "denied", "error"] },
+        "classification": { "enum": ["public", "internal", "confidential", "restricted"] },
+        "details": true,
+        "details_state": { "enum": ["available", "too-large"] },
+        "details_bytes": { "$ref": "#/$defs/byteCount" },
+        "trace_id": { "$ref": "#/$defs/text" },
+        "source_refs": { "type": "array", "items": { "$ref": "#/$defs/source" } },
+        "source_refs_state": { "enum": ["available", "too-large"] },
+        "source_refs_bytes": { "$ref": "#/$defs/byteCount" },
+        "occurred_at": { "$ref": "#/$defs/time" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "details_state": { "const": "available" } },
+            "required": ["details_state"]
+          },
+          "then": { "properties": { "details_bytes": { "maximum": 32768 } } },
+          "else": {
+            "properties": { "details": { "const": null }, "details_bytes": { "minimum": 32769 } }
+          }
+        },
+        {
+          "if": {
+            "properties": { "source_refs_state": { "const": "available" } },
+            "required": ["source_refs_state"]
+          },
+          "then": { "properties": { "source_refs_bytes": { "maximum": 16384 } } },
+          "else": {
+            "properties": {
+              "source_refs": { "maxItems": 0 },
+              "source_refs_bytes": { "minimum": 16385 }
+            }
+          }
+        }
+      ],
+      "description": "Candidate record<=69632 UTF-8 JSON bytes; metadata subset<=16384. Original PostgreSQL JSONB text byte counts need not equal normalized JSON bytes. Available details additionally<=32768 and raw sources<=16384 JSON bytes. details is arbitrary JSON including scalar/null: read does not impose export canonicalizer depth/node/safe-integer rules. Saved session_id need not be ULID; saved text fields have no individual length/control/trim rules."
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant_id", "workspace_id", "project_id"],
+      "properties": {
+        "tenant_id": { "type": "string" },
+        "workspace_id": { "type": "string" },
+        "project_id": { "type": "string" }
+      },
+      "description": "Exact current trusted scope equality. Audit page parser does not independently apply admin/export text bounds."
+    },
+    "envelope": {
+      "$anchor": "WorkbenchAuditEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "scope", "data", "has_more"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "type": "string" },
+        "source_refs": { "const": [{ "type": "postgres", "id": "wcp_audit_records" }] },
+        "scope": { "$ref": "#/$defs/scope" },
+        "data": { "type": "array", "maxItems": 200, "items": { "$ref": "#WorkbenchAuditRecord" } },
+        "has_more": { "type": "boolean" },
+        "next_cursor": { "$ref": "#/$defs/cursor" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "has_more": { "const": true } }, "required": ["has_more"] },
+          "then": { "required": ["next_cursor"], "properties": { "data": { "minItems": 200 } } },
+          "else": { "not": { "required": ["next_cursor"] } }
+        }
+      ],
+      "description": "Entire candidate<=16MiB JSON bytes, current trace/scope exact. Unique audit IDs, strict occurred_at DESC/audit_id COLLATE C DESC, all rows before input cursor and satisfying every exact filter. Next cursor exactly last row, same incoming key and changed position. Exact audit_id yields at most1 and no continuation. SQL scopes/classifies audit rows without a readable-parent project join; all201 candidates including lookahead are parsed before slicing. Invalid metadata/selected or lookahead row fails whole page. No query echo, total, ETag, permissions or stable snapshot."
+    }
+  }
+}

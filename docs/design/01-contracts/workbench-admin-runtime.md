@@ -1,5 +1,7 @@
 # 工作台管理查询快照（源码阶段）
 
+2026-11-05，TODO P0-01：新增[完整管理Schema](../../../packages/contracts/schemas/workbench-admin.json)，并组合到[工作台统一查询OpenAPI](../../../packages/contracts/openapi/workbench-query.json)。严格封闭请求/快照/封套，建模计数的available/安全整数与not-authorized/null、两项context计数同态、四种准确有序来源及六种固定not-checked。文本不是ULID且允许纯空白，运行时另查UTF-16/孤立代理项、真实毫秒日历、16KiB候选和可信scope/trace。可选expectedAccess来自可信嵌入上下文；网络SDK不能仅凭响应断言当前能力。单SQL版本/计数与配置Gateway版本不证明外部服务或部署健康，Mock来源是协议模拟。统一HTTP没有MCP两槽或数据库全程期限；SDK默认30秒本地预算、错误净化retryable=false保持独立。P0-01/R-001未完成、evidence为空；只人工源码文档审阅/指定格式/Git文本检查，未编译、类型检查、测试、执行校验器/生成器/SDK/Mock/API/数据库或发布。
+
 更新：2026-11-02。仅修改源码与文档，没有编译、类型检查、测试、实际 SQL/HTTP 请求、浏览器/服务运行或发布。
 
 ## 入口与范围

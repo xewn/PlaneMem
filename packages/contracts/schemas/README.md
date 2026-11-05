@@ -1,8 +1,20 @@
 # 独立契约结构定义
 
+## 工作台统一查询
+
+2026-11-05，TODO P0-01：新增 [workbench-audit.json](workbench-audit.json)、[workbench-admin.json](workbench-admin.json)、[workbench-query.json](workbench-query.json) 和 [统一查询 OpenAPI](../openapi/workbench-query.json)，四项同名包子路径。完整覆盖11种操作，checkpoints另含两种互斥模式；统一HTTP入口只计一条，当前OpenAPI累计90路。P0-01/R-001仍未完成，evidence为空。
+
+组合根为WorkbenchQueryRequest，oneOf按operation选择；WorkbenchQueryEnvelope用anyOf，因为响应不带operation且合法形状可能重叠。x-operation-models逐项映射原请求及完整成功，消费者仍需根据原请求选择正确模型并核对范围/trace/筛选。conflicts复用conflict-read的六个原查询属性和完整目录封套；POST的limit是JSON整数，GET的URL数字语法不适用。内置工作项响应、SDK工作项封套、独立GET会话/检查点封套保持各自边界。
+
+审计提供WorkbenchAuditQuery/Request/Position/CursorContent/Record/Envelope。封闭精确查询、audit_id与cursor互斥、固定200条；resource/action/trace不trim或折叠大小写，普通查询文本不独立拒绝孤立代理项，保存session_id也不强加ULID。记录保留任意JSON details，不能复用导出规范器更强的深度/节点/安全整数约束。details/source_refs分别按原JSONB文本字节数标记available或too-large，后者为null/空数组；32KiB/16KiB可用字段、16KiB元数据、68KiB单记录与16MiB整页仍由运行解析计量。三位时间输入规范为六位微秒，倒序时间/审计ID及规范游标/查询key/末条关系由运行时核对；SQL连第201条候选也完整解析，不把审计历史错误地绑定到当前可读父项目。
+
+管理提供WorkbenchAdminRequest/AvailableCount/UnauthorizedCount/Count/Counts/Snapshot/Envelope。精确封闭字段、规范毫秒时间、三项安全计数和六项固定not-checked；running_sessions/open_conflicts授权状态一致，四种状态组合分别约束准确有序来源。无权查看是null而非0，实际audit.read/context.read独立决定可用性；网络SDK没有可信能力视图，嵌入式消费者可以传expectedAccess。外层16KiB、UTF-16/孤立代理项/日历和可信范围/trace仍需运行解析；配置版本与模拟来源不证明真实健康或部署。
+
+本地消费者须加载组合直接引用的workbench-overview、work-item-projection、context-item-directory、session-registry、handoff-registry、checkpoint-registry、conflict-read、workbench-audit、workbench-admin，以及各资源传递引用的Schema，按其$id登记，不依赖访问planemem.local。HTTP组件另复用session-reads/search/context-history。未新增消费接线、生成或发布；只人工源码文档审阅、指定格式和Git文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/SDK/Mock/API/数据库。
+
 ## 工作台交接与检查点查询
 
-2026-11-05，TODO P0-01：新增 [handoff-registry.json](handoff-registry.json) 与 [checkpoint-registry.json](checkpoint-registry.json)及同名包子路径，补齐handoffs与checkpoints两种操作，后者包含项目目录/会话全文历史两种互斥模式。统一查询已有八种操作模型，conflicts/audit/admin三种仍待补齐后组合一个完整OpenAPI入口；现有路由计数保持89。两资源加载session-activity-read，检查点另加载checkpoint-read完整历史条目。
+2026-11-05，TODO P0-01：新增 [handoff-registry.json](handoff-registry.json) 与 [checkpoint-registry.json](checkpoint-registry.json)及同名包子路径，补齐handoffs与checkpoints两种操作，后者包含项目目录/会话全文历史两种互斥模式。该轮准备八种操作模型、OpenAPI保持89路；当前完整11操作组合与90路进度见上节。两资源加载session-activity-read，检查点另加载checkpoint-read完整历史条目。
 
 交接提供HandoffRegistryQuery/NormalizedQuery/Request、Record/ReaderRecord、Page/Scope/Permissions/Envelope和Position/CursorContent。原空status/origin省略，session_id须ULID；open筛选匹配保存open/offered，closed匹配其余状态。十四字段基础记录和十六字段个性化记录分开，内部开放字段用于组合、公开对象闭合。session来源要求from_client/正安全版本，open固定版本1且无领取者，claimed/expired至少2；claimed必须有客户端，旧账号归属仍可null。projection固定未知归属/版本为null，不推断当前持久状态。原目标与领取者、两种逐行提示和当前身份的精确关系须运行核对，不将提示等同于可领取或原请求成功。
 
@@ -12,11 +24,11 @@
 
 存在session_id即进入历史模式，只接受before_revision数字，禁止混入目录筛选/limit/cursor。固定最多十条完整六类笔记，复用CheckpointHistoryEntry，续页为末条revision且必须大于1；使用原始revision边界，没有目录摘要/微秒游标绑定。工作台历史保留身份/权限但没有独立GET的外层范围字段，身份存在才独立核对其scope；SDK还核对所供actor/client。SQL只构造前十条正文并预留16KiB元数据，第十一条只核对位置和null正文；8MiB候选超限整页失败，不缩页或生成绕过失败页的游标。
 
-目录完整JSON.stringify候选限2MiB，工作台历史限8MiB；均不具有上下文目录的通用有限普通JSON/深度/节点快照保证。目录SDK对WORKBENCH_AUTH_UNAVAILABLE净化为GATEWAY_UNAVAILABLE，检查点全文SDK则保留有限对应错误；均有默认30秒本地预算和独立有界Fetch，未推断SQL被取消或整个进程内存有界。机器契约消费/完整入口和运行证据仍缺，未执行校验器、生成器、编译、测试、SDK/API/数据库或发布。
+目录完整JSON.stringify候选限2MiB，工作台历史限8MiB；均不具有上下文目录的通用有限普通JSON/深度/节点快照保证。目录SDK对WORKBENCH_AUTH_UNAVAILABLE净化为GATEWAY_UNAVAILABLE，检查点全文SDK则保留有限对应错误；均有默认30秒本地预算和独立有界Fetch，未推断SQL被取消或整个进程内存有界。完整入口见上节；机器契约消费和运行证据仍缺，未执行校验器、生成器、编译、测试、SDK/API/数据库或发布。
 
 ## 工作台上下文与会话查询
 
-2026-11-05，TODO P0-01：新增 [context-item-directory.json](context-item-directory.json) 和 [session-registry.json](session-registry.json)，各有同名包子路径，补齐统一查询的 context/sessions/session 三操作。该轮连同此前 overview/work_items/work_item共准备六种操作模型；后续交接/检查点进度见上节，当前其余conflicts/audit/admin三种待补齐，OpenAPI保持89路，不按操作数虚增HTTP路径。
+2026-11-05，TODO P0-01：新增 [context-item-directory.json](context-item-directory.json) 和 [session-registry.json](session-registry.json)，各有同名包子路径，补齐统一查询的 context/sessions/session 三操作。该轮连同此前 overview/work_items/work_item共准备六种操作模型；该轮OpenAPI保持89路；当前完整统一入口进度见首节，不按操作数虚增HTTP路径。
 
 上下文Schema自包含，公开 ContextItemDirectoryQuery/Request/NormalizedQuery、Source/Record/Scope/Permissions/Envelope、Position/CursorContent 锚点。请求空枚举省略，query/item_type原长最多500个UTF-16单位、trim后非空才保留，archived/limit规范为false/25。完整16字段记录保留任意有限JSON正文、原来源与归档时间；版本为数字安全整数，所有日期为六位UTC微秒。记录ID/保存trace沿非ULID本地规则，允许首尾空白和DEL、拒绝精确点路径；外层trace不增加点路径限制，scope三字段必须ULID。来源拒绝未知字段，但不套用写入端更窄的数量/长度规则。
 
@@ -28,7 +40,7 @@
 
 ## 工作台概览与工作项投影
 
-2026-11-05，TODO P0-01：新增 [workbench-overview.json](workbench-overview.json) 和 [work-item-projection.json](work-item-projection.json)，分别有同名包子路径。两份自包含Schema覆盖POST /v1/workbench/query的overview/work_items/work_item三操作，为统一入口完整契约准备；后续模型进度见上方各节，当前其余三种操作尚需补齐，未把三操作计成三条路由，OpenAPI仍89路。
+2026-11-05，TODO P0-01：新增 [workbench-overview.json](workbench-overview.json) 和 [work-item-projection.json](work-item-projection.json)，分别有同名包子路径。两份自包含Schema覆盖POST /v1/workbench/query的overview/work_items/work_item三操作，为统一入口完整契约准备；该轮OpenAPI保持89路，未把三操作计成三条路由；当前完整统一入口进度见首节。
 
 概览提供WorkbenchOverviewRequest、ContextPreview、Brief、Layer、WorkbenchOverview和完整Envelope锚点。包括全部13项安全计数、五层唯一汇总、brief和四组有界预览；状态及空均值组合可由Schema表达，计数合计、各预览长度恰为min(total,cap)、唯一ID和读时过期条件仍需运行解析。brief的已保存content允许任意JSON，不假造统一正文结构。所有数据对象按现有解析器去掉扩展；built-in外层为七条有序postgres表来源，SDK普通概览封套检查更宽松，不能把它写成工作项严格客户端。
 

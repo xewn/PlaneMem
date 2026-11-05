@@ -1,5 +1,9 @@
 # 架构决策记录摘要
 
+2026-11-05 本轮源码落地（P0-01 / ADR-015）：workbench-audit/admin/query三份完整Schema、统一查询OpenAPI及四项包子路径已补齐。复用原八操作与冲突目录，11操作/检查点双模式完整组合，成功采用anyOf并记录原请求映射；审计普通JSON与导出规则、全201候选解析、管理授权计数/有序来源及各操作HTTP/错误/预算已人工对照。目录/WCP/运行说明/README/TODO/R001同步，OpenAPI源码累计90路，P0-01/R001仍未完成、evidence为空。仅人工源码文档审阅/指定格式/Git文本检查，未编译、类型检查、测试、执行校验器/生成器/产品/SDK/Mock/API/数据库或发布。
+
+2026-11-05 P0-01 工作台统一查询完整机器契约（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增schemas/workbench-audit.json、workbench-admin.json、workbench-query.json及openapi/workbench-query.json，补齐audit/admin模型，复用现有conflict-read目录定义并组合全部11操作（checkpoints两模式）的请求/完整成功。明确动态权限、审计有界字段与导出更强规则区别、管理可用/未授权计数及固定未检查项、统一HTTP与各操作错误/预算。范围四份新JSON、四项包子路径、schemas/openapi README、根README/TODO、公共目录/WCP、审计/管理/冲突目录运行说明、R001及本ADR/T0.3/T4.1。只改契约与文档；完整入口新增一条路由，累计90路，仍缺其他WCP/MCP/事件payload/机器契约消费和CI，P0-01/R001未完成、evidence为空。仅人工源码文档审阅、指定格式/Git文本检查，不编译、类型检查、测试、执行校验器/生成器/产品/SDK/Mock/API/数据库或发布；独立提交推送main。
+
 2026-11-05 本轮源码落地：handoff-registry/checkpoint-registry完整Schema及包子路径已补齐，含交接当前/旧投影与归属、摘要三态、微秒游标/limit绑定、项目目录和会话全文历史两模式及原revision续页；真实SQL/SDK/候选字节边界已人工对照。目录/WCP/三份运行说明/README/TODO/R001同步，统一查询八种操作后尚余三种，OpenAPI仍89路。P0-01/R001未完成、evidence为空；仅人工审阅/指定格式/Git文本检查，未编译、类型检查、测试、执行校验器/生成器/产品/SDK/Mock/API/数据库或发布。
 
 2026-11-05 P0-01 交接目录与检查点双模式机器模型（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增 schemas/handoff-registry.json 与 schemas/checkpoint-registry.json，覆盖统一查询handoffs及checkpoints的项目目录/会话历史两模式。完整建模原/规范筛选、当前交接与历史投影、摘要三态、微秒分页/页大小绑定、身份权限和逐行归属提示；历史模式复用原完整检查点内容，区分原始revision续页及8MiB整页边界。范围两份Schema、包子路径、schemas/openapi README、根README/TODO、公共目录/WCP、交接目录/检查点目录/全文读取运行说明、R001和本ADR/T0.3/T4.1。按TODO顺序只改契约及文档；统一查询累计八种操作后仍待conflicts/audit/admin三种，OpenAPI保持89路。仅人工源码文档审阅、指定格式/Git文本检查，不编译、类型检查、测试、执行校验器/生成器/产品/SDK/Mock/API/数据库或发布；独立提交推送main，P0-01/R001未完成、evidence为空。

@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/workbench-query.json",
+  "title": "PlaneMem complete workbench query protocol",
+  "description": "Existing POST /v1/workbench/query: eleven operation names, with two mutually exclusive checkpoint modes. Root is the request; full success schemas are selected using the original request.",
+  "$comment": "Source-only composition. Load the referenced schema graph locally by canonical IDs. Success has no operation discriminator and shapes may overlap, so its union uses anyOf. A union match alone cannot prove a response belongs to the supplied operation/query/scope/trace. Runtime parsers and authorization remain necessary; no generator/validator/runtime evidence.",
+  "$ref": "#WorkbenchQueryRequest",
+  "x-operation-models": {
+    "overview": {
+      "request": "workbench-overview.json#WorkbenchOverviewRequest",
+      "response": "workbench-overview.json#WorkbenchOverviewEnvelope"
+    },
+    "work_item": {
+      "request": "work-item-projection.json#WorkItemDetailRequest",
+      "response": "work-item-projection.json#WorkItemDetailEnvelope"
+    },
+    "work_items": {
+      "request": "work-item-projection.json#WorkItemListRequest",
+      "response": "work-item-projection.json#WorkItemListEnvelope"
+    },
+    "context": {
+      "request": "context-item-directory.json#ContextItemDirectoryRequest",
+      "response": "context-item-directory.json#ContextItemDirectoryEnvelope"
+    },
+    "sessions": {
+      "request": "session-registry.json#SessionRegistryRequest",
+      "response": "session-registry.json#SessionRegistryEnvelope"
+    },
+    "session": {
+      "request": "session-registry.json#WorkbenchSessionRequest",
+      "response": "session-registry.json#WorkbenchSessionEnvelope"
+    },
+    "handoffs": {
+      "request": "handoff-registry.json#HandoffRegistryRequest",
+      "response": "handoff-registry.json#HandoffRegistryEnvelope"
+    },
+    "checkpoints": {
+      "request": "checkpoint-registry.json#CheckpointWorkbenchRequest",
+      "modes": [
+        {
+          "when": "session_id absent",
+          "request": "checkpoint-registry.json#CheckpointRegistryRequest",
+          "response": "checkpoint-registry.json#CheckpointRegistryEnvelope"
+        },
+        {
+          "when": "session_id present",
+          "request": "checkpoint-registry.json#CheckpointHistoryWorkbenchRequest",
+          "response": "checkpoint-registry.json#CheckpointHistoryWorkbenchEnvelope"
+        }
+      ]
+    },
+    "conflicts": {
+      "request": "#WorkbenchConflictsRequest",
+      "response": "conflict-read.json#ConflictRegistryEnvelope"
+    },
+    "audit": {
+      "request": "workbench-audit.json#WorkbenchAuditRequest",
+      "response": "workbench-audit.json#WorkbenchAuditEnvelope"
+    },
+    "admin": {
+      "request": "workbench-admin.json#WorkbenchAdminRequest",
+      "response": "workbench-admin.json#WorkbenchAdminEnvelope"
+    }
+  },
+  "$defs": {
+    "conflictsRequest": {
+      "$anchor": "WorkbenchConflictsRequest",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation"],
+      "properties": {
+        "operation": { "const": "conflicts" },
+        "query": { "$ref": "conflict-read.json#/$defs/ConflictRegistryQuery/properties/query" },
+        "status": { "$ref": "conflict-read.json#/$defs/ConflictRegistryQuery/properties/status" },
+        "entity_type": {
+          "$ref": "conflict-read.json#/$defs/ConflictRegistryQuery/properties/entity_type"
+        },
+        "conflict_id": {
+          "$ref": "conflict-read.json#/$defs/ConflictRegistryQuery/properties/conflict_id"
+        },
+        "limit": { "$ref": "conflict-read.json#/$defs/ConflictRegistryQuery/properties/limit" },
+        "cursor": { "$ref": "conflict-read.json#/$defs/ConflictRegistryQuery/properties/cursor" }
+      },
+      "description": "Same readConflictRegistry handler as GET /v1/conflicts after stripping operation; POST limit is a JSON integer, not GET digit text. Defaults25/max100, no copied field values. Original direct command context must not carry idempotency_key/expected_version; this HTTP route does not parse write-precondition headers into that context."
+    },
+    "request": {
+      "$anchor": "WorkbenchQueryRequest",
+      "oneOf": [
+        { "$ref": "workbench-overview.json#WorkbenchOverviewRequest" },
+        { "$ref": "work-item-projection.json#WorkItemDetailRequest" },
+        { "$ref": "work-item-projection.json#WorkItemListRequest" },
+        { "$ref": "context-item-directory.json#ContextItemDirectoryRequest" },
+        { "$ref": "session-registry.json#SessionRegistryRequest" },
+        { "$ref": "session-registry.json#WorkbenchSessionRequest" },
+        { "$ref": "handoff-registry.json#HandoffRegistryRequest" },
+        { "$ref": "checkpoint-registry.json#CheckpointWorkbenchRequest" },
+        { "$ref": "#WorkbenchConflictsRequest" },
+        { "$ref": "workbench-audit.json#WorkbenchAuditRequest" },
+        { "$ref": "workbench-admin.json#WorkbenchAdminRequest" }
+      ]
+    },
+    "success": {
+      "$anchor": "WorkbenchQueryEnvelope",
+      "anyOf": [
+        { "$ref": "workbench-overview.json#WorkbenchOverviewEnvelope" },
+        { "$ref": "work-item-projection.json#WorkItemDetailEnvelope" },
+        { "$ref": "work-item-projection.json#WorkItemListEnvelope" },
+        { "$ref": "context-item-directory.json#ContextItemDirectoryEnvelope" },
+        { "$ref": "session-registry.json#SessionRegistryEnvelope" },
+        { "$ref": "session-registry.json#WorkbenchSessionEnvelope" },
+        { "$ref": "handoff-registry.json#HandoffRegistryEnvelope" },
+        { "$ref": "checkpoint-registry.json#CheckpointRegistryEnvelope" },
+        { "$ref": "checkpoint-registry.json#CheckpointHistoryWorkbenchEnvelope" },
+        { "$ref": "conflict-read.json#ConflictRegistryEnvelope" },
+        { "$ref": "workbench-audit.json#WorkbenchAuditEnvelope" },
+        { "$ref": "workbench-admin.json#WorkbenchAdminEnvelope" }
+      ],
+      "description": "Built-in Gateway wire outputs. Use the matching original-request response model; work-item client envelopes and standalone GET session/checkpoint envelopes deliberately remain separate."
+    }
+  }
+}

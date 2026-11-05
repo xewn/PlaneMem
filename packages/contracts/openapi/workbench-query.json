@@ -1,0 +1,117 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem workbench query API",
+    "version": "0.1.0",
+    "description": "Source-only description of the existing unified query POST, covering all eleven operations and checkpoint directory/history modes. No schema validation, generation, execution or release evidence."
+  },
+  "security": [{ "GatewayBearer": [] }],
+  "x-runtime-boundaries": {
+    "identity": "Trusted bearer authentication resolves current tenant/workspace/project/actor/client. Scope headers must agree; optional expected actor/client constrain rather than supply identity. The route does not globally require a verified client. Entry policy chooses audit.read for audit, admin.read for admin and context.read otherwise; entry decisions are durably audited. Admin additionally requires verified client, admin role, actual admin.read and finite unexpired token before/after await; admin role does not substitute that capability.",
+    "http": "Generic pre-auth body reader accepts a JSON object up to1MiB, nonfatal Buffer UTF-8 decoding; empty/nonobject/invalid/oversized JSON returns400 INVALID_JSON. JSON media type documented, but no dedicated media/content-encoding/query/cache/Range rejection. URL query fields ignored, never merged with JSON. traceparent takes precedence over x-trace-id. This route does not parse write-precondition headers and bypasses generic success caching. Success private,no-store with x-trace-id, no ETag/304/412 or original-command receipt.",
+    "budgets": "Generic actor/path rate limiter uses60-second buckets. No common two-slot workbench HTTP gate, whole database deadline/cancellation or universal response-byte limit. Per-operation schemas/runtime docs describe actual candidate limits: audit16MiB, admin16KiB, conflict directory2MiB/record16KiB, checkpoint full history8MiB. SDK/MCP budgets do not become Gateway guarantees; SQL work before serialization is not bounded by response-byte checks.",
+    "audit": "Exact resource/trace/action/audit/session filters, fixed200 rows; audit_id and cursor mutually exclusive. Scope/classification filtering without readable-parent project join. Materialized201 candidates all parsed, including lookahead. Descending original microseconds then audit ID COLLATE C, canonical query-bound base64url cursor, no stable snapshot. Oversized details/sources omitted separately with original JSONB byte counts; metadata corruption/oversize fails whole page. Read details accept arbitrary JSON, not export canonicalizer restrictions. No content restoration or export is performed.",
+    "admin": "One statement requires visible undeleted scoped parent; missing/hidden parent404. Actual audit.read/context.read independently control counts, unauthorized=null; running-session/open-conflict states agree. Four exact ordered source combinations. Actual server_version and statement timestamp, configured Gateway version; every external check remains not-checked. Optional trusted expectedAccess validation is available to embedded consumers; network SDK cannot attest capability flags.",
+    "conflicts": "Reuses dedicated directory implementation and complete conflict-read schema. Query normalization/ASCII search fold, current visibility and resolve hints, decimal bigint versions, Unicode scalar/C ID order and cursor scope/restricted/filter/limit binding remain unchanged. Exact ID may combine other filters/cursor but cannot continue. Direct command context rejects idempotency_key/expected_version; HTTP write headers are not parsed into those fields here.",
+    "clients": "listAuditRecords and getAdminSnapshot request bounded-json, default30s local cancellable wait and no retry; validate exact scope/current trace and complete shared envelopes. Audit returns a structured clone; admin reconstructs closed output. Known errors are sanitized and retryable=false locally even where Gateway says true. Other operation SDK/Mock behavior is described by referenced models; no shared universal client budget or machine-schema consumption is claimed."
+  },
+  "paths": {
+    "/v1/workbench/query": {
+      "post": {
+        "operationId": "queryWorkbench",
+        "tags": ["Workbench"],
+        "summary": "Read one complete project workbench view",
+        "x-wcp-operation": "workbench.query",
+        "x-policy-actions": {
+          "audit": "audit.read",
+          "admin": "admin.read",
+          "default": "context.read"
+        },
+        "description": "Select exactly one of overview/work_item/work_items/context/sessions/session/handoffs/checkpoints/conflicts/audit/admin. checkpoints with session_id reads complete session history; absent session_id reads project directory. Scope/identity come from trusted request context, not body. Response has no operation discriminator: select its complete schema from the original request and x-operation-models in workbench-query schema; success anyOf is not a cross-request binding check. Metadata hints do not authorize a future write.",
+        "parameters": [
+          { "$ref": "./session-reads.json#/components/parameters/TenantId" },
+          { "$ref": "./session-reads.json#/components/parameters/WorkspaceId" },
+          { "$ref": "./session-reads.json#/components/parameters/ProjectId" },
+          { "$ref": "./session-reads.json#/components/parameters/TraceParent" },
+          { "$ref": "./session-reads.json#/components/parameters/TraceId" },
+          { "$ref": "./session-reads.json#/components/parameters/ExpectedActorId" },
+          { "$ref": "./session-reads.json#/components/parameters/ExpectedClientId" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/workbench-query.json#WorkbenchQueryRequest" },
+              "examples": {
+                "overview": { "value": { "operation": "overview" } },
+                "audit": { "value": { "operation": "audit", "action": "workbench.query" } },
+                "admin": { "value": { "operation": "admin" } },
+                "conflicts": {
+                  "value": { "operation": "conflicts", "status": "open", "limit": 25 }
+                },
+                "checkpointDirectory": { "value": { "operation": "checkpoints" } },
+                "checkpointHistory": {
+                  "value": {
+                    "operation": "checkpoints",
+                    "session_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Complete output of the selected operation; preserve per-model sources, scope presence, saved/current traces and numeric versus decimal-string versions. No global ETag, query echo, total or pagination contract.",
+            "headers": {
+              "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "../schemas/workbench-query.json#WorkbenchQueryEnvelope" }
+              }
+            }
+          },
+          "400": {
+            "$ref": "./search.json#/components/responses/Error",
+            "description": "INVALID_JSON for pre-auth generic body errors including1MiB overflow; INVALID_INPUT for unknown fields, incompatible filters/modes, scalar/ID/cursor shape or binding; WORKBENCH_OPERATION_UNSUPPORTED for missing/unknown operation after entry authorization. retryable=false."
+          },
+          "401": {
+            "$ref": "./search.json#/components/responses/Error",
+            "description": "UNAUTHENTICATED: absent/invalid/expired bearer at authentication boundary; retryable=false."
+          },
+          "403": {
+            "$ref": "./search.json#/components/responses/Error",
+            "description": "DENIED: identity/scope mismatch, entry policy or admin verified-client/role/capability/expiry gate; retryable=false. Admin checks again after database await."
+          },
+          "404": {
+            "$ref": "./search.json#/components/responses/Error",
+            "description": "NOT_FOUND for missing/hidden admin parent, WORK_ITEM_NOT_FOUND for unavailable exact work item, SESSION_NOT_FOUND for unavailable session state/history. retryable=false. Do not generalize parent404 to all directory/audit operations."
+          },
+          "413": {
+            "$ref": "./search.json#/components/responses/Error",
+            "description": "CHECKPOINT_READ_TOO_LARGE for complete checkpoint history exceeding its read limits; retryable=false. Audit/admin/ordinary registry invalid or oversized candidates use500; generic request body overflow uses400."
+          },
+          "429": {
+            "$ref": "./search.json#/components/responses/Error",
+            "description": "RATE_LIMITED at generic actor/path limiter; retryable=true. No route-specific two-slot capacity promise or Retry-After header."
+          },
+          "500": {
+            "$ref": "./search.json#/components/responses/Error",
+            "description": "WORKBENCH_OVERVIEW_INVALID, WORK_ITEM_PROJECTION_INVALID, CONTEXT_ITEM_INVALID, SESSION_ACTIVITY_INVALID, SESSION_REGISTRY_INVALID, HANDOFF_REGISTRY_INVALID, CHECKPOINT_REGISTRY_INVALID, CONFLICT_REGISTRY_INVALID, WORKBENCH_AUDIT_INVALID or WORKBENCH_ADMIN_INVALID: complete result invalid, retryable=false. Unexpected INTERNAL_ERROR is retryable=true. No partial usable page."
+          },
+          "503": {
+            "$ref": "./search.json#/components/responses/Error",
+            "description": "WORKBENCH_DATABASE_UNAVAILABLE, WORKBENCH_AUTH_UNAVAILABLE at authentication boundary or AUDIT_PERSISTENCE_UNAVAILABLE; retryable=true. Distinct from a validated empty page or not-authorized admin count."
+          },
+          "default": { "$ref": "./search.json#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": { "GatewayBearer": { "type": "http", "scheme": "bearer" } }
+  }
+}

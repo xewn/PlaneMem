@@ -1,10 +1,20 @@
 # OpenAPI 源码契约
 
-这里的文档描述已有 HTTP 实现，尚未经过校验器、生成器、编译、类型检查、测试或运行验证。文档版本不表示已发布或部署；当前覆盖保存包 5 路、文件 9 路、上下文条目 9 路、同步 6 路、冲突 5 路、建议 8 路、Plane 观察 4 路、搜索 2 路、旧索引 5 路、Plane 收件箱 6 路、会话状态/活动 5 路、检查点/交接读取 3 路、会话身份/启动/原回执 3 路、会话进度写入/原回执 6 路、检查点保存/原回执 2 路、交接创建/领取/原回执 4 路、会话续接/原回执 2 路、旧记忆交接创建/领取 2 路、单条审计视图导出 1 路、当前会话来源读取 1 路及原始会话来源取证 1 路，共 89 路，尚不是完整 WCP 接口目录。
+这里的文档描述已有 HTTP 实现，尚未经过校验器、生成器、编译、类型检查、测试或运行验证。文档版本不表示已发布或部署；当前覆盖保存包 5 路、文件 9 路、上下文条目 9 路、同步 6 路、冲突 5 路、建议 8 路、Plane 观察 4 路、搜索 2 路、旧索引 5 路、Plane 收件箱 6 路、会话状态/活动 5 路、检查点/交接读取 3 路、会话身份/启动/原回执 3 路、会话进度写入/原回执 6 路、检查点保存/原回执 2 路、交接创建/领取/原回执 4 路、会话续接/原回执 2 路、旧记忆交接创建/领取 2 路、单条审计视图导出 1 路、当前会话来源读取 1 路、原始会话来源取证 1 路及工作台统一查询 1 路，共 90 路，尚不是完整 WCP 接口目录。
 
-## 工作台统一查询的模型准备
+## 工作台统一查询
 
-2026-11-05，TODO P0-01：已有 [概览Schema](../schemas/workbench-overview.json)、[工作项Schema](../schemas/work-item-projection.json)、[上下文目录Schema](../schemas/context-item-directory.json)、[会话目录/状态Schema](../schemas/session-registry.json)、[交接目录Schema](../schemas/handoff-registry.json)和[检查点双模式Schema](../schemas/checkpoint-registry.json)，完整定义统一POST /v1/workbench/query的overview/work_items/work_item/context/sessions/session/handoffs/checkpoints八操作。统一入口共11种操作；conflicts/audit/admin三种模型未齐，只准备可组合Schema，不新增不完整路径或路由计数，累计仍89路。记录完整数据、规范筛选、微秒/原revision位置、身份权限/当前与旧投影、目录摘要与全文历史预算及POST/GET封套差异。没有执行校验器、生成器或接口。
+2026-11-05，TODO P0-01：[workbench-query OpenAPI](workbench-query.json) 描述现有POST /v1/workbench/query，完整覆盖overview/work_item/work_items/context/sessions/session/handoffs/checkpoints/conflicts/audit/admin共11种操作，checkpoints包含项目目录和会话全文历史两种互斥模式。新增一个HTTP操作，累计90路；不把操作名分别计数。新[组合Schema](../schemas/workbench-query.json)复用前八种操作及[冲突目录](../schemas/conflict-read.json)，新增[审计](../schemas/workbench-audit.json)与[管理](../schemas/workbench-admin.json)，四项同名包子路径。
+
+请求oneOf按operation区分，响应不带该字段、合法形状可重叠，使用anyOf；x-operation-models提供每个原请求与完整响应的映射。消费方仍需选择匹配原操作/模式的模型并核对原范围、trace、筛选与游标，不能只用联合成功判断任意响应正确。工作项内置HTTP封套及独立GET会话/检查点封套与客户端模型明确区分。本地加载组合Schema直接和传递依赖，HTTP头/错误组件复用session-reads/search/context-history。
+
+通用HTTP先以1MiB上限读取JSON对象，Buffer非严格UTF-8；空/坏/非对象/超限正文均400 INVALID_JSON。认证信任签名范围，预期actor/client只约束当前身份；traceparent优先于x-trace-id。audit使用audit.read，admin使用admin.read，其余context.read；管理还需可信客户端、admin角色、实际admin.read和有效期限，并在查询后再查期限。统一入口本身不要求所有读操作具备可信客户端。URL参数不合并入正文；没有专用媒体/编码/缓存/Range拒绝，写条件头未进入readPreconditions；绕过成功幂等缓存，成功private,no-store与当前trace，无ETag/304/412。
+
+审计采用精确筛选、固定200条和原微秒/ID倒序；查询key绑定范围/受限可读性/筛选，不绑定actor/client，也不形成签名或快照。无当前可读父项目联结；SQL候选201条连预读项都完整解析。字段超限独立省略，原JSONB字节数不等于规范输出字节数；details可为任意JSON，不强加导出规范器规则。坏元数据/字段/候选整页500，16MiB整页预算不是原数据库内存保证。
+
+管理单SQL要求当前可读未删除父项目，不可见404；实际audit.read决定审计计数，context.read共同决定运行会话/开放冲突计数。无权限null、可见零值0、四种有序来源组合不能混淆；COUNT十进制先核对再转安全数字。实际数据库版本/语句时间与配置Gateway版本不构成服务健康证据，六种外部检查固定not-checked。完整16KiB响应、严格封闭字段和真实日历仍由共享解析器约束。
+
+冲突复用原目录处理器及完整Schema；POST limit为JSON整数。直接命令上下文拒绝原键/预期版本，不能据此声称本HTTP路径拒绝这些原始头。通用actor/path限流60秒窗口，未引入MCP的两槽容量或统一数据库期限；各操作原字节预算保持。审计/管理SDK默认30秒本地可取消等待、有界JSON与完整范围/trace解析，错误净化并retryable=false，不改变Gateway实际retryable。仅人工源码文档审阅、指定格式/Git文本检查；未执行校验器、生成器、编译、类型检查、测试、SDK/Mock/API/数据库或发布，P0-01/R-001未完成、evidence为空。
 
 ## 原始会话来源取证
 
