@@ -1,5 +1,9 @@
 # 架构决策记录摘要
 
+2026-11-05 本轮源码落地：handoff-registry/checkpoint-registry完整Schema及包子路径已补齐，含交接当前/旧投影与归属、摘要三态、微秒游标/limit绑定、项目目录和会话全文历史两模式及原revision续页；真实SQL/SDK/候选字节边界已人工对照。目录/WCP/三份运行说明/README/TODO/R001同步，统一查询八种操作后尚余三种，OpenAPI仍89路。P0-01/R001未完成、evidence为空；仅人工审阅/指定格式/Git文本检查，未编译、类型检查、测试、执行校验器/生成器/产品/SDK/Mock/API/数据库或发布。
+
+2026-11-05 P0-01 交接目录与检查点双模式机器模型（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增 schemas/handoff-registry.json 与 schemas/checkpoint-registry.json，覆盖统一查询handoffs及checkpoints的项目目录/会话历史两模式。完整建模原/规范筛选、当前交接与历史投影、摘要三态、微秒分页/页大小绑定、身份权限和逐行归属提示；历史模式复用原完整检查点内容，区分原始revision续页及8MiB整页边界。范围两份Schema、包子路径、schemas/openapi README、根README/TODO、公共目录/WCP、交接目录/检查点目录/全文读取运行说明、R001和本ADR/T0.3/T4.1。按TODO顺序只改契约及文档；统一查询累计八种操作后仍待conflicts/audit/admin三种，OpenAPI保持89路。仅人工源码文档审阅、指定格式/Git文本检查，不编译、类型检查、测试、执行校验器/生成器/产品/SDK/Mock/API/数据库或发布；独立提交推送main，P0-01/R001未完成、evidence为空。
+
 2026-11-05 本轮源码落地：上下文目录和会话目录/状态两份完整Schema及包子路径已补齐；原/规范筛选、完整保存内容、微秒位置/页大小绑定、身份权限和POST/GET差别已人工对照。统一查询累计六种操作模型，其余五种后续组合，OpenAPI仍89路；目录/WCP/三份运行说明/README/TODO/R001同步。P0-01/R001未完成、evidence为空；仅人工源码文档审阅、指定格式/Git文本检查，未编译、类型检查、测试、执行校验器/生成器/产品/SDK/Mock/API/数据库或发布。
 
 2026-11-05 P0-01 工作台上下文与会话查询模型（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增 schemas/context-item-directory.json 与 schemas/session-registry.json，覆盖统一查询 context/sessions/session 三操作的完整请求、规范筛选、分页位置、记录和权限身份封套；复用既有会话状态与续接来源定义，区分目录和单会话响应。范围为两份 Schema、包子路径、schemas/openapi README、根 README/TODO、公共契约目录/WCP、上下文/会话运行说明、R001及本 ADR/T0.3/T4.1。沿 TODO P0-01 顺序，不修改运行行为；统一入口尚有其余五操作待组合，OpenAPI仍89路。仅人工源码文档审阅、指定格式和Git文本检查，不编译、类型检查、测试、执行校验器/生成器/产品/SDK/API/数据库或发布。独立提交推送main，P0-01/R001未完成，evidence为空。

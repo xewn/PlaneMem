@@ -1,5 +1,9 @@
 # 交接目录筛选与分页（源码阶段）
 
+2026-11-05，TODO P0-01：新增[handoff-registry完整Schema](../../../packages/contracts/schemas/handoff-registry.json)及包子路径，完整建模原/规范查询、十四字段基础记录与十六字段当前读者记录、固定三表来源/范围/身份权限、微秒位置和游标内容。session/projection字段组合、open版本1/无领取者、claimed或expired至少2、摘要三态和提示关系有机器表达；目标与领取者相等、身份scope与逐行client/actor相等、分页/字节关系仍由既有解析器核对。
+
+源码对照补充：目录created_at/updated_at强制六位微秒且不检查先后关系，不能套用独立详情的毫秒规范化/时间先后规则。expired仍可能保留领取信息，recipient_matches/claimed_here不附加open/claimed状态要求；旧projection没有当前session/checkpoint关联核验，当前持久ID存在但关联损坏时仍不回退投影。目录完整JSON.stringify字节预算2MiB不等于普通JSON/深度/节点保护；SDK白名单不含WORKBENCH_AUTH_UNAVAILABLE，遇此代码转为GATEWAY_UNAVAILABLE。只改契约和说明，未编译、类型检查、测试、执行校验器/生成器/产品/SDK/Mock/API/数据库或发布；P0-01/R001未完成、evidence为空。
+
 更新：2026-11-03。仅源码和文档；未编译、类型检查、测试、执行 SQL/迁移/CLI/MCP、运行浏览器/服务或发布。
 
 ## 请求与权限

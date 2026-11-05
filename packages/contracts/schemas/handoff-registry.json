@@ -1,0 +1,356 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/handoff-registry.json",
+  "title": "PlaneMem complete workbench handoff registry",
+  "description": "Complete handoffs operation model for POST /v1/workbench/query: current durable handoffs and historical projections, summary availability, query-bound pagination and reader-specific hints. Register session-activity-read.json alongside this resource.",
+  "$comment": "Closed schemas describe reconstructed wire outputs. Runtime additionally checks UTF-16/lone surrogates, real dates, UTF8 bytes, exact scope/trace, target/claimant and reader equality, unique ordered rows, filters and canonical cursor binding. Generic JS parsers do not use a finite ordinary-JSON snapshot. No validator/generator/runtime evidence claimed.",
+  "$ref": "#HandoffRegistryEnvelope",
+  "$defs": {
+    "ulid": { "$ref": "./session-activity-read.json#/$defs/ulid" },
+    "positive": { "$ref": "./session-activity-read.json#/$defs/positive" },
+    "name": { "$ref": "./session-activity-read.json#/$defs/identityText" },
+    "nullableName": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/name" }] },
+    "trace": { "$ref": "#/$defs/name", "maxLength": 512 },
+    "time": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+      "not": { "pattern": "^0000" },
+      "description": "Exact UTC six-digit microseconds with real-calendar millisecond-prefix roundtrip. No created<=updated rule in this directory parser; dedicated detail has different date/chronology rules."
+    },
+    "queryText": {
+      "type": "string",
+      "maxLength": 500,
+      "not": { "pattern": "[\\u0000-\\u001f\\u007f]" },
+      "description": "Raw<=500 UTF-16 units; no controls/DEL/lone surrogate. Trim and omit when blank."
+    },
+    "cursor": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,1024}$" },
+    "rawFields": {
+      "type": "object",
+      "properties": {
+        "query": { "$ref": "#/$defs/queryText" },
+        "status": { "enum": ["", "open", "closed"] },
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "origin": { "enum": ["", "session", "projection"] },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 100, "default": 25 },
+        "cursor": { "$ref": "#/$defs/cursor" }
+      }
+    },
+    "query": {
+      "$anchor": "HandoffRegistryQuery",
+      "$ref": "#/$defs/rawFields",
+      "unevaluatedProperties": false,
+      "description": "Raw fields without operation. Empty status/origin omitted; session_id/cursor cannot be empty and null rejected. Cursor fully parsed and canonically re-encoded. Default limit25 used at read time without inserting a field. No dedicated8KiB ordinary-JSON query snapshot."
+    },
+    "normalizedQuery": {
+      "$anchor": "HandoffRegistryNormalizedQuery",
+      "allOf": [
+        { "$ref": "#/$defs/rawFields" },
+        {
+          "properties": {
+            "query": { "minLength": 1, "not": { "pattern": "^\\s|\\s$" } },
+            "status": { "enum": ["open", "closed"] },
+            "origin": { "enum": ["session", "projection"] }
+          }
+        }
+      ],
+      "unevaluatedProperties": false,
+      "description": "Effective captured query, not echoed in the envelope. status=open groups saved open/offered; closed groups claimed/expired/accepted/rejected without rewriting saved status."
+    },
+    "request": {
+      "$anchor": "HandoffRegistryRequest",
+      "allOf": [
+        { "$ref": "#/$defs/rawFields" },
+        { "required": ["operation"], "properties": { "operation": { "const": "handoffs" } } }
+      ],
+      "unevaluatedProperties": false
+    },
+    "summary": {
+      "type": "string",
+      "maxLength": 8192,
+      "not": { "pattern": "\\u0000" },
+      "x-utf8-max-bytes": 8192,
+      "description": "Available summary is complete UTF8<=8KiB, no NUL/lone surrogate. Empty string/newlines/other controls retained; maxLength alone is not the byte rule."
+    },
+    "recordFields": {
+      "type": "object",
+      "required": [
+        "handoff_id",
+        "session_id",
+        "checkpoint_id",
+        "status",
+        "origin",
+        "from_client",
+        "offered_to",
+        "claimed_by",
+        "claimed_by_actor",
+        "version",
+        "created_at",
+        "updated_at",
+        "summary",
+        "summary_state"
+      ],
+      "properties": {
+        "handoff_id": { "$ref": "#/$defs/ulid" },
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "checkpoint_id": { "$ref": "#/$defs/ulid" },
+        "status": { "enum": ["open", "claimed", "expired", "offered", "accepted", "rejected"] },
+        "origin": { "enum": ["session", "projection"] },
+        "from_client": { "$ref": "#/$defs/nullableName" },
+        "offered_to": { "$ref": "#/$defs/nullableName" },
+        "claimed_by": { "$ref": "#/$defs/nullableName" },
+        "claimed_by_actor": { "$ref": "#/$defs/nullableName" },
+        "version": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/positive" }] },
+        "created_at": { "$ref": "#/$defs/time" },
+        "updated_at": { "$ref": "#/$defs/time" },
+        "summary": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/summary" }] },
+        "summary_state": { "enum": ["available", "missing", "too-large"] }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "origin": { "const": "session" },
+            "status": { "enum": ["open", "claimed", "expired"] },
+            "from_client": { "$ref": "#/$defs/name" },
+            "version": { "$ref": "#/$defs/positive" }
+          },
+          "allOf": [
+            {
+              "if": { "properties": { "status": { "const": "open" } } },
+              "then": {
+                "properties": {
+                  "version": { "const": 1 },
+                  "claimed_by": { "type": "null" },
+                  "claimed_by_actor": { "type": "null" }
+                }
+              },
+              "else": { "properties": { "version": { "minimum": 2 } } }
+            },
+            {
+              "if": { "properties": { "status": { "const": "claimed" } } },
+              "then": { "properties": { "claimed_by": { "$ref": "#/$defs/name" } } }
+            },
+            {
+              "if": { "properties": { "claimed_by_actor": { "type": "string" } } },
+              "then": { "properties": { "claimed_by": { "$ref": "#/$defs/name" } } }
+            }
+          ]
+        },
+        {
+          "properties": {
+            "origin": { "const": "projection" },
+            "status": { "enum": ["offered", "accepted", "expired", "rejected"] },
+            "from_client": { "type": "null" },
+            "claimed_by": { "type": "null" },
+            "claimed_by_actor": { "type": "null" },
+            "version": { "type": "null" }
+          }
+        }
+      ],
+      "allOf": [
+        {
+          "if": { "properties": { "summary_state": { "const": "available" } } },
+          "then": { "properties": { "summary": { "$ref": "#/$defs/summary" } } },
+          "else": { "properties": { "summary": { "type": "null" } } }
+        }
+      ],
+      "description": "Fourteen complete base fields. Current session origin has positive safe numeric version; target, if present with claimant, must equal claimant. Old claimed records may lack actor. Expired may retain or lack ownership. Projection retains explicit nulls and nullable offered_to, without inferring current ownership/version. No saved trace, sources or full checkpoint notes in a row."
+    },
+    "record": {
+      "$anchor": "HandoffRegistryRecord",
+      "$ref": "#/$defs/recordFields",
+      "unevaluatedProperties": false,
+      "description": "Normalized base record. Shared record parser also accepts recipient_matches/claimed_here input fields then strips them; envelope parser separately validates these hints."
+    },
+    "readerRecord": {
+      "$anchor": "HandoffRegistryReaderRecord",
+      "$ref": "#/$defs/recordFields",
+      "required": ["recipient_matches", "claimed_here"],
+      "properties": {
+        "recipient_matches": { "type": "boolean" },
+        "claimed_here": { "type": "boolean" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "origin": { "const": "projection" } } },
+          "then": {
+            "properties": {
+              "recipient_matches": { "const": false },
+              "claimed_here": { "const": false }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "claimed_here": { "const": true } } },
+          "then": {
+            "properties": {
+              "origin": { "const": "session" },
+              "recipient_matches": { "const": true },
+              "claimed_by": { "$ref": "#/$defs/name" },
+              "claimed_by_actor": { "$ref": "#/$defs/name" }
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false,
+      "description": "Sixteen fields. Runtime recomputes recipient_matches from present identity, session origin and null-or-equal offered_to; claimed_here needs both client and actor equality. Flags do not require open/claimed status, so an expired row can retain matching ownership. They do not authorize claim/resume or prove an original request succeeded."
+    },
+    "pageFields": {
+      "type": "object",
+      "required": ["data", "has_more"],
+      "properties": {
+        "data": { "type": "array", "maxItems": 100 },
+        "has_more": { "type": "boolean" },
+        "next_cursor": { "$ref": "#/$defs/cursor" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "has_more": { "const": true } } },
+          "then": { "required": ["next_cursor"], "properties": { "data": { "minItems": 1 } } },
+          "else": { "not": { "required": ["next_cursor"] } }
+        }
+      ],
+      "description": "Runtime data.length<=effective limit, unique handoff IDs, strict updated_at DESC/ID ASC after incoming cursor. Exact session/origin/grouped status checked; text search not recomputed. Continued page full, cursor at last row, changed from input and input binding retained. No total or cross-page snapshot."
+    },
+    "page": {
+      "$anchor": "HandoffRegistryPage",
+      "$ref": "#/$defs/pageFields",
+      "properties": { "data": { "items": { "$ref": "#HandoffRegistryRecord" } } },
+      "unevaluatedProperties": false,
+      "x-serialized-json-max-bytes": 2097152,
+      "description": "Normalized base page without reader hints. Shared parser counts the complete supplied object's serialized bytes, including extra input fields it later strips."
+    },
+    "scope": {
+      "$anchor": "HandoffRegistryScope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant_id", "workspace_id", "project_id"],
+      "properties": {
+        "tenant_id": { "$ref": "#/$defs/name" },
+        "workspace_id": { "$ref": "#/$defs/name" },
+        "project_id": { "$ref": "#/$defs/name" }
+      },
+      "description": "Nonblank<=1024 UTF-16/no controls/DEL/lone surrogate, exact current scope; no independent ULID check in registry parser."
+    },
+    "permissions": {
+      "$anchor": "HandoffRegistryPermissions",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["write_sessions", "claim"],
+      "properties": {
+        "write_sessions": { "type": "boolean" },
+        "claim": { "type": "boolean" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "write_sessions": { "const": true } } },
+          "then": { "properties": { "claim": { "const": true } } }
+        }
+      ]
+    },
+    "envelope": {
+      "$anchor": "HandoffRegistryEnvelope",
+      "$ref": "#/$defs/pageFields",
+      "required": [
+        "schema_version",
+        "trace_id",
+        "scope",
+        "source_refs",
+        "session_permissions",
+        "handoff_permissions"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "#/$defs/trace" },
+        "scope": { "$ref": "#HandoffRegistryScope" },
+        "source_refs": {
+          "const": [
+            { "type": "postgres", "id": "wcp_handoffs" },
+            { "type": "postgres", "id": "wcp_session_handoffs" },
+            { "type": "postgres", "id": "wcp_session_checkpoints" }
+          ]
+        },
+        "data": { "items": { "$ref": "#HandoffRegistryReaderRecord" } },
+        "session_permissions": { "$ref": "./session-activity-read.json#SessionReadPermissions" },
+        "handoff_permissions": { "$ref": "#HandoffRegistryPermissions" },
+        "session_identity": { "$ref": "./session-activity-read.json#SessionCommandIdentity" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "session_permissions": { "properties": { "write_sessions": { "const": true } } }
+            }
+          },
+          "then": {
+            "properties": {
+              "handoff_permissions": { "properties": { "write_sessions": { "const": true } } }
+            }
+          },
+          "else": {
+            "properties": {
+              "handoff_permissions": { "properties": { "write_sessions": { "const": false } } }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "handoff_permissions": { "properties": { "claim": { "const": true } } }
+            }
+          },
+          "then": { "required": ["session_identity"] }
+        },
+        {
+          "if": { "not": { "required": ["session_identity"] } },
+          "then": {
+            "properties": {
+              "data": {
+                "items": {
+                  "properties": {
+                    "recipient_matches": { "const": false },
+                    "claimed_here": { "const": false }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false,
+      "x-serialized-json-max-bytes": 2097152,
+      "description": "Exact trace/scope/fixed three ordered sources. Identity scope matches current scope; returned actor/client are not independently compared to SDK original context by this registry parser. Two write_sessions hints equal, write implies claim, any write/claim needs identity. Whole candidate JSON.stringify/UTF8<=2MiB after metadata reads; no finite ordinary-JSON/depth/node snapshot. No query echo, ETag or outer revision."
+    },
+    "position": {
+      "$anchor": "HandoffRegistryPosition",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["updated_at", "handoff_id"],
+      "properties": {
+        "updated_at": { "$ref": "#/$defs/time" },
+        "handoff_id": { "$ref": "#/$defs/ulid" }
+      }
+    },
+    "cursorContent": {
+      "$anchor": "HandoffRegistryCursorContent",
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "prefixItems": [
+        { "const": 1 },
+        { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        { "$ref": "#/$defs/time" },
+        { "$ref": "#/$defs/ulid" }
+      ],
+      "description": "Canonical compact ASCII JSON unpadded base64url [1,key,updated_at,handoff_id]. SHA256 key hashes handoff-registry-v1/scope/restricted/query/status/origin/session_id/limit, not trace/actor/client. Changing page size or effective filters requires restart; cursor is not signed or an authorization credential."
+    }
+  },
+  "x-runtime-boundaries": {
+    "http": "Authenticated generic workbench POST with context.read Policy/audit, optional expected actor/client header checks and no verified-client requirement for reading. Pre-auth1MiB JSON, traceparent before x-trace-id, generic actor/path limiter. No dedicated URL-query/media/encoding/cache-condition rejection or write preconditions; generic success cache bypassed. No dedicated two-slot handler or whole database deadline.",
+    "database": "Single query unions current scoped handoff joined to same-scope checkpoint/session and historical projection filtered by readable undeleted parent. Same-scope durable ID always shadows projection, even when its checkpoint/session join fails or origin=projection requested. Historical projection does not join current session/checkpoint; references are not proof those targets remain readable. Apply all filters/position before MATERIALIZED LIMIT+1, order updated_at DESC/handoff_id COLLATE C. Parse only first limit rows; lookahead is existence. Hidden/missing parent yields empty200.",
+    "summary": "Current summary is first nonnull of next_actions[0],in_progress[0],completed[0], preserving empty strings; projection uses saved summary. SQL masks output over8KiB UTF8 as null/too-large, SQL null is missing. Literal lower/strpos search covers handoff/session/checkpoint IDs, offered_to, claimed_by, claimed_by_actor and unmasked summary, not from_client. Search may match omitted text. No full notes, source validation, automatic expiry or current ownership inference for projection.",
+    "metadata": "Identity present iff authenticated_client===true. write_sessions needs verified client plus admin/session.write; claim also allows verified handoff.claim. Current caller flags are recomputed independently of status or write hints; legacy missing claimed actor never guessed. Version uses canonical positive decimal DB text converted to safe integer. Real microseconds retained; no created/updated chronology check.2MiB post-materialization JSON size does not bound SQL scans/sorts/prior allocations or cross-page consistency.",
+    "sdk": "listHandoffs normalizes query and shallow-copies context before default30s local request budget, no own-data/8KiB query snapshot. Complete custom-transport envelope parse and post-parse deadline check; no generalized finite-JSON/depth/node/getter/prototype guard. Fetch bounded-json separately includes credential/network/body, success2MiB/error16KiB, exact200/trace/media/fatalUTF8/content-length. No automatic retry/page/save; local cancellation does not prove SQL cancellation.",
+    "errors": "INVALID_INPUT400 false; HANDOFF_REGISTRY_INVALID500 false for bad/oversize page or hints; generic auth/policy401/403, RATE_LIMITED429 true, WORKBENCH_DATABASE_UNAVAILABLE/WORKBENCH_AUTH_UNAVAILABLE/AUDIT_PERSISTENCE_UNAVAILABLE503 true and unexpected INTERNAL_ERROR500 true. SDK sanitizes only known same-trace codes to retryable=false; WORKBENCH_AUTH_UNAVAILABLE absent from registry whitelist becomes GATEWAY_UNAVAILABLE.",
+    "remaining": "Full HTTP composition pending other workbench models. SDK/CLI/MCP/Web hand-written parsers remain; no machine-schema consumption, Mock migration, query-plan/index execution or runtime proof. MCP session handoff resource uses an unpersonalized base page with continuation metadata; it is not this full workbench envelope."
+  }
+}

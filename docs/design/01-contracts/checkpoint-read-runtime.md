@@ -1,5 +1,7 @@
 # 检查点全文读取边界
 
+2026-11-05，TODO P0-01：新增[checkpoint-registry Schema](../../../packages/contracts/schemas/checkpoint-registry.json)中的CheckpointHistoryWorkbenchRequest/Envelope，补齐下述统一POST历史的完整机器模型，并提供与项目目录请求互斥的CheckpointWorkbenchRequest。复用原CheckpointHistoryEntry而不复用带外层范围的GET封套；保留六类完整笔记、十条修订分页、工作台身份提示和8MiB候选限制，未执行接口或改变运行行为。其余工作台模型仍待补齐，P0-01/R001未完成、evidence为空。
+
 2026-11-05，TODO P0-01：新增 [continuity-reads OpenAPI](../../../packages/contracts/openapi/continuity-reads.json) 与 [checkpoint-read Schema](../../../packages/contracts/schemas/checkpoint-read.json)，完整描述公开历史 GET 和指定详情 GET，工作台历史仍为独立封套。复用 session-activity-read 公共来源/标量；没有修改运行实现或既有解析器。
 
 机器契约补充：历史第十一条位置 ID/修订/排序/唯一性会核对，payload 必须 null，笔记和日期不解析；前十条保存 trace/旧无 ID 包 hash 没有详情的 4096 UTF-16 单项上限。详情 state_hash/记忆 hash 不重算，记忆扩展保留并检查 JSON 深度最多 32，其来源只按 type/id 被包含，不要求来源 revision/URI 相等。历史不返回 state_hash/memory_ref/内部来源，详情固定 context_pack_state=not-checked。候选封套字节检查位于日期规范化之前，发送阶段没有再次独立核验；此处不新增全进程内存或 SQL 取消保证。HTTP 原存储错误可 retryable=true，专用 SDK 将有限错误净化为 false。P0-01/R-001 未完成、evidence 为空；未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。

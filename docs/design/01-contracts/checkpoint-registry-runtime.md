@@ -1,5 +1,9 @@
 # 项目检查点目录与交接选择分页（源码阶段）
 
+2026-11-05，TODO P0-01：新增[checkpoint-registry完整Schema](../../../packages/contracts/schemas/checkpoint-registry.json)及包子路径，覆盖项目目录与会话全文历史两模式，复用checkpoint-read历史条目和会话身份/权限。目录六字段记录、summary_state、唯一ID/会话修订组合、微秒位置/页大小绑定及固定来源封套有完整模型；精确checkpoint_id最多一条且不允许has_more。历史只接受session_id/before_revision，保留完整六类笔记、固定十条和next_before_revision，不允许目录参数混入。
+
+源码对照补充：当前listCheckpoints的历史分支已经接入专用readWorkbenchCheckpointHistory，使用bounded-json8MiB/错误16KiB和默认30秒预算，完整解析后核对所供actor/client；各端历史读取说明已同步，详见[全文读取边界](checkpoint-read-runtime.md)。目录仍用2MiB和独立错误白名单，不重算文本命中或独立核对返回actor/client。历史无外层scope，只有存在身份才独立核对其scope；公开GET封套不能替换它。仅机器契约/说明，未编译、类型检查、测试、执行校验器/生成器/产品/SDK/Mock/API/数据库或发布；统一查询其余三操作待补齐，P0-01/R001未完成、evidence为空。
+
 更新：2026-11-03。仅源码和文档；未编译、类型检查、测试、执行 SQL/迁移/CLI/MCP、运行浏览器/服务或发布。
 
 ## 两种查询模式
@@ -36,13 +40,13 @@ session_identity 仅来自已验证客户端且范围与页面一致；write_ses
 
 ## 各端接入
 
-SDK 新增 `listCheckpointRegistry(query?,options?)`，公开 `WcpCheckpointRegistryOptions` 支持 timeout_ms/signal，默认本地 30 秒。`listCheckpoints()` 及无 session_id 的查询委托此方法；带 session_id 时只接受原历史参数，继续返回既有历史封套，调用方须区分模式。目录方法固定范围/query/trace，使用 bounded-json 成功 2 MiB/错误 16 KiB，严格 200/响应 trace/媒体类型/UTF-8/长度及完整对象解析；Fetch 自身期限独立生效，自定义 transport 也经本地等待预算和解析后截止时间检查。有限错误保留本次 trace，不回显上游详情，不自动翻页、重试或保存；超时/取消不保证撤销底层数据库工作。
+SDK 新增 `listCheckpointRegistry(query?,options?)`，公开 `WcpCheckpointRegistryOptions` 支持 timeout_ms/signal，默认本地 30 秒。`listCheckpoints()` 及无 session_id 的查询委托此方法；带 session_id 时只接受原历史参数，走完整8MiB历史读取与身份核对，返回工作台历史封套，调用方须区分模式。目录方法固定范围/query/trace，使用 bounded-json 成功 2 MiB/错误 16 KiB，严格 200/响应 trace/媒体类型/UTF-8/长度及完整对象解析；Fetch 自身期限独立生效，自定义 transport 也经本地等待预算和解析后截止时间检查。有限错误保留本次 trace，不回显上游详情，不自动翻页、重试或保存；超时/取消不保证撤销底层数据库工作。
 
-CLI `checkpoints list` 的网络和嵌入项目目录均复用 SDK。网络 main 保留 `--json`/`--json-file` 二选一及通用文件输入路径，不声明该文件读取有新增大小/期限限制；嵌入 runWorkctx 只接受可选 `--json`，在解析前限制文本 16 KiB。拒绝重复选项、写键和两种模式参数混用。网络固定本次令牌/范围，目录等待默认 30 秒，stdout 为完整一页 JSON；没有新增本地保存或 outbox。带 session_id 时沿用原历史传输与结果路径，不获得目录新增传输保证。
+CLI `checkpoints list` 的网络和嵌入项目目录均复用 SDK。网络 main 保留 `--json`/`--json-file` 二选一及通用文件输入路径，不声明该文件读取有新增大小/期限限制；嵌入 runWorkctx 只接受可选 `--json`，在解析前限制文本 16 KiB。拒绝重复选项、写键和两种模式参数混用。网络固定本次令牌/范围，目录等待默认 30 秒，stdout 为完整一页 JSON；没有新增本地保存或 outbox。带 session_id 时网络路径使用专用SDK全文读取，成功8MiB/错误16KiB及默认30秒；嵌入入口复用完整历史解析，没有新增独立等待期限，详见全文读取说明。
 
 MCP `list_checkpoints` 扩展同名定义而不重复注册。无 session_id 时使用专用准备适配器及原请求快照，成功要求 200/匹配 trace 响应头、完整目录封套解析后返回单项文本 JSON；提供 session_id 时保持历史模式，仅接受 before_revision。既有只读、非破坏、幂等注解保留，不新增 URI、自动遍历、独立准备名额、期限、后台取消或 HTTP 发送容量保证。通用错误路径保持原行为。
 
-Web `queryWorkbench('checkpoints', filters)` 的项目目录接入成功 2 MiB/错误 16 KiB、本地 30 秒及完整校验；按会话历史路径保持原有行为。创建交接的选择器不再加载全项目列表，增加搜索、精确 ID、首屏/更早页和当前页数量。检查点筛选与游标独立于交接队列筛选和游标，翻页保留当前交接页位置；改变检查点筛选清除检查点游标。
+Web `queryWorkbench('checkpoints', filters)` 的项目目录接入成功 2 MiB/错误 16 KiB、本地 30 秒及完整校验；按会话历史使用成功8MiB/错误16KiB、本地30秒和完整笔记/权限解析，详见全文读取说明。创建交接的选择器不再加载全项目列表，增加搜索、精确 ID、首屏/更早页和当前页数量。检查点筛选与游标独立于交接队列筛选和游标，翻页保留当前交接页位置；改变检查点筛选清除检查点游标。
 
 选择器核对目录范围和身份与当前交接页相同，新草稿写入资格取两次读取提示交集；不相同或目录失败时不接受新选项，仍保留原身份的恢复表单，真实命令再次授权。切页/改筛选重建未发送草稿并清除其确认；已保存的原请求通过原 sessionStorage 键优先恢复，保留原 checkpoint/session/target/key，不用新页首条替换。未保存草稿会重置，页面提前说明。空页不称全项目无检查点；省略摘要与缺失摘要分别显示。原按 session/checkpoint ID 的独立准备与笔记审阅入口继续可用。
 

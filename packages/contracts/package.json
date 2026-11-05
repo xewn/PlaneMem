@@ -8,6 +8,8 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./schemas/handoff-registry.json": "./schemas/handoff-registry.json",
+    "./schemas/checkpoint-registry.json": "./schemas/checkpoint-registry.json",
     "./schemas/context-item-directory.json": "./schemas/context-item-directory.json",
     "./schemas/session-registry.json": "./schemas/session-registry.json",
     "./schemas/workbench-overview.json": "./schemas/workbench-overview.json",

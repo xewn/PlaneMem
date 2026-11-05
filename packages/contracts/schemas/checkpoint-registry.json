@@ -1,0 +1,260 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/checkpoint-registry.json",
+  "title": "PlaneMem workbench checkpoint directory and session history",
+  "description": "Complete checkpoints operation model for POST /v1/workbench/query, with mutually exclusive project-summary and full session-history modes. Register session-activity-read.json and checkpoint-read.json alongside this resource.",
+  "$comment": "Closed schemas model normalized wire shapes, not every extension tolerated by shared JS parser input. Runtime additionally checks UTF-16/lone surrogates, real dates, UTF8 byte budgets, exact scope/trace/session, unique ordered positions, filters, identity and cursor relationships. No validator/generator/runtime evidence.",
+  "oneOf": [
+    { "$ref": "#CheckpointRegistryEnvelope" },
+    { "$ref": "#CheckpointHistoryWorkbenchEnvelope" }
+  ],
+  "$defs": {
+    "ulid": { "$ref": "./session-activity-read.json#/$defs/ulid" },
+    "positive": { "$ref": "./session-activity-read.json#/$defs/positive" },
+    "name": { "$ref": "./session-activity-read.json#/$defs/identityText" },
+    "trace": { "$ref": "#/$defs/name", "maxLength": 512 },
+    "queryText": {
+      "type": "string",
+      "maxLength": 500,
+      "not": { "pattern": "[\\u0000-\\u001f\\u007f]" },
+      "description": "Raw<=500 UTF-16 units; no controls/DEL/lone surrogate. Trim and omit if blank."
+    },
+    "time": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{6}Z$",
+      "not": { "pattern": "^0000" },
+      "description": "Directory original UTC six-digit microseconds, real calendar checked by millisecond-prefix roundtrip. Session-history entry instead normalizes Date.parse text to millisecond UTC, including extended years."
+    },
+    "cursor": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,1024}$" },
+    "rawFields": {
+      "type": "object",
+      "properties": {
+        "query": { "$ref": "#/$defs/queryText" },
+        "checkpoint_id": { "$ref": "#/$defs/ulid" },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 100, "default": 25 },
+        "cursor": { "$ref": "#/$defs/cursor" }
+      }
+    },
+    "query": {
+      "$anchor": "CheckpointRegistryQuery",
+      "$ref": "#/$defs/rawFields",
+      "unevaluatedProperties": false,
+      "description": "Project directory raw fields without operation/session_id. Null rejected; checkpoint_id and cursor cannot be empty. Query trimmed/omitted, limit default25 at read time with no inserted field. Cursor fully parsed/canonically re-encoded. No dedicated8KiB ordinary-JSON query snapshot."
+    },
+    "normalizedQuery": {
+      "$anchor": "CheckpointRegistryNormalizedQuery",
+      "$ref": "#/$defs/rawFields",
+      "properties": { "query": { "minLength": 1, "not": { "pattern": "^\\s|\\s$" } } },
+      "unevaluatedProperties": false,
+      "description": "Effective directory filters; not echoed in response. Exact checkpoint_id intersects query and cursor; when supplied, result has at most one matching record and has_more=false."
+    },
+    "request": {
+      "$anchor": "CheckpointRegistryRequest",
+      "allOf": [
+        { "$ref": "#/$defs/rawFields" },
+        { "required": ["operation"], "properties": { "operation": { "const": "checkpoints" } } }
+      ],
+      "unevaluatedProperties": false
+    },
+    "historyQuery": {
+      "$anchor": "CheckpointHistoryWorkbenchQuery",
+      "$ref": "./checkpoint-read.json#CheckpointHistoryQuery",
+      "description": "History mode shares session_id and optional exclusive positive safe numeric before_revision. JSON number required; URL digit parsing belongs only to the separate GET."
+    },
+    "historyRequest": {
+      "$anchor": "CheckpointHistoryWorkbenchRequest",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation", "session_id"],
+      "properties": {
+        "operation": { "const": "checkpoints" },
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "before_revision": { "$ref": "#/$defs/positive" }
+      },
+      "description": "Providing session_id selects full history; null/empty is invalid, not directory fallback. No query/checkpoint_id/limit/cursor allowed, fixed10 rows. Raw numeric revision is not a query-bound opaque cursor."
+    },
+    "requestUnion": {
+      "$anchor": "CheckpointWorkbenchRequest",
+      "oneOf": [
+        { "$ref": "#CheckpointRegistryRequest" },
+        { "$ref": "#CheckpointHistoryWorkbenchRequest" }
+      ]
+    },
+    "summary": {
+      "type": "string",
+      "maxLength": 8192,
+      "not": { "pattern": "\\u0000" },
+      "x-utf8-max-bytes": 8192,
+      "description": "Complete available UTF8 summary<=8KiB, no NUL/lone surrogate, empty/multiline text retained. maxLength alone is not the byte rule."
+    },
+    "record": {
+      "$anchor": "CheckpointRegistryRecord",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "checkpoint_id",
+        "session_id",
+        "revision",
+        "created_at",
+        "summary",
+        "summary_state"
+      ],
+      "properties": {
+        "checkpoint_id": { "$ref": "#/$defs/ulid" },
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "revision": { "$ref": "#/$defs/positive" },
+        "created_at": { "$ref": "#/$defs/time" },
+        "summary": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/summary" }] },
+        "summary_state": { "enum": ["available", "missing", "too-large"] }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "summary_state": { "const": "available" } } },
+          "then": { "properties": { "summary": { "$ref": "#/$defs/summary" } } },
+          "else": { "properties": { "summary": { "type": "null" } } }
+        }
+      ],
+      "description": "Six-field directory summary, not complete historical notes or a save receipt. Revision is positive safe integer, not current session version or raw int64 string. No pack/memory/source validity assertion."
+    },
+    "pageFields": {
+      "type": "object",
+      "required": ["data", "has_more"],
+      "properties": {
+        "data": {
+          "type": "array",
+          "maxItems": 100,
+          "items": { "$ref": "#CheckpointRegistryRecord" }
+        },
+        "has_more": { "type": "boolean" },
+        "next_cursor": { "$ref": "#/$defs/cursor" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "has_more": { "const": true } } },
+          "then": { "required": ["next_cursor"], "properties": { "data": { "minItems": 1 } } },
+          "else": { "not": { "required": ["next_cursor"] } }
+        }
+      ],
+      "description": "Runtime dense array<=effective limit, unique checkpoint IDs and session_id/revision pairs; strict created_at DESC/ID ASC after input position. Exact checkpoint filter independently checked and forbids has_more, text membership not recomputed. Continued page full, cursor at last record with unchanged input key; false forbids cursor."
+    },
+    "page": {
+      "$anchor": "CheckpointRegistryPage",
+      "$ref": "#/$defs/pageFields",
+      "unevaluatedProperties": false,
+      "x-serialized-json-max-bytes": 2097152,
+      "description": "Normalized directory page; parser may receive a larger object and counts all its serialized bytes before reconstructing page fields."
+    },
+    "scope": {
+      "$anchor": "CheckpointRegistryScope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant_id", "workspace_id", "project_id"],
+      "properties": {
+        "tenant_id": { "$ref": "#/$defs/name" },
+        "workspace_id": { "$ref": "#/$defs/name" },
+        "project_id": { "$ref": "#/$defs/name" }
+      },
+      "description": "Nonblank<=1024 UTF-16/no controls/DEL/lone surrogate and exact request scope; no independent ULID check."
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["session_permissions"],
+      "properties": {
+        "session_permissions": { "$ref": "./session-activity-read.json#SessionReadPermissions" },
+        "session_identity": { "$ref": "./session-activity-read.json#SessionCommandIdentity" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "session_permissions": { "properties": { "write_sessions": { "const": true } } }
+            }
+          },
+          "then": { "required": ["session_identity"] }
+        }
+      ],
+      "description": "Gateway identity iff verified client, even with write=false; write additionally needs admin/session.write. Present identity scope must match request. Hints do not authorize saving, handoff creation or retry."
+    },
+    "envelope": {
+      "$anchor": "CheckpointRegistryEnvelope",
+      "allOf": [
+        { "$ref": "#/$defs/pageFields" },
+        { "$ref": "#/$defs/metadata" },
+        {
+          "required": ["schema_version", "trace_id", "scope", "source_refs"],
+          "properties": {
+            "schema_version": { "const": 1 },
+            "trace_id": { "$ref": "#/$defs/trace" },
+            "scope": { "$ref": "#CheckpointRegistryScope" },
+            "source_refs": { "const": [{ "type": "postgres", "id": "wcp_session_checkpoints" }] }
+          }
+        }
+      ],
+      "unevaluatedProperties": false,
+      "x-serialized-json-max-bytes": 2097152,
+      "description": "Complete directory envelope with exact trace/scope and fixed closed source. Identity scope checked; registry helper does not independently compare returned actor/client to SDK original context. Full JSON.stringify/UTF8<=2MiB after metadata reads, no common finite-JSON/depth/node snapshot. No query echo/session_id/next_before_revision/ETag."
+    },
+    "historyEnvelope": {
+      "$anchor": "CheckpointHistoryWorkbenchEnvelope",
+      "allOf": [
+        { "$ref": "#/$defs/metadata" },
+        {
+          "type": "object",
+          "required": ["schema_version", "trace_id", "session_id", "source_refs", "data"],
+          "properties": {
+            "schema_version": { "const": 1 },
+            "trace_id": { "type": "string", "pattern": "\\S" },
+            "session_id": { "$ref": "#/$defs/ulid" },
+            "source_refs": { "const": [{ "type": "postgres", "id": "wcp_session_checkpoints" }] },
+            "data": {
+              "type": "array",
+              "maxItems": 10,
+              "items": { "$ref": "./checkpoint-read.json#CheckpointHistoryEntry" }
+            },
+            "next_before_revision": { "$ref": "#/$defs/positive", "minimum": 2 }
+          }
+        },
+        {
+          "if": { "required": ["next_before_revision"] },
+          "then": { "properties": { "data": { "minItems": 10 } } }
+        }
+      ],
+      "unevaluatedProperties": false,
+      "x-candidate-json-max-bytes": 8388608,
+      "description": "Normalized workbench history, not public GET CheckpointHistoryEnvelope. No outer scope or tenant/workspace/project, has_more, query/cursor or ETag; present identity scope checked, absent identity gives no independent response scope echo. Exact current trace/session, unique checkpoint IDs, all entries same session, strictly descending safe revisions below before_revision; next equals last revision of a full10 page and>1. Candidate full JSON.stringify/UTF8<=8MiB before date normalization, with no general depth/node/prototype guard or independent final normalized-wire byte check."
+    },
+    "position": {
+      "$anchor": "CheckpointRegistryPosition",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["created_at", "checkpoint_id"],
+      "properties": {
+        "created_at": { "$ref": "#/$defs/time" },
+        "checkpoint_id": { "$ref": "#/$defs/ulid" }
+      }
+    },
+    "cursorContent": {
+      "$anchor": "CheckpointRegistryCursorContent",
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "prefixItems": [
+        { "const": 1 },
+        { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        { "$ref": "#/$defs/time" },
+        { "$ref": "#/$defs/ulid" }
+      ],
+      "description": "Canonical compact ASCII JSON unpadded base64url [1,key,created_at,checkpoint_id]. SHA256 key hashes checkpoint-registry-v1/scope/restricted/query/checkpoint_id/limit, not trace/actor/client. Changing page size or filters requires restart. History uses a separate raw numeric revision boundary with no such binding."
+    }
+  },
+  "x-runtime-boundaries": {
+    "http": "Authenticated generic workbench POST, context.read Policy/audit and optional expected actor/client header checks; no verified-client requirement just to read. Pre-auth1MiB JSON, traceparent before x-trace-id, generic actor/path limiter. No dedicated URL-query/media/encoding/cache-condition rejection or write preconditions; generic success cache bypassed. session_id presence selects history and parser rejects mixed mode fields. No dedicated two-slot handler or whole server deadline.",
+    "directoryDatabase": "Single statement joins checkpoint and session in full scope under visible undeleted project, applies query/exact ID/cursor before MATERIALIZED LIMIT+1, orders created_at DESC/checkpoint_id COLLATE C. Hidden/missing parent yields empty200. Canonical positive decimal revision becomes safe integer. Only selected limit rows fully parsed, lookahead indicates existence. No whole notes or live pack/memory validation.",
+    "directorySummary": "Summary is first nonnull next_actions[0],in_progress[0],completed[0], preserving empty strings. SQL masks >8KiB UTF8 to null/too-large, null remains missing; other values available and parser rejects invalid text. Search is PostgreSQL lower/strpos literal substring over checkpoint/session IDs, revision decimal and unmasked summary. Search may match omitted summary; no SQL wildcard interpretation or client text-search recomputation.2MiB result limit after materialization does not bound scans/sorts/prior memory or cross-page snapshots.",
+    "historyDatabase": "One statement checks scoped visible session and selects10+1 revision positions. Only first10 construct six note arrays/trace/pack payload; SQL sum of payload JSON text must fit8MiB minus16KiB metadata reserve, otherwise return positions with oversized flag. Check all11 IDs/revisions/order/unique positions and lookahead null payload, without parsing lookahead notes/date. Normalize selected dates and optional SQL null pack fields; full candidate envelope checked again after metadata. Existing visible session with no checkpoints is empty200; absent/hidden session404. No partial page, silent note truncation or alternate cursor on failure.",
+    "historyContent": "Reuses complete CheckpointHistoryEntry: six note arrays preserve order/duplicates/empty/multiline strings; no per-note count/length bounds beyond candidate envelope. Saved trace and legacy hash-without-pack-ID are nonblank with no individual4096 cap. Pack ID requires canonical sha256 hash shape, but no digest recomputation/current validity. No state_hash/memory_ref/inner sources; historical projection is not a save receipt.",
+    "sdk": "listCheckpointRegistry and listCheckpoints without session_id use directory2MiB; listCheckpoints with session_id calls readWorkbenchCheckpointHistory and bounded-json8MiB, with full notes/permission parsing plus supplied actor/client exact identity checks. Both have default30s local budget after input capture and post-parse deadline check; Fetch separately covers credential/network/body, success exact200/trace/media/fatalUTF8/content-length, errors16KiB. No own-data/8KiB query snapshot or general finite-JSON/depth/node guard. No automatic retry/page/save, cancellation does not prove SQL canceled.",
+    "errors": "INVALID_INPUT400 false; bad/oversize directory CHECKPOINT_REGISTRY_INVALID500 false. History absent session SESSION_NOT_FOUND404 false, oversized complete notes CHECKPOINT_READ_TOO_LARGE413 false, malformed history SESSION_ACTIVITY_INVALID500 false. Generic auth/policy401/403, RATE_LIMITED429 true, WORKBENCH_DATABASE_UNAVAILABLE/WORKBENCH_AUTH_UNAVAILABLE/AUDIT_PERSISTENCE_UNAVAILABLE503 true and INTERNAL_ERROR500 true. SDK known same-trace errors sanitized to retryable=false; history whitelist includes WORKBENCH_AUTH_UNAVAILABLE, registry whitelist does not.",
+    "remaining": "Other workbench models and complete OpenAPI composition remain. Existing SDK/CLI/MCP/Web use hand-written parsers; no machine-schema integration, Mock migration, index/migration execution or runtime compatibility evidence. Public GET history and raw MCP resources retain their own envelopes."
+  }
+}

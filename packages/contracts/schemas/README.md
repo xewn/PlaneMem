@@ -1,8 +1,22 @@
 # 独立契约结构定义
 
+## 工作台交接与检查点查询
+
+2026-11-05，TODO P0-01：新增 [handoff-registry.json](handoff-registry.json) 与 [checkpoint-registry.json](checkpoint-registry.json)及同名包子路径，补齐handoffs与checkpoints两种操作，后者包含项目目录/会话全文历史两种互斥模式。统一查询已有八种操作模型，conflicts/audit/admin三种仍待补齐后组合一个完整OpenAPI入口；现有路由计数保持89。两资源加载session-activity-read，检查点另加载checkpoint-read完整历史条目。
+
+交接提供HandoffRegistryQuery/NormalizedQuery/Request、Record/ReaderRecord、Page/Scope/Permissions/Envelope和Position/CursorContent。原空status/origin省略，session_id须ULID；open筛选匹配保存open/offered，closed匹配其余状态。十四字段基础记录和十六字段个性化记录分开，内部开放字段用于组合、公开对象闭合。session来源要求from_client/正安全版本，open固定版本1且无领取者，claimed/expired至少2；claimed必须有客户端，旧账号归属仍可null。projection固定未知归属/版本为null，不推断当前持久状态。原目标与领取者、两种逐行提示和当前身份的精确关系须运行核对，不将提示等同于可领取或原请求成功。
+
+交接完整封套固定三表来源和scope，两个write_sessions提示一致、写会话蕴含claim、任一写/领取需要身份；无身份或历史投影的逐行提示固定false。摘要available保留空串/多行及完整8KiB以内文本，missing/too-large为显式null；目录只省略超限摘要，不截断完整历史笔记。SQL持久ID优先于旧投影，即使其关联检查点/会话缺失也不回退。微秒updated_at倒序与C排序ID升序，游标绑定全部筛选/页大小；共享解析核对严格位置/唯一ID/满页末条续页，不重算数据库文本搜索。
+
+检查点提供CheckpointRegistryQuery/NormalizedQuery/Request、Record/Page/Scope/Envelope、Position/CursorContent及CheckpointHistoryWorkbenchQuery/Request/Envelope、CheckpointWorkbenchRequest联合。项目目录返回六字段摘要、has_more及可选next_cursor，目录微秒created_at/ID位置与limit绑定；精确checkpoint_id与搜索/游标取交集，最多一条且不可has_more。同页检查点ID和session_id/revision组合均唯一。摘要与交接相同三态，但revision为正安全整数，未当作会话版本。
+
+存在session_id即进入历史模式，只接受before_revision数字，禁止混入目录筛选/limit/cursor。固定最多十条完整六类笔记，复用CheckpointHistoryEntry，续页为末条revision且必须大于1；使用原始revision边界，没有目录摘要/微秒游标绑定。工作台历史保留身份/权限但没有独立GET的外层范围字段，身份存在才独立核对其scope；SDK还核对所供actor/client。SQL只构造前十条正文并预留16KiB元数据，第十一条只核对位置和null正文；8MiB候选超限整页失败，不缩页或生成绕过失败页的游标。
+
+目录完整JSON.stringify候选限2MiB，工作台历史限8MiB；均不具有上下文目录的通用有限普通JSON/深度/节点快照保证。目录SDK对WORKBENCH_AUTH_UNAVAILABLE净化为GATEWAY_UNAVAILABLE，检查点全文SDK则保留有限对应错误；均有默认30秒本地预算和独立有界Fetch，未推断SQL被取消或整个进程内存有界。机器契约消费/完整入口和运行证据仍缺，未执行校验器、生成器、编译、测试、SDK/API/数据库或发布。
+
 ## 工作台上下文与会话查询
 
-2026-11-05，TODO P0-01：新增 [context-item-directory.json](context-item-directory.json) 和 [session-registry.json](session-registry.json)，各有同名包子路径，补齐统一查询的 context/sessions/session 三操作。连同此前 overview/work_items/work_item，已有六种操作的完整模型；handoffs/checkpoints/conflicts/audit/admin 五种仍待补齐后组合一个完整入口，OpenAPI保持89路，不按操作数虚增HTTP路径。
+2026-11-05，TODO P0-01：新增 [context-item-directory.json](context-item-directory.json) 和 [session-registry.json](session-registry.json)，各有同名包子路径，补齐统一查询的 context/sessions/session 三操作。该轮连同此前 overview/work_items/work_item共准备六种操作模型；后续交接/检查点进度见上节，当前其余conflicts/audit/admin三种待补齐，OpenAPI保持89路，不按操作数虚增HTTP路径。
 
 上下文Schema自包含，公开 ContextItemDirectoryQuery/Request/NormalizedQuery、Source/Record/Scope/Permissions/Envelope、Position/CursorContent 锚点。请求空枚举省略，query/item_type原长最多500个UTF-16单位、trim后非空才保留，archived/limit规范为false/25。完整16字段记录保留任意有限JSON正文、原来源与归档时间；版本为数字安全整数，所有日期为六位UTC微秒。记录ID/保存trace沿非ULID本地规则，允许首尾空白和DEL、拒绝精确点路径；外层trace不增加点路径限制，scope三字段必须ULID。来源拒绝未知字段，但不套用写入端更窄的数量/长度规则。
 
@@ -14,7 +28,7 @@
 
 ## 工作台概览与工作项投影
 
-2026-11-05，TODO P0-01：新增 [workbench-overview.json](workbench-overview.json) 和 [work-item-projection.json](work-item-projection.json)，分别有同名包子路径。两份自包含Schema覆盖POST /v1/workbench/query的overview/work_items/work_item三操作，为统一入口完整契约准备；后续上下文与会话三操作见上节，当前其余五种操作尚需补齐，未把三操作计成三条路由，OpenAPI仍89路。
+2026-11-05，TODO P0-01：新增 [workbench-overview.json](workbench-overview.json) 和 [work-item-projection.json](work-item-projection.json)，分别有同名包子路径。两份自包含Schema覆盖POST /v1/workbench/query的overview/work_items/work_item三操作，为统一入口完整契约准备；后续模型进度见上方各节，当前其余三种操作尚需补齐，未把三操作计成三条路由，OpenAPI仍89路。
 
 概览提供WorkbenchOverviewRequest、ContextPreview、Brief、Layer、WorkbenchOverview和完整Envelope锚点。包括全部13项安全计数、五层唯一汇总、brief和四组有界预览；状态及空均值组合可由Schema表达，计数合计、各预览长度恰为min(total,cap)、唯一ID和读时过期条件仍需运行解析。brief的已保存content允许任意JSON，不假造统一正文结构。所有数据对象按现有解析器去掉扩展；built-in外层为七条有序postgres表来源，SDK普通概览封套检查更宽松，不能把它写成工作项严格客户端。
 

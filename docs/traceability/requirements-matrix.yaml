@@ -11,6 +11,31 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    workbench_handoff_checkpoint_schema_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only complete handoffs and checkpoints directory/history models; eight of eleven workbench operations prepared, three remain before full OpenAPI composition. OpenAPI stays89; P0-01/R-001 incomplete."
+      artifacts:
+        - "packages/contracts/schemas/handoff-registry.json"
+        - "packages/contracts/schemas/checkpoint-registry.json"
+        - "packages/contracts/package.json"
+        - "packages/contracts/schemas/README.md"
+        - "packages/contracts/openapi/README.md"
+        - "docs/design/01-contracts/handoff-registry-runtime.md"
+        - "docs/design/01-contracts/checkpoint-registry-runtime.md"
+        - "docs/design/01-contracts/checkpoint-read-runtime.md"
+      behavior: "Complete raw/normalized filters, durable versus projected handoff ownership, summary availability, reader-specific hints, fixed source/scope/permission envelopes, microsecond query-bound cursors, and separate full checkpoint history with numeric revision continuation."
+      boundaries: "No runtime/SDK/Mock/database/dependency changes. Durable ID shadows projection even with missing joins. Directory2MiB and summary8KiB differ from history8MiB complete notes; no generalized finite-JSON/depth/node guard or prior database memory bound. Registry identity scope checks differ from history SDK actor/client checks; POST history lacks GET outer scope. Current snapshots and saved notes do not prove original command success or current referenced-content validity."
+      evidence: []
+      remaining_scope: "conflicts/audit/admin models and complete unified OpenAPI; other WCP/MCP/event payload schemas, SDK/Mock machine-contract consumption, breaking-change CI and runtime/release evidence."
+      pending_evidence:
+        - "Raw/normalized filters, grouped status, page-size binding and mutually exclusive checkpoint modes"
+        - "Durable/projection precedence, ownership/version/null combinations and exact reader flags"
+        - "Summary byte limits/availability without truncating full historical notes"
+        - "Real microsecond positions, unique ID/session-revision pairs and canonical last-row continuation"
+        - "Full history eleven-position checks, six note arrays, raw revision bounds and8MiB candidate limits"
+        - "Exact scope/trace/sources/permissions/identity and separate SDK transport/error behavior"
+      execution: "Manual source/docs review, explicit formatting and Git text checks only; no build, typecheck, tests, validators, generators, product/SDK/Mock/API/database execution or release."
     workbench_context_session_schema_development_increment:
       date: "2026-11-05"
       todo: "P0-01"
