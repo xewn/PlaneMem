@@ -1,5 +1,7 @@
 # 公共契约目录
 
+- [建议读取与提交身份 OpenAPI](../../../packages/contracts/openapi/README.md#建议读取与提交身份)：TODO P0-01，目录/完整详情/当前提交身份三路，含分页、来源观察、派生可见性及权限提示；仅机器契约源码，未运行校验。
+
 - [冲突读取与原决定 OpenAPI](../../../packages/contracts/openapi/README.md#冲突读取与原决定)：TODO P0-01，目录/详情/身份/解决/原回执五路及完整Schema，区分HTTP事件与客户端unconfirmed、当前详情与原键决定；仅源码，未运行校验。
 
 - [同步上传与原投递 OpenAPI](../../../packages/contracts/openapi/README.md#同步上传与原投递)：TODO P0-01，上传/发送身份/原事件回执三路及完整 Schema；区分旧 HTTP 逐条拒绝、客户端完整批次与只读历史投递，仅源码，未运行校验。

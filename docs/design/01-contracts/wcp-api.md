@@ -1,6 +1,8 @@
 # WCP API 契约 v1
 
-2026-11-05，TODO P0-01：[冲突读取与原决定 OpenAPI](../../../packages/contracts/openapi/README.md#冲突读取与原决定)补齐五路已有接口的机器描述，新增完整分页/详情、原命令/回执/身份、旧HTTP提交与专用客户端结果Schema。读取保留bigint字符串、JSONB文本及SQL NULL/legacy状态；提交/原回执分别描述真实重放、完整性与权限边界，不宣称源字段已应用。OpenAPI源码现三十四路；P0-01/R-001未完成、evidence为空。未改运行逻辑、未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+2026-11-05，TODO P0-01：[建议读取与提交身份 OpenAPI](../../../packages/contracts/openapi/README.md#建议读取与提交身份)及 proposal-read Schema覆盖目录、完整详情、submission-context三路。目录续页、直接派生筛选、来源/祖先可见性与权限提示按源码描述；详情当前来源观察不证明外部引用或后续审核授权，身份直返不经过命令Policy/审计/限流。OpenAPI累计三十七路，建议POST等剩余机器契约与接线仍缺，P0-01/R-001未完成、evidence为空。仅人工源码文档审阅/指定格式/Git文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
+2026-11-05，TODO P0-01：[冲突读取与原决定 OpenAPI](../../../packages/contracts/openapi/README.md#冲突读取与原决定)补齐五路已有接口的机器描述，新增完整分页/详情、原命令/回执/身份、旧HTTP提交与专用客户端结果Schema。读取保留bigint字符串、JSONB文本及SQL NULL/legacy状态；提交/原回执分别描述真实重放、完整性与权限边界，不宣称源字段已应用。该轮使OpenAPI源码覆盖三十四路；P0-01/R-001未完成、evidence为空。未改运行逻辑、未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 2026-11-05，TODO P0-01：[同步上传与原投递 OpenAPI](../../../packages/contracts/openapi/README.md#同步上传与原投递)覆盖 events:batch、sync/commands/context、sync/events/receipt 三路，新增原始/有效批次、逐项拒绝、字段建议、发送身份与完整历史回执 Schema。区分批次原正文指纹与规范事件指纹、头键优先及重放早于新来源检查；原事件查询复查当前来源/历史权限，但不证明整个批次或源字段应用。仅描述既有实现，客户端256 KiB等限制不冒称旧上传服务端保证；OpenAPI 源码现覆盖二十九路。P0-01/R-001 未完成、evidence 为空，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 

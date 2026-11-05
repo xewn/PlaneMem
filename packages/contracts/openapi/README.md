@@ -1,6 +1,20 @@
 # OpenAPI 源码契约
 
-这里的文档描述已有HTTP实现，尚未经过OpenAPI校验器、生成器、编译、类型检查、测试或运行验证。文档中的版本不表示已发布或部署；目前覆盖五个保存包接口、九个文件接口、九个上下文条目接口、六个同步接口及五个冲突接口，共三十四个接口，尚不是完整WCP接口目录。
+这里的文档描述已有HTTP实现，尚未经过OpenAPI校验器、生成器、编译、类型检查、测试或运行验证。文档中的版本不表示已发布或部署；目前覆盖五个保存包接口、九个文件接口、九个上下文条目接口、六个同步接口、五个冲突接口及三个建议读取/身份接口，共三十七个接口，尚不是完整WCP接口目录。
+
+## 建议读取与提交身份
+
+2026-11-05，TODO **P0-01**：[proposal-reads.json](proposal-reads.json) 覆盖 GET /v1/proposals、GET /v1/proposals/{proposal_id}、GET /v1/proposals/submission-context。提供包子路径 @planemem/contracts/openapi/proposal-reads.json，本地加载本文件、相邻 context-history OpenAPI 和 [proposal-read Schema](../schemas/proposal-read.json)，保留相对路径并注册完整 ID。根 Schema 为目录/详情/身份三种完整成功的互斥联合，另有查询、摘要、完整建议及派生来源锚点；未执行生成或兼容校验。
+
+目录按 proposal_id 倒序，默认25、最多100条，过滤后查 limit+1，确有后页才返回末条 ID 为 next_before。before 只是排他 ULID，不绑定身份、筛选或页大小，也不提供跨页快照。derived_from 只选直接派生项。所有筛选字段只允许一次；limit 接受含前导零的纯数字再检查数值1–100，其余空值无特殊含义。父项目/保存分类/本地来源与最多32层派生链参与行可见性；缺失或隐藏父项目时目录返回空200，详情返回404。restricted 仍要求实际能力，admin 不替代它。
+
+详情在只读一致快照中返回完整保存建议、原 trace、审核字段和派生来源，移除内部 source_manifest，保留其他存储扩展及来源扩展。核对本地固定来源版本/状态/过期/内容摘要及依赖摘要；旧来源缺 dependency_hash 时 sources_current=false，外部引用不联网核验，空本地清单则为true。这个布尔值不检查建议自身是否到期，也不是全部祖先新鲜度或原命令/事件完整性证明。过期或已审核建议仍可读取；详情含数字 revision、JSON etag 和同值 HTTP ETag，但没有条件304/412语义。
+
+目录三项权限提示均显式返回，详情仅有 review_allowed；审核提示要求 human、可信客户端及审核能力或admin，创建提示要求可信客户端及写能力或admin，均不代表后续授权。目录/详情沿 context.read Policy/OPA 和入口决定审计。submission-context 是提前返回的专用HTTP入口，只核对认证范围、可信客户端及可选原身份头，返回 identity_preconditions=1 和五字段身份；不经过命令Policy/审计/限流，不读取数据库，不返回到期时间或写权限。其成功缓存头为 no-store，未设置 x-trace-id，须保留正文 trace。
+
+三个GET未专门拒绝正文、framing、编码、Range或缓存条件。目录/详情仍解析通用版本头，但不按其条件读取；身份入口在这些解析前返回。没有专用完整成功字节上限、两容量或总操作期限，也没有读取后的会话到期复查。Gateway只检查选定存储字段，SDK目录/详情仍用通用封套方法；新Schema不冒充已接入的完整运行校验，创建时的文本上限也不重套到旧保存读取。错误含400/401/403、详情404、普通目录/详情429/500/503；身份入口不宣称有存储/审计/限流错误。
+
+仅机器契约源码及文档，不改运行实现、SDK/Mock、旧Schema、依赖或数据库。OpenAPI累计三十七路；建议写入/原回执等剩余WCP/MCP、SDK/Mock机器契约接线与破坏性差异CI待补，P0-01/R-001未完成、evidence为空。仅人工源码文档审阅/指定格式/Git文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 ## 冲突读取与原决定
 

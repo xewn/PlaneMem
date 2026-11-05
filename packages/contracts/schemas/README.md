@@ -1,5 +1,9 @@
 # 独立契约结构定义
 
+2026-11-05，TODO **P0-01**：新增独立 proposal-read.json，根为建议目录、详情、提交身份三种完整成功联合；提供 ProposalListQuery、ProposalDetailQuery、ProposalSubmissionContextQuery、ProposalSummary、ProposalDocument、ProposalOrigin、ProposalPage 及三个封套锚点。只需注册这一份Schema；HTTP路径/参数/错误由相邻 openapi/proposal-reads.json 描述。包子路径为 @planemem/contracts/schemas/proposal-read.json。
+
+目录明确三项权限提示和可选 next_before，不补 has_more/count；详情含原保存建议、当前来源观察及版本/ETag，来源按固定建议引用加原来源排列。保存来源/provenance/行扩展保持开放，内部 source_manifest 不输出；读取不额外施加创建文本上限，不把SQL保存约束当作完整运行解析。日期按 toISOString 表达四位或扩展年份；数字版本必须正安全整数。跨字段版本/来源/范围/顺序、真实日历及字节预算并非Schema独立保证。身份只含五字段和 identity_preconditions，无到期/写权限。P0-01/R-001未完成、evidence为空；未运行校验器、生成器、编译、类型检查、测试、接口或数据库。
+
 2026-11-05，TODO **P0-01**：新增 `conflict-read.json`、`conflict-original.json`、`conflict-resolution.json`，与 sync-consumer 共四份Schema提供冲突五路完整机器结构。read根为目录/详情封套联合，original根为身份/原决定回执联合，resolution根为旧HTTP解决成功；另有更严格的专用客户端已检查响应及独立unconfirmed本地结果，避免混用传输与适配器返回。
 
 读取版本保留十进制字符串，最大9223372036854775807由原解析器比较，Schema长度/模式不独立表达该上限；提交expected_version为正且可安全加一的数字。详情JSONB文本只检查语法后原样返回，不把SQL NULL混同字符串null；open/recorded/legacy分支保留真实缺失。详情来源封闭，旧写入事件来源只要求type/id且允许扩展，客户端已检查响应才增加revision/uri/额外字段限制。目录筛选/规范base64url游标、权限提示、排序与跨请求绑定按实际解析器记录。

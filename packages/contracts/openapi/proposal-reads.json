@@ -1,0 +1,292 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem proposal directory, detail and submission identity",
+    "version": "0.1.0",
+    "description": "Source-only contract for three existing GET routes. Load this file, context-history OpenAPI and ../schemas/proposal-read.json locally with their paths/IDs preserved. No generation, compatibility, runtime or release evidence. Creation, review and original receipt POSTs are outside this document."
+  },
+  "servers": [
+    { "url": "/", "description": "Relative Gateway base; configure the actual origin/base path." }
+  ],
+  "security": [{ "GatewayBearer": [] }],
+  "tags": [{ "name": "Proposal reads" }],
+  "x-todo": "P0-01",
+  "x-runtime-boundaries": {
+    "source-files": [
+      "apps/api-gateway/src/server.ts",
+      "apps/api-gateway/src/proposals.ts",
+      "apps/api-gateway/src/authenticated-context.ts",
+      "apps/api-gateway/src/http.ts",
+      "packages/contracts/src/proposals.ts",
+      "packages/contracts/src/metadata.ts",
+      "packages/sdk/src/client.ts",
+      "deploy/migrations/018_proposal_reviews.sql"
+    ],
+    "authentication": "All three require Bearer and authorized tenant/workspace/project headers. Expected actor/client headers are independently optional exact preconditions, not identity overrides. List/detail allow the authenticated-context client fallback. Submission identity additionally requires authenticated_client=true. No post-read session-expiry recheck on these routes.",
+    "policy": "List/detail execute context.read through configured Policy/OPA and await the entry decision audit before storage. With configured OPA its decision replaces local policy; SQL restricted visibility still requires actual data.restricted.read. Submission identity returns directly before command routing, Policy, decision audit and ApiGateway actor/path limiter.",
+    "http": "These GET handlers do not read or explicitly reject request bodies/framing, Content-Encoding, range or cache-condition headers. No conditional206/304 semantics. List/detail parse generic If-Match/If-Match-Version for syntax/equality but do not use them to condition the read; Idempotency-Key is captured without making reads idempotent. Submission identity returns before even this generic precondition parsing. Query fields are independently strict as described per operation.",
+    "budgets": "No dedicated complete-success byte limit, two-slot admission gate or whole-operation deadline for these reads. Directory is row-count bounded; detail checks source counts and selected metadata. No full response-schema parser is executed by Gateway or the generic SDK list/detail envelope methods. Do not import the original-receipt clients' limits into these GET guarantees."
+  },
+  "paths": {
+    "/v1/proposals": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "get": {
+        "operationId": "listProposals",
+        "tags": ["Proposal reads"],
+        "summary": "Read filtered saved proposal summaries",
+        "x-wcp-operation": "proposal.list",
+        "x-policy-action": "context.read",
+        "x-decoded-query-schema": { "$ref": "../schemas/proposal-read.json#ProposalListQuery" },
+        "description": "One SQL statement selects visible proposals in this scope, applies status/kind/before/direct-parent filters, orders by proposal_id descending and fetches limit+1. Return first limit summaries and next_before=last returned ID only when lookahead exists. before is an exclusive ULID, not a signed cursor bound to identity/filters/limit or a cross-page snapshot. Repeat filters explicitly on continuation. Visibility requires a nondeleted visible parent project, proposal classification, all manifest local sources present/nondeleted/visible, and the same local checks along the bounded same-scope derivation chain; missing/cyclic/overlong lineage is hidden. Restricted reads require actual data.restricted.read, even for admin. Parent visibility is evaluated per row: a missing/hidden project produces an empty200 directory, not an independent404. No source freshness traversal or expiry/status exclusion unless requested status filters it. Summary conversion checks ID/safe revision/dates; it does not validate full provenance/content/manifests or the lookahead summary. review_allowed requires human+verified client+review capability/admin; create_allowed requires verified client+write capability/admin; neither rechecks expiry or grants later Policy approval.",
+        "x-query-boundary": "Only status/kind/before/limit/derived_from, each once; blank values invalid. limit wire value is ASCII digits of any length including leading zeros, converted to Number then checked safe1..100; default25. derived_from matches only direct child provenance, not all descendants and not an independently looked-up parent.",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "$ref": "../schemas/proposal-read.json#/$defs/status" }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "schema": { "$ref": "../schemas/proposal-read.json#/$defs/kind" }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "schema": { "$ref": "../schemas/proposal-read.json#/$defs/ulid" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Wire digits including leading zeros; numeric value1..100, absent defaults25. Decoded numeric query is separately defined.",
+            "schema": { "type": "string", "pattern": "^[0-9]+$" }
+          },
+          {
+            "name": "derived_from",
+            "in": "query",
+            "schema": { "$ref": "../schemas/proposal-read.json#/$defs/ulid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Complete summary page including all three capability hints. One proposal-list source with the requested project ID; no outer revision/etag/cursor or HTTP ETag. No has_more/count fields.",
+            "headers": {
+              "cache-control": { "$ref": "#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "#/components/headers/SuccessTrace" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "../schemas/proposal-read.json#ProposalListEnvelope" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/proposals/{proposal_id}": {
+      "parameters": [
+        { "$ref": "#/components/parameters/ProposalId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "get": {
+        "operationId": "getProposal",
+        "tags": ["Proposal reads"],
+        "summary": "Read a complete visible proposal and current local-source observation",
+        "x-wcp-operation": "proposal.read",
+        "x-policy-action": "context.read",
+        "x-decoded-query-schema": { "$ref": "../schemas/proposal-read.json#ProposalDetailQuery" },
+        "description": "No URL query fields. Decode path ID once and require a ULID. In one repeatable-read read-only transaction, find the proposal under the same parent/source/lineage visibility rules as the directory; missing or hidden returns404. Validate stored source references, unique local-source manifest bindings/hash syntax and provenance, then normalize dates and revision. Return stored content, original trace, reviewer fields and derivation provenance; internal source_manifest is omitted, other stored row/provenance/source extensions preserved. sources_current compares pinned local context-item revisions, active status/expiry, source hashes and dependency hashes from inspectContextSources. Legacy manifests without dependency_hash produce false; nonlocal references are not fetched and an empty local manifest produces true. This flag does not check the proposal's own expiry, validate all ancestors' freshness or authorize a review. Expired/final proposals remain readable. review_allowed is the same independent human/client/capability hint as the directory, not coupled to status/expiry/freshness. No post-transaction expiry recheck or original-command/event-integrity proof.",
+        "responses": {
+          "200": {
+            "description": "Complete proposal plus sources_current/review_allowed. JSON revision/etag and HTTP ETag match proposal.revision. First outer source pins that proposal; remaining sources preserve its saved source order. Outer trace is current, inner trace is saved. Stale sources yield200 with false, not409. ETag is metadata, without conditional304/412 processing.",
+            "headers": {
+              "cache-control": { "$ref": "#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "#/components/headers/SuccessTrace" },
+              "ETag": {
+                "required": true,
+                "description": "Equals JSON etag and canonical weak version tag of data.proposal.revision.",
+                "schema": { "type": "string", "pattern": "^W/\"version-[1-9][0-9]*\"$" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "../schemas/proposal-read.json#ProposalDetailEnvelope" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/proposals/submission-context": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "get": {
+        "operationId": "getProposalSubmissionContext",
+        "tags": ["Proposal reads"],
+        "summary": "Observe current verified submission identity",
+        "x-decoded-query-schema": {
+          "$ref": "../schemas/proposal-read.json#ProposalSubmissionContextQuery"
+        },
+        "description": "Direct HTTP special route takes precedence over the proposal detail template. Reject any URL query. Authenticate scope/token and optional expected actor/client, then require authenticated_client=true. Return current identity_preconditions=1 and five identity fields. No command-router operation, context.read/proposal.write capability gate, Policy/OPA evaluation, decision audit or ApiGateway rate-limit execution. No proposal/project/storage query and no permission or storage-readiness promise. The handler returns before generic If-Match/If-Match-Version/Idempotency-Key parsing; it has no dedicated body/cache/range/encoding rejection. Missing capability alone does not make this identity request fail.",
+        "responses": {
+          "200": {
+            "description": "Current identity envelope with empty sources; no token expiry, capability hints, revision/etag/cursor or HTTP ETag. Direct writeJson sets cache-control:no-store and does not set x-trace-id; retain trace_id in JSON.",
+            "headers": {
+              "cache-control": {
+                "required": true,
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../schemas/proposal-read.json#ProposalSubmissionContextEnvelope"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/IdentityBadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/IdentityDenied" },
+          "503": { "$ref": "#/components/responses/IdentityUnavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": { "GatewayBearer": { "type": "http", "scheme": "bearer" } },
+    "parameters": {
+      "ProposalId": {
+        "name": "proposal_id",
+        "in": "path",
+        "required": true,
+        "description": "Single decoded ULID of the saved proposal.",
+        "schema": { "$ref": "../schemas/proposal-read.json#/$defs/ulid" }
+      },
+      "TenantId": {
+        "$ref": "./context-history.json#/components/parameters/TenantId",
+        "description": "Required nonempty tenant exactly matching authorized scope; this HTTP boundary does not independently require ULID syntax."
+      },
+      "WorkspaceId": {
+        "$ref": "./context-history.json#/components/parameters/WorkspaceId",
+        "description": "Required nonempty workspace exactly matching authorized scope."
+      },
+      "ProjectId": {
+        "$ref": "./context-history.json#/components/parameters/ProjectId",
+        "description": "Required nonempty project exactly matching authorized scope."
+      },
+      "TraceParent": {
+        "$ref": "./context-history.json#/components/parameters/TraceParent",
+        "description": "Nonempty opaque trace value takes precedence over x-trace-id; no W3C format or paired-header equality check."
+      },
+      "TraceId": {
+        "$ref": "./context-history.json#/components/parameters/TraceId",
+        "description": "Used when traceparent absent/empty; generates trace_http_<ULID> if both absent/empty."
+      },
+      "ExpectedActorId": {
+        "$ref": "./context-history.json#/components/parameters/ExpectedActorId"
+      },
+      "ExpectedClientId": {
+        "$ref": "./context-history.json#/components/parameters/ExpectedClientId"
+      }
+    },
+    "headers": {
+      "NoStore": { "$ref": "./context-history.json#/components/headers/NoStore" },
+      "SuccessTrace": { "$ref": "./context-history.json#/components/headers/SuccessTrace" },
+      "ErrorTrace": { "$ref": "./context-history.json#/components/headers/ErrorTrace" }
+    },
+    "schemas": {
+      "ErrorEnvelope": { "$ref": "./context-history.json#/components/schemas/ErrorEnvelope" }
+    },
+    "responses": {
+      "Error": {
+        "description": "Application error envelope; transport/proxy failures can use another representation. No automatic retry or response-size promise.",
+        "headers": {
+          "cache-control": { "$ref": "#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "#/components/headers/ErrorTrace" }
+        },
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } }
+        }
+      },
+      "BadInput": {
+        "$ref": "#/components/responses/Error",
+        "description": "INVALID_INPUT for malformed path encoding/ID, unsupported/duplicate/blank filters, bad limit or detail query. INVALID_REQUEST_CONTEXT for malformed/disagreeing generic version headers. retryable=false. Storage availability is checked before handler-level filter parsing, so missing storage can yield503 first."
+      },
+      "IdentityBadInput": {
+        "$ref": "#/components/responses/Error",
+        "description": "INVALID_INPUT for any query fields. Generic version headers are not parsed on this direct route. retryable=false."
+      },
+      "Unauthenticated": {
+        "$ref": "#/components/responses/Error",
+        "description": "UNAUTHENTICATED for missing/rejected Bearer token; retryable=false. Early failures do not guarantee WWW-Authenticate or x-trace-id."
+      },
+      "Denied": {
+        "$ref": "#/components/responses/Error",
+        "description": "DENIED for unauthorized scope, expected-identity mismatch or Policy denial; retryable=false. Hidden detail returns404, hidden directory rows are omitted."
+      },
+      "IdentityDenied": {
+        "$ref": "#/components/responses/Error",
+        "description": "DENIED for unauthorized scope, expected-identity mismatch or missing verified client; retryable=false. No writer/reviewer capability check on this route."
+      },
+      "NotFound": {
+        "$ref": "#/components/responses/Error",
+        "description": "PROPOSAL_NOT_FOUND for missing or currently invisible detail, including parent/source/lineage restrictions; retryable=false."
+      },
+      "RateLimited": {
+        "$ref": "#/components/responses/Error",
+        "description": "RATE_LIMITED from generic actor/path limiter; retryable=true. No dedicated read slots or Retry-After promise. Direct submission identity bypasses this limiter."
+      },
+      "InvalidStored": {
+        "$ref": "#/components/responses/Error",
+        "description": "PROPOSAL_INVALID for selected invalid stored ID/version/dates/provenance/source manifest; retryable=false. Unexpected command-boundary INTERNAL_ERROR defaults retryable=true. Not a claim that all malformed stored fields are checked."
+      },
+      "Unavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "PROPOSAL_STORAGE_UNAVAILABLE for missing database or non-ContractError storage/read/source-inspection failure. WORKBENCH_AUTH_UNAVAILABLE or AUDIT_PERSISTENCE_UNAVAILABLE at outer boundaries. retryable=true. No synthesized proposal or in-memory fallback."
+      },
+      "IdentityUnavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "WORKBENCH_AUTH_UNAVAILABLE for missing/unavailable verifier; retryable=true. This direct handler does not query proposal storage or await a command decision audit."
+      }
+    }
+  }
+}

@@ -11,6 +11,26 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    proposal_reads_openapi_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only proposal directory/detail/submission-identity OpenAPI and complete response schema; P0-01 and R-001 remain incomplete."
+      artifacts:
+        - "packages/contracts/openapi/proposal-reads.json"
+        - "packages/contracts/schemas/proposal-read.json"
+        - "packages/contracts/package.json"
+        - "packages/contracts/openapi/README.md"
+        - "packages/contracts/schemas/README.md"
+      behavior: "Three existing GETs: filtered metadata pagination, full saved proposal with local-source freshness observation, and current verified submission identity. Model all page hints, saved provenance/source extensions, original review fields, numeric revision/ETag, direct-parent filtering and exclusive before-ID continuation."
+      boundaries: "No runtime/SDK/Mock/old-schema/database changes. Row visibility checks parent/local sources/bounded lineage; hidden parent yields empty directory but hidden detail is404. Local-source freshness does not fetch external references or prove proposal expiry/ancestor freshness/original receipt. Identity returns before command Policy/audit/rate limiting and generic version-header parsing. No dedicated full response budgets, read deadlines or post-read expiry checks; generic SDK methods remain unchanged."
+      evidence: []
+      remaining_scope: "Proposal writes and receipts, other WCP/MCP machine contracts, ordinary event payloads, SDK/Mock machine-contract consumption, breaking-change CI and tool/runtime/release evidence."
+      pending_evidence:
+        - "Local OpenAPI/Schema references, full response shapes, row/source/provenance extensions and stored date profiles"
+        - "Limit wire aliases, decoded filters, descending ID pagination, direct-child filtering and permission hints"
+        - "Parent/source/lineage visibility, stale local dependencies, expired proposals and unknown external sources"
+        - "Direct identity route precedence, auth-only behavior and exact HTTP cache/trace/error boundaries"
+      execution: "Manual source/docs review and explicit formatting/Git text checks only; no build, typecheck, tests, validators, generators, product/API/database execution or release."
     conflicts_openapi_development_increment:
       date: "2026-11-05"
       todo: "P0-01"
