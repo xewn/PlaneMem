@@ -1,5 +1,7 @@
 # 原审核回执只读查询
 
+2026-11-05，TODO P0-01：新增[操作OpenAPI](../../../packages/contracts/openapi/proposal-operations.json)和[独立原回执Schema](../../../packages/contracts/schemas/proposal-original.json)，描述完整六字段原审核、规范理由/可见ASCII身份键、32KiB请求/64KiB成功及原版本加一关系。实际HTTP检查JSON/UTF-8媒体声明并拒绝Content-Encoding，通用Buffer解码本身不是fatal UTF-8。完整成功trace另要求可见ASCII1–255，而通用HTTP选择更宽；不兼容trace在未观察封套解析时经storage包装503，在已记录核对块内包装500；已记录块内事件SQL的非ContractError故障也映射500。只检查列出的事件属性，不把SQL核对冒称完整CanonicalEvent解析或扩展字段拒绝。新契约不改运行实现，P0-01/R-001未完成、evidence为空；未编译、测试、运行校验器/生成器、接口或数据库。
+
 2026-11-04，仅源码和人工审阅。未编译、类型检查、测试、运行产品/接口/Mock、打开数据库或发布，无新增依赖、结构或迁移。
 
 ## 原请求和入口

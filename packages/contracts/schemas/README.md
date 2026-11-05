@@ -1,5 +1,9 @@
 # 独立契约结构定义
 
+2026-11-05，TODO **P0-01**：新增 proposal-write.json 与 proposal-original.json，复用 proposal-read 的标量/派生/来源。前者提供 ProposalCreateBody、ProposalReviewBody、NormalizedProposalDraft、完整通用写回执及创建/确认/拒绝三个成功锚点；后者提供严格原五身份、完整创建/审核查询、已记录历史元数据与两类recorded/not-observed封套。包子路径对应两个文件名，需一起注册三份Schema。
+
+旧写正文与规范原查询分开：创建可省默认值并trim指定字段，原查询必须已规范化；原键/actor/client采用更严格可见ASCII。文本检查UTF-16长度、非空白、NUL/孤立代理，其他控制字符不统一禁止；content/来源不trim。本地来源必须正pin，数组顺序保留。HTTP正文路径ID可被路由覆盖，头/正文键和版本跨字段相等由运行实现处理。写成功日期可用扩展年份，原回执只接受四位年份UTC毫秒。完整有限JSON、实际字节、日历、指纹、来源/版本/ETag和原查询相等不是Schema独立证明；新Schema不代替现有运行校验。P0-01/R-001未完成、evidence为空，未运行校验器、生成器、编译、类型检查、测试、接口或数据库。
+
 2026-11-05，TODO **P0-01**：新增独立 proposal-read.json，根为建议目录、详情、提交身份三种完整成功联合；提供 ProposalListQuery、ProposalDetailQuery、ProposalSubmissionContextQuery、ProposalSummary、ProposalDocument、ProposalOrigin、ProposalPage 及三个封套锚点。只需注册这一份Schema；HTTP路径/参数/错误由相邻 openapi/proposal-reads.json 描述。包子路径为 @planemem/contracts/schemas/proposal-read.json。
 
 目录明确三项权限提示和可选 next_before，不补 has_more/count；详情含原保存建议、当前来源观察及版本/ETag，来源按固定建议引用加原来源排列。保存来源/provenance/行扩展保持开放，内部 source_manifest 不输出；读取不额外施加创建文本上限，不把SQL保存约束当作完整运行解析。日期按 toISOString 表达四位或扩展年份；数字版本必须正安全整数。跨字段版本/来源/范围/顺序、真实日历及字节预算并非Schema独立保证。身份只含五字段和 identity_preconditions，无到期/写权限。P0-01/R-001未完成、evidence为空；未运行校验器、生成器、编译、类型检查、测试、接口或数据库。

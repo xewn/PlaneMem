@@ -1,0 +1,240 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/proposal-write.json",
+  "title": "Proposal command bodies and complete mutation receipts v1",
+  "description": "Existing create/confirm/reject HTTP bodies and complete successes. Root is the three operation-success union; original read-only receipt queries are in proposal-original.json.",
+  "$comment": "Source-only; load proposal-read.json. Runtime checks UTF-16 lengths, lone surrogates, normalization, cross-header/body equality, identity/key/fingerprint, versions/ETag/sources and transaction outcomes. JSON Schema maxLength counts Unicode code points instead of JavaScript UTF-16 units. No complete response validator is introduced into the legacy HTTP or SDK mutation paths.",
+  "oneOf": [
+    { "$ref": "#ProposalCreateEnvelope" },
+    { "$ref": "#ProposalConfirmEnvelope" },
+    { "$ref": "#ProposalRejectEnvelope" }
+  ],
+  "$defs": {
+    "ulid": { "$ref": "proposal-read.json#/$defs/ulid" },
+    "version": { "$ref": "proposal-read.json#/$defs/version" },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S",
+      "not": { "pattern": "\\u0000" },
+      "$comment": "Nonblank, no NUL/lone surrogates; other control characters are not blanket-forbidden by the existing text parser."
+    },
+    "normalizedText": {
+      "$ref": "#/$defs/text",
+      "pattern": "^\\S(?:[\\s\\S]*\\S)?$",
+      "not": { "pattern": "^\\s|\\s$" },
+      "$comment": "Already trimmed. Interior whitespace/control characters other than NUL remain accepted; runtime checks lone surrogates."
+    },
+    "idempotencyKey": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "not": { "pattern": "\\s" },
+      "$comment": "Legacy write validateIdempotencyKey only requires nonempty, <=255 UTF-16 units, no whitespace. It does not impose the original-query visible ASCII profile."
+    },
+    "writeSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "$ref": "#/$defs/text", "maxLength": 64 },
+        "id": { "$ref": "#/$defs/text", "maxLength": 255 },
+        "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "uri": { "$ref": "#/$defs/text", "maxLength": 2048 }
+      },
+      "if": { "properties": { "type": { "const": "context-item" } }, "required": ["type"] },
+      "then": {
+        "required": ["revision"],
+        "properties": { "revision": { "$ref": "#/$defs/version" } }
+      },
+      "description": "Preserve all fields/whitespace without URI fetching or normalization. Exact type=context-item requires a positive pin; other types may omit revision or use zero. Duplicate refs are retained; differing pins for the same local ID are rejected later by binding."
+    },
+    "draftFields": {
+      "type": "object",
+      "properties": {
+        "kind": { "$ref": "proposal-read.json#/$defs/kind" },
+        "title": {
+          "$ref": "#/$defs/text",
+          "maxLength": 300,
+          "description": "Validate raw length then trim."
+        },
+        "content": {
+          "$ref": "#/$defs/text",
+          "maxLength": 131072,
+          "description": "Preserve whitespace exactly."
+        },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": { "$ref": "#/$defs/writeSource" }
+        },
+        "model_version": {
+          "$ref": "#/$defs/text",
+          "maxLength": 200,
+          "description": "Validate raw length then trim."
+        },
+        "prompt_version": {
+          "$ref": "#/$defs/text",
+          "maxLength": 200,
+          "description": "Validate raw length then trim."
+        },
+        "classification": {
+          "$ref": "proposal-read.json#/$defs/classification",
+          "default": "internal"
+        },
+        "ttl_seconds": { "type": "integer", "minimum": 60, "maximum": 2592000, "default": 604800 },
+        "derived_from": { "$ref": "proposal-read.json#ProposalOrigin" }
+      }
+    },
+    "createBody": {
+      "$anchor": "ProposalCreateBody",
+      "$ref": "#/$defs/draftFields",
+      "required": ["kind", "title", "content", "source_refs", "model_version", "prompt_version"],
+      "properties": { "idempotency_key": { "$ref": "#/$defs/idempotencyKey" } },
+      "propertyNames": {
+        "enum": [
+          "kind",
+          "title",
+          "content",
+          "source_refs",
+          "model_version",
+          "prompt_version",
+          "classification",
+          "ttl_seconds",
+          "derived_from",
+          "idempotency_key"
+        ]
+      },
+      "description": "Original HTTP JSON object. Stable key required from body or header; if both supplied they must match. Unknown fields rejected after removing idempotency_key. Classification/TTL defaults and title/model/prompt trimming form the effective draft used in the fingerprint. Generic version headers are parsed but do not condition creation and are not in its positional fingerprint."
+    },
+    "normalizedDraft": {
+      "$anchor": "NormalizedProposalDraft",
+      "$ref": "#/$defs/draftFields",
+      "required": [
+        "kind",
+        "title",
+        "content",
+        "source_refs",
+        "model_version",
+        "prompt_version",
+        "classification",
+        "ttl_seconds"
+      ],
+      "properties": {
+        "title": { "$ref": "#/$defs/normalizedText", "maxLength": 300 },
+        "model_version": { "$ref": "#/$defs/normalizedText", "maxLength": 200 },
+        "prompt_version": { "$ref": "#/$defs/normalizedText", "maxLength": 200 }
+      },
+      "propertyNames": {
+        "enum": [
+          "kind",
+          "title",
+          "content",
+          "source_refs",
+          "model_version",
+          "prompt_version",
+          "classification",
+          "ttl_seconds",
+          "derived_from"
+        ]
+      },
+      "description": "Complete normalized original draft for receipt lookup. Defaults must already be present, no outer key in draft. Runtime compares canonical(raw draft) with canonical(parseCreateProposal(raw draft)); array order, content whitespace, source whitespace and optional derivation presence are preserved."
+    },
+    "reviewBody": {
+      "$anchor": "ProposalReviewBody",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason"],
+      "properties": {
+        "reason": {
+          "$ref": "#/$defs/text",
+          "maxLength": 2000,
+          "description": "Validate raw length then trim before fingerprint/storage."
+        },
+        "expected_revision": { "$ref": "#/$defs/version" },
+        "idempotency_key": { "$ref": "#/$defs/idempotencyKey" },
+        "proposal_id": {
+          "description": "Optional legacy ignored body field of any JSON type: route ID overwrites it. New callers should omit it; it cannot redirect or bind the path."
+        }
+      },
+      "description": "Confirm/reject selected by path. Positive safe expected revision from body or If-Match/If-Match-Version, and stable key from body or Idempotency-Key. Simultaneous values must agree; header alternatives cannot be expressed by this body schema alone. Raw writes allow MAX_SAFE_INTEGER, while strict original-review queries additionally require safe increment."
+    },
+    "mutationReceipt": {
+      "$anchor": "ProposalMutationReceipt",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["proposal_id", "status", "revision", "event_id", "occurred_at", "replayed"],
+      "properties": {
+        "proposal_id": { "$ref": "#/$defs/ulid" },
+        "status": { "$ref": "proposal-read.json#/$defs/status" },
+        "revision": { "$ref": "#/$defs/version" },
+        "event_id": { "$ref": "#/$defs/ulid" },
+        "occurred_at": { "$ref": "proposal-read.json#/$defs/utcTime" },
+        "replayed": { "type": "boolean" }
+      }
+    },
+    "mutationEnvelope": {
+      "$anchor": "ProposalMutationEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "trace_id",
+        "source_refs",
+        "data",
+        "revision",
+        "etag",
+        "server_cursor"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "type": "string", "minLength": 1 },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": { "$ref": "proposal-read.json#/$defs/pinnedProposalSource" }
+        },
+        "data": { "$ref": "#ProposalMutationReceipt" },
+        "revision": { "$ref": "#/$defs/version" },
+        "etag": { "type": "string", "pattern": "^W/\"version-[1-9][0-9]*\"$" },
+        "server_cursor": { "$ref": "#/$defs/version" }
+      },
+      "description": "Outer revision, etag and sole source agree with data ID/revision. Cursor is the saved event position. Outer trace is current even on replay; event/time/cursor/status/version are historical. No full suggestion content, original draft/reason or canonical event is returned. Gateway validates selected stored receipt scalars, not all cross-field or per-operation constraints."
+    },
+    "createEnvelope": {
+      "$anchor": "ProposalCreateEnvelope",
+      "$ref": "#ProposalMutationEnvelope",
+      "properties": {
+        "data": { "properties": { "status": { "const": "proposed" }, "revision": { "const": 1 } } },
+        "revision": { "const": 1 },
+        "etag": { "const": "W/\"version-1\"" },
+        "source_refs": { "items": { "properties": { "revision": { "const": 1 } } } }
+      },
+      "description": "Successful create remains the historical proposed revision1 even when the current proposal was later reviewed. replayed=true returns the saved command result after visibility checks."
+    },
+    "confirmEnvelope": {
+      "$anchor": "ProposalConfirmEnvelope",
+      "$ref": "#ProposalMutationEnvelope",
+      "properties": {
+        "data": { "properties": { "status": { "const": "verified" }, "revision": { "const": 2 } } },
+        "revision": { "const": 2 },
+        "etag": { "const": "W/\"version-2\"" },
+        "source_refs": { "items": { "properties": { "revision": { "const": 2 } } } }
+      },
+      "description": "Saved human approval metadata only; no source/Plane field application."
+    },
+    "rejectEnvelope": {
+      "$anchor": "ProposalRejectEnvelope",
+      "$ref": "#ProposalMutationEnvelope",
+      "properties": {
+        "data": { "properties": { "status": { "const": "rejected" }, "revision": { "const": 2 } } },
+        "revision": { "const": 2 },
+        "etag": { "const": "W/\"version-2\"" },
+        "source_refs": { "items": { "properties": { "revision": { "const": 2 } } } }
+      },
+      "description": "Saved rejection; current visibility is required but rejection does not require unexpired proposal or fresh local sources."
+    }
+  }
+}

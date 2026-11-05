@@ -1,6 +1,8 @@
 # PlaneMem
 
-按 TODO **P0-01** 补充[建议读取与提交身份 OpenAPI](packages/contracts/openapi/README.md#建议读取与提交身份)及完整读取 Schema，覆盖目录、详情、当前提交身份三路。明确分页/派生可见性、来源观察和权限提示，身份读取不代表已获写权限。OpenAPI源码累计覆盖三十七个接口；剩余WCP/MCP及SDK/Mock机器契约接线仍待补，P0-01保持未完成。未编译、测试、运行校验器/生成器/接口或发布。
+按 TODO **P0-01** 补充[建议写入与原回执 OpenAPI](packages/contracts/openapi/README.md#建议写入与原回执)及两份完整Schema，覆盖创建、确认、拒绝和两类原请求查询五路；区分规范正文、历史重放与只读原回执，明确人工审核、来源检查及当前状态边界。建议八路源码目录已覆盖，OpenAPI累计四十二路；P0-01仍未完成。未编译、测试、运行校验器/生成器/接口或发布。
+
+按 TODO **P0-01** 补充[建议读取与提交身份 OpenAPI](packages/contracts/openapi/README.md#建议读取与提交身份)及完整读取 Schema，覆盖目录、详情、当前提交身份三路。明确分页/派生可见性、来源观察和权限提示，身份读取不代表已获写权限。该轮使OpenAPI源码累计覆盖三十七个接口；剩余WCP/MCP及SDK/Mock机器契约接线仍待补，P0-01保持未完成。未编译、测试、运行校验器/生成器/接口或发布。
 
 按 TODO **P0-01** 补充[冲突读取与原决定 OpenAPI](packages/contracts/openapi/README.md#冲突读取与原决定)及三份Schema，覆盖列表、详情、解决身份、提交解决、原决定回执五路；区分完整详情、提交事件与原键回执，保留大整数版本/JSON文本及旧记录状态。该轮使OpenAPI源码覆盖三十四个接口；完整WCP/MCP、SDK/Mock机器契约接线和验收证据仍待补。未编译、测试、运行校验器/生成器/接口或发布。
 

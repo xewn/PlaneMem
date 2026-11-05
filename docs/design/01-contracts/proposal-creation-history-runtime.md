@@ -1,5 +1,7 @@
 # 原创建结果历史留存与找回
 
+2026-11-05，TODO P0-01：原HTTP创建与只读查询已有独立[OpenAPI](../../../packages/contracts/openapi/proposal-operations.json)及[写入](../../../packages/contracts/schemas/proposal-write.json)/[原回执](../../../packages/contracts/schemas/proposal-original.json)Schema。机器契约分别描述历史创建replayed回执和完整规范草稿查询；本文浏览器4MiB观察文件/64KiB发送解析是客户端限制，不冒称旧HTTP写成功上限。原查询已记录时核对草稿、TTL、创建者及ApprovalRequested，当前已审核/过期不改变原proposed/revision1结果。未运行生成/校验/编译/测试，P0-01/R-001未完成、evidence为空。
+
 2026-11-04，仅源码文档与人工审阅，未编译、类型检查、测试、运行产品/浏览器/接口/数据库或发布。
 
 ## 完整观察与当前提交分开

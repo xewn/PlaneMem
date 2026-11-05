@@ -8,6 +8,9 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./schemas/proposal-write.json": "./schemas/proposal-write.json",
+    "./schemas/proposal-original.json": "./schemas/proposal-original.json",
+    "./openapi/proposal-operations.json": "./openapi/proposal-operations.json",
     "./schemas/proposal-read.json": "./schemas/proposal-read.json",
     "./openapi/proposal-reads.json": "./openapi/proposal-reads.json",
     "./schemas/conflict-read.json": "./schemas/conflict-read.json",

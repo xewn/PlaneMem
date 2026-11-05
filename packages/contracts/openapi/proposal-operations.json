@@ -1,0 +1,422 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem proposal creation, human review and original receipts",
+    "version": "0.1.0",
+    "description": "Source-only five-POST contract. Load this file, proposal-reads/context-history OpenAPI and proposal-write/proposal-original/proposal-read schemas locally with relative paths and IDs preserved. These are descriptions of existing implementations, not generated or runtime-validated artifacts."
+  },
+  "servers": [
+    { "url": "/", "description": "Relative Gateway base; configure actual origin/base path." }
+  ],
+  "security": [{ "GatewayBearer": [] }],
+  "tags": [{ "name": "Proposal operations" }],
+  "x-todo": "P0-01",
+  "x-runtime-boundaries": {
+    "sources": [
+      "apps/api-gateway/src/proposals.ts",
+      "apps/api-gateway/src/server.ts",
+      "apps/api-gateway/src/http.ts",
+      "apps/api-gateway/src/sync-stream.ts",
+      "packages/contracts/src/proposals.ts",
+      "packages/contracts/src/proposal-create-receipt.ts",
+      "packages/contracts/src/proposal-review-receipt.ts",
+      "packages/contracts/src/context-items.ts",
+      "packages/contracts/src/sync-upload-receipt.ts"
+    ],
+    "authorization": "All five POSTs require verified client, Bearer token and authorized scope. Expected actor/client headers independently precondition authenticated context. Create uses proposal.write Policy; review uses proposal.review plus independent human/client/reviewer-capability-or-admin gate. Receipt handlers independently require unexpired verified writer or human reviewer and exact original identity. OPA replaces local Policy when configured; actual restricted capability remains necessary for SQL visibility. Entry decision audit occurs before business handler, not as evidence of successful commit.",
+    "mutation-body": "Create/confirm/reject use generic pre-auth raw1MiB JSON-object parsing, with Buffer.toString UTF-8 replacement decoding. Empty, invalid, nonobject or oversized body produces400 INVALID_JSON, not413. URL query fields are rejected. No dedicated Content-Type/Content-Encoding/cache/range guards on these three writes; application/json is the intended representation. No shared complete mutation-success byte parser is called by legacy HTTP or generic SDK commands.",
+    "receipt-body": "Both receipt routes authenticate before reading raw body, require application/json optionally with UTF-8 charset (quoted allowed), reject query and Idempotency-Key, If-Match, If-Match-Version, If-None-Match, If-Modified-Since, If-Unmodified-Since, Range, If-Range, Content-Encoding. Review receipt additionally rejects X-Expected-Version; create receipt does not. Any Content-Encoding including identity is rejected. Raw limits1MiB creation/32KiB review; invalid/oversized JSON maps400 INVALID_INPUT. UTF-8 decoding is not fatal and duplicate JSON keys have no dedicated rejection. connection:close and x-trace-id are set before auth/body parsing.",
+    "receipt-budgets": "Shared finite-JSON parsing also limits decoded serialized requests to1MiB/32KiB and complete successes to2MiB/64KiB, with depth64 and100000 nodes. These are whole envelopes, not SQL query/output limits. Queries and recorded-result comparisons require complete normalized originals. No dedicated HTTP two-slot gate, whole-operation deadline or SQL cancellation guarantee.",
+    "idempotency": "Writes require a nonempty <=255-UTF16-unit whitespace-free key in header or body; both must match. This legacy key/actor/client profile is broader than receipt queries' visible ASCII1..255. Key hash is SHA256(canonical([actor,client,key])) and storage additionally scopes tenant/workspace/project. Command fingerprint is canonical([operation,id,expected,trimmedReason,normalizedCreate]); undefined array positions serialize as null, object keys sort, array order is preserved. Generic commandReceipt's other fingerprint is not used. Create version headers are parsed but do not enter this positional fingerprint.",
+    "transaction": "Writes take project stream advisory lock, inspect prior command, then perform fresh work. Matching prior key/fingerprint rechecks current proposal/source/lineage visibility and selected stored metadata, returning saved receipt before new expiry/source-current/CAS checks. Replay does not revalidate the saved canonical event or full current-state/receipt relationship. Fresh decisions/proposal, event and command receipt commit together. ApprovalRequested/ApprovalCompleted use aggregate Proposal, saved classification and one pinned proposal source; top-level actor appears only for a ULID actor. None applies source/Plane fields or acknowledges a consumer cursor. No post-write session-expiry recheck."
+  },
+  "paths": {
+    "/v1/proposals": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "post": {
+        "operationId": "createProposal",
+        "tags": ["Proposal operations"],
+        "summary": "Save a new proposed suggestion with pinned local-source provenance",
+        "x-wcp-operation": "proposal.create",
+        "x-policy-action": "proposal.write",
+        "description": "Require ULID tenant/workspace/project and verified client. Parse complete draft, trim title/model/prompt, preserve content/source whitespace and array order, default classification=internal and TTL=604800. Under stream lock, prior matching key returns historical proposed/revision1 receipt after visibility check, even after later review/expiry. Fresh creation locks any explicit derived_from parent, requires exact origin revision and fewer than32 existing derivation steps, then locks/binds local context-item sources with positive pins, current active state and dependency hashes. External references are not fetched. Saved classification is maximum of requested classification, explicit origin classification and directly bound local sources; restricted requires actual data.restricted.read. Derivation creates a new proposed record and does not inherit the parent's decision. Originless fresh creation has no separate visible/nondeleted parent-project query; authorized scope and database constraints do not equal the later read/receipt visibility gate. Save new ULID/revision1 with provenance warnings, expiry and ApprovalRequested event atomically with command receipt. Generic version headers do not make this an entity CAS.",
+        "parameters": [
+          { "$ref": "#/components/parameters/IdempotencyKey" },
+          { "$ref": "#/components/parameters/IfMatch" },
+          { "$ref": "#/components/parameters/IfMatchVersion" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/proposal-write.json#ProposalCreateBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Historical creation receipt, including on replay; status proposed/revision1, one matching proposal source, event ID/time and positive cursor. JSON/HTTP ETag W/\"version-1\". replayed=false for new write and true for saved key. Outer trace current; no current suggestion or original draft returned.",
+            "headers": {
+              "cache-control": { "$ref": "#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "#/components/headers/SuccessTrace" },
+              "ETag": { "$ref": "#/components/headers/MutationEtag" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "../schemas/proposal-write.json#ProposalCreateEnvelope" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadMutation" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/CreateConflict" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/proposals/{proposal_id}/confirm": {
+      "parameters": [
+        { "$ref": "#/components/parameters/ProposalId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "post": {
+        "operationId": "confirmProposal",
+        "tags": ["Proposal operations"],
+        "summary": "Record a human confirmation of a still-current proposed suggestion",
+        "x-wcp-operation": "proposal.confirm",
+        "x-policy-action": "proposal.review",
+        "description": "Require human actor, verified client and actual proposal.review or admin in addition to Policy. Path ID overwrites optional body proposal_id, even a differing/nonstring body value; all other unknown fields rejected. Stable key and positive safe expected revision must come from allowed body/header alternatives with equality when repeated; reason is trimmed. Stream lock and original-key replay precede fresh CAS. For new review lock visible proposal row, compare current revision, require proposed, reject expired suggestion, lock/check pinned local sources and dependencies, then recheck proposal expiry. Missing dependency hashes are stale. Write verified/revision2, reviewer/client/reason/time/current trace and ApprovalCompleted event plus receipt in the same transaction. Source checks do not fetch external references or apply their fields. A prior successful confirmation can replay after expiry/staleness if still visible; a new key does not bypass current revision/status.",
+        "parameters": [
+          { "$ref": "#/components/parameters/IdempotencyKey" },
+          { "$ref": "#/components/parameters/IfMatch" },
+          { "$ref": "#/components/parameters/IfMatchVersion" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/proposal-write.json#ProposalReviewBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved verified/revision2 approval receipt, replayed flag, matching source/JSON revision/ETag, historical event/time/cursor and current outer trace. No source application proof.",
+            "headers": {
+              "cache-control": { "$ref": "#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "#/components/headers/SuccessTrace" },
+              "ETag": { "$ref": "#/components/headers/MutationEtag" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "../schemas/proposal-write.json#ProposalConfirmEnvelope" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadMutation" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/ReviewConflict" },
+          "410": { "$ref": "#/components/responses/Expired" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/proposals/{proposal_id}/reject": {
+      "parameters": [
+        { "$ref": "#/components/parameters/ProposalId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "post": {
+        "operationId": "rejectProposal",
+        "tags": ["Proposal operations"],
+        "summary": "Record a human rejection of a visible proposed suggestion",
+        "x-wcp-operation": "proposal.reject",
+        "x-policy-action": "proposal.review",
+        "description": "Same human/client/capability, path override, key, reason normalization, stream lock and original replay rules as confirm. Fresh rejection locks a currently visible proposal, compares expected revision and requires proposed status, then saves rejected/revision2 and ApprovalCompleted plus receipt atomically. It does not require unexpired proposal or fresh source hashes/dependencies. Deleted/hidden local sources, parent or lineage still prevent visibility; rejection cannot bypass them. No source-field application or automatic follow-up creation.",
+        "parameters": [
+          { "$ref": "#/components/parameters/IdempotencyKey" },
+          { "$ref": "#/components/parameters/IfMatch" },
+          { "$ref": "#/components/parameters/IfMatchVersion" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/proposal-write.json#ProposalReviewBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved rejected/revision2 receipt with replayed, event/time/cursor, matching source/ETag and current trace. Expired/stale but visible proposals may be rejected.",
+            "headers": {
+              "cache-control": { "$ref": "#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "#/components/headers/SuccessTrace" },
+              "ETag": { "$ref": "#/components/headers/MutationEtag" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "../schemas/proposal-write.json#ProposalRejectEnvelope" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadMutation" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/RejectConflict" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/proposals/creation-receipt": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "post": {
+        "operationId": "getProposalCreateReceipt",
+        "tags": ["Proposal operations"],
+        "summary": "Look up an exact original normalized creation without replaying it",
+        "x-wcp-operation": "proposal.create.receipt",
+        "x-policy-action": "proposal.write",
+        "description": "Require unexpired verified writer or admin, exact original five identities and complete normalized draft/request_key. In a repeatable-read read-only transaction first check visible nondeleted parent project, then original command key/fingerprint. Only absent key yields not-observed; same key with different normalized command yields409. Recorded key requires current proposal/source/lineage visibility and valid stored provenance. Compare creator/client/create time, TTL delta, classification at least requested, and full saved draft fields/derivation against original using canonical JSON. Verify original ApprovalRequested row at saved event ID/cursor: metadata/canonical scope/ID/type/aggregate/version/client/conditional actor/time/classification, nonempty self-consistent event trace, both source arrays and exact business payload. Creation event trace is not compared to current proposal.trace_id because later review changes it. Does not load a full event through validateEvent or reject arbitrary extra canonical-event fields; SQL verifies listed properties. Current proposal may be reviewed or expired; no source-current traversal. recorded stays proposed/revision1/current_state=not-checked. Recheck session expiry before returning from transaction; no guarantee through subsequent HTTP delivery. Lookup writes no proposal/command/event and does not allocate a cursor; entry audit remains.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/proposal-original.json#ProposalCreateReceiptQuery" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Complete original query plus recorded historical metadata or not-observed. recorded source pins proposal revision1; no outer ETag/revision/cursor and no HTTP ETag. Absence is one snapshot and does not prove a failed/pending submission or authorize resend.",
+            "headers": {
+              "cache-control": { "$ref": "#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "#/components/headers/SuccessTrace" },
+              "connection": { "$ref": "#/components/headers/Close" }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../schemas/proposal-original.json#ProposalCreateReceiptEnvelope"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadReceipt" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/ReceiptConflict" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/proposals/review-receipt": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/ReviewTraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "post": {
+        "operationId": "getProposalReviewReceipt",
+        "tags": ["Proposal operations"],
+        "summary": "Look up the exact original human review without confirming or rejecting again",
+        "x-wcp-operation": "proposal.review.receipt",
+        "x-policy-action": "proposal.review",
+        "description": "Require unexpired human reviewer, verified client, actual proposal.review or admin and exact original identity. Query is exactly identity/key/target/decision/expected revision/already-trimmed reason; expected revision must increment safely. In one repeatable-read read-only transaction check target current visibility first, even for an unrecorded key. Missing/hidden target returns404, not not-observed. Absent key yields not-observed; mismatched positional fingerprint409. Recorded key must agree with target final status/revision=expected+1 and original reviewer/client/reason/time. SQL compares ApprovalCompleted row/event scope/type/ID/cursor/aggregate/version/client/conditional actor/time/classification, nonempty current proposal trace, both source arrays and exact payload. Checks listed fields without a full validateEvent load; extra canonical-event fields are not independently closed. Current source freshness/expiry is not required for historical observation. Recheck session expiry before transaction return. Output current_state=not-checked is not a source application or future authorization claim. Complete success trace must equal current trace and be visible ASCII1..255; generic HTTP trace selection itself is broader, so use a compatible trace for this route.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/proposal-original.json#ProposalReviewReceiptQuery" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Full original review plus recorded metadata or not-observed; sole recorded source matches original target/expected+1. No outer revision/etag/cursor or HTTP ETag. Historical observation does not confirm current source application.",
+            "headers": {
+              "cache-control": { "$ref": "#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "#/components/headers/SuccessTrace" },
+              "connection": { "$ref": "#/components/headers/Close" }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../schemas/proposal-original.json#ProposalReviewReceiptEnvelope"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadReceipt" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/ReceiptConflict" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": { "GatewayBearer": { "type": "http", "scheme": "bearer" } },
+    "parameters": {
+      "ProposalId": { "$ref": "./proposal-reads.json#/components/parameters/ProposalId" },
+      "TenantId": { "$ref": "./proposal-reads.json#/components/parameters/TenantId" },
+      "WorkspaceId": { "$ref": "./proposal-reads.json#/components/parameters/WorkspaceId" },
+      "ProjectId": { "$ref": "./proposal-reads.json#/components/parameters/ProjectId" },
+      "TraceParent": { "$ref": "./proposal-reads.json#/components/parameters/TraceParent" },
+      "TraceId": { "$ref": "./proposal-reads.json#/components/parameters/TraceId" },
+      "ReviewTraceId": {
+        "$ref": "./proposal-reads.json#/components/parameters/TraceId",
+        "description": "Use visible ASCII1..255. Nonempty traceparent wins and must satisfy the same review-success parser restriction; otherwise a valid HTTP request can fail while constructing its lookup result."
+      },
+      "ExpectedActorId": { "$ref": "./proposal-reads.json#/components/parameters/ExpectedActorId" },
+      "ExpectedClientId": {
+        "$ref": "./proposal-reads.json#/components/parameters/ExpectedClientId"
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "description": "Required here or in body.idempotency_key; both must match. Stable exact original key, not automatically regenerated.",
+        "schema": { "$ref": "../schemas/proposal-write.json#/$defs/idempotencyKey" }
+      },
+      "IfMatch": {
+        "name": "If-Match",
+        "in": "header",
+        "description": "Weak version tag W/\"version-N\". Generic parser accepts leading zeros and safe nonnegative value; review requires positive and equality with If-Match-Version/body expected_revision. Review requires at least one version source. Creation ignores the effective value after syntax/equality parsing. No wildcard/list/strong-tag semantics.",
+        "schema": { "type": "string", "pattern": "^W/\"version-[0-9]+\"$" }
+      },
+      "IfMatchVersion": {
+        "name": "If-Match-Version",
+        "in": "header",
+        "description": "ASCII digits including leading zeros, converted to safe nonnegative integer; review requires positive and agreement with other supplied versions. No X-Expected-Version alias.",
+        "schema": { "type": "string", "pattern": "^[0-9]+$" }
+      }
+    },
+    "headers": {
+      "NoStore": { "$ref": "./context-history.json#/components/headers/NoStore" },
+      "SuccessTrace": { "$ref": "./context-history.json#/components/headers/SuccessTrace" },
+      "ErrorTrace": { "$ref": "./context-history.json#/components/headers/ErrorTrace" },
+      "Close": { "required": true, "schema": { "type": "string", "const": "close" } },
+      "MutationEtag": {
+        "required": true,
+        "description": "Equals JSON etag and data.revision's weak version tag; successful creation1 or final review2, including historical replay.",
+        "schema": { "type": "string", "enum": ["W/\"version-1\"", "W/\"version-2\""] }
+      }
+    },
+    "schemas": {
+      "ErrorEnvelope": { "$ref": "./context-history.json#/components/schemas/ErrorEnvelope" }
+    },
+    "responses": {
+      "Error": {
+        "description": "Application error; no implicit retry. After submission failure the outcome may be unknown; keep exact original and use its read-only receipt lookup. Pre-application transport/proxy errors may use another representation.",
+        "headers": {
+          "cache-control": { "$ref": "#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "#/components/headers/ErrorTrace" }
+        },
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } }
+        }
+      },
+      "BadMutation": {
+        "$ref": "#/components/responses/Error",
+        "description": "INVALID_JSON for pre-auth bad/nonobject/oversized1MiB write body; INVALID_INPUT for unsupported query/fields, malformed path, invalid draft/key/version/reason/ULID scope or derivation depth; INVALID_REQUEST_CONTEXT for malformed/disagreeing generic headers. retryable=false. Missing storage is checked before handler-level input parsing and can take precedence."
+      },
+      "BadReceipt": {
+        "$ref": "#/components/responses/Error",
+        "description": "INVALID_INPUT for unsupported media/query/encoding/conditions, bad/oversized body, incomplete or nonnormalized original, narrow identity/key violations or unsafe review increment. Limits are400, not413; retryable=false."
+      },
+      "Unauthenticated": { "$ref": "./proposal-reads.json#/components/responses/Unauthenticated" },
+      "Denied": {
+        "$ref": "#/components/responses/Error",
+        "description": "DENIED for scope/identity/client mismatch, Policy refusal, missing actual human/reviewer or receipt writer capability/admin, expired receipt session, or restricted creation without actual data.restricted.read. retryable=false; invisible saved targets use404 instead."
+      },
+      "NotFound": {
+        "$ref": "#/components/responses/Error",
+        "description": "PROPOSAL_NOT_FOUND for missing/hidden target, original derivation parent or replay target; creation lookup also checks visible parent project. Current source/lineage restrictions may hide otherwise stored records. retryable=false."
+      },
+      "CreateConflict": {
+        "$ref": "#/components/responses/Error",
+        "description": "IDEMPOTENCY_KEY_REUSED for differing normalized command; PROPOSAL_VERSION_CONFLICT for changed derivation origin; PROPOSAL_SOURCE_UNAVAILABLE or PROPOSAL_SOURCE_STALE for missing/hidden/changed/expired/excluded local source or failed dependency checks. retryable=false."
+      },
+      "ReviewConflict": {
+        "$ref": "#/components/responses/Error",
+        "description": "IDEMPOTENCY_KEY_REUSED, PROPOSAL_VERSION_CONFLICT, PROPOSAL_ALREADY_REVIEWED or PROPOSAL_SOURCE_STALE. Version conflict details include current_revision/expected_revision. Fresh CAS precedes proposed-state check; retryable=false."
+      },
+      "RejectConflict": {
+        "$ref": "#/components/responses/Error",
+        "description": "IDEMPOTENCY_KEY_REUSED, PROPOSAL_VERSION_CONFLICT or PROPOSAL_ALREADY_REVIEWED; rejection does not perform source-current checking. retryable=false."
+      },
+      "ReceiptConflict": {
+        "$ref": "#/components/responses/Error",
+        "description": "IDEMPOTENCY_KEY_REUSED for saved key bound to another positional fingerprint, including another command kind; retryable=false. No fallback from mismatched/corrupt history to not-observed."
+      },
+      "Expired": {
+        "$ref": "#/components/responses/Error",
+        "description": "PROPOSAL_EXPIRED for fresh confirm, checked before and after source inspection; retryable=false. This is not an expiry check on replay/reject/history lookup."
+      },
+      "RateLimited": { "$ref": "./proposal-reads.json#/components/responses/RateLimited" },
+      "InvalidStored": {
+        "$ref": "#/components/responses/Error",
+        "description": "PROPOSAL_INVALID for selected stored metadata/provenance/receipt inconsistencies or recorded lookup verification/parser failures. The recorded verification try/catch also converts non-ContractError event-query failures here; retryable=false. SYNC_EVENT_INVALID for invalid new event/cursor; retryable=false. Command-boundary INTERNAL_ERROR defaults retryable=true."
+      },
+      "Unavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "PROPOSAL_STORAGE_UNAVAILABLE for missing database or non-ContractError failures outside recorded-verification catch, including transaction/commit and unobserved-success parser failure; retryable=true. Thus an incompatible review trace can yield503 on not-observed but500 on recorded. WORKBENCH_AUTH_UNAVAILABLE/AUDIT_PERSISTENCE_UNAVAILABLE also retryable=true. Errors are not proof of rollback or permission to change key."
+      }
+    }
+  }
+}

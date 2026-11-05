@@ -1,0 +1,227 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/proposal-original.json",
+  "title": "Complete original proposal creation and review receipt queries v1",
+  "description": "Read-only original-key lookup successes, not mutation/replay responses. Root is a creation/review union; status=not-observed is absence in one read snapshot, not proof of failure or permission to resend.",
+  "$comment": "Source-only; load proposal-write.json and proposal-read.json. Existing parsers enforce finite ordinary JSON, depth64/nodes100000, serialized UTF-8 budgets, normalized canonical equality, original identity/key and request/receipt/source bindings. Schema does not independently prove byte sizes, UTF-16 limits, calendar validity, equality or storage authorization. Create query1MiB/success2MiB; review query32KiB/success64KiB.",
+  "oneOf": [
+    { "$ref": "#ProposalCreateReceiptEnvelope" },
+    { "$ref": "#ProposalReviewReceiptEnvelope" }
+  ],
+  "$defs": {
+    "ulid": { "$ref": "proposal-read.json#/$defs/ulid" },
+    "version": { "$ref": "proposal-read.json#/$defs/version" },
+    "ascii": {
+      "type": "string",
+      "pattern": "^[\\x21-\\x7e]{1,255}$",
+      "minLength": 1,
+      "maxLength": 255,
+      "not": { "pattern": "\\s" }
+    },
+    "canonicalTime": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$",
+      "minLength": 24,
+      "maxLength": 24,
+      "$comment": "Finite Date.parse and exact Date.toISOString roundtrip required by runtime. Unlike generic mutation output, original-query receipt parsing rejects extended years."
+    },
+    "identity": {
+      "$anchor": "ProposalCommandIdentity",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant_id", "workspace_id", "project_id", "actor_id", "client_id"],
+      "properties": {
+        "tenant_id": { "$ref": "#/$defs/ulid" },
+        "workspace_id": { "$ref": "#/$defs/ulid" },
+        "project_id": { "$ref": "#/$defs/ulid" },
+        "actor_id": { "$ref": "#/$defs/ascii" },
+        "client_id": { "$ref": "#/$defs/ascii" }
+      },
+      "description": "Original five identities must exactly equal current authenticated context. Stricter than legacy mutation actor/client input; no identity override or current-session inference."
+    },
+    "createQueryFields": {
+      "type": "object",
+      "required": ["identity", "request_key", "draft"],
+      "properties": {
+        "identity": { "$ref": "#ProposalCommandIdentity" },
+        "request_key": { "$ref": "#/$defs/ascii" },
+        "draft": { "$ref": "proposal-write.json#NormalizedProposalDraft" }
+      }
+    },
+    "createQuery": {
+      "$anchor": "ProposalCreateReceiptQuery",
+      "$ref": "#/$defs/createQueryFields",
+      "propertyNames": { "enum": ["identity", "request_key", "draft"] },
+      "description": "Complete normalized original creation. 1MiB finite JSON; do not omit classification/TTL defaults, trim content/sources, reorder arrays, replace the key or add gateway metadata."
+    },
+    "reviewQueryFields": {
+      "type": "object",
+      "required": [
+        "identity",
+        "request_key",
+        "proposal_id",
+        "decision",
+        "expected_revision",
+        "reason"
+      ],
+      "properties": {
+        "identity": { "$ref": "#ProposalCommandIdentity" },
+        "request_key": { "$ref": "#/$defs/ascii" },
+        "proposal_id": { "$ref": "#/$defs/ulid" },
+        "decision": { "enum": ["confirm", "reject"] },
+        "expected_revision": { "type": "integer", "minimum": 1, "maximum": 9007199254740990 },
+        "reason": { "$ref": "proposal-write.json#/$defs/normalizedText", "maxLength": 2000 }
+      }
+    },
+    "reviewQuery": {
+      "$anchor": "ProposalReviewReceiptQuery",
+      "$ref": "#/$defs/reviewQueryFields",
+      "propertyNames": {
+        "enum": [
+          "identity",
+          "request_key",
+          "proposal_id",
+          "decision",
+          "expected_revision",
+          "reason"
+        ]
+      },
+      "description": "Exactly six original fields in32KiB finite JSON. Positive version must increment safely. Reason must already equal trimmed proposalText; no normalization/reconstruction during lookup."
+    },
+    "recordedFields": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "proposal_id",
+        "status",
+        "revision",
+        "event_id",
+        "occurred_at",
+        "server_cursor",
+        "current_state"
+      ],
+      "properties": {
+        "proposal_id": { "$ref": "#/$defs/ulid" },
+        "status": { "$ref": "proposal-read.json#/$defs/status" },
+        "revision": { "$ref": "#/$defs/version" },
+        "event_id": { "$ref": "#/$defs/ulid" },
+        "occurred_at": { "$ref": "#/$defs/canonicalTime" },
+        "server_cursor": { "$ref": "#/$defs/version" },
+        "current_state": { "const": "not-checked" }
+      }
+    },
+    "createRecorded": {
+      "$anchor": "ProposalCreateRecordedReceipt",
+      "$ref": "#/$defs/recordedFields",
+      "properties": { "status": { "const": "proposed" }, "revision": { "const": 1 } },
+      "description": "Original creation at revision1, regardless of later review or expiry. No replayed flag and no current content/freshness assertion."
+    },
+    "reviewRecorded": {
+      "$anchor": "ProposalReviewRecordedReceipt",
+      "$ref": "#/$defs/recordedFields",
+      "properties": { "status": { "enum": ["verified", "rejected"] } },
+      "description": "ID equals original target, status maps confirm/reject, revision equals expected_revision+1. Current stored review metadata is checked for consistency; current_state does not promise current source freshness or ability to repeat/apply the command."
+    },
+    "createData": {
+      "$ref": "#/$defs/createQueryFields",
+      "required": ["status"],
+      "properties": {
+        "status": { "enum": ["recorded", "not-observed"] },
+        "receipt": { "$ref": "#ProposalCreateRecordedReceipt" }
+      },
+      "propertyNames": { "enum": ["identity", "request_key", "draft", "status", "receipt"] },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "recorded" } }, "required": ["status"] },
+          "then": { "required": ["receipt"] },
+          "else": { "not": { "required": ["receipt"] } }
+        }
+      ]
+    },
+    "reviewData": {
+      "$ref": "#/$defs/reviewQueryFields",
+      "required": ["status"],
+      "properties": {
+        "status": { "enum": ["recorded", "not-observed"] },
+        "receipt": { "$ref": "#ProposalReviewRecordedReceipt" }
+      },
+      "propertyNames": {
+        "enum": [
+          "identity",
+          "request_key",
+          "proposal_id",
+          "decision",
+          "expected_revision",
+          "reason",
+          "status",
+          "receipt"
+        ]
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "recorded" } }, "required": ["status"] },
+          "then": { "required": ["receipt"] },
+          "else": { "not": { "required": ["receipt"] } }
+        },
+        {
+          "if": { "properties": { "decision": { "const": "confirm" } }, "required": ["decision"] },
+          "then": {
+            "properties": { "receipt": { "properties": { "status": { "const": "verified" } } } }
+          },
+          "else": {
+            "properties": { "receipt": { "properties": { "status": { "const": "rejected" } } } }
+          }
+        }
+      ]
+    },
+    "envelopeFields": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "type": "string", "minLength": 1 },
+        "source_refs": {
+          "type": "array",
+          "maxItems": 1,
+          "items": { "$ref": "proposal-read.json#/$defs/pinnedProposalSource" }
+        },
+        "data": { "type": "object" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "data": {
+                "properties": { "status": { "const": "recorded" } },
+                "required": ["status"]
+              }
+            },
+            "required": ["data"]
+          },
+          "then": { "properties": { "source_refs": { "minItems": 1 } } },
+          "else": { "properties": { "source_refs": { "maxItems": 0 } } }
+        }
+      ],
+      "description": "Complete query echoed in data and compared canonically with original. recorded has one pinned proposal source matching receipt; not-observed has no sources/receipt. Outer trace is current; no outer revision/etag/cursor or HTTP ETag."
+    },
+    "createEnvelope": {
+      "$anchor": "ProposalCreateReceiptEnvelope",
+      "$ref": "#/$defs/envelopeFields",
+      "properties": {
+        "data": { "$ref": "#/$defs/createData" },
+        "source_refs": { "items": { "properties": { "revision": { "const": 1 } } } }
+      },
+      "description": "Complete2MiB creation lookup result. Trace must equal current request and be nonempty, without the review receipt's visible-ASCII limit."
+    },
+    "reviewEnvelope": {
+      "$anchor": "ProposalReviewReceiptEnvelope",
+      "$ref": "#/$defs/envelopeFields",
+      "properties": {
+        "trace_id": { "$ref": "#/$defs/ascii" },
+        "data": { "$ref": "#/$defs/reviewData" }
+      },
+      "description": "Complete64KiB review lookup result. Trace must be visible ASCII1..255 and exactly equal the current request. Runtime binds sole source and receipt to original proposal_id/expected_revision+1."
+    }
+  }
+}

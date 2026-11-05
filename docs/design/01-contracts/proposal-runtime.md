@@ -1,5 +1,7 @@
 # Proposal 提交与人工审核开发说明
 
+2026-11-05，TODO P0-01：新增[五路操作 OpenAPI](../../../packages/contracts/openapi/proposal-operations.json)、[写入Schema](../../../packages/contracts/schemas/proposal-write.json)及[原回执Schema](../../../packages/contracts/schemas/proposal-original.json)，与三路读取合计八路。旧写键仅非空/无空白/255长度内，原查询身份/键更严格；创建忽略已解析版本头，路径覆盖审核正文ID。重放只重核可见性/选定保存元数据，不等同原回执的完整原草稿/审核元数据及事件SQL核对。原回执的媒体声明受检查，但通用Buffer解码不是fatal UTF-8；已记录核对块中的非ContractError故障映射500，未观察封套解析失败映射503。新契约不改变这些实现边界；P0-01/R-001未完成，仅人工源码文档审阅，未编译、测试、运行校验器/生成器、接口或数据库。
+
 2026-11-05，TODO P0-01：新增[三路读取 OpenAPI](../../../packages/contracts/openapi/proposal-reads.json)和[完整读取 Schema](../../../packages/contracts/schemas/proposal-read.json)。目录/详情按父项目、当前本地来源与有界派生链过滤；目录是ID续页摘要，详情额外在一致快照检查本地来源及依赖摘要，过期建议仍可见。身份入口只返回当前认证身份，不经过命令Policy/决定审计/限流，也不证明写权限或存储就绪。新Schema描述现有HTTP，未接入Gateway/SDK完整解析；创建文本限额、回执客户端预算和更严格身份条件不冒称这些旧GET保证。P0-01/R-001未完成，仅源码开发，未编译、测试、运行校验器/生成器、接口、数据库或发布。
 
 更新：2026-11-04。本文记录新增代码；未执行编译、类型检查、测试、数据库迁移、部署或发布。
