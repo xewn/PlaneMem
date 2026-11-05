@@ -1,5 +1,9 @@
 # 独立契约结构定义
 
+2026-11-05，TODO **P0-01**：新增独立 `context-history.json`，包子路径 `@planemem/contracts/schemas/context-history.json`。根是完整历史目录/单版成功的互斥联合；公开锚点包含 `ContextHistoryQuery`、`ContextRevisionQuery`、`ContextRevisionSummary`、`ContextSnapshotDocument`、`ContextHistoricalConfirmation`、`ContextRevision`、`ContextHistoryPage` 和两个完整封套。摘要与完整版本通过开放的内部 summaryFields 组合，公开锚点用 `unevaluatedProperties:false` 关闭；消费工具须支持 2020-12 的该语义，尚未运行兼容验证。
+
+操作分支区分 baseline 的空归属、create 的版本 1/proposed、update/归档/恢复/确认的状态和最低版本。快照保留任意 JSON content、完整来源、原 trace 与时间，不混入当前读提示或 ETag。confirm 必须有完整确认对象，其他操作允许省略或 null（Gateway 实际输出 null）；归档布尔与时间空值配对。日期允许 Date.toISOString 的扩展年份；ID/文字的 UTF-16 长度、无孤立代理项、有效日历、版本/范围/来源/确认跨字段相等及摘要计算仍由原运行解析负责。Schema 不代替授权、完整性重算或运行证据，也不把客户端字节预算提升为 HTTP 服务端保证。详见[上下文版本历史 OpenAPI](../openapi/README.md#上下文版本历史)。
+
 2026-11-05，TODO **P0-01**：新增 `artifact-download.json`，包子路径 `@planemem/contracts/schemas/artifact-download.json`。根/`ArtifactDownloadQuery` 是已解码的 artifact_id/version/sha256/size 四字段请求，size 为0–1GiB；`ArtifactDownloadMetadata` 复用 comparison 公开元数据并约束下载协议大小。二者均不表示 HTTP 成功正文，内部 Uint8Array 封套也未伪造为 JSON Schema。响应为原始 octet-stream，详见[指定版本文件下载 OpenAPI](../openapi/README.md#指定版本文件下载)。
 
 本地加载本资源和 artifact-comparison 完整资源并注册 `$id`；versionText/sizeText/encodedScope/attachmentDisposition 供 HTTP 参数与响应头复用。文本模式只限制词法形状，数字上限、精确原范围/版本/摘要/长度及 encodeURIComponent 相等、日历、实际字节摘要、导出权限和持久审计继续由运行代码核对；Schema 不证明正文交付或文件保存。未修改运行处理器/原 Schema，未执行校验器、生成器、编译、测试或下载。

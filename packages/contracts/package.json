@@ -8,6 +8,8 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./schemas/context-history.json": "./schemas/context-history.json",
+    "./openapi/context-history.json": "./openapi/context-history.json",
     "./schemas/artifact-read.json": "./schemas/artifact-read.json",
     "./schemas/artifact-original.json": "./schemas/artifact-original.json",
     "./schemas/artifact-upload.json": "./schemas/artifact-upload.json",

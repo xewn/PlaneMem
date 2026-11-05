@@ -1,0 +1,272 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem context item history reads",
+    "version": "0.1.0",
+    "description": "Source-only description of two existing GET operations. Register the adjacent context-history schema under its full ID. Complete shared-parser structures and runtime-only cross-field checks are documented separately from legacy Gateway enforcement. This is not the complete WCP API, generated-client compatibility or runtime evidence."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Relative Gateway base; configure the deployment origin and base path."
+    }
+  ],
+  "security": [{ "GatewayBearer": [] }],
+  "tags": [{ "name": "Context item history" }],
+  "x-todo": "P0-01",
+  "x-source-boundaries": {
+    "shared-query-json-bytes": 4096,
+    "client-history-success-bytes": 262144,
+    "client-revision-success-bytes": 2097152,
+    "client-error-bytes": 16384,
+    "description": "These are shared parser/dedicated client limits, not uniform HTTP server response limits. The legacy handlers do not invoke the complete shared parser, have no dedicated two-slot guard, total request deadline or response-byte bound. SDK/Web/MCP limits and cancellation do not establish server SQL cancellation. Database statement/lock limits are separate. The handlers recheck neither session expiry after the transaction nor live source freshness."
+  },
+  "x-http-input": "GET bodies are not parsed and these routes do not explicitly reject body framing. Only history accepts single before_version/limit query fields; specified-version accepts none. Generic If-Match/If-Match-Version headers are parsed for valid, consistent versions but do not condition the read; Idempotency-Key does not make this GET a write or replay cache. No conditional 304, Range/206 or current-edit ETag is implemented. These are existing limitations, not claims that headers are strictly rejected.",
+  "paths": {
+    "/v1/context-items/{item_id}/history": {
+      "parameters": [
+        { "$ref": "#/components/parameters/ItemId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "get": {
+        "operationId": "listContextItemHistory",
+        "tags": ["Context item history"],
+        "summary": "Read one page of recorded versions",
+        "description": "Authorize context.read through Policy, then read current item visibility and historical metadata in one repeatable-read read-only transaction. The current item may be archived. Both current and historical restricted classifications require actual data.restricted.read; an administrator role alone does not bypass those SQL filters. No separate parent-project-row lookup is made by this history handler. Missing/invisible current item returns 404; an existing visible item with no visible recorded history returns an empty page. Order is descending numeric version, bounded by current_version and optional exclusive before_version, with limit+1 lookahead. Filtering and unrecorded legacy versions can cause gaps. Continuation is the last returned version when lookahead exists; otherwise it is omitted. Keep item_id and limit and pass next_before_version as before_version. No signed cursor, identity-bound continuation, cross-page snapshot, complete-history claim or hash verification of unreturned snapshot bodies.",
+        "x-wcp-operation": "context.item.history",
+        "x-policy-action": "context.read",
+        "x-decoded-query-schema": { "$ref": "../schemas/context-history.json#ContextHistoryQuery" },
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Optional; defaults to 25, range 1..100. Exactly one canonical positive decimal value, no leading zero, sign, fraction or exponent.",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 25 }
+          },
+          {
+            "name": "before_version",
+            "in": "query",
+            "description": "Optional exclusive version bound. Exactly one canonical positive decimal of 1..16 digits and <= Number.MAX_SAFE_INTEGER. A value of 1 is valid and can yield an empty page.",
+            "schema": { "$ref": "../schemas/context-history.json#/$defs/positiveInteger" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Complete history page with current_version/current_archived and recorded summaries. Baseline entries have null actor/client/event and do not invent historical commands. No outer revision, JSON etag, HTTP ETag or server_cursor. Outer source is exactly the requested context-item without revision.",
+            "headers": {
+              "cache-control": { "$ref": "#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "#/components/headers/SuccessTrace" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "../schemas/context-history.json#ContextHistoryPageEnvelope" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/context-items/{item_id}/versions/{version}": {
+      "parameters": [
+        { "$ref": "#/components/parameters/ItemId" },
+        { "$ref": "#/components/parameters/Version" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "get": {
+        "operationId": "getContextItemVersion",
+        "tags": ["Context item history"],
+        "summary": "Read one explicitly recorded immutable version",
+        "description": "Use the same context.read Policy and current/historical classification filters as history in one repeatable-read read-only transaction. The requested version must have a recorded row and cannot exceed the current version; missing or filtered history is 404, without falling back to current content. Gateway checks stored summary, item id/scope/version/title/classification/status, source references and canonical fingerprint({item,archived_at}). It does not execute every shared-parser constraint. Return original item content (possibly arbitrary legacy JSON), saved trace, archived timestamp and historical confirmation. Only confirm operations have confirmation metadata; Gateway emits null otherwise. SHA-256 sorts object keys recursively and preserves arrays; it checks snapshot self-consistency, not signatures, attribution authenticity or external sources. Historical confirmed/expired/excluded state is readable when visible and does not authorize current confirmation, restore, editing or source use. No current source freshness traversal.",
+        "x-wcp-operation": "context.item.version.read",
+        "x-policy-action": "context.read",
+        "x-decoded-query-schema": {
+          "$ref": "../schemas/context-history.json#ContextRevisionQuery"
+        },
+        "responses": {
+          "200": {
+            "description": "Complete recorded revision. Outer source_refs are the requested context-item with pinned revision followed by the original item's sources in their saved order. Outer trace is this read; item.trace_id is the original saved trace. No outer revision, JSON etag, HTTP ETag or server_cursor. Schema cannot recompute SHA-256 or cross-field equality; dedicated clients do these checks before exposing the snapshot.",
+            "headers": {
+              "cache-control": { "$ref": "#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "#/components/headers/SuccessTrace" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "../schemas/context-history.json#ContextRevisionEnvelope" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "GatewayBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Verified issuer token with exact scope headers matching complete claims or configured fallback project. Policy context.read accepts the capability or its existing admin-role bypass, subject to Policy/OPA; workbench.read or the workbench client's Base can map to context.read. Restricted SQL rows still require actual data.restricted.read. These GET routes do not independently require an authenticated client claim; the scoped legacy client fallback remains possible. Token verification/Policy precede dispatch, without a handler-specific expiry recheck after reading. The decision observer runs before handler dispatch and is not a successful-read receipt."
+      }
+    },
+    "parameters": {
+      "ItemId": {
+        "name": "item_id",
+        "in": "path",
+        "required": true,
+        "description": "Exact local item ID in the authorized project, not restricted to ULIDs. Percent-encode as one segment; decode once. Reject empty/blank, controls, lone surrogates, more than 255 UTF-16 code units, or the exact dot segments '.' and '..'.",
+        "schema": { "$ref": "../schemas/context-history.json#/$defs/itemId" }
+      },
+      "Version": {
+        "name": "version",
+        "in": "path",
+        "required": true,
+        "description": "One canonical positive decimal of 1..16 digits, <= Number.MAX_SAFE_INTEGER. No leading zeros, sign, fraction, exponent or latest alias.",
+        "schema": { "$ref": "../schemas/context-history.json#/$defs/positiveInteger" }
+      },
+      "TenantId": {
+        "name": "x-tenant-id",
+        "in": "header",
+        "required": true,
+        "description": "Exact authorized tenant. HTTP scope authentication checks nonempty equality, while snapshot/shared client parsing requires ULIDs; this parameter does not claim a stricter HTTP lexical validator.",
+        "schema": { "type": "string", "minLength": 1 }
+      },
+      "WorkspaceId": {
+        "name": "x-workspace-id",
+        "in": "header",
+        "required": true,
+        "description": "Exact authorized workspace; same HTTP versus shared snapshot distinction as tenant.",
+        "schema": { "type": "string", "minLength": 1 }
+      },
+      "ProjectId": {
+        "name": "x-project-id",
+        "in": "header",
+        "required": true,
+        "description": "Exact authorized project; scope is never taken from history JSON.",
+        "schema": { "type": "string", "minLength": 1 }
+      },
+      "TraceParent": {
+        "name": "traceparent",
+        "in": "header",
+        "description": "Nonempty opaque value takes precedence over x-trace-id. This boundary does not parse W3C Trace Context or require both headers to agree. Supply a shared-parser-compatible identifier.",
+        "schema": { "type": "string" }
+      },
+      "TraceId": {
+        "name": "x-trace-id",
+        "in": "header",
+        "description": "Used if traceparent is absent/empty; if both are absent/empty, generates trace_http_<ULID>. Shared success parsers impose identifier limits beyond generic HTTP selection.",
+        "schema": { "type": "string" }
+      },
+      "ExpectedActorId": {
+        "name": "x-expected-actor-id",
+        "in": "header",
+        "description": "Independently optional exact precondition on verified actor identity, never an identity override.",
+        "schema": { "type": "string" }
+      },
+      "ExpectedClientId": {
+        "name": "x-expected-client-id",
+        "in": "header",
+        "description": "Independently optional exact precondition on context client identity, including legacy fallback where allowed. No paired-header requirement.",
+        "schema": { "type": "string" }
+      }
+    },
+    "headers": {
+      "NoStore": {
+        "description": "Application JSON cache policy; pre-application parser/proxy errors may differ.",
+        "required": true,
+        "schema": { "type": "string", "const": "private, no-store" }
+      },
+      "SuccessTrace": {
+        "description": "Equals outer success body.trace_id.",
+        "required": true,
+        "schema": { "type": "string", "minLength": 1 }
+      },
+      "ErrorTrace": {
+        "description": "Command-boundary errors include this header; early authentication/input errors may omit it. Retain body.trace_id.",
+        "schema": { "type": "string", "minLength": 1 }
+      }
+    },
+    "schemas": {
+      "ErrorEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message", "details", "trace_id", "retryable"],
+        "properties": {
+          "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]+$" },
+          "message": { "type": "string", "minLength": 1 },
+          "details": { "type": "object", "additionalProperties": true },
+          "trace_id": { "type": "string", "minLength": 1 },
+          "retryable": { "type": "boolean" }
+        },
+        "description": "Application error shape with open details. Does not impose the dedicated clients' 16 KiB budget or authorize automatic retry."
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Application error; no partial page or substitute version. HTTP parser/proxy errors before the application may use another representation.",
+        "headers": {
+          "cache-control": { "$ref": "#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "#/components/headers/ErrorTrace" }
+        },
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } }
+        }
+      },
+      "BadInput": {
+        "$ref": "#/components/responses/Error",
+        "description": "INVALID_INPUT for malformed encoding/item ID/version, unsupported or duplicate query fields, noncanonical decimals or limit >100. INVALID_REQUEST_CONTEXT for malformed or inconsistent generic version headers. retryable=false."
+      },
+      "Unauthenticated": {
+        "$ref": "#/components/responses/Error",
+        "description": "UNAUTHENTICATED for missing/rejected Bearer token; retryable=false. Early errors do not guarantee WWW-Authenticate or x-trace-id."
+      },
+      "Denied": {
+        "$ref": "#/components/responses/Error",
+        "description": "DENIED for unauthorized scope/expected identity or Policy denial; retryable=false. Missing/invisible current items and filtered historical versions use 404."
+      },
+      "NotFound": {
+        "$ref": "#/components/responses/Error",
+        "description": "CONTEXT_ITEM_NOT_FOUND for missing/invisible current item, missing/filtered requested revision or version above current. retryable=false. Visible current item with no visible history is instead a successful empty directory."
+      },
+      "RateLimited": {
+        "$ref": "#/components/responses/Error",
+        "description": "RATE_LIMITED from general actor/path limiter; retryable=true. No dedicated history two-slot error or Retry-After promise."
+      },
+      "InvalidStored": {
+        "$ref": "#/components/responses/Error",
+        "description": "CONTEXT_ITEM_INVALID for handler-detected invalid stored metadata, confirmation, dates, version or snapshot binding/hash; retryable=false. The legacy handler does not enforce every shared schema constraint. Unexpected command-boundary INTERNAL_ERROR uses serializer default retryable=true."
+      },
+      "Unavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "CONTEXT_ITEM_STORAGE_UNAVAILABLE for missing database or non-ContractError transaction/read failure; WORKBENCH_AUTH_UNAVAILABLE and AUDIT_PERSISTENCE_UNAVAILABLE at outer boundaries. retryable=true. No fallback in-memory history or synthesized baseline."
+      }
+    }
+  }
+}

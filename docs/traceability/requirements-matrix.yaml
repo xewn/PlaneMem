@@ -11,6 +11,26 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    context_history_openapi_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only history directory and recorded-version OpenAPI/schema; P0-01 and R-001 remain incomplete."
+      artifacts:
+        - "packages/contracts/openapi/context-history.json"
+        - "packages/contracts/schemas/context-history.json"
+        - "packages/contracts/package.json"
+        - "packages/contracts/openapi/README.md"
+        - "packages/contracts/schemas/README.md"
+      behavior: "Two existing GETs with complete page/revision envelopes, baseline null attribution, operation-state branches, immutable snapshot and confirmation, exact sources and no outer ETag/revision. Current/historical visibility and per-request repeatable-read semantics are described."
+      boundaries: "No runtime/schema replacement. Gateway does not run the full shared parser; client byte/timeout/capacity limits are not server guarantees. No current-source traversal, post-read expiry check, signed pagination, cross-page snapshot, parent-project-row lookup or invented missing history. Snapshot hash excludes summary attribution and confirmation."
+      evidence: []
+      remaining_scope: "Other WCP/MCP machine contracts, SDK/Mock machine-contract consumption, breaking-change CI and tool/runtime/release evidence."
+      pending_evidence:
+        - "Local OpenAPI/Schema references, 2020-12 unevaluatedProperties and consumer compatibility"
+        - "Baseline/create/update/archive/restore/confirm branches, null/omitted confirmation and legacy arbitrary JSON"
+        - "Current/historical permissions, gaps, empty pages, exclusive continuation and exact sources"
+        - "Stored hash and cross-field checks, shared-versus-Gateway boundary differences, errors and cancellation"
+      execution: "Manual source/docs review and explicit formatting/Git text checks only; no build, typecheck, tests, validators, generators, product/API/database execution or release."
     artifact_download_openapi_development_increment:
       date: "2026-11-05"
       todo: "P0-01"

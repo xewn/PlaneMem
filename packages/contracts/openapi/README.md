@@ -1,6 +1,18 @@
 # OpenAPI 源码契约
 
-这里的文档描述已有HTTP实现，尚未经过OpenAPI校验器、生成器、编译、类型检查、测试或运行验证。文档中的版本不表示已发布或部署；目前覆盖五个保存包接口及九个文件接口（目录/详情四路、身份/回执两路、上传两路、下载一路），共十四个接口，尚不是完整WCP接口目录。
+这里的文档描述已有HTTP实现，尚未经过OpenAPI校验器、生成器、编译、类型检查、测试或运行验证。文档中的版本不表示已发布或部署；目前覆盖五个保存包接口、九个文件接口（目录/详情四路、身份/回执两路、上传两路、下载一路）及两个上下文历史接口，共十六个接口，尚不是完整WCP接口目录。
+
+## 上下文版本历史
+
+2026-11-05，TODO **P0-01**：新增 [context-history.json](context-history.json)，覆盖 `GET /v1/context-items/{item_id}/history` 和 `GET /v1/context-items/{item_id}/versions/{version}`。包子路径为 `@planemem/contracts/openapi/context-history.json`；完整成功分别引用 [context-history Schema](../schemas/context-history.json) 的 `ContextHistoryPageEnvelope` 和 `ContextRevisionEnvelope`，只需本地注册这一份独立 Schema 的完整 `$id`。`kind` 是共享查询对象的本地选择字段，不是 HTTP 查询参数。
+
+目录默认 25 条、最多 100 条，按数字版本倒序；只在确有下一页时返回最后一条版本作为 `next_before_version`，否则省略。当前条目和历史行都受项目范围与 restricted 能力过滤，归档条目仍可读取历史。每次请求使用独立只读一致快照；分页不保证跨页快照、完整历史或连续版本，也不校验未读取正文的摘要。指定版本没有记录或不可见时返回 404，不用当前正文替代。
+
+历史详情包含原完整快照、归档时间、原保存 trace 和确认记录；baseline 不补造操作者/客户端/事件，confirm 才有确认对象。外层 trace 是本次读取，来源按原顺序绑定请求版本与原快照。两个成功都没有外层 revision、etag、server_cursor 或 HTTP ETag。SHA-256 仅覆盖按对象键排序、保持数组顺序的 `{item, archived_at}`，不覆盖摘要行的归属字段或 confirmation，也不是签名、外部来源核验或当前写权限。
+
+权限沿实际 Policy 的 context.read/管理员规则，restricted SQL 过滤仍要求真实 `data.restricted.read`；这两个旧 GET 不强制独立可信客户端声明，也无读取后的会话到期复查、父项目行查询或实时来源遍历。Gateway 只做已有存储检查，并未调用完整共享解析器。4 KiB 查询、256 KiB 目录、2 MiB 单版、16 KiB 错误是共享解析/专用客户端边界，不能当作服务端统一限额、两笔容量或总期限。GET 正文及缓存/写条件未专门严格拒绝；通用 If-Match 解析不构成条件读取。错误映射和这些缺口均明确保留。
+
+仅源码文档人工审阅、指定格式和 Git 文本检查；未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。完整 WCP/MCP、SDK/Mock 机器契约接线与破坏性差异 CI 仍待补，P0-01/R-001 未完成。
 
 ## 指定版本文件下载
 
