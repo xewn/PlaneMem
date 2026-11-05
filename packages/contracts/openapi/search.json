@@ -1,0 +1,230 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem persisted project and indexed context search",
+    "version": "0.1.0",
+    "description": "Source-only description of two existing POST reads. Load this file and context-history OpenAPI with standalone schemas/search.json, preserving paths and schema ID. Complete requests and success envelopes are modeled; this is not generated, validated, released or a complete WCP catalog."
+  },
+  "servers": [
+    { "url": "/", "description": "Relative Gateway base; configure actual origin/base path." }
+  ],
+  "security": [{ "GatewayBearer": [] }],
+  "tags": [{ "name": "Search" }],
+  "x-todo": "P0-01",
+  "x-runtime-boundaries": {
+    "sources": [
+      "packages/contracts/src/project-search.ts",
+      "packages/contracts/src/legacy-search.ts",
+      "apps/search-service/src/postgres-search.ts",
+      "apps/search-service/src/legacy-search.ts",
+      "apps/api-gateway/src/server.ts",
+      "apps/api-gateway/src/http.ts",
+      "apps/api-gateway/src/memory-recall.ts",
+      "packages/sdk/src/client.ts"
+    ],
+    "authorization": "Bearer and authorized tenant/workspace/project required. context.read Policy/OPA and entry decision audit run before handlers; configured OPA replaces local Policy. No independent verified-client requirement; authenticated-context fallback client is allowed. Expected actor/client headers are independently optional exact preconditions. Actual data.restricted.read permits restricted SQL rows and configured memory; admin alone is not a substitute.",
+    "http": "Generic JSON object reader consumes at most1MiB raw bytes before authentication; invalid, empty, nonobject or oversized JSON is400 INVALID_JSON. Buffer UTF-8 decoding is nonfatal. JSON is documented as application/json but media type/encoding are not specifically enforced, and URL query fields are ignored rather than merged into input. Body fields are strictly checked by each query parser. These paths are outside readPreconditions, so If-Match/If-Match-Version are not parsed or applied. Idempotency-Key is unnecessary and both operations bypass response caching. No dedicated rejection of Range/cache conditions, no conditional206/304/412 or ETag.",
+    "budgets": "Query strings <=500 UTF-16 units before trim; project count1..50 and legacy count1..100. No dedicated whole-success byte limit, two-slot gate, end-to-end deadline or cancellation of database/provider work. Generic actor/path rate limiter still applies. Provider timeouts do not establish whole-operation deadlines. No post-read/recall session-expiry or visibility recheck.",
+    "scope": "Each SQL filters nondeleted visible parent, scope and row classification. Hidden/missing parent yields empty project results. Legacy local SQL also yields empty results, but configured memory plus actual restricted-read triggers a separate project-readable query before recall: false yields403 even with optional memory. That query's503 propagates instead of degrading. State can change between SQLs and recall; no consistent transaction spans them.",
+    "validation": "Project service and SDK parse query/page; SDK additionally compares scope. Page parser checks filter echo/type/status/version/source/count/duplicates/continuation shape, not full SQL order, source freshness or complete outer table-source binding. Legacy service parses local hits and memory helper validates its whole batch, but Gateway assembles final legacy result without a full result parser. No generated SDK/Mock/schema integration is claimed."
+  },
+  "paths": {
+    "/v1/search": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "post": {
+        "operationId": "searchProjectRecords",
+        "tags": ["Search"],
+        "summary": "Search current local work items and context items",
+        "x-wcp-operation": "project.search",
+        "x-policy-action": "context.read",
+        "description": "Read wcp_work_items/wcp_context_items with no external memory, old copied index or live Plane fetch. query is checked before trim; defaults all/fts/inactive=false/limit20, maximum50. fts uses simple plainto_tsquery AND matching and weighted ts_rank_cd(normalization32): work title/external ID or context title weightA, work description/owner or context body weightB. JSON string content is unwrapped, other JSON content becomes database text. substring uses PostgreSQL lower plus literal strpos on combined fields, not wildcard/regex or JavaScript case-folding. All modes exclude deleted rows; inactive=false additionally requires confirmed/proposed unexpired context, while true includes excluded/expired/time-expired context. Work items retain all saved statuses. Output classification remains the record's value, not max(parent,record). Sources are validated structurally, not recursively checked for visibility/freshness. Sort score DESC/time DESC/type ASC/id ASC with database collation; filter before limit+1. Only selected hits are parsed. Cursor carries microsecond time and canonical encoded position, binds query/filter/scope/restricted but not page size or actor/client; caller may change limit. Cursor is neither signed nor a cross-page snapshot.",
+        "requestBody": {
+          "required": true,
+          "description": "JSON object, no identity/key/version fields. Missing optional fields use defaults; explicit null is rejected.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/search.json#ProjectSearchQuery" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Complete current page including empty/hidden-parent page. Table source_refs depend on requested type even when empty, not hit references. Local versions are lossless positive bigint strings; snippets contain up to360 PostgreSQL characters. next_cursor only when a lookahead exists, no has_more/count. No ETag.",
+            "headers": {
+              "cache-control": { "$ref": "#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "#/components/headers/SuccessTrace" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "../schemas/search.json#ProjectSearchEnvelope" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/context/search": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "post": {
+        "operationId": "searchIndexedContext",
+        "tags": ["Search"],
+        "summary": "Search persisted copied context hits and optionally recall memory",
+        "x-wcp-operation": "context.search",
+        "x-policy-action": "context.read",
+        "description": "Read active/unexpired wcp_context_hits with simple plainto_tsquery and ts_rank_cd(normalization32) over title+snippet, ordered score DESC/updated_at DESC/id ASC using database collation; no pagination. SQL score replaces saved score, rank_source is fts. Default budget20, maximum100 counts hits, not tokens. use_vector=true remains FTS and degraded=true. After local search and conditional parent recheck, call recall even if local results fill budget. Configured memory needs actual restricted-read; optional denial/error/invalid batch returns local-only degraded200, required denial/error fails. Optional absence has used=false,degraded=false unless vector requested. All returned provider candidates<=1000 are validated before dedup/select; first page_ref wins in provider order, memory score1/(unique index+1), class restricted, title ai-memory and no expires_at. Memory used=true can mean zero candidates or all excluded by local-first truncation. Concatenate local then memory and slice to budget without cross-backend dedup or fused sorting. Flat-map sources from final hits, retaining duplicates and memory source extensions. No source freshness, deletion propagation to external memory, saved pack or atomic local/provider snapshot guarantee.",
+        "requestBody": {
+          "required": true,
+          "description": "Strict query/budget/use_vector JSON object. No pagination, identity or idempotency fields.",
+          "content": {
+            "application/json": { "schema": { "$ref": "../schemas/search.json#LegacySearchQuery" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Complete assembled summary; outer and nested trace/sources agree. Local hits use nonnegative safe numeric revision, required nullable expiry and normalized sources. Memory hits retain source extensions and omit expiry. Optional failures may degrade; backend=postgres and vector_used=false always.",
+            "headers": {
+              "cache-control": { "$ref": "#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "#/components/headers/SuccessTrace" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "../schemas/search.json#LegacySearchEnvelope" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadLegacyInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidLegacyResult" },
+          "503": { "$ref": "#/components/responses/LegacyUnavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": { "GatewayBearer": { "type": "http", "scheme": "bearer" } },
+    "parameters": {
+      "TenantId": {
+        "name": "x-tenant-id",
+        "in": "header",
+        "required": true,
+        "description": "Exact nonempty authorized tenant scope, never taken from the search body.",
+        "schema": { "type": "string", "minLength": 1 }
+      },
+      "WorkspaceId": {
+        "name": "x-workspace-id",
+        "in": "header",
+        "required": true,
+        "description": "Exact nonempty authorized workspace scope.",
+        "schema": { "type": "string", "minLength": 1 }
+      },
+      "ProjectId": {
+        "name": "x-project-id",
+        "in": "header",
+        "required": true,
+        "description": "Exact nonempty authorized project scope.",
+        "schema": { "type": "string", "minLength": 1 }
+      },
+      "TraceParent": {
+        "name": "traceparent",
+        "in": "header",
+        "description": "Nonempty opaque value takes precedence over x-trace-id. No W3C parsing or equality requirement between both headers at these routes.",
+        "schema": { "type": "string" }
+      },
+      "TraceId": {
+        "name": "x-trace-id",
+        "in": "header",
+        "description": "Used when traceparent is absent/empty; otherwise generated trace_http_<ULID> when both absent/empty. Selected trace is preserved in response.",
+        "schema": { "type": "string" }
+      },
+      "ExpectedActorId": {
+        "$ref": "./context-history.json#/components/parameters/ExpectedActorId"
+      },
+      "ExpectedClientId": {
+        "$ref": "./context-history.json#/components/parameters/ExpectedClientId"
+      }
+    },
+    "headers": {
+      "NoStore": { "$ref": "./context-history.json#/components/headers/NoStore" },
+      "SuccessTrace": { "$ref": "./context-history.json#/components/headers/SuccessTrace" },
+      "ErrorTrace": { "$ref": "./context-history.json#/components/headers/ErrorTrace" }
+    },
+    "schemas": {
+      "ErrorEnvelope": { "$ref": "./context-history.json#/components/schemas/ErrorEnvelope" }
+    },
+    "responses": {
+      "Error": {
+        "description": "Application error. No partial usable result; transport/proxy errors can use another representation. Early body/auth failures use no-store and may omit x-trace-id; command errors use private,no-store and include x-trace-id. Retain JSON trace.",
+        "headers": {
+          "cache-control": { "schema": { "enum": ["no-store", "private, no-store"] } },
+          "x-trace-id": { "$ref": "#/components/headers/ErrorTrace" }
+        },
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } }
+        }
+      },
+      "BadInput": {
+        "$ref": "#/components/responses/Error",
+        "description": "INVALID_JSON for raw body/nonobject/size errors before auth; INVALID_INPUT for unknown/body fields, invalid query/default types or cursor shape/binding/canonical position. retryable=false. No version-header parse or URL-query rejection is claimed."
+      },
+      "BadLegacyInput": {
+        "$ref": "#/components/responses/Error",
+        "description": "INVALID_JSON/INVALID_INPUT as body query errors; required recall MEMORY_SCOPE_MISMATCH for malformed/cross-scope batches or MEMORY_MCP_EMPTY_RESULT/MEMORY_MCP_INVALID_RESULT map400 with retryable=false. Optional recall errors instead degrade."
+      },
+      "Unauthenticated": {
+        "$ref": "#/components/responses/Error",
+        "description": "UNAUTHENTICATED for absent/invalid/expired bearer; retryable=false. Configured verifier unavailable can map503 instead."
+      },
+      "Denied": {
+        "$ref": "#/components/responses/Error",
+        "description": "DENIED for scope/expected-identity/Policy refusal; legacy required recall without actual restricted-read, or separate configured-memory parent visibility recheck false, also403. retryable=false. Ordinary hidden-parent SQL returns empty200."
+      },
+      "RateLimited": {
+        "$ref": "#/components/responses/Error",
+        "description": "Generic actor/path RATE_LIMITED, retryable=true. No dedicated two-slot concurrency or Retry-After guarantee."
+      },
+      "InvalidStored": {
+        "$ref": "#/components/responses/Error",
+        "description": "SEARCH_RESULT_INVALID for invalid selected page/record/source or generated continuation, retryable=false. Unexpected command-boundary INTERNAL_ERROR defaults retryable=true."
+      },
+      "InvalidLegacyResult": {
+        "$ref": "#/components/responses/Error",
+        "description": "SEARCH_RESULT_INVALID for bad selected local hits or unsafe revision; required recall MEMORY_RESULT_INVALID for invalid source references. Explicit errors retryable=false; unexpected INTERNAL_ERROR defaults true. Optional recall failures degrade."
+      },
+      "Unavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "SEARCH_STORAGE_UNAVAILABLE for absent database/SQL failure, including parent visibility query; WORKBENCH_AUTH_UNAVAILABLE/AUDIT_PERSISTENCE_UNAVAILABLE at outer boundaries. retryable=true; no in-memory fallback."
+      },
+      "LegacyUnavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "Same storage/auth/audit errors; required recall MEMORY_PROVIDER_OFF retryable=false, MEMORY_UNAVAILABLE true, MEMORY_MCP_ERROR/TOOL_ERROR false. MEMORY_MCP_UNAVAILABLE retains provider retryability (request failure/HTTP>=500 true, other non-OK HTTP false). Status503 does not imply common retryability. Optional recall failures degrade, but earlier local SQL/parent visibility failures do not."
+      }
+    }
+  }
+}

@@ -1,6 +1,8 @@
 # WCP API 契约 v1
 
-2026-11-05，TODO P0-01：[Plane观察读取 OpenAPI](../../../packages/contracts/openapi/README.md#plane观察读取)及observed-read Schema补齐项目状态、工作项状态/上下文和观察目录四路。完整建模快照活动/删除/恢复、临时记忆摘要和目录元数据，明确身份筛选游标、可见性联结、分类差异及真实HTTP/SDK解析边界。OpenAPI累计四十六路，P0-01/R-001未完成、evidence为空；仅源码文档人工审阅/指定格式/Git文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+2026-11-05，TODO P0-01：[双搜索 OpenAPI](../../../packages/contracts/openapi/README.md#项目与旧索引搜索)及独立search Schema覆盖POST /v1/search和POST /v1/context/search。完整定义请求/项目分页/bigint版本及旧索引安全数字revision/记忆命中/完整封套，明确游标可改页大小、数据库排序、来源与记忆降级/HTTP边界。OpenAPI累计四十八路；其余WCP/MCP等仍缺，P0-01/R-001未完成、evidence为空。未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
+2026-11-05，TODO P0-01：[Plane观察读取 OpenAPI](../../../packages/contracts/openapi/README.md#plane观察读取)及observed-read Schema补齐项目状态、工作项状态/上下文和观察目录四路。完整建模快照活动/删除/恢复、临时记忆摘要和目录元数据，明确身份筛选游标、可见性联结、分类差异及真实HTTP/SDK解析边界。该轮使OpenAPI累计四十六路，P0-01/R-001未完成、evidence为空；仅源码文档人工审阅/指定格式/Git文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 2026-11-05，TODO P0-01：[建议写入与原回执 OpenAPI](../../../packages/contracts/openapi/README.md#建议写入与原回执)和proposal-write/proposal-original Schema补齐创建、确认、拒绝、原创建与原审核查询五路。规范原查询不同于旧写正文，写入重放不同于只读持久事件核对；完整定义human审核、键/版本/来源关系、recorded/not-observed和实际HTTP预算。建议八路源码目录已描述，该轮使OpenAPI累计四十二路；P0-01/R-001未完成、evidence为空。仅源码文档人工审阅/指定格式/Git文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 

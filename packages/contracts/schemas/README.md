@@ -1,5 +1,9 @@
 # 独立契约结构定义
 
+2026-11-05，TODO **P0-01**：新增独立 [search.json](search.json)，根为 ProjectSearchEnvelope/LegacySearchEnvelope 完整成功联合。提供 ProjectSearchQuery/LegacySearchQuery、ProjectSearchHit/Page、IndexedSearchHit/MemorySearchHit 和 LegacySearchResult 锚点，包子路径 @planemem/contracts/schemas/search.json；无需其他Schema，HTTP见search OpenAPI。
+
+项目命中保留bigint字符串版本和两类状态，页面约束type/模式/失效筛选，外层来源固定数据库表。旧命中区分fts数字revision/必有可空expires_at与memory固定restricted/省略expires_at；完整内外来源按最终命中拼接，重复保留。默认值只作用于省略字段；null不代表默认。UTF-16长度/孤立代理、真实日历、bigint上限、原请求回显/数量/范围/trace/来源和游标绑定仍须现有运行解析；项目已接共享页面解析，旧搜索完整结果由Gateway拼装。未将新Schema接入SDK/Mock或执行校验/生成/编译/测试/接口/数据库；P0-01/R-001未完成、evidence为空。
+
 2026-11-05，TODO **P0-01**：新增独立 observed-read.json，根为项目/工作项状态、工作项上下文及观察目录四类完整成功联合。提供ObservedSnapshot、PlaneRestoreReference、ObservedWorkItemContext、ObservedWorkItemEntry/Page/ListQuery及两个共享本地ID输入锚点。包子路径为 @planemem/contracts/schemas/observed-read.json；只需注册这一份Schema，HTTP路径/权限/错误由observed-reads OpenAPI描述。
 
 快照活动v1/删除v2/恢复引用分支明确，外层始终v1，无ETag/cursor；fields保留原事件任意业务字段，删除只含external_id。状态来源规范化为四字段，记忆来源在HTTP可保留扩展。上下文首条来自快照，随后最多19条memory/restricted命中；legacy context_pack只是临时摘要。目录含范围/checked_at/元数据和可选续页，无has_more或总数，标题/状态按Unicode标量限长。运行实现另核对UTF-16/孤立代理、真实日历、原身份/版本/来源/游标/排序关系；服务器未调用完整上下文解析，新Schema不冒称修复此边界。P0-01/R-001未完成、evidence为空；未编译、测试、运行校验器/生成器、接口或数据库。

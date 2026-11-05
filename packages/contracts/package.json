@@ -8,6 +8,8 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./schemas/search.json": "./schemas/search.json",
+    "./openapi/search.json": "./openapi/search.json",
     "./schemas/observed-read.json": "./schemas/observed-read.json",
     "./openapi/observed-reads.json": "./openapi/observed-reads.json",
     "./schemas/proposal-write.json": "./schemas/proposal-write.json",

@@ -11,6 +11,27 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    search_openapi_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only two-route search OpenAPI and complete standalone schema; P0-01 and R-001 remain incomplete."
+      artifacts:
+        - "packages/contracts/openapi/search.json"
+        - "packages/contracts/schemas/search.json"
+        - "packages/contracts/package.json"
+        - "packages/contracts/openapi/README.md"
+        - "packages/contracts/schemas/README.md"
+      behavior: "Model both strict query bodies, project hits/page and table-source envelope, local indexed and external memory hits and complete legacy search envelope. Separate bigint strings from safe numeric revisions, FTS from literal substring, current tables from copied index and memory."
+      boundaries: "No runtime/SDK/Mock/old-schema/database changes. Project cursor binds scope/restricted/normalized filters but permits limit and actor/client changes; canonical microsecond position is not signed or a cross-page snapshot. SQL uses database collation, parses selected hits only and preserves record classification. Sources have no recursive visibility/freshness proof. Legacy merges local first, preserves duplicate sources and memory source extensions, and can report memory_used with no memory hits. Optional absent provider does not degrade. Separate configured-memory parent check can deny or fail before optional recall fallback. No complete legacy result parser, response-wide byte/concurrency/deadline guarantee or post-read expiry check."
+      evidence: []
+      remaining_scope: "Other WCP/MCP machine contracts, ordinary event payloads, SDK/Mock machine-contract consumption, breaking-change CI and tool/runtime/release evidence."
+      pending_evidence:
+        - "Local reference resolution, full request/default/query branches and both complete success representations"
+        - "Project cursor/filter/scope binding, adjustable page size, canonical microsecond positions and database ordering"
+        - "Parent and record visibility/expiry, selected versus lookahead parsing, version limits and structural-only sources"
+        - "Memory parent recheck, full-batch validation, local-first truncation, source extensions/duplicates and actual degradation"
+        - "HTTP raw-body/auth/header/query/error distinctions and SDK versus server parsing"
+      execution: "Manual source/docs review and explicit formatting/Git text checks only; no build, typecheck, tests, validators, generators, product/API/database execution or release."
     observed_reads_openapi_development_increment:
       date: "2026-11-05"
       todo: "P0-01"

@@ -1,0 +1,439 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/search.json",
+  "title": "PlaneMem project and indexed context search",
+  "description": "Source-only complete HTTP success union. Requests have separate anchors. Project search reads local current records; indexed context search reads copied hits and optional external memory. Neither is a saved ContextPack or a source-freshness proof.",
+  "$comment": "Standalone schema. Existing entry-specific parsers additionally check UTF-16 lengths, lone surrogates where noted, real dates, bigint bounds, project request echo/count/duplicate identities and cursor bindings; SDK compares project scope. Gateway construction supplies legacy trace/source relationships without a complete legacy-result parser. JSON Schema length counts Unicode code points, not JavaScript UTF-16 units. No validator, generator or runtime compatibility evidence is claimed.",
+  "oneOf": [{ "$ref": "#ProjectSearchEnvelope" }, { "$ref": "#LegacySearchEnvelope" }],
+  "$defs": {
+    "nonempty": { "type": "string", "minLength": 1 },
+    "queryText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "pattern": "\\S",
+      "not": { "pattern": "\\u0000" },
+      "$comment": "Raw query must contain non-whitespace, <=500 UTF-16 units, no NUL or lone surrogate; then trim. Other control characters are not independently rejected."
+    },
+    "normalizedQuery": {
+      "$ref": "#/$defs/queryText",
+      "not": { "pattern": "^\\s|\\s$" }
+    },
+    "recordId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "allOf": [
+        { "not": { "pattern": "^\\s|\\s$" } },
+        { "not": { "pattern": "[\\u0000-\\u001f\\u007f]" } }
+      ],
+      "$comment": "Already trimmed, <=255 UTF-16 units; runtime also rejects lone surrogates. Project search IDs can be '.' or '..'; indexed/memory IDs cannot."
+    },
+    "indexId": {
+      "$ref": "#/$defs/recordId",
+      "not": { "enum": [".", ".."] }
+    },
+    "safeRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "positiveBigint": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]{0,18}$",
+      "$comment": "Runtime also requires numeric value <=9223372036854775807. Preserve decimal string; no conversion to JavaScript number."
+    },
+    "classification": { "enum": ["public", "internal", "confidential", "restricted"] },
+    "parseableTime": {
+      "type": "string",
+      "minLength": 1,
+      "$comment": "Existing project page parser requires finite Date.parse only; it does not require canonical UTC syntax. PostgreSQL driver Date values are converted to toISOString before parsing."
+    },
+    "canonicalUtcTime": {
+      "type": "string",
+      "pattern": "^(?:[0-9]{4}|[+-][0-9]{6})-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$",
+      "$comment": "Indexed expires_at is normalized with toISOString after finite Date.parse and trailing Z validation. Calendar validity remains a runtime requirement."
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant_id", "workspace_id", "project_id"],
+      "properties": {
+        "tenant_id": { "$ref": "#/$defs/nonempty" },
+        "workspace_id": { "$ref": "#/$defs/nonempty" },
+        "project_id": { "$ref": "#/$defs/nonempty" }
+      },
+      "description": "Exact authenticated scope. Project page parser only checks nonempty strings; SDK also compares with its request scope."
+    },
+    "sourceRef": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "$ref": "#/$defs/nonempty" },
+        "id": { "$ref": "#/$defs/nonempty" },
+        "revision": { "$ref": "#/$defs/safeRevision" },
+        "uri": { "$ref": "#/$defs/nonempty" }
+      },
+      "description": "validateSourceRef imposes no trim or URI-syntax constraint; provider memory extensions survive HTTP output."
+    },
+    "publicSourceRef": {
+      "$ref": "#/$defs/sourceRef",
+      "propertyNames": { "enum": ["type", "id", "revision", "uri"] },
+      "description": "Project and local index parsers reconstruct four public fields and drop stored extensions."
+    },
+    "cursor": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,2048}$" },
+    "projectQuery": {
+      "$anchor": "ProjectSearchQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["query"],
+      "properties": {
+        "query": { "$ref": "#/$defs/queryText" },
+        "type": { "enum": ["all", "work_item", "context_item"], "default": "all" },
+        "mode": { "enum": ["fts", "substring"], "default": "fts" },
+        "include_inactive_context": { "type": "boolean", "default": false },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 50, "default": 20 },
+        "cursor": { "$ref": "#/$defs/cursor" }
+      },
+      "description": "Defaults apply only to omitted fields; null is invalid. Cursor binds trimmed case-preserving query/type/mode/inactive and scope/restricted flag, not limit or actor/client. Changing page size is supported."
+    },
+    "legacyQuery": {
+      "$anchor": "LegacySearchQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["query"],
+      "properties": {
+        "query": { "$ref": "#/$defs/queryText" },
+        "budget": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 },
+        "use_vector": { "type": "boolean", "default": false }
+      },
+      "description": "No pagination or substring mode. budget limits returned hit count, not tokens or bytes. use_vector=true still uses FTS and sets degraded=true."
+    },
+    "projectHit": {
+      "$anchor": "ProjectSearchHit",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "id",
+        "title",
+        "snippet",
+        "version",
+        "status",
+        "classification",
+        "updated_at",
+        "expires_at",
+        "score",
+        "source_refs"
+      ],
+      "properties": {
+        "type": { "enum": ["work_item", "context_item"] },
+        "id": { "$ref": "#/$defs/recordId" },
+        "title": { "type": "string" },
+        "snippet": { "type": "string", "maxLength": 360 },
+        "version": { "$ref": "#/$defs/positiveBigint" },
+        "status": { "type": "string" },
+        "classification": { "$ref": "#/$defs/classification" },
+        "updated_at": { "$ref": "#/$defs/parseableTime" },
+        "expires_at": { "anyOf": [{ "$ref": "#/$defs/parseableTime" }, { "type": "null" }] },
+        "score": { "type": "number", "minimum": 0, "maximum": 1 },
+        "source_refs": { "type": "array", "items": { "$ref": "#/$defs/publicSourceRef" } }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "work_item" } } },
+          "then": {
+            "properties": {
+              "status": {
+                "enum": ["todo", "in_progress", "in_review", "blocked", "done", "cancelled"]
+              },
+              "expires_at": { "type": "null" }
+            }
+          },
+          "else": {
+            "properties": { "status": { "enum": ["confirmed", "proposed", "expired", "excluded"] } }
+          }
+        }
+      ],
+      "description": "Local stored version, not Plane observed version. HTTP SQL snippet is the first <=360 PostgreSQL characters of description/content, with no highlight or match-location promise. The shared page parser checks string type but does not impose that SQL truncation bound. Title has no read-side length/nonblank rule. Source references are structural, without dependency freshness or upstream validation."
+    },
+    "projectPage": {
+      "$anchor": "ProjectSearchPage",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "query",
+        "type",
+        "mode",
+        "include_inactive_context",
+        "scope",
+        "hits",
+        "backend",
+        "vector_used"
+      ],
+      "properties": {
+        "query": { "$ref": "#/$defs/normalizedQuery" },
+        "type": { "enum": ["all", "work_item", "context_item"] },
+        "mode": { "enum": ["fts", "substring"] },
+        "include_inactive_context": { "type": "boolean" },
+        "scope": { "$ref": "#/$defs/scope" },
+        "hits": { "type": "array", "maxItems": 50, "items": { "$ref": "#ProjectSearchHit" } },
+        "next_cursor": { "$ref": "#/$defs/cursor" },
+        "backend": { "const": "postgres" },
+        "vector_used": { "const": false }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "mode": { "const": "substring" } } },
+          "then": {
+            "properties": { "hits": { "items": { "properties": { "score": { "const": 0 } } } } }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "work_item" } } },
+          "then": {
+            "properties": {
+              "hits": { "items": { "properties": { "type": { "const": "work_item" } } } }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "context_item" } } },
+          "then": {
+            "properties": {
+              "hits": { "items": { "properties": { "type": { "const": "context_item" } } } }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "include_inactive_context": { "const": false } } },
+          "then": {
+            "properties": {
+              "hits": {
+                "items": {
+                  "if": { "properties": { "type": { "const": "context_item" } } },
+                  "then": { "properties": { "status": { "enum": ["confirmed", "proposed"] } } }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": { "required": ["next_cursor"] },
+          "then": { "properties": { "hits": { "minItems": 1 } } }
+        }
+      ],
+      "description": "Echoes normalized request filters; no echoed limit. Runtime checks hits<=requested limit, unique(type,id), next_cursor only with a full page and unequal incoming cursor. SQL orders score DESC, updated_at DESC, type ASC, id ASC using database text collation, not explicit C. Visibility and expiry filter before limit+1; only selected rows are parsed. Missing/hidden parent yields empty200. No cross-page snapshot or source freshness proof.",
+      "x-cursor": {
+        "encoding": "Canonical base64url of JSON [1,sha256(fingerprint),score,updated,type,id]",
+        "fingerprint": "['project-search-v1',tenant_id,workspace_id,project_id,read_restricted,trimmedQuery,type,mode,include_inactive_context]",
+        "position": "Finite score0..1; valid year0001..9999 UTC timestamp with six fractional digits; record type and ID. Decoder reconstructs and re-encodes exactly. Binding is not a signature or authorization.",
+        "continuation": "New cursor is generated from last returned row only when a lookahead exists. The generated cursor is decoded before output; lookahead metadata is not separately parsed."
+      }
+    },
+    "indexedHit": {
+      "$anchor": "IndexedSearchHit",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "tenant_id",
+        "workspace_id",
+        "project_id",
+        "id",
+        "title",
+        "snippet",
+        "revision",
+        "score",
+        "rank_source",
+        "classification",
+        "expires_at",
+        "source_refs"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "tenant_id": { "$ref": "#/$defs/nonempty" },
+        "workspace_id": { "$ref": "#/$defs/nonempty" },
+        "project_id": { "$ref": "#/$defs/nonempty" },
+        "id": { "$ref": "#/$defs/indexId" },
+        "title": {
+          "type": "string",
+          "maxLength": 1000,
+          "pattern": "\\S",
+          "not": { "pattern": "\\u0000" }
+        },
+        "snippet": {
+          "type": "string",
+          "maxLength": 65536,
+          "pattern": "\\S",
+          "not": { "pattern": "\\u0000" }
+        },
+        "revision": { "$ref": "#/$defs/safeRevision" },
+        "score": { "type": "number" },
+        "rank_source": { "const": "fts" },
+        "classification": { "$ref": "#/$defs/classification" },
+        "expires_at": { "anyOf": [{ "$ref": "#/$defs/canonicalUtcTime" }, { "type": "null" }] },
+        "source_refs": {
+          "type": "array",
+          "maxItems": 64,
+          "items": { "$ref": "#/$defs/publicSourceRef" }
+        }
+      },
+      "description": "Existing parser enforces UTF-16 text bounds/nonblank/no NUL/no lone surrogates, without trimming title/snippet. revision is a nonnegative safe number. Score is recomputed SQL ts_rank_cd(normalization32); parser only requires finite score. Rank source is forced to fts, ignoring saved rank metadata. Expiry is present/null and SQL excludes expired/deleted local index rows."
+    },
+    "memoryHit": {
+      "$anchor": "MemorySearchHit",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "tenant_id",
+        "workspace_id",
+        "project_id",
+        "id",
+        "title",
+        "snippet",
+        "revision",
+        "score",
+        "rank_source",
+        "classification",
+        "source_refs"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "tenant_id": { "$ref": "#/$defs/nonempty" },
+        "workspace_id": { "$ref": "#/$defs/nonempty" },
+        "project_id": { "$ref": "#/$defs/nonempty" },
+        "id": { "$ref": "#/$defs/indexId" },
+        "title": { "const": "ai-memory" },
+        "snippet": { "type": "string", "maxLength": 65536 },
+        "revision": { "$ref": "#/$defs/safeRevision" },
+        "score": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+        "rank_source": { "const": "memory" },
+        "classification": { "const": "restricted" },
+        "source_refs": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/sourceRef" } }
+      },
+      "description": "No expires_at field. Entire provider batch<=1000 validated before page_ref deduplication and budget selection. Keep first page_ref in provider order; score=1/(unique memory index+1), independent of number of local hits. Memory snippet only checked as string<=65536 UTF-16 units; unlike indexed text it may be empty/blank or contain escaped NUL/lone surrogates. Source extensions survive HTTP."
+    },
+    "legacyResult": {
+      "$anchor": "LegacySearchResult",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "query",
+        "scope",
+        "trace_id",
+        "hits",
+        "degraded",
+        "backend",
+        "vector_used",
+        "source_refs",
+        "memory_used"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "query": { "$ref": "#/$defs/normalizedQuery" },
+        "scope": { "$ref": "#/$defs/scope" },
+        "trace_id": { "$ref": "#/$defs/nonempty" },
+        "hits": {
+          "type": "array",
+          "maxItems": 100,
+          "items": { "oneOf": [{ "$ref": "#IndexedSearchHit" }, { "$ref": "#MemorySearchHit" }] }
+        },
+        "degraded": { "type": "boolean" },
+        "backend": { "const": "postgres" },
+        "vector_used": { "const": false },
+        "source_refs": {
+          "type": "array",
+          "maxItems": 6400,
+          "items": { "$ref": "#/$defs/sourceRef" }
+        },
+        "memory_used": { "type": "boolean" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "memory_used": { "const": false } } },
+          "then": { "properties": { "hits": { "items": { "$ref": "#IndexedSearchHit" } } } }
+        }
+      ],
+      "description": "hits=[...local,...memory].slice(0,budget); local-first truncation, no fused ranking or cross-backend dedup. Memory may be called even when local results fill budget. memory_used=true can have no returned memory hits. source_refs is flatMap of returned hits in order, preserving duplicates, and equals outer source_refs; nested trace equals outer trace. Optional absent memory is not degraded here; requested vector or optional memory denial/failure is degraded. No full shared final-result parser at Gateway."
+    },
+    "projectTableSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "const": "postgres" },
+        "id": { "enum": ["wcp_work_items", "wcp_context_items"] }
+      }
+    },
+    "projectEnvelope": {
+      "$anchor": "ProjectSearchEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "#/$defs/nonempty" },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/projectTableSource" }
+        },
+        "data": { "$ref": "#ProjectSearchPage" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "data": { "properties": { "type": { "const": "all" } } } } },
+          "then": {
+            "properties": {
+              "source_refs": {
+                "const": [
+                  { "type": "postgres", "id": "wcp_work_items" },
+                  { "type": "postgres", "id": "wcp_context_items" }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "data": { "properties": { "type": { "const": "work_item" } } } }
+          },
+          "then": {
+            "properties": {
+              "source_refs": { "const": [{ "type": "postgres", "id": "wcp_work_items" }] }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "data": { "properties": { "type": { "const": "context_item" } } } }
+          },
+          "then": {
+            "properties": {
+              "source_refs": { "const": [{ "type": "postgres", "id": "wcp_context_items" }] }
+            }
+          }
+        }
+      ],
+      "description": "Outer sources describe queried tables even for empty results; they are not the concatenation of hit sources. No outer revision/etag/server_cursor, no HTTP ETag."
+    },
+    "legacyEnvelope": {
+      "$anchor": "LegacySearchEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "#/$defs/nonempty" },
+        "source_refs": {
+          "type": "array",
+          "maxItems": 6400,
+          "items": { "$ref": "#/$defs/sourceRef" }
+        },
+        "data": { "$ref": "#LegacySearchResult" }
+      },
+      "description": "Outer trace/source arrays equal data.trace_id/source_refs. No outer revision/etag/server_cursor or HTTP ETag. Empty results have empty sources; duplicates remain."
+    }
+  }
+}
