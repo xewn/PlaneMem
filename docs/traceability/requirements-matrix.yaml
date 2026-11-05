@@ -11,6 +11,21 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    search_sdk_mock_development:
+      date: "2026-11-05"
+      todo: "P0-02"
+      status: "Implementation source added; not compiled or executed. P0-02 and R-001 remain incomplete."
+      artifacts:
+        - "packages/contracts/src/search-response.ts"
+        - "packages/sdk/src/search.ts"
+        - "packages/sdk/src/mock-project-search.ts"
+        - "packages/sdk/src/mock-legacy-search.ts"
+        - "packages/sdk/src/mock-legacy-context.ts"
+        - "packages/sdk/src/mock-server.ts"
+        - "docs/design/01-contracts/search-sdk-mock-runtime.md"
+      behavior: "Typed legacy search SDK and bounded complete envelopes for both search methods. Project Mock searches complete text, consumes explicit FTS scores, filters visibility/expiry and supports bound keyset paging. Legacy search uses the mutable index and exact current-content evaluations, preserving write/delete/restore state. Explicit memory outcomes retain restricted access, optional degradation, local-first truncation and ordered sources."
+      remaining_scope: "Other public WCP operations, machine-contract consumption and compatibility evidence. Project Mock is a fixed dataset independent of other write stores; FTS and memory are explicit fixtures, not real providers or database evidence."
+      evidence: []
     legacy_context_mock_development:
       date: "2026-11-05"
       todo: "P0-02"
@@ -23,7 +38,7 @@ requirements:
         - "packages/sdk/src/mock-server.ts"
         - "docs/design/01-contracts/legacy-context-mock-runtime.md"
       behavior: "Typed SDK manual index write verifies original content, scope, trace and capture-only appended sources. Five Mock operations share one index with monotonic versions/classification, deletion protection, expiry-preserving restore and operation/identity-bound historical receipts. Explicit capture scenarios, bounded copies and synchronous response-preflight commits."
-      remaining_scope: "Project and legacy searches and other WCP Mock operations, dynamic Plane updates, real provider/compensation and persistent audit evidence, machine-contract consumption and compatibility validation."
+      remaining_scope: "Other WCP Mock operations, dynamic Plane updates, real provider/compensation and persistent audit evidence, machine-contract consumption and compatibility validation. Project/legacy search source coverage is recorded in search_sdk_mock_development."
       evidence: []
     plane_inbox_mock_development:
       date: "2026-11-05"

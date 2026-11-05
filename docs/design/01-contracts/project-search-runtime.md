@@ -1,5 +1,7 @@
 # 持久项目搜索（开发状态）
 
+2026-11-05，TODO **P0-02**：SDK `searchProject(input, options?)` 增加默认 30 秒/取消、8 KiB 输入及 2 MiB 完整响应核对，包含外层 trace/表来源；新增完整正文/显式 FTS 场景的项目搜索 Mock，支持筛选、到期和绑定分页。用法和模拟与 SQL 的差异见 [搜索 SDK 与 Mock](search-sdk-mock-runtime.md)。不改生产 SQL，未编译、运行或测试。
+
 2026-11-05，TODO **P0-01**：新增 [search OpenAPI](../../../packages/contracts/openapi/search.json)和独立 [search Schema](../../../packages/contracts/schemas/search.json)，完整建模本接口请求/页面/外层表来源，详见[机器契约边界](../../../packages/contracts/openapi/README.md#项目与旧索引搜索)。游标不绑定limit/actor/client、排序沿数据库默认文本规则，不能误写成固定C；只解析选中记录，生成的下一游标会做编码往返核对。SQL分类取记录自身值，来源仅结构验证，不证明递归来源可见/有效。HTTP先读1MiB JSON再认证，URL查询忽略、版本头不解析，未提供专用响应总预算/期限或读取后到期复查。仅源码契约文档，不改运行实现；P0-01/R-001未完成、evidence为空，未执行编译/测试/校验器/生成器/接口/SQL/发布。
 
 2026-11-02：仅修改源码与文档，未编译、类型检查、测试、启动服务、执行迁移或发布。031 全文索引迁移仅写文件，性能及权限行为尚无本次运行证据。

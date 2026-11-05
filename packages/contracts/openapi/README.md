@@ -263,6 +263,8 @@ GET 不读取 JSON 正文，无正文/framing、媒体/编码/缓存/Range 专�
 
 ## 项目与旧索引搜索
 
+后续 P0-02 源码接入：SDK 两类搜索现共用完整范围/query/trace/来源解析，默认 30 秒可取消等待、8 KiB 输入和 2 MiB 完整响应；旧搜索新增类型化方法。项目与旧索引 Mock 的配置和模拟差异见 [搜索 SDK 与 Mock](../../../docs/design/01-contracts/search-sdk-mock-runtime.md)。这些是客户端/模拟约束，不改变下述生产 HTTP 或 SQL 语义，未运行验证。
+
 2026-11-05，TODO **P0-01**：[search OpenAPI](search.json) 覆盖 POST /v1/search 和 POST /v1/context/search。独立 [search Schema](../schemas/search.json) 完整定义两类请求、项目分页命中、旧索引/记忆命中和两类成功封套；包子路径对应文件名。本地加载该OpenAPI、context-history公共HTTP组件及独立Schema，保留相对路径和完整ID；未运行校验器或生成器。
 
 项目搜索读当前工作项/上下文表，版本是正bigint十进制字符串，摘要是正文开头最多360个数据库字符。fts使用simple词语AND匹配、标题权重A/正文权重B及ts_rank_cd归一化；substring使用PostgreSQL lower/strpos字面包含，不把百分号/下划线当通配符。过滤可见未删除父项目、保存分类/删除状态后取limit+1；默认不包含过期或excluded上下文，可显式开启，仍不读归档。默认20、最多50，排序为分数/时间降序及类型/ID数据库排序规则升序，并未显式指定C。只解析选中行，不单独解析lookahead。游标保留微秒时间、完整编码往返核对并绑定原范围/restricted/规范搜索条件，不绑定页大小或账号客户端；可以改limit，不是签名或跨页快照。

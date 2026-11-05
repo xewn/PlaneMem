@@ -12,6 +12,8 @@ import {
   parseLegacyContextListPage,
   parseLegacyContextMutation,
   parseLegacyContextMutationReceipt,
+  parseLegacySearchQuery,
+  SEARCH_INPUT_BYTES,
   validateIdempotencyKey,
   syncJsonSnapshot,
   LEGACY_INDEX_INPUT_BYTES,
@@ -27,6 +29,7 @@ import {
 } from '@planemem/contracts';
 import type { WcpRequest, WcpTransport } from './client.js';
 import { createRequestBudget } from './request-budget.js';
+import { MockLegacySearch, type MockLegacySearchSeed } from './mock-legacy-search.js';
 
 type Scope = Pick<LegacyContextIdentity, 'tenant_id' | 'workspace_id' | 'project_id'>;
 export type MockLegacyContextCapture =
@@ -49,6 +52,7 @@ export interface MockLegacyContextSeed {
   project_classification: Classification;
   records: Array<{ content: IndexedContextInput; updated_at: string; deleted_at: string | null }>;
   capture: MockLegacyContextCapture;
+  search?: MockLegacySearchSeed;
 }
 /** Explicit effective permissions, including any simulated policy decision. */
 export interface MockLegacyContextSession {
@@ -71,6 +75,7 @@ type Outcome = Extract<
 >['scenarios'][number]['outcome'];
 type Saved = { fingerprint: string; data: IndexedContextRecord | LegacyContextMutationReceipt };
 type Route =
+  | { kind: 'search'; query: ReturnType<typeof parseLegacySearchQuery> }
   | { kind: 'list'; query: Query }
   | { kind: 'status'; id: string }
   | { kind: 'index'; input: IndexedContextInput; key: string }
@@ -99,6 +104,9 @@ const messages = {
     'Supply a bounded index dataset and explicit simulated access',
   MOCK_CONTEXT_INDEX_CAPACITY: 'The simulated index or original receipt ledger is full',
   MOCK_CONTEXT_INDEX_CAPTURE_UNCONFIGURED: 'Configure this exact simulated capture input first',
+  MOCK_SEARCH_SCENARIO_UNCONFIGURED:
+    'Configure this query and every currently searchable title/snippet first',
+  MEMORY_RESULT_INVALID: 'The simulated memory recall returned invalid sources',
   MOCK_ROUTE_NOT_FOUND: 'Mock legacy index route or method not found',
   INVALID_INPUT: 'Supply valid index filters or the complete original command',
   UNAUTHENTICATED: 'The simulated session has expired',
@@ -109,8 +117,8 @@ const messages = {
   SEARCH_RESULT_INVALID: 'The complete simulated index record or receipt is invalid',
   CONTEXT_PERSISTENCE_UNAVAILABLE: 'The simulated index cursor could not be calculated',
   MEMORY_PROVIDER_OFF: 'The required simulated memory provider is unavailable',
-  MEMORY_UNAVAILABLE: 'The required simulated memory capture failed',
-  MEMORY_SCOPE_MISMATCH: 'The simulated memory capture returned another scope',
+  MEMORY_UNAVAILABLE: 'The required simulated memory capture or recall failed',
+  MEMORY_SCOPE_MISMATCH: 'The simulated memory operation returned invalid or cross-scope data',
   GATEWAY_RESPONSE_INVALID:
     'The complete simulated response exceeds its representation or size limit',
   GATEWAY_REQUEST_CANCELED: 'Stopped waiting for the simulated index operation',
@@ -196,7 +204,7 @@ function decodeCursor(cursor: string, key: string): string {
   return id;
 }
 export function isMockLegacyContextPath(path: unknown): path is string {
-  return typeof path === 'string' && /^\/v1\/context\/index(?:[/?#]|$)/.test(path);
+  return typeof path === 'string' && /^\/v1\/context\/(?:index|search)(?:[/?#]|$)/.test(path);
 }
 
 /** Manual index content and lifecycle share one in-memory ledger. No external capture occurs. */
@@ -205,6 +213,7 @@ export class MockLegacyContextStore {
   readonly #scope: Scope;
   readonly #classification: Classification;
   readonly #items: Map<string, Item>;
+  readonly #search: MockLegacySearch | undefined;
   readonly #capture: {
     mode: 'off' | 'configured';
     required: boolean;
@@ -217,11 +226,13 @@ export class MockLegacyContextStore {
 
   constructor(seed: MockLegacyContextSeed) {
     const saved = checked('MOCK_CONTEXT_INDEX_CONFIGURATION_INVALID', configurationTrace, () => {
-      const raw = fields(snapshot(seed, seedBytes), [
+      const detached = snapshot(seed, seedBytes);
+      const raw = fields(detached, [
         'scope',
         'project_classification',
         'records',
         'capture',
+        ...(Object.hasOwn(detached, 'search') ? ['search'] : []),
       ]);
       const rawScope = fields(raw.scope, ['tenant_id', 'workspace_id', 'project_id']);
       const identity = parseLegacyContextIdentity({
@@ -305,6 +316,9 @@ export class MockLegacyContextStore {
         items,
         itemBytes,
         classification: raw.project_classification as Classification,
+        search: Object.hasOwn(raw, 'search')
+          ? new MockLegacySearch(raw.search as MockLegacySearchSeed)
+          : undefined,
         capture: {
           mode: capture.mode as 'off' | 'configured',
           required: capture.required,
@@ -317,6 +331,7 @@ export class MockLegacyContextStore {
     this.#items = saved.items;
     this.#itemBytes = saved.itemBytes;
     this.#capture = saved.capture;
+    this.#search = saved.search;
   }
 
   connect(input: MockLegacyContextSession): WcpTransport {
@@ -590,6 +605,13 @@ export class MockLegacyContextStore {
         return { kind: 'list', query: parseLegacyContextListQuery(query) };
       }
       if (url.search) throw new TypeError();
+      if (url.pathname === '/v1/context/search' && method === 'POST') {
+        if (headers.has('idempotency-key') || path !== '/v1/context/search') throw new TypeError();
+        return {
+          kind: 'search',
+          query: parseLegacySearchQuery(snapshot(body, SEARCH_INPUT_BYTES)),
+        };
+      }
       if (url.pathname === '/v1/context/index' && method === 'POST') {
         const row = object(snapshot(body, LEGACY_INDEX_INPUT_BYTES));
         const { idempotency_key, ...content } = row;
@@ -682,7 +704,7 @@ export class MockLegacyContextStore {
       )
         fail('INVALID_INPUT', trace);
       const route = this.route(path, method, body, headers, trace);
-      if (route.kind === 'list' || route.kind === 'status') {
+      if (route.kind === 'list' || route.kind === 'status' || route.kind === 'search') {
         if (!session.read_context) fail('DENIED', trace);
       } else if (!session.authenticated_client || !session.write_context) fail('DENIED', trace);
       if (this.#active >= 2) fail('RATE_LIMITED', trace);
@@ -693,7 +715,21 @@ export class MockLegacyContextStore {
           let result: Result;
           if (route.kind === 'list')
             result = { data: await this.list(route.query, session, trace, live), source_refs: [] };
-          else {
+          else if (route.kind === 'search') {
+            if (!this.#search) fail('MOCK_SEARCH_SCENARIO_UNCONFIGURED', trace);
+            const response = this.#search.search(
+              route.query,
+              this.#scope,
+              trace,
+              [...this.#items.values()].filter((item) => this.visible(item, session)),
+              {
+                parent_visible: this.parentVisible(session),
+                read_restricted: session.read_restricted,
+              },
+              Date.now(),
+            );
+            result = { data: response.data, source_refs: response.source_refs };
+          } else {
             const now = new Date().toISOString();
             if (route.kind === 'status') {
               const item = this.#items.get(route.id);

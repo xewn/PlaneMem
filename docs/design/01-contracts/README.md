@@ -1,5 +1,7 @@
 # 公共契约目录
 
+- [搜索 SDK 与 Mock](search-sdk-mock-runtime.md)：原始 TODO P0-02，项目搜索/分页与旧索引写入、删除、恢复后的搜索联动；显式 FTS/记忆模拟，未运行或测试。
+
 - [旧上下文索引 SDK 与 Mock](legacy-context-mock-runtime.md)：TODO P0-02，新增内容写入 SDK 及五操作共享模拟索引，包含历史重放、版本/分类与删除/到期规则；仅开发源码，未运行或测试。
 
 - [Plane 收件箱 Mock](plane-inbox-mock-runtime.md)：TODO P0-02，队列列表/统计/详情/版本诊断、实际模拟重试调度及原回执，接现有 SDK；仅开发源码，未编译、运行或测试。

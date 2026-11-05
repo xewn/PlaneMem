@@ -1,5 +1,7 @@
 # 旧上下文索引持久读取（开发状态）
 
+2026-11-05，TODO **P0-02**：新增 `searchLegacyContext` 和完整搜索结果共享解析；旧索引 Mock 搜索读取同一可变账本，响应写入/删除/恢复/到期，并使用显式正文评分和记忆场景。调用及权限/降级差异见 [搜索 SDK 与 Mock](search-sdk-mock-runtime.md)。完整解析用于 SDK/Mock，生产 Gateway 仍沿原拼装方式；未编译、运行或测试。
+
 2026-11-05，TODO **P0-02**：新增类型化 `WcpClient.indexLegacyContext`，共享完整原正文写入回执解析；Mock 覆盖内容写入、目录、状态、删除和恢复，沿生产的单调版本/分类、删除保护及不同历史重放规则。用法与差异见 [旧索引 SDK 与 Mock](legacy-context-mock-runtime.md)。不改生产存储或 capture 协议，未编译、运行或测试，P0-02 未完成。
 
 2026-11-05，TODO **P0-01**：补充 [context-index OpenAPI/Schema](../../../packages/contracts/openapi/README.md#旧索引内容与管理)，描述旧内容写入及目录/状态/删除/恢复五路。内容写入规范指纹与历史元数据回执的重放限制不同，当前删除/过期会拒绝旧正文重放；首次输入允许已经过期。capture在持锁事务内调用但不与外部原子提交，内置提供方trace路径create_only不等同原请求键幂等；可选失败没有degraded标志，配置provider仍须预留来源槽位。人工核对还区分MEMORY_PROVIDER_OFF未配置retryable=false与已配置但adapter disabled的true，已修正搜索/观察OpenAPI。仅源码契约文档，P0-01/R-001未完成、evidence为空；未编译、测试、运行校验器/生成器/接口/SQL或发布。

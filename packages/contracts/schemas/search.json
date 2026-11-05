@@ -3,7 +3,7 @@
   "$id": "https://planemem.local/schemas/search.json",
   "title": "PlaneMem project and indexed context search",
   "description": "Source-only complete HTTP success union. Requests have separate anchors. Project search reads local current records; indexed context search reads copied hits and optional external memory. Neither is a saved ContextPack or a source-freshness proof.",
-  "$comment": "Standalone schema. Existing entry-specific parsers additionally check UTF-16 lengths, lone surrogates where noted, real dates, bigint bounds, project request echo/count/duplicate identities and cursor bindings; SDK compares project scope. Gateway construction supplies legacy trace/source relationships without a complete legacy-result parser. JSON Schema length counts Unicode code points, not JavaScript UTF-16 units. No validator, generator or runtime compatibility evidence is claimed.",
+  "$comment": "Standalone schema. Entry-specific parsers additionally check UTF-16 lengths, lone surrogates where noted, real dates, bigint bounds, project request echo/count/duplicate identities and cursor bindings. SDK/Mock shared envelope parsers check original scope/query/trace, project table sources, legacy backend order and memory ranks, degradation flags and concatenated sources; production Gateway still constructs the legacy envelope directly. SDK input/response budgets are 8 KiB/2 MiB and do not change HTTP limits. JSON Schema length counts Unicode code points, not JavaScript UTF-16 units. No validator, generator or runtime compatibility evidence is claimed.",
   "oneOf": [{ "$ref": "#ProjectSearchEnvelope" }, { "$ref": "#LegacySearchEnvelope" }],
   "$defs": {
     "nonempty": { "type": "string", "minLength": 1 },

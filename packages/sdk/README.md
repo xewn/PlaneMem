@@ -1,5 +1,7 @@
 # WCP SDK
 
+2026-11-05（原始 TODO P0-02）：新增 `searchLegacyContext(input, options?)`，`searchProject` 增加可选 timeout_ms/signal，默认 30 秒、8 KiB 输入/2 MiB 完整响应及范围/trace/来源校验。新增 `MockProjectSearchStore` 和 `MockWcpServer.project_search`，旧索引 store 的可选 search 接同一写入状态；支持权限/删除/到期过滤、项目分页及显式 FTS/记忆场景。接线、未执行示例和差异见 [搜索 SDK 与 Mock](../../docs/design/01-contracts/search-sdk-mock-runtime.md)。未编译、运行或测试，P0-02 尚未完成。
+
 2026-11-05（TODO P0-02）：新增 `indexLegacyContext(input, options)` 内容写入 SDK，显式原键/账号/客户端、默认 30 秒/取消，核对完整原正文与 capture 来源；新增 `MockLegacyContextStore` 及可选 `legacy_context` 配置，内容写入/目录/状态/删除/恢复共享内存索引。包含单调版本与分类、删除保护、恢复保留到期和原请求回执。接线和限制见 [旧索引 SDK 与 Mock](../../docs/design/01-contracts/legacy-context-mock-runtime.md)。仅开发源码，未编译、运行或测试，P0-02 未完成。
 
 2026-11-05（TODO P0-02）：新增 `MockPlaneInboxStore` 和 `MockWcpServer({ plane_inbox: { store, session } })`，接通已有六个收件箱 SDK 方法。列表/统计/详情/诊断读取同一队列，重试更新调度修订并保存不可变原回执；独立已提交事件种子决定版本基线，权限过滤不回退较低版本。支持原键重放/异文冲突、CAS、身份与权限隔离及分页。接线和限制见 [收件箱 Mock](../../docs/design/01-contracts/plane-inbox-mock-runtime.md)。仅开发源码，未编译、运行或测试，P0-02 未完成。

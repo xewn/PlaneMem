@@ -1,5 +1,7 @@
 # PlaneMem
 
+当前任务对应原始 TODO **P0-02（SDK 与 Mock）**：[搜索 SDK 与 Mock](docs/design/01-contracts/search-sdk-mock-runtime.md) 已补项目正文搜索/筛选/分页，以及旧索引写入、删除、恢复后的搜索联动；新增旧搜索 SDK，并给两个 SDK 搜索入口增加取消和完整响应核对。全文评分和外部记忆为显式模拟场景。仅源码开发，未编译、运行或测试；P0-02 整项未完成，下文接口描述数量不作为功能进度。
+
 当前按 TODO **P0-02** 补功能：新增 [旧上下文索引 SDK 与 Mock](docs/design/01-contracts/legacy-context-mock-runtime.md)，补齐类型化内容写入，并把内容写入、目录、状态、删除和恢复接到同一模拟索引。支持单调版本/分类、删除保护、恢复保留到期及原请求历史回执；未编译、运行或测试，P0-02 整项仍未完成。
 
 此前按 TODO **P0-02** 开发：[Plane 收件箱 Mock](docs/design/01-contracts/plane-inbox-mock-runtime.md)，接通列表/统计/详情/版本诊断、重试调度和原回执六个现有 SDK 操作。重试实际修改模拟队列，保持原 Plane 版本和尝试次数；原键重放不重复修改，版本诊断使用独立已提交流。[观察读取](docs/design/01-contracts/observed-mock-runtime.md) 与 [会话交接](docs/design/01-contracts/session-mock-runtime.md) 模拟实现仍可独立配置。均未编译、运行或测试，P0-02 未验收完成。下方 OpenAPI 数量是已有接口描述覆盖，不代表新增功能或 TODO 完成数。

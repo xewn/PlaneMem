@@ -1,6 +1,11 @@
 import { ContractError, type ProjectEntity, validateEntity } from '@planemem/contracts';
 import type { WcpRequest, WcpTransport } from './client.js';
 import {
+  isMockProjectSearchPath,
+  type MockProjectSearchStore,
+  type MockProjectSearchSession,
+} from './mock-project-search.js';
+import {
   isMockLegacyContextPath,
   type MockLegacyContextStore,
   type MockLegacyContextSession,
@@ -48,6 +53,7 @@ import {
 } from './mock-proposals.js';
 
 export interface MockWcpServerOptions {
+  project_search?: { store: MockProjectSearchStore; session: MockProjectSearchSession };
   legacy_context?: { store: MockLegacyContextStore; session: MockLegacyContextSession };
   plane_inbox?: { store: MockPlaneInboxStore; session: MockPlaneInboxSession };
   observed?: { store: MockObservedStore; session: MockObservedSession };
@@ -64,6 +70,7 @@ export interface MockWcpServerOptions {
 }
 
 export class MockWcpServer implements WcpTransport {
+  private readonly projectSearch: WcpTransport | undefined;
   private readonly legacyContext: WcpTransport | undefined;
   private readonly planeInbox: WcpTransport | undefined;
   private readonly observed: WcpTransport | undefined;
@@ -79,6 +86,7 @@ export class MockWcpServer implements WcpTransport {
   private readonly admin: WcpTransport | undefined;
 
   constructor(private readonly options: MockWcpServerOptions = {}) {
+    this.projectSearch = options.project_search?.store.connect(options.project_search.session);
     this.legacyContext = options.legacy_context?.store.connect(options.legacy_context.session);
     this.planeInbox = options.plane_inbox?.store.connect(options.plane_inbox.session);
     this.observed = options.observed?.store.connect(options.observed.session);
@@ -95,6 +103,8 @@ export class MockWcpServer implements WcpTransport {
 
   async request<T = unknown>(request: WcpRequest): Promise<T> {
     this.options.onRequest?.(request);
+    if (this.projectSearch && isMockProjectSearchPath(request.path))
+      return this.projectSearch.request<T>(request);
     if (this.legacyContext && isMockLegacyContextPath(request.path))
       return this.legacyContext.request<T>(request);
     if (this.planeInbox && isMockPlaneInboxPath(request.path))

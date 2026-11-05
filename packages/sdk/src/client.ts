@@ -50,10 +50,8 @@ import {
   type IndexedContextWriteRequest,
   parseWorkbenchOverview,
   type WorkbenchOverview,
-  parseProjectSearchQuery,
-  parseProjectSearchPage,
   type ProjectSearchQuery,
-  type ProjectSearchPage,
+  type LegacySearchQuery,
   type WorkItemListQuery,
   buildEtag,
   isSyncIdentifier,
@@ -157,6 +155,7 @@ import {
   type WcpLegacyContextIndexOptions,
 } from './legacy-index-write.js';
 import { readAdminSnapshot, type WcpAdminOptions } from './admin.js';
+import { searchProjectRecords, searchLegacyContext, type WcpSearchOptions } from './search.js';
 import {
   readArtifactUploadContext,
   type WcpArtifactUploadContextOptions,
@@ -1310,21 +1309,12 @@ export class WcpClient {
     }
   }
 
-  async searchProject(input: ProjectSearchQuery) {
-    let query;
-    try {
-      query = parseProjectSearchQuery(input);
-    } catch (error) {
-      throw this.invalid(error instanceof Error ? error.message : 'Invalid search query');
-    }
-    const result = await this.envelope<ProjectSearchPage>('POST', '/v1/search', { ...query });
-    try {
-      const data = parseProjectSearchPage(result.data, query);
-      if (!this.matchesScope(data.scope)) throw this.invalidResponse();
-      return { ...result, data };
-    } catch {
-      throw this.invalidResponse();
-    }
+  searchProject(input: ProjectSearchQuery, options: WcpSearchOptions = {}) {
+    return searchProjectRecords(this.transport, this.context, input, options);
+  }
+
+  searchLegacyContext(input: LegacySearchQuery, options: WcpSearchOptions = {}) {
+    return searchLegacyContext(this.transport, this.context, input, options);
   }
 
   /** Write manual index content; retry only with the same original body and key. */

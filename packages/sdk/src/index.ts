@@ -1,5 +1,22 @@
 export * from './client.js';
 export * from './mock-server.js';
+export type { WcpSearchOptions } from './search.js';
+export {
+  MockProjectSearchStore,
+  type MockProjectSearchRecord,
+  type MockProjectSearchSeed,
+  type MockProjectSearchSession,
+} from './mock-project-search.js';
+export type { MockLegacySearchSeed, MockMemoryRecall } from './mock-legacy-search.js';
+export type {
+  ProjectSearchQuery,
+  ProjectSearchPage,
+  ProjectSearchEnvelope,
+  LegacySearchQuery,
+  LegacySearchHit,
+  LegacySearchResult,
+  LegacySearchEnvelope,
+} from '@planemem/contracts';
 export {
   MockLegacyContextStore,
   type MockLegacyContextSeed,
