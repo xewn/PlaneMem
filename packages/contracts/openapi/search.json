@@ -223,7 +223,7 @@
       },
       "LegacyUnavailable": {
         "$ref": "#/components/responses/Error",
-        "description": "Same storage/auth/audit errors; required recall MEMORY_PROVIDER_OFF retryable=false, MEMORY_UNAVAILABLE true, MEMORY_MCP_ERROR/TOOL_ERROR false. MEMORY_MCP_UNAVAILABLE retains provider retryability (request failure/HTTP>=500 true, other non-OK HTTP false). Status503 does not imply common retryability. Optional recall failures degrade, but earlier local SQL/parent visibility failures do not."
+        "description": "Same storage/auth/audit errors; required recall MEMORY_PROVIDER_OFF is retryable=false when provider is absent, but true when a configured MemoryServiceAdapter is disabled. MEMORY_UNAVAILABLE true, MEMORY_MCP_ERROR/TOOL_ERROR false. MEMORY_MCP_UNAVAILABLE retains provider retryability (request failure/HTTP>=500 true, other non-OK HTTP false). Status503 does not imply common retryability. Optional recall failures degrade, but earlier local SQL/parent visibility failures do not."
       }
     }
   }

@@ -1,6 +1,8 @@
 # PlaneMem
 
-按 TODO **P0-01** 补充[项目与旧索引搜索 OpenAPI](packages/contracts/openapi/README.md#项目与旧索引搜索)及独立search Schema，覆盖两个已有搜索接口。明确项目分页/bigint版本、旧索引数字版本/记忆拼接、游标绑定与实际降级/HTTP边界；OpenAPI累计四十八路，P0-01仍未完成。未编译、测试、运行校验器/生成器/接口或发布。
+按 TODO **P0-01** 补充[旧索引内容与管理 OpenAPI](packages/contracts/openapi/README.md#旧索引内容与管理)及context-index Schema，覆盖目录、状态、内容写入、删除和恢复五路，明确原请求重放、到期/分类、历史元数据与外部capture边界。OpenAPI累计五十三路，P0-01仍未完成；未编译、测试、运行校验器/生成器/接口或发布。
+
+按 TODO **P0-01** 补充[项目与旧索引搜索 OpenAPI](packages/contracts/openapi/README.md#项目与旧索引搜索)及独立search Schema，覆盖两个已有搜索接口。明确项目分页/bigint版本、旧索引数字版本/记忆拼接、游标绑定与实际降级/HTTP边界；该轮使OpenAPI累计四十八路，P0-01仍未完成。未编译、测试、运行校验器/生成器/接口或发布。
 
 按 TODO **P0-01** 补充[Plane观察读取 OpenAPI](packages/contracts/openapi/README.md#plane观察读取)及独立Schema，覆盖项目状态、工作项状态、临时上下文和观察目录四路。区分活动/删除/恢复快照、分页元数据与可选记忆，不把观察版本当作本地工作项版本。该轮使OpenAPI累计四十六路，P0-01仍未完成；未编译、测试、运行校验器/生成器/接口或发布。
 

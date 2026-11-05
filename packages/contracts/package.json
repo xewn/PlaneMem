@@ -8,6 +8,8 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./schemas/context-index.json": "./schemas/context-index.json",
+    "./openapi/context-index.json": "./openapi/context-index.json",
     "./schemas/search.json": "./schemas/search.json",
     "./openapi/search.json": "./openapi/search.json",
     "./schemas/observed-read.json": "./schemas/observed-read.json",

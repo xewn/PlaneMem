@@ -1,5 +1,9 @@
 # 独立契约结构定义
 
+2026-11-05，TODO **P0-01**：新增 [context-index.json](context-index.json)，复用search Schema标量；根为目录/状态/内容写入/删除/恢复五类完整成功联合。提供 ContextIndexIdentity/Status/StatusQuery/ListQuery/ListPage、原始WriteBody/WrittenHit、原始MutationBody/规范Mutation/MutationReceipt和五成功锚点。包子路径 @planemem/contracts/schemas/context-index.json；本地同时注册search.json，HTTP见context-index OpenAPI。
+
+元数据时间限定四位年UTC毫秒，内容写入到期时间允许原解析器支持的扩展年；版本为非负安全整数，管理expected_revision上限少一。状态含删除/过期/plane前缀关系；原始管理正文id被路径覆盖，理由检查后trim。内容写入文本不trim，来源规范化为四字段，可附一条capture来源。状态身份/权限位于封套外层，正文写入与历史元数据回执不能混用；后者恢复仍可expired。运行另核对UTF-16/日历/同范围/原请求/版本算术/游标和来源相等，Schema不替代这些检查。P0-01/R-001未完成、evidence为空；未执行编译/测试/校验器/生成器/接口/数据库或发布。
+
 2026-11-05，TODO **P0-01**：新增独立 [search.json](search.json)，根为 ProjectSearchEnvelope/LegacySearchEnvelope 完整成功联合。提供 ProjectSearchQuery/LegacySearchQuery、ProjectSearchHit/Page、IndexedSearchHit/MemorySearchHit 和 LegacySearchResult 锚点，包子路径 @planemem/contracts/schemas/search.json；无需其他Schema，HTTP见search OpenAPI。
 
 项目命中保留bigint字符串版本和两类状态，页面约束type/模式/失效筛选，外层来源固定数据库表。旧命中区分fts数字revision/必有可空expires_at与memory固定restricted/省略expires_at；完整内外来源按最终命中拼接，重复保留。默认值只作用于省略字段；null不代表默认。UTF-16长度/孤立代理、真实日历、bigint上限、原请求回显/数量/范围/trace/来源和游标绑定仍须现有运行解析；项目已接共享页面解析，旧搜索完整结果由Gateway拼装。未将新Schema接入SDK/Mock或执行校验/生成/编译/测试/接口/数据库；P0-01/R-001未完成、evidence为空。

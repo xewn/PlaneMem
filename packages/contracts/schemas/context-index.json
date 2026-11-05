@@ -1,0 +1,416 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/context-index.json",
+  "title": "PlaneMem legacy context index management",
+  "description": "Complete successes for directory, current status, explicit index content write, delete and restore. Mutation receipts are historical metadata, index writes return saved content, and current status has separate identity/permission hints. No saved ContextItem or ContextPack is created.",
+  "$comment": "Source-only. Locally register this schema and search.json with IDs/relative paths preserved. Existing runtime additionally checks UTF-16 lengths, lone surrogates where noted, finite dates/canonical roundtrips, same scope/request/identity, status-time arithmetic, expected_revision+1, and cursor bindings. New schemas have not been integrated into runtime/SDK/Mock or executed.",
+  "oneOf": [
+    { "$ref": "#ContextIndexListEnvelope" },
+    { "$ref": "#ContextIndexStatusEnvelope" },
+    { "$ref": "#ContextIndexWriteEnvelope" },
+    { "$ref": "#ContextIndexDeleteEnvelope" },
+    { "$ref": "#ContextIndexRestoreEnvelope" }
+  ],
+  "$defs": {
+    "id": { "$ref": "./search.json#/$defs/indexId" },
+    "manualId": {
+      "$ref": "#/$defs/id",
+      "not": { "pattern": "^plane:" },
+      "description": "Case-sensitive plane: prefix is event-managed and cannot be indexed, deleted or restored through these commands."
+    },
+    "revision": { "$ref": "./search.json#/$defs/safeRevision" },
+    "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+    "nonblank": { "type": "string", "pattern": "\\S" },
+    "identityText": {
+      "$ref": "#/$defs/nonblank",
+      "maxLength": 1024,
+      "not": { "pattern": "[\\u0000-\\u001f\\u007f]" },
+      "$comment": "Runtime rejects lone surrogates and >1024 UTF-16 units. Leading/trailing whitespace is allowed and preserved; no identifier trimming."
+    },
+    "requestKey": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "not": { "pattern": "\\s" },
+      "$comment": "validateIdempotencyKey requires 1..255 UTF-16 units without whitespace. It does not independently reject all other control characters or lone surrogates; actual HTTP header and PostgreSQL storage can further constrain representations."
+    },
+    "reason": {
+      "$ref": "#/$defs/nonblank",
+      "maxLength": 2000,
+      "not": { "pattern": "\\u0000" },
+      "$comment": "Check raw <=2000 UTF-16 units/no NUL/no lone surrogates then trim. Other controls are not separately rejected."
+    },
+    "normalizedReason": {
+      "$ref": "#/$defs/reason",
+      "not": { "pattern": "^\\s|\\s$" }
+    },
+    "time": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$",
+      "$comment": "Finite Date.parse with exact toISOString roundtrip, four-digit year only; real calendar validation remains runtime. Database date/string values are first converted to UTC milliseconds."
+    },
+    "nullableTime": { "anyOf": [{ "$ref": "#/$defs/time" }, { "type": "null" }] },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant_id", "workspace_id", "project_id"],
+      "properties": {
+        "tenant_id": { "$ref": "#/$defs/nonblank" },
+        "workspace_id": { "$ref": "#/$defs/nonblank" },
+        "project_id": { "$ref": "#/$defs/nonblank" }
+      }
+    },
+    "identity": {
+      "$anchor": "ContextIndexIdentity",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant_id", "workspace_id", "project_id", "actor_id", "client_id"],
+      "properties": {
+        "tenant_id": { "$ref": "#/$defs/identityText" },
+        "workspace_id": { "$ref": "#/$defs/identityText" },
+        "project_id": { "$ref": "#/$defs/identityText" },
+        "actor_id": { "$ref": "#/$defs/identityText" },
+        "client_id": { "$ref": "#/$defs/identityText" }
+      },
+      "description": "Current authenticated context identity in status success, not an authorization credential or a promise that future writes succeed. Read can use fallback client identity; write hint separately requires authenticated_client."
+    },
+    "status": {
+      "$anchor": "ContextIndexStatus",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "tenant_id",
+        "workspace_id",
+        "project_id",
+        "revision",
+        "classification",
+        "expires_at",
+        "deleted_at",
+        "updated_at",
+        "checked_at",
+        "state",
+        "managed_by"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "tenant_id": { "$ref": "#/$defs/nonblank" },
+        "workspace_id": { "$ref": "#/$defs/nonblank" },
+        "project_id": { "$ref": "#/$defs/nonblank" },
+        "revision": { "$ref": "#/$defs/revision" },
+        "classification": { "$ref": "./search.json#/$defs/classification" },
+        "expires_at": { "$ref": "#/$defs/nullableTime" },
+        "deleted_at": { "$ref": "#/$defs/nullableTime" },
+        "updated_at": { "$ref": "#/$defs/time" },
+        "checked_at": { "$ref": "#/$defs/time" },
+        "state": { "enum": ["active", "expired", "deleted"] },
+        "managed_by": { "enum": ["manual", "plane"] }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "state": { "const": "deleted" } } },
+          "then": { "properties": { "deleted_at": { "$ref": "#/$defs/time" } } },
+          "else": { "properties": { "deleted_at": { "type": "null" } } }
+        },
+        {
+          "if": { "properties": { "state": { "const": "expired" } } },
+          "then": { "properties": { "expires_at": { "$ref": "#/$defs/time" } } }
+        },
+        {
+          "if": { "properties": { "id": { "pattern": "^plane:" } } },
+          "then": { "properties": { "managed_by": { "const": "plane" } } },
+          "else": { "properties": { "managed_by": { "const": "manual" } } }
+        }
+      ],
+      "description": "Metadata only; no title/snippet/source_refs. Runtime requires updated_at<=checked_at and nonnull deleted_at<=checked_at. Deletion wins over expiry; otherwise expires_at<=checked_at means expired, else active. Classification is the index record's own value. checked_at is read-time or original mutation-time, not a source-freshness or upstream observation proof."
+    },
+    "statusQuery": {
+      "$anchor": "ContextIndexStatusQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": { "id": { "$ref": "#/$defs/id" } },
+      "description": "Shared input; HTTP id comes from decoded path, with no URL query."
+    },
+    "listQuery": {
+      "$anchor": "ContextIndexListQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "query": {
+          "type": "string",
+          "maxLength": 500,
+          "not": { "pattern": "\\u0000" },
+          "default": "",
+          "$comment": "Raw <=500 UTF-16 units and no lone surrogates, then trim; empty/whitespace-only allowed. Matches ID only through PostgreSQL lower/strpos."
+        },
+        "state": { "enum": ["all", "active", "expired", "deleted"], "default": "all" },
+        "managed_by": { "enum": ["all", "manual", "plane"], "default": "all" },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 100, "default": 25 },
+        "cursor": { "$ref": "./search.json#/$defs/cursor" }
+      },
+      "description": "Decoded query. Omitted fields default; null is invalid. Each HTTP name appears once; wire limit is 1..3 decimal digits without leading zero, then checked<=100. Cursor binds normalized query/state/managed_by/scope/restricted flag, not limit/actor/client."
+    },
+    "listPage": {
+      "$anchor": "ContextIndexListPage",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "items"],
+      "properties": {
+        "scope": { "$ref": "#/$defs/scope" },
+        "items": { "type": "array", "maxItems": 100, "items": { "$ref": "#ContextIndexStatus" } },
+        "next_cursor": { "$ref": "./search.json#/$defs/cursor" }
+      },
+      "allOf": [
+        {
+          "if": { "required": ["next_cursor"] },
+          "then": { "properties": { "items": { "minItems": 1 } } }
+        }
+      ],
+      "description": "No query/limit echo, total or has_more. Runtime requires distinct IDs, common scope, requested state/managed_by, items<=limit and full page with changed cursor when next_cursor present. SQL orders ID COLLATE C and filters before limit+1, parses only selected metadata; lookahead is not separately parsed. Shared page parser does not check ordering, text-match or equal checked_at. One materialized database clock is used for SQL filter/metadata, comparing expiry at millisecond precision. Missing/hidden parent gives empty200.",
+      "x-cursor": {
+        "encoding": "Canonical base64url(JSON [1,sha256(fingerprint),lastReturnedId])",
+        "fingerprint": "['legacy-index-list-v1',tenant_id,workspace_id,project_id,read_restricted,trimmedQuery,state,managed_by]",
+        "limits": "Not signed, not authorization or cross-page snapshot; changing limit or actor/client alone does not invalidate it. Decode checks full canonical encoding; new cursor is emitted only with lookahead."
+      }
+    },
+    "mutationBody": {
+      "$anchor": "ContextIndexMutationBody",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expected_revision", "reason"],
+      "properties": {
+        "id": {
+          "description": "Optional raw HTTP field, overwritten by decoded route ID before parsing; no equality check against path, even for a different JSON type."
+        },
+        "expected_revision": { "$ref": "#/$defs/expectedRevision" },
+        "reason": { "$ref": "#/$defs/reason" },
+        "idempotency_key": { "$ref": "#/$defs/requestKey" }
+      },
+      "description": "Supply request key in header or body; if both exist they must be identical. Body expected_revision is always required and must equal any parsed version header. Path must be a manual ID. No scope or identity override."
+    },
+    "mutation": {
+      "$anchor": "ContextIndexMutation",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "expected_revision", "reason"],
+      "properties": {
+        "id": { "$ref": "#/$defs/manualId" },
+        "expected_revision": { "$ref": "#/$defs/expectedRevision" },
+        "reason": { "$ref": "#/$defs/normalizedReason" }
+      },
+      "description": "Normalized command fingerprint is SHA256(JSON.stringify({id,expected_revision,reason})) in this property order. Original request key and identity are separate; body reason is trimmed only after raw validation."
+    },
+    "mutationReceipt": {
+      "$anchor": "ContextIndexMutationReceipt",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation", "request_key", "expected_revision", "reason", "record"],
+      "properties": {
+        "operation": { "enum": ["delete", "restore"] },
+        "request_key": { "$ref": "#/$defs/requestKey" },
+        "expected_revision": { "$ref": "#/$defs/expectedRevision" },
+        "reason": { "$ref": "#/$defs/normalizedReason" },
+        "record": {
+          "$ref": "#ContextIndexStatus",
+          "properties": {
+            "id": { "$ref": "#/$defs/manualId" },
+            "revision": { "minimum": 1 },
+            "managed_by": { "const": "manual" }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "operation": { "const": "delete" } } },
+          "then": {
+            "properties": {
+              "record": {
+                "properties": {
+                  "state": { "const": "deleted" },
+                  "deleted_at": { "$ref": "#/$defs/time" }
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "record": {
+                "properties": {
+                  "state": { "enum": ["active", "expired"] },
+                  "deleted_at": { "type": "null" }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "description": "Exact original operation/key/normalized reason/expected revision and record ID/scope. record.revision=expected_revision+1; record dates are historical and replay does not refresh checked_at. Restore does not change expiry/title/snippet/sources/classification. No replayed flag, original trace, receipt ID or event/cursor is returned."
+    },
+    "title": {
+      "$ref": "#/$defs/nonblank",
+      "maxLength": 1000,
+      "not": { "pattern": "\\u0000" },
+      "$comment": "Raw UTF-16 length<=1000, no NUL/lone surrogate. Nonblank but not trimmed."
+    },
+    "snippet": {
+      "$ref": "#/$defs/nonblank",
+      "maxLength": 65536,
+      "not": { "pattern": "\\u0000" },
+      "$comment": "Raw UTF-16 length<=65536, no NUL/lone surrogate. Nonblank but not trimmed."
+    },
+    "writeBody": {
+      "$anchor": "ContextIndexWriteBody",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "snippet", "revision", "score", "source_refs"],
+      "properties": {
+        "id": { "$ref": "#/$defs/manualId" },
+        "title": { "$ref": "#/$defs/title" },
+        "snippet": { "$ref": "#/$defs/snippet" },
+        "revision": { "$ref": "#/$defs/revision" },
+        "score": {
+          "type": "number",
+          "description": "Any finite number, not constrained to0..1; normalized ranking is computed later by search."
+        },
+        "rank_source": { "enum": ["fts", "vector", "rrf"], "default": "fts" },
+        "classification": {
+          "$ref": "./search.json#/$defs/classification",
+          "default": "restricted"
+        },
+        "expires_at": {
+          "anyOf": [{ "type": "string", "pattern": "Z$" }, { "type": "null" }],
+          "default": null,
+          "$comment": "Finite Date.parse and trailing Z, then toISOString. Extended years accepted by this write parser; management status requires four-digit years. No future-date requirement."
+        },
+        "source_refs": {
+          "type": "array",
+          "maxItems": 64,
+          "items": { "$ref": "./search.json#/$defs/sourceRef" }
+        },
+        "idempotency_key": { "$ref": "#/$defs/requestKey" }
+      },
+      "description": "Initial write may use revision0; replacing an existing active or expired record requires strictly higher revision and nondecreasing classification. Source extensions are dropped during normalization; order retained. Configured capture requires <=63 sources on fresh write, even if optional; saved replay bypasses this slot check. Both header/body keys must agree. Version headers are parsed but not used for index CAS or fingerprint; expected_version/expected_revision body fields are not accepted."
+    },
+    "writtenHit": {
+      "$anchor": "ContextIndexWrittenHit",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "snippet",
+        "revision",
+        "score",
+        "rank_source",
+        "classification",
+        "expires_at",
+        "source_refs",
+        "schema_version",
+        "tenant_id",
+        "workspace_id",
+        "project_id"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/manualId" },
+        "title": { "$ref": "#/$defs/title" },
+        "snippet": { "$ref": "#/$defs/snippet" },
+        "revision": { "$ref": "#/$defs/revision" },
+        "score": { "type": "number" },
+        "rank_source": { "enum": ["fts", "vector", "rrf"] },
+        "classification": { "$ref": "./search.json#/$defs/classification" },
+        "expires_at": {
+          "anyOf": [{ "$ref": "./search.json#/$defs/canonicalUtcTime" }, { "type": "null" }]
+        },
+        "source_refs": {
+          "type": "array",
+          "maxItems": 64,
+          "items": { "$ref": "./search.json#/$defs/publicSourceRef" }
+        },
+        "schema_version": { "const": 1 },
+        "tenant_id": { "$ref": "./search.json#/$defs/nonempty" },
+        "workspace_id": { "$ref": "./search.json#/$defs/nonempty" },
+        "project_id": { "$ref": "./search.json#/$defs/nonempty" }
+      },
+      "description": "Normalized original content/score/rank/classification/expiry plus public sources, optionally one appended {type:ai-memory,id:page_ref}. Capture only checks scope and nonempty string page_ref, not record-ID/URI/hash/revision validity. Does not include capture failure/degraded/replayed flags or database updated_at. Historical replay returns the same saved hit after current/receipt visibility/expiry checks."
+    },
+    "listEnvelope": {
+      "$anchor": "ContextIndexListEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "./search.json#/$defs/nonempty" },
+        "source_refs": { "const": [] },
+        "data": { "$ref": "#ContextIndexListPage" }
+      }
+    },
+    "statusEnvelope": {
+      "$anchor": "ContextIndexStatusEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "trace_id",
+        "source_refs",
+        "data",
+        "index_permissions",
+        "index_identity"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "./search.json#/$defs/nonempty" },
+        "source_refs": { "const": [] },
+        "data": { "$ref": "#ContextIndexStatus" },
+        "index_permissions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["write"],
+          "properties": { "write": { "type": "boolean" } }
+        },
+        "index_identity": { "$ref": "#ContextIndexIdentity" }
+      },
+      "description": "index_identity scope equals data scope. write=true requires verified client and admin role or context.write, independently of record state, plane prefix or future authorization; it is not permission to edit a Plane record. SDK parses data/scope but generic envelope reader does not validate these two extra fields."
+    },
+    "writeEnvelope": {
+      "$anchor": "ContextIndexWriteEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "./search.json#/$defs/nonempty" },
+        "source_refs": {
+          "type": "array",
+          "maxItems": 64,
+          "items": { "$ref": "./search.json#/$defs/publicSourceRef" }
+        },
+        "data": { "$ref": "#ContextIndexWrittenHit" }
+      },
+      "description": "Outer sources exactly equal returned hit sources in order. Current outer trace, no inner trace or original event/replay metadata."
+    },
+    "mutationEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "./search.json#/$defs/nonempty" },
+        "source_refs": { "const": [] },
+        "data": { "$ref": "#ContextIndexMutationReceipt" }
+      },
+      "description": "Current outer trace with historical metadata receipt. No outer revision/etag/cursor, no ETag, no content or event emission."
+    },
+    "deleteEnvelope": {
+      "$anchor": "ContextIndexDeleteEnvelope",
+      "$ref": "#/$defs/mutationEnvelope",
+      "properties": { "data": { "properties": { "operation": { "const": "delete" } } } }
+    },
+    "restoreEnvelope": {
+      "$anchor": "ContextIndexRestoreEnvelope",
+      "$ref": "#/$defs/mutationEnvelope",
+      "properties": { "data": { "properties": { "operation": { "const": "restore" } } } }
+    }
+  }
+}

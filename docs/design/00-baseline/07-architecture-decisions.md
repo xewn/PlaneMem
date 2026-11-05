@@ -1,5 +1,9 @@
 # 架构决策记录摘要
 
+2026-11-05 本轮范围补充：人工核对MemoryServiceAdapter发现MEMORY_PROVIDER_OFF的未配置分支retryable=false、已配置但disabled分支retryable=true；同步更正search/observed-reads两份OpenAPI对应说明，加入本轮R001记录。仅契约文字修正，不改旧Schema或运行代码。
+
+2026-11-05 P0-01 旧索引五路机器契约（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增 schemas/context-index.json 与 openapi/context-index.json，覆盖目录/状态GET、索引写入/删除/恢复POST五路。完整定义目录筛选/状态/当前身份权限提示、原索引正文与返回命中、规范管理命令与历史回执；明确原身份键/规范指纹、重放前可见性与元数据/正文不同边界、外部capture非原子及恢复不延长到期时间。范围两新JSON、exports、两README、根README/TODO、公共目录/WCP、旧索引搜索/管理运行文档、R001和ADR/T0.3/T4.1；复用search Schema标量，不改运行实现、旧Schema、SDK/Mock、依赖或数据库。仅人工源码文档审阅/指定格式/Git文本检查，不编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布；独立提交push main带[skip ci]，P0-01/R001未完成、evidence为空。
+
 2026-11-05 P0-01 双搜索机器契约（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增 schemas/search.json 与 openapi/search.json，覆盖已有 POST /v1/search 和 POST /v1/context/search。完整定义两类请求、项目分页命中及旧索引/记忆搜索成功封套，区分字符串版本与索引数字版本、FTS/字面子串、游标绑定、父项目/分类/来源过滤及可选记忆降级；准确记录HTTP、SDK和服务端解析/预算/错误边界。范围两新JSON、exports、两README、根README/TODO、公共目录/WCP、现有搜索运行文档及R001/ADR/T0.3/T4.1；不改运行实现、旧Schema、SDK/Mock、依赖或数据库。仅人工源码文档审阅/指定格式/Git文本检查，不编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布；独立提交push main带[skip ci]，P0-01/R001未完成、evidence为空。
 
 2026-11-05 P0-01 Plane观察读取机器契约（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增 schemas/observed-read.json 与 openapi/observed-reads.json，覆盖项目状态、工作项状态、工作项上下文和观察目录四个GET。定义活动/删除/恢复快照、完整搜索摘要与可选记忆命中、目录筛选/分页/分类及成功封套；区分观察版本与本地版本、删除状态读取与上下文410、目录/单条分类差异、来源扩展与SDK规范化、真实HTTP/存储/记忆降级边界。范围两新JSON、exports、两README、根README/TODO、公共目录/WCP/observed-state运行文档、R001及ADR/T0.3/T4.1；不改运行实现、旧Schema、SDK/Mock、依赖或数据库。仅人工源码文档审阅/指定格式/Git文本检查，不编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布；独立提交push main带[skip ci]，P0-01/R001未完成、evidence为空。

@@ -319,7 +319,7 @@
       },
       "ContextUnavailable": {
         "$ref": "#/components/responses/Error",
-        "description": "Same storage/auth/audit503 plus required recall: MEMORY_PROVIDER_OFF retryable=false; non-ContractError MEMORY_UNAVAILABLE retryable=true; MEMORY_MCP_ERROR/TOOL_ERROR retryable=false; MEMORY_MCP_UNAVAILABLE retains provider retryability (HTTP>=500 or request failure true, other non-OK HTTP false). No common retryability is inferred from503. Optional recall failures degrade to local-only200."
+        "description": "Same storage/auth/audit503 plus required recall: MEMORY_PROVIDER_OFF retryable=false for absent provider, true for configured but disabled MemoryServiceAdapter; non-ContractError MEMORY_UNAVAILABLE retryable=true; MEMORY_MCP_ERROR/TOOL_ERROR retryable=false; MEMORY_MCP_UNAVAILABLE retains provider retryability (HTTP>=500 or request failure true, other non-OK HTTP false). No common retryability is inferred from503. Optional recall failures degrade to local-only200."
       }
     }
   }

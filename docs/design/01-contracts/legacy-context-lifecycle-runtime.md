@@ -1,5 +1,7 @@
 # 旧上下文索引管理（开发状态）
 
+2026-11-05，TODO **P0-01**：新增 [context-index OpenAPI](../../../packages/contracts/openapi/context-index.json)和 [context-index Schema](../../../packages/contracts/schemas/context-index.json)，完整定义目录/状态/删除/恢复及原内容写入，详见[机器契约](../../../packages/contracts/openapi/README.md#旧索引内容与管理)。状态包含外层当前身份/写提示，提示不代表Plane记录可修改；SDK通用封套不完整解析这些额外字段。目录游标绑定规范筛选/范围/restricted但不绑定limit/actor/client；共享解析不额外核对SQL排序或文本匹配。原管理回执在当前状态/权限核对之后、新CAS之前重放，可保留历史deleted/expired状态。五路都会解析通用版本头，只有管理写入将其与必填expected_revision比较；没有ETag、总响应预算/期限或提交后到期复查。仅机器契约文档，不改运行实现，P0-01/R-001未完成、evidence为空；未编译、测试、运行校验器/生成器/接口/SQL或发布。
+
 2026-11-02：只修改源码和文档，未编译、类型检查、测试、启动服务、执行迁移或发布。新增 `033_legacy_context_lifecycle.sql` 只写文件，依赖 032 的分类、到期和删除字段。
 
 ## 入口
