@@ -1,6 +1,11 @@
 import { ContractError, type ProjectEntity, validateEntity } from '@planemem/contracts';
 import type { WcpRequest, WcpTransport } from './client.js';
 import {
+  isMockPlaneInboxPath,
+  type MockPlaneInboxStore,
+  type MockPlaneInboxSession,
+} from './mock-plane-inbox.js';
+import {
   isMockSessionPath,
   type MockSessionAccess,
   type MockSessionStore,
@@ -38,6 +43,7 @@ import {
 } from './mock-proposals.js';
 
 export interface MockWcpServerOptions {
+  plane_inbox?: { store: MockPlaneInboxStore; session: MockPlaneInboxSession };
   observed?: { store: MockObservedStore; session: MockObservedSession };
   sessions?: { store: MockSessionStore; session: MockSessionAccess };
   onRequest?: (request: WcpRequest) => void;
@@ -52,6 +58,7 @@ export interface MockWcpServerOptions {
 }
 
 export class MockWcpServer implements WcpTransport {
+  private readonly planeInbox: WcpTransport | undefined;
   private readonly observed: WcpTransport | undefined;
   private readonly sessions: WcpTransport | undefined;
   private readonly idempotentResponses = new Map<string, ProjectEntity>();
@@ -65,6 +72,7 @@ export class MockWcpServer implements WcpTransport {
   private readonly admin: WcpTransport | undefined;
 
   constructor(private readonly options: MockWcpServerOptions = {}) {
+    this.planeInbox = options.plane_inbox?.store.connect(options.plane_inbox.session);
     this.observed = options.observed?.store.connect(options.observed.session);
     this.sessions = options.sessions?.store.connect(options.sessions.session);
     this.sync = options.sync?.store.connect(options.sync.session);
@@ -79,6 +87,8 @@ export class MockWcpServer implements WcpTransport {
 
   async request<T = unknown>(request: WcpRequest): Promise<T> {
     this.options.onRequest?.(request);
+    if (this.planeInbox && isMockPlaneInboxPath(request.path))
+      return this.planeInbox.request<T>(request);
     if (this.observed && isMockObservedPath(request.path)) return this.observed.request<T>(request);
     if (
       this.sessions &&

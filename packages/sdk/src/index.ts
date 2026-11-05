@@ -1,6 +1,12 @@
 export * from './client.js';
 export * from './mock-server.js';
 export {
+  MockPlaneInboxStore,
+  type MockPlaneInboxSeed,
+  type MockPlaneInboxSession,
+  type MockPlaneInboxCommittedEvent,
+} from './mock-plane-inbox.js';
+export {
   MockSessionStore,
   type MockSessionStoreOptions,
   type MockSessionAccess,

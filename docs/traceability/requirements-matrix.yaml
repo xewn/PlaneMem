@@ -11,6 +11,18 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    plane_inbox_mock_development:
+      date: "2026-11-05"
+      todo: "P0-02"
+      status: "Implementation source added; not compiled or executed. P0-02 and R-001 remain incomplete."
+      artifacts:
+        - "packages/sdk/src/mock-plane-inbox.ts"
+        - "packages/sdk/src/mock-server.ts"
+        - "packages/sdk/src/index.ts"
+        - "docs/design/01-contracts/plane-inbox-mock-runtime.md"
+      behavior: "Six existing SDK operations share a visible inbox ledger. Explicit committed stream metadata controls diagnosis; unavailable tip receipts do not fall back. Scheduling uses CAS and identity-scoped original keys, preserves attempts and Plane versions, and stores immutable receipts. Bounded copied responses and receipt capacity are checked before synchronous state/receipt writes."
+      remaining_scope: "Dynamic webhook ingestion, worker/application simulation, persistent audit and receipts, other public WCP Mock operations, machine-contract consumption and compatibility evidence."
+      evidence: []
     observed_mock_development:
       date: "2026-11-05"
       todo: "P0-02"
