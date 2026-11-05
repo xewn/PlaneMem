@@ -1,0 +1,188 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/sync-original.json",
+  "title": "Sync sender identity and original event receipt v1",
+  "description": "Current sender preparation and read-only historical delivery. An identity is not storage readiness; a receipt is not current source state or complete batch success.",
+  "$comment": "Source-only. Load sync-consumer, sync-changes and sync-upload schemas under their full IDs. Runtime enforces exact original identity/event/source/trace relationships, calendar validity, Unicode/UTF-16 and complete size/JSON limits; no runtime evidence is supplied.",
+  "oneOf": [{ "$ref": "#SyncCommandContextEnvelope" }, { "$ref": "#SyncEventReceiptEnvelope" }],
+  "$defs": {
+    "SyncCommandContextQuery": {
+      "$anchor": "SyncCommandContextQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Empty HTTP query/command input. Optional original actor/client constraints are headers, not a body or URL field."
+    },
+    "SyncCommandContextEnvelope": {
+      "$anchor": "SyncCommandContextEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "sync-consumer.json#/$defs/identityText" },
+        "source_refs": { "type": "array", "maxItems": 0 },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["identity", "expires_at", "permissions"],
+          "properties": {
+            "identity": { "$ref": "sync-consumer.json#SyncCommandIdentity" },
+            "expires_at": { "$ref": "sync-consumer.json#/$defs/timestamp" },
+            "permissions": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["upload_events"],
+              "properties": { "upload_events": { "const": true } }
+            }
+          }
+        }
+      },
+      "$comment": "Complete 16 KiB parser profile, four-digit-year canonical UTC expiry. Gateway checks verified unexpired sync.write/admin. No database/project/source lookup or sender-history reconstruction. Identity matches current scope and any explicit caller constraint; expiry/permission do not authorize a future request. No cursor/revision/ETag."
+    },
+    "OriginalEvent": {
+      "allOf": [
+        { "$ref": "sync-upload.json#SyncUploadEvent" },
+        {
+          "properties": {
+            "tenant_id": { "$ref": "sync-consumer.json#/$defs/scopeId" },
+            "workspace_id": { "$ref": "sync-consumer.json#/$defs/scopeId" },
+            "project_id": { "$ref": "sync-consumer.json#/$defs/scopeId" },
+            "actor_id": { "$ref": "sync-consumer.json#/$defs/identityText" },
+            "client_id": { "$ref": "sync-consumer.json#/$defs/identityText" }
+          }
+        }
+      ],
+      "$comment": "Any supplied five outer identity fields must equal query.identity. Arbitrary other raw event fields, explicit null defaults and order of arrays are preserved in the echo. The server compares the normalized event fingerprint, not those raw bytes or discarded extras."
+    },
+    "SyncEventReceiptQuery": {
+      "$anchor": "SyncEventReceiptQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "event"],
+      "properties": {
+        "identity": { "$ref": "sync-consumer.json#SyncCommandIdentity" },
+        "event": { "$ref": "#/$defs/OriginalEvent" }
+      },
+      "$comment": "Complete query <=1 MiB+16 KiB; nested {events:[event]} <=1 MiB. Ordinary finite JSON/depth64/nodes100000 required. No batch key or expected_identity alias. Original event must pass structural snapshot parsing, but malformed FieldChangeProposed business payload may still be not-observed when no upload exists."
+    },
+    "SyncRecordedEventReceipt": {
+      "$anchor": "SyncRecordedEventReceipt",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "accepted",
+        "server_event_id",
+        "server_cursor",
+        "original_trace_id",
+        "recorded_at",
+        "source_application"
+      ],
+      "properties": {
+        "event_id": { "$ref": "sync-consumer.json#/$defs/identifier" },
+        "accepted": { "type": "boolean" },
+        "server_event_id": { "$ref": "sync-consumer.json#/$defs/identifier" },
+        "server_cursor": { "$ref": "sync-consumer.json#/$defs/cursor", "minimum": 1 },
+        "conflict_id": { "$ref": "sync-consumer.json#/$defs/identifier" },
+        "original_trace_id": { "$ref": "sync-consumer.json#/$defs/identityText" },
+        "recorded_at": { "$ref": "sync-consumer.json#/$defs/timestamp" },
+        "source_application": { "const": "not-checked" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "accepted": { "const": true } } },
+          "then": { "not": { "required": ["conflict_id"] } },
+          "else": { "required": ["conflict_id"] }
+        }
+      ],
+      "$comment": "accepted=true is original ClientEventRecorded; false is persisted ConflictDetected for FieldChangeProposed. A later conflict resolution does not alter this historical accepted flag. No rejection code, current conflict status or source-application guarantee."
+    },
+    "SyncEventReceiptView": {
+      "$anchor": "SyncEventReceiptView",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["identity", "event", "status"],
+          "properties": {
+            "identity": { "$ref": "sync-consumer.json#SyncCommandIdentity" },
+            "event": { "$ref": "#/$defs/OriginalEvent" },
+            "status": { "const": "not-observed" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["identity", "event", "status", "receipt"],
+          "properties": {
+            "identity": { "$ref": "sync-consumer.json#SyncCommandIdentity" },
+            "event": { "$ref": "#/$defs/OriginalEvent" },
+            "status": { "const": "recorded" },
+            "receipt": { "$ref": "#SyncRecordedEventReceipt" }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": { "receipt": { "properties": { "accepted": { "const": false } } } }
+              },
+              "then": {
+                "properties": {
+                  "event": { "properties": { "event_type": { "const": "FieldChangeProposed" } } }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "event": { "properties": { "event_type": { "const": "FieldChangeProposed" } } }
+                }
+              },
+              "then": {
+                "properties": {
+                  "event": {
+                    "properties": { "payload": { "$ref": "sync-upload.json#FieldChangePayload" } }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "$comment": "Identity equals the original query; echoed raw event is deeply equal ignoring object-key order, retaining optional presence and array order. Receipt event_id equals original event_id. Recorded FieldChangeProposed payload shape here follows Gateway's stored-event verification; the shared envelope parser alone only checks its event-type relationship. A not-observed query need not pass that business shape. not-observed means no row in this read snapshot, not permanent failure, rollback or safe-to-resend proof."
+    },
+    "SyncEventReceiptEnvelope": {
+      "$anchor": "SyncEventReceiptEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "sync-consumer.json#/$defs/identityText" },
+        "source_refs": {
+          "type": "array",
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "id"],
+            "properties": {
+              "type": { "const": "sync-event" },
+              "id": { "$ref": "sync-consumer.json#/$defs/identifier" }
+            }
+          }
+        },
+        "data": { "$ref": "#SyncEventReceiptView" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "data": { "properties": { "status": { "const": "not-observed" } } } }
+          },
+          "then": { "properties": { "source_refs": { "maxItems": 0 } } },
+          "else": { "properties": { "source_refs": { "minItems": 1 } } }
+        }
+      ],
+      "$comment": "Complete success <=2 MiB; recorded source ID equals receipt.server_event_id. Outer trace is current read; receipt.original_trace_id and recorded_at are historical. No outer server_cursor, revision, ETag, batch replay flag or request-key receipt. Current project/source/history/conflict visibility and stored-event integrity are enforced by server, not this schema."
+    }
+  }
+}

@@ -11,6 +11,28 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    sync_upload_original_openapi_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only batch upload, sender identity and original event receipt OpenAPI with full schemas; P0-01 and R-001 remain incomplete."
+      artifacts:
+        - "packages/contracts/openapi/sync-upload.json"
+        - "packages/contracts/schemas/sync-upload.json"
+        - "packages/contracts/schemas/sync-original.json"
+        - "packages/contracts/package.json"
+        - "packages/contracts/openapi/README.md"
+        - "packages/contracts/schemas/README.md"
+      behavior: "Three existing routes. Raw legacy HTTP batch differs from strict SDK/Bridge snapshot; complete accepted/rejected branches, FieldChangeProposed business shape, verified sender and recorded/not-observed original delivery are described. Batch fingerprint retains raw defaults/extras; event fingerprint normalizes null/omitted defaults and drops outer extras. Upload records intent/history and optional conflict without applying source fields. Receipt independently verifies current project/source/history/conflict visibility and original stored content."
+      boundaries: "No runtime/old-schema/SDK/Mock/database changes. Upload header key overrides body without equality; batch/event replay precedes new source checks and lacks parent/postcommit eligibility checks. Upload shared 1 MiB finite snapshots and 256 KiB success are client guarantees. Identity16KiB and receipt query1MiB+16KiB/single-event1MiB/result2MiB use actual shared parsing. Receipt raw body follows auth, nonfatal UTF-8 decoding remains. Storage unavailable retryable is true for upload but false for receipt. Echoed originals do not prove stored raw bytes, whole-batch success or source application."
+      evidence: []
+      remaining_scope: "Other WCP/MCP machine contracts, full ordinary business event payloads, SDK/Mock machine-contract consumption, breaking-change CI and tool/runtime/release evidence."
+      pending_evidence:
+        - "Local references and raw HTTP versus valid client batch/checked receipt shapes"
+        - "Null/omitted defaults, open event/source extras, distinct batch/event fingerprints and stable original identities/keys"
+        - "All per-entry decisions, duplicate/invalid raw IDs, source/version/sequence checks and transaction/replay behavior"
+        - "Current identity hints, original receipt visibility/integrity, no-record snapshot and immutable historical conflict delivery"
+        - "Actual HTTP/parser/auth/capacity boundaries, error mappings and uncertain upload outcomes"
+      execution: "Manual source/docs review plus explicit formatting/Git text checks only; no build, typecheck, tests, validators, generators, product/API/database execution or release."
     sync_consumer_openapi_development_increment:
       date: "2026-11-05"
       todo: "P0-01"

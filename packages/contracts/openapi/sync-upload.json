@@ -1,0 +1,287 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem sync upload and original event delivery",
+    "version": "0.1.0",
+    "description": "Source-only description of three existing routes. Load this and context-history OpenAPI, plus sync-upload/sync-original/sync-consumer/sync-changes schemas locally under full IDs. Complete WCP/MCP, machine-contract consumption and tool/runtime evidence remain incomplete."
+  },
+  "servers": [
+    { "url": "/", "description": "Relative Gateway base; configure actual origin and base path." }
+  ],
+  "security": [{ "GatewayBearer": [] }],
+  "tags": [{ "name": "Sync upload and originals" }],
+  "x-todo": "P0-01",
+  "x-source-boundaries": {
+    "legacy-upload-raw-body-bytes": 1048576,
+    "client-upload-snapshot-bytes": 1048576,
+    "client-upload-success-bytes": 262144,
+    "command-context-success-bytes": 16384,
+    "original-receipt-query-bytes": 1064960,
+    "original-receipt-success-bytes": 2097152,
+    "client-error-bytes": 16384,
+    "description": "Legacy upload parses a raw 1 MiB object before authentication; it does not invoke snapshotSyncUploadBatch/parseSyncUploadEnvelope. SDK/Bridge 1 MiB finite snapshots and 256 KiB complete receipts are client checks, not a new Gateway response/depth/unique-ID guarantee. Identity and original-receipt handlers actually use their complete shared parsers. Receipt raw body is read after authentication and HTTP shape checks, with 1 MiB+16 KiB bound; its single event wrapped in {events:[event]} still has a separate 1 MiB shared limit. SQL receipt metadata and complete receipt success are independently bounded by 2 MiB, but SQL constructs metadata before measuring. Generic body decoding uses Buffer.toString('utf8'), not a fatal decoder. No dedicated HTTP two-slot gate, whole-operation deadline or SQL cancellation guarantee; SDK/MCP waits/capacities and 16 KiB client errors are separate."
+  },
+  "paths": {
+    "/v1/events:batch": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "post": {
+        "operationId": "uploadEvents",
+        "tags": ["Sync upload and originals"],
+        "summary": "Record a batch of original client events and return all per-entry decisions",
+        "description": "Verified HTTP client and Policy sync.write, then 1..100 raw entries and a selected valid batch key. Transaction takes the project stream advisory lock and first checks the identity-scoped durable batch receipt. Same fingerprint returns its saved result; changed input returns IDEMPOTENCY_KEY_REUSED. For a new batch, inspect each raw event: structural/identity errors are VALIDATION_ERROR; an existing original event is compared by normalized fingerprint before sequence/source/business checks, returning its delivery or EVENT_ID_REUSED. Optional client_cursor must be the next recorded sequence for this actor/client. FieldChangeProposed then checks supported entity/field/base/value, reads current source FOR SHARE and rejects missing/invisible source or base ahead of current. A stale base with a different value records ConflictDetected; equal value or current base records ClientEventRecorded. Append event, optional conflict, upload ledger and complete batch result in one transaction. These operations record intent/history; they do not update the proposed source field.",
+        "x-wcp-operation": "sync.append",
+        "x-policy-action": "sync.write",
+        "x-client-body-schema": { "$ref": "../schemas/sync-upload.json#SyncUploadClientBatch" },
+        "x-client-success-schema": {
+          "$ref": "../schemas/sync-upload.json#SyncUploadCheckedEnvelope"
+        },
+        "x-http-input": "The normal media representation is JSON, but this legacy route does not explicitly enforce Content-Type or reject query/cache/range/Content-Encoding headers. Query values are ignored. Generic JSON object parsing before auth returns400 INVALID_JSON for empty, malformed, nonobject or over1MiB body. Idempotency-Key header wins over body.idempotency_key without an equality check; at least one must supply a valid key. Unknown outer body fields are retained for batch fingerprint. If either expected actor/client header is present both must be present and match; both may be absent. Explicit outer tenant/workspace/project/actor/client/from_client body fields are checked against trusted context. Generic If-Match/If-Match-Version headers are parsed and must agree with any body.expected_version; they affect fingerprint but do not provide entity CAS. No ETag/conditional response.",
+        "x-replay": "Batch request_key is SHA-256 of [actor_id,client_id,original key] in project scope. Batch fingerprint sorts object keys, preserves array order, removes top-level idempotency_key and supplies expected_version from header or body; other raw fields/default presence remain significant. Per-event fingerprint uses parseSyncUploadEvent output, defaulting null/omitted source_refs=[] and sensitivity=internal and dropping extra outer event fields. These fingerprints are different contracts. Replayed batch results retain historical rejection traces and next_cursor; the outer trace is current. A same original event under another batch key reuses its delivery but nonpersisted prior rejections may be evaluated again. No replay flag or key/fingerprint/actor/client echo.",
+        "x-authorization-boundary": "Unlike identity/receipt handlers, append has no independent canReadSyncCommandContext gate, explicit visible parent lookup or postwrite expiry check. Configured OPA supplies the Policy decision instead of local capability/expiry authorization. Batch replay occurs before per-event current-source checks, and event replay before current source/sequence checks; neither rechecks historical sensitivity/source visibility as the separate receipt query does. Ordinary source_refs receive structural checks, not full reference authorization. Restricted current work/context field sources need actual data.restricted.read; session field lookup uses its own internal classification path.",
+        "x-unknown-outcome": "Preserve original scope/identity/events/key after timeout, cancellation, connection or full-response uncertainty. Commit may have completed before response delivery/client parsing. SDK dispatch_state is client metadata, not this HTTP body. No automatic retry, key replacement, queue settlement or consumer acknowledgement is implied.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Preferred stable original batch key. Required here or as body fallback. Header takes precedence without matching a supplied body key. No whitespace, <=255 UTF-16 units at runtime.",
+            "schema": { "$ref": "../schemas/sync-upload.json#/$defs/idempotencyKey" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/sync-upload.json#SyncUploadHttpBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Complete intended batch result, even when every entry is rejected. accepted/rejected together contain one decision per raw entry, partitioned by outcome rather than preserving cross-array order. Only accepted and VERSION_CONFLICT entries have persistent event positions. Invalid raw IDs can yield empty event_id, and duplicate raw IDs can repeat delivery entries; SDK's stricter profile rejects such results. Fresh successful append validates its canonical event, but existing batch results are not fully revalidated by Gateway. next_cursor is the transaction result watermark or saved historical batch value, not consumer acknowledgement. No ETag or source-application proof.",
+            "headers": {
+              "cache-control": { "$ref": "context-history.json#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "context-history.json#/components/headers/SuccessTrace" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "../schemas/sync-upload.json#SyncUploadEnvelope" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "409": { "$ref": "#/components/responses/BatchKeyReused" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/sync/commands/context": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "get": {
+        "operationId": "getSyncCommandContext",
+        "tags": ["Sync upload and originals"],
+        "summary": "Read the verified current sender before preparing an original upload",
+        "description": "Require authenticated unexpired client with sync.write or admin, independently of Policy sync.write. Clone trusted context and return its exact five-field identity, canonical expiry and upload_events=true through the complete16KiB parser. Does not read database/project/source content, allocate a key, bind old queue rows or establish who sent unknown historical events. This hint does not prove project existence, database readiness or future write authorization. The handler checks eligibility while constructing the result; no separate async delivery-time guarantee is claimed.",
+        "x-wcp-operation": "sync.command-context",
+        "x-policy-action": "sync.write",
+        "x-decoded-query-schema": {
+          "$ref": "../schemas/sync-original.json#SyncCommandContextQuery"
+        },
+        "x-http-input": "Parameter-free GET. Reject Transfer-Encoding and Content-Length except absent or exactly0. Reject Idempotency-Key, If-Match, If-Match-Version, If-None-Match, If-Modified-Since, If-Unmodified-Since, Range and If-Range. Content-Encoding/X-Expected-Version are not in this explicit list. Expected actor/client headers are independently optional, with exact equality if supplied.",
+        "responses": {
+          "200": {
+            "description": "Complete identity success <=16KiB with empty sources and no outer cursor/revision/ETag.",
+            "headers": {
+              "cache-control": { "$ref": "context-history.json#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "context-history.json#/components/headers/SuccessTrace" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "../schemas/sync-original.json#SyncCommandContextEnvelope" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/sync/events/receipt": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "post": {
+        "operationId": "getSyncEventReceipt",
+        "tags": ["Sync upload and originals"],
+        "summary": "Read one original event's durable delivery without uploading",
+        "description": "Require authenticated unexpired sync.write/admin independently of Policy, and exact five-field original identity. In a repeatable-read read-only transaction, first check visible nondeleted parent project, then read the original actor/client/event-ID upload and its stored canonical event. Absent upload row alone yields not-observed. Existing rows require current associated-source, historical event and conflict visibility; compare normalized event fingerprint, exact sender/scope/client sequence/entity/refs, complete canonical metadata and original business content. Conflict receipts also check immutable field/version/value consistency; later conflict resolution does not change the original accepted=false. Recheck writer eligibility after the read and validate the complete2MiB response. Does not write sync events, batch receipts, acknowledgement or local queue state; existing entry audit still occurs.",
+        "x-wcp-operation": "sync.event.receipt",
+        "x-policy-action": "sync.write",
+        "x-http-input": "Strict application/json optionally only charset=utf-8, quoted/unquoted and case-insensitive. No query. Reject Idempotency-Key, If-Match, If-Match-Version, If-None-Match, If-Modified-Since, If-Unmodified-Since, Range, If-Range and Content-Encoding. X-Expected-Version is not in this route's explicit list. Read bounded JSON after authentication/HTTP shape checks; failure becomes400 INVALID_INPUT, not upload's early INVALID_JSON. Body identity is mandatory; optional expected actor/client headers are independently checked, not required as a pair. The route sets connection:close and x-trace-id before auth to bound unread failed requests; this is not a total read deadline.",
+        "x-receipt-boundary": "The response echoes the caller's raw event, not saved original JSON bytes. Normalized fingerprint equality does not prove raw key order, optional default spelling or discarded extras were persisted. not-observed is a snapshot observation and may precede a concurrent commit; nonpersistent batch rejections also leave no event row. A recorded result describes only this original delivery and source_application=not-checked, never current conflict/source state, whole-batch success or safe resend. No original batch key is needed or returned.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/sync-original.json#SyncEventReceiptQuery" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Complete recorded/not-observed union with exact original identity/raw event echo. not-observed has no receipt/sources; recorded has one sync-event source, original trace/time, positive cursor and conflict_id iff accepted=false. No outer cursor/revision/ETag. Hidden/corrupt existing delivery is an error, never fabricated not-observed.",
+            "headers": {
+              "cache-control": { "$ref": "context-history.json#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "context-history.json#/components/headers/SuccessTrace" },
+              "connection": { "schema": { "type": "string", "const": "close" } }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "../schemas/sync-original.json#SyncEventReceiptEnvelope" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/EventIdReused" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "GatewayBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Verified HTTP client and exact authorized scope required for all three routes. Local Policy applies sync.write/admin/expiry; configured OPA replaces its decision. Identity and receipt independently enforce verified unexpired sync.write/admin; append has no such extra gate. SQL restricted reads require actual data.restricted.read, not admin alone. Policy decision observation/audit precedes handler dispatch and is not successful persistence evidence."
+      }
+    },
+    "parameters": {
+      "TenantId": {
+        "name": "x-tenant-id",
+        "in": "header",
+        "required": true,
+        "schema": { "type": "string", "minLength": 1 },
+        "description": "Exact authorized tenant. Identity/receipt parsers further apply SyncCommandIdentity lexical rules; fresh uploaded canonical events apply event-envelope constraints. Generic HTTP scope authentication alone does not establish these."
+      },
+      "WorkspaceId": {
+        "name": "x-workspace-id",
+        "in": "header",
+        "required": true,
+        "schema": { "type": "string", "minLength": 1 },
+        "description": "Exact authorized workspace; same parser distinction as tenant."
+      },
+      "ProjectId": {
+        "name": "x-project-id",
+        "in": "header",
+        "required": true,
+        "schema": { "type": "string", "minLength": 1 },
+        "description": "Exact authorized project. Only the receipt query independently looks up current parent visibility; identity and append do not."
+      },
+      "TraceParent": {
+        "name": "traceparent",
+        "in": "header",
+        "schema": { "type": "string" },
+        "description": "Nonempty opaque value overrides x-trace-id; generic boundary does not validate W3C syntax or require both to agree. Shared identity/receipt/client upload parsers require nonblank <=1024 UTF-16 units without controls/DEL/lone surrogates."
+      },
+      "TraceId": {
+        "name": "x-trace-id",
+        "in": "header",
+        "schema": { "type": "string" },
+        "description": "Used if traceparent is empty/absent; if both are empty/absent generate trace_http_<ULID>. Success outer trace and header are current; replayed rejection/original receipt traces can be historical."
+      },
+      "ExpectedActorId": {
+        "name": "x-expected-actor-id",
+        "in": "header",
+        "schema": { "type": "string" },
+        "description": "Exact precondition on verified actor. Upload requires both actor/client headers if either is present; identity and receipt allow them independently. Neither substitutes for mandatory receipt body identity."
+      },
+      "ExpectedClientId": {
+        "name": "x-expected-client-id",
+        "in": "header",
+        "schema": { "type": "string" },
+        "description": "Exact precondition on verified client, following the same per-route pairing rule as actor. Never an identity override."
+      }
+    },
+    "responses": {
+      "Error": {
+        "$ref": "context-history.json#/components/responses/Error",
+        "description": "Application error; early parser/auth or proxy representation can differ. Preserve original identity/events/key after uncertain upload outcome. HTTP error does not prove rollback, source application or absence of older deliveries."
+      },
+      "BadInput": {
+        "$ref": "#/components/responses/Error",
+        "description": "INVALID_INPUT for missing/bad selected upload key or batch size, identity/receipt input or forbidden HTTP shape; INVALID_REQUEST_CONTEXT for generic version parsing/disagreement. Upload early body failures are400 INVALID_JSON; receipt bounded body failures are400 INVALID_INPUT, not413. Per-entry malformed upload events normally produce200 rejected/VALIDATION_ERROR. retryable=false."
+      },
+      "Unauthenticated": {
+        "$ref": "#/components/responses/Error",
+        "description": "UNAUTHENTICATED for absent/rejected Bearer token, retryable=false. Identity/upload early failures do not guarantee x-trace-id/WWW-Authenticate; receipt sets its trace before auth."
+      },
+      "Denied": {
+        "$ref": "#/components/responses/Error",
+        "description": "DENIED for missing verified client, unauthorized scope/body identity/expected headers, Policy, or independent identity/receipt writer eligibility. Receipt rechecks expiry after reading. Upload event-level identity mismatch is instead200 VALIDATION_ERROR; outer body/header mismatch is403. retryable=false."
+      },
+      "NotFound": {
+        "$ref": "#/components/responses/Error",
+        "description": "Receipt parent or associated source/history/conflict is invisible/deleted/unavailable, retryable=false. Not an absent upload-row observation. Identity/append do not independently enforce this parent lookup."
+      },
+      "BatchKeyReused": {
+        "$ref": "#/components/responses/Error",
+        "description": "IDEMPOTENCY_KEY_REUSED for the same identity/key bucket with a changed batch fingerprint; retryable=false. Preserve the original body/key; per-event conflict/reuse remains a200 result entry."
+      },
+      "EventIdReused": {
+        "$ref": "#/components/responses/Error",
+        "description": "EVENT_ID_REUSED when a visible original receipt row has another normalized event fingerprint, retryable=false. Does not overwrite or retry the original event."
+      },
+      "RateLimited": {
+        "$ref": "#/components/responses/Error",
+        "description": "General actor/path RATE_LIMITED, retryable=true; no dedicated HTTP sync-capacity error or Retry-After guarantee."
+      },
+      "InvalidStored": {
+        "$ref": "#/components/responses/Error",
+        "description": "SYNC_EVENT_INVALID for a fresh canonical upload event/cursor that cannot be stored; SYNC_COMMAND_CONTEXT_INVALID for unrepresentable identity output; SYNC_EVENT_RECEIPT_INVALID for corrupt/missing associated event, invalid metadata/cursor/content or oversized complete receipt, all retryable=false. Generic INTERNAL_ERROR defaults true. Upload replay does not gain a complete stored-result validation pass from this description."
+      },
+      "Unavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "SYNC_STORAGE_UNAVAILABLE: upload wrapper sets retryable=true; original-receipt helper currently defaults false. Identity does not access sync storage. WORKBENCH_AUTH_UNAVAILABLE/AUDIT_PERSISTENCE_UNAVAILABLE can occur at shared boundaries. Preserve actual envelope retryable and original upload uncertainty; client adapters may map errors to their own conservative policy."
+      }
+    }
+  }
+}

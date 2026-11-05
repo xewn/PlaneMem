@@ -1,5 +1,11 @@
 # 独立契约结构定义
 
+2026-11-05，TODO **P0-01**：新增 `sync-upload.json` 和 `sync-original.json`。前者根是旧 HTTP 批次完整成功，分别提供 `SyncUploadHttpBody`、保留原字段的 `SyncUploadEvent`、有效客户端 `SyncUploadClientBatch`、字段建议 `FieldChangePayload`、逐项决定以及更严格的 `SyncUploadCheckedEnvelope`；后者根为发送身份/原投递完整成功互斥联合，提供空身份查询、精确 identity/event 查询、recorded/not-observed 及历史投递锚点。需本地注册这两份与 sync-consumer/sync-changes 共四份 Schema；OpenAPI 另引用相邻 context-history 的通用 HTTP 组件。
+
+原始批次条目保持开放，容纳旧服务端逐条校验失败；SDK 快照只接受有效事件且 ID 唯一，不把两者混成同一个输入保证。事件 source_refs/sensitivity 接受 null 或省略，按既有运行逻辑规范化；普通 payload 和历史来源扩展开放，FieldChangeProposed 另有字段白名单与正安全 base_version。完整结果按接受、版本冲突、游标间隙及普通拒绝分支封闭；旧非法事件拒绝可以有空 ID，严格客户端成功不能。请求对应、来源/身份相等、ID/位置唯一、字节/复杂度/Unicode/UTF-16 和规范指纹由运行解析器核对，Schema 不独立证明。
+
+原回执查询保留原事件可选字段与扩展的回显，但服务器只核对规范化事件指纹；not-observed 不含 receipt/来源，recorded 必须有一个 sync-event 来源，只有 accepted=false 含 conflict_id。日期沿四位年份 UTC 毫秒规范，source_application 固定 not-checked；没有外层游标、ETag 或当前冲突状态。完整事件回显不是原字节持久化证明。P0-01/R-001 未完成、evidence 为空；仅源码文档人工审阅/指定格式/Git 文本检查，未执行生成器、校验器、编译、测试、接口或数据库。
+
 2026-11-05，TODO **P0-01**：新增 `sync-consumer.json` 和 `sync-changes.json`。前者根为当前游标/确认完整成功互斥联合，提供 `SyncCommandIdentity`、本地 `SyncCursorQuery`、空 HTTP `SyncCursorHttpQuery`、`SyncAcknowledgement` 及两种完整成功锚点；后者根为 `SyncChangesEnvelope`，提供解码数字查询、本地可选原身份请求和 `SyncChange`。两份 Schema 需按完整 ID 注册；变化 Schema 仅依赖 consumer Schema。三个 HTTP 操作由相邻 openapi/sync-consumer.json 描述。
 
 变化 cursor 不设默认值：省略时读取当前确认位置，显式 0 有不同含义。外层/分页对象封闭，事件、payload 和 SourceRef 保留历史扩展；SourceRef 仅要求非空 type/id、可选安全 revision/非空 uri，不增加 trim 或 URI 有效性要求。跨字段范围相等、游标严格递增、事件 ID 唯一、完整来源拼接及请求 limit 对应由现有解析器检查，不声称 Schema 可独立证明。记录不存在与已确认到零分别为 false/0/无来源和 true/0/单来源；确认结果绑定完整原身份/目标，不是原请求历史回执。

@@ -1,5 +1,7 @@
 # 原同步身份与离线队列
 
+2026-11-05，TODO P0-01：新增 [同步上传 OpenAPI](../../../packages/contracts/openapi/sync-upload.json) 与 [原身份/投递 Schema](../../../packages/contracts/schemas/sync-original.json)，明确参数为空、完整16 KiB身份成功、实际 sync.write/admin/到期门禁及独立可选身份前置头。此读取没有父项目/存储检查，不能绑定未知旧队列或授权未来上传；新鲜流事件另有 canonical 范围约束。仅源码描述，未改运行实现，未编译、类型检查、测试、运行校验器/生成器/接口/数据库或发布；P0-01/R-001 未完成、evidence 为空。
+
 更新：2026-11-03。本增量只有源码与文档，未编译、类型检查、测试、执行 CLI/API、打开 SQLite、启动服务、执行迁移或发布。新增本地列的升级逻辑未执行；PostgreSQL 016–049 保持未执行，R-005 仍未完成。
 
 ## 读取身份

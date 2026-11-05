@@ -8,6 +8,9 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./schemas/sync-upload.json": "./schemas/sync-upload.json",
+    "./schemas/sync-original.json": "./schemas/sync-original.json",
+    "./openapi/sync-upload.json": "./openapi/sync-upload.json",
     "./schemas/sync-consumer.json": "./schemas/sync-consumer.json",
     "./schemas/sync-changes.json": "./schemas/sync-changes.json",
     "./openapi/sync-consumer.json": "./openapi/sync-consumer.json",

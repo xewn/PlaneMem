@@ -1,5 +1,7 @@
 # 原同步事件回执查询（开发契约）
 
+2026-11-05，TODO P0-01：新增 [同步上传 OpenAPI](../../../packages/contracts/openapi/sync-upload.json) 与 [原投递 Schema](../../../packages/contracts/schemas/sync-original.json)，定义完整原身份/原事件、recorded/not-observed、历史投递及无外层游标的封套。保留 null/省略默认值与历史扩展回显，规范指纹比较不证明保存原 JSON 字节。当前父项目/来源/历史/冲突权限、完整事件核对、查询后到期与2 MiB边界按现存实现记录；认证后原始读取仍不是 fatal UTF-8/整操作期限，同名 SYNC_STORAGE_UNAVAILABLE 此读取 retryable=false，而上传包装为true。未改运行实现或执行校验器/生成器/编译/类型检查/测试/接口/数据库及发布；P0-01/R-001 未完成、evidence 为空。
+
 2026-11-03：仅源码与文档接入，未编译、类型检查、测试、执行 SDK/CLI/API、启动服务、打开数据库或发布。无新依赖、schema 或迁移；PostgreSQL 016–049 及先前 SQLite 三列升级均未执行。此增量不代表 R-005 或同步恢复闭环完成。
 
 ## 输入与身份

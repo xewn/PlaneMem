@@ -1,0 +1,281 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/sync-upload.json",
+  "title": "Sync upload HTTP batches and complete delivery results v1",
+  "description": "Root describes the existing batch success shape, including per-entry validation rejection. The separate checked-envelope anchor describes the stricter shared client profile; Gateway does not invoke that complete parser.",
+  "$comment": "Source-only. Register sync-consumer.json and sync-changes.json alongside this resource. Runtime checks ordinary finite JSON, Unicode scalars/UTF-16 limits, original identity, normalized fingerprints and cross-request relationships. Legacy raw HTTP input and SDK snapshot acceptance differ. No schema authenticates a sender or proves source application.",
+  "$ref": "#SyncUploadEnvelope",
+  "$defs": {
+    "idempotencyKey": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "not": { "pattern": "\\s" },
+      "$comment": "validateIdempotencyKey uses UTF-16 length and rejects whitespace, but does not itself reject every control or lone surrogate. Preserve the original value. HTTP headers/database constraints may be narrower."
+    },
+    "SyncUploadEvent": {
+      "$anchor": "SyncUploadEvent",
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["event_id", "event_type", "payload"],
+      "properties": {
+        "event_id": { "$ref": "sync-consumer.json#/$defs/identifier" },
+        "event_type": { "$ref": "sync-consumer.json#/$defs/identifier" },
+        "payload": { "type": "object", "additionalProperties": true },
+        "source_refs": {
+          "oneOf": [
+            { "type": "array", "items": { "$ref": "sync-changes.json#/$defs/sourceRef" } },
+            { "type": "null" }
+          ],
+          "description": "Omitted or null normalizes to []; preserve original presence and order when saving a request."
+        },
+        "sensitivity": {
+          "enum": ["public", "internal", "confidential", "restricted", null],
+          "description": "Omitted or null normalizes to internal. This is claimed event sensitivity, not permission to read restricted data."
+        },
+        "client_cursor": { "$ref": "sync-consumer.json#/$defs/cursor", "minimum": 1 }
+      },
+      "$comment": "Matches parseSyncUploadEvent's structural profile, not per-entry business acceptance. No event-type whitelist. Entire raw event, including extra keys/values, rejects NUL/lone surrogates and nonfinite numbers. Parsing retains only event_id/event_type/payload/source_refs/sensitivity/client_cursor for the event fingerprint; SDK snapshot and original-receipt echo retain raw extras. FieldChangeProposed business validation is separate. Explicit outer identity extras must equal verified context at upload, or original identity at receipt query."
+    },
+    "FieldChangePayload": {
+      "$anchor": "FieldChangePayload",
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["entity_type", "entity_id", "field", "base_version", "value"],
+      "properties": {
+        "entity_type": { "enum": ["work_item", "context_item", "session"] },
+        "entity_id": { "$ref": "sync-consumer.json#/$defs/identifier" },
+        "field": { "type": "string" },
+        "base_version": { "type": "integer", "minimum": 1, "maximum": 9007199254740990 },
+        "value": {}
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "entity_type": { "const": "work_item" } } },
+          "then": {
+            "properties": {
+              "field": {
+                "enum": [
+                  "title",
+                  "status",
+                  "priority",
+                  "owner",
+                  "progress",
+                  "description",
+                  "due_at"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "entity_type": { "const": "context_item" } } },
+          "then": {
+            "properties": {
+              "field": { "enum": ["title", "status", "priority", "content", "layer", "expires_at"] }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "entity_type": { "const": "session" } } },
+          "then": { "properties": { "field": { "enum": ["status", "parent_session_id"] } } }
+        }
+      ],
+      "description": "Business shape checked only for event_type=FieldChangeProposed after replay and client sequence checks. Value is required but may be null/any JSON; no field-specific value model or source update is implied. Extra payload fields remain part of the event fingerprint/content."
+    },
+    "SyncUploadHttpBody": {
+      "$anchor": "SyncUploadHttpBody",
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["events"],
+      "properties": {
+        "events": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": {},
+          "description": "Legacy handler accepts raw entries and reports invalid entries individually, even nonobjects or invalid IDs. Prefer SyncUploadClientBatch for prepared valid inputs."
+        },
+        "idempotency_key": {
+          "description": "Legacy fallback used only without Idempotency-Key header. Selected key must satisfy idempotencyKey; a present header wins without comparing this body value."
+        },
+        "expected_version": {
+          "description": "Legacy field participates in the batch fingerprint; when a version header exists this value must match it. It does not provide CAS for the source entity."
+        }
+      },
+      "$comment": "Raw body is parsed as a JSON object within 1 MiB before authentication. Unknown outer fields are not rejected and affect batch fingerprint, except idempotency_key is removed. Duplicate event IDs are not globally rejected by Gateway. Query parameters are not batch inputs."
+    },
+    "SyncUploadClientBatch": {
+      "$anchor": "SyncUploadClientBatch",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["events"],
+      "properties": {
+        "events": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": { "$ref": "#SyncUploadEvent" }
+        }
+      },
+      "$comment": "SDK/Bridge shared snapshot profile: {events} <=1 MiB, ordinary finite JSON, depth64/nodes100000, event_id unique, raw optional-field presence/extras retained. FieldChangeProposed business validity is still checked by server. Original batch key and optional expected_identity are transport/options metadata, not this body."
+    },
+    "AcceptedUpload": {
+      "$anchor": "AcceptedUpload",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "accepted", "server_event_id", "server_cursor"],
+      "properties": {
+        "event_id": { "$ref": "sync-consumer.json#/$defs/identifier" },
+        "accepted": { "const": true },
+        "server_event_id": { "$ref": "sync-consumer.json#/$defs/identifier" },
+        "server_cursor": { "$ref": "sync-consumer.json#/$defs/cursor", "minimum": 1 }
+      }
+    },
+    "RejectedUpload": {
+      "$anchor": "RejectedUpload",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["event_id", "accepted", "code", "trace_id"],
+          "properties": {
+            "event_id": {
+              "oneOf": [{ "$ref": "sync-consumer.json#/$defs/identifier" }, { "const": "" }]
+            },
+            "accepted": { "const": false },
+            "code": { "const": "VALIDATION_ERROR" },
+            "trace_id": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["event_id", "accepted", "code", "trace_id"],
+          "properties": {
+            "event_id": { "$ref": "sync-consumer.json#/$defs/identifier" },
+            "accepted": { "const": false },
+            "code": { "enum": ["EVENT_ID_REUSED", "SOURCE_UNAVAILABLE"] },
+            "trace_id": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["event_id", "accepted", "code", "trace_id", "expected_cursor"],
+          "properties": {
+            "event_id": { "$ref": "sync-consumer.json#/$defs/identifier" },
+            "accepted": { "const": false },
+            "code": { "const": "CURSOR_GAP" },
+            "trace_id": { "type": "string", "minLength": 1 },
+            "expected_cursor": { "$ref": "sync-consumer.json#/$defs/cursor", "minimum": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "event_id",
+            "accepted",
+            "code",
+            "trace_id",
+            "conflict_id",
+            "server_event_id",
+            "server_cursor"
+          ],
+          "properties": {
+            "event_id": { "$ref": "sync-consumer.json#/$defs/identifier" },
+            "accepted": { "const": false },
+            "code": { "const": "VERSION_CONFLICT" },
+            "trace_id": { "type": "string", "minLength": 1 },
+            "conflict_id": { "$ref": "sync-consumer.json#/$defs/identifier" },
+            "server_event_id": { "$ref": "sync-consumer.json#/$defs/identifier" },
+            "server_cursor": { "$ref": "sync-consumer.json#/$defs/cursor", "minimum": 1 }
+          }
+        }
+      ],
+      "description": "Only VERSION_CONFLICT has a persisted server event/conflict. Other rejections have no delivery fields. Invalid raw IDs become the empty string in legacy validation rejection. Rejection traces can be historical after batch replay."
+    },
+    "SyncUploadEnvelope": {
+      "$anchor": "SyncUploadEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "server_cursor", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "type": "string", "minLength": 1 },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "id"],
+            "properties": {
+              "type": { "const": "sync-stream" },
+              "id": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "server_cursor": { "$ref": "sync-consumer.json#/$defs/cursor" },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "tenant_id",
+            "workspace_id",
+            "project_id",
+            "accepted",
+            "rejected",
+            "next_cursor"
+          ],
+          "properties": {
+            "tenant_id": { "type": "string", "minLength": 1 },
+            "workspace_id": { "type": "string", "minLength": 1 },
+            "project_id": { "type": "string", "minLength": 1 },
+            "accepted": {
+              "type": "array",
+              "maxItems": 100,
+              "items": { "$ref": "#AcceptedUpload" }
+            },
+            "rejected": {
+              "type": "array",
+              "maxItems": 100,
+              "items": { "$ref": "#RejectedUpload" }
+            },
+            "next_cursor": { "$ref": "sync-consumer.json#/$defs/cursor" }
+          }
+        }
+      },
+      "$comment": "Intended complete legacy HTTP output. Combined item count equals batch size, outer cursor=next_cursor and source ID=project. Gateway does not run the shared 256 KiB response validator or fully revalidate stored batch receipts/high-water before replay; corrupt/unsafe results are not made valid by this schema. Repeated raw event IDs can produce repeated delivery entries. No request-key/identity/fingerprint echo, replay flag, revision or ETag."
+    },
+    "SyncUploadCheckedEnvelope": {
+      "$anchor": "SyncUploadCheckedEnvelope",
+      "allOf": [
+        { "$ref": "#SyncUploadEnvelope" },
+        {
+          "properties": {
+            "trace_id": { "$ref": "sync-consumer.json#/$defs/identityText" },
+            "data": {
+              "properties": {
+                "tenant_id": { "$ref": "sync-consumer.json#/$defs/identifier" },
+                "workspace_id": { "$ref": "sync-consumer.json#/$defs/identifier" },
+                "project_id": { "$ref": "sync-consumer.json#/$defs/identifier" },
+                "rejected": {
+                  "items": {
+                    "properties": {
+                      "event_id": { "$ref": "sync-consumer.json#/$defs/identifier" },
+                      "trace_id": { "$ref": "sync-consumer.json#/$defs/identityText" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "$comment": "Shared SDK/Bridge parser additionally enforces 256 KiB/finite JSON/depth64/nodes100000, exact request trace/scope, each original event exactly once, unique server IDs/positions/conflict IDs, delivery positions<=next_cursor, VERSION_CONFLICT only for FieldChangeProposed, CURSOR_GAP only for supplied differing client_cursor and exact source. JSON Schema alone cannot enforce these original-request relationships. Checked output does not prove source application or bind the original batch key."
+    }
+  }
+}

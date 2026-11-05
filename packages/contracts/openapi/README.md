@@ -1,6 +1,20 @@
 # OpenAPI 源码契约
 
-这里的文档描述已有HTTP实现，尚未经过OpenAPI校验器、生成器、编译、类型检查、测试或运行验证。文档中的版本不表示已发布或部署；目前覆盖五个保存包接口、九个文件接口、九个上下文条目接口（详情/历史四路、写入五路）及三个同步消费接口，共二十六个接口，尚不是完整WCP接口目录。
+这里的文档描述已有HTTP实现，尚未经过OpenAPI校验器、生成器、编译、类型检查、测试或运行验证。文档中的版本不表示已发布或部署；目前覆盖五个保存包接口、九个文件接口、九个上下文条目接口（详情/历史四路、写入五路）及六个同步接口（消费三路、上传/原投递三路），共二十九个接口，尚不是完整WCP接口目录。
+
+## 同步上传与原投递
+
+2026-11-05，TODO **P0-01**：[sync-upload.json](sync-upload.json) 描述 POST /v1/events:batch、GET /v1/sync/commands/context、POST /v1/sync/events/receipt，提供 `@planemem/contracts/openapi/sync-upload.json` 包子路径。本地加载本文件和相邻 context-history OpenAPI，以及 [sync-upload](../schemas/sync-upload.json)、[sync-original](../schemas/sync-original.json)、sync-consumer、sync-changes 四份 Schema，保留相对路径并注册完整 ID。未执行生成器或校验器。
+
+上传的原始 HTTP 正文接受 1–100 个条目，旧服务端逐条返回决定；坏 ID 可回显空字符串，重复原 ID 可产生重复投递结果。SDK/Bridge 的独立完整批次模型要求有效事件与唯一 ID，回执还核对每条恰好出现一次、服务器 ID/位置唯一、原请求/来源/游标关联。两种边界分别提供 Schema，不能把客户端限制写成服务端保证。事件及来源额外字段保留于原请求，省略或 null 的 sensitivity/source_refs 分别规范化为 internal/空数组；普通事件没有完整业务 payload 模型，FieldChangeProposed 单独定义允许的实体/字段/base/value，业务拒绝仍由服务器执行。
+
+原批次键以 actor/client/key 摘要加项目范围隔离，指纹包含移除外层 idempotency_key 后的原正文及所选 expected_version；数组顺序、额外字段和默认值写法仍影响批次指纹。头键优先于正文键，旧上传没有两处相等检查；版本头只参与通用解析/指纹，不构成源实体 CAS。逐事件指纹则来自规范化后的事件，丢弃额外外层字段。同事务保存流事件、可选冲突、投递账本及批次回执；旧批次重放早于逐事件检查，旧事件重放早于顺序/来源检查。上传没有独立父项目可见性或提交后到期检查，重放也不具备原事件查询的当前来源/历史权限复查。记录事件不会修改建议的源字段，也不确认下载游标。
+
+发送身份仅返回可信原五项身份、当前到期时间及 upload_events 提示，不查项目/数据库，不追溯旧队列发送者。原事件回执必须带完整 identity/event，在只读一致快照中检查父项目、当前关联来源、历史事件及冲突可见性，并核对规范指纹、原发送者/顺序/版本/来源/内容。仅上传行缺失才返回 not-observed；这不排除并发稍后提交，也不包含所有旧批次拒绝原因。recorded 保留原投递的 accepted/冲突/trace/time，source_application 固定 not-checked，后续冲突解决不改变历史结果。回显的原事件来自本次查询，不证明服务器保存了原始 JSON 字节或丢弃字段。
+
+上传认证前读原始正文 1 MiB；SDK 的有限 JSON/复杂度/唯一 ID 和成功 256 KiB 解析未接入旧上传服务端。身份完整成功 16 KiB、查询正文 1 MiB+16 KiB/内层单事件 1 MiB、回执元数据和完整成功各 2 MiB 为实际共享边界；回执认证后读正文，坏正文返回 INVALID_INPUT，与上传早期 INVALID_JSON 不同。通用解码不是 fatal UTF-8，无三路专用整操作期限/两笔容量保证。确认原身份的头在上传须成对或均省略，身份/回执读取各自独立可选。上传存储不可用 retryable=true，原事件读取的同名错误当前为 false；错误映射和精确禁止头见 OpenAPI。
+
+仅新增机器契约与文档，不改运行实现、旧 Schema、SDK/Mock、依赖或数据库。P0-01/R-001 未完成、evidence 为空；仅人工源码文档审阅、指定格式及 Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 ## 同步消费与确认
 
