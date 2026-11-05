@@ -11,6 +11,16 @@ export class PostgresSessionCurrentStore implements SessionCurrentStore {
     await this.db.begin('isolation level read committed read only', async sql => {
       await sql`SET LOCAL statement_timeout = '5s'`;
       await sql`SET LOCAL lock_timeout = '2s'`;
+      snapshot = await readSessionCurrentInTransaction(sql, target);
+    });
+    return snapshot;
+  }
+}
+
+/** The caller owns the transaction/isolation, resource lifetime and current authorization.
+ * Shared with the original-proof bridge so all source rows belong to ONE database snapshot. */
+export async function readSessionCurrentInTransaction(sql: postgres.TransactionSql,
+  target: Readonly<SessionCurrentTarget>): Promise<SessionCurrentSnapshot | null> {
       const rows = await sql<Array<{ session_json: string | null; observed_at: string }>>`
         SELECT CASE WHEN octet_length(image::text) <= 65536 AND timestamps_exact
                     THEN image::text ELSE NULL END AS session_json,
@@ -43,9 +53,7 @@ export class PostgresSessionCurrentStore implements SessionCurrentStore {
       `;
       if (rows[0]) {
         if (rows[0].session_json === null) throw new Error('Current session exceeds protocol limits');
-        snapshot = { session_json: rows[0].session_json, observed_at: rows[0].observed_at };
+        return { session_json: rows[0].session_json, observed_at: rows[0].observed_at };
       }
-    });
-    return snapshot;
-  }
+      return null;
 }

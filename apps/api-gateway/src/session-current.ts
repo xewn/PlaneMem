@@ -67,10 +67,12 @@ export interface SessionCurrentSnapshot {
   /** Exact public business projection text returned by the owning database statement. */
   session_json: string;
   observed_at: string;
+  /** Optional additional owning-source approval deadline, never a caller-provided extension. */
+  source_expires_at?: string;
 }
 
 export interface SessionCurrentStore {
-  read(target: Readonly<SessionCurrentTarget>): Promise<SessionCurrentSnapshot | null>;
+  read(target: Readonly<SessionCurrentTarget>, signal?: AbortSignal): Promise<SessionCurrentSnapshot | null>;
 }
 
 export function registerSessionCurrentRoute(router: CommandRouter, api: ApiGateway, reader?: SessionCurrentReader,
@@ -109,9 +111,10 @@ export class SessionCurrentReader {
     const started = Date.now();
     const elapsed = performance.now();
     const tokenExpiresAt = Date.parse(request.context.token_expires_at ?? '');
+    let sourceExpiresAt = tokenExpiresAt;
     const target = Object.freeze(this.target(request));
     const guard = () => {
-      if (request.signal?.aborted || !Number.isFinite(tokenExpiresAt) || tokenExpiresAt <= Date.now())
+      if (request.signal?.aborted || !Number.isFinite(tokenExpiresAt) || tokenExpiresAt <= Date.now() || sourceExpiresAt <= Date.now())
         throw failure('DENIED', target.trace_id);
       if (Date.now() < started || Date.now() - started >= 30_000 ||
           performance.now() - elapsed >= 30_000)
@@ -123,13 +126,18 @@ export class SessionCurrentReader {
     guard();
     let snapshot: SessionCurrentSnapshot | null;
     try {
-      snapshot = await this.store.read(target);
+      snapshot = await this.store.read(target, request.signal);
     } catch {
       throw failure('OPERATION_UNAVAILABLE', target.trace_id);
     }
     guard();
     // Copy the complete source before an independently asynchronous authorization boundary.
     const frozen = snapshot === null ? null : Object.freeze({ ...snapshot });
+    if (frozen?.source_expires_at !== undefined) {
+      if (!utc(frozen.source_expires_at)) throw failure('OPERATION_RESULT_INVALID', target.trace_id);
+      sourceExpiresAt = Math.min(sourceExpiresAt, Date.parse(frozen.source_expires_at));
+      guard();
+    }
     const session = frozen === null ? null : readSessionCurrentSnapshot(frozen, target);
     await reauthorize(); // Includes the actual router policy and its durable audit sink.
     guard();
@@ -151,7 +159,7 @@ export class SessionCurrentReader {
         authorization: {
           identity_digest: first.identity_digest,
           authorization_ref: first.authorization_ref,
-          expires_at: first.expires_at,
+          expires_at: new Date(Math.min(Date.parse(first.expires_at), sourceExpiresAt)).toISOString(),
         },
       },
     };

@@ -64,6 +64,8 @@ import { registerPlaneInboxRetries } from './plane-inbox-retry.js';
 import { PostgresPlaneInboxMetrics } from './plane-inbox-metrics.js';
 import { PostgresSessionStore, withSessionTransaction } from './session-persistence.js';
 import { PostgresSessionCurrentStore } from './session-current-persistence.js';
+import { SessionOriginBridge, type SessionOriginAuthority } from './session-origin-bridge.js';
+import { PostgresSessionOriginStore } from './session-origin-persistence.js';
 import { SessionCurrentIdentityScope, type SessionCurrentOpaOptions } from './session-current-authority.js';
 import { parseSessionCurrentRequest, registerSessionCurrentRoute, SessionCurrentReader,
   sessionCurrentOperation, sessionCurrentPath, type SessionCurrentAuthority,
@@ -192,6 +194,9 @@ export interface PlatformServerOptions {
   session_current_authority?: SessionCurrentAuthority;
   /** Explicit production current-authority source; mutually exclusive with an injected authority. */
   session_current_opa?: SessionCurrentOpaOptions;
+  /** Explicit factory-owned current origin approval. Enables the preserved-old-proof DB bridge;
+   * no automatic selection, migration, write compatibility or fallback on bridge failure. */
+  session_current_origin_authority?: SessionOriginAuthority;
   /** Optional long-term memory projection. Omit it to keep the offline context-only mode. */
   memory_service?: MemoryServiceAdapter;
   memory_provider_mode?: MemoryProviderMode;
@@ -355,6 +360,9 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
   if (options.session_current_opa &&
       (!options.session_current_configuration || !verifyGatewayToken || options.session_current_authority))
     throw new Error('Current session OPA requires configuration, OIDC and no alternate authority');
+  if (options.session_current_origin_authority && (!auditDb || !options.session_current_configuration ||
+      !options.session_current_opa || !verifyGatewayToken))
+    throw new Error('Current session origin bridge requires database, OIDC, current OPA and explicit configuration');
   const sessionCurrentIdentity = options.session_current_opa && verifyGatewayToken
     ? new SessionCurrentIdentityScope(verifyGatewayToken, options.session_current_opa)
     : undefined;
@@ -1499,7 +1507,9 @@ export function createPlatformServer(options: PlatformServerOptions = {}): Platf
   const api = new ApiGateway(router, options.rate_limit ?? 100);
   registerSessionCurrentRoute(router, api,
     auditDb && options.session_current_configuration
-      ? new SessionCurrentReader(new PostgresSessionCurrentStore(auditDb),
+      ? new SessionCurrentReader(options.session_current_origin_authority
+          ? new SessionOriginBridge(new PostgresSessionOriginStore(auditDb), options.session_current_origin_authority)
+          : new PostgresSessionCurrentStore(auditDb),
           options.session_current_configuration, options.session_current_authority)
       : undefined,
     sessionCurrentIdentity ? request => sessionCurrentIdentity.forRequest(request) : undefined);
