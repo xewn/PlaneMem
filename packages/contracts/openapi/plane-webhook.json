@@ -1,0 +1,186 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem signed Plane observation ingress",
+    "version": "0.1.0",
+    "description": "Source-only contract for existing POST /v1/plane/webhook, its seven supported Canonical Event types and complete durable delivery receipts. Not native Plane webhook conversion, a CloudEvents ingress or release evidence. Load plane-webhook Schema plus canonical-event/work-item-deleted/work-item-restored resources from the events package by canonical IDs."
+  },
+  "servers": [{ "url": "/", "description": "Configured Gateway origin/base." }],
+  "tags": [{ "name": "Plane webhook" }],
+  "security": [{ "PlaneWebhookSignature": [] }],
+  "x-todo": "P0-01",
+  "x-runtime-boundaries": {
+    "sources": [
+      "apps/api-gateway/src/server.ts",
+      "apps/plane-connector/src/webhook/security.ts",
+      "apps/plane-connector/src/project-sync/projection.ts",
+      "packages/events/src/envelope.ts",
+      "packages/contracts/src/metadata.ts",
+      "packages/contracts/src/observed-state.ts",
+      "apps/api-gateway/src/plane-inbox.ts",
+      "apps/api-gateway/src/runtime-persistence.ts",
+      "apps/api-gateway/src/idempotency.ts",
+      "apps/audit-service/src/service.ts"
+    ],
+    "authentication": "Independent pre-Gateway branch, no bearer/Policy/expected-identity/actor-path limiter. A configured shared secret authenticates timestamp plus body text; tenant/workspace/project, actor metadata and sensitivity come from signed event. No per-tenant key selection, verified-client or permission check is added. Delivery ID is outside HMAC; header event ID must exactly equal signed body event_id.",
+    "signature": "readRaw first caps received bytes at1048576, then Buffer.toString('utf8') nonfatally decodes. HMAC-SHA256 signs UTF-8 of original timestamp header text + '.' + decoded body string; raw_hash likewise hashes re-encoded text, not necessarily original malformed UTF-8 bytes. JSON whitespace/key order changes signature even when parsed event fingerprint is equal. Exact lowercase v1=hex comparison; missing headers401, Number(timestamp) safe integer and inclusive300-second past/future window. No canonical decimal restriction. No duplicate JSON-key detector, signature list or secret-rotation protocol.",
+    "http": "Documented JSON body; no dedicated Content-Type/Content-Encoding/URL-query/conditional-header/Origin rejection. URL fields and Idempotency-Key/If-Match are not used as processing conditions. Body size/read failures400 before verification; signature verification precedes JSON parse. Application responses private,no-store; this branch does not set x-trace-id response header. No ETag, queue revision, server_cursor or Retry-After. No application body/whole-operation deadline, response-byte budget or dedicated two-slot gate. Uncaught verifier/crypto failures are outside the mapped receive-error catch.",
+    "trace": "Verification trace selects x-trace-id ?? traceparent ?? generated trace_webhook_ULID, preserving empty header text. Event validation instead uses nonempty body trace or trace_unknown. Event mismatch and later responses use body event trace; successful source_refs echo original source objects, not normalized stored ones. An empty verification trace can fail ContractError construction on verification errors; no universal structured-error guarantee for uncaught exceptions.",
+    "event": "Only ProjectCreated/Updated with project and WorkItemCreated/Updated/StatusConfirmed/Deleted/Restored with work_item. Default registry schema_version1. Generic runtime envelope permits unknown top-level fields and does not inspect client_id; ordinary payload is open except external_id. Source revision/URI are checked by snapshot construction before durable receive, extensions dropped for stored source refs while event-level extras retained. Original occurrence text kept after finite Date.parse/Z check. Delete payload only external_id; restore requires external_id/title/status/restored_from, distinct deletion event/causation and version+1.",
+    "receive": "Normalize event then hash recursively sorted object keys, preserving array order, with SHA-256. Global event_id binds full normalized event/scope; scoped delivery_id binds event_id and stores first raw hash, but later raw hash is not an equality condition. Receive transaction inserts/locks inbox, checks saved normalized document/fingerprint, then inserts/checks delivery binding. Conflicting ID content409; saved inconsistency500. No successful receipt or volatile fallback without database.",
+    "processing": "After receive commits, attempt one due pending row FOR UPDATE SKIP LOCKED. Separate transaction locks aggregate, both aliases and context index. Existing legacy wcp_events comparison checks only saved columns, not missing actor/client/sensitivity metadata. New effect atomically appends event, updates projection/index, marks applied and saves processing audit; failures roll back then conditionally defer/reject same pending revision. A failed processing attempt can return prior queued state after committed receive. Three-second lock/15-second statement timeouts per transaction are not an overall deadline.",
+    "ordering": "Existing highest observation requires next version, rejects lower/equal versions and ambiguous historical same-version maxima; gaps stay pending. With no committed watermark, nonrestore can start above1 unless a lower received event exists; unseen prior history is not proven complete. Restore requires matching immediately previous committed deletion and current unexpired deleted projection/index. Ordinary update cannot revive deleted state. External-ID change/alias collision/index conflict rejects. Duplicate does not repair or revalidate current snapshot/index.",
+    "audit": "Processing audit is in the effect/rejection transaction. plane.webhook delivery audit runs afterwards, separately, fixed actor plane-webhook/client plane and scope/delivery key. In-process AuditService may reuse first audit record/status for the same delivery; configured persistence follows. A later audit failure can return503 after receive or application already committed. There is no joint transaction guaranteeing network delivery.",
+    "retry": "200 accepted means effect_applied=true;200 duplicate means false and no new effect.202 queued proves durable receive only;409 durable rejected differs from standalone409 ID conflict. Worker polls1s,5s after poll failure, up to25 rows per drain; pending errors back off up to300s. Redelivery does not bypass pending schedule or reactivate rejection. Preserve original event/delivery ID and refresh signature timestamp if retrying; transport failure/503 never proves no receive/effect. No SDK/Mock machine-contract consumption or native Plane compatibility is established."
+  },
+  "paths": {
+    "/v1/plane/webhook": {
+      "post": {
+        "operationId": "receivePlaneWebhook",
+        "tags": ["Plane webhook"],
+        "summary": "Durably receive one signed Canonical Plane observation",
+        "description": "Independent signature-authenticated ingress. Raw-body signature, canonical validation, header event binding and observation normalization precede receive. Processing can complete, be duplicated, remain queued or reject after durable receive. Distinguish four-state receipt from standalone ErrorEnvelope by shape;409 supports both. Complete request includes existing runtime openness rather than imposing stricter generic canonical catalog closure.",
+        "parameters": [
+          {
+            "name": "x-plane-delivery-id",
+            "in": "header",
+            "required": true,
+            "description": "Stable exact delivery ID within signed event scope. Nonempty at verification, lexical checks before persistence; reuse with another event in same scope409. Not included in HMAC.",
+            "schema": { "$ref": "../schemas/plane-webhook.json#/$defs/recordId" }
+          },
+          {
+            "name": "x-plane-event-id",
+            "in": "header",
+            "required": true,
+            "description": "Must exactly match the validated signed body event_id; mismatch400.",
+            "schema": { "$ref": "../schemas/plane-webhook.json#/$defs/ulid" }
+          },
+          {
+            "name": "x-plane-timestamp",
+            "in": "header",
+            "required": true,
+            "description": "Original Unix-seconds text used in HMAC; Number conversion must be a safe integer within inclusive +/-300 seconds.",
+            "schema": {
+              "$ref": "../schemas/plane-webhook.json#/$defs/headers/properties/x-plane-timestamp"
+            }
+          },
+          {
+            "name": "x-plane-signature",
+            "in": "header",
+            "required": true,
+            "description": "v1= followed by lowercase HMAC-SHA256 hex. Compute from original timestamp text, dot and decoded JSON body text; never serialize the body again after signing.",
+            "schema": {
+              "$ref": "../schemas/plane-webhook.json#/$defs/headers/properties/x-plane-signature"
+            }
+          },
+          {
+            "name": "x-trace-id",
+            "in": "header",
+            "description": "Verification/error trace; takes precedence over traceparent by nullish selection. Does not replace signed body trace_id used in delivery receipts.",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "traceparent",
+            "in": "header",
+            "description": "Fallback verification trace when x-trace-id absent; opaque text, no W3C parsing.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "One Canonical Event object. Maximum1048576 received bytes, decoded without fatal UTF-8 rejection. Signature covers textual representation before JSON parsing; schema describes parsed structure only.",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/plane-webhook.json#PlaneWebhookEvent" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Durable accepted with new effect or duplicate with no new effect. Current signed event trace/sources echoed; no response trace header. Duplicate is historical evidence, not present snapshot/index validity.",
+            "headers": { "cache-control": { "$ref": "#/components/headers/NoStore" } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "../schemas/plane-webhook.json#PlaneWebhookAccepted" },
+                    { "$ref": "../schemas/plane-webhook.json#PlaneWebhookDuplicate" }
+                  ]
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Durable queued receipt, effect_applied=false; optional pending error retryable=true. Not an application confirmation; caller need not resend merely because worker has not completed.",
+            "headers": { "cache-control": { "$ref": "#/components/headers/NoStore" } },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "../schemas/plane-webhook.json#PlaneWebhookQueued" }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error",
+            "description": "WEBHOOK_BODY_INVALID for byte/read or signed JSON parse failures; EVENT_TYPE_UNSUPPORTED/EVENT_SCHEMA_VERSION_UNSUPPORTED/EVENT_SCHEMA_VALIDATION_FAILED; WEBHOOK_EVENT_ID_MISMATCH; PLANE_EVENT_UNSUPPORTED; PLANE_EVENT_INVALID for observation fields/sources; WEBHOOK_DELIVERY_INVALID. Schema-version rejection is retryable=true but still400 at validation stage; most other input errors false. Later nonretryable ContractError not ending _CONFLICT and not PLANE_INBOX_INVALID also maps400."
+          },
+          "401": {
+            "$ref": "#/components/responses/Error",
+            "description": "WEBHOOK_HEADERS_MISSING, WEBHOOK_TIMESTAMP_OUT_OF_WINDOW or WEBHOOK_SIGNATURE_INVALID; retryable=false, no bearer challenge. Helper has WEBHOOK_PAYLOAD_TOO_LARGE for decoded string length but HTTP raw-byte gate normally rejects excess first with400."
+          },
+          "409": {
+            "description": "Either durable rejected processing receipt (effect_applied=false, optional saved error retryable=false), or standalone nonretryable *_CONFLICT from receive/delivery binding such as PLANE_EVENT_ID_CONFLICT/WEBHOOK_DELIVERY_CONFLICT. A standalone error does not assert this attempt's durable receive.",
+            "headers": { "cache-control": { "$ref": "#/components/headers/NoStore" } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    { "$ref": "../schemas/plane-webhook.json#PlaneWebhookRejected" },
+                    { "$ref": "../schemas/plane-webhook.json#PlaneWebhookError" }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/Error",
+            "description": "PLANE_INBOX_INVALID for inconsistent saved event document/columns/fingerprint encountered during receive; retryable=false. Processing-stage failures may instead produce durable rejection or queued receipt."
+          },
+          "503": {
+            "$ref": "#/components/responses/Error",
+            "description": "WEBHOOK_SECRET_NOT_CONFIGURED before body read is retryable=false. PLANE_INBOX_UNAVAILABLE is true; other retryable ContractError in receive/audit catch maps503. Unclassified receive/database/delivery-audit error becomes RUNTIME_PERSISTENCE_UNAVAILABLE true. Receive/effect may already have committed; preserve original event/delivery for reconciliation."
+          },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "PlaneWebhookSignature": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-plane-signature",
+        "description": "OpenAPI header-security representation for HMAC, not a static API key. Required timestamp/delivery/event headers and raw-body algorithm above remain necessary; no bearer identity."
+      }
+    },
+    "headers": {
+      "NoStore": {
+        "description": "Mapped application JSON responses; proxy/uncaught failures can differ.",
+        "required": true,
+        "schema": { "type": "string", "const": "private, no-store" }
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Standalone error, with stage-specific trace/retryability; no durability/no-effect claim. Uncaught failures and network/proxy responses may use another representation. No x-trace-id header is set by this branch.",
+        "headers": { "cache-control": { "$ref": "#/components/headers/NoStore" } },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/plane-webhook.json#PlaneWebhookError" }
+          }
+        }
+      }
+    }
+  }
+}

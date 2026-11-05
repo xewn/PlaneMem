@@ -1,0 +1,288 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/plane-webhook.json",
+  "title": "PlaneMem signed Plane observation delivery",
+  "description": "Complete existing HTTP observation input and durable delivery receipts. Root is the accepted input profile, not native Plane webhook JSON or CloudEvents. A structurally valid event can still queue or be rejected by stored history.",
+  "$comment": "Source-only. Register the events package canonical-event/work-item-deleted/work-item-restored resources by their canonical IDs locally. Reuse individual canonical properties, not its closed root: validateEvent permits top-level extras and does not validate client_id, while this ingress adds source revision/URI and external-ID checks before persistence. Runtime additionally checks Date.parse, UTF-16/surrogates, signatures/time window, exact header/event binding, restore arithmetic and durable fingerprints/state. No validator or runtime evidence.",
+  "$ref": "#PlaneWebhookEvent",
+  "$defs": {
+    "ulid": { "$ref": "https://planemem.local/schemas/canonical-event.json#/properties/event_id" },
+    "text": { "type": "string", "minLength": 1 },
+    "recordId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "allOf": [
+        { "not": { "enum": [".", ".."] } },
+        { "not": { "pattern": "^\\s|\\s$" } },
+        { "not": { "pattern": "[\\u0000-\\u001f\\u007f]" } }
+      ],
+      "description": "Exact untrimmed external/delivery ID, no leading/trailing whitespace or dot paths; interior whitespace allowed. Runtime counts UTF-16 units and also rejects lone surrogates. Not restricted to ULID."
+    },
+    "source": {
+      "$anchor": "PlaneWebhookSource",
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "$ref": "#/$defs/text" },
+        "id": { "$ref": "#/$defs/text" },
+        "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "uri": { "$ref": "#/$defs/text" }
+      },
+      "description": "Nonempty type/id/URI, no URI syntax/type allowlist or source existence check. Source extensions are allowed and echoed in the delivery response, but stripped before inbox event fingerprint/storage. Source order and duplicates remain meaningful."
+    },
+    "sources": { "type": "array", "items": { "$ref": "#PlaneWebhookSource" } },
+    "payload": {
+      "$anchor": "PlaneObservationPayload",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "external_id": { "$ref": "#/$defs/recordId" },
+        "title": true,
+        "name": true,
+        "status": true
+      },
+      "description": "Ordinary create/update/status-confirmed payload is otherwise arbitrary JSON object, not a typed Plane-native field model. Absent external_id uses aggregate_id. String status is projected; other status values remain in fields only. Nonblank string title, then name, then external_id selects search title. Delete/restore add their existing strict payload requirements below."
+    },
+    "event": {
+      "$anchor": "PlaneWebhookEvent",
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "event_id",
+        "event_type",
+        "schema_version",
+        "tenant_id",
+        "workspace_id",
+        "aggregate_type",
+        "aggregate_id",
+        "aggregate_version",
+        "occurred_at",
+        "trace_id",
+        "source_refs",
+        "sensitivity",
+        "payload"
+      ],
+      "properties": {
+        "event_id": { "$ref": "#/$defs/ulid" },
+        "event_type": {
+          "enum": [
+            "ProjectCreated",
+            "ProjectUpdated",
+            "WorkItemCreated",
+            "WorkItemUpdated",
+            "WorkItemStatusConfirmed",
+            "WorkItemDeleted",
+            "WorkItemRestored"
+          ]
+        },
+        "schema_version": { "const": 1 },
+        "tenant_id": {
+          "$ref": "https://planemem.local/schemas/canonical-event.json#/properties/tenant_id"
+        },
+        "workspace_id": {
+          "$ref": "https://planemem.local/schemas/canonical-event.json#/properties/workspace_id"
+        },
+        "project_id": {
+          "$ref": "https://planemem.local/schemas/canonical-event.json#/properties/project_id"
+        },
+        "aggregate_type": { "enum": ["project", "work_item"] },
+        "aggregate_id": {
+          "$ref": "https://planemem.local/schemas/canonical-event.json#/properties/aggregate_id"
+        },
+        "aggregate_version": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+        "actor_id": {
+          "$ref": "https://planemem.local/schemas/canonical-event.json#/properties/actor_id"
+        },
+        "client_id": true,
+        "session_id": {
+          "$ref": "https://planemem.local/schemas/canonical-event.json#/properties/session_id"
+        },
+        "correlation_id": {
+          "$ref": "https://planemem.local/schemas/canonical-event.json#/properties/correlation_id"
+        },
+        "causation_id": {
+          "$ref": "https://planemem.local/schemas/canonical-event.json#/properties/causation_id"
+        },
+        "occurred_at": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "Z$",
+          "description": "Existing assertUtcTimestamp requires finite Date.parse and the Z$ pattern; no exact millisecond roundtrip, four-digit year restriction or format assertion. Original text and fractional precision are retained for normalization/fingerprint; database timestamptz has its own range/precision."
+        },
+        "trace_id": { "$ref": "#/$defs/text" },
+        "source_refs": { "$ref": "#/$defs/sources" },
+        "sensitivity": {
+          "$ref": "https://planemem.local/schemas/canonical-event.json#/properties/sensitivity"
+        },
+        "payload": { "$ref": "#PlaneObservationPayload" }
+      },
+      "oneOf": [{ "$ref": "#PlaneProjectObservation" }, { "$ref": "#PlaneWorkItemObservation" }],
+      "allOf": [
+        {
+          "if": {
+            "properties": { "event_type": { "const": "WorkItemDeleted" } },
+            "required": ["event_type"]
+          },
+          "then": { "$ref": "https://planemem.local/schemas/work-item-deleted.json" }
+        },
+        {
+          "if": {
+            "properties": { "event_type": { "const": "WorkItemRestored" } },
+            "required": ["event_type"]
+          },
+          "then": { "$ref": "https://planemem.local/schemas/work-item-restored.json" }
+        }
+      ],
+      "description": "ProjectCreated/Updated pair with project; five supported WorkItem events pair with work_item. project_id is required only for delete/restore; otherwise absent project_id resolves scope to aggregate_id. Input identity/sensitivity are signed claims, not bearer-authorized values. Top-level extras/client_id are retained in the new inbox fingerprint without business parsing. No generalized finite-JSON/depth/node guard. Restore causation must equal distinct referenced deletion event, version exactly deletion+1; processing independently verifies committed deletion and matching unexpired index tombstones."
+    },
+    "projectPair": {
+      "$anchor": "PlaneProjectObservation",
+      "type": "object",
+      "required": ["event_type", "aggregate_type"],
+      "properties": {
+        "event_type": { "enum": ["ProjectCreated", "ProjectUpdated"] },
+        "aggregate_type": { "const": "project" }
+      },
+      "description": "Type-pair constraint only; combine with PlaneWebhookEvent for the full envelope."
+    },
+    "workItemPair": {
+      "$anchor": "PlaneWorkItemObservation",
+      "type": "object",
+      "required": ["event_type", "aggregate_type"],
+      "properties": {
+        "event_type": {
+          "enum": [
+            "WorkItemCreated",
+            "WorkItemUpdated",
+            "WorkItemStatusConfirmed",
+            "WorkItemDeleted",
+            "WorkItemRestored"
+          ]
+        },
+        "aggregate_type": { "const": "work_item" }
+      },
+      "description": "Type-pair constraint only; WorkItemStatusProposed is not an accepted observation."
+    },
+    "headers": {
+      "$anchor": "PlaneWebhookHeaders",
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "x-plane-delivery-id",
+        "x-plane-event-id",
+        "x-plane-timestamp",
+        "x-plane-signature"
+      ],
+      "properties": {
+        "x-plane-delivery-id": { "$ref": "#/$defs/recordId" },
+        "x-plane-event-id": { "$ref": "#/$defs/ulid" },
+        "x-plane-timestamp": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Original nonempty text converted by Number to a safe integer Unix second within inclusive +/-300 of floor(Date.now()/1000). Leading zeros, whitespace or exponent notation are not independently forbidden. The original text, not normalized decimal, participates in HMAC."
+        },
+        "x-plane-signature": {
+          "type": "string",
+          "minLength": 67,
+          "maxLength": 67,
+          "pattern": "^v1=[a-f0-9]{64}$",
+          "description": "Exact lowercase v1= followed by HMAC-SHA256 hex of UTF-8(timestamp + '.' + decodedBodyText), using the configured shared secret. No signature-list/rotation syntax. Event/delivery/trace headers are not concatenated into HMAC; body event ID is compared separately."
+        },
+        "x-trace-id": { "type": "string" },
+        "traceparent": { "type": "string" }
+      },
+      "description": "Documentary lowercase header map; actual HTTP names are case-insensitive. Initial verification requires nonempty four signature headers. Delivery-ID lexical checks occur later before persistence. No rejection of unrelated headers or bearer identity handling."
+    },
+    "error": {
+      "$anchor": "PlaneWebhookError",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "details", "trace_id", "retryable"],
+      "properties": {
+        "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]+$" },
+        "message": { "type": "string", "minLength": 1 },
+        "details": { "type": "object", "additionalProperties": true },
+        "trace_id": { "type": "string" },
+        "retryable": { "type": "boolean" }
+      },
+      "description": "Standalone HTTP errors and optional nested processing errors use this shape. Early plain errorEnvelope may retain empty trace-header text; ContractError requires nonempty trace. No WCP data wrapper, schema_version, durability or event IDs in a standalone error. Error trace is stage-dependent."
+    },
+    "receiptFields": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "status",
+        "event_id",
+        "delivery_id",
+        "effect_applied",
+        "durable",
+        "trace_id",
+        "source_refs"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "status": { "enum": ["accepted", "duplicate", "queued", "rejected"] },
+        "event_id": { "$ref": "#/$defs/ulid" },
+        "delivery_id": { "$ref": "#/$defs/recordId" },
+        "effect_applied": { "type": "boolean" },
+        "durable": { "const": true },
+        "trace_id": { "$ref": "#/$defs/text" },
+        "source_refs": { "$ref": "#/$defs/sources" },
+        "error": { "$ref": "#PlaneWebhookError" }
+      },
+      "description": "Outer IDs echo this validated body and delivery header. Outer trace and sources echo the original input event, including source extensions; they are not the verification-header trace or normalized stored sources. Nested error trace comes from saved event. No outer scope/data/ETag/server_cursor/queue revision/fingerprint/signature/raw hash."
+    },
+    "accepted": {
+      "$anchor": "PlaneWebhookAccepted",
+      "$ref": "#/$defs/receiptFields",
+      "unevaluatedProperties": false,
+      "properties": { "status": { "const": "accepted" }, "effect_applied": { "const": true } },
+      "not": { "required": ["error"] },
+      "description": "200: this processing transaction appended the event, snapshot, search index, applied receipt and processing audit. Does not certify upstream native compatibility or later freshness."
+    },
+    "duplicate": {
+      "$anchor": "PlaneWebhookDuplicate",
+      "$ref": "#/$defs/receiptFields",
+      "unevaluatedProperties": false,
+      "properties": {
+        "status": { "const": "duplicate" },
+        "effect_applied": { "const": false },
+        "error": { "properties": { "retryable": { "const": false } } }
+      },
+      "description": "200: already applied inbox or matching fields of a legacy committed event, with no new effect. No snapshot/index rebuild or current validity proof. Normal applied state has no error; result builder can include a truthy saved last_error_code, which the stored-event parser does not independently forbid."
+    },
+    "queued": {
+      "$anchor": "PlaneWebhookQueued",
+      "$ref": "#/$defs/receiptFields",
+      "unevaluatedProperties": false,
+      "properties": {
+        "status": { "const": "queued" },
+        "effect_applied": { "const": false },
+        "error": { "properties": { "retryable": { "const": true } } }
+      },
+      "description": "202: durable receive committed but no application confirmed. Optional error comes from known pending reason, e.g. AGGREGATE_VERSION_GAP or PLANE_PROCESSING_RETRY. Missing error does not mean a worker has run; lock contention/not-yet-due/processing failure can return prior pending row."
+    },
+    "rejected": {
+      "$anchor": "PlaneWebhookRejected",
+      "$ref": "#/$defs/receiptFields",
+      "unevaluatedProperties": false,
+      "properties": {
+        "status": { "const": "rejected" },
+        "effect_applied": { "const": false },
+        "error": { "properties": { "retryable": { "const": false } } }
+      },
+      "description": "409 durable receipt: terminal stored processing refusal. Normal reject path sets last_error_code and includes error; builder only emits it when saved code is truthy, so no unconditional required error is invented. Same delivery does not reactivate rejected rows."
+    },
+    "receipt": {
+      "$anchor": "PlaneWebhookReceipt",
+      "oneOf": [
+        { "$ref": "#PlaneWebhookAccepted" },
+        { "$ref": "#PlaneWebhookDuplicate" },
+        { "$ref": "#PlaneWebhookQueued" },
+        { "$ref": "#PlaneWebhookRejected" }
+      ]
+    }
+  }
+}

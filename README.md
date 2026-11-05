@@ -1,6 +1,6 @@
 # PlaneMem
 
-按 TODO **P0-01** 补齐 [工作台统一查询 OpenAPI](packages/contracts/openapi/README.md#工作台统一查询) 及完整 Schema，覆盖全部11种操作和检查点双模式，新增审计分页/字段省略、管理计数/来源/未检查项模型，复用冲突目录及此前八操作。统一入口计一条，OpenAPI源码累计90路；响应须按原请求选取模型，权限、大小与期限遵循各操作实际边界。P0-01仍未完成，主TODO仍为0/36；未编译、测试、运行校验器/生成器/接口或发布。
+按 TODO **P0-01** 补齐 [Plane Webhook OpenAPI](packages/contracts/openapi/README.md#plane-webhook) 及完整Schema，覆盖现有签名接收入口、七种Canonical观察和四态持久回执。明确原文本验签、接收/处理/交付审计不同事务及失败后的未知结果；OpenAPI源码累计91路。P0-01仍未完成，主TODO仍为0/36；未编译、测试、运行校验器/生成器/接口或发布。
 
 按 TODO **P0-01** 补充 [会话启动与原回执 OpenAPI](packages/contracts/openapi/README.md#会话启动与原回执) 及完整 Schema，覆盖当前命令身份、普通启动和原回执查询三路。完整保留原可选字段与身份键，区分当前会话和固定版本 1 的原创建回执；明确持久重放、旧键冲突及真实 HTTP/SDK 边界。该轮使 OpenAPI 累计七十路，P0-01 仍未完成；未编译、测试、运行校验器/生成器/接口或发布。
 

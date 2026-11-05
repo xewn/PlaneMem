@@ -1,6 +1,12 @@
 # Plane Webhook 持久接收与重试（开发状态）
 
-2026-11-05，TODO P0-01：新增 [六路 OpenAPI](../../../packages/contracts/openapi/plane-inbox.json)、[读取 Schema](../../../packages/contracts/schemas/plane-inbox.json) 与 [原重试 Schema](../../../packages/contracts/schemas/plane-inbox-retry.json)，对应四类元数据读取及重试/原回执两个 POST；Webhook 不在本轮机器契约范围。见 [完整加载与运行边界](../../../packages/contracts/openapi/README.md#plane-收件箱与原重试回执)。仅新增契约源码，不改变下述运行实现，不构成运行证据。
+2026-11-05，TODO P0-01：新增[Webhook OpenAPI](../../../packages/contracts/openapi/plane-webhook.json)与[完整Schema](../../../packages/contracts/schemas/plane-webhook.json)，补上独立签名接收入口。七类Canonical观察的实际输入与四态持久封套完整建模；保留顶层扩展和未独立校验client_id，普通payload开放，仅删除/恢复有专用严格规则。源码目录累计91路，P0-01/R-001未完成、evidence为空；未编译、类型检查、测试、运行校验器/生成器/产品/SDK/Mock/API/数据库或发布。
+
+机器契约补充：1MiB限制先计接收字节，随后Buffer非严格UTF-8解码，HMAC和first_raw_hash均对文本重编码；不能将后者一概称为原传输字节摘要。timestamp原文参与签名，Number转换须安全整数并在正负300秒内，非纯十进制写法没有额外拒绝。签名不直接覆盖delivery/event/trace头，event_id再与正文核对；本路没有Bearer/Policy/通用限流。来源扩展在入库前剥离，回执仍回显原事件来源；头trace和事件trace独立，该路径未设置响应x-trace-id头。
+
+事件接收、效果处理及后置交付审计分别提交，后置审计失败503不证明前两者失败；同进程同delivery审计可能保留首次状态。正常拒绝有错误码，但resultFor只在已保存last_error_code为真时输出error，旧行完整事件检查不补验状态/错误码关系；Schema因此保留终态可选error。重复只确认历史处理，不重建当前索引。现有3秒锁/15秒语句限制不是整次期限，没有完整响应字节/两槽限额。签名辅助函数acceptWebhook与内存消费者不是此HTTP持久入口，不把其简单返回结构混入本契约。
+
+2026-11-05，TODO P0-01：新增 [六路 OpenAPI](../../../packages/contracts/openapi/plane-inbox.json)、[读取 Schema](../../../packages/contracts/schemas/plane-inbox.json) 与 [原重试 Schema](../../../packages/contracts/schemas/plane-inbox-retry.json)，对应四类元数据读取及重试/原回执两个 POST；该轮不含Webhook，现有Webhook完整契约见上段。见 [完整加载与运行边界](../../../packages/contracts/openapi/README.md#plane-收件箱与原重试回执)。仅新增契约源码，不改变下述运行实现，不构成运行证据。
 
 补充边界：列表按事件 ID 降序，游标绑定 limit；概览不继承列表筛选。诊断只公开实际最高提交版本中选中的可见 applied 回执，最多两个基线不能当作完整分叉数量；读取不解析原事件全文。重试与查询均先检查完整不可变事件/指纹和当前可见性并持有更新/咨询/父项目共享锁，查询不是数据库 READ ONLY 事务。原回执重放在新版本/状态检查之前，保留历史 pending 状态；新调度仅 revision 加一、不增加 attempts，不直接驱动应用。3 秒锁/15 秒语句超时不是整次期限；无完整响应字节/并发槽或提交后身份到期复查保证。P0-01/R-001 未完成、evidence 为空；未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 

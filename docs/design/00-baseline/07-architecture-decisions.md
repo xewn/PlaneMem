@@ -1,5 +1,9 @@
 # 架构决策记录摘要
 
+2026-11-05 本轮源码落地（P0-01 / ADR-015）：Plane Webhook完整Schema/OpenAPI及两项包子路径已补齐，七类观察按aggregate配对，复用原事件字段/删除恢复约束但保持实际开放顶层及client_id；完整四态回执/独立错误、解码文本签名与原时间/来源、持久接收/处理/后置审计事务及错误/期限已人工对照。目录/WCP/收件箱说明/README/TODO/R001同步，新增一条后91路。P0-01/R001未完成、evidence为空；仅人工源码文档审阅/指定格式/Git文本检查，未编译、类型检查、测试、执行校验器/生成器/产品/SDK/Mock/API/数据库或发布。
+
+2026-11-05 P0-01 Plane Webhook完整机器契约（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增schemas/plane-webhook.json及openapi/plane-webhook.json，描述现有签名Canonical观察接收入口、支持事件/payload与完整四态持久回执及独立错误，复用现有事件封套/删除恢复模型。对照原文验签/时间窗口/头事件绑定、规范事件指纹与交付ID、接收/处理/交付审计事务边界及真实HTTP状态/trace/限额；不改变生产实现、不调用Webhook、不执行SQL。范围两份JSON、两项包子路径、schemas/openapi README、根README/TODO、公共契约目录/WCP/plane-inbox运行说明、R001及本ADR/T0.3/T4.1；完整入口新增一条后OpenAPI91路。P0-01/R001未完成、evidence为空；仅人工源码文档审阅/指定格式/Git文本检查，不编译、类型检查、测试、执行校验器/生成器/产品/SDK/Mock/API/数据库或发布，独立提交push main。
+
 2026-11-05 本轮源码落地（P0-01 / ADR-015）：workbench-audit/admin/query三份完整Schema、统一查询OpenAPI及四项包子路径已补齐。复用原八操作与冲突目录，11操作/检查点双模式完整组合，成功采用anyOf并记录原请求映射；审计普通JSON与导出规则、全201候选解析、管理授权计数/有序来源及各操作HTTP/错误/预算已人工对照。目录/WCP/运行说明/README/TODO/R001同步，OpenAPI源码累计90路，P0-01/R001仍未完成、evidence为空。仅人工源码文档审阅/指定格式/Git文本检查，未编译、类型检查、测试、执行校验器/生成器/产品/SDK/Mock/API/数据库或发布。
 
 2026-11-05 P0-01 工作台统一查询完整机器契约（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增schemas/workbench-audit.json、workbench-admin.json、workbench-query.json及openapi/workbench-query.json，补齐audit/admin模型，复用现有conflict-read目录定义并组合全部11操作（checkpoints两模式）的请求/完整成功。明确动态权限、审计有界字段与导出更强规则区别、管理可用/未授权计数及固定未检查项、统一HTTP与各操作错误/预算。范围四份新JSON、四项包子路径、schemas/openapi README、根README/TODO、公共目录/WCP、审计/管理/冲突目录运行说明、R001及本ADR/T0.3/T4.1。只改契约与文档；完整入口新增一条路由，累计90路，仍缺其他WCP/MCP/事件payload/机器契约消费和CI，P0-01/R001未完成、evidence为空。仅人工源码文档审阅、指定格式/Git文本检查，不编译、类型检查、测试、执行校验器/生成器/产品/SDK/Mock/API/数据库或发布；独立提交推送main。

@@ -1,5 +1,7 @@
 # WCP API 契约 v1
 
+2026-11-05，TODO P0-01：[Plane Webhook OpenAPI](../../../packages/contracts/openapi/README.md#plane-webhook) 与完整Schema覆盖现有签名POST入口、七种Canonical观察和accepted/duplicate/queued/rejected回执，独立409错误与持久拒绝分开。记录实际开放事件/client_id/payload、规范源字段与原响应来源、解码文本HMAC/时间窗口、接收/处理/交付审计事务及HTTP错误/trace/期限。新增一条后OpenAPI源码累计91路；P0-01/R-001未完成、evidence为空。仅人工源码文档审阅/指定格式/Git文本检查，未编译、类型检查、测试、执行校验器/生成器/产品/SDK/Mock/API/数据库或发布。
+
 2026-11-05，TODO P0-01：[工作台统一查询 OpenAPI](../../../packages/contracts/openapi/README.md#工作台统一查询) 和workbench-query/audit/admin完整Schema，覆盖已有POST全部11操作及检查点双模式；复用conflict-read和此前八操作。审计精确过滤/字段省略/固定200条/原微秒游标、管理实际授权计数/四种有序来源/固定未检查项完整建模；响应anyOf配合原请求映射，避免重叠形状错误排他。准确描述动态权限、通用HTTP与各操作大小/错误/期限，统一路由只新增一条后累计90路。P0-01/R-001未完成、evidence为空；仅人工源码文档审阅、指定格式/Git文本检查，未编译、类型检查、测试、执行校验器/生成器/产品/SDK/Mock/API/数据库或发布。
 
 2026-11-05，TODO P0-01：[交接与检查点完整 Schema](../../../packages/contracts/schemas/README.md#工作台交接与检查点查询) 新增handoffs和checkpoints双模式模型，完整表达当前交接/历史投影、摘要三态、身份权限与归属提示、原/规范筛选和微秒位置/页大小绑定；检查点历史独立复用完整笔记和原revision续页，保留工作台身份而不添加GET外层范围。该轮统一查询准备八种操作模型、OpenAPI保持89路；当前完整入口进度见上段。P0-01/R-001未完成、evidence为空；仅人工源码文档审阅、指定格式/Git文本检查，未编译、类型检查、测试、执行校验器/生成器/产品/SDK/Mock/API/数据库或发布。

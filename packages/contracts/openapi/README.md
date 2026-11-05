@@ -1,6 +1,22 @@
 # OpenAPI 源码契约
 
-这里的文档描述已有 HTTP 实现，尚未经过校验器、生成器、编译、类型检查、测试或运行验证。文档版本不表示已发布或部署；当前覆盖保存包 5 路、文件 9 路、上下文条目 9 路、同步 6 路、冲突 5 路、建议 8 路、Plane 观察 4 路、搜索 2 路、旧索引 5 路、Plane 收件箱 6 路、会话状态/活动 5 路、检查点/交接读取 3 路、会话身份/启动/原回执 3 路、会话进度写入/原回执 6 路、检查点保存/原回执 2 路、交接创建/领取/原回执 4 路、会话续接/原回执 2 路、旧记忆交接创建/领取 2 路、单条审计视图导出 1 路、当前会话来源读取 1 路、原始会话来源取证 1 路及工作台统一查询 1 路，共 90 路，尚不是完整 WCP 接口目录。
+这里的文档描述已有 HTTP 实现，尚未经过校验器、生成器、编译、类型检查、测试或运行验证。文档版本不表示已发布或部署；当前覆盖保存包 5 路、文件 9 路、上下文条目 9 路、同步 6 路、冲突 5 路、建议 8 路、Plane 观察 4 路、搜索 2 路、旧索引 5 路、Plane 收件箱 6 路、会话状态/活动 5 路、检查点/交接读取 3 路、会话身份/启动/原回执 3 路、会话进度写入/原回执 6 路、检查点保存/原回执 2 路、交接创建/领取/原回执 4 路、会话续接/原回执 2 路、旧记忆交接创建/领取 2 路、单条审计视图导出 1 路、当前会话来源读取 1 路、原始会话来源取证 1 路、工作台统一查询 1 路及 Plane Webhook 1 路，共 91 路，尚不是完整 WCP 接口目录。
+
+## Plane Webhook
+
+2026-11-05，TODO P0-01：[plane-webhook OpenAPI](plane-webhook.json) 与 [完整Schema](../schemas/plane-webhook.json) 描述已有POST /v1/plane/webhook，新增两项包子路径；七类观察事件只计一个入口，OpenAPI源码累计91路。该入口接收本项目Canonical Event，尚未实现原生Plane通知转换或CloudEvents传输。加载本Schema及events包canonical-event/work-item-deleted/work-item-restored资源，并保留各自规范$id；不直接继承更严格的封闭Canonical根。
+
+此路径先于通用Bearer Gateway分支，以单配置共享密钥验签，不执行Bearer/Policy/预期身份或actor/path限流。接收字节上限1MiB，之后Buffer非严格UTF-8解码；HMAC-SHA256输入为时间头原文、点和正文文本的UTF-8，签名精确v1=小写hex。原正文hash也对文本重编码计算。Number(timestamp)为安全整数且距服务器整秒正负300秒以内；原文本可含前导零或指数写法。event/delivery/trace头不直接参加HMAC，事件ID另与已签正文精确相等；delivery_id词法在入库前查。JSON解析在验签后，重复键无专门拒绝。没有专用媒体类型/编码/URL参数/条件头/Origin检查或应用整次期限。
+
+请求支持ProjectCreated/Updated和WorkItemCreated/Updated/StatusConfirmed/Deleted/Restored，类型与aggregate严格配对。事件顶层扩展和未校验client_id会保留，普通payload开放；外部ID无值时用aggregate_id，普通事件无project_id时同样用aggregate_id作为项目范围。删除/恢复使用原严格payload与恢复关系，源码契约不增加实际没有的业务字段保证。原occurred_at文本保留；来源revision/URI额外核对后，入库只保留type/id/revision/uri，但响应仍回显原来源扩展。
+
+接收事务绑定全局event_id的完整规范事件/范围指纹，按scope/delivery_id绑定事件并保留首次正文hash；重投不比较后来正文hash，JSON空白/键序不同可以具有相同事件指纹，但仍需重新签名。处理在另一个事务取得due pending行及aggregate/别名/index锁，原事件、观察、索引、状态和处理审计原子提交。版本缺口排队、较旧/同版本新事件和别名/索引冲突拒绝；无水位非恢复事件可从首个观察版本开始，但会等已收较低版本，不能据此声称历史完整。恢复必须对应已提交删除与当前匹配、未过期的删除索引。
+
+200 accepted才表示本次effect_applied=true；200 duplicate为false，不重建或证明当前投影。202 queued只证明持久接收，409 rejected为持久终态且不同于独立409事件/交付ID冲突。正常拒绝含error，但存储结果装配器未强制旧行错误码存在，完整模型保留这个边界。后台退避/显式重投不自动激活拒绝或绕过计划。3秒锁与15秒单语句限制不等于整次期限。
+
+交付审计在接收/处理之后单独持久化，同进程同delivery可能复用首条审计状态；其失败可在效果已提交后返回503。未配secret的503为不可重试；未配收件箱/普通持久错误503为可重试。事件schema版本不支持在早期阶段仍返回400且retryable=true，其余通常400/401 false；坏保存原文500 false。回执使用事件trace，前置失败使用x-trace-id优先的头trace或trace_unknown；该分支没有响应x-trace-id头，已映射JSON为private,no-store。未知传输/异常不证明未接收，重试须保留原事件和delivery并刷新签名时间。
+
+P0-01/R-001未完成、evidence为空；仅人工源码文档审阅/指定格式/Git文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/SDK/Mock/API/数据库或发布。没有新增接收、重试或客户端行为。
 
 ## 工作台统一查询
 

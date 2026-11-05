@@ -11,6 +11,29 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    plane_webhook_openapi_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only signed Plane webhook OpenAPI and complete event/receipt models; one additional HTTP operation, coverage91. P0-01/R-001 incomplete."
+      artifacts:
+        - "packages/contracts/schemas/plane-webhook.json"
+        - "packages/contracts/openapi/plane-webhook.json"
+        - "packages/contracts/package.json"
+        - "packages/contracts/schemas/README.md"
+        - "packages/contracts/openapi/README.md"
+        - "docs/design/01-contracts/plane-inbox-runtime.md"
+      behavior: "Seven supported Canonical observation event types with aggregate pairing, actual open runtime envelope/payload, existing deletion/restoration constraints, original signed header map, four-state durable receipts and distinct standalone errors."
+      boundaries: "No runtime/connector/SDK/Mock/database/dependency changes. Reuses individual event-schema properties rather than imposing closed root or client_id validation. Nonfatal decoded text is re-encoded for HMAC/raw hash. Source extensions stripped for stored fingerprint but echoed in receipt. Receive, processing and delivery audit are separate transactions;503 may follow committed effects. Duplicate does not repair current projections. Stored result builder does not require terminal last_error_code."
+      evidence: []
+      remaining_scope: "Remaining public/planned WCP and MCP contracts, ordinary business event payloads, event transport bindings, SDK/Mock machine-contract consumption, breaking-change CI and runtime/release evidence."
+      pending_evidence:
+        - "Actual shared-secret/header/body HMAC, timestamp coercion/window and stage-specific trace handling"
+        - "Seven supported type/aggregate pairs, runtime extensions, source normalization and restore arithmetic"
+        - "Original-text signature versus normalized-event fingerprint and scoped delivery/global event binding"
+        - "Receive/effect/audit transaction separation, duplicate/history boundaries and partial failures"
+        - "Queued/terminal/error status shapes and retryability without false no-effect inference"
+        - "Local cross-package schema resource resolution and consumer/tool compatibility"
+      execution: "Manual source/docs review, explicit formatting and Git text checks only; no build, typecheck, tests, validators, generators, product/SDK/Mock/API/database execution or release."
     workbench_query_openapi_development_increment:
       date: "2026-11-05"
       todo: "P0-01"

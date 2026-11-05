@@ -1,8 +1,20 @@
 # 独立契约结构定义
 
+## Plane Webhook
+
+2026-11-05，TODO P0-01：新增 [plane-webhook.json](plane-webhook.json) 与 [Webhook OpenAPI](../openapi/plane-webhook.json) 及两项包子路径，覆盖现有签名Canonical观察接收入口。OpenAPI源码新增一条后累计91路；P0-01/R-001未完成、evidence为空。
+
+根PlaneWebhookEvent完整建模七类受支持观察、配对aggregate类型、当前默认v1封套及payload；PlaneProjectObservation/PlaneWorkItemObservation是类型配对片段，不能单独代替完整事件。通过规范$id复用events包canonical-event的单个字段和work-item-deleted/work-item-restored资源，**不直接继承closed根**：实际validateEvent接受顶层扩展且不校验client_id；occurred_at仅有限Date.parse与Z结尾，不强加RFC格式/毫秒往返。普通payload只独立校验可选external_id，其他内容保持原开放规则；删除只允许external_id，恢复再要求title/status/restored_from及原删除关系。
+
+PlaneWebhookHeaders描述四个签名头与trace选择；时间原文本参与HMAC，Number转换后须安全整数且在正负300秒内，不虚构只允许十进制数字。正文先按接收字节限1MiB，再非严格UTF-8解码；签名和raw_hash处理的是重新UTF-8编码的文本。delivery_id不参与HMAC且在后续快照规范化之后检查词法，header event_id独立绑定原事件。来源type/id/uri只要求非空，revision非负安全整数；来源扩展返回时保留、入库指纹前丢弃，事件顶层扩展则保留。
+
+PlaneWebhookReceipt联合四种闭合回执：Accepted为true且无error；Duplicate/Queued/Rejected为false。Queued的可选error可重试，其余终态error不可重试；正常拒绝路径包含错误，但旧行resultFor只在last_error_code为真时附加，Schema不虚构存储解析器已强制该关系。所有回执durable=true，保留原请求event_id/delivery_id/trace/source_refs；没有data/ETag/游标/队列revision。409既可为持久拒绝回执，也可为独立PlaneWebhookError，二者不能混淆。
+
+本地加载contracts的本Schema及events的canonical-event.json、work-item-deleted.json、work-item-restored.json，按资源原$id登记；无需访问planemem.local，不新增运行依赖或反向包依赖。Schema不核验签名、原文大小、UTF-16/孤立代理项、真实日期、恢复版本算术、请求绑定、数据库历史/事务或网络送达。仅人工源码文档审阅/指定格式/Git文本检查，未编译、类型检查、测试、运行校验器/生成器/SDK/Mock/API/数据库或发布。
+
 ## 工作台统一查询
 
-2026-11-05，TODO P0-01：新增 [workbench-audit.json](workbench-audit.json)、[workbench-admin.json](workbench-admin.json)、[workbench-query.json](workbench-query.json) 和 [统一查询 OpenAPI](../openapi/workbench-query.json)，四项同名包子路径。完整覆盖11种操作，checkpoints另含两种互斥模式；统一HTTP入口只计一条，当前OpenAPI累计90路。P0-01/R-001仍未完成，evidence为空。
+2026-11-05，TODO P0-01：新增 [workbench-audit.json](workbench-audit.json)、[workbench-admin.json](workbench-admin.json)、[workbench-query.json](workbench-query.json) 和 [统一查询 OpenAPI](../openapi/workbench-query.json)，四项同名包子路径。完整覆盖11种操作，checkpoints另含两种互斥模式；该轮统一HTTP入口只计一条、OpenAPI累计90路；当前进度见首节。P0-01/R-001仍未完成，evidence为空。
 
 组合根为WorkbenchQueryRequest，oneOf按operation选择；WorkbenchQueryEnvelope用anyOf，因为响应不带operation且合法形状可能重叠。x-operation-models逐项映射原请求及完整成功，消费者仍需根据原请求选择正确模型并核对范围/trace/筛选。conflicts复用conflict-read的六个原查询属性和完整目录封套；POST的limit是JSON整数，GET的URL数字语法不适用。内置工作项响应、SDK工作项封套、独立GET会话/检查点封套保持各自边界。
 
