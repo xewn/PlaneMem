@@ -1,5 +1,7 @@
 # 同步变化完整分页与有界读取（开发契约）
 
+2026-11-05，TODO P0-01：新增 [同步消费 OpenAPI](../../../packages/contracts/openapi/sync-consumer.json) 与 [完整变化页 Schema](../../../packages/contracts/schemas/sync-changes.json)，复用 [消费者身份 Schema](../../../packages/contracts/schemas/sync-consumer.json)。保留事件与来源扩展字段，明确省略游标与显式零不同、权限过滤导致跳号、逐请求快照和无自动确认；完整业务 payload 尚未建模。有效 canonical 存储事件会展开并核对标识，不符合 canonical 形状的旧记录沿既有 payload 包装路径，不直接视作 canonical 损坏。现有 changes 没有独立父项目可见性查询、canReadSyncStream 检查或读取后到期复查；Policy/事件过滤不能替代这些边界。仅描述源码，未改运行实现或运行接口/校验器/生成器/编译/测试/数据库；P0-01/R-001 未完成、evidence 为空。
+
 2026-11-03：仅源码与文档，未编译、类型检查、测试、调用 SDK/MCP/CLI/API、启动服务、打开数据库、执行迁移或发布。无新依赖/schema/迁移；PostgreSQL 016–049 与先前 SQLite 升级仍未执行，R-005 未完成。
 
 ## 查询与完整页面

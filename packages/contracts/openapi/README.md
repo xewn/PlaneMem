@@ -1,6 +1,18 @@
 # OpenAPI 源码契约
 
-这里的文档描述已有HTTP实现，尚未经过OpenAPI校验器、生成器、编译、类型检查、测试或运行验证。文档中的版本不表示已发布或部署；目前覆盖五个保存包接口、九个文件接口及九个上下文条目接口（详情/历史四路、写入五路），共二十三个接口，尚不是完整WCP接口目录。
+这里的文档描述已有HTTP实现，尚未经过OpenAPI校验器、生成器、编译、类型检查、测试或运行验证。文档中的版本不表示已发布或部署；目前覆盖五个保存包接口、九个文件接口、九个上下文条目接口（详情/历史四路、写入五路）及三个同步消费接口，共二十六个接口，尚不是完整WCP接口目录。
+
+## 同步消费与确认
+
+2026-11-05，TODO **P0-01**：[sync-consumer.json](sync-consumer.json) 描述 GET /v1/sync/changes、GET /v1/sync/cursor 和 POST /v1/sync/ack。包子路径为 `@planemem/contracts/openapi/sync-consumer.json`；本地加载本文件和相邻 context-history OpenAPI，以及 [sync-consumer](../schemas/sync-consumer.json)、[sync-changes](../schemas/sync-changes.json) 两份 Schema，保留相对路径并注册完整 ID。没有执行生成或兼容验证。
+
+变化分页省略 cursor 时从原消费者已确认位置读取，显式 0 才从零读取。每页使用自己的只读一致快照，先按事件权限过滤再分页，允许游标跳号；has_more=true 时返回满页及最后事件位置，否则 next_cursor 为该事务流高水位，包括空页。事件及 SourceRef 的历史扩展字段保留，完整页必须满足范围、递增位置、唯一事件 ID 和逐事件来源拼接关系。读页不会确认位置，也不证明完整业务 payload 有效或客户端已保存。变化路由没有独立父项目可见性查询、canReadSyncStream 门禁或读取后到期检查；现有事件过滤不能等同这些检查。
+
+当前游标读取原 tenant/workspace/project/actor/client 的确认记录，先检查可见未删除父项目。recorded=false/cursor=0/无来源表示无记录，recorded=true/cursor=0/单来源表示已明确确认到零；此接口不查流高水位，不返回原请求回执。确认正文精确为 `{expected_identity,cursor}`，完整身份必须匹配可信会话；锁住可见父项目后检查高水位并单调更新，拒绝回退，相同值不刷新 updated_at。完整成功在写前准备，提交后仍复查会话，故最后的拒绝或响应丢失可能发生在已提交之后。保留原身份和目标，当前位点只能说明当前覆盖范围，不能证明某次请求因果或本地页已落盘。
+
+三路均经可信客户端认证与 Policy；配置 OPA 时其决定替代本地 Policy 判断，cursor/ack 仍有独立 sync.read/admin 和到期检查，受限 SQL 过滤需实际 data.restricted.read。变化查询 4 KiB、完整页 4 MiB；本地身份请求/确认正文 16 KiB、完整游标/确认成功 32 KiB，完整结果确实经过共享解析。确认仍先走认证前通用 1 MiB JSON 解析，早期坏正文返回 400；客户端错误 16 KiB、等待/取消预算不构成服务端统一期限或数据库取消保证。精确禁止头、身份头配对差异和错误映射见 OpenAPI；无 ETag、版本条件或自动重试承诺。
+
+本轮仅机器契约源码，不改运行实现、SDK/Mock 或数据库；P0-01/R-001 未完成，evidence 为空。仅人工源码文档审阅、指定格式和 Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 ## 上下文条目写入
 

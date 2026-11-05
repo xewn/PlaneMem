@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/sync-consumer.json",
+  "title": "Sync consumer identity, current cursor and explicit acknowledgement v1",
+  "description": "Complete current-cursor or acknowledgement success envelopes. A current cursor is consumer state, not an original command receipt, stream high-water mark or proof of local persistence.",
+  "$comment": "Source-only schema matching sync-command-context.ts identity and sync-cursor.ts. Runtime additionally checks UTF-16 limits, Unicode scalars, ordinary finite JSON, depth 64/100000 nodes, exact original identity/scope/trace/target/source equality and valid calendar expiry. Shared parser budgets are 16 KiB request and 32 KiB complete success. JSON Schema does not authenticate a consumer, establish future permission or prove a write outcome.",
+  "oneOf": [{ "$ref": "#SyncCursorEnvelope" }, { "$ref": "#SyncAcknowledgementEnvelope" }],
+  "$defs": {
+    "cursor": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "\\S",
+      "not": { "pattern": "[\\u0000-\\u001f]" },
+      "$comment": "isSyncIdentifier additionally rejects lone surrogates and measures UTF-16 units. DEL and literal dot identifiers are not rejected by this generic event identifier; scope narrows dot values separately."
+    },
+    "scopeId": { "$ref": "#/$defs/identifier", "not": { "enum": [".", ".."] } },
+    "identityText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "\\S",
+      "not": { "pattern": "[\\u0000-\\u001f\\u007f]" },
+      "$comment": "Actor/client/trace text: preserve exact original string, no trimming. Runtime rejects lone surrogates and counts UTF-16 units."
+    },
+    "timestamp": {
+      "type": "string",
+      "minLength": 24,
+      "maxLength": 24,
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$",
+      "$comment": "Exact valid UTC millisecond round-trip is required by the parser. Unlike some item-history timestamps, this parser does not accept extended years. Expiry still being future is enforced separately by the caller/handler."
+    },
+    "SyncCommandIdentity": {
+      "$anchor": "SyncCommandIdentity",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant_id", "workspace_id", "project_id", "actor_id", "client_id"],
+      "properties": {
+        "tenant_id": { "$ref": "#/$defs/scopeId" },
+        "workspace_id": { "$ref": "#/$defs/scopeId" },
+        "project_id": { "$ref": "#/$defs/scopeId" },
+        "actor_id": { "$ref": "#/$defs/identityText" },
+        "client_id": { "$ref": "#/$defs/identityText" }
+      },
+      "description": "Exact five-field original consumer identity. General identifiers, not necessarily ULIDs. It supplies equality preconditions, never credentials or identity overrides."
+    },
+    "SyncCursorQuery": {
+      "$anchor": "SyncCursorQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "expected_identity": { "$ref": "#SyncCommandIdentity" } },
+      "description": "SDK/MCP local selection; HTTP GET has no query/body fields. Original scope goes in scope headers and optional actor/client precondition headers. Gateway command input must be empty."
+    },
+    "SyncCursorHttpQuery": {
+      "$anchor": "SyncCursorHttpQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Empty decoded HTTP query. The local optional identity is not a URL query or GET body."
+    },
+    "SyncAcknowledgement": {
+      "$anchor": "SyncAcknowledgement",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expected_identity", "cursor"],
+      "properties": {
+        "expected_identity": { "$ref": "#SyncCommandIdentity" },
+        "cursor": { "$ref": "#/$defs/cursor" }
+      },
+      "description": "Explicit saved identity and exact nonnegative target. No client_id alias, request key, expected_version, event payload or implicit current-session substitution. Server cannot prove the caller persisted the corresponding pages."
+    },
+    "cursorSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "const": "sync-cursor" },
+        "id": { "type": "string", "minLength": 3, "maxLength": 1041 }
+      },
+      "$comment": "Exactly identity.client_id + ':' + String(cursor); client IDs may themselves contain colons. No URI decoding, parsing of a different identity or revision field."
+    },
+    "SyncCursorEnvelope": {
+      "$anchor": "SyncCursorEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "server_cursor", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "#/$defs/identityText" },
+        "source_refs": {
+          "type": "array",
+          "maxItems": 1,
+          "items": { "$ref": "#/$defs/cursorSource" }
+        },
+        "server_cursor": { "$ref": "#/$defs/cursor" },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["identity", "cursor", "recorded", "expires_at", "permissions"],
+          "properties": {
+            "identity": { "$ref": "#SyncCommandIdentity" },
+            "cursor": { "$ref": "#/$defs/cursor" },
+            "recorded": { "type": "boolean" },
+            "expires_at": { "$ref": "#/$defs/timestamp" },
+            "permissions": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["acknowledge_sync"],
+              "properties": { "acknowledge_sync": { "const": true } }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "data": { "properties": { "recorded": { "const": false } }, "required": ["recorded"] }
+            },
+            "required": ["data"]
+          },
+          "then": {
+            "properties": {
+              "server_cursor": { "const": 0 },
+              "source_refs": { "maxItems": 0 },
+              "data": { "properties": { "cursor": { "const": 0 } } }
+            }
+          },
+          "else": { "properties": { "source_refs": { "minItems": 1 } } }
+        }
+      ],
+      "$comment": "server_cursor=data.cursor. No record is false/0/empty sources; recorded confirmation of zero is true/0/one source. Identity matches scope and any saved expected identity; trace is this read. Permissions/expiry are current session hints. No revision/etag/server high-water or original request history."
+    },
+    "SyncAcknowledgementEnvelope": {
+      "$anchor": "SyncAcknowledgementEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "server_cursor", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "#/$defs/identityText" },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": { "$ref": "#/$defs/cursorSource" }
+        },
+        "server_cursor": { "$ref": "#/$defs/cursor" },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["identity", "client_id", "cursor"],
+          "properties": {
+            "identity": { "$ref": "#SyncCommandIdentity" },
+            "client_id": { "$ref": "#/$defs/identityText" },
+            "cursor": { "$ref": "#/$defs/cursor" }
+          }
+        }
+      },
+      "$comment": "Identity equals original expected_identity; data.client_id=identity.client_id; both cursors equal original requested target; source binds that client/target. Complete response is prepared before writing, returned after commit and session check. No original request key, replay flag, expiry, revision or ETag. Another acknowledgement may advance current state afterward."
+    }
+  }
+}

@@ -1,5 +1,11 @@
 # 独立契约结构定义
 
+2026-11-05，TODO **P0-01**：新增 `sync-consumer.json` 和 `sync-changes.json`。前者根为当前游标/确认完整成功互斥联合，提供 `SyncCommandIdentity`、本地 `SyncCursorQuery`、空 HTTP `SyncCursorHttpQuery`、`SyncAcknowledgement` 及两种完整成功锚点；后者根为 `SyncChangesEnvelope`，提供解码数字查询、本地可选原身份请求和 `SyncChange`。两份 Schema 需按完整 ID 注册；变化 Schema 仅依赖 consumer Schema。三个 HTTP 操作由相邻 openapi/sync-consumer.json 描述。
+
+变化 cursor 不设默认值：省略时读取当前确认位置，显式 0 有不同含义。外层/分页对象封闭，事件、payload 和 SourceRef 保留历史扩展；SourceRef 仅要求非空 type/id、可选安全 revision/非空 uri，不增加 trim 或 URI 有效性要求。跨字段范围相等、游标严格递增、事件 ID 唯一、完整来源拼接及请求 limit 对应由现有解析器检查，不声称 Schema 可独立证明。记录不存在与已确认到零分别为 false/0/无来源和 true/0/单来源；确认结果绑定完整原身份/目标，不是原请求历史回执。
+
+Schema 字符长度与运行时 UTF-16 长度、普通有限 JSON、Unicode 标量、深度/节点/字节预算仍有区别。日期需四位年份 UTC 毫秒及真实日历回环。当前会话权限、数据库提交、客户端持久化和跨字段源 ID 相等均需运行逻辑；机器结构不替代这些判断。P0-01/R-001 未完成、evidence 为空，仅源码文档人工审阅/指定格式/Git 文本检查，未运行校验器、生成器、编译、测试、接口或数据库。
+
 2026-11-05，TODO **P0-01**：新增 `context-item-write.json`，根为创建/编辑/归档/恢复/确认五类完整成功封套互斥联合；每类提供 `Context*Body` 与 `Context*Envelope` 锚点，另有完整 `ContextItemMutationReceipt`。请求定义原HTTP正文，不冒充规范化后的存储对象；头/正文至少一处原键、非创建至少一处版本及多处一致须运行时检查。默认值仅注解，trim、confidence舍入、日期规范和跨请求指纹仍由原实现完成。
 
 编辑必须提供实际字段而非仅控制值，创建禁止自定ID/状态，恢复/归档只接受控制值，确认需要原理由。原写来源使用1–32条及各自文字限额，保留未固定/零revision的结构兼容；人工确认才检查本地固定正版本。仅非创建正文的可选 item_id 被旧路由无条件覆盖，因此刻意用任意JSON描述这个忽略字段；它不是来源或正文的泛化空模型。原键校验沿既有非空/无空白/255 UTF-16限制，不冒称额外控制字符防护。

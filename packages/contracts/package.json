@@ -8,6 +8,9 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./schemas/sync-consumer.json": "./schemas/sync-consumer.json",
+    "./schemas/sync-changes.json": "./schemas/sync-changes.json",
+    "./openapi/sync-consumer.json": "./openapi/sync-consumer.json",
     "./schemas/context-item-write.json": "./schemas/context-item-write.json",
     "./openapi/context-item-writes.json": "./openapi/context-item-writes.json",
     "./schemas/context-item-read.json": "./schemas/context-item-read.json",

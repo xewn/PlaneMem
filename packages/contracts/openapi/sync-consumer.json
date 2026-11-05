@@ -1,0 +1,274 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem sync changes and consumer acknowledgements",
+    "version": "0.1.0",
+    "description": "Source-only contract for GET changes, GET current consumer cursor and POST explicit acknowledgement. Load this and context-history OpenAPI for shared response components, plus sync-consumer and sync-changes schemas under their full IDs. No tool/runtime compatibility evidence or complete WCP/event-business-payload coverage."
+  },
+  "servers": [
+    { "url": "/", "description": "Relative Gateway base; configure actual origin and base path." }
+  ],
+  "security": [{ "GatewayBearer": [] }],
+  "tags": [{ "name": "Sync consumption" }],
+  "x-todo": "P0-01",
+  "x-source-boundaries": {
+    "decoded-changes-query-bytes": 4096,
+    "local-identity-request-bytes": 16384,
+    "complete-changes-success-bytes": 4194304,
+    "complete-cursor-ack-success-bytes": 32768,
+    "legacy-raw-post-body-bytes": 1048576,
+    "client-error-bytes": 16384,
+    "description": "Gateway invokes shared finite-JSON parsers for complete changes and cursor/ack results (depth64/100000 nodes); oversized results fail whole, not truncate. Ack's 16 KiB decoded command is checked after the generic raw 1 MiB body parser, which runs before authentication and is not a fatal UTF-8 decoder. Output budgets do not bound database loading, raw URL allocation or transport headers. Dedicated SDK/MCP local waits, cancellation and capacities are not HTTP server whole-operation deadlines or SQL cancellation guarantees. These HTTP operations have no dedicated two-slot/30-second gate; client 16 KiB errors are not a uniform Gateway error limit."
+  },
+  "paths": {
+    "/v1/sync/changes": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "get": {
+        "operationId": "getSyncChanges",
+        "tags": ["Sync consumption"],
+        "summary": "Read a complete page without advancing acknowledgement",
+        "description": "Require verified Bearer scope/client and Policy sync.read. Read in a repeatable-read read-only transaction. Omitted cursor uses this actor/client's stored acknowledgement, or zero if absent; explicit zero starts from zero. Reject cursor ahead of the transaction high-water mark. Query visible events in ascending cursor order with limit+1 lookahead. Event-specific filters consult current conflicts/upload sources, saved ContextPacks, current ContextItems or proposals plus historical sensitivity as implemented. Item lifecycle events can remain visible when archived; no universal current-source freshness/approval proof. Restricted-capable readers also pass the generic-event fallback; without it, legacy event types use their specific source filters. Unlike cursor/ack, this handler has no independent parent-project visibility lookup or post-read session check, and no separate canReadSyncStream capability gate beyond Policy. Scope authentication and event filters must not be described as those missing checks.",
+        "x-wcp-operation": "sync.changes",
+        "x-policy-action": "sync.read",
+        "x-decoded-query-schema": { "$ref": "../schemas/sync-changes.json#SyncChangesQuery" },
+        "x-local-request-schema": { "$ref": "../schemas/sync-changes.json#SyncChangesRequest" },
+        "x-http-input": "Only cursor and limit, each at most once. URL values must be digits-only safe integers; leading zeros are accepted and decoded numerically. Reject Transfer-Encoding and Content-Length except absent or exactly 0. Reject Idempotency-Key, If-Match, If-Match-Version, Range, If-Range, If-None-Match, If-Modified-Since and If-Unmodified-Since. Content-Encoding/X-Expected-Version are not included in this route's explicit forbidden list. No ETag, 206 or 304 support. Optional expected actor/client headers are independently allowed, unlike ack's pair rule.",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Optional exclusive position. Omission means current stored acknowledgement, not an unconditional zero default. One digits-only string on wire, allowing leading zeros; no sign, fraction or exponent.",
+            "schema": { "$ref": "../schemas/sync-consumer.json#/$defs/cursor" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Default100, range1..500; one digits-only safe integer. Leading zeros are accepted, but zero is rejected by the shared query parser.",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 500, "default": 100 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Complete bounded page, preserving legacy event/source extra fields. Event IDs are unique, positions ascend, outer sources concatenate event sources without deduplication, and outer server_cursor equals next_cursor. If has_more=true, return exactly limit entries and last event cursor; otherwise next_cursor is the transaction high-water mark, including on an empty filtered page. Gaps do not mean lost transport data. Each next page has a new snapshot. Valid canonical stored records are expanded; noncanonical legacy payloads are wrapped as payload, not rejected solely for lacking canonical shape. accepted=true does not prove client application/persistence or business-payload validity.",
+            "headers": {
+              "cache-control": { "$ref": "context-history.json#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "context-history.json#/components/headers/SuccessTrace" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "../schemas/sync-changes.json#SyncChangesEnvelope" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "context-history.json#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "409": { "$ref": "#/components/responses/CursorGap" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/sync/cursor": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "get": {
+        "operationId": "getSyncCursor",
+        "tags": ["Sync consumption"],
+        "summary": "Read the current acknowledgement for the exact consumer",
+        "description": "Require verified unexpired client with sync.read or admin plus Policy. A repeatable-read read-only transaction joins the visible nondeleted parent project to the acknowledgement keyed by tenant/workspace/project/actor/client. Restricted parent needs actual data.restricted.read. Missing/hidden parent is 404, not an invented zero. Return current acknowledgement state without scanning events or comparing it to the stream high-water mark. Session/identity eligibility is checked before and after reading and after response validation. A state at or beyond an old target can come from another acknowledgement; a smaller/absent state does not prove an in-flight old write will never commit. Never replace a saved consumer identity with a new session's identity to reconcile an unknown result.",
+        "x-wcp-operation": "sync.cursor",
+        "x-policy-action": "sync.read",
+        "x-decoded-query-schema": { "$ref": "../schemas/sync-consumer.json#SyncCursorHttpQuery" },
+        "x-local-request-schema": { "$ref": "../schemas/sync-consumer.json#SyncCursorQuery" },
+        "x-http-input": "No query or GET body. Reject Transfer-Encoding and Content-Length except absent/exactly0. Reject Idempotency-Key, If-Match, If-Match-Version, If-None-Match, If-Modified-Since, If-Unmodified-Since, Range and If-Range. Content-Encoding/X-Expected-Version are not explicitly forbidden by this guard. Expected actor/client headers are independently optional; SDK can map a full saved identity to them and scope headers. No ETag/conditional response.",
+        "responses": {
+          "200": {
+            "description": "Complete32KiB-or-smaller cursor state. recorded=false means cursor0 and no sources; explicitly acknowledging0 yields recorded=true/cursor0 with one source. Identity is complete and expiry/acknowledge_sync are current session hints. Both server_cursor and data.cursor are the consumer acknowledgement, not stream high-water. No original request receipt or ETag/revision.",
+            "headers": {
+              "cache-control": { "$ref": "context-history.json#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "context-history.json#/components/headers/SuccessTrace" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "../schemas/sync-consumer.json#SyncCursorEnvelope" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "context-history.json#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/sync/ack": {
+      "parameters": [
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "post": {
+        "operationId": "acknowledgeSync",
+        "tags": ["Sync consumption"],
+        "summary": "Explicitly acknowledge a saved target for its original consumer",
+        "description": "Require verified unexpired client with sync.read or admin plus Policy. Body.expected_identity must match all five authenticated identity fields. Prepare and validate the complete success envelope before writing. In a transaction, lock the visible nondeleted parent FOR SHARE, validate nonnegative safe stream high-water, reject an ahead target and upsert the five-field consumer acknowledgement monotonically. Equal target succeeds without advancing updated_at; lower than saved returns CURSOR_REGRESSION. Validate exactly one returned decimal cursor equal to the target; recheck reader eligibility before writing and before transaction completion. Handler checks again after commit, so even a later DENIED/connection failure can follow a committed acknowledgement. No event, payload application, upload-outbox change, request-key ledger or original acknowledgement receipt is created.",
+        "x-wcp-operation": "sync.ack",
+        "x-policy-action": "sync.read",
+        "x-http-input": "POST JSON only: application/json optionally with only charset=utf-8 (quoted or unquoted, case-insensitive). No URL query. Reject Idempotency-Key, If-Match, If-Match-Version, Range, If-Range, If-None-Match, If-Modified-Since, If-Unmodified-Since and Content-Encoding. If either expected actor/client header is supplied, both must be supplied and match; neither header is mandatory because complete body expected_identity always is. Generic1MiB JSON parsing precedes authentication/media checks; decoded command later has16KiB shared bound. No strict fatal UTF-8 or dedicated16KiB streaming/body deadline is claimed.",
+        "x-unknown-outcome": "Keep original identity and target after timeout/cancellation/commit or response uncertainty. SDK dispatch_state=not-sent/unknown is adapter metadata, not an HTTP server field or proof of rollback. Explicitly reading current cursor can show current coverage, never causality of one original request or proof of local page persistence. No automatic ack, fallback to zero, identity replacement or retry with a changed target.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/sync-consumer.json#SyncAcknowledgement" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Complete prevalidated32KiB-or-smaller envelope returned after the transaction and final eligibility check. Full identity/client/target and one sync-cursor source bind to the original command. Both cursors equal requested target, including zero. It proves this operation returned that acknowledgement; it does not prove local persistence, event application or that another writer has not advanced the consumer since. No ETag/revision/replayed flag or historical request key.",
+            "headers": {
+              "cache-control": { "$ref": "context-history.json#/components/headers/NoStore" },
+              "x-trace-id": { "$ref": "context-history.json#/components/headers/SuccessTrace" }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "../schemas/sync-consumer.json#SyncAcknowledgementEnvelope" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "context-history.json#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/AckConflict" },
+          "429": { "$ref": "#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "GatewayBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "All HTTP routes require a verified token, nonblank authenticated client and exact authorized scope claims/configured fallback scope. Local Policy uses sync.read/admin and expiry; configured OPA supplies authorizeWithOpa's decision instead. Cursor/ack additionally enforce canReadSyncStream (verified client, finite future expiry, sync.read/admin) independently and around persistence; changes does not add that gate or after-read check. SQL restricted checks require actual data.restricted.read, not admin alone. Policy decision observation precedes handler dispatch and does not prove read success, persistence or acknowledgement outcome."
+      }
+    },
+    "parameters": {
+      "TenantId": {
+        "name": "x-tenant-id",
+        "in": "header",
+        "required": true,
+        "schema": { "$ref": "../schemas/sync-consumer.json#/$defs/scopeId" },
+        "description": "Exact authorized tenant. General sync identifier, not restricted to ULIDs. Shared identity/result parsers enforce these lexical rules; generic HTTP scope authentication itself checks nonempty equality."
+      },
+      "WorkspaceId": {
+        "name": "x-workspace-id",
+        "in": "header",
+        "required": true,
+        "schema": { "$ref": "../schemas/sync-consumer.json#/$defs/scopeId" },
+        "description": "Exact authorized workspace, with the same HTTP/shared-parser distinction as tenant."
+      },
+      "ProjectId": {
+        "name": "x-project-id",
+        "in": "header",
+        "required": true,
+        "schema": { "$ref": "../schemas/sync-consumer.json#/$defs/scopeId" },
+        "description": "Exact authorized project, also matching any saved consumer identity. Cursor/ack check parent visibility; changes has only its existing event-specific filters."
+      },
+      "TraceParent": {
+        "name": "traceparent",
+        "in": "header",
+        "schema": { "type": "string" },
+        "description": "Nonempty opaque value overrides x-trace-id; generic boundary does not parse W3C or require the two to agree. Supply a shared-parser-compatible nonblank trace <=1024 UTF-16 units without controls/DEL/lone surrogates."
+      },
+      "TraceId": {
+        "name": "x-trace-id",
+        "in": "header",
+        "schema": { "type": "string" },
+        "description": "Used if traceparent is empty/absent; otherwise server generates trace_http_<ULID> when both are empty/absent. Complete response parsers apply stricter trace rules."
+      },
+      "ExpectedActorId": {
+        "name": "x-expected-actor-id",
+        "in": "header",
+        "schema": { "type": "string" },
+        "description": "Exact precondition on verified actor. Independently optional for GET; on ack, supply both actor/client headers or neither. Full body expected_identity remains required for ack."
+      },
+      "ExpectedClientId": {
+        "name": "x-expected-client-id",
+        "in": "header",
+        "schema": { "type": "string" },
+        "description": "Exact precondition on verified client; same pair rule as ExpectedActorId. Never an identity input or replacement for saved scope."
+      }
+    },
+    "responses": {
+      "Error": {
+        "$ref": "context-history.json#/components/responses/Error",
+        "description": "Application error without partial page or automatic cursor update/fallback. Early authentication/input errors may omit x-trace-id/WWW-Authenticate; proxy/parser failures can have other representations. An ack error after commit need not mean rollback. Client dispatch_state hints are not promised by this HTTP envelope."
+      },
+      "BadInput": {
+        "$ref": "#/components/responses/Error",
+        "description": "INVALID_INPUT for query/body/identity/target/media type or forbidden conditions; INVALID_REQUEST_CONTEXT can arise from generic precondition parsing; retryable=false. Ack's early generic body parser returns400 INVALID_JSON for malformed/non-object/empty/over1MiB data, not413. Shared decoded16KiB overflow returns INVALID_INPUT."
+      },
+      "Denied": {
+        "$ref": "#/components/responses/Error",
+        "description": "DENIED for unauthorized scope, actor/client preconditions, missing verified client, Policy/OPA or cursor/ack reader eligibility/expiry and body identity mismatch; retryable=false. Ack can fail the final eligibility check after commit, so preserve its original target."
+      },
+      "NotFound": {
+        "$ref": "#/components/responses/Error",
+        "description": "NOT_FOUND for missing/deleted/invalid-classification/restricted-invisible parent in cursor/ack, retryable=false. Changes does not perform this independent parent lookup and must not be described as guaranteeing the same404."
+      },
+      "CursorGap": {
+        "$ref": "#/components/responses/Error",
+        "description": "CURSOR_GAP when explicit cursor or omitted-cursor stored acknowledgement exceeds stream high-water; details contain requested_cursor/current_cursor. retryable=false, no implicit restart from zero."
+      },
+      "AckConflict": {
+        "$ref": "#/components/responses/Error",
+        "description": "CURSOR_GAP if target exceeds stream high-water, or CURSOR_REGRESSION if a valid target is below the currently saved acknowledgement. retryable=false. Equality succeeds without timestamp advance. Keep original identity/target and explicitly read current state if needed."
+      },
+      "RateLimited": {
+        "$ref": "#/components/responses/Error",
+        "description": "RATE_LIMITED from general actor/path limiter; retryable=true. No dedicated HTTP sync-capacity error or Retry-After guarantee."
+      },
+      "InvalidStored": {
+        "$ref": "#/components/responses/Error",
+        "description": "SYNC_EVENT_INVALID for a valid canonical stored event with mismatched stream identity; SYNC_CHANGES_INVALID for invalid/oversized complete page; SYNC_CURSOR_INVALID for reader identity, stored cursor/high-water, returned write cursor or complete response representation. These use retryable=false. Unexpected command-boundary INTERNAL_ERROR defaults retryable=true. Invalid canonical shape alone can follow the legacy wrapping path."
+      },
+      "Unavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "SYNC_STORAGE_UNAVAILABLE for missing database or non-ContractError storage failure, WORKBENCH_AUTH_UNAVAILABLE or AUDIT_PERSISTENCE_UNAVAILABLE at outer boundaries; retryable=true. No in-memory fallback or invented zero cursor. Preserve acknowledgement outcome uncertainty."
+      }
+    }
+  }
+}

@@ -1,5 +1,7 @@
 # 公共契约目录
 
+- [同步消费与确认 OpenAPI](../../../packages/contracts/openapi/README.md#同步消费与确认)：TODO P0-01，变化分页、当前位点与显式确认三路及完整 Schema；区分流高水位、消费者确认和本地持久化，仅描述现有实现，未执行运行校验。
+
 - [上下文条目五类写入 OpenAPI](../../../packages/contracts/openapi/README.md#上下文条目写入)：TODO P0-01，原正文/完整命令回执、键/版本约束与人工确认语义；仅描述现存实现及缺口，未执行写入或运行校验。
 
 - [当前与归档上下文详情 OpenAPI](../../../packages/contracts/openapi/README.md#当前与归档上下文详情)：TODO P0-01，两路详情及完整来源检查/确认准备/ETag Schema；仅描述既有实现，未运行接口或校验器。

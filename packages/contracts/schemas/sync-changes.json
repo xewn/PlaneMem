@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/sync-changes.json",
+  "title": "Complete sync change pages v1",
+  "description": "A bounded complete stream page. Reading does not acknowledge, apply payloads or prove local persistence. Legacy event payloads and extra historical fields remain reference data.",
+  "$comment": "Source-only companion to sync-changes.ts. Register this and sync-consumer.json under full IDs. Runtime enforces 4 KiB decoded query, 16 KiB local request with optional identity and 4 MiB complete envelope, ordinary finite JSON/depth64/100000 nodes, UTF-16/Unicode limits, exact scope/trace, ordered unique event positions and exact flattened sources. No full business-event validation or authentication is implied by this schema.",
+  "$ref": "#SyncChangesEnvelope",
+  "$defs": {
+    "SyncChangesQuery": {
+      "$anchor": "SyncChangesQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cursor": { "$ref": "sync-consumer.json#/$defs/cursor" },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 500, "default": 100 }
+      },
+      "description": "Decoded HTTP numeric query. Omitted cursor resumes from the authenticated consumer's current acknowledgement, or zero if absent; explicit cursor=0 reads from zero. Omission must not be normalized to a schema default of zero."
+    },
+    "SyncChangesRequest": {
+      "$anchor": "SyncChangesRequest",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cursor": { "$ref": "sync-consumer.json#/$defs/cursor" },
+        "limit": { "$ref": "#/$defs/SyncChangesQuery/properties/limit" },
+        "expected_identity": { "$ref": "sync-consumer.json#SyncCommandIdentity" }
+      },
+      "description": "Local SDK/MCP request including optional saved consumer identity. HTTP only sends cursor/limit in URL; identity maps to scope and actor/client precondition headers, never an expected_identity query string."
+    },
+    "sourceRef": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "minLength": 1 },
+        "revision": { "$ref": "sync-consumer.json#/$defs/cursor" },
+        "uri": { "type": "string", "minLength": 1 }
+      },
+      "$comment": "Matches validateSourceRef: known strings are nonempty, not required to be trimmed or valid URIs; optional revision is a nonnegative safe integer. Historical extra source fields are preserved and participate in outer-source equality, so do not replace this with the closed item-history SourceRef."
+    },
+    "SyncChange": {
+      "$anchor": "SyncChange",
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "event_id",
+        "event_type",
+        "trace_id",
+        "source_refs",
+        "accepted",
+        "server_cursor",
+        "payload"
+      ],
+      "properties": {
+        "event_id": { "$ref": "sync-consumer.json#/$defs/identifier" },
+        "event_type": { "$ref": "sync-consumer.json#/$defs/identifier" },
+        "trace_id": { "$ref": "sync-consumer.json#/$defs/identityText" },
+        "source_refs": { "type": "array", "items": { "$ref": "#/$defs/sourceRef" } },
+        "accepted": { "const": true },
+        "server_cursor": { "$ref": "sync-consumer.json#/$defs/cursor", "minimum": 1 },
+        "payload": { "type": "object", "additionalProperties": true },
+        "tenant_id": { "$ref": "sync-consumer.json#/$defs/scopeId" },
+        "workspace_id": { "$ref": "sync-consumer.json#/$defs/scopeId" },
+        "project_id": { "$ref": "sync-consumer.json#/$defs/scopeId" }
+      },
+      "$comment": "When present, event scope fields equal the page scope. Event IDs are unique within the page; cursors strictly ascend beyond an explicit input cursor (shared parser uses zero when omitted) and never exceed next_cursor. Saved trace may differ from request trace. This intentionally is not a full CanonicalEvent union: Gateway expands valid canonical stored records, but wraps noncanonical legacy records as payload and preserves extras. accepted=true is stream acceptance, not successful client application or approval."
+    },
+    "SyncChangesEnvelope": {
+      "$anchor": "SyncChangesEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "server_cursor", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "sync-consumer.json#/$defs/identityText" },
+        "source_refs": { "type": "array", "items": { "$ref": "#/$defs/sourceRef" } },
+        "server_cursor": { "$ref": "sync-consumer.json#/$defs/cursor" },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "tenant_id",
+            "workspace_id",
+            "project_id",
+            "changes",
+            "next_cursor",
+            "has_more"
+          ],
+          "properties": {
+            "tenant_id": { "$ref": "sync-consumer.json#/$defs/scopeId" },
+            "workspace_id": { "$ref": "sync-consumer.json#/$defs/scopeId" },
+            "project_id": { "$ref": "sync-consumer.json#/$defs/scopeId" },
+            "changes": { "type": "array", "maxItems": 500, "items": { "$ref": "#SyncChange" } },
+            "next_cursor": { "$ref": "sync-consumer.json#/$defs/cursor" },
+            "has_more": { "type": "boolean" }
+          },
+          "allOf": [
+            {
+              "if": { "properties": { "has_more": { "const": true } }, "required": ["has_more"] },
+              "then": {
+                "properties": { "changes": { "minItems": 1 }, "next_cursor": { "minimum": 1 } }
+              }
+            }
+          ]
+        }
+      },
+      "$comment": "Outer server_cursor=data.next_cursor>=explicit input cursor, count<=requested/default limit. With has_more=true, count equals limit and next_cursor is the last event cursor; otherwise Gateway uses the transaction's high-water mark, even on an empty filtered page. Outer sources exactly concatenate each event's source_refs in event order, retaining duplicates and extra fields; JSON object-key ordering is irrelevant. Each page has its own database snapshot. No identity echo beyond scope, ETag, revision, automatic acknowledgement or complete-history promise."
+    }
+  }
+}

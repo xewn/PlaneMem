@@ -11,6 +11,27 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    sync_consumer_openapi_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only changes/current-cursor/ack OpenAPI and complete request/response schemas; P0-01 and R-001 remain incomplete."
+      artifacts:
+        - "packages/contracts/openapi/sync-consumer.json"
+        - "packages/contracts/schemas/sync-consumer.json"
+        - "packages/contracts/schemas/sync-changes.json"
+        - "packages/contracts/package.json"
+        - "packages/contracts/openapi/README.md"
+        - "packages/contracts/schemas/README.md"
+      behavior: "Three existing routes, exact original consumer identity, omitted versus zero cursor, open historical event/source extensions, complete ordered pages and flattened sources. Current state distinguishes absent record from explicit zero acknowledgement. Ack checks visible parent/high-water and monotonic target, prepares full success before write, then checks eligibility after commit; errors can follow persistence."
+      boundaries: "No runtime/SDK/Mock/database changes. Changes lacks independent parent visibility and post-read eligibility checks; configured OPA replaces local Policy. Shared 4 KiB query/4 MiB page and 16 KiB command/32 KiB success bounds differ from pre-auth raw 1 MiB JSON parsing and client wait/error budgets. Current cursor is not original request causality or local page persistence evidence."
+      evidence: []
+      remaining_scope: "Other WCP/MCP machine contracts, complete business event payloads, SDK/Mock machine-contract consumption, breaking-change CI and tool/runtime/release evidence."
+      pending_evidence:
+        - "Local references, open event/source extensions, identity and cursor cross-field constraints"
+        - "Omitted versus explicit zero, filtered empty/full pages, unique ordered events and exact flattened sources"
+        - "Absent versus acknowledged zero, monotonic equality/regression/gap, original identity and postcommit uncertainty"
+        - "Policy/parent/read-boundary differences, HTTP header rules and complete error mapping"
+      execution: "Manual source/docs review plus explicit formatting/Git text checks only; no build, typecheck, tests, validators, generators, product/API/database execution or release."
     context_item_writes_openapi_development_increment:
       date: "2026-11-05"
       todo: "P0-01"

@@ -1,5 +1,7 @@
 # 原消费者确认与当前游标读取（开发契约）
 
+2026-11-05，TODO P0-01：新增 [同步消费 OpenAPI](../../../packages/contracts/openapi/sync-consumer.json) 和 [消费者 Schema](../../../packages/contracts/schemas/sync-consumer.json)，定义当前位点空 HTTP 查询、本地原身份选择、明确确认正文及两类完整成功。无记录和已确认到零分别保留 recorded=false/true；读取不比较流高水位，确认同值不刷新 updated_at，回退拒绝。确认提交后的最后会话检查可能拒绝已写入结果，须保留原身份/目标；当前位点不是原请求回执或本地保存证明。精确记录 GET 身份头独立可选、POST 头成对或均省略、认证前通用 1 MiB 正文与共享 16 KiB/32 KiB 预算差异。仅源码契约，不改运行实现；未编译、类型检查、测试、运行校验器/生成器/接口/数据库或发布，P0-01/R-001 未完成、evidence 为空。
+
 2026-11-03：仅源码与文档，未编译、类型检查、测试、调用 SDK/MCP/CLI/API、打开数据库、执行迁移、运行服务或发布。复用 014_sync_acknowledgements，无新依赖/schema/迁移；PostgreSQL 016–049 与先前 SQLite 升级仍未执行，R-005 未完成。
 
 ## 原身份与明确确认

@@ -1,6 +1,8 @@
 # PlaneMem
 
-按 TODO **P0-01** 补充[上下文条目五类写入 OpenAPI](packages/contracts/openapi/README.md#上下文条目写入)及原正文/完整回执 Schema，覆盖创建、编辑、归档、恢复和人工确认，明确原键重放、版本前置条件与确认来源检查。现有 OpenAPI 源码覆盖二十三个接口（保存包五路、文件九路、条目读写九路）；完整 WCP/MCP、SDK/Mock 机器契约接线和验收证据仍待补。未编译、测试、运行校验器/生成器/接口或发布。
+按 TODO **P0-01** 补充[同步消费与确认 OpenAPI](packages/contracts/openapi/README.md#同步消费与确认)及两份完整 Schema，覆盖变化分页、当前确认位点、显式确认。区分省略游标与零、读页与确认、无记录与确认到零，保留原身份及未知提交结果。现有 OpenAPI 源码覆盖二十六个接口（保存包五路、文件九路、条目读写九路、同步消费三路）；完整 WCP/MCP、SDK/Mock 机器契约接线与验收证据仍待补。未编译、测试、运行校验器/生成器/接口或发布。
+
+按 TODO **P0-01** 补充[上下文条目五类写入 OpenAPI](packages/contracts/openapi/README.md#上下文条目写入)及原正文/完整回执 Schema，覆盖创建、编辑、归档、恢复和人工确认，明确原键重放、版本前置条件与确认来源检查。该轮使 OpenAPI 源码覆盖二十三个接口（保存包五路、文件九路、条目读写九路）；完整 WCP/MCP、SDK/Mock 机器契约接线和验收证据仍待补。未编译、测试、运行校验器/生成器/接口或发布。
 
 按 TODO **P0-01** 补充[当前与归档上下文详情 OpenAPI](packages/contracts/openapi/README.md#当前与归档上下文详情)及完整 Schema，覆盖两路详情、实时来源诊断/确认准备和版本 ETag。该轮使 OpenAPI 源码覆盖十八个接口（保存包五路、文件九路、条目详情/历史四路）；完整 WCP/MCP、SDK/Mock 机器契约接线与验收证据仍待补。未编译、测试、运行接口/校验器/生成器或发布。
 
