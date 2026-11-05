@@ -1,6 +1,26 @@
 # OpenAPI 源码契约
 
-这里的文档描述已有 HTTP 实现，尚未经过校验器、生成器、编译、类型检查、测试或运行验证。文档版本不表示已发布或部署；当前覆盖保存包 5 路、文件 9 路、上下文条目 9 路、同步 6 路、冲突 5 路、建议 8 路、Plane 观察 4 路、搜索 2 路、旧索引 5 路、Plane 收件箱 6 路、会话状态/活动 5 路、检查点/交接读取 3 路、会话身份/启动/原回执 3 路、会话进度写入/原回执 6 路、检查点保存/原回执 2 路及交接创建/领取/原回执 4 路，共 82 路，尚不是完整 WCP 接口目录。
+这里的文档描述已有 HTTP 实现，尚未经过校验器、生成器、编译、类型检查、测试或运行验证。文档版本不表示已发布或部署；当前覆盖保存包 5 路、文件 9 路、上下文条目 9 路、同步 6 路、冲突 5 路、建议 8 路、Plane 观察 4 路、搜索 2 路、旧索引 5 路、Plane 收件箱 6 路、会话状态/活动 5 路、检查点/交接读取 3 路、会话身份/启动/原回执 3 路、会话进度写入/原回执 6 路、检查点保存/原回执 2 路、交接创建/领取/原回执 4 路及会话续接/原回执 2 路，共 84 路，尚不是完整 WCP 接口目录。
+
+## 会话续接与原回执
+
+2026-11-05，TODO **P0-01**：[session-resume OpenAPI](session-resume.json) 覆盖 POST /v1/sessions/{session_id}/resume 和 /resume/receipt；完整结构见 [session-resume Schema](../schemas/session-resume.json)，两项包子路径同名。本地注册 session-activity-read/session-start/checkpoint-write/checkpoint-read/handoff-claim 及其传递引用，保留 openapi/schemas 相邻布局。仅源码人工对照，未执行解析器、校验器或生成器。
+
+两路要求 session.write 策略及可信客户端；原身份头分别精确匹配。旧续接正文开放，路径覆盖外层 session_id，handoff_id/父路径/选中键只提取非空字符串；头键优先且不核对正文键，后续普通 startSessionAsync 不追加严格键校验。require_claimed 必须为布尔；服务端对 AUTH_SERVER_CLIENT_ID（默认 PlaneMem_WebConsole）强制 true。合法版本头会通用解析但不被续接消费，正文 expected_version 也不构成并发条件。严格 SDK 使用 ULID、最多 255 UTF-16 非空白原键及封闭命令；其默认 false 不自动转换为 Workbench 有效 true，调用方必须保留实际有效要求。
+
+续接先重新读取交接/检查点并确认父会话、目标与领取资格。expired 交接返回 409，不同目标返回 403；已领取同客户端且已存账号一致可以原样返回，require_claimed=true 还要求历史账号存在。未领取且 true 返回 HANDOFF_CLAIM_REQUIRED；false 可经旧领取分支增加交接版本并记录账号/客户端，不产生专用领取回执，旧分支没有安全整数加一保护。父会话无需重新处于 running，也不增加父版本或检查点修订。
+
+无保存包且有数据库时使用独立服务实例和会话事务；没有数据库保留本地兼容。绑定保存包时先做 context.pack.read 授权/审计，同事务锁同步流/可读项目、检查完整包 SHA-256、范围、预算、有效期、来源清单和递归来源现状，再核对预读检查点的包哈希。消费过程再次读取检查点、锁可见项目/交接关联图并领取，然后创建或重放子会话；数据库路径的领取和子会话写入一起提交或回滚，共享会话缓存只在事务返回后发布。包检查和当前领取资格先于原键重放，因此历史成功不保证当前重放成功。包有效期只在读取时检查，依赖遍历及提交后没有再次检查。
+
+子会话原键桶是范围、账号、客户端和原始键，与普通启动共享。新子会话 running/version=1 并保存 resume_origin；重复键从子会话行读取，父会话/原交接/检查点/有效 require_claimed 不同则冲突，同父旧行缺 origin 则 SESSION_RESUME_LEGACY_UNVERIFIED，不补认或换键。持久重放可能返回已经结束或版本增加的子会话，本地兼容缓存可能保留较早快照。进程头键指纹还含原正文/当前权限/版本头，同一有效命令的不同原写法也可能冲突；命中仍重新执行处理器，正文键不进入这层缓存。
+
+完整成功包含 session、checkpoint、handoff 和 context_pack_state。状态由预读检查点决定：保存包已读取为 checked，并含完整包；仅旧 hash 为 legacy-unverified；没有包或 hash 为 none。返回包是旧 checkedDocument 直接返回的文档，可保留扩展，没有 rendered；该路径没有 GET 的完整输出解析、1000 条目限制、独立包 trace 校验或完整来源并集比较。Schema 因此分别描述实际 HTTP、SDK 规范输出和旧保存包，避免把 GET 或 SDK 的限制冒称为服务端保证。外层来源按会话、检查点、交接依次拼接，不跨记录去重；无 ETag，当前 trace 与历史内部 trace 分开。
+
+原查询是封闭 request_key/handoff_id/可选 require_claimed，外层路径覆盖后删除；合法新键/版本头被忽略。数据库单次查询先确认父会话/项目可见，以原身份/键连接子会话：无子行为 not-observed，同父缺 origin 为 legacy-unverified，完整原绑定匹配为 recorded 且 context_pack_state=not-checked。不同父或交接/有效要求返回冲突。查询不读取当前交接、检查点、包或子会话生命周期，不执行领取或补写；legacy 分支不验证子 ID，recorded 分支验证 ULID 但未显式排除子 ID 等于父 ID，SDK 会额外拒绝。not-observed 不证明失败，也不授权更换原键。
+
+SDK 完整核对父子不同、原身份/范围、origin、交接归属、生命周期、检查点六类笔记/引用及来源；require_claimed=true 必须有原账号。来源扩展保留，记录间比较只看 type/id/revision/uri。绑定包还要求 ID/hash/范围、唯一条目 ID、词元估算/时间关系和来源并集一致，但不自行重算哈希或检查当前授权/有效期。可选 expected_checkpoint_id 只约束结果，不发作业务字段。两方法均用通用 JSON transport，无专用响应字节/媒体类型/精确 200/trace 头/长度保证，也无方法 timeout/signal；默认 Fetch 的 30 秒从取得凭据后开始，自定义 transport 没有方法级整次期限，不自动查询/重试/保存或换键。
+
+两 POST 仍是认证前通用 1 MiB JSON 入口，超限是 INVALID_JSON400；无专用响应容量或整次期限。原查询无数据库/查询故障为 SESSION_RECEIPT_STORAGE_UNAVAILABLE503；无包事务的非契约异常为 SESSION_STORAGE_UNAVAILABLE503，绑定包的整个消费事务非契约异常为 CONTEXT_PACK_STORAGE_UNAVAILABLE503，均 retryable=true；事务外预读错误可能为 INTERNAL_ERROR500。包损坏/绑定不一致 CONTEXT_PACK_INVALID500，包过期 410、陈旧 409；原查询损坏 origin 为 SESSION_RECEIPT_INVALID500。P0-01/R-001 未完成、evidence 为空。
 
 ## 交接创建领取与原回执
 

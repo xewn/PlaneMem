@@ -1,5 +1,9 @@
 # 架构决策记录摘要
 
+2026-11-05 本轮源码落地：会话续接/原回执两路 OpenAPI、session-resume 完整 Schema 和两项包子路径已补齐；原身份/父子/origin/交接、保存包三态和三态历史查询、当前检查先于重放与旧 HTTP/SDK 差异已人工对照。公共目录/WCP/运行说明、根 README/TODO 与 R001 同步，OpenAPI 累计 84 路。P0-01/R001 未完成、evidence 为空；仅人工源码文档审阅、指定格式和 Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
+2026-11-05 P0-01 会话续接与原回执两路机器契约（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增 schemas/session-resume.json 与 openapi/session-resume.json，覆盖续接和原续接查询两 POST。定义原身份/父子会话/交接绑定、完整续接与三态原查询、保存包检查和旧领取/幂等边界；区分旧 HTTP 与严格 SDK 输出。范围两新 JSON、两项包子路径、两 README、根 README/TODO、公共目录/WCP/checkpoint-context 运行说明、R001 及本 ADR/T0.3/T4.1；不改运行实现、依赖或数据库。仅人工源码文档审阅、指定格式和 Git 文本检查，不编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布；独立提交推送 main 带 [skip ci]，P0-01/R001 未完成、evidence 为空。
+
 2026-11-05 本轮源码落地：交接创建/领取及原回执四路 OpenAPI、handoff-create/handoff-claim 完整 Schema 与三项包子路径已补齐；原字段/键/版本、当前与历史回执、旧无键兼容、事务/旧账本与真实 HTTP/SDK 差异已人工对照。公共目录/WCP/两份运行说明、根 README/TODO 与 R001 同步，OpenAPI 累计 82 路。P0-01/R001 未完成、evidence 为空；仅人工源码文档审阅/指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 2026-11-05 P0-01 交接创建/领取与原回执四路机器契约（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增 schemas/handoff-create.json、schemas/handoff-claim.json 与 openapi/handoff-commands.json，覆盖创建、领取及各自原回执四 POST。定义原字段/身份键/版本、完整当前交接与历史回执、旧无键领取和 recorded/not-observed，明确可见性/事务/当前记录一致性、旧账本边界及真实 HTTP/SDK 约束。范围三新 JSON、三项包子路径、两 README、根 README/TODO、公共目录/WCP/两份 handoff 运行文档、R001 与 ADR/T0.3/T4.1；不改运行实现、依赖或数据库。仅人工源码文档审阅/指定格式/Git 文本检查，不编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布；独立提交 push main 带 [skip ci]，P0-01/R001 未完成、evidence 为空。

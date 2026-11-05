@@ -1,5 +1,15 @@
 # 独立契约结构定义
 
+## 会话续接与原回执
+
+2026-11-05，TODO P0-01：新增 [session-resume.json](session-resume.json)，配套 [两路 OpenAPI](../openapi/session-resume.json)。Body 描述开放旧 HTTP；Command/ReceiptQuery 为严格原参数；ReceiptBody 允许路径覆盖的外层 session_id；Binding 固定原身份/父会话/有效要求，可选 expected_checkpoint_id 仅约束结果。SessionResumeOrigin 是精确 handoff_id/checkpoint_id/require_claimed。
+
+SessionResumeResult/Envelope 描述完整旧 HTTP，复用 CheckpointSaveWireRecord 和 HandoffLegacyClaimResult；SessionResumeClientResult/Envelope 独立描述 SDK 规范输出，复用 CheckpointSavedRecord。子会话可已结束或进展到更高版本，不假定重放一定 version=1；它的单条 session 来源 ID 是原 client_id。交接单条来源是返回检查点，旧领取缺账号只在有效 require_claimed=false 时可接受。所有身份/父子/来源/哈希/时间关系需运行解析器额外核对；源扩展保留，四核心字段比较不比较扩展。
+
+SessionResumeWirePackReceipt 完整描述旧 checkedDocument 的保存包返回，保留包/item/exclusion 扩展且没有 rendered；独立 SessionResumeClientPackReceipt 描述 parseContextPackReceipt 的规范输出。二者均不能直接套用更严格的 GET Schema；旧服务端没有独立包 trace/来源并集/1000 数量检查，SDK 日期接受有限 Date.parse、文本上限使用 UTF-16、来源按四字段去重，不核验实际哈希/当前有效期/渲染正文。服务端实际计算 SHA-256 并检查来源现状，检查点 state_hash 仍是旧 32 位摘要，二者不可混同。
+
+SessionResumeReceiptLookup/Envelope 为 recorded/not-observed/legacy-unverified，只读原子会话行绑定，不含当前状态或完整资源。recorded 总为 not-checked；SDK 要求子父不同、原有效要求/可选检查点一致，服务端没有显式子父不同检查。所有成功无 ETag，SDK 拒绝它。本地加载 session-activity-read/session-start/checkpoint-write/checkpoint-read/handoff-claim 和传递引用；静态结构不代替身份、事务、授权、跨字段关系或完整 JSON 深度验证。仅源码、指定格式与 Git 文本检查，未运行校验器/生成器/编译/测试，evidence 为空。
+
 2026-11-05，TODO **P0-01**：新增 [handoff-create.json](handoff-create.json) 与 [handoff-claim.json](handoff-claim.json)，HTTP 见 [handoff-commands OpenAPI](../openapi/handoff-commands.json)。完整定义创建/领取原命令、HTTP Body、严格 Query、固定原身份 Binding、历史 Recorded/Lookup 和普通/回执封套，包子路径对应文件名。本地注册 session-activity-read/session-start/handoff-read，复用标量、原键及规范来源。
 
 创建无版本条件，Body 可有原传输键，逻辑 Command 不含键；原可选 session_id/from_client/target_client 保留。创建原外层 session_id 必须与路径一致；领取原外层 handoff_id 则被覆盖。领取 Body 区分有键 DurableBody 和无键 LegacyBody，头键决定分支的关系必须由运行入口检查，静态正文 union 无法单独保证。带键原版本最高 MAX_SAFE−1；查询必须包含原有效版本。创建回执拒绝新写入头，领取回执忽略合法新头，两者保留原可选字段而非从当前状态补造。

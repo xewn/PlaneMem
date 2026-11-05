@@ -1,0 +1,222 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem session resume and original resume receipt",
+    "version": "0.1.0",
+    "description": "Source-only two existing POST routes, TODO P0-01. Load session-resume and its transitive schemas plus session-reads/search/context-history HTTP components locally. No validators, generators, SDK/Mock machine-contract integration or runtime/release evidence."
+  },
+  "servers": [
+    { "url": "/", "description": "Relative Gateway base; configure deployment origin/base." }
+  ],
+  "security": [{ "GatewayBearer": [] }],
+  "tags": [{ "name": "Session resume" }],
+  "x-runtime-boundaries": {
+    "http": "Generic JSON-object body parsed before authentication,1MiB limit/nonfatal UTF8; empty, malformed, nonobject or oversized =>INVALID_JSON400. URL query ignored. Path session_id overwrites raw same-named body. Supplied top-level signed scope/actor/client/from_client must match verified context; optional expected actor/client headers each match independently. Both routes require session.write Policy/OPA and authenticated_client=true, plus generic audit/rate limits. Private,no-store/current trace/no ETag. No dedicated response-byte capacity, cancellation, whole-handler timeout or post-read expiry guarantee.",
+    "command": "Raw resume permits unknown fields and only extracts nonempty parent/handoff/key plus optional boolean require_claimed. Header key wins body without equality check, trimming,255 bound or non-whitespace validation downstream. Generic version headers must parse and agree but handler ignores them and body expected_version. require_claimed=input===true OR client==AUTH_SERVER_CLIENT_ID(default PlaneMem_WebConsole). No expected checkpoint business input.",
+    "process-replay": "Header-key process fingerprint also includes raw body/current authority/selected version; changed raw inputs can conflict even when effective resume binding is equal. Matching cache entry reruns handler and all current prechecks. Body-only key skips this cache. Lookup bypasses success cache; valid new header key/version ignored.",
+    "durable-key": "Session storage key bucket is scope+actor+client+raw key, shared with ordinary start. Resume stores origin in child row, not a dedicated resume or claim command receipt. Insert ON CONFLICT DO NOTHING then select original bucket: different parent/origin handoff/checkpoint/effective flag =>IDEMPOTENCY_KEY_REUSED. Same-parent legacy child without origin =>SESSION_RESUME_LEGACY_UNVERIFIED; no repair or fresh-key retry. Durable replay can return advanced/terminal child; local fixture cache can return earlier session snapshot.",
+    "eligibility": "Before transaction, reread scoped handoff/checkpoint and check parent match and claim eligibility. Expired=>409; different target=>403; already claimed with different client/existing actor=>409; require_claimed plus missing legacy actor=>403. Already claimed same owner returns unchanged before optional version comparison. Open+require_claimed=>409; open+false can transition to claimed/version+1 with verified actor/client, no safe overflow check. This uses legacy unkeyed claim path even though resume itself has a stable key; no dedicated claim receipt.",
+    "transaction": "Unbound pack with database: withSessionTransaction and isolated Postgres store/services; no database retains local compatibility. Bound pack: additional context.pack.read authorization/audit then same transaction locks sync stream and readable project FOR SHARE, reads scoped saved pack, checks SHA256/structure/scope/budget/expiry/source-manifest/current recursive dependencies and compares saved hash to pre-read checkpoint. Consumer re-reads checkpoint and claims through project lock and same-scope handoff/checkpoint/session join FOR UPDATE OF h, then starts/replays child. Claim and child insert roll back together on transaction failure; original replay occurs after current eligibility/pack checks. Parent lifecycle/version and checkpoint revision are not changed. Parent read/start does not independently demand running parent or CAS version.",
+    "pack-boundary": "checkedDocument returns stored pack including extensions, no rendered text. It does not apply full GET response schema, source-union equality,1000 item cap or SDK4096 name limits. Expiry checked during saved read, not again after dependencies/consumer commit. No provider call. Current outer state uses pre-read checkpoint, not a full SDK consistency parse of returned graph; SDK additionally binds result checkpoint/hash/pack/sources.",
+    "cache": "Isolated transaction services prevent publishing uncommitted child/claim state. Shared SessionService receives cacheCommittedSession only after successful transaction return; matching current/higher version is not overwritten. No success implies application of new ordinary-start or dedicated claim receipt.",
+    "lookup": "One SELECT over visible parent project and child joined by same scope/current actor/client/raw request key, intentionally not filtering child parent_id in JOIN. Missing/hidden parent404; child with different parent409; no child200 not-observed; same-parent null origin200 legacy-unverified without child-ID check; valid exact origin200 recorded, context_pack_state=not-checked. Does not read handoff/checkpoint/pack, child lifecycle/version or fresh claim eligibility. Server validates child ULID when origin present but does not explicitly check child!=parent. No mutation, key adoption or permission to retry with new key; absence is not proof of failure.",
+    "sdk": "resumeSession accepts only idempotency_key option, rejects configured expected_version/if_match and requires configured key equality if supplied. Strict ULID parent/handoff, key1..255 non-whitespace UTF16, closed command, fixed complete original identity and optional expected checkpoint result constraint. SDK normalizes omitted require_claimed=false but does not force Workbench true; callers must retain actual effective flag or result binding can fail. Both methods send expected identity headers; lookup omits inherited write conditions. Full success parser checks graph/origin/ownership/lifecycle/source and pack relationships, preserves source extensions, rejects ETag and requires exact current trace. It does not recompute pack hash or perform authorization/currentness checks.",
+    "sdk-budget": "Both methods use generic JSON transport, not dedicated bounded read; no method timeout/signal options, exact200/media/trace-header/content-length or total-response-byte guarantee. Fetch default30s begins after credentials; custom transport has no method-enforced whole-call deadline. No automatic persistence, receipt lookup, retry or new key."
+  },
+  "paths": {
+    "/v1/sessions/{session_id}/resume": {
+      "parameters": [
+        { "$ref": "#/components/parameters/SessionId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" },
+        { "$ref": "#/components/parameters/OriginalKey" }
+      ],
+      "post": {
+        "operationId": "resumeSession",
+        "tags": ["Session resume"],
+        "summary": "Resume a checkpoint through an eligible handoff into a bound child session",
+        "x-wcp-operation": "session.resume",
+        "x-policy-action": "session.write",
+        "x-client-command-schema": {
+          "$ref": "../schemas/session-resume.json#SessionResumeCommand"
+        },
+        "x-client-result-schema": {
+          "$ref": "../schemas/session-resume.json#SessionResumeClientEnvelope"
+        },
+        "description": "Current handoff and saved-pack checks precede durable child replay. Effective require_claimed is forced true for configured Workbench client. Stable original key required in header or body, no version precondition used by handler.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/session-resume.json#SessionResumeBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/ResumeSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/ResumeConflict" },
+          "410": { "$ref": "#/components/responses/PackExpired" },
+          "429": { "$ref": "./search.json#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/sessions/{session_id}/resume/receipt": {
+      "parameters": [
+        { "$ref": "#/components/parameters/ReceiptSessionId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" }
+      ],
+      "post": {
+        "operationId": "getResumeReceipt",
+        "tags": ["Session resume"],
+        "summary": "Read original child-session origin without rechecking the current handoff or pack",
+        "x-wcp-operation": "session.resume.receipt",
+        "x-policy-action": "session.write",
+        "x-read-only": true,
+        "description": "Closed original request_key/handoff_id/optional require_claimed query. Valid new header key/version parsed then ignored. Historical recorded, not-observed or legacy-unverified, never proof of present resumability.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/session-resume.json#SessionResumeReceiptBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/ReceiptSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/ReceiptNotFound" },
+          "409": { "$ref": "#/components/responses/ReceiptConflict" },
+          "429": { "$ref": "./search.json#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/InvalidStored" },
+          "503": { "$ref": "#/components/responses/Unavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": { "GatewayBearer": { "type": "http", "scheme": "bearer" } },
+    "parameters": {
+      "TenantId": { "$ref": "./session-reads.json#/components/parameters/TenantId" },
+      "WorkspaceId": { "$ref": "./session-reads.json#/components/parameters/WorkspaceId" },
+      "ProjectId": { "$ref": "./session-reads.json#/components/parameters/ProjectId" },
+      "TraceParent": { "$ref": "./session-reads.json#/components/parameters/TraceParent" },
+      "TraceId": { "$ref": "./session-reads.json#/components/parameters/TraceId" },
+      "ExpectedActorId": { "$ref": "./session-reads.json#/components/parameters/ExpectedActorId" },
+      "ExpectedClientId": {
+        "$ref": "./session-reads.json#/components/parameters/ExpectedClientId"
+      },
+      "SessionId": {
+        "name": "session_id",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "minLength": 1 },
+        "description": "Original parent; legacy write handler extracts nonempty then uses scoped storage. SDK requires ULID. Raw body same-named value overwritten, no equality check."
+      },
+      "ReceiptSessionId": {
+        "name": "session_id",
+        "in": "path",
+        "required": true,
+        "schema": { "$ref": "../schemas/session-resume.json#/$defs/ulid" },
+        "description": "Original parent ULID. Raw outer body field overwritten then removed before parsing query."
+      },
+      "OriginalKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "schema": { "type": "string", "minLength": 1 },
+        "description": "Required unless body supplies nonempty key; legacy header precedence without equality check. Strict SDK/receipt query require1..255 non-whitespace UTF16. Preserve exact original key/identity/effective flag."
+      }
+    },
+    "responses": {
+      "ResumeSuccess": {
+        "description": "Full child/checkpoint/claimed handoff plus checked saved pack or none/legacy-unverified. No dedicated start/claim/resume receipt or ETag; current outer trace with saved inner traces.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/session-resume.json#SessionResumeEnvelope" }
+          }
+        }
+      },
+      "ReceiptSuccess": {
+        "description": "recorded/not-observed/legacy-unverified; empty sources/no ETag. Recorded context_pack_state always not-checked.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/session-resume.json#SessionResumeReceiptEnvelope" }
+          }
+        }
+      },
+      "Error": {
+        "$ref": "./search.json#/components/responses/Error",
+        "description": "Application error envelope; early parser/auth/proxy may differ. Errors after commit do not prove rollback. Preserve original key/identity/effective request; error list not exhaustive."
+      },
+      "BadInput": {
+        "$ref": "#/components/responses/Error",
+        "description": "INVALID_INPUT/SESSION_SCOPE_MISMATCH400, malformed or disagreeing generic version headers INVALID_REQUEST_CONTEXT400. Pre-auth empty/malformed/nonobject/oversized JSON =>INVALID_JSON400, not413. retryable=false. Write allows unknown fields; receipt query is closed."
+      },
+      "Unauthenticated": {
+        "$ref": "#/components/responses/Error",
+        "description": "Signed authentication boundary UNAUTHENTICATED401, retryable=false. Unsigned compatibility cannot pass verified-client requirement."
+      },
+      "Denied": {
+        "$ref": "#/components/responses/Error",
+        "description": "DENIED403 Policy/scope/expected identity/verified-client; HANDOFF_ACCESS_DENIED403 different target, lower scope mismatch or require_claimed with legacy missing actor. retryable=false. Saved pack additionally requires context.read authorization."
+      },
+      "NotFound": {
+        "$ref": "#/components/responses/Error",
+        "description": "HANDOFF_NOT_FOUND/CHECKPOINT_NOT_FOUND/SESSION_NOT_FOUND404 for missing/hidden scoped graph; CONTEXT_PACK_NOT_FOUND404 for unavailable saved pack/project/read_restricted. retryable=false."
+      },
+      "ReceiptNotFound": {
+        "$ref": "#/components/responses/Error",
+        "description": "SESSION_NOT_FOUND404 for absent/hidden original parent/project. Visible parent without child result is successful not-observed, not404. retryable=false."
+      },
+      "ResumeConflict": {
+        "$ref": "#/components/responses/Error",
+        "description": "IDEMPOTENCY_KEY_REUSED, SESSION_RESUME_LEGACY_UNVERIFIED, HANDOFF_CLAIM_REQUIRED, HANDOFF_CLAIM_CONFLICT, HANDOFF_EXPIRED or CONTEXT_PACK_STALE409 retryable=false. SESSION_VERSION_CONFLICT from legacy insert collision is409 retryable=true. Expired handoff is409; expired pack is410."
+      },
+      "ReceiptConflict": {
+        "$ref": "#/components/responses/Error",
+        "description": "IDEMPOTENCY_KEY_REUSED409 when original bucket belongs to different parent or handoff/effective flag; retryable=false. Same-parent missing origin returns200 legacy-unverified instead."
+      },
+      "PackExpired": {
+        "$ref": "#/components/responses/Error",
+        "description": "CONTEXT_PACK_EXPIRED410 retryable=false. Current expiry checked even on original-key resume retry; no post-dependency/commit recheck."
+      },
+      "InvalidStored": {
+        "$ref": "#/components/responses/Error",
+        "description": "Receipt invalid origin/child ID=>SESSION_RECEIPT_INVALID500 false. Stored pack/hash/binding=>CONTEXT_PACK_INVALID500 false. Unwrapped pre-read/local errors may become INTERNAL_ERROR500 true; in-transaction non-contract failures use503 wrappers."
+      },
+      "Unavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "No DB/query failure on lookup=>SESSION_RECEIPT_STORAGE_UNAVAILABLE503 true. Unbound DB transaction non-contract failure=>SESSION_STORAGE_UNAVAILABLE503 true; saved-pack transaction including consumer non-contract failure=>CONTEXT_PACK_STORAGE_UNAVAILABLE503 true. Auth/audit availability can also503. Local unbound compatibility does not itself supply durable lookup storage."
+      }
+    }
+  }
+}

@@ -1,0 +1,562 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/session-resume.json",
+  "title": "PlaneMem session resume and original resume receipt",
+  "description": "Source-only legacy HTTP, normalized SDK and historical lookup contracts. Register session-activity-read, session-start, checkpoint-write, checkpoint-read, handoff-claim and their transitive schemas locally.",
+  "$comment": "Identity/path/origin/source equality, UTF-16 bounds, finite Date.parse, chronology and saved-pack hash/currentness require runtime checks. Wire records are nominal mappings, not evidence of complete server parsing. No validators, generators or runtime verification performed.",
+  "oneOf": [{ "$ref": "#SessionResumeEnvelope" }, { "$ref": "#SessionResumeReceiptEnvelope" }],
+  "$defs": {
+    "ulid": { "$ref": "./session-activity-read.json#/$defs/ulid" },
+    "positive": { "$ref": "./session-activity-read.json#/$defs/positive" },
+    "name": { "$ref": "./session-activity-read.json#/$defs/identityText" },
+    "key": { "$ref": "./session-start.json#/$defs/key" },
+    "text": {
+      "type": "string",
+      "pattern": "\\S",
+      "maxLength": 4096,
+      "$comment": "Runtime uses UTF-16 length; does not reject all controls/lone surrogates."
+    },
+    "time": {
+      "type": "string",
+      "maxLength": 128,
+      "$comment": "Runtime requires finite Date.parse and preserves text; not necessarily canonical UTC."
+    },
+    "source": { "$ref": "./session-activity-read.json#SessionActivitySourceRef" },
+    "sources": { "type": "array", "items": { "$ref": "#/$defs/source" } },
+    "scope": {
+      "type": "object",
+      "required": ["tenant_id", "workspace_id", "project_id"],
+      "properties": {
+        "tenant_id": { "$ref": "#/$defs/name" },
+        "workspace_id": { "$ref": "#/$defs/name" },
+        "project_id": { "$ref": "#/$defs/name" }
+      }
+    },
+    "commandFields": {
+      "type": "object",
+      "required": ["handoff_id"],
+      "properties": {
+        "handoff_id": { "$ref": "#/$defs/ulid" },
+        "require_claimed": { "type": "boolean", "default": false }
+      }
+    },
+    "command": {
+      "$anchor": "SessionResumeCommand",
+      "allOf": [{ "$ref": "#/$defs/commandFields" }],
+      "unevaluatedProperties": false,
+      "description": "Strict SDK business command. Omitted require_claimed becomes false; SDK does not itself force the configured Workbench client's effective true."
+    },
+    "body": {
+      "$anchor": "SessionResumeBody",
+      "type": "object",
+      "required": ["handoff_id"],
+      "properties": {
+        "handoff_id": { "type": "string", "minLength": 1 },
+        "require_claimed": { "type": "boolean" },
+        "idempotency_key": {
+          "description": "Required nonempty string only if no header key; header wins without body equality check or downstream strict key validator."
+        },
+        "session_id": { "description": "Raw body field overwritten by route path before handler." },
+        "actor_id": { "type": "string" },
+        "client_id": { "type": "string" }
+      },
+      "description": "Legacy open HTTP object. Optional top-level signed identity/scope fields must match authenticated context. Unknown business fields and body expected_version ignored; valid version headers parsed then unused by handler. Handoff and parent extracted as nonempty strings. Effective require_claimed=true for AUTH_SERVER_CLIENT_ID (default PlaneMem_WebConsole), otherwise input===true."
+    },
+    "queryFields": {
+      "allOf": [{ "$ref": "#/$defs/commandFields" }],
+      "required": ["request_key"],
+      "properties": { "request_key": { "$ref": "#/$defs/key" } }
+    },
+    "query": {
+      "$anchor": "SessionResumeReceiptQuery",
+      "allOf": [{ "$ref": "#/$defs/queryFields" }],
+      "unevaluatedProperties": false,
+      "description": "Closed original query. Key1..255 non-whitespace UTF-16 preserved verbatim; handoff ULID. require_claimed default false then server forces true for configured Workbench client."
+    },
+    "receiptBody": {
+      "$anchor": "SessionResumeReceiptBody",
+      "allOf": [{ "$ref": "#/$defs/queryFields" }],
+      "properties": {
+        "session_id": {
+          "description": "Raw outer field overwritten by route then removed before query parsing."
+        }
+      },
+      "unevaluatedProperties": false,
+      "description": "New header key/version are parsed but ignored. Original request_key inside body is the lookup key; no nested resume command."
+    },
+    "binding": {
+      "$anchor": "SessionResumeBinding",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["parent_session_id", "identity", "query"],
+      "properties": {
+        "parent_session_id": { "$ref": "#/$defs/ulid" },
+        "identity": { "$ref": "./session-activity-read.json#SessionCommandIdentity" },
+        "query": {
+          "allOf": [{ "$ref": "#SessionResumeReceiptQuery" }],
+          "required": ["require_claimed"]
+        },
+        "expected_checkpoint_id": { "$ref": "#/$defs/ulid" }
+      },
+      "description": "Local fixed original identity/scope/parent and effective query. Optional expected checkpoint constrains parsed results only; never sent as business input."
+    },
+    "origin": {
+      "$anchor": "SessionResumeOrigin",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["handoff_id", "checkpoint_id", "require_claimed"],
+      "properties": {
+        "handoff_id": { "$ref": "#/$defs/ulid" },
+        "checkpoint_id": { "$ref": "#/$defs/ulid" },
+        "require_claimed": { "type": "boolean" }
+      }
+    },
+    "wireSession": {
+      "$anchor": "SessionResumeWireSession",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "tenant_id",
+        "workspace_id",
+        "project_id",
+        "session_id",
+        "parent_session_id",
+        "actor_id",
+        "client_id",
+        "resume_origin",
+        "status",
+        "version",
+        "started_at",
+        "trace_id",
+        "source_refs"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "tenant_id": { "type": "string" },
+        "workspace_id": { "type": "string" },
+        "project_id": { "type": "string" },
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "parent_session_id": { "type": "string", "minLength": 1 },
+        "actor_id": { "type": "string" },
+        "client_id": { "type": "string" },
+        "resume_origin": { "$ref": "#SessionResumeOrigin" },
+        "status": { "enum": ["running", "paused", "ended", "abandoned", "failed"] },
+        "version": { "type": "integer", "minimum": 1 },
+        "started_at": { "type": "string" },
+        "ended_at": { "type": "string" },
+        "trace_id": { "type": "string" },
+        "source_refs": { "type": "array" }
+      },
+      "description": "Nominal complete mapped session, no start_receipt. Fresh running/version1 child; durable retry returns stored row which may have advanced/ended. Store mapper parses origin but does not apply the full SDK lifecycle/source/identity parser. Local fixture key cache may retain an earlier snapshot. Outer request trace can differ from saved record traces."
+    },
+    "clientSession": {
+      "$anchor": "SessionResumeClientSession",
+      "allOf": [{ "$ref": "#SessionResumeWireSession" }, { "$ref": "#/$defs/scope" }],
+      "properties": {
+        "parent_session_id": { "$ref": "#/$defs/ulid" },
+        "actor_id": { "$ref": "#/$defs/name" },
+        "client_id": { "$ref": "#/$defs/name" },
+        "version": { "$ref": "#/$defs/positive" },
+        "started_at": { "$ref": "#/$defs/time" },
+        "ended_at": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$",
+          "$comment": "Valid calendar and exact Date roundtrip; end>=start."
+        },
+        "trace_id": { "$ref": "#/$defs/text" },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "allOf": [{ "$ref": "#/$defs/source" }],
+            "properties": { "type": { "const": "session" } },
+            "not": { "anyOf": [{ "required": ["revision"] }, { "required": ["uri"] }] }
+          }
+        }
+      },
+      "if": { "properties": { "status": { "enum": ["running", "paused"] } } },
+      "then": { "not": { "required": ["ended_at"] } },
+      "else": { "required": ["ended_at"] },
+      "description": "Normalized SDK result: child!=parent, exact original actor/client/scope, origin equals original handoff/checkpoint/effective requirement. Sole source id is original client_id, not parent/child ID. Input active ended_at absent/null normalizes to omission. Source extensions retained."
+    },
+    "clientHandoff": {
+      "$anchor": "SessionResumeClientHandoff",
+      "allOf": [
+        { "$ref": "./handoff-claim.json#HandoffLegacyClaimResult" },
+        { "$ref": "#/$defs/scope" }
+      ],
+      "properties": {
+        "from_client": { "$ref": "#/$defs/text" },
+        "target_client": { "$ref": "#/$defs/name" },
+        "claimed_by": { "$ref": "#/$defs/name" },
+        "claimed_by_actor": { "$ref": "#/$defs/name" },
+        "version": { "$ref": "#/$defs/positive" },
+        "trace_id": { "$ref": "#/$defs/text" },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "allOf": [{ "$ref": "#/$defs/source" }],
+            "properties": { "type": { "const": "checkpoint" }, "id": { "$ref": "#/$defs/ulid" } },
+            "not": { "anyOf": [{ "required": ["revision"] }, { "required": ["uri"] }] }
+          }
+        }
+      },
+      "description": "Exact original handoff and returned checkpoint. Claimed client and optional target equal original client; optional actor equals original actor, required when effective require_claimed=true. Legacy missing actor allowed only when false. No dedicated claim_receipt; source extensions retained."
+    },
+    "packScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant_id", "workspace_id", "project_id"],
+      "properties": {
+        "tenant_id": { "$ref": "#/$defs/text" },
+        "workspace_id": { "$ref": "#/$defs/text" },
+        "project_id": { "$ref": "#/$defs/text" }
+      }
+    },
+    "packItem": {
+      "allOf": [{ "$ref": "#/$defs/packItemFields" }],
+      "unevaluatedProperties": false
+    },
+    "packItemFields": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "tenant_id",
+        "workspace_id",
+        "project_id",
+        "id",
+        "content",
+        "trace_id",
+        "layer",
+        "sensitivity",
+        "confirmed",
+        "priority",
+        "confidence",
+        "source_refs",
+        "selection_reason"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "tenant_id": { "$ref": "#/$defs/text" },
+        "workspace_id": { "$ref": "#/$defs/text" },
+        "project_id": { "$ref": "#/$defs/text" },
+        "id": { "$ref": "#/$defs/text" },
+        "content": { "type": "string" },
+        "trace_id": { "$ref": "#/$defs/text" },
+        "layer": { "enum": ["L0", "L1", "L2", "L3", "L4"] },
+        "sensitivity": { "enum": ["public", "internal", "confidential", "restricted"] },
+        "confirmed": { "type": "boolean" },
+        "priority": { "type": "number" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "source_refs": { "$ref": "#/$defs/sources" },
+        "selection_reason": { "const": "ranked-fit" },
+        "revision": { "$ref": "#/$defs/positive" },
+        "expires_at": { "$ref": "#/$defs/time" }
+      }
+    },
+    "packReceipt": {
+      "$anchor": "SessionResumeClientPackReceipt",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pack_id", "version", "created_at", "used_tokens", "pack"],
+      "properties": {
+        "pack_id": { "$ref": "#/$defs/ulid" },
+        "version": { "$ref": "#/$defs/positive" },
+        "created_at": { "$ref": "#/$defs/time" },
+        "used_tokens": { "type": "integer", "minimum": 0, "maximum": 32768 },
+        "pack": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "pack_version",
+            "pack_hash",
+            "scope",
+            "trace_id",
+            "budget_tokens",
+            "items",
+            "exclusions",
+            "source_refs",
+            "expires_at"
+          ],
+          "properties": {
+            "schema_version": { "const": 1 },
+            "pack_version": { "const": 1 },
+            "pack_hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+            "scope": { "$ref": "#/$defs/packScope" },
+            "trace_id": { "$ref": "#/$defs/text" },
+            "budget_tokens": { "type": "integer", "minimum": 128, "maximum": 32768 },
+            "items": { "type": "array", "items": { "$ref": "#/$defs/packItem" } },
+            "exclusions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "reason"],
+                "properties": {
+                  "id": { "$ref": "#/$defs/text" },
+                  "reason": { "enum": ["policy", "expired", "budget", "source"] }
+                }
+              }
+            },
+            "source_refs": { "$ref": "#/$defs/sources" },
+            "expires_at": { "$ref": "#/$defs/time" }
+          }
+        },
+        "rendered": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["uri", "mimeType", "text"],
+          "properties": {
+            "uri": { "$ref": "#/$defs/text" },
+            "mimeType": { "const": "text/markdown" },
+            "text": { "type": "string" }
+          }
+        }
+      },
+      "description": "Actual parseContextPackReceipt normalized SDK shape, deliberately separate from stricter GET schema. Exact bound pack ID/hash and scope for all items; distinct IDs across items/exclusions. used_tokens=sum(max(1,ceil(content UTF16 length/4)))<=budget; created<expiry and optional item expiry>=pack expiry. Ordered source union deduplicates four core fields, retains extensions and has no count cap. This parser does not recompute hash, check wall-clock freshness, impose GET1000 item limit/canonical times or compare rendered text/URI to document."
+    },
+    "wirePackReceipt": {
+      "$anchor": "SessionResumeWirePackReceipt",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pack_id", "version", "created_at", "used_tokens", "pack"],
+      "properties": {
+        "pack_id": { "$ref": "#/$defs/ulid" },
+        "version": { "$ref": "#/$defs/positive" },
+        "created_at": { "type": "string" },
+        "used_tokens": { "type": "integer", "minimum": 0, "maximum": 32768 },
+        "pack": {
+          "type": "object",
+          "required": [
+            "schema_version",
+            "pack_version",
+            "pack_hash",
+            "scope",
+            "budget_tokens",
+            "items",
+            "exclusions",
+            "source_refs",
+            "expires_at"
+          ],
+          "properties": {
+            "schema_version": { "const": 1 },
+            "pack_version": { "const": 1 },
+            "pack_hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+            "scope": {
+              "type": "object",
+              "required": ["tenant_id", "workspace_id", "project_id"],
+              "properties": {
+                "tenant_id": { "type": "string" },
+                "workspace_id": { "type": "string" },
+                "project_id": { "type": "string" }
+              }
+            },
+            "trace_id": {
+              "description": "Nominal saved trace string; checkedDocument does not independently validate this excluded-from-hash field."
+            },
+            "budget_tokens": { "type": "integer", "minimum": 128, "maximum": 32768 },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "schema_version",
+                  "tenant_id",
+                  "workspace_id",
+                  "project_id",
+                  "id",
+                  "content",
+                  "trace_id",
+                  "layer",
+                  "sensitivity",
+                  "confirmed",
+                  "priority",
+                  "confidence",
+                  "source_refs",
+                  "selection_reason"
+                ],
+                "properties": {
+                  "schema_version": { "const": 1 },
+                  "tenant_id": { "type": "string" },
+                  "workspace_id": { "type": "string" },
+                  "project_id": { "type": "string" },
+                  "id": { "type": "string", "minLength": 1 },
+                  "content": { "type": "string" },
+                  "trace_id": { "type": "string", "minLength": 1 },
+                  "layer": { "enum": ["L0", "L1", "L2", "L3", "L4"] },
+                  "sensitivity": { "enum": ["public", "internal", "confidential", "restricted"] },
+                  "confirmed": { "type": "boolean" },
+                  "priority": { "type": "number" },
+                  "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+                  "source_refs": { "$ref": "#/$defs/sources" },
+                  "selection_reason": { "const": "ranked-fit" },
+                  "revision": { "$ref": "#/$defs/positive" },
+                  "expires_at": {
+                    "type": "string",
+                    "$comment": "Finite Date.parse and not before pack expiry."
+                  }
+                }
+              }
+            },
+            "exclusions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id", "reason"],
+                "properties": {
+                  "id": { "type": "string", "minLength": 1 },
+                  "reason": { "enum": ["policy", "expired", "budget", "source"] }
+                }
+              }
+            },
+            "source_refs": { "$ref": "#/$defs/sources" },
+            "expires_at": {
+              "type": "string",
+              "$comment": "Exact normalized stored row expiry; finite date later than creation and checked against clock during read."
+            }
+          }
+        }
+      },
+      "description": "checkedDocument returns stored complete pack with extensions, no rendered field. Actual SHA256 checked, scope/items/budget/manifest and recursive current sources checked; no GET response parser,1000 count cap, complete source-union equality or independent pack trace check. Nonblank4096 name/time128 limits of resume SDK are additional. No expiry recheck after dependency inspection or consumer commit."
+    },
+    "wireResult": {
+      "$anchor": "SessionResumeResult",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["session", "checkpoint", "handoff", "context_pack_state"],
+      "properties": {
+        "session": { "$ref": "#SessionResumeWireSession" },
+        "checkpoint": { "$ref": "./checkpoint-write.json#CheckpointSaveWireRecord" },
+        "handoff": { "$ref": "./handoff-claim.json#HandoffLegacyClaimResult" },
+        "context_pack_state": { "enum": ["checked", "legacy-unverified", "none"] },
+        "context_pack": { "$ref": "#SessionResumeWirePackReceipt" }
+      },
+      "if": { "properties": { "context_pack_state": { "const": "checked" } } },
+      "then": { "required": ["context_pack"] },
+      "else": { "not": { "required": ["context_pack"] } },
+      "description": "Nominal server response. State uses pre-read checkpoint: bound pack read => checked; no document and truthy legacy hash => legacy-unverified; otherwise none. Consumer re-reads checkpoint/claim before child start, but server does not run full SDK equality checks over returned records."
+    },
+    "clientResult": {
+      "$anchor": "SessionResumeClientResult",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["session", "checkpoint", "handoff", "context_pack_state"],
+      "properties": {
+        "session": { "$ref": "#SessionResumeClientSession" },
+        "checkpoint": { "$ref": "./checkpoint-read.json#CheckpointSavedRecord" },
+        "handoff": { "$ref": "#SessionResumeClientHandoff" },
+        "context_pack_state": { "enum": ["checked", "legacy-unverified", "none"] },
+        "context_pack": { "$ref": "#SessionResumeClientPackReceipt" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "checkpoint": { "required": ["context_pack_id"] } } },
+          "then": {
+            "required": ["context_pack"],
+            "properties": { "context_pack_state": { "const": "checked" } }
+          },
+          "else": {
+            "not": { "required": ["context_pack"] },
+            "if": { "properties": { "checkpoint": { "required": ["context_pack_hash"] } } },
+            "then": { "properties": { "context_pack_state": { "const": "legacy-unverified" } } },
+            "else": { "properties": { "context_pack_state": { "const": "none" } } }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "session": {
+                "properties": {
+                  "resume_origin": { "properties": { "require_claimed": { "const": true } } }
+                }
+              }
+            }
+          },
+          "then": { "properties": { "handoff": { "required": ["claimed_by_actor"] } } }
+        }
+      ],
+      "description": "Full normalized SDK result; all parent/checkpoint/origin/handoff/scope/identity relationships exact. Bound checkpoint sources equal first-type/id union of parent, pack, memory sources and returned pack sources, compared by four core fields; checkpoint state_hash is not recomputed. Source extensions survive."
+    },
+    "envelopeFields": {
+      "type": "object",
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "type": "string" },
+        "source_refs": { "type": "array" },
+        "data": {}
+      }
+    },
+    "envelope": {
+      "$anchor": "SessionResumeEnvelope",
+      "allOf": [{ "$ref": "#/$defs/envelopeFields" }],
+      "properties": { "data": { "$ref": "#SessionResumeResult" } },
+      "unevaluatedProperties": false,
+      "description": "Current outer trace, no ETag. Outer sources concatenate session, checkpoint, handoff in order without deduplication."
+    },
+    "clientEnvelope": {
+      "$anchor": "SessionResumeClientEnvelope",
+      "allOf": [{ "$ref": "#/$defs/envelopeFields" }],
+      "properties": {
+        "trace_id": { "$ref": "#/$defs/text" },
+        "source_refs": { "$ref": "#/$defs/sources" },
+        "data": { "$ref": "#SessionResumeClientResult" }
+      },
+      "unevaluatedProperties": false,
+      "description": "Exact expected current trace; any ETag rejected. Outer sources equal concatenation by type/id/revision/uri; extension values not compared. No independent total byte/time budget."
+    },
+    "lookup": {
+      "$anchor": "SessionResumeReceiptLookup",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "parent_session_id", "handoff_id"],
+          "properties": {
+            "status": { "enum": ["not-observed", "legacy-unverified"] },
+            "parent_session_id": { "$ref": "#/$defs/ulid" },
+            "handoff_id": { "$ref": "#/$defs/ulid" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "parent_session_id",
+            "session_id",
+            "handoff_id",
+            "checkpoint_id",
+            "require_claimed",
+            "context_pack_state"
+          ],
+          "properties": {
+            "status": { "const": "recorded" },
+            "parent_session_id": { "$ref": "#/$defs/ulid" },
+            "session_id": { "$ref": "#/$defs/ulid" },
+            "handoff_id": { "$ref": "#/$defs/ulid" },
+            "checkpoint_id": { "$ref": "#/$defs/ulid" },
+            "require_claimed": { "type": "boolean" },
+            "context_pack_state": { "const": "not-checked" }
+          }
+        }
+      ],
+      "description": "Historical child-row origin, not a dedicated command receipt ledger. No child=>not-observed; same-parent child with no origin=>legacy-unverified (child ID not validated in this branch); valid exact origin=>recorded. Different parent/handoff/effective flag is conflict. No current lifecycle/claim/pack check; absence does not prove failure or permit a new-key retry. SDK additionally requires child!=parent and optional expected checkpoint."
+    },
+    "receiptEnvelope": {
+      "$anchor": "SessionResumeReceiptEnvelope",
+      "allOf": [{ "$ref": "#/$defs/envelopeFields" }],
+      "properties": {
+        "source_refs": { "type": "array", "maxItems": 0 },
+        "data": { "$ref": "#SessionResumeReceiptLookup" }
+      },
+      "unevaluatedProperties": false,
+      "description": "Current trace, empty sources, no ETag. SDK also requires exact expected nonblank trace<=4096 UTF-16, original effective requirement and optional checkpoint equality. Server does not explicitly reject child==parent."
+    }
+  }
+}

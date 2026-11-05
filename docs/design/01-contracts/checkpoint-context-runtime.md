@@ -1,5 +1,9 @@
 # 检查点的持久上下文绑定
 
+2026-11-05 P0-01 续接机器契约增补：[session-resume OpenAPI](../../../packages/contracts/openapi/session-resume.json) 与 [完整 Schema](../../../packages/contracts/schemas/session-resume.json) 描述续接及原续接回执两 POST，累计 OpenAPI 84 路。原键重放前仍重查当前交接/检查点和保存包；领取走旧无专用回执分支，数据库路径与子会话写入同事务，父版本和检查点修订不变。Workbench 有效 require_claimed 强制 true，SDK 不自行替调用方转换这个原绑定。
+
+原续接查询只读取可见父会话和原账号/客户端/键对应的子会话 origin：not-observed、legacy-unverified 或 recorded/not-checked，不证明当前仍可续接。完整续接输出与 SDK 规范结构分开；保存包旧读取有实际 SHA-256/依赖现状检查，但没有 GET 的完整输出/数量上限等保证，SDK 额外核对父子/来源/时间和 pack 绑定。详细限制、错误包装、非持久兼容与来源扩展见 [续接 HTTP 说明](../../../packages/contracts/openapi/README.md#会话续接与原回执)。不改运行实现，P0-01/R001 未完成、evidence 为空；仅人工源码文档审阅、指定格式和 Git 文本检查，未编译、测试、运行校验器/生成器/产品/API/数据库或发布。
+
 2026-11-05 P0-01 机器契约增补：[checkpoint-commands OpenAPI](../../../packages/contracts/openapi/checkpoint-commands.json) 与 [checkpoint-write Schema](../../../packages/contracts/schemas/checkpoint-write.json) 描述保存/原回执两个 POST，分别建模原 HTTP、严格客户端、完整历史保存和最小查询结果。不改运行实现；OpenAPI 累计 78 路，P0-01/R001 未完成、evidence 为空。
 
 此次源码对照明确：保存只增加检查点 revision，不改变会话 version；当前 Postgres MAX+1 没有 JavaScript 安全整数溢出检查。旧未绑定保存允许无键，选中键只检查非空、头键覆盖正文且不比较；SDK/查询使用更严格原键。保存包当前检查先于持久回执重放；原查询只核对指纹、ID、正安全 revision 和可选包 ID，不读取笔记、来源、状态哈希、记忆或当前包。旧 state_hash 为 `sha256:` 前缀加 8 位十六进制的 32 位算法，不能当成 SHA-256 内容证明；持久包 context_pack_hash 与之独立。

@@ -11,6 +11,29 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    session_resume_openapi_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only two-route session resume/original receipt OpenAPI and complete schema; P0-01 and R-001 remain incomplete."
+      artifacts:
+        - "packages/contracts/openapi/session-resume.json"
+        - "packages/contracts/schemas/session-resume.json"
+        - "packages/contracts/package.json"
+        - "packages/contracts/openapi/README.md"
+        - "packages/contracts/schemas/README.md"
+      behavior: "Complete original binding, child/checkpoint/claimed handoff, checked/none/legacy-unverified pack state and recorded/not-observed/legacy-unverified origin lookup. Separate legacy HTTP, normalized SDK and actual old saved-pack read shapes."
+      boundaries: "No runtime/SDK/Mock/dependency/database changes. Current eligibility and saved-pack authorization/hash/source checks precede child replay. Legacy claim and child insert share transaction; no dedicated claim/resume receipt. Shared ordinary-start key bucket and immutable origin prevent reassignment; no origin adoption. Historical query does not read current graph/pack/lifecycle. Effective Workbench requirement, weak HTTP key versus strict SDK, source extensions and actual generic transport/error limits documented."
+      evidence: []
+      remaining_scope: "Other WCP/MCP machine contracts, ordinary event payloads, SDK/Mock machine-contract consumption, breaking-change CI and tool/runtime/release evidence."
+      pending_evidence:
+        - "Local references and complete command/binding/wire/client/origin/lookup shapes"
+        - "Header/path precedence, weak raw key and shared start bucket with legacy rejection"
+        - "Effective Workbench require_claimed and original SDK binding agreement"
+        - "Current prechecks before replay, same-transaction legacy claim/child start and post-commit cache"
+        - "Full graph/source/lifecycle/pack parsing versus weaker wire mappings and old pack read"
+        - "Historical lookup visibility, legacy/no-result distinction and additional client child-parent inequality"
+        - "Actual generic transport budgets, saved-pack expiry timing and failure wrappers"
+      execution: "Manual source/docs review and explicit formatting/Git text checks only; no build, typecheck, tests, validators, generators, product/API/database execution or release."
     handoff_commands_openapi_development_increment:
       date: "2026-11-05"
       todo: "P0-01"

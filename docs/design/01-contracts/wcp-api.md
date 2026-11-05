@@ -1,6 +1,8 @@
 # WCP API 契约 v1
 
-2026-11-05，TODO P0-01：[交接创建领取与原回执 OpenAPI](../../../packages/contracts/openapi/README.md#交接创建领取与原回执) 与 handoff-create/handoff-claim Schema 覆盖四 POST。定义原字段/身份键/版本、当前交接与历史回执、旧无键领取和两类最小查询；明确事务/旧账本归属、原回执先于新写条件、创建与领取当前记录核对差异及实际 HTTP/SDK 边界。OpenAPI 累计 82 路，P0-01/R-001 未完成、evidence 为空；未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+2026-11-05，TODO P0-01：[会话续接与原回执 OpenAPI](../../../packages/contracts/openapi/README.md#会话续接与原回执) 和 session-resume Schema 覆盖两 POST。完整定义原身份/父子会话/origin/交接、保存包三态及历史 recorded/not-observed/legacy-unverified；区分旧 HTTP 与 SDK、当前资格和包检查先于重放、同事务领取/子会话写入及只读历史绑定。OpenAPI 累计 84 路，P0-01/R-001 未完成、evidence 为空；未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
+2026-11-05，TODO P0-01：[交接创建领取与原回执 OpenAPI](../../../packages/contracts/openapi/README.md#交接创建领取与原回执) 与 handoff-create/handoff-claim Schema 覆盖四 POST。定义原字段/身份键/版本、当前交接与历史回执、旧无键领取和两类最小查询；明确事务/旧账本归属、原回执先于新写条件、创建与领取当前记录核对差异及实际 HTTP/SDK 边界。该轮使 OpenAPI 累计 82 路，P0-01/R-001 未完成、evidence 为空；未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 2026-11-05，TODO P0-01：[检查点保存与原回执 OpenAPI](../../../packages/contracts/openapi/README.md#检查点保存与原回执) 和 checkpoint-write Schema 覆盖两 POST。完整建模六类笔记/引用、原 HTTP/严格客户端/原查询、完整历史保存与最小摘要；明确修订独立于会话版本、原键弱兼容、保存包重查先于重放、旧状态哈希及查询仅检查元数据。该轮使 OpenAPI 累计 78 路，P0-01/R-001 未完成、evidence 为空；未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
