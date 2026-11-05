@@ -82,6 +82,12 @@ export {
   type MockContextReviewAccess,
 } from './mock-context-history.js';
 export {
+  MockObservedStore,
+  type MockObservedSeed,
+  type MockObservedSession,
+  type MockObservedContextScenario,
+} from './mock-observed.js';
+export {
   MockWorkItemStore,
   type MockWorkItemSeed,
   type MockWorkItemSession,

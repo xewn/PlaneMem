@@ -11,6 +11,18 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    observed_mock_development:
+      date: "2026-11-05"
+      todo: "P0-02"
+      status: "Implementation source added; not compiled or executed. P0-02 and R-001 remain incomplete."
+      artifacts:
+        - "packages/sdk/src/mock-observed.ts"
+        - "packages/sdk/src/mock-server.ts"
+        - "packages/sdk/src/index.ts"
+        - "docs/design/01-contracts/observed-mock-runtime.md"
+      behavior: "Saved Plane project/work-item observations, explicit permission-bucket context scenarios and directory derived from the same state. Preserve original Plane version, source event and time; support active/deleted/restored records, external/aggregate aliases, restricted parent/record visibility, active-index expiry and Unicode-safe query-bound pagination. Bounded detached responses and two-slot deadline/cancellation handling."
+      remaining_scope: "Remaining public WCP Mock operations, dynamic webhook ingestion/history/refresh, provider failure scenarios, machine-contract consumption and compatibility evidence. No real Plane, PostgreSQL, memory-provider or authorization evidence."
+      evidence: []
     session_lifecycle_mock_development:
       date: "2026-11-05"
       todo: "P0-02"

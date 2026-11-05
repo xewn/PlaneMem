@@ -1,5 +1,7 @@
 # 公共契约目录
 
+- [Plane 观察读取 Mock](observed-mock-runtime.md)：TODO P0-02，项目/工作项状态、临时上下文及目录的 SDK 模拟实现，含删除/恢复/可见性和分页；仅开发源码，未编译、运行或测试。
+
 - [Plane Webhook OpenAPI](../../../packages/contracts/openapi/README.md#plane-webhook) 与 [完整Schema](../../../packages/contracts/schemas/README.md#plane-webhook)：TODO P0-01，七类Canonical观察的签名接收、四态持久回执与独立错误；明确原文本验签、接收/处理/交付审计不同事务及503未知结果。新增一条后累计91路；P0-01/R-001未完成、evidence为空，仅源码。
 
 - [工作台统一查询 OpenAPI](../../../packages/contracts/openapi/README.md#工作台统一查询) 与 [完整 Schema](../../../packages/contracts/schemas/README.md#工作台统一查询)：TODO P0-01，补齐审计/管理并复用冲突目录，组合全部11操作与检查点双模式，完整请求、响应与原操作映射；统一入口新增一条后累计90路。只完成源码描述，P0-01/R-001未完成，evidence为空。

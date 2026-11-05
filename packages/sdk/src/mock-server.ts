@@ -6,6 +6,11 @@ import {
   type MockSessionStore,
 } from './mock-sessions.js';
 import { isMockSessionWorkbenchRequest } from './mock-session-workbench.js';
+import {
+  isMockObservedPath,
+  type MockObservedStore,
+  type MockObservedSession,
+} from './mock-observed.js';
 import type { MockWorkItemSession, MockWorkItemStore } from './mock-work-items.js';
 import { isMockAuditRequest, type MockAuditSession, type MockAuditStore } from './mock-audit.js';
 import { isMockAdminRequest, type MockAdminSession, type MockAdminStore } from './mock-admin.js';
@@ -33,6 +38,7 @@ import {
 } from './mock-proposals.js';
 
 export interface MockWcpServerOptions {
+  observed?: { store: MockObservedStore; session: MockObservedSession };
   sessions?: { store: MockSessionStore; session: MockSessionAccess };
   onRequest?: (request: WcpRequest) => void;
   artifacts?: { store: MockArtifactStore; session: MockArtifactSession };
@@ -46,6 +52,7 @@ export interface MockWcpServerOptions {
 }
 
 export class MockWcpServer implements WcpTransport {
+  private readonly observed: WcpTransport | undefined;
   private readonly sessions: WcpTransport | undefined;
   private readonly idempotentResponses = new Map<string, ProjectEntity>();
   private readonly sync: WcpTransport | undefined;
@@ -58,6 +65,7 @@ export class MockWcpServer implements WcpTransport {
   private readonly admin: WcpTransport | undefined;
 
   constructor(private readonly options: MockWcpServerOptions = {}) {
+    this.observed = options.observed?.store.connect(options.observed.session);
     this.sessions = options.sessions?.store.connect(options.sessions.session);
     this.sync = options.sync?.store.connect(options.sync.session);
     this.proposals = options.proposals?.store.connect(options.proposals.session);
@@ -71,6 +79,7 @@ export class MockWcpServer implements WcpTransport {
 
   async request<T = unknown>(request: WcpRequest): Promise<T> {
     this.options.onRequest?.(request);
+    if (this.observed && isMockObservedPath(request.path)) return this.observed.request<T>(request);
     if (
       this.sessions &&
       (isMockSessionPath(request.path) || isMockSessionWorkbenchRequest(request))
