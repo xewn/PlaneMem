@@ -1,6 +1,24 @@
 # OpenAPI 源码契约
 
-这里的文档描述已有 HTTP 实现，尚未经过校验器、生成器、编译、类型检查、测试或运行验证。文档版本不表示已发布或部署；当前覆盖保存包 5 路、文件 9 路、上下文条目 9 路、同步 6 路、冲突 5 路、建议 8 路、Plane 观察 4 路、搜索 2 路、旧索引 5 路、Plane 收件箱 6 路、会话状态/活动 5 路、检查点/交接读取 3 路、会话身份/启动/原回执 3 路及会话进度写入/原回执 6 路，共 76 路，尚不是完整 WCP 接口目录。
+这里的文档描述已有 HTTP 实现，尚未经过校验器、生成器、编译、类型检查、测试或运行验证。文档版本不表示已发布或部署；当前覆盖保存包 5 路、文件 9 路、上下文条目 9 路、同步 6 路、冲突 5 路、建议 8 路、Plane 观察 4 路、搜索 2 路、旧索引 5 路、Plane 收件箱 6 路、会话状态/活动 5 路、检查点/交接读取 3 路、会话身份/启动/原回执 3 路、会话进度写入/原回执 6 路及检查点保存/原回执 2 路，共 78 路，尚不是完整 WCP 接口目录。
+
+## 检查点保存与原回执
+
+2026-11-05，TODO **P0-01**：[checkpoint-commands OpenAPI](checkpoint-commands.json) 覆盖 POST /v1/sessions/{session_id}/checkpoint 和 /checkpoint/receipt，分别映射 session.checkpoint/session.checkpoint.receipt。[checkpoint-write Schema](../schemas/checkpoint-write.json) 定义原 HTTP、严格新客户端、保留原字段的查询、完整保存结果及最小历史摘要；包子路径对应文件名。本地注册 checkpoint-read/session-activity-read/session-start，保留 openapi/schemas 相邻位置以解析公共 HTTP 组件；未运行解析器或生成器验证。
+
+两路都走 session.write Policy、入口审计/通用限流和独立可信客户端检查，当前调用者不必是会话创建者；签名范围和顶层身份字段须一致，预期账号/客户端头可分别提供。保存六类笔记原样保留，包括空串、空白、换行和重复。头版本覆盖正文版本，两个版本头须彼此一致；检查点修订号独立递增，保存不改变会话版本或状态。Postgres 先锁可见有效分类项目和会话，原键指纹命中后先返回历史，再考虑新写的 running/paused 与版本条件；新记录及其键/指纹一同写入。MAX(revision)+1 没有安全整数溢出保护，客户端和查询会拒绝不安全修订；BIGINT 不等于 JavaScript 安全整数。
+
+旧 HTTP 未绑定保存包时允许无键；绑定 context_pack_id 时必须有键，并与内联 context_pack 互斥。选中键仅要求非空字符串，头键优先且不比较正文键；SDK 和原查询使用更严格的 1–255 个非空白 UTF-16 单位，所以部分旧弱键不能经严格查询找回。持久键摘要绑定账号/客户端/原键，指纹保留原未知字段、路径覆盖后的会话和有效版本，删除正文键；服务端补读的包文档不加入指纹。进程头键缓存还比较原正文和当前能力，匹配也重新执行处理器。
+
+绑定包的保存及重放先经过额外 context.pack.read 策略和审计，在项目同步流锁/项目共享锁下检查完整持久包、摘要、预算、有效期和来源/递归依赖，再于同一事务内保存或返回原检查点。旧回执不能绕过当前包失效；过期检查发生在包读取阶段，不保证后续依赖读取或提交结束时再次检查。内联旧包只校验范围、非空哈希与来源；记忆引用只校验范围、非空页/hash、正安全版本与来源，不访问外部记忆。
+
+普通成功返回完整原检查点，外层是本次 trace，内部保留保存 trace；来源按会话、可选包、记忆来源、包来源拼接，再按 type/id 保留首项，保留扩展字段。无 created_at、当前会话版本、ETag 或包状态字段。现有 state_hash 为带 `sha256:` 前缀的 8 位十六进制旧 32 位摘要，**不是 SHA-256**；绑定包的 context_pack_hash 是另一个实际保存包摘要，内联包 hash 则是调用者原文。持久重放映射不做完整记录校验，SDK 完整解析还可能拒绝 HTTP 200；它核对原笔记/身份/引用/来源、正安全修订，允许兼容响应的匹配 ETag，但不重算 state_hash。
+
+历史查询只接受 request_key/checkpoint，后者保留完整原字段及有效 expected_version；可选原键/会话必须一致。原内联包/记忆内容不重新校验，嵌套身份在 HTTP 中仅参与原指纹，SDK 另与固定身份比较。合法的新键/版本头被忽略；外层正文 session_id 被路径覆盖并移除。单条 SQL 检查当前可见父会话和原键记录，仅核对指纹、检查点 ID、正安全修订及原可选包 ID，**不读取或核对六类笔记、来源、state_hash、记忆或当前包**。父会话不可见为 404，可见但无记录为 200 not-observed；recorded 固定 not-checked、空来源且无 ETag，不重放或修复原命令。
+
+两个 POST 沿认证前 1 MiB JSON-object 解析，畸形/空/非对象/超大正文为 400 INVALID_JSON；URL 查询忽略，没有专用媒体/总响应字节/整次期限/容量/数据库取消保证，历史 GET 的 2/8 MiB 限制不适用。SDK 两方法使用通用 JSON transport，默认 Fetch 30 秒从凭据获取后开始，无方法级 timeout/signal；不自动重试或换键。未绑定包的 Postgres 非契约异常通常为 500 INTERNAL_ERROR；绑定包事务的同类异常经包装变为 503 CONTEXT_PACK_STORAGE_UNAVAILABLE，原查询缺库/查询失败为 503 SESSION_RECEIPT_STORAGE_UNAVAILABLE，三者 retryable=true。无存储的本地 fixture、缺 appendCheckpoint 的自定义适配器退路不证明持久原键账本，查询仍必须有数据库。
+
+本轮两路使 OpenAPI 累计 78 路；其余 WCP/MCP、事件 payload、SDK/Mock 机器契约接线和破坏性差异 CI 仍缺。P0-01/R-001 未完成、evidence 为空；仅人工源码文档审阅/指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 ## 会话进度命令与原回执
 
@@ -18,7 +36,7 @@
 
 六路均沿认证前 1 MiB JSON-object 解析，空/畸形/非对象/超大正文为 400 INVALID_JSON；URL 查询忽略，没有专用媒体/编码/总响应字节/整次期限/数据库取消保证。通用 SDK JSON transport 也没有身份 GET 的有界模式。已配置存储不支持原子命令时 SESSION_STORAGE_UNAVAILABLE 默认 retryable=false，Postgres 非契约异常同码 true；查询存储错误 SESSION_RECEIPT_STORAGE_UNAVAILABLE true。未配置存储保留本地 fixture 路径，不证明持久性，原回执查询仍要求数据库。
 
-本轮六路使 OpenAPI 累计 76 路；其余 WCP/MCP、事件 payload、SDK/Mock 机器契约接线与破坏性差异 CI 仍缺。P0-01/R-001 未完成、evidence 为空；仅人工源码文档审阅/指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+该轮六路使 OpenAPI 累计 76 路；其余 WCP/MCP、事件 payload、SDK/Mock 机器契约接线与破坏性差异 CI 仍缺。P0-01/R-001 未完成、evidence 为空；仅人工源码文档审阅/指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 ## 会话启动与原回执
 

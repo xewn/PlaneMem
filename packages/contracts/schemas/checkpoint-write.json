@@ -1,0 +1,270 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://planemem.local/schemas/checkpoint-write.json",
+  "title": "PlaneMem checkpoint save and original receipt",
+  "description": "Source-only existing checkpoint POST contracts. Raw HTTP, strict new client command and open original lookup command are distinct. Register checkpoint-read.json, session-activity-read.json and session-start.json locally.",
+  "$comment": "Schemas describe supported successful shapes, not proof of server-side validation of every stored row. Runtime identity/scope/path/key equality, effective header precedence, fingerprints, note/source equality, pack checks and UTF-16/JSON-depth limits remain outside static validation. No execution or machine-contract-consumption evidence.",
+  "oneOf": [{ "$ref": "#CheckpointSaveEnvelope" }, { "$ref": "#CheckpointReceiptEnvelope" }],
+  "$defs": {
+    "ulid": { "$ref": "./session-activity-read.json#/$defs/ulid" },
+    "positive": { "$ref": "./session-activity-read.json#/$defs/positive" },
+    "nonempty": { "type": "string", "minLength": 1 },
+    "text": { "$ref": "./checkpoint-read.json#/$defs/text" },
+    "key": { "$ref": "./session-start.json#/$defs/key" },
+    "source": { "$ref": "./session-activity-read.json#SessionActivitySourceRef" },
+    "sources": { "type": "array", "items": { "$ref": "#/$defs/source" } },
+    "notes": { "type": "array", "items": { "type": "string" } },
+    "content": {
+      "$anchor": "CheckpointContent",
+      "type": "object",
+      "required": [
+        "completed",
+        "in_progress",
+        "next_actions",
+        "decisions",
+        "risks",
+        "open_questions"
+      ],
+      "properties": {
+        "completed": { "$ref": "#/$defs/notes" },
+        "in_progress": { "$ref": "#/$defs/notes" },
+        "next_actions": { "$ref": "#/$defs/notes" },
+        "decisions": { "$ref": "#/$defs/notes" },
+        "risks": { "$ref": "#/$defs/notes" },
+        "open_questions": { "$ref": "#/$defs/notes" }
+      },
+      "description": "All six complete original string arrays required. Empty arrays/strings, whitespace, line breaks, order and duplicates preserved; no item count or per-note length limit. This reusable fields schema leaves other properties unevaluated."
+    },
+    "scope": {
+      "type": "object",
+      "required": ["tenant_id", "workspace_id", "project_id"],
+      "properties": {
+        "tenant_id": { "$ref": "#/$defs/nonempty" },
+        "workspace_id": { "$ref": "#/$defs/nonempty" },
+        "project_id": { "$ref": "#/$defs/nonempty" }
+      },
+      "description": "Reference scope must exactly match trusted request scope. Extensions preserved."
+    },
+    "legacyPack": {
+      "$anchor": "CheckpointLegacyPack",
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["scope", "pack_hash", "source_refs"],
+      "properties": {
+        "scope": { "$ref": "#/$defs/scope" },
+        "pack_hash": { "$ref": "#/$defs/nonempty" },
+        "source_refs": { "$ref": "#/$defs/sources" }
+      },
+      "description": "Fresh legacy HTTP only checks matching scope, nonempty hash and source entries. Does not parse full ContextPack, recompute hash, read stored package or validate current sources/expiry. Nonempty whitespace hash remains accepted by raw service; extensions fingerprinted but only hash/sources retained in checkpoint."
+    },
+    "rawMemory": {
+      "$anchor": "CheckpointRawMemoryReference",
+      "allOf": [{ "$ref": "#/$defs/scope" }],
+      "required": ["page_ref", "revision", "hash", "source_refs"],
+      "properties": {
+        "page_ref": { "$ref": "#/$defs/nonempty" },
+        "revision": { "$ref": "#/$defs/positive" },
+        "hash": { "$ref": "#/$defs/nonempty" },
+        "source_refs": { "$ref": "#/$defs/sources" }
+      },
+      "description": "Fresh HTTP checks matching scope, nonempty page/hash, safe positive revision and sources; no4096/depth32 or nonblank-text check. Original extensions retained. No memory provider call or content/hash verification."
+    },
+    "rawBody": {
+      "$anchor": "CheckpointSaveBody",
+      "allOf": [{ "$ref": "#CheckpointContent" }],
+      "properties": {
+        "session_id": {
+          "description": "Any supplied JSON value is overwritten by path before durable fingerprint; raw process fingerprint still sees it."
+        },
+        "expected_version": {
+          "description": "Effective version header wins without comparing body. Without header this must be a nonnegative safe integer; fresh equality with live session version is required."
+        },
+        "idempotency_key": {
+          "description": "Header wins, no header/body agreement check. Selected key must only be a nonempty string in this legacy handler; raw body value is ignored when a header supplies the key."
+        },
+        "actor_id": { "type": "string" },
+        "client_id": { "type": "string" },
+        "context_pack_id": { "$ref": "#/$defs/ulid" },
+        "context_pack": { "$ref": "#CheckpointLegacyPack" },
+        "memory_ref": { "$ref": "#CheckpointRawMemoryReference" }
+      },
+      "not": { "required": ["context_pack_id", "context_pack"] },
+      "description": "Open legacy HTTP body. Key optional without a saved pack; context_pack_id requires a selected header/body key. Unknown fields fingerprinted when keyed. Reference definitions describe fresh successful inputs; stored replay occurs before fresh service checks, but after extraction and saved-pack revalidation."
+    },
+    "clientLegacyPack": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["scope", "pack_hash", "source_refs"],
+      "properties": {
+        "scope": { "type": "object" },
+        "pack_hash": { "$ref": "#/$defs/text" },
+        "source_refs": { "$ref": "#/$defs/sources" }
+      },
+      "description": "New shared client parser checks scope is an object; exact scope fields/equality are checked by service and success parser. Nonblank hash<=4096 UTF-16; JSON-only finite/plain-object/depth<=32 check across full pack, extensions retained. Still not full ContextPack validation."
+    },
+    "clientCommand": {
+      "$anchor": "CheckpointSaveClientCommand",
+      "allOf": [{ "$ref": "#CheckpointContent" }],
+      "unevaluatedProperties": false,
+      "required": ["expected_version"],
+      "properties": {
+        "expected_version": { "$ref": "#/$defs/positive" },
+        "idempotency_key": { "$ref": "#/$defs/key" },
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "actor_id": { "$ref": "./session-activity-read.json#/$defs/identityText" },
+        "client_id": { "$ref": "./session-activity-read.json#/$defs/identityText" },
+        "context_pack_id": { "$ref": "#/$defs/ulid" },
+        "context_pack": { "$ref": "#/$defs/clientLegacyPack" },
+        "memory_ref": { "$ref": "./checkpoint-read.json#CheckpointMemoryReference" }
+      },
+      "not": { "required": ["context_pack_id", "context_pack"] },
+      "description": "New command plus binding rules, not HTTP raw acceptance. Optional actor/client bind to separately parsed identity; standalone parseCheckpointSaveCommand does not independently type-check them. SDK requires original valid key in options, matching context key/version/If-Match and any body version/key. Parent version is not incremented, so MAX_SAFE is accepted."
+    },
+    "originalCommand": {
+      "$anchor": "CheckpointOriginalCommand",
+      "allOf": [{ "$ref": "#CheckpointContent" }],
+      "required": ["expected_version"],
+      "properties": {
+        "expected_version": { "$ref": "#/$defs/positive" },
+        "idempotency_key": { "$ref": "#/$defs/key" },
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "context_pack_id": { "$ref": "#/$defs/ulid" },
+        "context_pack": {},
+        "memory_ref": {}
+      },
+      "not": { "required": ["context_pack_id", "context_pack"] },
+      "description": "Exact original body plus effective original expected_version. Keep unknown fields and array text/order. Optional session_id must equal path and optional idempotency_key equal request_key; receipt query does not validate legacy pack/memory contents or nested actor/client. Binding helper additionally checks nested identity. Historical query requires strict key even though old HTTP save allowed weaker keys."
+    },
+    "queryFields": {
+      "type": "object",
+      "required": ["request_key", "checkpoint"],
+      "properties": {
+        "request_key": { "$ref": "#/$defs/key" },
+        "checkpoint": { "$ref": "#CheckpointOriginalCommand" }
+      }
+    },
+    "query": {
+      "$anchor": "CheckpointReceiptQuery",
+      "allOf": [{ "$ref": "#/$defs/queryFields" }],
+      "unevaluatedProperties": false
+    },
+    "receiptBody": {
+      "$anchor": "CheckpointReceiptBody",
+      "allOf": [{ "$ref": "#/$defs/queryFields" }],
+      "properties": {
+        "session_id": {
+          "description": "HTTP path overwrites and handler removes this outer field before parsing logical query; no equality check on this raw outer value."
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "binding": {
+      "$anchor": "CheckpointBinding",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["session_id", "identity", "query"],
+      "properties": {
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "identity": { "$ref": "./session-activity-read.json#SessionCommandIdentity" },
+        "query": { "$ref": "#CheckpointReceiptQuery" }
+      },
+      "description": "Local original request binding, not an HTTP body. Complete scope matches configured client; nested optional session/actor/client and key exactly agree. Query deep-cloned without normalization or dropping unknown original fields."
+    },
+    "wireRecord": {
+      "$anchor": "CheckpointSaveWireRecord",
+      "allOf": [{ "$ref": "#CheckpointContent" }, { "$ref": "#/$defs/scope" }],
+      "unevaluatedProperties": false,
+      "required": [
+        "schema_version",
+        "checkpoint_id",
+        "session_id",
+        "revision",
+        "state_hash",
+        "trace_id",
+        "source_refs"
+      ],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "checkpoint_id": { "$ref": "#/$defs/ulid" },
+        "session_id": { "$ref": "#/$defs/nonempty" },
+        "revision": { "type": "integer", "minimum": 1 },
+        "state_hash": { "$ref": "#/$defs/nonempty" },
+        "context_pack_id": { "$ref": "#/$defs/ulid" },
+        "context_pack_hash": { "$ref": "#/$defs/nonempty" },
+        "memory_ref": { "$ref": "#CheckpointRawMemoryReference" },
+        "trace_id": { "type": "string" },
+        "source_refs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/source" } }
+      },
+      "dependentRequired": { "context_pack_id": ["context_pack_hash"] },
+      "description": "Complete nominal wire record; PostgreSQL mapper reconstructs fields using Number/JSON parsing, without complete saved-record validation. No safe revision overflow guard in append MAX+1; SDK/receipt query reject unsafe revisions. Fresh state_hash is legacy FNV-style32-bit rendered sha256: plus8 lowercase hex, NOT SHA-256 despite prefix; historical text preserved. No created_at/session_version/etag or current pack-state here. Source list: session, optional bound pack, memory sources, pack sources, first type/id wins; extensions retained. Replay keeps saved trace/notes/references and does not recalculate hash."
+    },
+    "saveEnvelope": {
+      "$anchor": "CheckpointSaveEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "type": "string" },
+        "source_refs": { "$ref": "#/$defs/sources" },
+        "data": { "$ref": "#CheckpointSaveWireRecord" }
+      },
+      "description": "Current outer trace; sources equal complete inner source list in original order. No built-in ETag, outer revision or explicit current-pack state. No dedicated success byte cap or full stored output validation."
+    },
+    "clientSaveEnvelope": {
+      "$anchor": "CheckpointSaveClientEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "$ref": "#/$defs/text" },
+        "source_refs": { "$ref": "#/$defs/sources" },
+        "data": { "$ref": "./checkpoint-read.json#CheckpointSavedRecord" },
+        "etag": { "type": "string", "pattern": "^W/\"version-[0-9]+\"$" }
+      },
+      "description": "Normalized SDK save result; parser tolerates some input extensions then reconstructs this shape. Exact bound scope/session, all original notes, pack binding/hash and memory including extensions; inner/outer sources equal, unique type/id. Without saved pack, complete deduplicated expected sources must equal; with saved pack, expected session/pack/memory source prefix must equal and extra stored pack sources may follow. Safe positive checkpoint revision is independent of expected session version. Optional ETag must parse to checkpoint revision, supported only for compatible external responses. State hash only nonblank<=4096, not recomputed or required to be SHA-256."
+    },
+    "notObserved": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "session_id"],
+      "properties": {
+        "status": { "const": "not-observed" },
+        "session_id": { "$ref": "#/$defs/ulid" }
+      }
+    },
+    "recorded": {
+      "$anchor": "CheckpointRecorded",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "session_id", "checkpoint_id", "revision", "context_pack_state"],
+      "properties": {
+        "status": { "const": "recorded" },
+        "session_id": { "$ref": "#/$defs/ulid" },
+        "checkpoint_id": { "$ref": "#/$defs/ulid" },
+        "revision": { "$ref": "#/$defs/positive" },
+        "context_pack_id": { "$ref": "#/$defs/ulid" },
+        "context_pack_state": { "const": "not-checked" }
+      },
+      "description": "Historical checkpoint revision, not session version. Optional pack ID exactly equals original requested binding, including absence. Does not expose note/hash/memory/source fields or prove their integrity or present readability."
+    },
+    "lookup": {
+      "$anchor": "CheckpointReceiptLookup",
+      "oneOf": [{ "$ref": "#/$defs/notObserved" }, { "$ref": "#CheckpointRecorded" }]
+    },
+    "receiptEnvelope": {
+      "$anchor": "CheckpointReceiptEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "source_refs", "data"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "trace_id": { "type": "string" },
+        "source_refs": { "type": "array", "maxItems": 0 },
+        "data": { "$ref": "#CheckpointReceiptLookup" }
+      },
+      "description": "Current outer trace, empty sources, no ETag or current metadata. SDK additionally requires exact expected nonblank trace<=4096 UTF-16. not-observed is a successful observation of absence, not proof of failed save or permission for a new key."
+    }
+  }
+}

@@ -1,0 +1,262 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "PlaneMem checkpoint save and original receipt",
+    "version": "0.1.0",
+    "description": "Source-only two existing POST contracts. Load checkpoint-write/checkpoint-read/session-activity-read/session-start schemas and session-reads/context-history/search HTTP components locally. No runtime change, generator/validator execution, SDK/Mock machine-contract consumption or release evidence."
+  },
+  "servers": [
+    { "url": "/", "description": "Relative Gateway base; configure deployment origin/base." }
+  ],
+  "security": [{ "GatewayBearer": [] }],
+  "tags": [{ "name": "Checkpoint commands" }],
+  "x-todo": "P0-01",
+  "x-runtime-boundaries": {
+    "sources": [
+      "apps/api-gateway/src/server.ts",
+      "apps/api-gateway/src/http.ts",
+      "apps/api-gateway/src/idempotency.ts",
+      "apps/api-gateway/src/checkpoint-receipts.ts",
+      "apps/api-gateway/src/context-packs.ts",
+      "apps/api-gateway/src/session-persistence.ts",
+      "apps/api-gateway/src/session-project-access.ts",
+      "apps/session-service/src/checkpoint/service.ts",
+      "packages/contracts/src/checkpoint-clients.ts",
+      "packages/contracts/src/checkpoint-receipts.ts",
+      "packages/sdk/src/client.ts",
+      "packages/sdk/src/fetch-transport.ts"
+    ],
+    "authority": "Both require session.write Policy, entry audit and independent authenticated_client=true handler gate; signed boundary requires trusted scope/actor/client. Configured OPA replaces local Policy, not verified-client gate. Unsigned compatibility cannot satisfy this gate. Optional expected actor/client headers are independently exact constraints. Top-level actor/client/from_client/scope claims must match signed context. Session creator need not equal writer. Saved-pack binding also authorizes and audits context.pack.read before reading package; restricted visibility requires actual data.restricted.read.",
+    "http": "Generic pre-auth1MiB JSON-object parser; empty/malformed/nonobject/oversize body400 INVALID_JSON, nonfatal UTF-8 decode. No dedicated content-type/encoding/framing/cache/Range or duplicate-header rejection; generic Node header behavior applies. URL query ignored. Route session_id overwrites raw body session_id. No dedicated full-response byte cap, whole-handler deadline, concurrency capacity, database cancellation or post-read token-expiry check. Historical GET2/8MiB limits do not apply to these POSTs.",
+    "input": "All six string arrays required, with empty/whitespace/duplicate text and ordering preserved. Effective expected_version from header or body must be nonnegative safe at extraction; fresh write compares exact current live-session version. If-Match and If-Match-Version must agree with each other; selected header replaces body version without comparison. Unknown body fields fingerprinted. Key optional for unbound/legacy-inline saves, required for saved context_pack_id. Selected header key wins over body without equality check; selected key only nonempty string, no255/non-whitespace validation here. SDK and receipt query are stricter and cannot query every weak legacy key.",
+    "fingerprint": "Key=SHA256 canonical [actor_id,client_id,rawKey], stored with scoped session checkpoint. Fingerprint sorts effective body including route session_id and effective expected_version, deletes body idempotency_key, retains unknown fields, explicit identity fields and original legacy pack/memory. Resolved saved-pack document is not added to fingerprint. Process header-key cache additionally binds raw body/current authority/version; matching cache re-enters handler, mismatch may reject before database. Body-only keys skip this process cache; unkeyed saves create separate checkpoints.",
+    "append": "Postgres transaction first locks visible nondeleted valid-classification project FOR SHARE, then scoped parent session FOR UPDATE. Existing key checks fingerprint then maps original checkpoint before fresh state/version checks. New write requires running/paused session and exact expected session version, allocates greatest checkpoint revision+1 and inserts notes/references/request key/fingerprint atomically. Parent session is locked but status/version are NOT changed; checkpoint revision is independent. No safe-overflow guard on Number(latest.revision)+1; SQL BIGINT constraints are not a safe-JS-version check. Stored replay maps Number/JSON fields without full checkpoint-record validation.",
+    "saved-pack": "context_pack_id and legacy context_pack are mutually exclusive. Saved ID resolution occurs on EVERY save/replay before checkpoint receipt lookup: extra context.pack.read authorization/audit, database transaction, project sync-stream lock and readable project share lock, scoped stored pack/read_restricted filtering, complete stored hash/budget/expiry/item/manifest and recursive source/dependency checks. Same transaction then appends/replays checkpoint with an isolated service cache. Existing receipt cannot bypass expired/stale/hidden package. Expiry is checked during package read, not again after all dependent reads or commit. Lock coordinates cooperating source writers, not arbitrary SQL or permanent validity.",
+    "legacy": "Inline legacy pack only checks same scope, nonempty pack_hash and valid source entries; no full pack, stored hash, freshness or provider verification. Memory ref only checks same scope, nonempty page_ref/hash, positive safe revision and valid sources; arbitrary extensions retained. No memory provider call. Absent store retains in-memory fixture; custom store lacking appendCheckpoint uses serialized local-cache preparation/saveCheckpoint fallback without a durable original-key ledger guarantee. PostgreSQL has no such fallback on failure.",
+    "output": "Full checkpoint record with current outer trace and saved inner trace; outer source list equals inner list. Six notes preserved; sources ordered session, optional bound pack, memory sources, pack sources with first type/id occurrence retained. Reference/source extensions survive. state_hash uses existing FNV-style32-bit routine, rendered sha256: plus8 hex despite not being SHA-256; it is not a cryptographic proof. Saved-pack context_pack_hash is a real stored content digest, legacy inline hash is supplied text. No created_at/current session version/ETag/explicit pack-state. Mapper does not perform complete stored-row validation; strict SDK may reject nominal200.",
+    "receipt": "Closed logical request_key/checkpoint; original command open with all six original arrays and positive safe effective expected_version. Optional original key/session must match. Nested actor/client are fingerprint fields on HTTP; SDK binding additionally compares them to expected identity. Outer raw session_id is overwritten/removed. Valid new header key/version parsed then ignored; malformed version headers still fail. One SQL snapshot checks current visible parent plus same-key checkpoint, no locks or write replay. Missing parent404, visible no row200 not-observed. Matching record only checks fingerprint, ULID checkpoint/optional pack ID, positive safe Number(revision) and exact optional pack binding; no notes/source/hash/memory/current session version/state or current pack reread. Returns minimal recorded with not-checked or not-observed, empty sources/no ETag.",
+    "sdk": "createCheckpoint requires valid original key/version options and complete expected identity (explicit or fixed client context), no mismatch with configured key/version/If-Match or optional body key/version/session/actor/client. Strict declared new-command fields; legacy hash and memory text nonblank<=4096 UTF-16, references JSON-only finite/plain-object/depth<=32, notes unchanged. Sends original key/If-Match and expected identity headers. getCheckpointReceipt deep-clones original query and sends only scope/trace/expected identity, clearing inherited write preconditions. Both use generic JSON transport, no dedicated bytes/media/exact200/trace-header/length guarantees or method timeout/signal options. Fetch default30s starts after credential acquisition; custom transport has no whole-call deadline here. No automatic retry/key replacement.",
+    "sdk-output": "Save parser checks complete original notes/scope/session/pack binding/hash/memory equality, safe positive checkpoint revision, nonblank<=4096 saved/current trace and state hash. It does not recompute state hash or compare checkpoint revision to session version. Inner/outer sources equal and unique type/id; unbound/legacy expected sources equal fully, saved-pack expected session/pack/memory sources form exact prefix with remaining resolved-pack sources allowed. Reference/source extensions preserved; top-level unknown fields discarded. Optional ETag accepted only when equal to checkpoint revision; built-in server does not emit it. Receipt parser checks minimal result, original pack presence/value, exact current trace, empty sources and no ETag."
+  },
+  "paths": {
+    "/v1/sessions/{session_id}/checkpoint": {
+      "parameters": [
+        { "$ref": "#/components/parameters/SessionId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" },
+        { "$ref": "#/components/parameters/SaveKey" },
+        { "$ref": "#/components/parameters/SaveIfMatch" },
+        { "$ref": "#/components/parameters/SaveVersion" }
+      ],
+      "post": {
+        "operationId": "createCheckpoint",
+        "tags": ["Checkpoint commands"],
+        "summary": "Save complete progress notes under the original session version",
+        "x-wcp-operation": "session.checkpoint",
+        "x-policy-action": "session.write",
+        "x-conditional-policy-action": "context.pack.read uses context.read when context_pack_id is supplied",
+        "x-client-command-schema": {
+          "$ref": "../schemas/checkpoint-write.json#CheckpointSaveClientCommand"
+        },
+        "x-client-result-schema": {
+          "$ref": "../schemas/checkpoint-write.json#CheckpointSaveClientEnvelope"
+        },
+        "description": "New checkpoint revision does not change parent session version. Saved pack requires stable key and current package checks even on original-key replay; inline legacy pack is only an unverified historical reference. Original response is complete saved checkpoint, without current validity guarantee.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/checkpoint-write.json#CheckpointSaveBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/SaveSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "410": { "$ref": "#/components/responses/Expired" },
+          "429": { "$ref": "./search.json#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/SaveInvalid" },
+          "503": { "$ref": "#/components/responses/SaveUnavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/sessions/{session_id}/checkpoint/receipt": {
+      "parameters": [
+        { "$ref": "#/components/parameters/ReceiptSessionId" },
+        { "$ref": "#/components/parameters/TenantId" },
+        { "$ref": "#/components/parameters/WorkspaceId" },
+        { "$ref": "#/components/parameters/ProjectId" },
+        { "$ref": "#/components/parameters/TraceParent" },
+        { "$ref": "#/components/parameters/TraceId" },
+        { "$ref": "#/components/parameters/ExpectedActorId" },
+        { "$ref": "#/components/parameters/ExpectedClientId" },
+        { "$ref": "./session-reads.json#/components/parameters/IdempotencyKey" },
+        { "$ref": "./session-reads.json#/components/parameters/IfMatch" },
+        { "$ref": "./session-reads.json#/components/parameters/IfMatchVersion" }
+      ],
+      "post": {
+        "operationId": "getCheckpointReceipt",
+        "tags": ["Checkpoint commands"],
+        "summary": "Observe a previous checkpoint request without consuming its saved pack",
+        "x-wcp-operation": "session.checkpoint.receipt",
+        "x-policy-action": "session.write",
+        "x-read-only": true,
+        "description": "Requires current verified session writer and original identity/key/full body/effective version. Valid new write headers ignored. No context.read check or stored pack read; historical metadata only. not-observed does not prove failure or permit replacing original request.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "../schemas/checkpoint-write.json#CheckpointReceiptBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/ReceiptSuccess" },
+          "400": { "$ref": "#/components/responses/BadInput" },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "403": { "$ref": "#/components/responses/Denied" },
+          "404": { "$ref": "#/components/responses/ReceiptNotFound" },
+          "409": { "$ref": "#/components/responses/ReceiptConflict" },
+          "429": { "$ref": "./search.json#/components/responses/RateLimited" },
+          "500": { "$ref": "#/components/responses/ReceiptInvalid" },
+          "503": { "$ref": "#/components/responses/ReceiptUnavailable" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": { "GatewayBearer": { "type": "http", "scheme": "bearer" } },
+    "parameters": {
+      "TenantId": { "$ref": "./session-reads.json#/components/parameters/TenantId" },
+      "WorkspaceId": { "$ref": "./session-reads.json#/components/parameters/WorkspaceId" },
+      "ProjectId": { "$ref": "./session-reads.json#/components/parameters/ProjectId" },
+      "TraceParent": { "$ref": "./session-reads.json#/components/parameters/TraceParent" },
+      "TraceId": { "$ref": "./session-reads.json#/components/parameters/TraceId" },
+      "ExpectedActorId": { "$ref": "./session-reads.json#/components/parameters/ExpectedActorId" },
+      "ExpectedClientId": {
+        "$ref": "./session-reads.json#/components/parameters/ExpectedClientId"
+      },
+      "SessionId": {
+        "name": "session_id",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "minLength": 1 },
+        "description": "HTTP save extracts nonempty path; scoped storage resolves parent. SDK/receipt require ULID. Same-named raw body field overwritten, not compared."
+      },
+      "ReceiptSessionId": {
+        "name": "session_id",
+        "in": "path",
+        "required": true,
+        "schema": { "$ref": "../schemas/checkpoint-write.json#/$defs/ulid" }
+      },
+      "SaveKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "schema": { "type": "string", "minLength": 1 },
+        "description": "Header wins over body key without comparison; selected key only checked nonempty. Required in header/body for saved pack, otherwise optional legacy HTTP. SDK/receipt enforce1..255 non-whitespace UTF-16; retain a compatible original key to allow later lookup."
+      },
+      "SaveIfMatch": {
+        "name": "If-Match",
+        "in": "header",
+        "schema": { "type": "string", "pattern": "^W/\"version-[0-9]+\"$" },
+        "description": "Original parent session version, not checkpoint revision. Safe nonnegative parse, leading zeros allowed; must agree with If-Match-Version. Header overrides body expected_version; no body equality check."
+      },
+      "SaveVersion": {
+        "name": "If-Match-Version",
+        "in": "header",
+        "schema": { "type": "string", "pattern": "^[0-9]+$" },
+        "description": "Alternative digits-only original session version0..MAX_SAFE. Without version headers body expected_version is required. Fresh save requires exact current live-session version; old keyed replay precedes this comparison."
+      }
+    },
+    "responses": {
+      "SaveSuccess": {
+        "description": "Complete original checkpoint, current outer/saved inner trace, same source arrays. Parent version unchanged; no ETag/current-pack state. Existing stored replay is mapped without full server response parser.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/checkpoint-write.json#CheckpointSaveEnvelope" }
+          }
+        }
+      },
+      "ReceiptSuccess": {
+        "description": "Historical recorded/not-observed. Positive safe checkpoint revision and optional original pack ID; recorded always not-checked. Empty sources/no ETag/no notes.",
+        "headers": {
+          "cache-control": { "$ref": "./context-history.json#/components/headers/NoStore" },
+          "x-trace-id": { "$ref": "./context-history.json#/components/headers/SuccessTrace" }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../schemas/checkpoint-write.json#CheckpointReceiptEnvelope" }
+          }
+        }
+      },
+      "Error": {
+        "$ref": "./search.json#/components/responses/Error",
+        "description": "Application error envelope; early parser/auth/proxy may lack trace header or differ. Preserve original request after uncertain save. retryable never authorizes automatic new key/retry."
+      },
+      "BadInput": {
+        "$ref": "#/components/responses/Error",
+        "description": "INVALID_INPUT for required notes, selected key/version, malformed/mutually exclusive references or original query; CONTEXT_SCOPE_MISMATCH for fresh inline/memory scope mismatch. INVALID_REQUEST_CONTEXT for malformed/disagreeing version headers. Generic pre-auth malformed/empty/nonobject/oversize JSON is400 INVALID_JSON, not413. Lower service SESSION_ACCESS_DENIED falls through400. retryable=false."
+      },
+      "Unauthenticated": {
+        "$ref": "#/components/responses/Error",
+        "description": "Signed boundary UNAUTHENTICATED401, retryable=false. Unsigned compatibility cannot satisfy verified-client requirement."
+      },
+      "Denied": {
+        "$ref": "#/components/responses/Error",
+        "description": "DENIED403 for identity/scope/Policy/verified-client or extra saved-pack context.read authorization; retryable=false. Scoped invisible parent/pack normally404."
+      },
+      "NotFound": {
+        "$ref": "#/components/responses/Error",
+        "description": "SESSION_NOT_FOUND for missing/hidden project or parent. Saved-pack resolution precedes parent/receipt and may return CONTEXT_PACK_NOT_FOUND for missing/hidden project/pack. retryable=false."
+      },
+      "ReceiptNotFound": {
+        "$ref": "#/components/responses/Error",
+        "description": "SESSION_NOT_FOUND for missing/hidden parent/project; retryable=false. Visible parent without original key returns200 not-observed."
+      },
+      "Conflict": {
+        "$ref": "#/components/responses/Error",
+        "description": "IDEMPOTENCY_KEY_REUSED for process/durable fingerprint mismatch; fresh SESSION_VERSION_CONFLICT/SESSION_STATE_CONFLICT; saved-pack CONTEXT_PACK_STALE for changed/unavailable source or dependency chain. retryable=false. Pack check before replay; original checkpoint replay before fresh lifecycle/version check."
+      },
+      "ReceiptConflict": {
+        "$ref": "#/components/responses/Error",
+        "description": "IDEMPOTENCY_KEY_REUSED for historical fingerprint mismatch, retryable=false. No fresh CAS/state/pack validation."
+      },
+      "Expired": {
+        "$ref": "#/components/responses/Error",
+        "description": "CONTEXT_PACK_EXPIRED410 on saved-pack resolution, including keyed replay; retryable=false. Prior successful checkpoint may still exist."
+      },
+      "SaveInvalid": {
+        "$ref": "#/components/responses/Error",
+        "description": "CONTEXT_PACK_INVALID500 for saved package/hash/budget/metadata corruption, retryable=false. Generic unbound append/database/JSON-mapping non-ContractError becomes INTERNAL_ERROR500 retryable=true. No complete server checkpoint response parser is added here."
+      },
+      "ReceiptInvalid": {
+        "$ref": "#/components/responses/Error",
+        "description": "SESSION_RECEIPT_INVALID500 for matching row with invalid ID/revision/optional pack binding, retryable=false. Notes/state hash/source integrity are not checked. Generic INTERNAL_ERROR defaults true."
+      },
+      "SaveUnavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "Saved-pack path missing DB or non-ContractError from entire consuming transaction becomes CONTEXT_PACK_STORAGE_UNAVAILABLE503 retryable=true; unbound Postgres append lacks this wrapper and normally emits INTERNAL_ERROR500 instead. WORKBENCH_AUTH_UNAVAILABLE/AUDIT_PERSISTENCE_UNAVAILABLE503 true also possible."
+      },
+      "ReceiptUnavailable": {
+        "$ref": "#/components/responses/Error",
+        "description": "SESSION_RECEIPT_STORAGE_UNAVAILABLE503 for missing database or query error, retryable=true; auth/audit503 also possible. No memory-cache fallback or original command mutation."
+      }
+    }
+  }
+}

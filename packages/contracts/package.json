@@ -8,6 +8,8 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./schemas/checkpoint-write.json": "./schemas/checkpoint-write.json",
+    "./openapi/checkpoint-commands.json": "./openapi/checkpoint-commands.json",
     "./schemas/session-command-write.json": "./schemas/session-command-write.json",
     "./schemas/session-command-receipt.json": "./schemas/session-command-receipt.json",
     "./openapi/session-commands.json": "./openapi/session-commands.json",

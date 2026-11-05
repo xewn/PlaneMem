@@ -1,6 +1,6 @@
 # PlaneMem
 
-按 TODO **P0-01** 补充 [会话进度命令 OpenAPI](packages/contracts/openapi/README.md#会话进度命令与原回执) 和写入/原回执两份 Schema，覆盖运行/工具创建与收尾、会话结束和原命令查询六路。区分旧 HTTP 与严格客户端、历史明细/父版本、无变化成功及当前明细核对；OpenAPI 累计 76 路。P0-01 仍未完成；未编译、测试、运行校验器/生成器/接口或发布。
+按 TODO **P0-01** 补充 [检查点保存与原回执 OpenAPI](packages/contracts/openapi/README.md#检查点保存与原回执) 和完整 checkpoint-write Schema，覆盖保存和原请求查询两路。区分独立检查点修订/原会话版本、保存包当前检查与历史元数据查询、旧 HTTP/严格客户端，以及实际状态哈希与错误边界；OpenAPI 累计 78 路。P0-01 仍未完成；未编译、测试、运行校验器/生成器/接口或发布。
 
 按 TODO **P0-01** 补充 [会话启动与原回执 OpenAPI](packages/contracts/openapi/README.md#会话启动与原回执) 及完整 Schema，覆盖当前命令身份、普通启动和原回执查询三路。完整保留原可选字段与身份键，区分当前会话和固定版本 1 的原创建回执；明确持久重放、旧键冲突及真实 HTTP/SDK 边界。该轮使 OpenAPI 累计七十路，P0-01 仍未完成；未编译、测试、运行校验器/生成器/接口或发布。
 

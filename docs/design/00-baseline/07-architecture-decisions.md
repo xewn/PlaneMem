@@ -1,5 +1,9 @@
 # 架构决策记录摘要
 
+2026-11-05 本轮源码落地：检查点保存/原回执两路 OpenAPI、完整 checkpoint-write Schema 与两项包子路径已补齐；原 HTTP/严格客户端、六类笔记/引用、独立修订、包检查与元数据回执差别及真实错误/预算已人工对照。旧键兼容、无安全溢出防护和 32 位状态哈希按源码记录。公共目录/WCP/运行说明、根 README/TODO 与 R001 同步，OpenAPI 累计 78 路。P0-01/R001 未完成、evidence 为空；仅人工源码文档审阅/指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
+2026-11-05 P0-01 检查点保存与原回执两路机器契约（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增 schemas/checkpoint-write.json 与 openapi/checkpoint-commands.json，覆盖 checkpoint 保存及原请求回执两 POST。定义六类笔记、旧内联包/保存包绑定、记忆引用、原 HTTP 与严格客户端命令、完整保存结果及历史摘要；依据当前实现记录版本、幂等、项目/包来源可见性与真实读取/重放边界。范围两新 JSON、两项包子路径、两 README、根 README/TODO、公共目录/WCP/checkpoint-context 运行说明、R001 与本 ADR/T0.3/T4.1；不改运行实现、依赖或数据库。仅人工源码文档审阅/指定格式/Git 文本检查，不编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布；独立提交 push main 带 [skip ci]，P0-01/R001 未完成、evidence 为空。
+
 2026-11-05 本轮源码落地：会话进度五写入与原回执查询六路 OpenAPI、两份完整 Schema 及三项包子路径已补齐；原 HTTP/严格客户端、历史成功/摘要、delta0/1、可见性/事务/重放、来源扩展和实际 SDK/HTTP 边界已人工对照。公共目录/WCP/运行说明、根 README/TODO 与 R001 同步，OpenAPI 累计 76 路。P0-01/R001 未完成、evidence 为空；仅人工源码文档审阅/指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
 
 2026-11-05 P0-01 会话进度命令六路机器契约（ADR-015 / T0.3 / T4.1 / R-001）：源码前登记，新增 schemas/session-command-write.json、schemas/session-command-receipt.json 与 openapi/session-commands.json，覆盖运行创建/收尾、工具记录/收尾、会话结束五写入及原命令回执查询。定义原 HTTP 正文与严格客户端命令、五类完整历史成功、原查询与 recorded/not-observed，区分会话/明细版本、无变化收尾、原指纹和当前可见性/缓存边界。范围三新 JSON、三项包子路径、两 README、根 README/TODO、公共目录/WCP/session-command 运行说明、R001 与 ADR/T0.3/T4.1；复用已有公共标量/来源，不改旧 Schema、运行实现、SDK/Mock、依赖或数据库。仅人工源码文档审阅/指定格式/Git 文本检查，不编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布；独立提交 push main 带 [skip ci]，P0-01/R001 未完成、evidence 为空。

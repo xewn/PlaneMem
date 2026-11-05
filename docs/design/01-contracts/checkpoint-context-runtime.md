@@ -1,5 +1,11 @@
 # 检查点的持久上下文绑定
 
+2026-11-05 P0-01 机器契约增补：[checkpoint-commands OpenAPI](../../../packages/contracts/openapi/checkpoint-commands.json) 与 [checkpoint-write Schema](../../../packages/contracts/schemas/checkpoint-write.json) 描述保存/原回执两个 POST，分别建模原 HTTP、严格客户端、完整历史保存和最小查询结果。不改运行实现；OpenAPI 累计 78 路，P0-01/R001 未完成、evidence 为空。
+
+此次源码对照明确：保存只增加检查点 revision，不改变会话 version；当前 Postgres MAX+1 没有 JavaScript 安全整数溢出检查。旧未绑定保存允许无键，选中键只检查非空、头键覆盖正文且不比较；SDK/查询使用更严格原键。保存包当前检查先于持久回执重放；原查询只核对指纹、ID、正安全 revision 和可选包 ID，不读取笔记、来源、状态哈希、记忆或当前包。旧 state_hash 为 `sha256:` 前缀加 8 位十六进制的 32 位算法，不能当成 SHA-256 内容证明；持久包 context_pack_hash 与之独立。
+
+普通保存返回完整历史记录但未经过服务器完整记录解析，SDK 会进一步核对原笔记/引用/来源/身份，仍不重算状态哈希。两个 POST 的通用 1 MiB 正文、无专用响应字节/整次期限和错误包装差异见 [完整 HTTP 说明](../../../packages/contracts/openapi/README.md#检查点保存与原回执)；GET 全文 2/8 MiB 预算不扩展到这些 POST。仅人工源码文档审阅/指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
 2026-11-03 全文读取增补：详情完整封套最多 2 MiB、十条历史页最多 8 MiB；SQL 输出前限制正文，超限 HTTP 413 且不返回截断记录。SDK/Web/CLI 网络接入有界读取和本地期限，CLI/MCP 共享完整解析，页面失败保留查找及原请求恢复。读取限制不影响既有保存回执的业务语义，不证明写入成功或失败；详见 [检查点全文读取边界](checkpoint-read-runtime.md)。仅源码与文档，未编译或测试。
 
 更新：2026-11-02。仅开发代码与文档；未编译、未执行类型检查、测试、迁移、部署或发布。

@@ -1,5 +1,13 @@
 # 独立契约结构定义
 
+2026-11-05，TODO **P0-01**：新增 [checkpoint-write.json](checkpoint-write.json)，HTTP 见 [checkpoint-commands OpenAPI](../openapi/checkpoint-commands.json)。覆盖检查点保存及原请求回执，包子路径对应文件名；本地注册 checkpoint-read/session-activity-read/session-start，复用原记录/记忆、身份/来源/版本和严格原键。
+
+CheckpointSaveBody 保留未知字段、头优先的原键/版本与路径覆盖规则，旧内联包和原记忆引用按服务端较宽规则建模；CheckpointSaveClientCommand 关闭未知新字段、要求正安全原会话版本，引用文本非空白且限 4096 UTF-16，结构深度等仍由共享代码检查。CheckpointOriginalCommand 保留旧未知字段和未经重新验证的原引用；CheckpointReceiptQuery 为严格两字段，ReceiptBody 另允许被路径覆盖/移除的原外层 session_id，Binding 是固定原身份和深拷贝查询的本地对象。
+
+CheckpointSaveWireRecord/Envelope 定义全部原笔记/引用/来源及独立修订；服务端重放映射没有完整记录解析，MAX+1 没有安全溢出保护，不把客户端更严格规则当成服务端保证。state_hash 仅为历史文本，现有新写使用 `sha256:` 加 8 位十六进制旧 32 位算法，不要求或宣称完整 SHA-256；记录无 created_at/会话版本/包状态。CheckpointSaveClientEnvelope 单独描述规范结果及可选兼容 ETag，重用原完整 CheckpointSavedRecord；动态原笔记/引用一致、来源首项去重/顺序与保存包前缀、原范围/trace 和版本关系由共享解析负责，未重算状态哈希。
+
+CheckpointRecorded/ReceiptLookup/ReceiptEnvelope 只含原修订/ID/可选包和 not-checked，或 not-observed；不返回原内容或证明包当前有效。查询只读取并检查元数据，不能沿用 GET 详情的完整内容核验或 2/8 MiB 限制。原弱键兼容、通用 POST/SDK 预算及错误差别见 OpenAPI 说明。P0-01/R-001 未完成、evidence 为空；仅人工审阅与指定格式/Git 文本检查，未编译、类型检查、测试、运行校验器/生成器/产品/API/数据库或发布。
+
 2026-11-05，TODO **P0-01**：新增 [session-command-write.json](session-command-write.json)、[session-command-receipt.json](session-command-receipt.json)，HTTP 见 [session-commands OpenAPI](../openapi/session-commands.json)。覆盖运行创建/收尾、工具记录/收尾、会话结束及五种原命令查询；包子路径对应文件名，本地同时注册 session-start/session-activity-read 公共资源。
 
 写入 Schema 分别定义五类原 HTTP Body、严格 ClientCommand 和完整历史成功 Envelope。旧 HTTP 保留未知字段参与指纹，路径覆盖同名正文目标、有效版本头覆盖正文版本；model 非空字符串才用于执行，其余原值仍参与指纹。新客户端只接声明字段，创建须给父版本加一留空间且名称有界；收尾可在最大安全版本处无变化成功。普通成功中 run/tool 的 session_version 是原操作后的历史父版本，自身 version 是明细版本；changed 只在内部回执和收尾查询摘要中出现。

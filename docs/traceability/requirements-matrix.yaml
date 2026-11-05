@@ -11,6 +11,29 @@ requirements:
     design: ["authority-boundary", "WCP", "adapter-gateway"]
     subprojects: ["P0", "P4"]
     tests: ["contract.rest_mcp_cli_parity", "e2e.fake_client_switch"]
+    checkpoint_commands_openapi_development_increment:
+      date: "2026-11-05"
+      todo: "P0-01"
+      status: "Source-only two-route checkpoint save/original receipt OpenAPI and complete schema; P0-01 and R-001 remain incomplete."
+      artifacts:
+        - "packages/contracts/openapi/checkpoint-commands.json"
+        - "packages/contracts/schemas/checkpoint-write.json"
+        - "packages/contracts/package.json"
+        - "packages/contracts/openapi/README.md"
+        - "packages/contracts/schemas/README.md"
+      behavior: "All six original note arrays, legacy/saved pack and memory references, raw HTTP versus strict new client commands, open original query, full saved checkpoint and minimal recorded/not-observed. Checkpoint revision is independent of unchanged parent session version; history never proves current pack validity."
+      boundaries: "No runtime/SDK/Mock/dependency/database changes. Visible project/session locks precede append/replay; saved-pack current authorization/hash/budget/expiry/dependency checks precede even original-key replay in same transaction. Original query reads only selected metadata, no notes/hash/source/memory validation or pack read. Legacy raw key only nonempty and header wins; strict client/query keys differ. State hash is existing32-bit value despite sha256 prefix, not cryptographic proof. MAX revision+1 lacks safe overflow guard and stored replay lacks full record parsing; SDK is stricter. Generic POST/SDK budgets differ from historical GET limits; unbound storage errors500, saved-pack transaction wrapper503."
+      evidence: []
+      remaining_scope: "Other WCP/MCP machine contracts, ordinary event payloads, SDK/Mock machine-contract consumption, breaking-change CI and tool/runtime/release evidence."
+      pending_evidence:
+        - "Local references, full raw/client/wire/query/receipt shapes and six exact original arrays"
+        - "Path/header precedence, legacy weak keys and original unknown-field fingerprints"
+        - "Project/session locking, live-session CAS, unchanged parent version and independent checkpoint revision"
+        - "Saved-pack authorization and same-transaction source checks before original-key replay"
+        - "Legacy reference/source extensions, first-source deduplication and actual32-bit state hash semantics"
+        - "Metadata-only original lookup, visible absence versus missing parent and unsafe revision rejection"
+        - "Strict SDK equality/normalization, optional compatible ETag, real HTTP budgets and error-wrapper differences"
+      execution: "Manual source/docs review and explicit formatting/Git text checks only; no build, typecheck, tests, validators, generators, product/API/database execution or release."
     session_commands_openapi_development_increment:
       date: "2026-11-05"
       todo: "P0-01"
